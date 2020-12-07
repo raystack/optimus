@@ -1,0 +1,16 @@
+/out/
+*.log
+.idea/
+*.out
+.DS_Store
+/optimus
+dist
+vendor
+.env
+.vscode
+*.pem
+TODO
+version
+temp
+test_coverage.html
+/opctl

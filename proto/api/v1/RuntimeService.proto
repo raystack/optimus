@@ -1,0 +1,28 @@
+syntax = "proto3";
+package apiv1;
+
+option go_package = "github.com/odpf/optimus/proto/api/v1";
+
+service RuntimeService {
+    rpc Ping(VersionRequest) returns (VersionResponse) {}
+    rpc DeploySpecification(DeploySpecificationRequest) returns (DeploySpecificationResponse) {}
+}
+
+message VersionRequest {
+    string client_version = 1;
+}
+
+message VersionResponse {
+    string server_version = 1;
+}
+
+message DeploySpecificationRequest {
+    string job = 1;
+    map<string, string> assets = 2;
+}
+
+message DeploySpecificationResponse {
+    bool succcess = 1;
+    string error = 2;
+    string id = 3;
+}
