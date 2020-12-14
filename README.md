@@ -15,7 +15,7 @@ Optimus requires the following dependencies:
 
 We won't cover how to install these, you can go to their respective websites to figure out how to install them for your OS.
 Run the following commands to compile from source
-```
+```bash
 $ git clone git@github.com/odpf/optimus.git
 $ cd optimus
 $ make
@@ -23,22 +23,29 @@ $ cp opctl /usr/bin && cp optimus /usr/bin # copy the executables to a location 
 ```
 The last step isn't necessarily required. Feel free to put the compiled executeable anywhere you want.
 If during compilation, golang is unable to find odpf.github.io dependencies, try using
-```
+```bash
 go env -w GOPRIVATE=odpf.github.io 
 git config --global url."git@odpf.github.io:".insteadOf "https://odpf.github.io/"
+```
+
+Note: building from source requires `buf` and `protoc-gen-go` binaries to be available in your shell path. If not found, you
+can add following lines to your ~/.bashrc or ~/.zshrc.
+```bash
+export GOPATH=$(go env GOPATH)
+export PATH=$PATH:$GOPATH/bin
 ```
 
 ## How to run web service
 
 Follow same steps as optimus cli to compile from source
-```
+```bash
 $ git clone git@github.com/odpf/optimus.git
 $ cd optimus
 $ make
 ```
 
 Use the following command as an example
-```
+```bash
 ./optimus
 ```
 
