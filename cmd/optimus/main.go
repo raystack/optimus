@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,13 +13,23 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
+	v1handler "github.com/odpf/optimus/api/handler/v1"
+	pb "github.com/odpf/optimus/api/proto/v1"
 	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 var (
 	// Version of the service
+	// overridden by the build system. see "Makefile"
 	Version = ""
 
 	// AppName is used to prefix Version
@@ -35,6 +46,7 @@ var Config = struct {
 	ServerPort string
 	ServerHost string
 	LogLevel   string
+	DBURL      string
 }{
 	ServerPort: "8080",
 	ServerHost: "0.0.0.0",
@@ -71,6 +83,11 @@ var cfgRules = map[*string]cfg{
 		Cmd:  "log-level",
 		Desc: "log level - DEBUG, INFO, WARNING, ERROR, FATAL",
 	},
+	&Config.DBURL: {
+		Env:  "DB_URL",
+		Cmd:  "db-url",
+		Desc: "database connection url",
+	},
 }
 
 func validateConfig() error {
@@ -94,6 +111,14 @@ func validateConfig() error {
 		return fmt.Errorf("%s", strings.Join(errs, "\n"))
 	}
 	return nil
+}
+
+type jobSpecRepoFactory struct {
+	db *gorm.DB
+}
+
+func (fac *jobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
+	return postgres.NewJobRepository(fac.db, proj)
 }
 
 func init() {
@@ -146,6 +171,41 @@ func main() {
 		}
 	}()
 
+	//grpc server
+	grpcAddr := fmt.Sprintf("%s:%s", Config.ServerHost, Config.ServerPort)
+
+	//create a tcp listener for grpc
+	lis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcOpts := []grpc.ServerOption{}
+	grpcServer := grpc.NewServer(grpcOpts...)
+	reflection.Register(grpcServer)
+
+	if err := postgres.Migrate(Config.DBURL); err != nil {
+		panic(err)
+	}
+	dbConn, err := postgres.Connect(Config.DBURL, 5, 10)
+	if err != nil {
+		panic(err)
+	}
+
+	// runtime service instance over gprc
+	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
+		Version,
+		job.NewService(
+			&jobSpecRepoFactory{
+				db: dbConn,
+			},
+		),
+	))
+
+	// start grpc server
+	go func() {
+		log.Fatal(grpcServer.Serve(lis))
+	}()
+
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
 	signal.Notify(termChan, os.Interrupt)
 	signal.Notify(termChan, os.Kill)
@@ -164,6 +224,8 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		mainLog.Warn(err)
 	}
+
+	grpcServer.GracefulStop()
 
 	mainLog.Info("bye")
 }

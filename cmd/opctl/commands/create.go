@@ -12,6 +12,8 @@ import (
 	cli "github.com/spf13/cobra"
 	"gopkg.in/AlecAivazis/survey.v1"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/local"
 )
 
 const (
@@ -52,16 +54,16 @@ func registerTaskInput() {
 	}
 }
 
-func createCommand(l logger, jobSrv models.JobService) *cli.Command {
+func createCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new resource",
 	}
-	cmd.AddCommand(createJobSubCommand(l, jobSrv))
+	cmd.AddCommand(createJobSubCommand(l, jobSpecRepo))
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSvc models.JobService) *cli.Command {
+func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	registerTaskInput()
 	return &cli.Command{
 		Use:   "job",
@@ -71,12 +73,16 @@ func createJobSubCommand(l logger, jobSvc models.JobService) *cli.Command {
 			if err != nil {
 				return err
 			}
-			return jobSvc.CreateJob(jobInput)
+			spec, err := jobInput.ToSpec()
+			if err != nil {
+				return err
+			}
+			return jobSpecRepo.Save(spec)
 		},
 	}
 }
 
-func createJobSurvey(l logger) (models.JobInput, error) {
+func createJobSurvey(l logger) (local.Job, error) {
 
 	availableTasks := []string{}
 	for _, task := range models.SupportedTasks.GetAll() {
@@ -114,29 +120,29 @@ func createJobSurvey(l logger) (models.JobInput, error) {
 	}
 	baseInputs := make(map[string]interface{})
 	if err := survey.Ask(qs, &baseInputs); err != nil {
-		return models.JobInput{}, err
+		return local.Job{}, err
 	}
 
 	// define defaults
-	jobInput := models.JobInput{
-		Version: 1,
+	jobInput := local.Job{
+		Version: local.JobConfigVersion,
 		Name:    baseInputs["name"].(string),
 		Owner:   baseInputs["owner"].(string),
-		Schedule: models.JobInputSchedule{
+		Schedule: local.JobSchedule{
 			StartDate: baseInputs["start_date"].(string),
 			Interval:  baseInputs["interval"].(string),
 		},
-		Task: models.JobInputTask{
+		Task: local.JobTask{
 			Name:   baseInputs["task"].(string),
 			Config: map[string]string{},
-			Window: models.JobInputTaskWindow{
+			Window: local.JobTaskWindow{
 				Size:       "24h",
 				Offset:     "0",
 				TruncateTo: "d",
 			},
 		},
 		Asset: map[string]string{},
-		Behavior: models.JobInputBehavior{
+		Behavior: local.JobBehavior{
 			Catchup:       true,
 			DependsOnPast: false,
 		},

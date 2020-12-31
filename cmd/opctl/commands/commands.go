@@ -6,7 +6,7 @@ import (
 	"github.com/fatih/color"
 	cli "github.com/spf13/cobra"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 var prologueContents = `opctl %s
@@ -31,8 +31,7 @@ func programPrologue(ver string) string {
 // It houses all other sub commands
 func New(
 	l logger,
-	jobSrv models.JobService,
-	jobSpecRepo models.JobSpecRepository,
+	jobSpecRepo store.JobSpecRepository,
 	version string,
 	config config.ConfigCLI,
 ) *cli.Command {
@@ -53,8 +52,9 @@ func New(
 
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "disable colored output")
 
-	cmd.AddCommand(createCommand(l, jobSrv))
+	cmd.AddCommand(createCommand(l, jobSpecRepo))
 	cmd.AddCommand(versionCommand(l, version))
+	cmd.AddCommand(deployCommand(l, jobSpecRepo))
 
 	return cmd
 }

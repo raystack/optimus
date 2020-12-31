@@ -1,0 +1,67 @@
+syntax = "proto3";
+package apiv1;
+
+option go_package = "github.com/odpf/optimus/proto/api/v1";
+
+service RuntimeService {
+    rpc Version(VersionRequest) returns (VersionResponse) {}
+    rpc DeploySpecification(DeploySpecificationRequest) returns (DeploySpecificationResponse) {}
+    rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {}
+}
+
+message VersionRequest {
+    string client = 1;
+}
+
+message VersionResponse {
+    string server = 1;
+}
+
+message DeploySpecificationRequest {
+    ProjectSpecification project = 1;
+    JobSpecification job = 2;
+}
+
+message ProjectSpecification {
+    string name = 1;
+    map<string, string> config = 2;
+}
+
+message JobSpecification {
+    int32 version = 1;
+    string name = 2;
+    string owner = 3;
+
+    string start_date = 4;
+    string end_date = 5;
+    string interval = 6;
+
+    bool depends_on_past = 7;
+    bool catch_up = 8;
+
+    string task_name = 9;
+    map<string, string> config = 10;
+
+    string window_size = 11;
+    string window_offset = 12;
+    string window_truncate_to = 13;
+
+    repeated string dependencies = 14;
+    map<string, string> assets = 15;
+}
+
+message DeploySpecificationResponse {
+    bool succcess = 1;
+    string error = 2;
+    string id = 3;
+}
+
+message RegisterProjectRequest {
+    string name = 1;
+    map<string, string> config = 2;
+}
+
+message RegisterProjectResponse {
+    bool succcess = 1;
+    string error = 2;
+}

@@ -1,4 +1,4 @@
-package job
+package local
 
 import (
 	"fmt"
@@ -23,23 +23,27 @@ var (
 	specSuffixRegex = regexp.MustCompile(`\.(yaml|cfg|sql|txt)$`)
 )
 
-type SpecRepository struct {
+type jobRepository struct {
 	fs    fs.FileSystem
-	fac   models.JobSpecFactory
 	cache struct {
 		dirty bool
 		data  map[string]models.JobSpec
 	}
 }
 
-func (repo *SpecRepository) Save(job models.JobInput) error {
-	if err := validator.Validate(job); err != nil {
+func (repo *jobRepository) Save(job models.JobSpec) error {
+	config, err := Job{}.FromSpec(job)
+	if err != nil {
+		return err
+	}
+
+	if err := validator.Validate(config); err != nil {
 		return err
 	}
 
 	// save assets
-	for assetName, assetValue := range job.Asset {
-		assetFd, err := repo.fs.Create(repo.assetFilePath(job.Name, assetName))
+	for assetName, assetValue := range config.Asset {
+		assetFd, err := repo.fs.Create(repo.assetFilePath(config.Name, assetName))
 		if err != nil {
 			return err
 		}
@@ -50,16 +54,17 @@ func (repo *SpecRepository) Save(job models.JobInput) error {
 
 		assetFd.Close()
 	}
-	job.Asset = nil
+	config.Asset = nil
 
 	// save job
-	fileName := repo.jobFilePath(job.Name)
+	fileName := repo.jobFilePath(config.Name)
 	fd, err := repo.fs.Create(fileName)
 	if err != nil {
 		return err
 	}
 	defer fd.Close()
-	if err := yaml.NewEncoder(fd).Encode(job); err != nil {
+
+	if err := yaml.NewEncoder(fd).Encode(config); err != nil {
 		return err
 	}
 
@@ -67,7 +72,7 @@ func (repo *SpecRepository) Save(job models.JobInput) error {
 	return nil
 }
 
-func (repo *SpecRepository) GetByName(jobName string) (models.JobSpec, error) {
+func (repo *jobRepository) GetByName(jobName string) (models.JobSpec, error) {
 	jobSpec := models.JobSpec{}
 	if strings.TrimSpace(jobName) == "" {
 		return jobSpec, fmt.Errorf("Job name cannot be an empty string")
@@ -87,7 +92,7 @@ func (repo *SpecRepository) GetByName(jobName string) (models.JobSpec, error) {
 	}
 	defer fd.Close()
 
-	var inputs models.JobInput
+	var inputs Job
 	dec := yaml.NewDecoder(fd)
 	if err = dec.Decode(&inputs); err != nil {
 		return jobSpec, fmt.Errorf("error parsing dag spec %s: %v", jobName, err)
@@ -97,12 +102,12 @@ func (repo *SpecRepository) GetByName(jobName string) (models.JobSpec, error) {
 	}
 
 	// convert to internal model
-	jobSpec, err = repo.fac.CreateJobSpec(inputs)
+	jobSpec, err = inputs.ToSpec()
 	if err != nil {
 		return jobSpec, errors.Wrapf(err, "failed to read spec in: %s", jobName)
 	}
 
-	jobSpec.Asset = map[string]string{}
+	assets := map[string]string{}
 	assetFolderFd, err := repo.fs.Open(repo.assetFolderPath(jobName))
 	if err == nil {
 		fileNames, err := assetFolderFd.Readdirnames(-1)
@@ -119,10 +124,11 @@ func (repo *SpecRepository) GetByName(jobName string) (models.JobSpec, error) {
 			if err != nil {
 				return jobSpec, err
 			}
-			jobSpec.Asset[fileName] = string(raw)
+			assets[fileName] = string(raw)
 			assetFd.Close()
 		}
 	}
+	jobSpec.Assets = models.JobAssets{}.FromMap(assets)
 	defer assetFolderFd.Close()
 
 	repo.cache.data[jobName] = jobSpec
@@ -130,7 +136,7 @@ func (repo *SpecRepository) GetByName(jobName string) (models.JobSpec, error) {
 }
 
 // GetAll finds all the jobs recursively in current and sub directory
-func (repo *SpecRepository) GetAll() ([]models.JobSpec, error) {
+func (repo *jobRepository) GetAll() ([]models.JobSpec, error) {
 	jobSpecs := []models.JobSpec{}
 	var err error
 	if !repo.cache.dirty {
@@ -153,7 +159,7 @@ func (repo *SpecRepository) GetAll() ([]models.JobSpec, error) {
 	return jobSpecs, err
 }
 
-func (repo *SpecRepository) scanDirs(path string) ([]models.JobSpec, error) {
+func (repo *jobRepository) scanDirs(path string) ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 
 	currentDir, err := repo.fs.Open(path)
@@ -190,7 +196,7 @@ func (repo *SpecRepository) scanDirs(path string) ([]models.JobSpec, error) {
 	return specs, nil
 }
 
-func (repo *SpecRepository) getDirs(paths []string) []string {
+func (repo *jobRepository) getDirs(paths []string) []string {
 	folderPath := []string{}
 	for _, path := range paths {
 		if strings.HasPrefix(path, ".") {
@@ -204,35 +210,30 @@ func (repo *SpecRepository) getDirs(paths []string) []string {
 }
 
 // jobFilePath generates the filename for a given job
-func (repo *SpecRepository) jobFilePath(name string) string {
+func (repo *jobRepository) jobFilePath(name string) string {
 	return filepath.Join(name, SpecFileName)
 }
 
 // assetFolderPath generates the directory for a given job that
 // contains attached asset files
-func (repo *SpecRepository) assetFolderPath(name string) string {
+func (repo *jobRepository) assetFolderPath(name string) string {
 	return filepath.Join(name, AssetFolderName)
 }
 
 // assetFilePath generates the path to asset directory files
 // for a given job
-func (repo *SpecRepository) assetFilePath(job string, file string) string {
+func (repo *jobRepository) assetFilePath(job string, file string) string {
 	return filepath.Join(repo.assetFolderPath(job), file)
 }
 
-func (repo *SpecRepository) resetCache() {
+func (repo *jobRepository) resetCache() {
 	repo.cache.data = make(map[string]models.JobSpec)
 	repo.cache.dirty = true
 }
 
-func NewSpecRepository(fs fs.FileSystem, fac models.JobSpecFactory) *SpecRepository {
-	repo := new(SpecRepository)
+func NewJobSpecRepository(fs fs.FileSystem) *jobRepository {
+	repo := new(jobRepository)
 	repo.fs = fs
-	repo.fac = fac
 	repo.resetCache()
 	return repo
 }
-
-// func NewSpecRepositoryAt(BasePath string) *SpecRepository {
-// 	return NewSpecRepository(&fs.LocalFileSystem{BasePath: BasePath})
-// }

@@ -29,6 +29,8 @@ build: build-optimus build-ctl
 test: smoke-test unit-test
 
 generate:
+	@echo " > generating resources"
+	@go generate ./resources
 	@buf generate
 
 ui: build-ui generate build-optimus

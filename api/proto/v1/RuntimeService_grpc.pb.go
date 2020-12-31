@@ -17,8 +17,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RuntimeServiceClient interface {
-	Ping(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
+	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
 	DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (*DeploySpecificationResponse, error)
+	RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error)
 }
 
 type runtimeServiceClient struct {
@@ -29,9 +30,9 @@ func NewRuntimeServiceClient(cc grpc.ClientConnInterface) RuntimeServiceClient {
 	return &runtimeServiceClient{cc}
 }
 
-func (c *runtimeServiceClient) Ping(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error) {
+func (c *runtimeServiceClient) Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error) {
 	out := new(VersionResponse)
-	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/Ping", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/Version", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,12 +48,22 @@ func (c *runtimeServiceClient) DeploySpecification(ctx context.Context, in *Depl
 	return out, nil
 }
 
+func (c *runtimeServiceClient) RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error) {
+	out := new(RegisterProjectResponse)
+	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/RegisterProject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RuntimeServiceServer is the server API for RuntimeService service.
 // All implementations must embed UnimplementedRuntimeServiceServer
 // for forward compatibility
 type RuntimeServiceServer interface {
-	Ping(context.Context, *VersionRequest) (*VersionResponse, error)
+	Version(context.Context, *VersionRequest) (*VersionResponse, error)
 	DeploySpecification(context.Context, *DeploySpecificationRequest) (*DeploySpecificationResponse, error)
+	RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -60,11 +71,14 @@ type RuntimeServiceServer interface {
 type UnimplementedRuntimeServiceServer struct {
 }
 
-func (UnimplementedRuntimeServiceServer) Ping(context.Context, *VersionRequest) (*VersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+func (UnimplementedRuntimeServiceServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
 }
 func (UnimplementedRuntimeServiceServer) DeploySpecification(context.Context, *DeploySpecificationRequest) (*DeploySpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeploySpecification not implemented")
+}
+func (UnimplementedRuntimeServiceServer) RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterProject not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
 
@@ -79,20 +93,20 @@ func RegisterRuntimeServiceServer(s grpc.ServiceRegistrar, srv RuntimeServiceSer
 	s.RegisterService(&_RuntimeService_serviceDesc, srv)
 }
 
-func _RuntimeService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RuntimeService_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(VersionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuntimeServiceServer).Ping(ctx, in)
+		return srv.(RuntimeServiceServer).Version(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/apiv1.RuntimeService/Ping",
+		FullMethod: "/apiv1.RuntimeService/Version",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).Ping(ctx, req.(*VersionRequest))
+		return srv.(RuntimeServiceServer).Version(ctx, req.(*VersionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -115,19 +129,41 @@ func _RuntimeService_DeploySpecification_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeService_RegisterProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterProjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).RegisterProject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/apiv1.RuntimeService/RegisterProject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).RegisterProject(ctx, req.(*RegisterProjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _RuntimeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "apiv1.RuntimeService",
 	HandlerType: (*RuntimeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Ping",
-			Handler:    _RuntimeService_Ping_Handler,
+			MethodName: "Version",
+			Handler:    _RuntimeService_Version_Handler,
 		},
 		{
 			MethodName: "DeploySpecification",
 			Handler:    _RuntimeService_DeploySpecification_Handler,
 		},
+		{
+			MethodName: "RegisterProject",
+			Handler:    _RuntimeService_RegisterProject_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/RuntimeService.proto",
+	Metadata: "v1/RuntimeService.proto",
 }
