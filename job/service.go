@@ -11,12 +11,12 @@ const (
 	PersistDagPrefix string = "_persist."
 )
 
-type JobSpecRepoFactory interface {
-	New(models.ProjectSpec) store.JobSpecRepository
+type JobRepoFactory interface {
+	New(models.ProjectSpec) store.JobRepository
 }
 
 type Service struct {
-	jobSpecRepoFactory JobSpecRepoFactory
+	jobSpecRepoFactory JobRepoFactory
 }
 
 // CreateJob constructs a Job and commits it to store
@@ -30,7 +30,7 @@ func (srv *Service) CreateJob(spec models.JobSpec, proj models.ProjectSpec) erro
 
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(jobSpecRepoFactory JobSpecRepoFactory) *Service {
+func NewService(jobSpecRepoFactory JobRepoFactory) *Service {
 	return &Service{
 		jobSpecRepoFactory: jobSpecRepoFactory,
 	}

@@ -10,6 +10,8 @@ import (
 
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
+
+	_ "github.com/odpf/optimus/ext/task"
 )
 
 var (

@@ -28,27 +28,30 @@ build: build-optimus build-ctl
 	
 test: smoke-test unit-test
 
-generate:
-	@echo " > generating resources"
+generate: pack-files generate-proto
+	
+pack-files: ./resources/pack ./resources/resource_fs_gen.go
+	@echo " > packing resources"
 	@go generate ./resources
+
+generate-proto: ./api/proto
+	@echo " > generating protos"
 	@buf generate
 
 ui: build-ui generate build-optimus
 
 unit-test:
-	go list ./... | grep -v extern | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test
+	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test
 
 smoke-test: build
 	@bash ./scripts/smoke-test.sh
 
 integration-test: build
-	go list ./... | grep -v extern | xargs go test -count 1 -cover -race -timeout 1m
+	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m
 
 coverage:
 	go test -coverprofile test_coverage.html ./... -tags=unit_test && go tool cover -html=test_coverage.html
 
-# TODO(Aman): remove duplication between "make build" and
-# ./scripts/make-distributables.sh
 dist: generate
 	@bash ./scripts/build-distributables.sh
 
@@ -71,4 +74,6 @@ install:
 	go get -u github.com/golang/protobuf/protoc-gen-go
 	go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	go get -u google.golang.org/grpc
+	go get -u github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
+	go get -u github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 	go get -u github.com/bufbuild/buf/cmd/buf

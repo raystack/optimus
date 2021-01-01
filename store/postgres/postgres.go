@@ -13,9 +13,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	resourcePath = "/migrations"
+)
+
 // NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
 func NewHTTPFSMigrator(DBConnURL string) (*migrate.Migrate, error) {
-	src, err := httpfs.New(resources.FileSystem, "/db_migrations")
+	src, err := httpfs.New(resources.FileSystem, resourcePath)
 	if err != nil {
 		return &migrate.Migrate{}, fmt.Errorf("db migrator: %v", err)
 	}

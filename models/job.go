@@ -135,8 +135,7 @@ type JobSpecDependency struct {
 }
 
 // JobService provides a high-level operations on DAGs
-// This forms the "use case" layer for DAGs
 type JobService interface {
-	// CreateJob constructs a DAG and commits it to a storage
+	// CreateJob constructs a Job and commits it to a storage
 	CreateJob(JobSpec, ProjectSpec) error
 }

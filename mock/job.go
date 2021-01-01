@@ -11,8 +11,8 @@ type JobSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
-	return repo.Called(proj).Get(0).(store.JobSpecRepository)
+func (repo *JobSpecRepoFactory) New(proj models.ProjectSpec) store.JobRepository {
+	return repo.Called(proj).Get(0).(store.JobRepository)
 }
 
 type JobSpecRepository struct {

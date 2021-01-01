@@ -4,21 +4,16 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-// JobSpecRepository represents a storage interface for Job specifications
-type JobSpecRepository interface {
+// JobRepository represents a storage interface for Job specifications
+type JobRepository interface {
 	Save(models.JobSpec) error
 	GetByName(string) (models.JobSpec, error)
 	GetAll() ([]models.JobSpec, error)
 }
 
-type TaskSpecRepository interface {
-	Save(models.JobSpecTask, models.JobSpec) error
-	GetByName(string, models.JobSpec) (models.JobSpecTask, error)
-	GetAll() ([]models.JobSpecTask, error)
-}
-
-type AssetSpecRepository interface {
-	Save(models.JobSpecAsset, models.JobSpec) error
-	GetByName(string, models.JobSpec) (models.JobSpecAsset, error)
-	GetAll() ([]models.JobSpecAsset, error)
+// ProjectRepository represents a storage interface for registered projects
+type ProjectRepository interface {
+	Save(models.ProjectSpec) error
+	GetByName(string) (models.ProjectSpec, error)
+	GetAll() ([]models.ProjectSpec, error)
 }

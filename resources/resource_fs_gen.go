@@ -9,7 +9,7 @@ import (
 	"github.com/shurcooL/vfsgen"
 )
 
-var resourceFS = http.Dir(".")
+var resourceFS = http.Dir("./pack")
 
 func main() {
 	if err := vfsgen.Generate(resourceFS, vfsgen.Options{

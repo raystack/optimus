@@ -31,7 +31,7 @@ func programPrologue(ver string) string {
 // It houses all other sub commands
 func New(
 	l logger,
-	jobSpecRepo store.JobSpecRepository,
+	jobSpecRepo store.JobRepository,
 	version string,
 	config config.ConfigCLI,
 ) *cli.Command {

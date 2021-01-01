@@ -1,12 +1,37 @@
 syntax = "proto3";
 package apiv1;
 
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
 option go_package = "github.com/odpf/optimus/proto/api/v1";
 
+// These annotations are used when generating the OpenAPI file.
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+    info: {
+      version: "1.0";
+    };
+    external_docs: {
+      url: "https://github.com/odpf/optimus";
+      description: "Optimus server";
+    }
+    schemes: HTTP;
+};
+
 service RuntimeService {
-    rpc Version(VersionRequest) returns (VersionResponse) {}
+    rpc Version(VersionRequest) returns (VersionResponse) {
+        option (google.api.http) = {            
+            post: "/api/v1/version"
+            body: "*"
+        };
+    }
     rpc DeploySpecification(DeploySpecificationRequest) returns (DeploySpecificationResponse) {}
-    rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {}
+    rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {
+        option (google.api.http) = {            
+            post: "/api/v1/project"
+            body: "*"
+        };
+    }
 }
 
 message VersionRequest {
@@ -52,16 +77,14 @@ message JobSpecification {
 
 message DeploySpecificationResponse {
     bool succcess = 1;
-    string error = 2;
-    string id = 3;
+    string message = 2;
 }
 
 message RegisterProjectRequest {
-    string name = 1;
-    map<string, string> config = 2;
+    ProjectSpecification project = 1;
 }
 
 message RegisterProjectResponse {
     bool succcess = 1;
-    string error = 2;
+    string message = 2;
 }
