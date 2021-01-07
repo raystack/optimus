@@ -21,12 +21,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	v1 "github.com/odpf/optimus/api/handler/v1"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/v1"
 	"github.com/odpf/optimus/core/logger"
 	_ "github.com/odpf/optimus/ext/task"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/resources"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
 )
@@ -43,6 +45,8 @@ var (
 	termChan = make(chan os.Signal, 1)
 
 	shutdownWait = 30 * time.Second
+
+	schedulerTemplatePath = "./templates/airflow_1/base_dag.py"
 )
 
 // Config for the service
@@ -156,8 +160,8 @@ type jobRepoFactory struct {
 	db *gorm.DB
 }
 
-func (fac *jobRepoFactory) New(proj models.ProjectSpec) store.JobRepository {
-	return postgres.NewJobRepository(fac.db, proj)
+func (fac *jobRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
+	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.SupportedTasks))
 }
 
 type projectRepoFactory struct {
@@ -218,10 +222,14 @@ func main() {
 			&jobRepoFactory{
 				db: dbConn,
 			},
+			nil, //TODO
+			job.NewCompiler(resources.FileSystem, schedulerTemplatePath),
+			job.NewDependencyResolver(),
 		),
 		&projectRepoFactory{
 			db: dbConn,
 		},
+		v1.NewAdapter(models.SupportedTasks),
 	))
 
 	// prepare http proxy

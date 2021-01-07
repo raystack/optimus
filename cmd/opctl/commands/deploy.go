@@ -23,7 +23,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
+func deployCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 
 	cmd := &cli.Command{
 		Use:   "deploy",
@@ -48,7 +48,7 @@ func deployCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l logger, jobSpecRepo store.JobRepository) (err error) {
+func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err error) {
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(deployHost); err != nil {
 		return err
@@ -59,7 +59,7 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobRepository) (err error
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter()
+	adapt := v1handler.NewAdapter(models.SupportedTasks)
 
 	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {
@@ -67,8 +67,13 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobRepository) (err error
 	}
 
 	for idx, spec := range jobSpecs {
+		adaptJob, err := adapt.ToJobProto(spec)
+		if err != nil {
+			return errors.Wrapf(err, "failed to serialize: %s", spec.Name)
+		}
+
 		resp, err := runtime.DeploySpecification(ctx, &pb.DeploySpecificationRequest{
-			Job: adapt.ToJobProto(spec),
+			Job: adaptJob,
 			Project: adapt.ToProjectProto(models.ProjectSpec{
 				Name: deployProject,
 			}),

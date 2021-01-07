@@ -34,7 +34,7 @@ func TestDAGService(t *testing.T) {
 			repoFac.On("New", projSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac)
+			svc := job.NewService(repoFac, nil, nil, nil)
 			err := svc.CreateJob(jobSpec, projSpec)
 			assert.Nil(t, err)
 		})

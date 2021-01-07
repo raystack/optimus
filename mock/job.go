@@ -11,8 +11,8 @@ type JobSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepoFactory) New(proj models.ProjectSpec) store.JobRepository {
-	return repo.Called(proj).Get(0).(store.JobRepository)
+func (repo *JobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
+	return repo.Called(proj).Get(0).(store.JobSpecRepository)
 }
 
 type JobSpecRepository struct {
@@ -55,4 +55,13 @@ type JobService struct {
 // CreateJob constructs a DAG and commits it to a storage
 func (srv *JobService) CreateJob(inputs models.JobSpec) error {
 	return srv.Called(inputs).Error(0)
+}
+
+type DependencyResolver struct {
+	mock.Mock
+}
+
+func (srv *DependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
+	args := srv.Called(jobSpecs)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }

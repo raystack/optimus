@@ -17,7 +17,7 @@ type ProjectRepoFactory interface {
 }
 type ProtoAdapter interface {
 	FromJobProto(*pb.JobSpecification) (models.JobSpec, error)
-	ToJobProto(models.JobSpec) *pb.JobSpecification
+	ToJobProto(models.JobSpec) (*pb.JobSpecification, error)
 	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
 	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
 }
@@ -73,11 +73,11 @@ func (sv *runtimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	}, nil
 }
 
-func NewRuntimeServiceServer(version string, jobSvc models.JobService, projectRepoFactory ProjectRepoFactory) *runtimeServiceServer {
+func NewRuntimeServiceServer(version string, jobSvc models.JobService, projectRepoFactory ProjectRepoFactory, adapter ProtoAdapter) *runtimeServiceServer {
 	return &runtimeServiceServer{
 		version:            version,
 		jobSvc:             jobSvc,
-		adapter:            NewAdapter(),
+		adapter:            adapter,
 		projectRepoFactory: projectRepoFactory,
 	}
 }

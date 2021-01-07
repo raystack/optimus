@@ -18,7 +18,7 @@ import (
 	"github.com/odpf/optimus/store/local"
 )
 
-func createCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
+func createCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new resource",
@@ -27,7 +27,7 @@ func createCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
+func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
@@ -36,7 +36,8 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command
 			if err != nil {
 				return err
 			}
-			spec, err := jobInput.ToSpec()
+
+			spec, err := local.NewAdapter(models.SupportedTasks).ToSpec(jobInput)
 			if err != nil {
 				return err
 			}

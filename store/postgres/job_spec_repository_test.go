@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
@@ -43,12 +44,24 @@ func TestJobRepository(t *testing.T) {
 		},
 	}
 
+	gTask := "g-task"
+	tTask := "t-task"
+	execUnit1 := new(mock.ExecutionUnit)
+	execUnit1.On("GetName").Return(gTask)
+	execUnit2 := new(mock.ExecutionUnit)
+	execUnit2.On("GetName").Return(tTask)
+
+	allTasksRepo := new(mock.SupportedTaskRepo)
+	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
+	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
+	adapter := NewAdapter(allTasksRepo)
+
 	testConfigs := []models.JobSpec{
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
-				Name: "g-task",
+				Unit: execUnit1,
 				Config: map[string]string{
 					"do": "this",
 				},
@@ -68,7 +81,7 @@ func TestJobRepository(t *testing.T) {
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
-				Name: "t-task",
+				Unit: execUnit2,
 				Config: map[string]string{
 					"do": "this",
 				},
@@ -82,7 +95,7 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec)
+		repo := NewJobRepository(db, projectSpec, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -93,7 +106,7 @@ func TestJobRepository(t *testing.T) {
 		checkModel, err := repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus-id", checkModel.Name)
-		assert.Equal(t, "g-task", checkModel.Task.Name)
+		assert.Equal(t, gTask, checkModel.Task.Unit.GetName())
 		assert.Equal(t, "query.sql", checkModel.Assets.GetAll()[0].Name)
 	})
 	t.Run("Upsert", func(t *testing.T) {
@@ -103,7 +116,7 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			repo := NewJobRepository(db, projectSpec)
+			repo := NewJobRepository(db, projectSpec, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -112,7 +125,7 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err := repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
-			assert.Equal(t, "g-task", checkModel.Task.Name)
+			assert.Equal(t, gTask, checkModel.Task.Unit.GetName())
 
 			//try for update
 			err = repo.Save(testModelB)
@@ -121,33 +134,33 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
-			assert.Equal(t, "t-task", checkModel.Task.Name)
+			assert.Equal(t, tTask, checkModel.Task.Unit.GetName())
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			testModelA := testConfigs[0]
 
-			repo := NewJobRepository(db, projectSpec)
+			repo := NewJobRepository(db, projectSpec, adapter)
 
 			//try for create
-			testModelA.Task.Name = "g-task"
+			testModelA.Task.Unit = execUnit1
 			err := repo.Save(testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
-			assert.Equal(t, "g-task", checkModel.Task.Name)
+			assert.Equal(t, gTask, checkModel.Task.Unit.GetName())
 
 			//try for update
-			testModelA.Task.Name = "t-task"
+			testModelA.Task.Unit = execUnit2
 			err = repo.Save(testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
-			assert.Equal(t, "t-task", checkModel.Task.Name)
+			assert.Equal(t, tTask, checkModel.Task.Unit.GetName())
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
@@ -155,7 +168,7 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
-			repo := NewJobRepository(db, projectSpec)
+			repo := NewJobRepository(db, projectSpec, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -172,7 +185,7 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec)
+		repo := NewJobRepository(db, projectSpec, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -188,7 +201,7 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec)
+		repo := NewJobRepository(db, projectSpec, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
