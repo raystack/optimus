@@ -141,12 +141,12 @@ func ConvertDAGSpecRepoToMultiRootTree(dagSpecRepo store.JobSpecRepository, dagR
 func getDAGSpecMapWithDependencies(dagSpecRepo store.JobSpecRepository, dagResolver DependencyResolver) (map[string]models.JobSpec, error) {
 	specs, err := dagSpecRepo.GetAll()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	specs, err = dagResolver.Resolve(specs)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	dagSpecMap := make(map[string]models.JobSpec)

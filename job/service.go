@@ -21,10 +21,15 @@ type JobSpecRepoFactory interface {
 	New(models.ProjectSpec) store.JobSpecRepository
 }
 
+// JobRepoFactory is used to store compiled jobs
+type JobRepoFactory interface {
+	New(models.ProjectSpec) (store.JobRepository, error)
+}
+
 type Service struct {
 	jobSpecRepoFactory JobSpecRepoFactory
 	compiler           models.JobCompiler
-	dagRepo            store.JobRepository
+	jobRepoFactory     JobRepoFactory
 	dependencyResolver DependencyResolver
 }
 
@@ -48,6 +53,11 @@ func (srv *Service) Upload(proj models.ProjectSpec) error {
 		return err
 	}
 
+	jobRepo, err := srv.jobRepoFactory.New(proj)
+	if err != nil {
+		return err
+	}
+
 	// upload all specs
 	for _, jobSpec := range jobSpecs {
 		compiledJob, err := srv.compiler.Compile(jobSpec)
@@ -55,7 +65,7 @@ func (srv *Service) Upload(proj models.ProjectSpec) error {
 			return err
 		}
 
-		if err = srv.dagRepo.Save(compiledJob); err != nil {
+		if err = jobRepo.Save(compiledJob); err != nil {
 			return err
 		}
 	}
@@ -65,13 +75,13 @@ func (srv *Service) Upload(proj models.ProjectSpec) error {
 
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(jobSpecRepoFactory JobSpecRepoFactory, dagRepo store.JobRepository,
+func NewService(jobSpecRepoFactory JobSpecRepoFactory, jobRepoFact JobRepoFactory,
 	compiler models.JobCompiler, dependencyResolver DependencyResolver,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory: jobSpecRepoFactory,
+		jobRepoFactory:     jobRepoFact,
 		compiler:           compiler,
-		dagRepo:            dagRepo,
 		dependencyResolver: dependencyResolver,
 	}
 }

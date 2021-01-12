@@ -41,7 +41,8 @@ func (repo *JobRepository) Save(j models.Job) error {
 	return err
 }
 
-func (repo *JobRepository) Delete(jobName string) error {
+func (repo *JobRepository) Delete(job models.Job) error {
+	jobName := job.Name
 	ctx := context.Background()
 	if strings.TrimSpace(jobName) == "" {
 		return errEmptyJobName
@@ -187,13 +188,13 @@ func cleanPrefix(prefix string) string {
 }
 
 // NewJobRepository constructs a new GCSRepository client
-func NewJobRepository(bucket, prefix, sufix string, c *storage.Client) *JobRepository {
+func NewJobRepository(bucket, prefix, suffix string, c *storage.Client) *JobRepository {
 	return &JobRepository{
 		ObjectReader: &gcsObjectReader{c},
 		ObjectWriter: &gcsObjectWriter{c},
 		Client:       stiface.AdaptClient(c),
 		Bucket:       bucket,
 		Prefix:       cleanPrefix(prefix),
-		Suffix:       sufix,
+		Suffix:       suffix,
 	}
 }

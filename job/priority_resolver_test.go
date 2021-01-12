@@ -1,467 +1,486 @@
 package job_test
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
+// getDependencyObject - returns the dependency object by providing the specs and the dependency
+func getDependencyObject(specs map[string]models.JobSpec, dependencySpec string) map[string]models.JobSpecDependency {
+	depSpec, ok := specs[dependencySpec]
+	if !ok {
+		return map[string]models.JobSpecDependency{dependencySpec: {Job: nil}}
+	}
+	return map[string]models.JobSpecDependency{dependencySpec: {Job: &depSpec}}
+}
+
+func getMultiDependencyObject(specs map[string]models.JobSpec, dependencySpec1 string, dependencySpec2 string) map[string]models.JobSpecDependency {
+	depSpec1 := specs[dependencySpec1]
+	depSpec2 := specs[dependencySpec2]
+	return map[string]models.JobSpecDependency{dependencySpec1: {Job: &depSpec1}, dependencySpec2: {Job: &depSpec2}}
+}
+
 func TestPriorityWeightResolver(t *testing.T) {
-	// t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec2 := "dag2-deps-on-dag1"
-	// 	spec3 := "dag3-deps-on-dag2"
-
-	// 	spec5 := "dag5-deps-on-dag1"
-
-	// 	spec4 := "dag4-no-deps"
-
-	// 	spec6 := "dag6-no-deps"
-	// 	spec7 := "dag7-deps-on-dag6"
-
-	// 	spec8 := "dag8-no-deps"
-	// 	spec9 := "dag9-deps-on-dag8"
-	// 	spec10 := "dag10-deps-on-dag9"
-	// 	spec11 := "dag11-deps-on-dag10"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	noDependency := map[string]models.JobSpecDependency{}
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	x1 := specs[spec1]
-	// 	x2 := specs[spec2]
-	// 	x6 := specs[spec6]
-	// 	x8 := specs[spec8]
-	// 	x9 := specs[spec9]
-	// 	x10 := specs[spec10]
-
-	// 	specs[spec2] = models.JobSpec{Name: spec2, Dependencies: map[string]models.JobSpecDependency{spec1: {Job: &x1}}}
-	// 	dagSpec = append(dagSpec, specs[spec2])
-
-	// 	specs[spec3] = models.JobSpec{Name: spec3, Dependencies: map[string]models.JobSpecDependency{spec2: {Job: &x2}}}
-	// 	dagSpec = append(dagSpec, specs[spec3])
-
-	// 	specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
-	// 	dagSpec = append(dagSpec, specs[spec4])
-
-	// 	specs[spec5] = models.JobSpec{Name: spec5, Dependencies: map[string]models.JobSpecDependency{spec1: {Job: &x1}}}
-	// 	dagSpec = append(dagSpec, specs[spec5])
-
-	// 	specs[spec6] = models.JobSpec{Name: spec6, Dependencies: noDependency}
-	// 	dagSpec = append(dagSpec, specs[spec6])
-
-	// 	specs[spec7] = models.JobSpec{Name: spec7, Dependencies: map[string]models.JobSpecDependency{spec6: {Job: &x6}}}
-	// 	dagSpec = append(dagSpec, specs[spec7])
-
-	// 	specs[spec8] = models.JobSpec{Name: spec8, Dependencies: noDependency}
-	// 	dagSpec = append(dagSpec, specs[spec8])
-	// 	specs[spec9] = models.JobSpec{Name: spec9, Dependencies: map[string]models.JobSpecDependency{spec8: {Job: &x8}}}
-	// 	dagSpec = append(dagSpec, specs[spec9])
-	// 	specs[spec10] = models.JobSpec{Name: spec10, Dependencies: map[string]models.JobSpecDependency{spec9: {Job: &x9}}}
-	// 	dagSpec = append(dagSpec, specs[spec10])
-	// 	specs[spec10] = models.JobSpec{Name: spec10, Dependencies: map[string]models.JobSpecDependency{spec9: {Job: &x9}}}
-	// 	dagSpec = append(dagSpec, specs[spec10])
-	// 	specs[spec11] = models.JobSpec{Name: spec11, Dependencies: map[string]models.JobSpecDependency{spec10: {Job: &x10}}}
-	// 	dagSpec = append(dagSpec, specs[spec11])
-
-	// 	dagSpecRepo := new(mock.JobSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DependencyResolver)
-	// 	resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-	// 	defer resolv.AssertExpectations(t)
-
-	// 	assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-	// 	max := job.MaxPriorityWeight
-	// 	max_1 := max - job.PriorityWeightGap*1
-	// 	max_2 := max - job.PriorityWeightGap*2
-	// 	max_3 := max - job.PriorityWeightGap*3
-	// 	expectedWeights := map[string]int{
-	// 		spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1,
-	// 		spec6: max, spec7: max_1, spec8: max, spec9: max_1, spec10: max_2, spec11: max_3,
-	// 	}
-	// 	for specName, expectedWeight := range expectedWeights {
-	// 		calculatedWeight, err := assginer.GetByDAG(specs[specName])
-	// 		assert.Nil(t, err)
-	// 		assert.Equal(t, expectedWeight, calculatedWeight)
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
-	// 	// run the test multiple times
-	// 	for i := 1; i < 10; i++ {
-	// 		var (
-	// 			specs   = make(map[string]models.JobSpec)
-	// 			dagSpec = make([]models.JobSpec, 0)
-	// 		)
-
-	// 		spec1 := "dag1"
-	// 		spec11 := "dag1-1"
-	// 		spec12 := "dag1-2"
-	// 		spec111 := "dag1-1-1"
-	// 		spec112 := "dag1-1-2"
-	// 		spec121 := "dag1-2-1"
-	// 		spec122 := "dag1-2-2"
-	// 		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 		dagSpec = append(dagSpec, specs[spec1])
-	// 		specs[spec11] = models.JobSpec{Name: spec11, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-	// 		dagSpec = append(dagSpec, specs[spec11])
-	// 		specs[spec12] = models.JobSpec{Name: spec12, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-	// 		dagSpec = append(dagSpec, specs[spec12])
-	// 		specs[spec111] = models.JobSpec{Name: spec111, Dependencies: []models.DAGDependency{{DAGID: spec11}}}
-	// 		dagSpec = append(dagSpec, specs[spec111])
-	// 		specs[spec112] = models.JobSpec{Name: spec112, Dependencies: []models.DAGDependency{{DAGID: spec11}}}
-	// 		dagSpec = append(dagSpec, specs[spec112])
-	// 		specs[spec121] = models.JobSpec{Name: spec121, Dependencies: []models.DAGDependency{{DAGID: spec12}}}
-	// 		dagSpec = append(dagSpec, specs[spec121])
-	// 		specs[spec122] = models.JobSpec{Name: spec122, Dependencies: []models.DAGDependency{{DAGID: spec12}}}
-	// 		dagSpec = append(dagSpec, specs[spec122])
-
-	// 		spec2 := "dag2"
-	// 		spec21 := "dag2-1"
-	// 		spec22 := "dag2-2"
-	// 		spec211 := "dag2-1-1"
-	// 		spec212 := "dag2-1-2"
-	// 		spec221 := "dag2-2-1"
-	// 		spec222 := "dag2-2-2"
-	// 		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: []models.DAGDependency{}}
-	// 		dagSpec = append(dagSpec, specs[spec2])
-	// 		specs[spec21] = models.JobSpec{Name: spec21, Dependencies: []models.DAGDependency{{DAGID: spec2}}}
-	// 		dagSpec = append(dagSpec, specs[spec21])
-	// 		specs[spec22] = models.JobSpec{Name: spec22, Dependencies: []models.DAGDependency{{DAGID: spec2}}}
-	// 		dagSpec = append(dagSpec, specs[spec22])
-	// 		specs[spec211] = models.JobSpec{Name: spec211, Dependencies: []models.DAGDependency{{DAGID: spec21}}}
-	// 		dagSpec = append(dagSpec, specs[spec211])
-	// 		specs[spec212] = models.JobSpec{Name: spec212, Dependencies: []models.DAGDependency{{DAGID: spec21}}}
-	// 		dagSpec = append(dagSpec, specs[spec212])
-	// 		specs[spec221] = models.JobSpec{Name: spec221, Dependencies: []models.DAGDependency{{DAGID: spec22}}}
-	// 		dagSpec = append(dagSpec, specs[spec221])
-	// 		specs[spec222] = models.JobSpec{Name: spec222, Dependencies: []models.DAGDependency{{DAGID: spec22}}}
-	// 		dagSpec = append(dagSpec, specs[spec222])
-
-	// 		dagSpecRepo := new(mock.DAGSpecRepository)
-	// 		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 		defer dagSpecRepo.AssertExpectations(t)
-
-	// 		resolv := new(mock.DAGResolver)
-	// 		defer resolv.AssertExpectations(t)
-	// 		for _, spec := range specs {
-	// 			resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 		}
-
-	// 		assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-	// 		assginer.GetByDAG(specs[spec1])
-	// 		max := dag.MaxPriorityWeight
-	// 		max_1 := max - dag.PriorityWeightGap*1
-	// 		max_2 := max - dag.PriorityWeightGap*2
-	// 		expectedWeights := map[string]int{
-	// 			spec1: max, spec11: max_1, spec12: max_1, spec111: max_2, spec112: max_2, spec121: max_2, spec122: max_2,
-	// 			spec2: max, spec21: max_1, spec22: max_1, spec211: max_2, spec212: max_2, spec221: max_2, spec222: max_2,
-	// 		}
-	// 		for specName, expectedWeight := range expectedWeights {
-	// 			calculatedWeight, err := assginer.GetByDAG(specs[specName])
-	// 			assert.Nil(t, err)
-	// 			assert.Equal(t, expectedWeight, calculatedWeight)
-	// 		}
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec2 := "dag2-deps-on-dag1"
-	// 	spec3 := "dag3-deps-on-dag2"
-	// 	spec4 := "dag4-no-deps"
-	// 	spec5 := "dag5-deps-on-dag1"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec2] = models.JobSpec{Name: spec2, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-	// 	dagSpec = append(dagSpec, specs[spec2])
-
-	// 	specs[spec3] = models.JobSpec{Name: spec3, Dependencies: []models.DAGDependency{{DAGID: spec2}}}
-	// 	dagSpec = append(dagSpec, specs[spec3])
-
-	// 	specs[spec4] = models.JobSpec{Name: spec4, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec4])
-
-	// 	specs[spec5] = models.JobSpec{Name: spec5, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-	// 	dagSpec = append(dagSpec, specs[spec5])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	for _, spec := range specs {
-	// 		resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 	}
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-
-	// 	max := dag.MaxPriorityWeight
-	// 	max_1 := max - dag.PriorityWeightGap*1
-	// 	max_2 := max - dag.PriorityWeightGap*2
-	// 	expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1}
-	// 	for specName, expectedWeight := range expectedWeights {
-	// 		calculatedWeight, err := assginer.GetByDAG(specs[specName])
-	// 		assert.Nil(t, err)
-	// 		assert.Equal(t, expectedWeight, calculatedWeight)
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should fail when circular dependency is detected (atleast one DAG with no dependency)", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec2 := "dag2-deps-on-dag1"
-	// 	spec3 := "dag3-deps-on-dag2"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec2] = models.JobSpec{Name: spec2, Dependencies: []models.DAGDependency{{DAGID: spec3}, {DAGID: spec1}}}
-	// 	dagSpec = append(dagSpec, specs[spec2])
-
-	// 	specs[spec3] = models.JobSpec{Name: spec3, Dependencies: []models.DAGDependency{{DAGID: spec2}}}
-	// 	dagSpec = append(dagSpec, specs[spec3])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	for _, spec := range specs {
-	// 		resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 	}
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-	// 	for _, dagSpec := range specs {
-	// 		v, err := assginer.GetByDAG(dagSpec)
-	// 		assert.Equal(t, dag.MinPriorityWeight, v)
-	// 		assert.Equal(t, err.Error(), dag.ErrCyclicDependencyEncountered)
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should give minWeight when all DAGs are dependent on each other", func(t *testing.T) {
-	// 	spec1 := "dag1-deps-on-dag3"
-	// 	spec2 := "dag2-deps-on-dag1"
-	// 	spec3 := "dag3-deps-on-dag2"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{{DAGID: spec2}}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec2] = models.JobSpec{Name: spec2, Dependencies: []models.DAGDependency{{DAGID: spec3}}}
-	// 	dagSpec = append(dagSpec, specs[spec2])
-
-	// 	specs[spec3] = models.JobSpec{Name: spec3, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-	// 	dagSpec = append(dagSpec, specs[spec3])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	for _, spec := range specs {
-	// 		resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 	}
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-
-	// 	for _, dagSpec := range specs {
-	// 		v, err := assginer.GetByDAG(dagSpec)
-	// 		assert.Equal(t, dag.MinPriorityWeight, v)
-	// 		assert.Nil(t, err)
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec4 := "dag4-no-deps"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec4] = models.JobSpec{Name: spec4, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec4])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	for _, spec := range specs {
-	// 		resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 	}
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-	// 	max := dag.MaxPriorityWeight
-	// 	expectedWeights := map[string]int{spec1: max, spec4: max}
-	// 	for specName, expectedWeight := range expectedWeights {
-	// 		calculatedWeight, err := assginer.GetByDAG(specs[specName])
-	// 		assert.Nil(t, err)
-	// 		assert.Equal(t, expectedWeight, calculatedWeight)
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should assign correct weight to single DAG", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	for _, spec := range specs {
-	// 		resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 	}
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-	// 	max := dag.MaxPriorityWeight
-	// 	expectedWeights := map[string]int{spec1: max}
-	// 	for specName, expectedWeight := range expectedWeights {
-	// 		calculatedWeight, err := assginer.GetByDAG(specs[specName])
-	// 		assert.Nil(t, err)
-	// 		assert.Equal(t, expectedWeight, calculatedWeight)
-	// 	}
-	// })
-
-	// t.Run("GetByDAG should return error is GetAll fails", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec2 := "dag2-deps-on-dag1"
-	// 	spec3 := "dag3-deps-on-dag2"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec2] = models.JobSpec{Name: spec2, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-	// 	dagSpec = append(dagSpec, specs[spec2])
-
-	// 	specs[spec3] = models.JobSpec{Name: spec3, Dependencies: []models.DAGDependency{{DAGID: spec2}}}
-	// 	dagSpec = append(dagSpec, specs[spec3])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(nil, errors.New("a random error"))
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-
-	// 	computedWeights, err := assginer.GetByDAG(specs[spec1])
-	// 	assert.Equal(t, err.Error(), "a random error")
-	// 	assert.Equal(t, dag.MinPriorityWeight, computedWeights)
-	// })
-
-	// t.Run("GetByDAG should return error if a dependent DAG was not found", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec2 := "dag2-deps-on-dag1"
-	// 	spec3 := "dag3-deps-on-dag2"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec3] = models.JobSpec{Name: spec3, Dependencies: []models.DAGDependency{{DAGID: spec2}, {DAGID: spec1}}}
-	// 	dagSpec = append(dagSpec, specs[spec3])
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	for _, spec := range specs {
-	// 		resolv.On("MergeDependencies", spec).Return(spec.Dependencies, nil)
-	// 	}
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-
-	// 	computedWeights, err := assginer.GetByDAG(specs[spec1])
-	// 	assert.Equal(t, err.Error(), fmt.Sprintf(dag.ErrDAGSpecNotFound, spec2))
-	// 	assert.Equal(t, dag.MinPriorityWeight, computedWeights)
-	// })
-
-	// t.Run("GetByDAG should minWeight when weight for a non existing DAG is requested", func(t *testing.T) {
-	// 	spec1 := "dag1-no-deps"
-	// 	spec2 := "dag2-non-existing"
-
-	// 	var (
-	// 		specs   = make(map[string]models.JobSpec)
-	// 		dagSpec = make([]models.JobSpec, 0)
-	// 	)
-
-	// 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: []models.DAGDependency{}}
-	// 	dagSpec = append(dagSpec, specs[spec1])
-
-	// 	specs[spec2] = models.JobSpec{Name: spec2, Dependencies: []models.DAGDependency{{DAGID: spec1}}}
-
-	// 	dagSpecRepo := new(mock.DAGSpecRepository)
-	// 	dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-	// 	defer dagSpecRepo.AssertExpectations(t)
-
-	// 	resolv := new(mock.DAGResolver)
-	// 	defer resolv.AssertExpectations(t)
-	// 	resolv.On("MergeDependencies", specs[spec1]).Return(specs[spec1].Dependencies, nil)
-
-	// 	assginer := dag.NewPriorityWeightResolver(dagSpecRepo, resolv)
-
-	// 	computedWeights, err := assginer.GetByDAG(specs[spec1])
-	// 	assert.Nil(t, err)
-	// 	assert.Equal(t, dag.MaxPriorityWeight, computedWeights)
-
-	// 	computedWeights, err = assginer.GetByDAG(specs[spec2])
-	// 	assert.Nil(t, err)
-	// 	assert.Equal(t, dag.MinPriorityWeight, computedWeights)
-	// })
+	noDependency := map[string]models.JobSpecDependency{}
+
+	t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+
+		spec5 := "dag5-deps-on-dag1"
+
+		spec4 := "dag4-no-deps"
+
+		spec6 := "dag6-no-deps"
+		spec7 := "dag7-deps-on-dag6"
+
+		spec8 := "dag8-no-deps"
+		spec9 := "dag9-deps-on-dag8"
+		spec10 := "dag10-deps-on-dag9"
+		spec11 := "dag11-deps-on-dag10"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
+		dagSpec = append(dagSpec, specs[spec2])
+		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getDependencyObject(specs, spec2)}
+		dagSpec = append(dagSpec, specs[spec3])
+
+		specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec4])
+
+		specs[spec5] = models.JobSpec{Name: spec5, Dependencies: getDependencyObject(specs, spec1)}
+		dagSpec = append(dagSpec, specs[spec5])
+
+		specs[spec6] = models.JobSpec{Name: spec6, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec6])
+
+		specs[spec7] = models.JobSpec{Name: spec7, Dependencies: getDependencyObject(specs, spec6)}
+		dagSpec = append(dagSpec, specs[spec7])
+
+		specs[spec8] = models.JobSpec{Name: spec8, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec8])
+
+		specs[spec9] = models.JobSpec{Name: spec9, Dependencies: getDependencyObject(specs, spec8)}
+		dagSpec = append(dagSpec, specs[spec9])
+
+		specs[spec10] = models.JobSpec{Name: spec10, Dependencies: getDependencyObject(specs, spec9)}
+		dagSpec = append(dagSpec, specs[spec10])
+
+		specs[spec10] = models.JobSpec{Name: spec10, Dependencies: getDependencyObject(specs, spec9)}
+		dagSpec = append(dagSpec, specs[spec10])
+
+		specs[spec11] = models.JobSpec{Name: spec11, Dependencies: getDependencyObject(specs, spec10)}
+		dagSpec = append(dagSpec, specs[spec11])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+		max := job.MaxPriorityWeight
+		max_1 := max - job.PriorityWeightGap*1
+		max_2 := max - job.PriorityWeightGap*2
+		max_3 := max - job.PriorityWeightGap*3
+		expectedWeights := map[string]int{
+			spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1,
+			spec6: max, spec7: max_1, spec8: max, spec9: max_1, spec10: max_2, spec11: max_3,
+		}
+		for specName, expectedWeight := range expectedWeights {
+			calculatedWeight, err := assginer.GetByDAG(specs[specName])
+			assert.Nil(t, err)
+			assert.Equal(t, expectedWeight, calculatedWeight)
+		}
+	})
+
+	t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
+		// run the test multiple times
+		for i := 1; i < 10; i++ {
+			var (
+				specs   = make(map[string]models.JobSpec)
+				dagSpec = make([]models.JobSpec, 0)
+			)
+
+			spec1 := "dag1"
+			spec11 := "dag1-1"
+			spec12 := "dag1-2"
+			spec111 := "dag1-1-1"
+			spec112 := "dag1-1-2"
+			spec121 := "dag1-2-1"
+			spec122 := "dag1-2-2"
+			specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+			dagSpec = append(dagSpec, specs[spec1])
+			specs[spec11] = models.JobSpec{Name: spec11, Dependencies: getDependencyObject(specs, spec1)}
+			dagSpec = append(dagSpec, specs[spec11])
+			specs[spec12] = models.JobSpec{Name: spec12, Dependencies: getDependencyObject(specs, spec1)}
+			dagSpec = append(dagSpec, specs[spec12])
+			specs[spec111] = models.JobSpec{Name: spec111, Dependencies: getDependencyObject(specs, spec11)}
+			dagSpec = append(dagSpec, specs[spec111])
+			specs[spec112] = models.JobSpec{Name: spec112, Dependencies: getDependencyObject(specs, spec11)}
+			dagSpec = append(dagSpec, specs[spec112])
+			specs[spec121] = models.JobSpec{Name: spec121, Dependencies: getDependencyObject(specs, spec12)}
+			dagSpec = append(dagSpec, specs[spec121])
+			specs[spec122] = models.JobSpec{Name: spec122, Dependencies: getDependencyObject(specs, spec12)}
+			dagSpec = append(dagSpec, specs[spec122])
+
+			spec2 := "dag2"
+			spec21 := "dag2-1"
+			spec22 := "dag2-2"
+			spec211 := "dag2-1-1"
+			spec212 := "dag2-1-2"
+			spec221 := "dag2-2-1"
+			spec222 := "dag2-2-2"
+			specs[spec2] = models.JobSpec{Name: spec2, Dependencies: noDependency}
+			dagSpec = append(dagSpec, specs[spec2])
+			specs[spec21] = models.JobSpec{Name: spec21, Dependencies: getDependencyObject(specs, spec2)}
+			dagSpec = append(dagSpec, specs[spec21])
+			specs[spec22] = models.JobSpec{Name: spec22, Dependencies: getDependencyObject(specs, spec2)}
+			dagSpec = append(dagSpec, specs[spec22])
+			specs[spec211] = models.JobSpec{Name: spec211, Dependencies: getDependencyObject(specs, spec21)}
+			dagSpec = append(dagSpec, specs[spec211])
+			specs[spec212] = models.JobSpec{Name: spec212, Dependencies: getDependencyObject(specs, spec21)}
+			dagSpec = append(dagSpec, specs[spec212])
+			specs[spec221] = models.JobSpec{Name: spec221, Dependencies: getDependencyObject(specs, spec22)}
+			dagSpec = append(dagSpec, specs[spec221])
+			specs[spec222] = models.JobSpec{Name: spec222, Dependencies: getDependencyObject(specs, spec22)}
+			dagSpec = append(dagSpec, specs[spec222])
+
+			dagSpecRepo := new(mock.JobSpecRepository)
+			dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+			defer dagSpecRepo.AssertExpectations(t)
+
+			resolv := new(mock.DependencyResolver)
+			resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+			defer resolv.AssertExpectations(t)
+
+			assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+			assginer.GetByDAG(specs[spec1])
+			max := job.MaxPriorityWeight
+			max_1 := max - job.PriorityWeightGap*1
+			max_2 := max - job.PriorityWeightGap*2
+			expectedWeights := map[string]int{
+				spec1: max, spec11: max_1, spec12: max_1, spec111: max_2, spec112: max_2, spec121: max_2, spec122: max_2,
+				spec2: max, spec21: max_1, spec22: max_1, spec211: max_2, spec212: max_2, spec221: max_2, spec222: max_2,
+			}
+			for specName, expectedWeight := range expectedWeights {
+				calculatedWeight, err := assginer.GetByDAG(specs[specName])
+				assert.Nil(t, err)
+				assert.Equal(t, expectedWeight, calculatedWeight)
+			}
+		}
+	})
+
+	t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+		spec4 := "dag4-no-deps"
+		spec5 := "dag5-deps-on-dag1"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
+		dagSpec = append(dagSpec, specs[spec2])
+
+		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getDependencyObject(specs, spec2)}
+		dagSpec = append(dagSpec, specs[spec3])
+
+		specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec4])
+
+		specs[spec5] = models.JobSpec{Name: spec5, Dependencies: getDependencyObject(specs, spec1)}
+		dagSpec = append(dagSpec, specs[spec5])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+
+		max := job.MaxPriorityWeight
+		max_1 := max - job.PriorityWeightGap*1
+		max_2 := max - job.PriorityWeightGap*2
+		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1}
+		for specName, expectedWeight := range expectedWeights {
+			calculatedWeight, err := assginer.GetByDAG(specs[specName])
+			assert.Nil(t, err)
+			assert.Equal(t, expectedWeight, calculatedWeight)
+		}
+	})
+
+	t.Run("GetByDAG should fail when circular dependency is detected (atleast one DAG with no dependency)", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		specs[spec2] = models.JobSpec{Name: spec2}
+		specs[spec3] = models.JobSpec{Name: spec3}
+
+		s3 := specs[spec3]
+		s3.Dependencies = getMultiDependencyObject(specs, spec2, spec1)
+		specs[spec3] = s3
+
+		s2 := specs[spec2]
+		s2.Dependencies = getMultiDependencyObject(specs, spec3, spec1)
+		specs[spec2] = s2
+
+		s3 = specs[spec3]
+		s3.Dependencies = getMultiDependencyObject(specs, spec2, spec1)
+		specs[spec3] = s3
+
+		dagSpec = append(dagSpec, specs[spec1])
+		dagSpec = append(dagSpec, specs[spec2])
+		dagSpec = append(dagSpec, specs[spec3])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+		for _, dagSpec := range specs {
+			v, err := assginer.GetByDAG(dagSpec)
+			assert.Equal(t, job.MinPriorityWeight, v)
+			assert.Equal(t, err.Error(), job.ErrCyclicDependencyEncountered)
+		}
+	})
+
+	t.Run("GetByDAG should give minWeight when all DAGs are dependent on each other", func(t *testing.T) {
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec2] = models.JobSpec{Name: spec2}
+		specs[spec3] = models.JobSpec{Name: spec3}
+
+		s3 := specs[spec3]
+		s3.Dependencies = getDependencyObject(specs, spec2)
+		specs[spec3] = s3
+
+		s2 := specs[spec2]
+		s2.Dependencies = getDependencyObject(specs, spec3)
+		specs[spec2] = s2
+
+		s3 = specs[spec3]
+		s3.Dependencies = getDependencyObject(specs, spec2)
+		specs[spec3] = s3
+
+		dagSpec = append(dagSpec, specs[spec2])
+		dagSpec = append(dagSpec, specs[spec3])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+
+		for _, dagSpec := range specs {
+			v, err := assginer.GetByDAG(dagSpec)
+			assert.Equal(t, job.MinPriorityWeight, v)
+			assert.Nil(t, err)
+		}
+	})
+
+	t.Run("GetByDAG should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec4 := "dag4-no-deps"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec4])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+		max := job.MaxPriorityWeight
+		expectedWeights := map[string]int{spec1: max, spec4: max}
+		for specName, expectedWeight := range expectedWeights {
+			calculatedWeight, err := assginer.GetByDAG(specs[specName])
+			assert.Nil(t, err)
+			assert.Equal(t, expectedWeight, calculatedWeight)
+		}
+	})
+
+	t.Run("GetByDAG should assign correct weight to single DAG", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+		max := job.MaxPriorityWeight
+		expectedWeights := map[string]int{spec1: max}
+		for specName, expectedWeight := range expectedWeights {
+			calculatedWeight, err := assginer.GetByDAG(specs[specName])
+			assert.Nil(t, err)
+			assert.Equal(t, expectedWeight, calculatedWeight)
+		}
+	})
+
+	t.Run("GetByDAG should return error is GetAll fails", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
+		dagSpec = append(dagSpec, specs[spec2])
+
+		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getDependencyObject(specs, spec2)}
+		dagSpec = append(dagSpec, specs[spec3])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(nil, errors.New("a random error"))
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+
+		computedWeights, err := assginer.GetByDAG(specs[spec1])
+		assert.Equal(t, err.Error(), "a random error")
+		assert.Equal(t, job.MinPriorityWeight, computedWeights)
+	})
+
+	t.Run("GetByDAG should return error if a dependent DAG was not found", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getMultiDependencyObject(specs, spec1, spec2)}
+		dagSpec = append(dagSpec, specs[spec3])
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, fmt.Errorf(job.ErrJobSpecNotFound, spec2))
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+
+		computedWeights, err := assginer.GetByDAG(specs[spec1])
+		assert.Equal(t, err.Error(), fmt.Sprintf(job.ErrJobSpecNotFound, spec2))
+		assert.Equal(t, job.MinPriorityWeight, computedWeights)
+	})
+
+	t.Run("GetByDAG should minWeight when weight for a non existing DAG is requested", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-non-existing"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
+
+		dagSpecRepo := new(mock.JobSpecRepository)
+		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
+		defer dagSpecRepo.AssertExpectations(t)
+
+		resolv := new(mock.DependencyResolver)
+		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
+		defer resolv.AssertExpectations(t)
+
+		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+
+		computedWeights, err := assginer.GetByDAG(specs[spec1])
+		assert.Nil(t, err)
+		assert.Equal(t, job.MaxPriorityWeight, computedWeights)
+
+		computedWeights, err = assginer.GetByDAG(specs[spec2])
+		assert.Nil(t, err)
+		assert.Equal(t, job.MinPriorityWeight, computedWeights)
+	})
 }
 
 func TestDAGNode(t *testing.T) {
@@ -489,6 +508,7 @@ func TestDAGNode(t *testing.T) {
 	})
 
 }
+
 func TestMultiRootDAGTree(t *testing.T) {
 	t.Run("should handle all NewMultiRootDAGTree operations", func(t *testing.T) {
 		dagSpec1 := models.JobSpec{Name: "testdag1"}

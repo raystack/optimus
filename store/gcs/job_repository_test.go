@@ -141,7 +141,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(models.Job{Name: jobName})
 
 			assert.Nil(t, err)
 		})
@@ -154,7 +154,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete("")
+			err := repo.Delete(models.Job{Name: ""})
 
 			assert.NotNil(t, err)
 		})
@@ -179,7 +179,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(models.Job{Name: jobName})
 
 			assert.Equal(t, models.ErrNoSuchJob, err)
 		})
@@ -205,7 +205,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(models.Job{Name: jobName})
 
 			assert.Equal(t, anotherError, err)
 		})
@@ -232,7 +232,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(models.Job{Name: jobName})
 
 			assert.Equal(t, anError, err)
 		})
@@ -251,7 +251,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(models.Job{Name: jobName})
 
 			assert.NotNil(t, err)
 		})

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/resources"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/gcs"
 	"github.com/odpf/optimus/store/postgres"
 )
 
@@ -156,12 +158,27 @@ func validateConfig() error {
 	return nil
 }
 
+// jobSpecRepoFactory stores raw specifications
+type jobSpecRepoFactory struct {
+	db *gorm.DB
+}
+
+func (fac *jobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
+	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.SupportedTasks))
+}
+
+// jobRepoFactory stores compiled specifications that will be consumed by a
+// scheduler
 type jobRepoFactory struct {
 	db *gorm.DB
 }
 
-func (fac *jobRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
-	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.SupportedTasks))
+func (fac *jobRepoFactory) New(proj models.ProjectSpec) (store.JobRepository, error) {
+	googleStorage, err := storage.NewClient(context.Background())
+	if err != nil {
+		logger.F("error creating google storage client: %v", err)
+	}
+	return gcs.NewJobRepository(proj.Name, "jobs", ".py", googleStorage), nil
 }
 
 type projectRepoFactory struct {
@@ -219,7 +236,7 @@ func main() {
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		Version,
 		job.NewService(
-			&jobRepoFactory{
+			&jobSpecRepoFactory{
 				db: dbConn,
 			},
 			nil, //TODO
