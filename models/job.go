@@ -2,61 +2,29 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
-	"gopkg.in/validator.v2"
-	"github.com/odpf/optimus/utils"
+	"github.com/google/uuid"
 )
 
-func init() {
-	validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
-}
+var (
+	ErrNoSuchSpec  = errors.New("job spec not found")
+	ErrNoDAGSpecs  = errors.New("no job specifications found")
+	ErrNoSuchJob   = errors.New("job not found")
+	ErrNoJobs      = errors.New("no job found")
+	ErrNoSuchAsset = errors.New("asset not found")
+)
 
-// JobInput are inputs from user to create a job
-// external representation of the job
-type JobInput struct {
-	Version      int    `yaml:"version,omitempty" validate:"min=1,max=100"`
-	Name         string `validate:"min=3,max=1024"`
-	Owner        string `yaml:"owner" validate:"min=3,max=1024"`
-	Schedule     JobInputSchedule
-	Behavior     JobInputBehavior
-	Task         JobInputTask
-	Asset        map[string]string `yaml:"asset,omitempty"`
-	Dependencies []string
-}
-
-type JobInputSchedule struct {
-	StartDate string `yaml:"start_date" json:"start_date" validate:"regexp=^\\d{4}-\\d{2}-\\d{2}$"`
-	EndDate   string `yaml:"end_date,omitempty" json:"end_date"`
-	Interval  string `yaml:"interval" validate:"isCron"`
-}
-
-type JobInputBehavior struct {
-	DependsOnPast bool `yaml:"depends_on_past" json:"depends_on_past"`
-	Catchup       bool `yaml:"catch_up" json:"catch_up"`
-}
-
-type JobInputTask struct {
-	Name   string
-	Config map[string]string `yaml:"config,omitempty"`
-	Window JobInputTaskWindow
-}
-
-type JobInputTaskWindow struct {
-	Size       string
-	Offset     string
-	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|)$"`
-}
-
-// JobSpecFactory generates a new JobSpec
-// by processing JobInput
-type JobSpecFactory interface {
-	CreateJobSpec(inputs JobInput) (JobSpec, error)
-}
+const (
+	JobDatetimeLayout = "2006-01-02"
+)
 
 // JobSpec represents a job
 // internal representation of the job
 type JobSpec struct {
+	ID uuid.UUID
+
 	Version      int
 	Name         string
 	Owner        string
@@ -64,7 +32,7 @@ type JobSpec struct {
 	Behavior     JobSpecBehavior
 	Task         JobSpecTask
 	Dependencies map[string]JobSpecDependency
-	Asset        map[string]string
+	Assets       JobAssets
 }
 
 type JobSpecSchedule struct {
@@ -75,38 +43,99 @@ type JobSpecSchedule struct {
 
 type JobSpecBehavior struct {
 	DependsOnPast bool
-	Catchup       bool
+	CatchUp       bool
 }
 
 type JobSpecTask struct {
 	Name   string
 	Config map[string]string
-	Window TaskWindow
+	Window JobSpecTaskWindow
+}
+
+type JobSpecTaskWindow struct {
+	Size       time.Duration
+	Offset     time.Duration
+	TruncateTo string
+}
+
+type JobSpecAsset struct {
+	Name  string
+	Value string
+}
+
+type JobAssets struct {
+	data []JobSpecAsset
+}
+
+func (a JobAssets) FromMap(mp map[string]string) JobAssets {
+	if len(mp) == 0 {
+		return JobAssets{}
+	}
+
+	assets := JobAssets{
+		data: make([]JobSpecAsset, 0),
+	}
+	for name, val := range mp {
+		assets.data = append(assets.data, JobSpecAsset{
+			Name:  name,
+			Value: val,
+		})
+	}
+	return assets
+}
+
+func (a *JobAssets) ToMap() map[string]string {
+	mp := map[string]string{}
+	for _, asset := range a.data {
+		mp[asset.Name] = asset.Value
+	}
+	return mp
+}
+
+func (a *JobAssets) GetAll() []JobSpecAsset {
+	return a.data
+}
+
+func (a JobAssets) New(data []JobSpecAsset) *JobAssets {
+	return &JobAssets{
+		data: data,
+	}
+}
+
+func (a *JobAssets) GetByName(name string) (JobSpecAsset, error) {
+	for _, asset := range a.data {
+		if name == asset.Name {
+			return asset, nil
+		}
+	}
+	return JobSpecAsset{}, ErrNoSuchAsset
+}
+
+func (w *JobSpecTaskWindow) SizeString() string {
+	return w.inHrs(int(w.Size.Hours()))
+}
+
+func (w *JobSpecTaskWindow) OffsetString() string {
+	return w.inHrs(int(w.Offset.Hours()))
+}
+
+func (w *JobSpecTaskWindow) inHrs(hrs int) string {
+	if hrs == 0 {
+		return "0"
+	}
+	return fmt.Sprintf("%dh", hrs)
+}
+
+func (w *JobSpecTaskWindow) String() string {
+	return fmt.Sprintf("size_%dh", int(w.Size.Hours()))
 }
 
 type JobSpecDependency struct {
-	Name string
-	Job  *JobSpec
-}
-
-// JobSpecRepository represents a storage interface for Job specifications
-type JobSpecRepository interface {
-	Save(JobInput) error
-	GetByName(string) (JobSpec, error)
-	GetAll() ([]JobSpec, error)
+	Job *JobSpec
 }
 
 // JobService provides a high-level operations on DAGs
-// This forms the "use case" layer for DAGs
 type JobService interface {
-	// CreateJob constructs a DAG and commits it to a storage
-	CreateJob(inputs JobInput) error
+	// CreateJob constructs a Job and commits it to a storage
+	CreateJob(JobSpec, ProjectSpec) error
 }
-
-// errors returned by JobRepository
-var (
-	ErrNoSuchSpec = errors.New("dag spec not found")
-	ErrNoDAGSpecs = errors.New("no dag specifications found")
-	ErrNoSuchDAG  = errors.New("dag not found")
-	ErrNoDAGs     = errors.New("no dag found")
-)

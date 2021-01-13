@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/store/local"
 
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
+
+	_ "github.com/odpf/optimus/ext/task"
 )
 
 var (
@@ -25,18 +27,12 @@ func main() {
 	logger := log.New(os.Stderr, "", 0)
 
 	//init specs
-	jobSpecRepo := job.NewSpecRepository(
+	jobSpecRepo := local.NewJobSpecRepository(
 		&fs.LocalFileSystem{BasePath: filepath.Join(Config.Path, "jobs")},
-		job.NewSpecFactory(),
-	)
-
-	dagSrv := job.NewService(
-		jobSpecRepo,
 	)
 
 	cmd := commands.New(
 		logger,
-		dagSrv,
 		jobSpecRepo,
 		Version,
 		Config,

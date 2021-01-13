@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"regexp"
 
-	"gopkg.in/AlecAivazis/survey.v1"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/optimus/utils"
 )
 

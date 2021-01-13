@@ -3,66 +3,31 @@ package commands
 import (
 	"bytes"
 	"fmt"
-	"regexp"
+	"reflect"
 	"strings"
 	"text/template"
+	"time"
 
 	"strconv"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
-	"gopkg.in/AlecAivazis/survey.v1"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/local"
 )
 
-const (
-	DefaultStencilUrl = "http://odpf/artifactory/proto-descriptors/ocean-proton/latest"
-)
-
-var (
-	supportedTaskInputs = map[string][]*survey.Question{}
-)
-
-//initialize registered tasks
-func registerTaskInput() {
-	supportedTaskInputs["bq2bq"] = []*survey.Question{
-		{
-			Name:     "Project",
-			Prompt:   &survey.Input{Message: "Project ID:"},
-			Validate: validateName,
-		},
-		{
-			Name:     "Dataset",
-			Prompt:   &survey.Input{Message: "Dataset Name:"},
-			Validate: validateName,
-		},
-		{
-			Name:     "Table",
-			Prompt:   &survey.Input{Message: "Table Name:"},
-			Validate: validateTableName,
-		},
-		{
-			Name: "LoadMethod",
-			Prompt: &survey.Select{
-				Message: "Load method to use on destination?",
-				Options: []string{"REPLACE", "APPEND", "MERGE"},
-				Default: "MERGE",
-			},
-			Validate: survey.Required,
-		},
-	}
-}
-
-func createCommand(l logger, jobSrv models.JobService) *cli.Command {
+func createCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new resource",
 	}
-	cmd.AddCommand(createJobSubCommand(l, jobSrv))
+	cmd.AddCommand(createJobSubCommand(l, jobSpecRepo))
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSvc models.JobService) *cli.Command {
-	registerTaskInput()
+func createJobSubCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
@@ -71,27 +36,36 @@ func createJobSubCommand(l logger, jobSvc models.JobService) *cli.Command {
 			if err != nil {
 				return err
 			}
-			return jobSvc.CreateJob(jobInput)
+			spec, err := jobInput.ToSpec()
+			if err != nil {
+				return err
+			}
+			return jobSpecRepo.Save(spec)
 		},
 	}
 }
 
-func createJobSurvey(l logger) (models.JobInput, error) {
+func createJobSurvey(l logger) (local.Job, error) {
 
 	availableTasks := []string{}
 	for _, task := range models.SupportedTasks.GetAll() {
-		availableTasks = append(availableTasks, task.Name)
+		availableTasks = append(availableTasks, task.GetName())
 	}
 
 	var qs = []*survey.Question{
 		{
-			Name:     "name",
-			Prompt:   &survey.Input{Message: "What is the job name?"},
+			Name: "name",
+			Prompt: &survey.Input{
+				Message: "What is the job name?",
+			},
 			Validate: validateJobName,
 		},
 		{
-			Name:   "owner",
-			Prompt: &survey.Input{Message: "Who is the owner of this job?"},
+			Name: "owner",
+			Prompt: &survey.Input{
+				Message: "Who is the owner of this job?",
+				Help:    "Email or username",
+			},
 		},
 		{
 			Name: "task",
@@ -102,59 +76,78 @@ func createJobSurvey(l logger) (models.JobInput, error) {
 			Validate: survey.Required,
 		},
 		{
-			Name:     "start_date",
-			Prompt:   &survey.Input{Message: "Specify the start date (YYYY-MM-DD)"},
+			Name: "start_date",
+			Prompt: &survey.Input{
+				Message: "Specify the start date",
+				Help:    "Format: (YYYY-MM-DD)",
+				Default: time.Now().UTC().Format(models.JobDatetimeLayout),
+			},
 			Validate: validateDate,
 		},
 		{
-			Name:     "interval",
-			Prompt:   &survey.Input{Message: "Specify the interval (in crontab notation)"},
+			Name: "interval",
+			Prompt: &survey.Input{
+				Message: "Specify the interval (in crontab notation)",
+				Default: "0 2 * * *",
+				Help:    "0 2 * * * / @daily / @hourly",
+			},
 			Validate: ValidateCronInterval,
 		},
 	}
-	baseInputs := make(map[string]interface{})
-	if err := survey.Ask(qs, &baseInputs); err != nil {
-		return models.JobInput{}, err
+	baseInputsRaw := make(map[string]interface{})
+	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
+		return local.Job{}, err
+	}
+	baseInputs, err := convertToStringMap(baseInputsRaw)
+	if err != nil {
+		return local.Job{}, err
 	}
 
 	// define defaults
-	jobInput := models.JobInput{
-		Version: 1,
-		Name:    baseInputs["name"].(string),
-		Owner:   baseInputs["owner"].(string),
-		Schedule: models.JobInputSchedule{
-			StartDate: baseInputs["start_date"].(string),
-			Interval:  baseInputs["interval"].(string),
+	jobInput := local.Job{
+		Version: local.JobConfigVersion,
+		Name:    baseInputs["name"],
+		Owner:   baseInputs["owner"],
+		Schedule: local.JobSchedule{
+			StartDate: baseInputs["start_date"],
+			Interval:  baseInputs["interval"],
 		},
-		Task: models.JobInputTask{
-			Name:   baseInputs["task"].(string),
+		Task: local.JobTask{
+			Name:   baseInputs["task"],
 			Config: map[string]string{},
-			Window: models.JobInputTaskWindow{
+			Window: local.JobTaskWindow{
 				Size:       "24h",
 				Offset:     "0",
 				TruncateTo: "d",
 			},
 		},
 		Asset: map[string]string{},
-		Behavior: models.JobInputBehavior{
+		Behavior: local.JobBehavior{
 			Catchup:       true,
 			DependsOnPast: false,
 		},
 		Dependencies: []string{},
 	}
 
-	if questions, ok := supportedTaskInputs[jobInput.Task.Name]; ok {
-		taskInputs := make(map[string]interface{})
-		if err := survey.Ask(questions, &taskInputs); err != nil {
+	executionTask, err := models.SupportedTasks.GetByName(jobInput.Task.Name)
+	if err != nil {
+		return jobInput, err
+	}
+
+	questions := executionTask.GetQuestions()
+	if len(questions) > 0 {
+		taskInputsRaw := make(map[string]interface{})
+		if err := survey.Ask(questions, &taskInputsRaw); err != nil {
 			return jobInput, err
 		}
-		taskDetails, err := models.SupportedTasks.GetByName(jobInput.Task.Name)
+
+		taskInputs, err := convertToStringMap(taskInputsRaw)
 		if err != nil {
 			return jobInput, err
 		}
 
 		// process configs
-		for key, val := range taskDetails.Config {
+		for key, val := range executionTask.GetConfig() {
 			tmpl, err := template.New(key).Parse(val)
 			if err != nil {
 				return jobInput, err
@@ -167,7 +160,7 @@ func createJobSurvey(l logger) (models.JobInput, error) {
 		}
 
 		// process assets
-		for key, val := range taskDetails.Asset {
+		for key, val := range executionTask.GetAssets() {
 			tmpl, err := template.New(key).Parse(val)
 			if err != nil {
 				return jobInput, err
@@ -181,6 +174,24 @@ func createJobSurvey(l logger) (models.JobInput, error) {
 	}
 
 	return jobInput, nil
+}
+
+func convertToStringMap(inputs map[string]interface{}) (map[string]string, error) {
+	conv := map[string]string{}
+
+	for key, val := range inputs {
+		switch reflect.TypeOf(val).Name() {
+		case "int":
+			conv[key] = strconv.Itoa(val.(int))
+		case "string":
+			conv[key] = val.(string)
+		case "OptionAnswer":
+			conv[key] = val.(survey.OptionAnswer).Value
+		default:
+			return conv, errors.New("unknown type found while parsing user inputs")
+		}
+	}
+	return conv, nil
 }
 
 var (
@@ -207,26 +218,4 @@ var (
 	// taskNames cannot contain slashes, since they're compiled as docker images
 	// and using slash may end up causing problems with docker push
 	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3), survey.MaxLength(1024))
-
-	// a big query table can only contain the the characters [a-zA-Z0-9_].
-	// https://cloud.google.com/bigquery/docs/tables
-	validateTableName = survey.ComposeValidators(
-		validatorFactory.NewFromRegex(`^[a-zA-Z0-9_-]+$`, "invalid table name (can only contain characters A-Z (in either case), 0-9, hyphen(-) or underscore (_)"),
-		survey.MaxLength(1024),
-		survey.MinLength(3),
-	)
-
-	validateStencilURL = survey.ComposeValidators(
-		func(val interface{}) error {
-			str, ok := val.(string)
-			if !ok {
-				return fmt.Errorf("should be a valid string")
-			}
-			if regexp.MustCompile(`https?:\/\/([-a-zA-Z0-9@:%._\+~#=]{1,256}\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)
-			`).Match([]byte(str)) {
-				return fmt.Errorf("should be a valid http/s URL")
-			}
-			return nil
-		},
-	)
 )

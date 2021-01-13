@@ -1,0 +1,90 @@
+syntax = "proto3";
+package apiv1;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/odpf/optimus/proto/api/v1";
+
+// These annotations are used when generating the OpenAPI file.
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+    info: {
+      version: "1.0";
+    };
+    external_docs: {
+      url: "https://github.com/odpf/optimus";
+      description: "Optimus server";
+    }
+    schemes: HTTP;
+};
+
+service RuntimeService {
+    rpc Version(VersionRequest) returns (VersionResponse) {
+        option (google.api.http) = {            
+            post: "/api/v1/version"
+            body: "*"
+        };
+    }
+    rpc DeploySpecification(DeploySpecificationRequest) returns (DeploySpecificationResponse) {}
+    rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {
+        option (google.api.http) = {            
+            post: "/api/v1/project"
+            body: "*"
+        };
+    }
+}
+
+message VersionRequest {
+    string client = 1;
+}
+
+message VersionResponse {
+    string server = 1;
+}
+
+message DeploySpecificationRequest {
+    ProjectSpecification project = 1;
+    JobSpecification job = 2;
+}
+
+message ProjectSpecification {
+    string name = 1;
+    map<string, string> config = 2;
+}
+
+message JobSpecification {
+    int32 version = 1;
+    string name = 2;
+    string owner = 3;
+
+    string start_date = 4;
+    string end_date = 5;
+    string interval = 6;
+
+    bool depends_on_past = 7;
+    bool catch_up = 8;
+
+    string task_name = 9;
+    map<string, string> config = 10;
+
+    string window_size = 11;
+    string window_offset = 12;
+    string window_truncate_to = 13;
+
+    repeated string dependencies = 14;
+    map<string, string> assets = 15;
+}
+
+message DeploySpecificationResponse {
+    bool succcess = 1;
+    string message = 2;
+}
+
+message RegisterProjectRequest {
+    ProjectSpecification project = 1;
+}
+
+message RegisterProjectResponse {
+    bool succcess = 1;
+    string message = 2;
+}

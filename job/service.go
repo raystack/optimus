@@ -3,6 +3,7 @@ package job
 import (
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 const (
@@ -10,22 +11,27 @@ const (
 	PersistDagPrefix string = "_persist."
 )
 
-type Service struct {
-	repo models.JobSpecRepository
+type JobRepoFactory interface {
+	New(models.ProjectSpec) store.JobRepository
 }
 
-// CreateJob constructs a Job and commits it to a storage
-func (srv *Service) CreateJob(inputs models.JobInput) error {
-	if err := srv.repo.Save(inputs); err != nil {
-		return errors.Wrapf(err, "failed to save job: %s", inputs.Name)
+type Service struct {
+	jobSpecRepoFactory JobRepoFactory
+}
+
+// CreateJob constructs a Job and commits it to store
+func (srv *Service) CreateJob(spec models.JobSpec, proj models.ProjectSpec) error {
+	jobRepo := srv.jobSpecRepoFactory.New(proj)
+	if err := jobRepo.Save(spec); err != nil {
+		return errors.Wrapf(err, "failed to save job: %s", spec.Name)
 	}
 	return nil
 }
 
-// NewService creates a new instance of DAGService, requiring
+// NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(repo models.JobSpecRepository) *Service {
+func NewService(jobSpecRepoFactory JobRepoFactory) *Service {
 	return &Service{
-		repo: repo,
+		jobSpecRepoFactory: jobSpecRepoFactory,
 	}
 }
