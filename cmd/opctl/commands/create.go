@@ -37,7 +37,7 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Com
 				return err
 			}
 
-			spec, err := local.NewAdapter(models.SupportedTasks).ToSpec(jobInput)
+			spec, err := local.NewAdapter(models.TaskRegistry).ToSpec(jobInput)
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Com
 func createJobSurvey(l logger) (local.Job, error) {
 
 	availableTasks := []string{}
-	for _, task := range models.SupportedTasks.GetAll() {
+	for _, task := range models.TaskRegistry.GetAll() {
 		availableTasks = append(availableTasks, task.GetName())
 	}
 
@@ -130,7 +130,7 @@ func createJobSurvey(l logger) (local.Job, error) {
 		Dependencies: []string{},
 	}
 
-	executionTask, err := models.SupportedTasks.GetByName(jobInput.Task.Name)
+	executionTask, err := models.TaskRegistry.GetByName(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}

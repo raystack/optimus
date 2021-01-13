@@ -5,12 +5,46 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+var (
+	ErrUnknownDependency = errors.New("unknown dependency")
+)
+
 type dependencyResolver struct {
-	supportedTaskRepo models.SupportedTaskRepo
 }
 
+// Resolve resolves dependency inbetween specs passed as args
+// if a jobSpec refer to a dependency that is not passed as args, it will be
+// ignored so ideally this is built to pass all specs at a time and resolve
+// dependencies of all specs of a single project
 func (r *dependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	// prepare jobs destination
+	// build map of jobDestination => models.JobSpec
+	jobToDestinationMap, err := r.getJobToDestinationMap(jobSpecs)
+	if err != nil {
+		return nil, err
+	}
+
+	// build map of jobName => models.JobSpec
+	jobSpecMapByName := map[string]models.JobSpec{}
+	for _, jobSpec := range jobSpecs {
+		jobSpecMapByName[jobSpec.Name] = jobSpec
+	}
+
+	// resolve dependencies inferred from all optimus jobs
+	jobSpecs, err = r.resolveInferredDependencies(jobSpecs, jobToDestinationMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// resolve statically defined dependencies
+	jobSpecs, err = r.resolveStaticDependencies(jobSpecs, jobSpecMapByName)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSpecs, nil
+}
+
+func (r *dependencyResolver) getJobToDestinationMap(jobSpecs []models.JobSpec) (map[string]models.JobSpec, error) {
 	jobToDestinationMap := map[string]models.JobSpec{}
 	for _, jobSpec := range jobSpecs {
 		jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
@@ -22,8 +56,10 @@ func (r *dependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpe
 		}
 		jobToDestinationMap[jobDestination] = jobSpec
 	}
+	return jobToDestinationMap, nil
+}
 
-	// get dependencies
+func (r *dependencyResolver) resolveInferredDependencies(jobSpecs []models.JobSpec, jobToDestinationMap map[string]models.JobSpec) ([]models.JobSpec, error) {
 	for jobIdx, jobSpec := range jobSpecs {
 		// get destinations of dependencies
 		jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(models.UnitData{
@@ -46,19 +82,24 @@ func (r *dependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpe
 			}
 		}
 
-		// update static dependencies if unresolved with its spec model
+		jobSpecs[jobIdx] = jobSpec
+	}
+	return jobSpecs, nil
+}
+
+func (r *dependencyResolver) resolveStaticDependencies(jobSpecs []models.JobSpec, jobSpecMapByName map[string]models.JobSpec) ([]models.JobSpec, error) {
+	// update static dependencies if unresolved with its spec model
+	for jobIdx, jobSpec := range jobSpecs {
 		for depName, depSpec := range jobSpec.Dependencies {
 			if depSpec.Job == nil {
-				for _, job := range jobSpecs {
-					if job.Name == depName {
-						depSpec.Job = &job
-						break
-					}
+				job, ok := jobSpecMapByName[depName]
+				if !ok {
+					return jobSpecs, errors.Wrap(ErrUnknownDependency, depName)
 				}
+				depSpec.Job = &job
 				jobSpec.Dependencies[depName] = depSpec
 			}
 		}
-
 		jobSpecs[jobIdx] = jobSpec
 	}
 	return jobSpecs, nil

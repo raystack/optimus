@@ -24,5 +24,5 @@ type JobRepository interface {
 	Save(models.Job) error
 	GetByName(string) (models.Job, error)
 	GetAll() ([]models.Job, error)
-	Delete(models.Job) error
+	Delete(string) error
 }

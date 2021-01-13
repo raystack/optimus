@@ -1,13 +1,10 @@
 package job_test
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
@@ -85,15 +82,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 		specs[spec11] = models.JobSpec{Name: spec11, Dependencies: getDependencyObject(specs, spec10)}
 		dagSpec = append(dagSpec, specs[spec11])
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
+		assginer := job.NewPriorityResolver()
+		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+		assert.Nil(t, err)
 
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
 		max := job.MaxPriorityWeight
 		max_1 := max - job.PriorityWeightGap*1
 		max_2 := max - job.PriorityWeightGap*2
@@ -102,10 +94,9 @@ func TestPriorityWeightResolver(t *testing.T) {
 			spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1,
 			spec6: max, spec7: max_1, spec8: max, spec9: max_1, spec10: max_2, spec11: max_3,
 		}
-		for specName, expectedWeight := range expectedWeights {
-			calculatedWeight, err := assginer.GetByDAG(specs[specName])
-			assert.Nil(t, err)
-			assert.Equal(t, expectedWeight, calculatedWeight)
+
+		for _, jobSpec := range resolvedJobSpecs {
+			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
 		}
 	})
 
@@ -161,16 +152,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 			specs[spec222] = models.JobSpec{Name: spec222, Dependencies: getDependencyObject(specs, spec22)}
 			dagSpec = append(dagSpec, specs[spec222])
 
-			dagSpecRepo := new(mock.JobSpecRepository)
-			dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer dagSpecRepo.AssertExpectations(t)
+			assginer := job.NewPriorityResolver()
+			resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+			assert.Nil(t, err)
 
-			resolv := new(mock.DependencyResolver)
-			resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-			defer resolv.AssertExpectations(t)
-
-			assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-			assginer.GetByDAG(specs[spec1])
 			max := job.MaxPriorityWeight
 			max_1 := max - job.PriorityWeightGap*1
 			max_2 := max - job.PriorityWeightGap*2
@@ -178,10 +163,9 @@ func TestPriorityWeightResolver(t *testing.T) {
 				spec1: max, spec11: max_1, spec12: max_1, spec111: max_2, spec112: max_2, spec121: max_2, spec122: max_2,
 				spec2: max, spec21: max_1, spec22: max_1, spec211: max_2, spec212: max_2, spec221: max_2, spec222: max_2,
 			}
-			for specName, expectedWeight := range expectedWeights {
-				calculatedWeight, err := assginer.GetByDAG(specs[specName])
-				assert.Nil(t, err)
-				assert.Equal(t, expectedWeight, calculatedWeight)
+
+			for _, jobSpec := range resolvedJobSpecs {
+				assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
 			}
 		}
 	})
@@ -213,24 +197,17 @@ func TestPriorityWeightResolver(t *testing.T) {
 		specs[spec5] = models.JobSpec{Name: spec5, Dependencies: getDependencyObject(specs, spec1)}
 		dagSpec = append(dagSpec, specs[spec5])
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
-
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
+		assginer := job.NewPriorityResolver()
+		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
 		max_1 := max - job.PriorityWeightGap*1
 		max_2 := max - job.PriorityWeightGap*2
 		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1}
-		for specName, expectedWeight := range expectedWeights {
-			calculatedWeight, err := assginer.GetByDAG(specs[specName])
-			assert.Nil(t, err)
-			assert.Equal(t, expectedWeight, calculatedWeight)
+
+		for _, jobSpec := range resolvedJobSpecs {
+			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
 		}
 	})
 
@@ -264,20 +241,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec2])
 		dagSpec = append(dagSpec, specs[spec3])
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
-
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-		for _, dagSpec := range specs {
-			v, err := assginer.GetByDAG(dagSpec)
-			assert.Equal(t, job.MinPriorityWeight, v)
-			assert.Equal(t, err.Error(), job.ErrCyclicDependencyEncountered)
-		}
+		assginer := job.NewPriorityResolver()
+		_, err := assginer.Resolve(dagSpec)
+		assert.Contains(t, err.Error(), "error occurred while resolving priority:")
+		assert.Contains(t, err.Error(), job.ErrCyclicDependencyEncountered.Error())
 	})
 
 	t.Run("GetByDAG should give minWeight when all DAGs are dependent on each other", func(t *testing.T) {
@@ -307,21 +274,9 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec2])
 		dagSpec = append(dagSpec, specs[spec3])
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
-
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-
-		for _, dagSpec := range specs {
-			v, err := assginer.GetByDAG(dagSpec)
-			assert.Equal(t, job.MinPriorityWeight, v)
-			assert.Nil(t, err)
-		}
+		assginer := job.NewPriorityResolver()
+		_, err := assginer.Resolve(dagSpec)
+		assert.Equal(t, "error occurred while resolving priority: dag2-deps-on-dag1: "+job.ErrPriorityNotFound.Error(), err.Error())
 	})
 
 	t.Run("GetByDAG should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
@@ -339,21 +294,15 @@ func TestPriorityWeightResolver(t *testing.T) {
 		specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
 		dagSpec = append(dagSpec, specs[spec4])
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
+		assginer := job.NewPriorityResolver()
+		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+		assert.Nil(t, err)
 
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
 		max := job.MaxPriorityWeight
 		expectedWeights := map[string]int{spec1: max, spec4: max}
-		for specName, expectedWeight := range expectedWeights {
-			calculatedWeight, err := assginer.GetByDAG(specs[specName])
-			assert.Nil(t, err)
-			assert.Equal(t, expectedWeight, calculatedWeight)
+
+		for _, jobSpec := range resolvedJobSpecs {
+			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
 		}
 	})
 
@@ -367,86 +316,16 @@ func TestPriorityWeightResolver(t *testing.T) {
 		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
 		dagSpec = append(dagSpec, specs[spec1])
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
+		assginer := job.NewPriorityResolver()
+		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+		assert.Nil(t, err)
 
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
 		max := job.MaxPriorityWeight
 		expectedWeights := map[string]int{spec1: max}
-		for specName, expectedWeight := range expectedWeights {
-			calculatedWeight, err := assginer.GetByDAG(specs[specName])
-			assert.Nil(t, err)
-			assert.Equal(t, expectedWeight, calculatedWeight)
+
+		for _, jobSpec := range resolvedJobSpecs {
+			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
 		}
-	})
-
-	t.Run("GetByDAG should return error is GetAll fails", func(t *testing.T) {
-		spec1 := "dag1-no-deps"
-		spec2 := "dag2-deps-on-dag1"
-		spec3 := "dag3-deps-on-dag2"
-
-		var (
-			specs   = make(map[string]models.JobSpec)
-			dagSpec = make([]models.JobSpec, 0)
-		)
-
-		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
-		dagSpec = append(dagSpec, specs[spec1])
-
-		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
-		dagSpec = append(dagSpec, specs[spec2])
-
-		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getDependencyObject(specs, spec2)}
-		dagSpec = append(dagSpec, specs[spec3])
-
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(nil, errors.New("a random error"))
-		defer dagSpecRepo.AssertExpectations(t)
-
-		resolv := new(mock.DependencyResolver)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-
-		computedWeights, err := assginer.GetByDAG(specs[spec1])
-		assert.Equal(t, err.Error(), "a random error")
-		assert.Equal(t, job.MinPriorityWeight, computedWeights)
-	})
-
-	t.Run("GetByDAG should return error if a dependent DAG was not found", func(t *testing.T) {
-		spec1 := "dag1-no-deps"
-		spec2 := "dag2-deps-on-dag1"
-		spec3 := "dag3-deps-on-dag2"
-
-		var (
-			specs   = make(map[string]models.JobSpec)
-			dagSpec = make([]models.JobSpec, 0)
-		)
-
-		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
-		dagSpec = append(dagSpec, specs[spec1])
-
-		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getMultiDependencyObject(specs, spec1, spec2)}
-		dagSpec = append(dagSpec, specs[spec3])
-
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
-
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, fmt.Errorf(job.ErrJobSpecNotFound, spec2))
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-
-		computedWeights, err := assginer.GetByDAG(specs[spec1])
-		assert.Equal(t, err.Error(), fmt.Sprintf(job.ErrJobSpecNotFound, spec2))
-		assert.Equal(t, job.MinPriorityWeight, computedWeights)
 	})
 
 	t.Run("GetByDAG should minWeight when weight for a non existing DAG is requested", func(t *testing.T) {
@@ -463,23 +342,14 @@ func TestPriorityWeightResolver(t *testing.T) {
 
 		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
 
-		dagSpecRepo := new(mock.JobSpecRepository)
-		dagSpecRepo.On("GetAll").Return(dagSpec, nil)
-		defer dagSpecRepo.AssertExpectations(t)
-
-		resolv := new(mock.DependencyResolver)
-		resolv.On("Resolve", dagSpec).Return(dagSpec, nil)
-		defer resolv.AssertExpectations(t)
-
-		assginer := job.NewPriorityResolver(dagSpecRepo, resolv)
-
-		computedWeights, err := assginer.GetByDAG(specs[spec1])
+		assginer := job.NewPriorityResolver()
+		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
 		assert.Nil(t, err)
-		assert.Equal(t, job.MaxPriorityWeight, computedWeights)
 
-		computedWeights, err = assginer.GetByDAG(specs[spec2])
-		assert.Nil(t, err)
-		assert.Equal(t, job.MinPriorityWeight, computedWeights)
+		expectedWeights := map[string]int{spec1: job.MaxPriorityWeight, spec2: job.MinPriorityWeight}
+		for _, jobSpec := range resolvedJobSpecs {
+			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
+		}
 	})
 }
 
@@ -593,7 +463,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		tree.AddNode(node3)
 
 		err := tree.IsCyclic()
-		assert.Equal(t, job.ErrCyclicDependencyEncountered, err.Error())
+		assert.Equal(t, "testdag2: "+job.ErrCyclicDependencyEncountered.Error(), err.Error())
 	})
 
 	t.Run("should create tree with multi level dependencies", func(t *testing.T) {
@@ -721,7 +591,6 @@ func TestMultiRootDAGTree(t *testing.T) {
 		tree.AddNode(node41)
 
 		err := tree.IsCyclic()
-		assert.Equal(t, job.ErrCyclicDependencyEncountered, err.Error())
+		assert.Equal(t, "testdag21: "+job.ErrCyclicDependencyEncountered.Error(), err.Error())
 	})
-
 }

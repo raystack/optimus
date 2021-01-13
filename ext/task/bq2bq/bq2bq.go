@@ -47,7 +47,7 @@ func (b *BQ2BQ) GetDescription() string {
 }
 
 func (b *BQ2BQ) GetImage() string {
-	return "asia.gcr.io/godata-platform/bumblebee:latest"
+	return "odpf/de-bumblebee:e63c6e53f1f011477301a3b0bfe4f4372528ba77"
 }
 
 func (b *BQ2BQ) GetQuestions() []*survey.Question {
@@ -191,5 +191,5 @@ func createTableName(proj, dataset, table string) string {
 }
 
 func init() {
-	models.SupportedTasks.Add(&BQ2BQ{})
+	models.TaskRegistry.Add(&BQ2BQ{})
 }

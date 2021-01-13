@@ -23,7 +23,7 @@ from airflow.utils.state import State
 from airflow.hooks.base_hook import BaseHook
 from airflow.utils.weight_rule import WeightRule
 
-from optimus_lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
+from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
     SlackWebhookOperator
 
 
@@ -46,9 +46,9 @@ default_args = {
     "depends_on_past": {{- if .Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
     "retries": 3,
     "retry_delay": timedelta(seconds=300),
-    "start_date": datetime.strptime({{ .Schedule.StartDate | quote }}, "%Y-%m-%d %H:%M:%S %z %Z"),
+    "start_date": datetime.strptime({{ .Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
     "on_failure_callback": alert_failed_to_slack,
-    #"priority_weight": {{.Name}}, #TODO
+    "priority_weight": {{.Task.Priority}},
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -63,7 +63,7 @@ dag = DAG(
 transformation_{{.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "%s".format("{{.Task.Unit.GetName}}"),
+    image = "{}".format("{{.Task.Unit.GetImage}}"),
     cmds=[],
     name="{{.Task.Unit.GetName | replace "_" "-" }}",
     task_id="{{.Task.Unit.GetName}}",

@@ -3,7 +3,6 @@ package gcs
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -11,6 +10,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
+	"github.com/pkg/errors"
 	"google.golang.org/api/iterator"
 	"github.com/odpf/optimus/models"
 )
@@ -30,19 +30,26 @@ type JobRepository struct {
 	fileExtension string
 }
 
-func (repo *JobRepository) Save(j models.Job) error {
+func (repo *JobRepository) Save(j models.Job) (err error) {
 	dst, err := repo.ObjectWriter.NewWriter(repo.Bucket, repo.pathFor(j))
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func() {
+		if derr := dst.Close(); derr != nil {
+			if err == nil {
+				err = derr
+			} else {
+				err = errors.Wrap(err, derr.Error())
+			}
+		}
+	}()
 	src := bytes.NewBuffer(j.Contents)
 	_, err = io.Copy(dst, src)
 	return err
 }
 
-func (repo *JobRepository) Delete(job models.Job) error {
-	jobName := job.Name
+func (repo *JobRepository) Delete(jobName string) error {
 	ctx := context.Background()
 	if strings.TrimSpace(jobName) == "" {
 		return errEmptyJobName

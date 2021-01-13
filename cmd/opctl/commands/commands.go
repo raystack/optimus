@@ -6,6 +6,7 @@ import (
 	"github.com/fatih/color"
 	cli "github.com/spf13/cobra"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
 
@@ -34,6 +35,7 @@ func New(
 	jobSpecRepo store.JobSpecRepository,
 	version string,
 	config config.ConfigCLI,
+	scheduler models.SchedulerUnit,
 ) *cli.Command {
 
 	var programName = "opctl"
@@ -55,7 +57,7 @@ func New(
 	cmd.AddCommand(createCommand(l, jobSpecRepo))
 	cmd.AddCommand(versionCommand(l, version))
 	cmd.AddCommand(deployCommand(l, jobSpecRepo))
-	cmd.AddCommand(dumpCommand(l, jobSpecRepo))
+	cmd.AddCommand(dumpCommand(l, jobSpecRepo, scheduler))
 
 	return cmd
 }

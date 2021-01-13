@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/progress"
 )
 
 var (
@@ -49,9 +50,10 @@ type JobSpecBehavior struct {
 }
 
 type JobSpecTask struct {
-	Unit   ExecUnit
-	Config map[string]string
-	Window JobSpecTaskWindow
+	Unit     ExecUnit
+	Config   map[string]string
+	Window   JobSpecTaskWindow
+	Priority int
 }
 
 type JobSpecTaskWindow struct {
@@ -145,9 +147,9 @@ type JobSpecDependency struct {
 
 // JobService provides a high-level operations on DAGs
 type JobService interface {
-	// CreateJob constructs a Job and commits it to a storage
-	CreateJob(JobSpec, ProjectSpec) error
-	Upload(ProjectSpec) error
+	// Create constructs a Job and commits it to a storage
+	Create(JobSpec, ProjectSpec) error
+	Sync(ProjectSpec, progress.Observer) error
 }
 
 // JobCompiler TODO...

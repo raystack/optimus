@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -26,6 +28,8 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/v1"
 	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
@@ -47,8 +51,6 @@ var (
 	termChan = make(chan os.Signal, 1)
 
 	shutdownWait = 30 * time.Second
-
-	schedulerTemplatePath = "./templates/airflow_1/base_dag.py"
 )
 
 // Config for the service
@@ -164,21 +166,30 @@ type jobSpecRepoFactory struct {
 }
 
 func (fac *jobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
-	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.SupportedTasks))
+	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.TaskRegistry))
 }
 
 // jobRepoFactory stores compiled specifications that will be consumed by a
 // scheduler
 type jobRepoFactory struct {
-	db *gorm.DB
+	gcsClient *storage.Client
+	schd      models.SchedulerUnit
 }
 
 func (fac *jobRepoFactory) New(proj models.ProjectSpec) (store.JobRepository, error) {
-	googleStorage, err := storage.NewClient(context.Background())
-	if err != nil {
-		logger.F("error creating google storage client: %v", err)
+	storagePath, ok := proj.Config[models.ProjectStoragePathKey]
+	if !ok {
+		return nil, errors.Errorf("%s not configured for project %s", models.ProjectStoragePathKey, proj.Name)
 	}
-	return gcs.NewJobRepository(proj.Name, "jobs", ".py", googleStorage), nil
+	p, err := url.Parse(storagePath)
+	if err != nil {
+		return nil, err
+	}
+	switch p.Scheme {
+	case "gs":
+		return gcs.NewJobRepository(p.Hostname(), filepath.Join(p.Path, fac.schd.GetJobsDir()), fac.schd.GetJobsExtension(), fac.gcsClient), nil
+	}
+	return nil, errors.Errorf("unsupported storage config %s in %s of project %s", storagePath, models.ProjectStoragePathKey, proj.Name)
 }
 
 type projectRepoFactory struct {
@@ -187,6 +198,14 @@ type projectRepoFactory struct {
 
 func (fac *projectRepoFactory) New() store.ProjectRepository {
 	return postgres.NewProjectRepository(fac.db)
+}
+
+type pipelineLogObserver struct {
+	log logrus.FieldLogger
+}
+
+func (obs *pipelineLogObserver) Notify(evt progress.Event) {
+	obs.log.Info(evt)
 }
 
 func init() {
@@ -210,6 +229,10 @@ func main() {
 		mainLog.Fatalf("configuration error:\n%v", err)
 	}
 
+	progressObs := &pipelineLogObserver{
+		log: log.WithField("reporter", "pipeline"),
+	}
+
 	// setup db
 	maxIdleConnection, _ := strconv.Atoi(Config.MaxIdleDBConn)
 	maxOpenConnection, _ := strconv.Atoi(Config.MaxOpenDBConn)
@@ -220,6 +243,35 @@ func main() {
 	dbConn, err := postgres.Connect(databaseURL, maxIdleConnection, maxOpenConnection)
 	if err != nil {
 		panic(err)
+	}
+
+	// gcs storage client for storing project compiled specifications
+	googleStorage, err := storage.NewClient(context.Background())
+	if err != nil {
+		logger.F("error creating google storage client: %v", err)
+	}
+
+	// init default scheduler, should be configurable by user configs later
+	models.Scheduler = &airflow.AirflowScheduler{
+		GcsClient:  googleStorage,
+		TemplateFS: resources.FileSystem,
+	}
+
+	// registered project store repository factory, its a wrapper over a storage
+	// interface
+	projectRepoFac := &projectRepoFactory{
+		db: dbConn,
+	}
+	registeredProjects, err := projectRepoFac.New().GetAll()
+	if err != nil {
+		panic(err)
+	}
+	// bootstrap scheduler for registered projects
+	for _, proj := range registeredProjects {
+		if err := models.Scheduler.Bootstrap(context.Background(), proj); err != nil {
+			// TODO: ideally should panic out
+			logger.E(err)
+		}
 	}
 
 	serverPort, err := strconv.Atoi(Config.ServerPort)
@@ -239,14 +291,17 @@ func main() {
 			&jobSpecRepoFactory{
 				db: dbConn,
 			},
-			nil, //TODO
-			job.NewCompiler(resources.FileSystem, schedulerTemplatePath),
+			&jobRepoFactory{
+				gcsClient: googleStorage,
+				schd:      models.Scheduler,
+			},
+			job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath()),
 			job.NewDependencyResolver(),
+			job.NewPriorityResolver(),
 		),
-		&projectRepoFactory{
-			db: dbConn,
-		},
-		v1.NewAdapter(models.SupportedTasks),
+		projectRepoFac,
+		v1.NewAdapter(models.TaskRegistry),
+		progressObs,
 	))
 
 	// prepare http proxy

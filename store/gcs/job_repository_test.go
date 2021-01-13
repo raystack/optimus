@@ -141,7 +141,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(models.Job{Name: jobName})
+			err := repo.Delete(jobName)
 
 			assert.Nil(t, err)
 		})
@@ -154,8 +154,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(models.Job{Name: ""})
-
+			err := repo.Delete("")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return ErrNoSuchDAG when job is not exist", func(t *testing.T) {
@@ -179,7 +178,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(models.Job{Name: jobName})
+			err := repo.Delete(jobName)
 
 			assert.Equal(t, models.ErrNoSuchJob, err)
 		})
@@ -205,7 +204,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(models.Job{Name: jobName})
+			err := repo.Delete(jobName)
 
 			assert.Equal(t, anotherError, err)
 		})
@@ -232,7 +231,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(models.Job{Name: jobName})
+			err := repo.Delete(jobName)
 
 			assert.Equal(t, anError, err)
 		})
@@ -251,7 +250,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(models.Job{Name: jobName})
+			err := repo.Delete(jobName)
 
 			assert.NotNil(t, err)
 		})

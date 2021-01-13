@@ -9,11 +9,7 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-var (
-	schedulerTemplatePath = "./templates/airflow_1/base_dag.py"
-)
-
-func dumpCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func dumpCommand(l logger, jobSpecRepo store.JobSpecRepository, scheduler models.SchedulerUnit) *cli.Command {
 	return &cli.Command{
 		Use:   "dump",
 		Short: "write the representation of the resource to stdout",
@@ -24,17 +20,26 @@ func dumpCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 			return nil
 		},
 		Run: func(c *cli.Command, args []string) {
-			jobSpec, err := jobSpecRepo.GetByName(args[0])
+			jobSpecs, err := jobSpecRepo.GetAll()
 			if err != nil {
 				panic(err)
 			}
 
-			specs, err := job.NewDependencyResolver().Resolve([]models.JobSpec{jobSpec})
+			jobSpecs, err = job.NewDependencyResolver().Resolve(jobSpecs)
 			if err != nil {
 				panic(err)
 			}
-			compiler := job.NewCompiler(resources.FileSystem, schedulerTemplatePath)
-			for _, spec := range specs {
+			jobSpecs, err = job.NewPriorityResolver().Resolve(jobSpecs)
+			if err != nil {
+				panic(err)
+			}
+
+			compiler := job.NewCompiler(resources.FileSystem, scheduler.GetTemplatePath())
+			for _, spec := range jobSpecs {
+				if spec.Name != args[0] {
+					continue
+				}
+
 				compiled, err := compiler.Compile(spec)
 				if err != nil {
 					panic(err)

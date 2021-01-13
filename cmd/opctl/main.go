@@ -19,6 +19,7 @@ import (
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
 
+	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
 )
 
@@ -35,10 +36,14 @@ func main() {
 	logger := log.New(os.Stderr, "", 0)
 	initConfig()
 
+	// this is just default scheduler
+	// should be configurable by user if needed
+	models.Scheduler = &airflow.AirflowScheduler{}
+
 	//init specs
 	jobSpecRepo := local.NewJobSpecRepository(
 		&fs.LocalFileSystem{BasePath: filepath.Join(Config.Path, "jobs")},
-		local.NewAdapter(models.SupportedTasks),
+		local.NewAdapter(models.TaskRegistry),
 	)
 
 	cmd := commands.New(
@@ -46,6 +51,7 @@ func main() {
 		jobSpecRepo,
 		Version,
 		Config,
+		models.Scheduler,
 	)
 	// error is already logged by Cobra, no need to log them again
 	if err := cmd.Execute(); err != nil {

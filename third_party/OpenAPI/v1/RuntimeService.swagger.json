@@ -88,6 +88,9 @@
         },
         "message": {
           "type": "string"
+        },
+        "jobName": {
+          "type": "string"
         }
       }
     },

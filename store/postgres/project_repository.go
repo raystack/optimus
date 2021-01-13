@@ -91,7 +91,19 @@ func (repo *projectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error)
 }
 
 func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
-	panic("unimplemented")
+	specs := []models.ProjectSpec{}
+	projs := []Project{}
+	if err := repo.db.Find(&projs).Error; err != nil {
+		return specs, err
+	}
+	for _, proj := range projs {
+		adapt, err := proj.ToSpec()
+		if err != nil {
+			return specs, err
+		}
+		specs = append(specs, adapt)
+	}
+	return specs, nil
 }
 
 func NewProjectRepository(db *gorm.DB) *projectRepository {

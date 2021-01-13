@@ -1,8 +1,9 @@
 package models
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/AlecAivazis/survey/v2"
 )
@@ -39,12 +40,16 @@ type UnitData struct {
 }
 
 var (
-	// SupportedTasks are a list of tasks that are supported as base task in a job
-	SupportedTasks = &supportedTasks{
-		tasks: map[string]ExecUnit{},
+	// TaskRegistry are a list of tasks that are supported as base task in a job
+	TaskRegistry = &supportedTasks{
+		data: map[string]ExecUnit{},
 	}
 	ErrUnsupportedTask = errors.New("unsupported task requested")
 )
+
+type supportedTasks struct {
+	data map[string]ExecUnit
+}
 
 type SupportedTaskRepo interface {
 	GetByName(string) (ExecUnit, error)
@@ -52,46 +57,42 @@ type SupportedTaskRepo interface {
 	Add(ExecUnit) error
 }
 
-type supportedTasks struct {
-	tasks map[string]ExecUnit
-}
-
 func (s *supportedTasks) GetByName(name string) (ExecUnit, error) {
-	if task, ok := s.tasks[name]; ok {
-		return task, nil
+	if unit, ok := s.data[name]; ok {
+		return unit, nil
 	}
-	return nil, ErrUnsupportedTask
+	return nil, errors.Wrap(ErrUnsupportedTask, name)
 }
 
 func (s *supportedTasks) GetAll() []ExecUnit {
 	list := []ExecUnit{}
-	for _, task := range s.tasks {
-		list = append(list, task)
+	for _, unit := range s.data {
+		list = append(list, unit)
 	}
 	return list
 }
 
-func (s *supportedTasks) Add(newTask ExecUnit) error {
-	if newTask.GetName() == "" {
+func (s *supportedTasks) Add(newUnit ExecUnit) error {
+	if newUnit.GetName() == "" {
 		return fmt.Errorf("task name cannot be empty")
 	}
 
 	// check if name is already used
-	if _, ok := s.tasks[newTask.GetName()]; ok {
-		return fmt.Errorf("task name already in use %s", newTask.GetName())
+	if _, ok := s.data[newUnit.GetName()]; ok {
+		return fmt.Errorf("task name already in use %s", newUnit.GetName())
 	}
 
 	// image is a required field
-	if newTask.GetImage() == "" {
+	if newUnit.GetImage() == "" {
 		return fmt.Errorf("task image cannot be empty")
 	}
 
 	// check if we can add the provided task
-	for _, existingTask := range s.tasks {
+	for _, existingTask := range s.data {
 		// config file names need to be unique in assets folder
 		// so each asset name should be unique
 		for ekey := range existingTask.GetAssets() {
-			for nkey := range newTask.GetAssets() {
+			for nkey := range newUnit.GetAssets() {
 				if nkey == ekey {
 					return fmt.Errorf("asset file name already in use %s", nkey)
 				}
@@ -99,6 +100,6 @@ func (s *supportedTasks) Add(newTask ExecUnit) error {
 		}
 	}
 
-	s.tasks[newTask.GetName()] = newTask
+	s.data[newUnit.GetName()] = newUnit
 	return nil
 }
