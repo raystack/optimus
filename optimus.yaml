@@ -1,2 +1,2 @@
 host: "http://localhost"
-path: "../../../ocean/g-pilotdata-gl"
+path: "../ocean/g-pilotdata-gl"

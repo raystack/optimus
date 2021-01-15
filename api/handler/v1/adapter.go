@@ -8,7 +8,9 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type Adapter struct{}
+type Adapter struct {
+	supportedTaskRepo models.SupportedTaskRepo
+}
 
 func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, error) {
 	startDate, err := time.Parse(models.JobDatetimeLayout, spec.StartDate)
@@ -36,6 +38,11 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
+	execUnit, err := adapt.supportedTaskRepo.GetByName(spec.TaskName)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+
 	return models.JobSpec{
 		Version: int(spec.Version),
 		Name:    spec.Name,
@@ -51,7 +58,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 			CatchUp:       spec.CatchUp,
 		},
 		Task: models.JobSpecTask{
-			Name:   spec.TaskName,
+			Unit:   execUnit,
 			Config: spec.Config,
 			Window: window,
 		},
@@ -84,7 +91,10 @@ func prepareWindow(spec *pb.JobSpecification) (models.JobSpecTaskWindow, error) 
 	return window, nil
 }
 
-func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
+func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, error) {
+	if spec.Task.Unit == nil {
+		return nil, errors.New("task unit cannot be nil")
+	}
 	conf := &pb.JobSpecification{
 		Version:          int32(spec.Version),
 		Name:             spec.Name,
@@ -93,7 +103,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
 		StartDate:        spec.Schedule.StartDate.Format(models.JobDatetimeLayout),
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
-		TaskName:         spec.Task.Name,
+		TaskName:         spec.Task.Unit.GetName(),
 		Config:           spec.Task.Config,
 		WindowSize:       spec.Task.Window.SizeString(),
 		WindowOffset:     spec.Task.Window.OffsetString(),
@@ -108,7 +118,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
 		conf.Dependencies = append(conf.Dependencies, name)
 	}
 
-	return conf
+	return conf, nil
 }
 
 func (adapt *Adapter) ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
@@ -125,6 +135,8 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
-func NewAdapter() *Adapter {
-	return &Adapter{}
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {
+	return &Adapter{
+		supportedTaskRepo: supportedTaskRepo,
+	}
 }

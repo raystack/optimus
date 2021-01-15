@@ -70,7 +70,17 @@ func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
 	}
 }
 
-func (conf Job) ToSpec() (models.JobSpec, error) {
+type Adapter struct {
+	supportedTaskRepo models.SupportedTaskRepo
+}
+
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {
+	return &Adapter{
+		supportedTaskRepo: supportedTaskRepo,
+	}
+}
+
+func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	for _, dep := range conf.Dependencies {
@@ -92,6 +102,11 @@ func (conf Job) ToSpec() (models.JobSpec, error) {
 		jobAssets = append(jobAssets, asset.ToSpec())
 	}
 
+	execUnit, err := adapt.supportedTaskRepo.GetByName(conf.TaskName)
+	if err != nil {
+		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
+	}
+
 	job := models.JobSpec{
 		ID:      conf.ID,
 		Version: conf.Version,
@@ -107,7 +122,7 @@ func (conf Job) ToSpec() (models.JobSpec, error) {
 			DependsOnPast: conf.DependsOnPast,
 		},
 		Task: models.JobSpecTask{
-			Name:   conf.TaskName,
+			Unit:   execUnit,
 			Config: taskConf,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Duration(conf.WindowSize),
@@ -121,7 +136,11 @@ func (conf Job) ToSpec() (models.JobSpec, error) {
 	return job, nil
 }
 
-func (conf Job) FromSpec(spec models.JobSpec) (Job, error) {
+func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
+	if spec.Task.Unit == nil {
+		return Job{}, errors.New("task unit cannot be empty")
+	}
+
 	dependencies := []string{}
 	for dep := range spec.Dependencies {
 		dependencies = append(dependencies, dep)
@@ -154,7 +173,7 @@ func (conf Job) FromSpec(spec models.JobSpec) (Job, error) {
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
 		Dependencies:     dependencies,
-		TaskName:         spec.Task.Name,
+		TaskName:         spec.Task.Unit.GetName(),
 		TaskConfig:       datatypes.JSON(taskConfigJSON),
 		WindowSize:       spec.Task.Window.Size.Nanoseconds(),
 		WindowOffset:     spec.Task.Window.Offset.Nanoseconds(),
@@ -163,8 +182,8 @@ func (conf Job) FromSpec(spec models.JobSpec) (Job, error) {
 	}, nil
 }
 
-func (conf Job) FromSpecWithProject(spec models.JobSpec, proj models.ProjectSpec) (Job, error) {
-	adaptJob, err := Job{}.FromSpec(spec)
+func (adapt Adapter) FromSpecWithProject(spec models.JobSpec, proj models.ProjectSpec) (Job, error) {
+	adaptJob, err := adapt.FromSpec(spec)
 	if err != nil {
 		return adaptJob, err
 	}
@@ -180,10 +199,11 @@ func (conf Job) FromSpecWithProject(spec models.JobSpec, proj models.ProjectSpec
 type jobSpecRepository struct {
 	db      *gorm.DB
 	project models.ProjectSpec
+	adapter *Adapter
 }
 
 func (repo *jobSpecRepository) Insert(spec models.JobSpec) error {
-	resource, err := Job{}.FromSpecWithProject(spec, repo.project)
+	resource, err := repo.adapter.FromSpecWithProject(spec, repo.project)
 	if err != nil {
 		return err
 	}
@@ -198,7 +218,7 @@ func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return repo.Insert(spec)
 	}
-	resource, err := Job{}.FromSpec(spec)
+	resource, err := repo.adapter.FromSpec(spec)
 	if err != nil {
 		return err
 	}
@@ -213,7 +233,7 @@ func (repo *jobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
 	if err := repo.db.Preload("Project").Where("id = ?", id).Find(&r).Error; err != nil {
 		return models.JobSpec{}, err
 	}
-	return r.ToSpec()
+	return repo.adapter.ToSpec(r)
 }
 
 func (repo *jobSpecRepository) GetByName(name string) (models.JobSpec, error) {
@@ -221,7 +241,7 @@ func (repo *jobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 	if err := repo.db.Preload("Project").Where("project_id = ? AND name = ?", repo.project.ID, name).Find(&r).Error; err != nil {
 		return models.JobSpec{}, err
 	}
-	return r.ToSpec()
+	return repo.adapter.ToSpec(r)
 }
 
 func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
@@ -231,7 +251,7 @@ func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
 		return specs, err
 	}
 	for _, job := range jobs {
-		adapt, err := job.ToSpec()
+		adapt, err := repo.adapter.ToSpec(job)
 		if err != nil {
 			return specs, err
 		}
@@ -240,9 +260,10 @@ func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return specs, nil
 }
 
-func NewJobRepository(db *gorm.DB, project models.ProjectSpec) *jobSpecRepository {
+func NewJobRepository(db *gorm.DB, project models.ProjectSpec, adapter *Adapter) *jobSpecRepository {
 	return &jobSpecRepository{
 		db:      db,
 		project: project,
+		adapter: adapter,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/progress"
 )
 
 var (
@@ -33,6 +34,8 @@ type JobSpec struct {
 	Task         JobSpecTask
 	Dependencies map[string]JobSpecDependency
 	Assets       JobAssets
+
+	Hooks []JobSpecHook
 }
 
 type JobSpecSchedule struct {
@@ -47,15 +50,21 @@ type JobSpecBehavior struct {
 }
 
 type JobSpecTask struct {
-	Name   string
-	Config map[string]string
-	Window JobSpecTaskWindow
+	Unit     ExecUnit
+	Config   map[string]string
+	Window   JobSpecTaskWindow
+	Priority int
 }
 
 type JobSpecTaskWindow struct {
 	Size       time.Duration
 	Offset     time.Duration
 	TruncateTo string
+}
+
+type JobSpecHook struct {
+	Name   string
+	Config map[string]string
 }
 
 type JobSpecAsset struct {
@@ -132,10 +141,25 @@ func (w *JobSpecTaskWindow) String() string {
 
 type JobSpecDependency struct {
 	Job *JobSpec
+	// TODO specify type of depen, if its static or gen at runtime
+	// Type {STATIC, RUNTIME}
 }
 
 // JobService provides a high-level operations on DAGs
 type JobService interface {
-	// CreateJob constructs a Job and commits it to a storage
-	CreateJob(JobSpec, ProjectSpec) error
+	// Create constructs a Job and commits it to a storage
+	Create(JobSpec, ProjectSpec) error
+	Sync(ProjectSpec, progress.Observer) error
+}
+
+// JobCompiler TODO...
+type JobCompiler interface {
+	Compile(JobSpec) (Job, error)
+}
+
+// Job represents a compiled consumeable item for scheduler
+// this is generated from JobSpec
+type Job struct {
+	Name     string
+	Contents []byte
 }

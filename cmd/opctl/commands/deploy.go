@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"io"
 	"os"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
+func deployCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 
 	cmd := &cli.Command{
 		Use:   "deploy",
@@ -48,7 +49,7 @@ func deployCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l logger, jobSpecRepo store.JobRepository) (err error) {
+func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err error) {
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(deployHost); err != nil {
 		return err
@@ -59,30 +60,48 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobRepository) (err error
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter()
+	adapt := v1handler.NewAdapter(models.TaskRegistry)
 
 	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {
 		return err
 	}
 
-	for idx, spec := range jobSpecs {
-		resp, err := runtime.DeploySpecification(ctx, &pb.DeploySpecificationRequest{
-			Job: adapt.ToJobProto(spec),
-			Project: adapt.ToProjectProto(models.ProjectSpec{
-				Name: deployProject,
-			}),
-		})
+	adaptedJobSpecs := []*pb.JobSpecification{}
+	for _, spec := range jobSpecs {
+		adaptJob, err := adapt.ToJobProto(spec)
 		if err != nil {
-			return errors.Wrapf(err, "failed during processing: %s", spec.Name)
+			return errors.Wrapf(err, "failed to serialize: %s", spec.Name)
 		}
-		if !resp.Succcess {
-			return errors.Errorf("unable to deploy: %s, %s", spec.Name, resp.Message)
-		}
-		l.Printf("%d: %s (deployed)\n", idx+1, spec.Name)
+		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
+	}
+	respStream, err := runtime.DeploySpecification(ctx, &pb.DeploySpecificationRequest{
+		Jobs:        adaptedJobSpecs,
+		ProjectName: deployProject,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "deployement failed")
 	}
 
-	l.Printf("deployment completed successfully\n")
+	jobCounter := 0
+	totalJobs := len(jobSpecs)
+	for {
+		resp, err := respStream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrapf(err, "failed to receive deployment ack")
+		}
+		if !resp.GetSucccess() {
+			return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
+		}
+
+		jobCounter++
+		l.Printf("%d/%d. %s successfully deployed\n", jobCounter, totalJobs, resp.GetJobName())
+	}
+
+	l.Println("deployment completed successfully")
 	return nil
 }
 

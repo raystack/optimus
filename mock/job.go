@@ -7,14 +7,16 @@ import (
 	"github.com/odpf/optimus/store/local"
 )
 
+// JobSpecRepoFactory to store raw specs
 type JobSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepoFactory) New(proj models.ProjectSpec) store.JobRepository {
-	return repo.Called(proj).Get(0).(store.JobRepository)
+func (repo *JobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
+	return repo.Called(proj).Get(0).(store.JobSpecRepository)
 }
 
+// JobSpecRepoFactory to store raw specs
 type JobSpecRepository struct {
 	mock.Mock
 }
@@ -39,6 +41,41 @@ func (repo *JobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return []models.JobSpec{}, args.Error(1)
 }
 
+// JobRepoFactory to store compiled specs
+type JobRepoFactory struct {
+	mock.Mock
+}
+
+func (repo *JobRepoFactory) New(proj models.ProjectSpec) (store.JobRepository, error) {
+	args := repo.Called(proj)
+	return args.Get(0).(store.JobRepository), args.Error(1)
+}
+
+// JobRepository to store compiled specs
+
+type JobRepository struct {
+	mock.Mock
+}
+
+func (repo *JobRepository) Save(t models.Job) error {
+	return repo.Called(t).Error(0)
+}
+
+func (repo *JobRepository) GetByName(name string) (models.Job, error) {
+	args := repo.Called(name)
+	return args.Get(0).(models.Job), args.Error(1)
+}
+
+func (repo *JobRepository) GetAll() ([]models.Job, error) {
+	args := repo.Called()
+	return args.Get(0).([]models.Job), args.Error(1)
+}
+
+func (repo *JobRepository) Delete(name string) error {
+	args := repo.Called(name)
+	return args.Error(0)
+}
+
 type JobConfigLocalFactory struct {
 	mock.Mock
 }
@@ -55,4 +92,31 @@ type JobService struct {
 // CreateJob constructs a DAG and commits it to a storage
 func (srv *JobService) CreateJob(inputs models.JobSpec) error {
 	return srv.Called(inputs).Error(0)
+}
+
+type Compiler struct {
+	mock.Mock
+}
+
+func (srv *Compiler) Compile(jobSpec models.JobSpec) (models.Job, error) {
+	args := srv.Called(jobSpec)
+	return args.Get(0).(models.Job), args.Error(1)
+}
+
+type DependencyResolver struct {
+	mock.Mock
+}
+
+func (srv *DependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
+	args := srv.Called(jobSpecs)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
+}
+
+type PriorityResolver struct {
+	mock.Mock
+}
+
+func (srv *PriorityResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
+	args := srv.Called(jobSpecs)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }

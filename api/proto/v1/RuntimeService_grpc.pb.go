@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RuntimeServiceClient interface {
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
-	DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (*DeploySpecificationResponse, error)
+	DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeploySpecificationClient, error)
 	RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error)
 }
 
@@ -39,13 +39,36 @@ func (c *runtimeServiceClient) Version(ctx context.Context, in *VersionRequest, 
 	return out, nil
 }
 
-func (c *runtimeServiceClient) DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (*DeploySpecificationResponse, error) {
-	out := new(DeploySpecificationResponse)
-	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/DeploySpecification", in, out, opts...)
+func (c *runtimeServiceClient) DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeploySpecificationClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_RuntimeService_serviceDesc.Streams[0], "/apiv1.RuntimeService/DeploySpecification", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &runtimeServiceDeploySpecificationClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type RuntimeService_DeploySpecificationClient interface {
+	Recv() (*DeploySpecificationResponse, error)
+	grpc.ClientStream
+}
+
+type runtimeServiceDeploySpecificationClient struct {
+	grpc.ClientStream
+}
+
+func (x *runtimeServiceDeploySpecificationClient) Recv() (*DeploySpecificationResponse, error) {
+	m := new(DeploySpecificationResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *runtimeServiceClient) RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error) {
@@ -62,7 +85,7 @@ func (c *runtimeServiceClient) RegisterProject(ctx context.Context, in *Register
 // for forward compatibility
 type RuntimeServiceServer interface {
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
-	DeploySpecification(context.Context, *DeploySpecificationRequest) (*DeploySpecificationResponse, error)
+	DeploySpecification(*DeploySpecificationRequest, RuntimeService_DeploySpecificationServer) error
 	RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
@@ -74,8 +97,8 @@ type UnimplementedRuntimeServiceServer struct {
 func (UnimplementedRuntimeServiceServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
 }
-func (UnimplementedRuntimeServiceServer) DeploySpecification(context.Context, *DeploySpecificationRequest) (*DeploySpecificationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeploySpecification not implemented")
+func (UnimplementedRuntimeServiceServer) DeploySpecification(*DeploySpecificationRequest, RuntimeService_DeploySpecificationServer) error {
+	return status.Errorf(codes.Unimplemented, "method DeploySpecification not implemented")
 }
 func (UnimplementedRuntimeServiceServer) RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterProject not implemented")
@@ -111,22 +134,25 @@ func _RuntimeService_Version_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_DeploySpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeploySpecificationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _RuntimeService_DeploySpecification_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DeploySpecificationRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(RuntimeServiceServer).DeploySpecification(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/apiv1.RuntimeService/DeploySpecification",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).DeploySpecification(ctx, req.(*DeploySpecificationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(RuntimeServiceServer).DeploySpecification(m, &runtimeServiceDeploySpecificationServer{stream})
+}
+
+type RuntimeService_DeploySpecificationServer interface {
+	Send(*DeploySpecificationResponse) error
+	grpc.ServerStream
+}
+
+type runtimeServiceDeploySpecificationServer struct {
+	grpc.ServerStream
+}
+
+func (x *runtimeServiceDeploySpecificationServer) Send(m *DeploySpecificationResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _RuntimeService_RegisterProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -156,14 +182,16 @@ var _RuntimeService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _RuntimeService_Version_Handler,
 		},
 		{
-			MethodName: "DeploySpecification",
-			Handler:    _RuntimeService_DeploySpecification_Handler,
-		},
-		{
 			MethodName: "RegisterProject",
 			Handler:    _RuntimeService_RegisterProject_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "DeploySpecification",
+			Handler:       _RuntimeService_DeploySpecification_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "v1/RuntimeService.proto",
 }

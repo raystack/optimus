@@ -79,7 +79,17 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	return window, nil
 }
 
-func (conf Job) ToSpec() (models.JobSpec, error) {
+type Adapter struct {
+	supportedTaskRepo models.SupportedTaskRepo
+}
+
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {
+	return &Adapter{
+		supportedTaskRepo: supportedTaskRepo,
+	}
+}
+
+func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	var err error
 
 	// parse dates
@@ -108,6 +118,11 @@ func (conf Job) ToSpec() (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
+	execUnit, err := adapt.supportedTaskRepo.GetByName(conf.Task.Name)
+	if err != nil {
+		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
+	}
+
 	job := models.JobSpec{
 		Version: conf.Version,
 		Name:    strings.TrimSpace(conf.Name),
@@ -122,7 +137,7 @@ func (conf Job) ToSpec() (models.JobSpec, error) {
 			DependsOnPast: false,
 		},
 		Task: models.JobSpecTask{
-			Name:   conf.Task.Name,
+			Unit:   execUnit,
 			Config: conf.Task.Config,
 			Window: window,
 		},
@@ -132,7 +147,10 @@ func (conf Job) ToSpec() (models.JobSpec, error) {
 	return job, nil
 }
 
-func (conf Job) FromSpec(spec models.JobSpec) (Job, error) {
+func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
+	if spec.Task.Unit == nil {
+		return Job{}, errors.New("exec unit is nil")
+	}
 	parsed := Job{
 		Version: spec.Version,
 		Name:    spec.Name,
@@ -146,7 +164,7 @@ func (conf Job) FromSpec(spec models.JobSpec) (Job, error) {
 			Catchup:       spec.Behavior.CatchUp,
 		},
 		Task: JobTask{
-			Name:   spec.Task.Name,
+			Name:   spec.Task.Unit.GetName(),
 			Config: spec.Task.Config,
 			Window: JobTaskWindow{
 				Size:       spec.Task.Window.SizeString(),

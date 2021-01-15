@@ -18,7 +18,7 @@ import (
 	"github.com/odpf/optimus/store/local"
 )
 
-func createCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
+func createCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new resource",
@@ -27,7 +27,7 @@ func createCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command {
+func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
@@ -36,7 +36,8 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command
 			if err != nil {
 				return err
 			}
-			spec, err := jobInput.ToSpec()
+
+			spec, err := local.NewAdapter(models.TaskRegistry).ToSpec(jobInput)
 			if err != nil {
 				return err
 			}
@@ -48,7 +49,7 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobRepository) *cli.Command
 func createJobSurvey(l logger) (local.Job, error) {
 
 	availableTasks := []string{}
-	for _, task := range models.SupportedTasks.GetAll() {
+	for _, task := range models.TaskRegistry.GetAll() {
 		availableTasks = append(availableTasks, task.GetName())
 	}
 
@@ -129,7 +130,7 @@ func createJobSurvey(l logger) (local.Job, error) {
 		Dependencies: []string{},
 	}
 
-	executionTask, err := models.SupportedTasks.GetByName(jobInput.Task.Name)
+	executionTask, err := models.TaskRegistry.GetByName(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
