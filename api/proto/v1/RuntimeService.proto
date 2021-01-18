@@ -27,11 +27,12 @@ service RuntimeService {
     }
     rpc DeploySpecification(DeploySpecificationRequest) returns (stream DeploySpecificationResponse) {}
     rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {
-        option (google.api.http) = {            
+        option (google.api.http) = {
             post: "/api/v1/project"
             body: "*"
         };
     }
+    rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
 }
 
 message VersionRequest {
@@ -88,4 +89,14 @@ message RegisterProjectRequest {
 message RegisterProjectResponse {
     bool succcess = 1;
     string message = 2;
+}
+
+message GetJobRequest {
+    string project_name = 1;
+    string job_name = 2;
+}
+
+message GetJobResponse {
+    ProjectSpecification project = 1;
+    JobSpecification job = 2;
 }

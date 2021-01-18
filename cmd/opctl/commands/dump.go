@@ -40,7 +40,7 @@ func dumpCommand(l logger, jobSpecRepo store.JobSpecRepository, scheduler models
 					continue
 				}
 
-				compiled, err := compiler.Compile(spec)
+				compiled, err := compiler.Compile(spec, models.ProjectSpec{Name: "test"})
 				if err != nil {
 					panic(err)
 				}

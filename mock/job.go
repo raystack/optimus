@@ -98,8 +98,8 @@ type Compiler struct {
 	mock.Mock
 }
 
-func (srv *Compiler) Compile(jobSpec models.JobSpec) (models.Job, error) {
-	args := srv.Called(jobSpec)
+func (srv *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (models.Job, error) {
+	args := srv.Called(jobSpec, proj)
 	return args.Get(0).(models.Job), args.Error(1)
 }
 

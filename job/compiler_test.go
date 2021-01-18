@@ -16,6 +16,10 @@ func TestCompiler(t *testing.T) {
 	execUnit := new(mock.ExecutionUnit)
 	execUnit.On("GetName").Return("bq")
 
+	projSpec := models.ProjectSpec{
+		Name: "foo-project",
+	}
+
 	spec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -56,7 +60,7 @@ func TestCompiler(t *testing.T) {
 				fsm,
 				templatePath,
 			)
-			dag, err := com.Compile(spec)
+			dag, err := com.Compile(spec, projSpec)
 
 			assert.Equal(t, dag.Contents, []byte("sometemplate file"))
 			assert.Nil(t, err)
@@ -75,7 +79,7 @@ func TestCompiler(t *testing.T) {
 				fsm,
 				templatePath,
 			)
-			_, err := com.Compile(spec)
+			_, err := com.Compile(spec, projSpec)
 			assert.Equal(t, err, job.ErrEmptyTemplateFile)
 		})
 	})

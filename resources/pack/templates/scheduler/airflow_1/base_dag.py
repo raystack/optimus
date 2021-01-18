@@ -23,6 +23,10 @@ from airflow.utils.state import State
 from airflow.hooks.base_hook import BaseHook
 from airflow.utils.weight_rule import WeightRule
 
+import kubernetes.client.models as k8s
+from airflow.kubernetes.volume import Volume
+from airflow.kubernetes.volume_mount import VolumeMount
+
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
     SlackWebhookOperator
 
@@ -42,31 +46,48 @@ gcloud_secret = Secret(
 
 
 default_args = {
-    "owner": "{{.Owner}}",
-    "depends_on_past": {{- if .Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
+    "owner": "{{.Job.Owner}}",
+    "depends_on_past": {{- if .Job.Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
     "retries": 3,
     "retry_delay": timedelta(seconds=300),
-    "start_date": datetime.strptime({{ .Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
+    "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
     "on_failure_callback": alert_failed_to_slack,
-    "priority_weight": {{.Task.Priority}},
+    "priority_weight": {{.Job.Task.Priority}},
     "weight_rule": WeightRule.ABSOLUTE
 }
 
 dag = DAG(
-    dag_id="{{.Name}}",
+    dag_id="{{.Job.Name}}",
     default_args=default_args,
-    schedule_interval="{{.Schedule.Interval}}",
-    catchup = {{ if .Behavior.CatchUp }} True {{ else }} False {{ end }}
+    schedule_interval="{{.Job.Schedule.Interval}}",
+    catchup = {{ if .Job.Behavior.CatchUp }} True {{ else }} False {{ end }}
 )
 
 
-transformation_{{.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
+# TODO: add documentation about usage of init container with K8sPodOperator
+# TODO change curl path to release instead of master
+initContainerVolumeName = "job-init"
+init_container = k8s.V1Container(
+    name='job-init-container',
+    image='alpine:latest',
+    command=[
+        'sh',
+        '-ec',
+        'apk add curl libc6-compat && \
+            curl http://odpf/artifactory/generic-local/optimus-v2/master/linux-amd64/opctl -o /opt/opctl && \
+            chmod +x /opt/opctl && \
+            /opt/opctl get job {{.Job.Name}} --project "{{.Project.Name}}" --output-dir "/job"',
+    ],
+    volume_mounts=[k8s.V1VolumeMount(name=initContainerVolumeName, mount_path='/job', sub_path=None, read_only=False)],
+)
+
+transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{}".format("{{.Task.Unit.GetImage}}"),
+    image = "{}".format("{{.Job.Task.Unit.GetImage}}"),
     cmds=[],
-    name="{{.Task.Unit.GetName | replace "_" "-" }}",
-    task_id="{{.Task.Unit.GetName}}",
+    name="{{.Job.Task.Unit.GetName | replace "_" "-" }}",
+    task_id="{{.Job.Task.Unit.GetName}}",
     get_logs=True,
     dag=dag,
     in_cluster=True,
@@ -75,18 +96,25 @@ transformation_{{.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__do
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        {{range $key,$value := .Task.Config}}"{{$key}}":'{{$value}}',{{- end}}
+        {{range $key,$value := .Job.Task.Config}}"{{$key}}":'{{$value}}',{{- end}}
     },
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    init_containers=[init_container],
+    volumes=[
+        Volume(name=initContainerVolumeName, configs={'empty_dir': {}})
+    ],
+    volume_mounts=[
+        VolumeMount(name=initContainerVolumeName, mount_path="/data", sub_path=None, read_only=False)
+    ],
 )
 
 # hooks loop start
-{{ range $_, $t := .Hooks }}
+{{ range $_, $t := .Job.Hooks }}
 {{- end -}}
 # hooks loop ends
 
 # create upstream sensors
-{{- range $i, $t := $.Dependencies}}
+{{- range $i, $t := $.Job.Dependencies}}
 wait_{{$t.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     external_dag_id = "{{$t.Job.Name}}",
     window_size = {{$t.Job.Task.Window.Size.Hours }},
@@ -103,6 +131,6 @@ wait_{{$t.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExt
 ####################################
 
 # upstream sensors -> base transformation task
-{{- range $i, $t := $.Dependencies }}
-wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- range $i, $t := $.Job.Dependencies }}
+wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}

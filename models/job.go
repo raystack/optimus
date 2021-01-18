@@ -149,12 +149,13 @@ type JobSpecDependency struct {
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(JobSpec, ProjectSpec) error
+	GetByName(string, ProjectSpec) (JobSpec, error)
 	Sync(ProjectSpec, progress.Observer) error
 }
 
 // JobCompiler TODO...
 type JobCompiler interface {
-	Compile(JobSpec) (Job, error)
+	Compile(JobSpec, ProjectSpec) (Job, error)
 }
 
 // Job represents a compiled consumeable item for scheduler

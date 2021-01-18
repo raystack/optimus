@@ -89,6 +89,29 @@ func (sv *runtimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	}, nil
 }
 
+func (sv *runtimeServiceServer) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	jobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), projSpec)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	jobProto, err := sv.adapter.ToJobProto(jobSpec)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.GetJobResponse{
+		Project: sv.adapter.ToProjectProto(projSpec),
+		Job:     jobProto,
+	}, nil
+}
+
 func NewRuntimeServiceServer(version string, jobSvc models.JobService,
 	projectRepoFactory ProjectRepoFactory, adapter ProtoAdapter,
 	progressObserver progress.Observer) *runtimeServiceServer {

@@ -20,6 +20,7 @@ type RuntimeServiceClient interface {
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
 	DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeploySpecificationClient, error)
 	RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error)
+	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 }
 
 type runtimeServiceClient struct {
@@ -80,6 +81,15 @@ func (c *runtimeServiceClient) RegisterProject(ctx context.Context, in *Register
 	return out, nil
 }
 
+func (c *runtimeServiceClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
+	out := new(GetJobResponse)
+	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/GetJob", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RuntimeServiceServer is the server API for RuntimeService service.
 // All implementations must embed UnimplementedRuntimeServiceServer
 // for forward compatibility
@@ -87,6 +97,7 @@ type RuntimeServiceServer interface {
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
 	DeploySpecification(*DeploySpecificationRequest, RuntimeService_DeploySpecificationServer) error
 	RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error)
+	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -102,6 +113,9 @@ func (UnimplementedRuntimeServiceServer) DeploySpecification(*DeploySpecificatio
 }
 func (UnimplementedRuntimeServiceServer) RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterProject not implemented")
+}
+func (UnimplementedRuntimeServiceServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
 
@@ -173,6 +187,24 @@ func _RuntimeService_RegisterProject_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeService_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).GetJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/apiv1.RuntimeService/GetJob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).GetJob(ctx, req.(*GetJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _RuntimeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "apiv1.RuntimeService",
 	HandlerType: (*RuntimeServiceServer)(nil),
@@ -184,6 +216,10 @@ var _RuntimeService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterProject",
 			Handler:    _RuntimeService_RegisterProject_Handler,
+		},
+		{
+			MethodName: "GetJob",
+			Handler:    _RuntimeService_GetJob_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -150,7 +150,7 @@ func TestDAGService(t *testing.T) {
 
 			// compile to dag and save
 			for idx, compiledJob := range jobs {
-				compiler.On("Compile", jobSpecsAfterPriorityResolve[idx]).Return(compiledJob, nil)
+				compiler.On("Compile", jobSpecsAfterPriorityResolve[idx], projSpec).Return(compiledJob, nil)
 				jobRepo.On("Save", compiledJob).Return(nil)
 			}
 
@@ -240,7 +240,7 @@ func TestDAGService(t *testing.T) {
 			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
 			jobRepoFac.On("New", projSpec).Return(jobRepo, nil)
 			// compile to dag and save the first one
-			compiler.On("Compile", jobSpecsAfterPriorityResolve[0]).Return(jobs[0], nil)
+			compiler.On("Compile", jobSpecsAfterPriorityResolve[0], projSpec).Return(jobs[0], nil)
 			jobRepo.On("Save", jobs[0]).Return(nil)
 			// fetch currently stored
 			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)

@@ -94,6 +94,17 @@
         }
       }
     },
+    "apiv1GetJobResponse": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "$ref": "#/definitions/apiv1ProjectSpecification"
+        },
+        "job": {
+          "$ref": "#/definitions/apiv1JobSpecification"
+        }
+      }
+    },
     "apiv1JobSpecification": {
       "type": "object",
       "properties": {

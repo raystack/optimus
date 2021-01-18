@@ -24,7 +24,7 @@ type Compiler struct {
 
 // Compile use golang template engine to parse and insert job
 // specific details in template file
-func (com *Compiler) Compile(spec models.JobSpec) (job models.Job, err error) {
+func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (job models.Job, err error) {
 	airflowTemplate, err := com.getTemplate()
 	if err != nil {
 		return models.Job{}, err
@@ -39,12 +39,18 @@ func (com *Compiler) Compile(spec models.JobSpec) (job models.Job, err error) {
 	}
 
 	var buf bytes.Buffer
-	if err = tmpl.Execute(&buf, spec); err != nil {
+	if err = tmpl.Execute(&buf, struct {
+		Project models.ProjectSpec
+		Job     models.JobSpec
+	}{
+		Project: proj,
+		Job:     jobSpec,
+	}); err != nil {
 		return models.Job{}, err
 	}
 
 	return models.Job{
-		Name:     spec.Name,
+		Name:     jobSpec.Name,
 		Contents: buf.Bytes(),
 	}, nil
 }

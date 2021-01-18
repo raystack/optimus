@@ -50,9 +50,17 @@ func (srv *Service) Create(spec models.JobSpec, proj models.ProjectSpec) error {
 	return nil
 }
 
+func (srv *Service) GetByName(name string, proj models.ProjectSpec) (models.JobSpec, error) {
+	jobSpec, err := srv.jobSpecRepoFactory.New(proj).GetByName(name)
+	if err != nil {
+		return models.JobSpec{}, errors.Wrapf(err, "failed to retrive job")
+	}
+	return jobSpec, nil
+}
+
 // upload compiles a Job and uploads it to the destination store
-func (srv *Service) upload(jobSpec models.JobSpec, jobRepo store.JobRepository, progressObserver progress.Observer) error {
-	compiledJob, err := srv.compiler.Compile(jobSpec)
+func (srv *Service) upload(jobSpec models.JobSpec, jobRepo store.JobRepository, proj models.ProjectSpec, progressObserver progress.Observer) error {
+	compiledJob, err := srv.compiler.Compile(jobSpec, proj)
 	if err != nil {
 		return err
 	}
@@ -96,7 +104,7 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 
 	var sourceDagNames []string
 	for _, jobSpec := range jobSpecs {
-		if err = srv.upload(jobSpec, jobRepo, progressObserver); err != nil {
+		if err = srv.upload(jobSpec, jobRepo, proj, progressObserver); err != nil {
 			srv.notifyProgress(progressObserver, &EventJobUpload{
 				Job: jobSpec,
 				Err: err,

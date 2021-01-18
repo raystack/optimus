@@ -58,6 +58,11 @@ func New(
 	cmd.AddCommand(versionCommand(l, version))
 	cmd.AddCommand(deployCommand(l, jobSpecRepo))
 	cmd.AddCommand(dumpCommand(l, jobSpecRepo, scheduler))
+	// TODO
+	// if os.Getenv("") == "some env" {
+	// 	//add command
+	// }
+	cmd.AddCommand(getCommand(l))
 
 	return cmd
 }
