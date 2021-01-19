@@ -1,6 +1,7 @@
 package bq2bq
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -47,7 +48,7 @@ func (b *BQ2BQ) GetDescription() string {
 }
 
 func (b *BQ2BQ) GetImage() string {
-	return "odpf/de-bumblebee:e63c6e53f1f011477301a3b0bfe4f4372528ba77"
+	return "odpf/optimus-task-bq2bq:latest"
 }
 
 func (b *BQ2BQ) GetQuestions() []*survey.Question {
@@ -81,11 +82,13 @@ func (b *BQ2BQ) GetQuestions() []*survey.Question {
 
 func (b *BQ2BQ) GetConfig() map[string]string {
 	return map[string]string{
-		"project":     "{{.Project}}",
-		"dataset":     "{{.Dataset}}",
-		"table":       "{{.Table}}",
-		"load_method": "{{.LoadMethod}}",
-		"sql_type":    "STANDARD",
+		"PROJECT":       "{{.Project}}",
+		"DATASET":       "{{.Dataset}}",
+		"TABLE":         "{{.Table}}",
+		"LOAD_METHOD":   "{{.LoadMethod}}",
+		"SQL_TYPE":      "STANDARD",
+		"TASK_TIMEZONE": "UTC",
+		"JOB_LABELS":    "owner=optimus",
 	}
 }
 
@@ -95,12 +98,19 @@ func (b *BQ2BQ) GetAssets() map[string]string {
 	}
 }
 
+// GenerateDestination uses config details to build target table
 func (b *BQ2BQ) GenerateDestination(data models.UnitData) (string, error) {
-	// check if configs exists
-	// .. TODO
-	return fmt.Sprintf("%s.%s.%s", data.Config["project"], data.Config["dataset"], data.Config["table"]), nil
+	_, ok1 := data.Config["PROJECT"]
+	_, ok2 := data.Config["DATASET"]
+	_, ok3 := data.Config["TABLE"]
+	if ok1 && ok2 && ok3 {
+		return fmt.Sprintf("%s.%s.%s", data.Config["PROJECT"], data.Config["DATASET"], data.Config["TABLE"]), nil
+	}
+	return "", errors.New("missing config key required to generate destination")
 }
 
+// GenerateDependencies uses assets to find out the source tables of this
+// transformation. Config is required to generate destination and avoid cycles
 func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
 	// we look for certain patterns in the query source code
 	// in particular, we look for the following constructs

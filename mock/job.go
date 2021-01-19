@@ -33,6 +33,10 @@ func (repo *JobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 	return models.JobSpec{}, args.Error(1)
 }
 
+func (repo *JobSpecRepository) Delete(name string) error {
+	return repo.Called(name).Error(0)
+}
+
 func (repo *JobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	args := repo.Called()
 	if args.Get(0) != nil {

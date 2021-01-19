@@ -62,6 +62,38 @@ type JobSpecTaskWindow struct {
 	TruncateTo string
 }
 
+func (w *JobSpecTaskWindow) GetStart(scheduledAt time.Time) time.Time {
+	s, _ := w.getWindowDate(scheduledAt, w.Size, w.Offset, w.TruncateTo)
+	return s
+}
+
+func (w *JobSpecTaskWindow) GetEnd(scheduledAt time.Time) time.Time {
+	_, e := w.getWindowDate(scheduledAt, w.Size, w.Offset, w.TruncateTo)
+	return e
+}
+
+func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffset time.Duration, windowTruncateTo string) (time.Time, time.Time) {
+	floatingEnd := today
+
+	// apply truncation
+	if windowTruncateTo == "h" {
+		// remove time upto hours
+		floatingEnd = floatingEnd.Truncate(time.Hour)
+	} else if windowTruncateTo == "d" {
+		// remove time upto day
+		floatingEnd = floatingEnd.Truncate(24 * time.Hour)
+	} else if windowTruncateTo == "w" {
+		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * 24 * time.Hour
+		floatingEnd = floatingEnd.Add(nearestSunday)
+		floatingEnd = floatingEnd.Truncate(24 * time.Hour)
+	}
+
+	// TODO: test if these values are correct
+	windowEnd := floatingEnd.Add(windowOffset)
+	windowStart := windowEnd.Add(-windowSize)
+	return windowStart, windowEnd
+}
+
 type JobSpecHook struct {
 	Name   string
 	Config map[string]string

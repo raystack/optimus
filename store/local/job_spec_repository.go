@@ -112,6 +112,12 @@ func (repo *jobRepository) GetByName(jobName string) (models.JobSpec, error) {
 	return jobSpec, nil
 }
 
+// Delete deletes a requested job by name
+func (repo *jobRepository) Delete(jobName string) error {
+	panic("unimplemented")
+	return nil
+}
+
 func (repo *jobRepository) refreshCache() error {
 	repo.cache.dirty = true
 	repo.cache.data = make(map[string]models.JobSpec)

@@ -79,7 +79,8 @@ func (srv *Service) upload(jobSpec models.JobSpec, jobRepo store.JobRepository, 
 // assign proper priority weights, compiles it and uploads it to the destination
 // store
 func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Observer) error {
-	jobSpecs, err := srv.jobSpecRepoFactory.New(proj).GetAll()
+	jobSpecRepo := srv.jobSpecRepoFactory.New(proj)
+	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {
 		return errors.Wrapf(err, "failed to retrive jobs")
 	}
@@ -133,11 +134,15 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	jobsToDelete = jobDeletionFilter(jobsToDelete)
 
 	for _, dagName := range jobsToDelete {
-		srv.notifyProgress(progressObserver, &EventJobRemoteDelete{dagName})
-		err := jobRepo.Delete(dagName)
-		if err != nil {
+		// delete raw spec
+		if err := jobSpecRepo.Delete(dagName); err != nil {
 			return err
 		}
+		// delete compiled spec
+		if err := jobRepo.Delete(dagName); err != nil {
+			return err
+		}
+		srv.notifyProgress(progressObserver, &EventJobRemoteDelete{dagName})
 	}
 	return nil
 }

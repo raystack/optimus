@@ -57,9 +57,18 @@ Configuration inputs can either be passed as command arguments or set as environ
 | ---------------------- | ---------------------- | -------- | ------------------------- |
 | server-port            | SERVER_PORT            | N        | port on which service will listen for http calls, default. `8080` |
 | log-level              | LOG_LEVEL              | N        | log level - DEBUG, INFO, WARNING, ERROR, FATAL
+| ingress-host           | INGRESS_HOST           | Y        |                           |
+| db-host                | DB_HOST                | Y        |                           |
+| db-name                | DB_NAME                | Y        |                           |
+| db-user                | DB_USER                | Y        |                           |
+| db-password            | DB_PASSWORD            | Y        |                           |
 
 You need to export GOOGLE_APPLICATION_CREDENTIALS with path to your service key, without this jazz cannot access GCS and GCR for deployment
 
+### To register a project as an entity
+```
+curl -X POST "localhost/api/v1/project" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"project\": { \"name\": \"project-name\", \"config\": { \"environment\": \"integration\", \"storagePath\": \"gs://bucket-path\" } }}"
+```
 
 ## Built With
 * [Golang](https://golang.org/) - The Programming Language

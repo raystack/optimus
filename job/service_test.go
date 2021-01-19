@@ -245,6 +245,7 @@ func TestDAGService(t *testing.T) {
 			// fetch currently stored
 			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
 			// delete unwanted
+			jobSpecRepo.On("Delete", jobs[1].Name).Return(nil)
 			jobRepo.On("Delete", jobs[1].Name).Return(nil)
 
 			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver)

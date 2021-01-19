@@ -94,14 +94,41 @@
         }
       }
     },
-    "apiv1GetJobResponse": {
+    "apiv1InstanceSpec": {
       "type": "object",
       "properties": {
-        "project": {
-          "$ref": "#/definitions/apiv1ProjectSpecification"
+        "state": {
+          "type": "string"
         },
-        "job": {
-          "$ref": "#/definitions/apiv1JobSpecification"
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1InstanceSpecData"
+          }
+        },
+        "jobName": {
+          "type": "string"
+        }
+      }
+    },
+    "apiv1InstanceSpecData": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "task": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
         }
       }
     },
@@ -179,6 +206,20 @@
         }
       }
     },
+    "apiv1RegisterInstanceResponse": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "$ref": "#/definitions/apiv1ProjectSpecification"
+        },
+        "job": {
+          "$ref": "#/definitions/apiv1JobSpecification"
+        },
+        "instance": {
+          "$ref": "#/definitions/apiv1InstanceSpec"
+        }
+      }
+    },
     "apiv1RegisterProjectRequest": {
       "type": "object",
       "properties": {
@@ -197,6 +238,9 @@
           "type": "string"
         }
       }
+    },
+    "apiv1UpdateInstanceResponse": {
+      "type": "object"
     },
     "apiv1VersionRequest": {
       "type": "object",

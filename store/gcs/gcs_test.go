@@ -2,12 +2,12 @@ package gcs_test
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"cloud.google.com/go/iam"
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/iterator"
 )
@@ -16,33 +16,6 @@ type badReader int
 
 func (r badReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("bad reader")
-}
-
-type objectWriterMock struct {
-	mock.Mock
-}
-
-func (m *objectWriterMock) NewWriter(bucket, path string) (io.WriteCloser, error) {
-	args := m.Called(bucket, path)
-	return args.Get(0).(io.WriteCloser), args.Error(1)
-}
-
-// mock write closer
-type mockwc struct {
-	mock.Mock
-}
-
-func (wc *mockwc) Write(p []byte) (n int, err error) {
-	args := wc.Called()
-	err = args.Error(1)
-	if err != nil {
-		return
-	}
-	return args.Get(0).(io.Writer).Write(p)
-}
-
-func (wc *mockwc) Close() error {
-	return wc.Called().Error(0)
 }
 
 type storageClientMock struct {
