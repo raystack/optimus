@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 const (
@@ -19,28 +19,35 @@ const (
 	baseLibFilePath      = "./templates/scheduler/airflow_1/__lib.py"
 )
 
-type AirflowScheduler struct {
-	GcsClient  *storage.Client
-	TemplateFS http.FileSystem
+type scheduler struct {
+	objWriter  store.ObjectWriter
+	templateFS http.FileSystem
 }
 
-func (a *AirflowScheduler) GetName() string {
+func NewScheduler(lfs http.FileSystem, ow store.ObjectWriter) *scheduler {
+	return &scheduler{
+		templateFS: lfs,
+		objWriter:  ow,
+	}
+}
+
+func (a *scheduler) GetName() string {
 	return "airflow"
 }
 
-func (a *AirflowScheduler) GetJobsDir() string {
+func (a *scheduler) GetJobsDir() string {
 	return "dags"
 }
 
-func (a *AirflowScheduler) GetJobsExtension() string {
+func (a *scheduler) GetJobsExtension() string {
 	return ".py"
 }
 
-func (a *AirflowScheduler) GetTemplatePath() string {
+func (a *scheduler) GetTemplatePath() string {
 	return baseTemplateFilePath
 }
 
-func (a *AirflowScheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
+func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
 	storagePath, ok := proj.Config[models.ProjectStoragePathKey]
 	if !ok {
 		return errors.Errorf("%s not configured for project %s", models.ProjectStoragePathKey, proj.Name)
@@ -58,10 +65,10 @@ func (a *AirflowScheduler) Bootstrap(ctx context.Context, proj models.ProjectSpe
 	return errors.Errorf("unsupported storage config %s in %s of project %s", storagePath, models.ProjectStoragePathKey, proj.Name)
 }
 
-func (a *AirflowScheduler) migrateLibFileInGCS(ctx context.Context, bucket, objDir string) (err error) {
+func (a *scheduler) migrateLibFileInGCS(ctx context.Context, bucket, objDir string) (err error) {
 
 	// copy lib file to GCS
-	baseLibFile, err := a.TemplateFS.Open(baseLibFilePath)
+	baseLibFile, err := a.templateFS.Open(baseLibFilePath)
 	if err != nil {
 		return err
 	}
@@ -74,7 +81,7 @@ func (a *AirflowScheduler) migrateLibFileInGCS(ctx context.Context, bucket, objD
 	}
 
 	// copy to gcs
-	dst := a.GcsClient.Bucket(bucket).Object(objDir).NewWriter(ctx)
+	dst, err := a.objWriter.NewWriter(ctx, bucket, objDir)
 	defer func() {
 		if derr := dst.Close(); derr != nil {
 			if err == nil {

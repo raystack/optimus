@@ -7,24 +7,16 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-type objectWriter interface {
-	NewWriter(bucket, path string) (io.WriteCloser, error)
+type GcsObjectWriter struct {
+	Client *storage.Client
 }
 
-type gcsObjectWriter struct {
-	c *storage.Client
-}
-
-func (gcs *gcsObjectWriter) NewWriter(bucket, path string) (io.WriteCloser, error) {
-	b := gcs.c.Bucket(bucket)
-	if _, err := b.Attrs(context.Background()); err != nil {
+func (gcs *GcsObjectWriter) NewWriter(ctx context.Context, bucket, path string) (io.WriteCloser, error) {
+	b := gcs.Client.Bucket(bucket)
+	if _, err := b.Attrs(ctx); err != nil {
 		return nil, err
 	}
-	return b.Object(path).NewWriter(context.Background()), nil
-}
-
-type objectReader interface {
-	NewReader(bucket, path string) (io.ReadCloser, error)
+	return b.Object(path).NewWriter(ctx), nil
 }
 
 type gcsObjectReader struct {

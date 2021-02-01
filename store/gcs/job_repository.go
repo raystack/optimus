@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/iterator"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 var (
@@ -20,8 +21,8 @@ var (
 )
 
 type JobRepository struct {
-	ObjectReader objectReader
-	ObjectWriter objectWriter
+	ObjectReader store.ObjectReader
+	ObjectWriter store.ObjectWriter
 	Client       stiface.Client
 	Bucket       string
 	Prefix       string
@@ -31,7 +32,7 @@ type JobRepository struct {
 }
 
 func (repo *JobRepository) Save(j models.Job) (err error) {
-	dst, err := repo.ObjectWriter.NewWriter(repo.Bucket, repo.pathFor(j))
+	dst, err := repo.ObjectWriter.NewWriter(context.Background(), repo.Bucket, repo.pathFor(j))
 	if err != nil {
 		return err
 	}
@@ -198,7 +199,7 @@ func cleanPrefix(prefix string) string {
 func NewJobRepository(bucket, prefix, suffix string, c *storage.Client) *JobRepository {
 	return &JobRepository{
 		ObjectReader: &gcsObjectReader{c},
-		ObjectWriter: &gcsObjectWriter{c},
+		ObjectWriter: &GcsObjectWriter{c},
 		Client:       stiface.AdaptClient(c),
 		Bucket:       bucket,
 		Prefix:       cleanPrefix(prefix),

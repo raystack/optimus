@@ -34,13 +34,13 @@ func dumpCommand(l logger, jobSpecRepo store.JobSpecRepository, scheduler models
 				panic(err)
 			}
 
-			compiler := job.NewCompiler(resources.FileSystem, scheduler.GetTemplatePath())
+			compiler := job.NewCompiler(resources.FileSystem, scheduler.GetTemplatePath(), "localhost")
 			for _, spec := range jobSpecs {
 				if spec.Name != args[0] {
 					continue
 				}
 
-				compiled, err := compiler.Compile(spec, models.ProjectSpec{Name: "test"})
+				compiled, err := compiler.Compile(spec, models.ProjectSpec{Name: "local"})
 				if err != nil {
 					panic(err)
 				}

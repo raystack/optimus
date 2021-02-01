@@ -3,6 +3,7 @@ package v1
 import (
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 	pb "github.com/odpf/optimus/api/proto/v1"
 	"github.com/odpf/optimus/models"
@@ -133,6 +134,52 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 		Name:   conf.GetName(),
 		Config: conf.GetConfig(),
 	}
+}
+
+func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpec, error) {
+	data := []*pb.InstanceSpecData{}
+	for _, asset := range spec.Data {
+		data = append(data, &pb.InstanceSpecData{
+			Name:  asset.Name,
+			Value: asset.Value,
+			Task:  asset.Task,
+			Type:  asset.Type,
+		})
+	}
+	schdAt, err := ptypes.TimestampProto(spec.ScheduledAt)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.InstanceSpec{
+		JobName:     spec.Job.Name,
+		ScheduledAt: schdAt,
+		Data:        data,
+		State:       spec.State,
+	}, nil
+}
+
+func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
+	data := []models.InstanceSpecData{}
+	for _, asset := range conf.GetData() {
+		data = append(data, models.InstanceSpecData{
+			Name:  asset.Name,
+			Value: asset.Value,
+			Task:  asset.Task,
+			Type:  asset.Type,
+		})
+	}
+	schdAt, err := ptypes.Timestamp(conf.ScheduledAt)
+	if err != nil {
+		return models.InstanceSpec{}, err
+	}
+	return models.InstanceSpec{
+		Job: models.JobSpec{
+			Name: conf.JobName,
+		},
+		ScheduledAt: schdAt,
+		Data:        data,
+		State:       conf.State,
+	}, nil
 }
 
 func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {

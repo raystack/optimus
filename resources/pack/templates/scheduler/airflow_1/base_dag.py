@@ -63,24 +63,6 @@ dag = DAG(
     catchup = {{ if .Job.Behavior.CatchUp }} True {{ else }} False {{ end }}
 )
 
-
-# TODO: add documentation about usage of init container with K8sPodOperator
-# TODO change curl path to release instead of master
-initContainerVolumeName = "job-init"
-init_container = k8s.V1Container(
-    name='job-init-container',
-    image='alpine:latest',
-    command=[
-        'sh',
-        '-ec',
-        'apk add curl libc6-compat && \
-            curl http://odpf/artifactory/generic-local/optimus-v2/master/linux-amd64/opctl -o /opt/opctl && \
-            chmod +x /opt/opctl && \
-            /opt/opctl get job {{.Job.Name}} --project "{{.Project.Name}}" --output-dir "/job"',
-    ],
-    volume_mounts=[k8s.V1VolumeMount(name=initContainerVolumeName, mount_path='/job', sub_path=None, read_only=False)],
-)
-
 transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -92,20 +74,15 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
     dag=dag,
     in_cluster=True,
     is_delete_operator_pod=True,
-    do_xcom_push=True,
+    do_xcom_push=False,
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        {{range $key,$value := .Job.Task.Config}}"{{$key}}":'{{$value}}',{{- end}}
+        "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME": '{{.Hostname}}',
+        "JOB_DIR":'/data', "PROJECT":'{{.Project.Name}}', "TASK_TYPE":'base',
+        "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
     },
     reattach_on_restart=True,
-    init_containers=[init_container],
-    volumes=[
-        Volume(name=initContainerVolumeName, configs={'empty_dir': {}})
-    ],
-    volume_mounts=[
-        VolumeMount(name=initContainerVolumeName, mount_path="/data", sub_path=None, read_only=False)
-    ],
 )
 
 # hooks loop start

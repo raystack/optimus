@@ -59,6 +59,7 @@ func TestCompiler(t *testing.T) {
 			com := job.NewCompiler(
 				fsm,
 				templatePath,
+				"",
 			)
 			dag, err := com.Compile(spec, projSpec)
 
@@ -78,6 +79,7 @@ func TestCompiler(t *testing.T) {
 			com := job.NewCompiler(
 				fsm,
 				templatePath,
+				"",
 			)
 			_, err := com.Compile(spec, projSpec)
 			assert.Equal(t, err, job.ErrEmptyTemplateFile)

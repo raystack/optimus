@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
+	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -31,6 +34,7 @@ import (
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
+	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/resources"
@@ -42,7 +46,7 @@ import (
 var (
 	// Version of the service
 	// overridden by the build system. see "Makefile"
-	Version = "0"
+	Version = "0.1"
 
 	// AppName is used to prefix Version
 	AppName = "optimus"
@@ -65,6 +69,7 @@ var Config = struct {
 	DBSSLMode     string
 	MaxIdleDBConn string
 	MaxOpenDBConn string
+	IngressHost   string
 }{
 	ServerPort:    "9100",
 	ServerHost:    "0.0.0.0",
@@ -135,6 +140,11 @@ var cfgRules = map[*string]cfg{
 		Cmd:  "max-idle-db-conn",
 		Desc: "maximum allowed idle DB connections",
 	},
+	&Config.IngressHost: {
+		Env:  "INGRESS_HOST",
+		Cmd:  "ingress-host",
+		Desc: "service ingress host for jobs to communicate back to optimus",
+	},
 }
 
 func validateConfig() error {
@@ -200,6 +210,14 @@ func (fac *projectRepoFactory) New() store.ProjectRepository {
 	return postgres.NewProjectRepository(fac.db)
 }
 
+type instanceRepoFactory struct {
+	db *gorm.DB
+}
+
+func (fac *instanceRepoFactory) New(spec models.JobSpec) store.InstanceSpecRepository {
+	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry))
+}
+
 type pipelineLogObserver struct {
 	log logrus.FieldLogger
 }
@@ -252,10 +270,12 @@ func main() {
 	}
 
 	// init default scheduler, should be configurable by user configs later
-	models.Scheduler = &airflow.AirflowScheduler{
-		GcsClient:  googleStorage,
-		TemplateFS: resources.FileSystem,
-	}
+	models.Scheduler = airflow.NewScheduler(
+		resources.FileSystem,
+		&gcs.GcsObjectWriter{
+			Client: googleStorage,
+		},
+	)
 
 	// registered project store repository factory, its a wrapper over a storage
 	// interface
@@ -274,13 +294,26 @@ func main() {
 		}
 	}
 
+	// Logrus entry is used, allowing pre-definition of certain fields by the user.
+	logrusEntry := logrus.NewEntry(log)
+	// Shared options for the logger, with a custom gRPC code to log level function.
+	opts := []grpc_logrus.Option{
+		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
+	}
+	// Make sure that log statements internal to gRPC library are logged using the logrus Logger as well.
+	grpc_logrus.ReplaceGrpcLogger(logrusEntry)
+
 	serverPort, err := strconv.Atoi(Config.ServerPort)
 	if err != nil {
 		panic("invalid server port")
 	}
 	grpcAddr := fmt.Sprintf("%s:%d", Config.ServerHost, serverPort)
-
-	grpcOpts := []grpc.ServerOption{}
+	grpcOpts := []grpc.ServerOption{
+		grpc_middleware.WithUnaryServerChain(
+			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
+			grpc_logrus.UnaryServerInterceptor(logrusEntry, opts...),
+		),
+	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
 
@@ -295,13 +328,19 @@ func main() {
 				gcsClient: googleStorage,
 				schd:      models.Scheduler,
 			},
-			job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath()),
+			job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost),
 			job.NewDependencyResolver(),
 			job.NewPriorityResolver(),
 		),
 		projectRepoFac,
 		v1.NewAdapter(models.TaskRegistry),
 		progressObs,
+		instance.NewService(
+			&instanceRepoFactory{
+				db: dbConn,
+			},
+			time.Now().UTC,
+		),
 	))
 
 	// prepare http proxy

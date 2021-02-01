@@ -20,6 +20,7 @@ var (
 type Compiler struct {
 	templatePath string // template path relative to resources for dag generation
 	fs           http.FileSystem
+	hostname     string
 }
 
 // Compile use golang template engine to parse and insert job
@@ -40,11 +41,13 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 
 	var buf bytes.Buffer
 	if err = tmpl.Execute(&buf, struct {
-		Project models.ProjectSpec
-		Job     models.JobSpec
+		Project  models.ProjectSpec
+		Job      models.JobSpec
+		Hostname string
 	}{
-		Project: proj,
-		Job:     jobSpec,
+		Project:  proj,
+		Job:      jobSpec,
+		Hostname: com.hostname,
 	}); err != nil {
 		return models.Job{}, err
 	}
@@ -65,9 +68,10 @@ func (com *Compiler) getTemplate() ([]byte, error) {
 }
 
 // NewCompiler constructs a new Compiler that satisfies dag.Compiler
-func NewCompiler(fs http.FileSystem, templatePath string) *Compiler {
+func NewCompiler(fs http.FileSystem, templatePath string, hostname string) *Compiler {
 	return &Compiler{
 		fs:           fs,
 		templatePath: templatePath,
+		hostname:     hostname,
 	}
 }

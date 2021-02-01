@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
 	cli "github.com/spf13/cobra"
@@ -58,11 +59,14 @@ func New(
 	cmd.AddCommand(versionCommand(l, version))
 	cmd.AddCommand(deployCommand(l, jobSpecRepo))
 	cmd.AddCommand(dumpCommand(l, jobSpecRepo, scheduler))
-	// TODO
-	// if os.Getenv("") == "some env" {
-	// 	//add command
-	// }
-	cmd.AddCommand(getCommand(l))
+
+	// admin speicific commands
+	switch os.Getenv("OPTIMUS_ADMIN") {
+	case "true":
+	case "on":
+	case "1":
+		cmd.AddCommand(adminCommand(l))
+	}
 
 	return cmd
 }

@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/stretchr/testify/assert"
+	mocked "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	gcsStore "github.com/odpf/optimus/store/gcs"
 )
@@ -19,22 +20,23 @@ func TestJobRepository(t *testing.T) {
 			Name:     "test",
 			Contents: []byte("print('this is a job')"),
 		}
+		ctx := context.Background()
 		t.Run("should write job contents to destination bucket", func(t *testing.T) {
 
 			bucket := "scheduled-tasks"
 			prefix := "resources/jobs"
 
 			var out bytes.Buffer
-			wc := new(mockwc)
+			wc := new(mocked.WriteCloser)
 			defer wc.AssertExpectations(t)
 			wc.On("Write").Return(&out, nil)
 			wc.On("Close").Return(nil)
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			defer ow.AssertExpectations(t)
 
 			objectPath := fmt.Sprintf("%s/%s", prefix, testJob.Name)
-			ow.On("NewWriter", bucket, objectPath).Return(wc, nil)
+			ow.On("NewWriter", ctx, bucket, objectPath).Return(wc, nil)
 
 			repo := &gcsStore.JobRepository{
 				ObjectWriter: ow,
@@ -52,16 +54,16 @@ func TestJobRepository(t *testing.T) {
 			prefix := "resources/jobs"
 
 			var out bytes.Buffer
-			wc := new(mockwc)
+			wc := new(mocked.WriteCloser)
 			defer wc.AssertExpectations(t)
 			wc.On("Write").Return(&out, nil)
 			wc.On("Close").Return(nil)
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			defer ow.AssertExpectations(t)
 
 			objectPath := fmt.Sprintf("%s/%s%s", prefix, testJob.Name, ".py")
-			ow.On("NewWriter", bucket, objectPath).Return(wc, nil)
+			ow.On("NewWriter", ctx, bucket, objectPath).Return(wc, nil)
 
 			repo := &gcsStore.JobRepository{
 				ObjectWriter: ow,
@@ -79,14 +81,14 @@ func TestJobRepository(t *testing.T) {
 			bucket := "foo"
 			prefix := "bar"
 
-			wc := new(mockwc)
+			wc := new(mocked.WriteCloser)
 			defer wc.AssertExpectations(t)
 			wc.On("Write").Return(new(bytes.Buffer), writeError)
 			wc.On("Close").Return(nil)
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			objPath := fmt.Sprintf("%s/%s", prefix, testJob.Name)
-			ow.On("NewWriter", bucket, objPath).Return(wc, nil)
+			ow.On("NewWriter", ctx, bucket, objPath).Return(wc, nil)
 
 			repo := gcsStore.JobRepository{
 				ObjectWriter: ow,
@@ -101,9 +103,9 @@ func TestJobRepository(t *testing.T) {
 			bucketError := errors.New("bucket does not exist")
 			bucket := "foo"
 			prefix := "bar"
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			objPath := fmt.Sprintf("%s/%s", prefix, testJob.Name)
-			ow.On("NewWriter", bucket, objPath).Return(new(mockwc), bucketError)
+			ow.On("NewWriter", ctx, bucket, objPath).Return(new(mocked.WriteCloser), bucketError)
 			defer ow.AssertExpectations(t)
 			repo := gcsStore.JobRepository{
 				ObjectWriter: ow,
@@ -496,7 +498,7 @@ func TestJobRepository(t *testing.T) {
 			},
 		}
 		t.Run("should get list of files and return the content of the files", func(t *testing.T) {
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			defer ow.AssertExpectations(t)
 
 			or := new(objectReaderMock)
@@ -556,7 +558,7 @@ func TestJobRepository(t *testing.T) {
 		t.Run("should return error when failed to get bucket", func(t *testing.T) {
 			expected := errors.New("failed to get bucket attrs")
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			or := new(objectReaderMock)
 
 			bucketHandle := new(storageBucketMock)
@@ -580,7 +582,7 @@ func TestJobRepository(t *testing.T) {
 		t.Run("should return error when failed to get list of the files", func(t *testing.T) {
 			expected := errors.New("an error")
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			defer ow.AssertExpectations(t)
 
 			or := new(objectReaderMock)
@@ -616,7 +618,7 @@ func TestJobRepository(t *testing.T) {
 
 			getReaderError := errors.New("failed to get reader")
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			or := new(objectReaderMock)
 			defer or.AssertExpectations(t)
 
@@ -657,7 +659,7 @@ func TestJobRepository(t *testing.T) {
 		t.Run("should return error when failed to read a file", func(t *testing.T) {
 			jobName := "faulty-job"
 
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			or := new(objectReaderMock)
 			defer or.AssertExpectations(t)
 
@@ -702,7 +704,7 @@ func TestJobRepository(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 		t.Run("should exclude folder and only return files", func(t *testing.T) {
-			ow := new(objectWriterMock)
+			ow := new(mocked.ObjectWriter)
 			defer ow.AssertExpectations(t)
 
 			or := new(objectReaderMock)

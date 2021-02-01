@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/resources"
 	"github.com/odpf/optimus/store/local"
 
 	"github.com/odpf/optimus/cmd/opctl/commands"
@@ -38,7 +39,7 @@ func main() {
 
 	// this is just default scheduler
 	// should be configurable by user if needed
-	models.Scheduler = &airflow.AirflowScheduler{}
+	models.Scheduler = airflow.NewScheduler(resources.FileSystem, nil)
 
 	//init specs
 	jobSpecRepo := local.NewJobSpecRepository(

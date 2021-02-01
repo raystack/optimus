@@ -34,6 +34,7 @@ func Connect(connURL string, maxIdleConnections, maxOpenConnections int) (*gorm.
 	if db, err = gorm.Open("postgres", connURL); err != nil {
 		return nil, err
 	}
+
 	db.DB().SetMaxIdleConns(maxIdleConnections)
 	db.DB().SetMaxOpenConns(maxOpenConnections)
 	db.SingularTable(true)
