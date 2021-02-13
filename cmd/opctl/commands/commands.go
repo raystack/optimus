@@ -13,7 +13,7 @@ import (
 
 var prologueContents = `opctl %s
 
-opctl is a scaffolding tool for creating bigquery job specs
+opctl is a scaffolding tool for creating transformation job specs
 `
 
 var (
@@ -63,7 +63,9 @@ func New(
 	// admin speicific commands
 	switch os.Getenv("OPTIMUS_ADMIN") {
 	case "true":
+		fallthrough
 	case "on":
+		fallthrough
 	case "1":
 		cmd.AddCommand(adminCommand(l))
 	}

@@ -50,7 +50,7 @@ type JobSpecBehavior struct {
 }
 
 type JobSpecTask struct {
-	Unit     ExecUnit
+	Unit     Transformation
 	Config   map[string]string
 	Window   JobSpecTaskWindow
 	Priority int
@@ -185,12 +185,13 @@ type JobService interface {
 	Sync(ProjectSpec, progress.Observer) error
 }
 
-// JobCompiler TODO...
+// JobCompiler takes template file of a scheduler and after applying
+// variables generates a executable input for scheduler.
 type JobCompiler interface {
 	Compile(JobSpec, ProjectSpec) (Job, error)
 }
 
-// Job represents a compiled consumeable item for scheduler
+// Job represents a compiled consumable item for scheduler
 // this is generated from JobSpec
 type Job struct {
 	Name     string

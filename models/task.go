@@ -8,8 +8,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
-// ExecUnit needs to be implemented to register a task
-type ExecUnit interface {
+// Transformation needs to be implemented to register a task
+type Transformation interface {
 	GetName() string
 	GetImage() string
 	GetAssets() map[string]string
@@ -42,37 +42,37 @@ type UnitData struct {
 var (
 	// TaskRegistry are a list of tasks that are supported as base task in a job
 	TaskRegistry = &supportedTasks{
-		data: map[string]ExecUnit{},
+		data: map[string]Transformation{},
 	}
 	ErrUnsupportedTask = errors.New("unsupported task requested")
 )
 
 type supportedTasks struct {
-	data map[string]ExecUnit
+	data map[string]Transformation
 }
 
 type SupportedTaskRepo interface {
-	GetByName(string) (ExecUnit, error)
-	GetAll() []ExecUnit
-	Add(ExecUnit) error
+	GetByName(string) (Transformation, error)
+	GetAll() []Transformation
+	Add(Transformation) error
 }
 
-func (s *supportedTasks) GetByName(name string) (ExecUnit, error) {
+func (s *supportedTasks) GetByName(name string) (Transformation, error) {
 	if unit, ok := s.data[name]; ok {
 		return unit, nil
 	}
 	return nil, errors.Wrap(ErrUnsupportedTask, name)
 }
 
-func (s *supportedTasks) GetAll() []ExecUnit {
-	list := []ExecUnit{}
+func (s *supportedTasks) GetAll() []Transformation {
+	list := []Transformation{}
 	for _, unit := range s.data {
 		list = append(list, unit)
 	}
 	return list
 }
 
-func (s *supportedTasks) Add(newUnit ExecUnit) error {
+func (s *supportedTasks) Add(newUnit Transformation) error {
 	if newUnit.GetName() == "" {
 		return fmt.Errorf("task name cannot be empty")
 	}

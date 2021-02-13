@@ -10,17 +10,17 @@ type SupportedTaskRepo struct {
 	mock.Mock
 }
 
-func (repo *SupportedTaskRepo) GetByName(name string) (models.ExecUnit, error) {
+func (repo *SupportedTaskRepo) GetByName(name string) (models.Transformation, error) {
 	args := repo.Called(name)
-	return args.Get(0).(models.ExecUnit), args.Error(1)
+	return args.Get(0).(models.Transformation), args.Error(1)
 }
 
-func (repo *SupportedTaskRepo) GetAll() []models.ExecUnit {
+func (repo *SupportedTaskRepo) GetAll() []models.Transformation {
 	args := repo.Called()
-	return args.Get(0).([]models.ExecUnit)
+	return args.Get(0).([]models.Transformation)
 }
 
-func (repo *SupportedTaskRepo) Add(t models.ExecUnit) error {
+func (repo *SupportedTaskRepo) Add(t models.Transformation) error {
 	return repo.Called(t).Error(0)
 }
 
