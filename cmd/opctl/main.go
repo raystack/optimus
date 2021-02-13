@@ -63,9 +63,6 @@ func main() {
 
 func initConfig() {
 	viper.SetDefault("host", "https://localhost")
-	viper.SetDefault("dagPath", "./dags")
-	viper.SetDefault("taskPath", "./tasks")
-	viper.SetDefault("tablePath", "./tables")
 
 	viper.SetEnvPrefix("OPTIMUS")
 	viper.SetConfigName("optimus")
