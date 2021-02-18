@@ -20,6 +20,7 @@ import (
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
 
+	_ "github.com/odpf/optimus/ext/hook"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
 )
@@ -44,7 +45,7 @@ func main() {
 	//init specs
 	jobSpecRepo := local.NewJobSpecRepository(
 		&fs.LocalFileSystem{BasePath: filepath.Join(Config.Path, "jobs")},
-		local.NewAdapter(models.TaskRegistry),
+		local.NewAdapter(models.TaskRegistry, models.HookRegistry),
 	)
 
 	cmd := commands.New(

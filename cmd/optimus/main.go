@@ -32,6 +32,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/v1"
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
+	_ "github.com/odpf/optimus/ext/hook"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
 	"github.com/odpf/optimus/instance"
@@ -176,7 +177,7 @@ type jobSpecRepoFactory struct {
 }
 
 func (fac *jobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
-	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.TaskRegistry))
+	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
 }
 
 // jobRepoFactory stores compiled specifications that will be consumed by a
@@ -215,7 +216,7 @@ type instanceRepoFactory struct {
 }
 
 func (fac *instanceRepoFactory) New(spec models.JobSpec) store.InstanceSpecRepository {
-	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry))
+	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
 }
 
 type pipelineLogObserver struct {
@@ -333,7 +334,7 @@ func main() {
 			job.NewPriorityResolver(),
 		),
 		projectRepoFac,
-		v1.NewAdapter(models.TaskRegistry),
+		v1.NewAdapter(models.TaskRegistry, models.HookRegistry),
 		progressObs,
 		instance.NewService(
 			&instanceRepoFactory{

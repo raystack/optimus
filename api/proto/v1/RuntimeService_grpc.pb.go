@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // RuntimeServiceClient is the client API for RuntimeService service.
@@ -42,7 +43,7 @@ func (c *runtimeServiceClient) Version(ctx context.Context, in *VersionRequest, 
 }
 
 func (c *runtimeServiceClient) DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeploySpecificationClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_RuntimeService_serviceDesc.Streams[0], "/apiv1.RuntimeService/DeploySpecification", opts...)
+	stream, err := c.cc.NewStream(ctx, &RuntimeService_ServiceDesc.Streams[0], "/apiv1.RuntimeService/DeploySpecification", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +142,7 @@ type UnsafeRuntimeServiceServer interface {
 }
 
 func RegisterRuntimeServiceServer(s grpc.ServiceRegistrar, srv RuntimeServiceServer) {
-	s.RegisterService(&_RuntimeService_serviceDesc, srv)
+	s.RegisterService(&RuntimeService_ServiceDesc, srv)
 }
 
 func _RuntimeService_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -237,7 +238,10 @@ func _RuntimeService_UpdateInstance_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-var _RuntimeService_serviceDesc = grpc.ServiceDesc{
+// RuntimeService_ServiceDesc is the grpc.ServiceDesc for RuntimeService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "apiv1.RuntimeService",
 	HandlerType: (*RuntimeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{

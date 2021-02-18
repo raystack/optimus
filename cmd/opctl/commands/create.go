@@ -24,6 +24,7 @@ func createCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 		Short: "Create a new resource",
 	}
 	cmd.AddCommand(createJobSubCommand(l, jobSpecRepo))
+	cmd.AddCommand(createHookSubCommand(l, jobSpecRepo))
 	return cmd
 }
 
@@ -37,17 +38,24 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Com
 				return err
 			}
 
-			spec, err := local.NewAdapter(models.TaskRegistry).ToSpec(jobInput)
+			spec, err := local.NewAdapter(models.TaskRegistry, models.HookRegistry).ToSpec(jobInput)
 			if err != nil {
 				return err
 			}
-			return jobSpecRepo.Save(spec)
+			_, err = jobSpecRepo.GetByName(spec.Name)
+			if err == nil {
+				return errors.Errorf("job %s already exists", spec.Name)
+			}
+			if err == models.ErrNoSuchSpec || err == models.ErrNoDAGSpecs {
+				return jobSpecRepo.Save(spec)
+			}
+			return err
 		},
 	}
 }
 
 func createJobSurvey(l logger) (local.Job, error) {
-
+	// TODO: take an additional input "--spec-dir" with default as "." in order to save job specs to a specific directory
 	availableTasks := []string{}
 	for _, task := range models.TaskRegistry.GetAll() {
 		availableTasks = append(availableTasks, task.GetName())
@@ -67,6 +75,7 @@ func createJobSurvey(l logger) (local.Job, error) {
 				Message: "Who is the owner of this job?",
 				Help:    "Email or username",
 			},
+			Validate: survey.Required,
 		},
 		{
 			Name: "task",
@@ -128,6 +137,7 @@ func createJobSurvey(l logger) (local.Job, error) {
 			DependsOnPast: false,
 		},
 		Dependencies: []string{},
+		Hooks:        []local.JobHook{},
 	}
 
 	executionTask, err := models.TaskRegistry.GetByName(jobInput.Task.Name)
@@ -175,6 +185,156 @@ func createJobSurvey(l logger) (local.Job, error) {
 	}
 
 	return jobInput, nil
+}
+
+func createHookSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
+	cmd := &cli.Command{
+		Use:   "hook",
+		Short: "create a new Hook",
+		RunE: func(cmd *cli.Command, args []string) error {
+			selectJobName, err := selectJobSurvey(jobSpecRepo)
+			if err != nil {
+				return err
+			}
+			jobSpec, err := jobSpecRepo.GetByName(selectJobName)
+			if err != nil {
+				return err
+			}
+			jobSpec, err = createHookSurvey(l, jobSpec)
+			if err != nil {
+				return err
+			}
+			return jobSpecRepo.Save(jobSpec)
+		},
+	}
+	return cmd
+}
+
+func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) {
+	emptyJobSpec := models.JobSpec{}
+	var availableHooks []string
+	for _, hook := range models.HookRegistry.GetAll() {
+		availableHooks = append(availableHooks, hook.GetName())
+	}
+	hooksType := []string{models.HookTypePost, models.HookTypePre}
+
+	var qs = []*survey.Question{
+		{
+			Name: "hook",
+			Prompt: &survey.Select{
+				Message: "Which hook to run?",
+				Options: availableHooks,
+			},
+			Validate: survey.Required,
+		},
+		{
+			Name: "hookType",
+			Prompt: &survey.Select{
+				Message: "Where should the hook run with respect to task?",
+				Options: hooksType,
+				Default: hooksType[0],
+			},
+			Validate: survey.Required,
+		},
+	}
+	baseInputsRaw := make(map[string]interface{})
+	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
+		return emptyJobSpec, err
+	}
+	baseInputs, err := convertToStringMap(baseInputsRaw)
+	if err != nil {
+		return emptyJobSpec, err
+	}
+
+	selectedHook := baseInputs["hook"]
+	if ifHookAlreadyExistsForJob(jobSpec, selectedHook) {
+		return emptyJobSpec, errors.Errorf("hook %s already exists for this job", selectedHook)
+	}
+
+	executionHook, err := models.HookRegistry.GetByName(selectedHook)
+	if err != nil {
+		return emptyJobSpec, err
+	}
+
+	questions := executionHook.GetQuestions()
+	if len(questions) > 0 {
+		taskInputsRaw := make(map[string]interface{})
+		if err := survey.Ask(questions, &taskInputsRaw); err != nil {
+			return emptyJobSpec, err
+		}
+
+		taskInputs, err := convertToStringMap(taskInputsRaw)
+		if err != nil {
+			return emptyJobSpec, err
+		}
+
+		hookConfig := map[string]string{}
+		rawConfigs, err := executionHook.GetConfig(models.UnitData{
+			Config: jobSpec.Task.Config,
+			Assets: jobSpec.Assets.ToMap(),
+		})
+		if err != nil {
+			return emptyJobSpec, err
+		}
+		for key, val := range rawConfigs {
+			tmpl, err := template.New(key).Parse(val)
+			if err != nil {
+				return emptyJobSpec, err
+			}
+			var buf bytes.Buffer
+			if err = tmpl.Execute(&buf, taskInputs); err != nil {
+				return emptyJobSpec, err
+			}
+			hookConfig[key] = strings.TrimSpace(buf.String())
+		}
+		jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
+			Unit:   executionHook,
+			Type:   baseInputs["hookType"],
+			Config: hookConfig,
+		})
+	}
+	return jobSpec, nil
+}
+
+// selectJobSurvey runs a survey to select a job and returns its name
+func selectJobSurvey(jobSpecRepo store.JobSpecRepository) (string, error) {
+	var allJobNames []string
+	jobs, err := jobSpecRepo.GetAll()
+	if err != nil {
+		return "", err
+	}
+	for _, job := range jobs {
+		allJobNames = append(allJobNames, job.Name)
+	}
+
+	var qs = []*survey.Question{
+		{
+			Name: "job",
+			Prompt: &survey.Select{
+				Message: "Select a Job",
+				Options: allJobNames,
+			},
+			Validate: survey.Required,
+		},
+	}
+	baseInputsRaw := make(map[string]interface{})
+	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
+		return "", err
+	}
+	baseInputs, err := convertToStringMap(baseInputsRaw)
+	if err != nil {
+		return "", err
+	}
+	return baseInputs["job"], nil
+}
+
+func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool {
+	for _, hook := range jobSpec.Hooks {
+		if hook.Unit.GetName() == newHookName {
+			return true
+		}
+	}
+	return false
 }
 
 func convertToStringMap(inputs map[string]interface{}) (map[string]string, error) {

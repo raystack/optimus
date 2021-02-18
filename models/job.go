@@ -15,6 +15,7 @@ var (
 	ErrNoSuchJob   = errors.New("job not found")
 	ErrNoJobs      = errors.New("no job found")
 	ErrNoSuchAsset = errors.New("asset not found")
+	ErrNoSuchHook  = errors.New("hook not found")
 )
 
 const (
@@ -34,8 +35,16 @@ type JobSpec struct {
 	Task         JobSpecTask
 	Dependencies map[string]JobSpecDependency
 	Assets       JobAssets
+	Hooks        []JobSpecHook
+}
 
-	Hooks []JobSpecHook
+func (js *JobSpec) GetHookByName(name string) (JobSpecHook, error) {
+	for _, hook := range js.Hooks {
+		if hook.Unit.GetName() == name {
+			return hook, nil
+		}
+	}
+	return JobSpecHook{}, ErrNoSuchHook
 }
 
 type JobSpecSchedule struct {
@@ -95,8 +104,9 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 }
 
 type JobSpecHook struct {
-	Name   string
+	Type   string
 	Config map[string]string
+	Unit   HookUnit
 }
 
 type JobSpecAsset struct {

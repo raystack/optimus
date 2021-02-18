@@ -11,6 +11,7 @@ import (
 
 type Adapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
+	supportedHookRepo models.SupportedHookRepo
 }
 
 func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, error) {
@@ -44,6 +45,12 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
+	// adapt hooks
+	hooks, err := adapt.fromHookProto(spec.Hooks)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+
 	return models.JobSpec{
 		Version: int(spec.Version),
 		Name:    spec.Name,
@@ -64,6 +71,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 			Window: window,
 		},
 		Dependencies: dependencies,
+		Hooks:        hooks,
 	}, nil
 }
 
@@ -96,6 +104,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	if spec.Task.Unit == nil {
 		return nil, errors.New("task unit cannot be nil")
 	}
+
 	conf := &pb.JobSpecification{
 		Version:          int32(spec.Version),
 		Name:             spec.Name,
@@ -111,6 +120,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []string{},
+		Hooks:            adapt.toHookProto(spec.Hooks),
 	}
 	if spec.Schedule.EndDate != nil {
 		conf.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)
@@ -182,8 +192,36 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 	}, nil
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {
+func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobSpecHook, error) {
+	var hooks []models.JobSpecHook
+	for _, hook := range hooksProto {
+		hookUnit, err := adapt.supportedHookRepo.GetByName(hook.Name)
+		if err != nil {
+			return nil, err
+		}
+		hooks = append(hooks, models.JobSpecHook{
+			Type:   hook.Type,
+			Config: hook.Config,
+			Unit:   hookUnit,
+		})
+	}
+	return hooks, nil
+}
+
+func (adapt *Adapter) toHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
+	for _, hook := range hooks {
+		protoHooks = append(protoHooks, &pb.JobSpecHook{
+			Name:   hook.Unit.GetName(),
+			Type:   hook.Type,
+			Config: hook.Config,
+		})
+	}
+	return
+}
+
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *Adapter {
 	return &Adapter{
 		supportedTaskRepo: supportedTaskRepo,
+		supportedHookRepo: supportedHookRepo,
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"github.com/odpf/optimus/instance"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -22,6 +23,7 @@ var (
 	assetOutputDir string
 	scheduledAt    string
 	runType        string
+	runName        string
 
 	taskInputDirectory  = "in"
 	taskOutputDirectory = "out"
@@ -64,6 +66,8 @@ func getAdminCreateInstanceCommand(l logger) *cli.Command {
 	cmd.MarkFlagRequired("scheduled-at")
 	cmd.Flags().StringVar(&runType, "type", "", "type of task, could be base/hook")
 	cmd.MarkFlagRequired("type")
+	cmd.Flags().StringVar(&runName, "name", "", "name of task, could be bq2bq/transporter/predator")
+	cmd.MarkFlagRequired("name")
 	cmd.Flags().StringVar(&deployHost, "host", "", "deployment service endpoint url")
 	cmd.MarkFlagRequired("host")
 
@@ -107,7 +111,7 @@ func getInstanceCreateRequest(l logger, jobName, inputDirectory string) (err err
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter(models.TaskRegistry)
+	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry)
 
 	// fetch Instance by calling the optimus API
 	jobResponse, err := runtime.RegisterInstance(ctx, &pb.RegisterInstanceRequest{
@@ -130,38 +134,25 @@ func getInstanceCreateRequest(l logger, jobName, inputDirectory string) (err err
 		return errors.Wrapf(err, "failed to create directory at %s", inputDirectory)
 	}
 
-	// write all asset files locally
-	for _, jobAsset := range jobSpec.Assets.GetAll() {
-		filePath := filepath.Join(inputDirectory, jobAsset.Name)
-		if err := writeToFileFn(filePath, jobAsset.Value, l.Writer()); err != nil {
+	project := adapt.FromProjectProto(jobResponse.GetProject())
+	instanceSpec, err := adapt.FromInstanceProto(jobResponse.GetInstance())
+	if err != nil {
+		return err
+	}
+	envMap, fileMap, err := instance.NewDataBuilder().GetData(project, jobSpec, instanceSpec, runType, runName)
+	if err != nil {
+		return err
+	}
+
+	// write all files in the fileMap to respective files
+	for fileName, fileContent := range fileMap {
+		filePath := filepath.Join(inputDirectory, fileName)
+		if err := writeToFileFn(filePath, fileContent, l.Writer()); err != nil {
 			return errors.Wrapf(err, "failed to write asset file at %s", filePath)
 		}
 	}
 
-	// for collecting .env vars
-	envMap := map[string]string{}
-	for key, val := range jobSpec.Task.Config {
-		// TODO(not unless we support config macro conversions):
-		// templatize task config variables
-		envMap[key] = val
-	}
-
-	// get the Data from stored JobRun and write it into files.
-	if jobResponse.GetInstance().GetData() != nil {
-		for _, jobRunData := range jobResponse.GetInstance().GetData() {
-			switch jobRunData.Type {
-			case models.InstanceDataTypeFile:
-				filePath := filepath.Join(inputDirectory, jobRunData.Name)
-				if err := writeToFileFn(filepath.Join(inputDirectory, jobRunData.Name), jobRunData.Value, l.Writer()); err != nil {
-					return errors.Wrapf(err, "failed to write asset file at %s", filePath)
-				}
-			case models.InstanceDataTypeEnv:
-				envMap[jobRunData.Name] = jobRunData.Value
-			}
-		}
-	}
-
-	// build .env file
+	// write all env into a file
 	envFileBlob := ""
 	for key, val := range envMap {
 		envFileBlob += fmt.Sprintf("%s=\"%s\"\n", key, val)

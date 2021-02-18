@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,6 +42,7 @@ task:
     truncate_to: d
 dependencies:
 - bar
+hooks: []
 `
 
 func TestSpecRepository(t *testing.T) {
@@ -49,7 +51,7 @@ func TestSpecRepository(t *testing.T) {
 	execUnit.On("GetName").Return("foo")
 	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", "foo").Return(execUnit, nil)
-	adapter := local.NewAdapter(allTasksRepo)
+	adapter := local.NewAdapter(allTasksRepo, nil)
 
 	jobConfig := local.Job{
 		Version: 1,
@@ -111,6 +113,7 @@ func TestSpecRepository(t *testing.T) {
 			"query.sql": "select * from 1",
 		}),
 	}
+
 	t.Run("Save", func(t *testing.T) {
 		t.Run("should write the file to ${ROOT}/${name}.yaml", func(t *testing.T) {
 			fs := new(mock.FileSystem)
@@ -119,8 +122,8 @@ func TestSpecRepository(t *testing.T) {
 			ast := new(mock.File)
 			bufAst := new(bytes.Buffer)
 
-			fs.On("Create", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(ast, nil)
-			fs.On("Create", filepath.Join(spec.Name, local.SpecFileName)).Return(dst, nil)
+			fs.On("OpenForWrite", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(ast, nil)
+			fs.On("OpenForWrite", filepath.Join(spec.Name, local.SpecFileName)).Return(dst, nil)
 			defer fs.AssertExpectations(t)
 
 			ast.On("Write").Return(bufAst)
@@ -153,14 +156,77 @@ func TestSpecRepository(t *testing.T) {
 		t.Run("should return error if opening the file fails", func(t *testing.T) {
 			fs := new(mock.FileSystem)
 			fsErr := errors.New("I/O error")
-			fs.On("Create", filepath.Join(jobConfig.Name, local.AssetFolderName, "query.sql")).Return(new(mock.File), fsErr)
+			fs.On("OpenForWrite", filepath.Join(jobConfig.Name, local.AssetFolderName, "query.sql")).Return(new(mock.File), fsErr)
 			defer fs.AssertExpectations(t)
 
 			repo := local.NewJobSpecRepository(fs, adapter)
 			err := repo.Save(spec)
 			assert.Equal(t, fsErr, err)
 		})
+		t.Run("should update the file with hooks in the same spec ${ROOT}/${name}.yaml", func(t *testing.T) {
+			fs := new(mock.FileSystem)
+			dst := new(mock.File)       // job spec file
+			buf := new(bytes.Buffer)    // job buffer
+			ast := new(mock.File)       // asset file
+			bufAst := new(bytes.Buffer) // asset buffer
+
+			defer fs.AssertExpectations(t)
+			defer ast.AssertExpectations(t)
+			defer dst.AssertExpectations(t)
+
+			fs.On("OpenForWrite", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(ast, nil)
+			ast.On("Write").Return(bufAst)
+			ast.On("Close").Return(nil)
+
+			fs.On("OpenForWrite", filepath.Join(spec.Name, local.SpecFileName)).Return(dst, nil)
+			dst.On("Write").Return(buf)
+			dst.On("Close").Return(nil)
+
+			repo := local.NewJobSpecRepository(fs, adapter)
+			err := repo.Save(spec)
+			assert.Nil(t, err)
+			assert.Equal(t, testContents, buf.String())
+			asset, _ := spec.Assets.GetByName("query.sql")
+			assert.Equal(t, asset.Value, bufAst.String())
+
+			// update the spec.
+			hookName := "g-hook"
+			hookUnit1 := new(mock.HookUnit)
+			hookUnit1.On("GetName").Return(hookName)
+			allHooksRepo := new(mock.SupportedHookRepo)
+			allHooksRepo.On("GetByName", hookName).Return(hookUnit1, nil)
+			adapterNew := local.NewAdapter(allTasksRepo, allHooksRepo)
+
+			specCopy := spec
+			specCopy.Hooks = []models.JobSpecHook{
+				{Type: models.HookTypePre, Config: map[string]string{"key": "value"}, Unit: hookUnit1},
+			}
+
+			fsNew := new(mock.FileSystem)
+			dstNew := new(mock.File)
+			bufNew := new(bytes.Buffer)
+			astNew := new(mock.File)       // asset file
+			bufAstNew := new(bytes.Buffer) // asset buffer
+			defer fsNew.AssertExpectations(t)
+			defer dstNew.AssertExpectations(t)
+			defer astNew.AssertExpectations(t)
+
+			fsNew.On("OpenForWrite", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(astNew, nil)
+			astNew.On("Write").Return(bufAstNew)
+			astNew.On("Close").Return(nil)
+
+			fsNew.On("OpenForWrite", filepath.Join(specCopy.Name, local.SpecFileName)).Return(dstNew, nil)
+			dstNew.On("Write").Return(bufNew)
+			dstNew.On("Close").Return(nil)
+
+			repoNew := local.NewJobSpecRepository(fsNew, adapterNew)
+			err = repoNew.Save(specCopy)
+			assert.Nil(t, err)
+			testContentsNew := strings.ReplaceAll(testContents, "hooks: []\n", "hooks:\n- name: g-hook\n  type: pre\n  config:\n    key: value\n")
+			assert.Equal(t, testContentsNew, bufNew.String())
+		})
 	})
+
 	t.Run("GetByName", func(t *testing.T) {
 		t.Run("should open the file ${ROOT}/${name}.yaml and parse its contents", func(t *testing.T) {
 			jobfile := new(mock.File)
@@ -367,7 +433,9 @@ task:
     size: 24h
     offset: "0"
     truncate_to: d
-dependencies: []`,
+dependencies: []
+hooks: []
+`,
 		}
 		jobspecs := []models.JobSpec{
 			{

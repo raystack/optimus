@@ -46,30 +46,30 @@ gcloud_secret = Secret(
 
 
 default_args = {
-    "owner": "{{.Job.Owner}}",
-    "depends_on_past": {{- if .Job.Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
+    "owner": "mee@mee",
+    "depends_on_past": False ,
     "retries": 3,
     "retry_delay": timedelta(seconds=300),
-    "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
+    "start_date": datetime.strptime("2000-11-11", "%Y-%m-%d"),
     "on_failure_callback": alert_failed_to_slack,
-    "priority_weight": {{.Job.Task.Priority}},
+    "priority_weight": 2000,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
 dag = DAG(
-    dag_id="{{.Job.Name}}",
+    dag_id="foo",
     default_args=default_args,
-    schedule_interval="{{.Job.Schedule.Interval}}",
-    catchup ={{ if .Job.Behavior.CatchUp }} True{{ else }} False{{ end }}
+    schedule_interval="* * * * *",
+    catchup = True
 )
 
-transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
+transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{}".format("{{.Job.Task.Unit.GetImage}}"),
+    image = "{}".format("odpf/namespace/image:latest"),
     cmds=[],
-    name="{{.Job.Task.Unit.GetName | replace "_" "-" }}",
-    task_id="{{.Job.Task.Unit.GetName}}",
+    name="bq",
+    task_id="bq",
     get_logs=True,
     dag=dag,
     in_cluster=True,
@@ -78,23 +78,23 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME": '{{.Hostname}}',
-        "JOB_DIR":'/data', "PROJECT":'{{.Project.Name}}',
-        "TASK_TYPE":'base', "TASK_NAME": "{{.Job.Task.Unit.GetName}}",
-        "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "TASK_TYPE":'base', "TASK_NAME": "bq",
+        "SCHEDULED_AT":'{{ next_execution_date }}',
     },
     reattach_on_restart=True,
 )
 
 # hooks loop start
-{{ range $_, $t := .Job.Hooks }}
-hook_{{$t.Unit.GetName}} =  SuperKubernetesPodOperator(
+
+hook_transporter =  SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{{$t.Unit.GetImage}}",
+    image = "odpf/namespace/hook-image:latest",
     cmds=[],
-    name="hook_{{$t.Unit.GetName}}",
-    task_id="hook_{{$t.Unit.GetName}}",
+    name="hook_transporter",
+    task_id="hook_transporter",
     get_logs=True,
     dag=dag,
     in_cluster=True,
@@ -103,46 +103,47 @@ hook_{{$t.Unit.GetName}} =  SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOSTNAME": '{{$.Hostname}}',
-        "JOB_DIR":'/data', "PROJECT":'{{$.Project.Name}}',
-        "TASK_TYPE":'hook', "TASK_NAME": "{{$t.Unit.GetName}}",
-        "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "TASK_TYPE":'hook', "TASK_NAME": "transporter",
+        "SCHEDULED_AT":'{{ next_execution_date }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
    },
    reattach_on_restart=True,
 )
-{{- end }}
+hook_predator =  SuperKubernetesPodOperator(
+    image_pull_policy="Always",
+    namespace = conf.get('kubernetes', 'namespace', fallback="default"),
+    image = "odpf/namespace/predator-image:latest",
+    cmds=[],
+    name="hook_predator",
+    task_id="hook_predator",
+    get_logs=True,
+    dag=dag,
+    in_cluster=True,
+    is_delete_operator_pod=True,
+    do_xcom_push=False,
+    secrets=[gcloud_secret],
+    env_vars={
+        "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "TASK_TYPE":'hook', "TASK_NAME": "predator",
+        "SCHEDULED_AT":'{{ next_execution_date }}',
+        # rest of the env vars are pulled from the container by making a GRPC call to optimus
+   },
+   reattach_on_restart=True,
+)
 
 
 # set inter-dependencies of task and hooks
-{{- range $_, $t := .Job.Hooks }}
-{{- if eq $t.Type $.HookTypePre }}
-hook_{{$t.Unit.GetName}} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
-{{- end -}}
-{{- if eq $t.Type $.HookTypePost }}
-transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$t.Unit.GetName}}
-{{- end -}}
-{{- end }}
+hook_transporter >> transformation_bq
+transformation_bq >> hook_predator
 # hooks loop ends
 
 # create upstream sensors
-{{- range $i, $t := $.Job.Dependencies}}
-wait_{{$t.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    external_dag_id = "{{$t.Job.Name}}",
-    window_size = {{$t.Job.Task.Window.Size.Hours }},
-    window_offset = {{$t.Job.Task.Window.Offset.Hours }},
-    window_truncate_upto = "{{$t.Job.Task.Window.TruncateTo}}",
-    task_id = "wait-{{$t.Job.Name}}-{{$t.Job.Task.Unit.GetName}}",
-    poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
-    timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    dag=dag
-)
-{{- end}}
 
 # arrange inter task dependencies
 ####################################
 
 # upstream sensors -> base transformation task
-{{- range $i, $t := $.Job.Dependencies }}
-wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
-{{- end}}

@@ -60,7 +60,7 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err e
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter(models.TaskRegistry)
+	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry)
 
 	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {

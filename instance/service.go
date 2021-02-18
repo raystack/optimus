@@ -7,6 +7,12 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
+const (
+	ConfigKeyDstart        = "DSTART"
+	ConfigKeyDend          = "DEND"
+	ConfigKeyExecutionTime = "EXECUTION_TIME"
+)
+
 type InstanceSpecRepoFactory interface {
 	New(models.JobSpec) store.InstanceSpecRepository
 }
@@ -26,17 +32,17 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time) (model
 		// append optimus configs based on the values of a specific JobRun eg, jobScheduledTime
 		Data: []models.InstanceSpecData{
 			{
-				Name:  "EXECUTION_TIME",
+				Name:  ConfigKeyExecutionTime,
 				Value: s.Now().Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
-				Name:  "DSTART",
+				Name:  ConfigKeyDstart,
 				Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
-				Name:  "DEND",
+				Name:  ConfigKeyDend,
 				Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},

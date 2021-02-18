@@ -35,6 +35,7 @@ type Job struct {
 	WindowTruncateTo string
 
 	Assets datatypes.JSON
+	Hooks  datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -69,6 +70,33 @@ func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
 	}
 }
 
+type JobHook struct {
+	Name   string
+	Type   string
+	Config map[string]string
+}
+
+// ToSpec converts the postgres' JobHook representation to the optimus' models.JobSpecHook
+func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobSpecHook, error) {
+	hookUnit, err := supportedHookRepo.GetByName(a.Name)
+	if err != nil {
+		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+	}
+	return models.JobSpecHook{
+		Config: a.Config,
+		Type:   a.Type,
+		Unit:   hookUnit,
+	}, nil
+}
+
+func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
+	return JobHook{
+		Name:   spec.Unit.GetName(),
+		Config: spec.Config,
+		Type:   spec.Type,
+	}
+}
+
 type jobSpecRepository struct {
 	db      *gorm.DB
 	project models.ProjectSpec
@@ -95,9 +123,7 @@ func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
 	if err != nil {
 		return err
 	}
-	if err == nil {
-		resource.ID = existingResource.ID
-	}
+	resource.ID = existingResource.ID
 	return repo.db.Model(resource).Updates(resource).Error
 }
 
