@@ -4,6 +4,11 @@
     "title": "v1/RuntimeService.proto",
     "version": "1.0"
   },
+  "tags": [
+    {
+      "name": "RuntimeService"
+    }
+  ],
   "schemes": [
     "http"
   ],
@@ -132,6 +137,23 @@
         }
       }
     },
+    "apiv1JobSpecHook": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "apiv1JobSpecification": {
       "type": "object",
       "properties": {
@@ -188,6 +210,12 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          }
+        },
+        "hooks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1JobSpecHook"
           }
         }
       }

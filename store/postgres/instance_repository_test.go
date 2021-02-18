@@ -55,7 +55,7 @@ func TestInstanceRepository(t *testing.T) {
 	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
 	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
-	adapter := NewAdapter(allTasksRepo)
+	adapter := NewAdapter(allTasksRepo, nil)
 
 	jobConfigs := []models.JobSpec{
 		{

@@ -51,10 +51,20 @@ func TestJobRepository(t *testing.T) {
 	execUnit2 := new(mock.ExecutionUnit)
 	execUnit2.On("GetName").Return(tTask)
 
+	gHook := "g-hook"
+	hookUnit1 := new(mock.HookUnit)
+	hookUnit1.On("GetName").Return(gHook)
+	tHook := "g-hook"
+	hookUnit2 := new(mock.HookUnit)
+	hookUnit2.On("GetName").Return(tHook)
+
 	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
 	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
-	adapter := NewAdapter(allTasksRepo)
+	allHooksRepo := new(mock.SupportedHookRepo)
+	allHooksRepo.On("GetByName", gHook).Return(hookUnit1, nil)
+	allHooksRepo.On("GetByName", tHook).Return(hookUnit2, nil)
+	adapter := NewAdapter(allTasksRepo, allHooksRepo)
 
 	testConfigs := []models.JobSpec{
 		{
@@ -72,7 +82,15 @@ func TestJobRepository(t *testing.T) {
 						Name:  "query.sql",
 						Value: "select * from 1",
 					},
-				}),
+				},
+			),
+			Hooks: []models.JobSpecHook{
+				{
+					Type:   models.HookTypePre,
+					Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
+					Unit:   hookUnit1,
+				},
+			},
 		},
 		{
 			Name: "",
@@ -90,24 +108,32 @@ func TestJobRepository(t *testing.T) {
 	}
 
 	t.Run("Insert", func(t *testing.T) {
-		db := DBSetup()
-		defer db.Close()
-		testModels := []models.JobSpec{}
-		testModels = append(testModels, testConfigs...)
+		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			testModels := []models.JobSpec{}
+			testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec, adapter)
+			repo := NewJobRepository(db, projectSpec, adapter)
 
-		err := repo.Insert(testModels[0])
-		assert.Nil(t, err)
+			err := repo.Insert(testModels[0])
+			assert.Nil(t, err)
 
-		err = repo.Insert(testModels[1])
-		assert.NotNil(t, err)
+			err = repo.Insert(testModels[1])
+			assert.NotNil(t, err)
 
-		checkModel, err := repo.GetByID(testModels[0].ID)
-		assert.Nil(t, err)
-		assert.Equal(t, "g-optimus-id", checkModel.Name)
-		assert.Equal(t, gTask, checkModel.Task.Unit.GetName())
-		assert.Equal(t, "query.sql", checkModel.Assets.GetAll()[0].Name)
+			checkModel, err := repo.GetByID(testModels[0].ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "g-optimus-id", checkModel.Name)
+			assert.Equal(t, gTask, checkModel.Task.Unit.GetName())
+			assert.Equal(t, "query.sql", checkModel.Assets.GetAll()[0].Name)
+
+			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Type)
+			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
+			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
+			assert.Equal(t, 1, len(checkModel.Hooks))
+		})
 	})
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
@@ -178,7 +204,68 @@ func TestJobRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 		})
+		t.Run("should update same job with hooks when provided separately", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			testModel := testConfigs[2]
+			repo := NewJobRepository(db, projectSpec, adapter)
+
+			err := repo.Insert(testModel)
+			assert.Nil(t, err)
+			checkModel, err := repo.GetByID(testModel.ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "t-optimus-id", checkModel.Name)
+			assert.Equal(t, tTask, checkModel.Task.Unit.GetName())
+			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
+			assert.Equal(t, 0, len(checkModel.Hooks))
+
+			// add a hook and it should be saved and retrievable
+			testModel.Hooks = []models.JobSpecHook{
+				{
+					Type:   models.HookTypePre,
+					Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
+					Unit:   hookUnit1,
+				},
+			}
+			err = repo.Save(testModel)
+			assert.Nil(t, err)
+			checkModel, err = repo.GetByID(testModel.ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "t-optimus-id", checkModel.Name)
+			assert.Equal(t, tTask, checkModel.Task.Unit.GetName())
+			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
+			assert.Equal(t, 1, len(checkModel.Hooks))
+			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Type)
+			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
+			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
+
+			// add one more hook and it should be saved and retrievable
+			testModel.Hooks = append(testModel.Hooks, models.JobSpecHook{
+				Type:   models.HookTypePre,
+				Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000", "KAFKA_TOPIC": "my_topic.name.kafka"},
+				Unit:   hookUnit1,
+			})
+			err = repo.Save(testModel)
+			assert.Nil(t, err)
+			checkModel, err = repo.GetByID(testModel.ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "t-optimus-id", checkModel.Name)
+			assert.Equal(t, tTask, checkModel.Task.Unit.GetName())
+			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
+			assert.Equal(t, 2, len(checkModel.Hooks))
+			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Type)
+			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
+			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
+			assert.Equal(t, tHook, checkModel.Hooks[1].Unit.GetName())
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[1].Type)
+			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[1].Config["FILTER_EXPRESSION"])
+			assert.Equal(t, "my_topic.name.kafka", checkModel.Hooks[1].Config["KAFKA_TOPIC"])
+			assert.Equal(t, hookUnit1, checkModel.Hooks[1].Unit)
+		})
 	})
+
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
@@ -195,6 +282,7 @@ func TestJobRepository(t *testing.T) {
 		assert.Equal(t, "g-optimus-id", checkModel.Name)
 		assert.Equal(t, "this", checkModel.Task.Config["do"])
 	})
+
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()

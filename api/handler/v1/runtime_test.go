@@ -138,7 +138,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
-				v1.NewAdapter(models.TaskRegistry),
+				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				instanceService,
 			)
@@ -147,7 +147,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resp, err := runtimeServiceServer.RegisterInstance(context.TODO(), &versionRequest)
 			assert.Nil(t, err)
 
-			adapter := v1.NewAdapter(models.TaskRegistry)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil)
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
 			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
 			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
@@ -167,7 +167,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					"bucket": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(models.TaskRegistry)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil)
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("Save", projectSpec).Return(nil)
@@ -187,7 +187,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
-				v1.NewAdapter(models.TaskRegistry),
+				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				nil,
 			)
@@ -209,7 +209,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					"bucket": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(models.TaskRegistry)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil)
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("Save", projectSpec).Return(errors.New("a random error"))
@@ -229,7 +229,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
-				v1.NewAdapter(models.TaskRegistry),
+				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				nil,
 			)
@@ -301,7 +301,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			models.TaskRegistry.Add(execUnit1)
-			adapter := v1.NewAdapter(models.TaskRegistry)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,

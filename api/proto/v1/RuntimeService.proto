@@ -55,6 +55,12 @@ message ProjectSpecification {
     map<string, string> config = 2;
 }
 
+message JobSpecHook {
+    string name = 1;
+    string type = 2;
+    map<string, string> config = 3;
+}
+
 message JobSpecification {
     int32 version = 1;
     string name = 2;
@@ -76,6 +82,7 @@ message JobSpecification {
 
     repeated string dependencies = 14;
     map<string, string> assets = 15;
+    repeated JobSpecHook hooks = 16;
 }
 
 message DeploySpecificationResponse {

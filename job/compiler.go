@@ -41,13 +41,17 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 
 	var buf bytes.Buffer
 	if err = tmpl.Execute(&buf, struct {
-		Project  models.ProjectSpec
-		Job      models.JobSpec
-		Hostname string
+		Project      models.ProjectSpec
+		Job          models.JobSpec
+		Hostname     string
+		HookTypePre  string
+		HookTypePost string
 	}{
-		Project:  proj,
-		Job:      jobSpec,
-		Hostname: com.hostname,
+		Project:      proj,
+		Job:          jobSpec,
+		Hostname:     com.hostname,
+		HookTypePre:  models.HookTypePre,
+		HookTypePost: models.HookTypePost,
 	}); err != nil {
 		return models.Job{}, err
 	}

@@ -46,7 +46,7 @@ func (repo *jobRepository) Save(job models.JobSpec) error {
 
 	// save assets
 	for assetName, assetValue := range config.Asset {
-		assetFd, err := repo.fs.Create(repo.assetFilePath(config.Name, assetName))
+		assetFd, err := repo.fs.OpenForWrite(repo.assetFilePath(config.Name, assetName))
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (repo *jobRepository) Save(job models.JobSpec) error {
 
 	// save job
 	fileName := repo.jobFilePath(config.Name)
-	fd, err := repo.fs.Create(fileName)
+	fd, err := repo.fs.OpenForWrite(fileName)
 	if err != nil {
 		return err
 	}

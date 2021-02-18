@@ -17,6 +17,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
 	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/iancoleman/strcase v0.1.3
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/lib/pq v1.9.0
@@ -30,6 +31,7 @@ require (
 	github.com/spf13/cobra v1.1.2
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
+	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/text v0.3.5 // indirect

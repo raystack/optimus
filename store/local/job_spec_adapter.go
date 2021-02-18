@@ -29,6 +29,7 @@ type Job struct {
 	Task         JobTask
 	Asset        map[string]string `yaml:"asset,omitempty"`
 	Dependencies []string
+	Hooks        []JobHook
 }
 
 type JobSchedule struct {
@@ -52,6 +53,34 @@ type JobTaskWindow struct {
 	Size       string
 	Offset     string
 	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|)$"`
+}
+
+type JobHook struct {
+	Name   string
+	Type   string
+	Config map[string]string `yaml:"config,omitempty"`
+}
+
+// ToSpec converts the local's JobHook representation to the optimus' models.JobSpecHook
+func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobSpecHook, error) {
+	hookUnit, err := supportedHookRepo.GetByName(a.Name)
+	if err != nil {
+		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+	}
+	return models.JobSpecHook{
+		Type:   a.Type,
+		Config: a.Config,
+		Unit:   hookUnit,
+	}, nil
+}
+
+// FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
+func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
+	return JobHook{
+		Name:   spec.Unit.GetName(),
+		Type:   spec.Type,
+		Config: spec.Config,
+	}
 }
 
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
@@ -81,11 +110,13 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 
 type Adapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
+	supportedHookRepo models.SupportedHookRepo
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *Adapter {
 	return &Adapter{
 		supportedTaskRepo: supportedTaskRepo,
+		supportedHookRepo: supportedHookRepo,
 	}
 }
 
@@ -110,6 +141,16 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	dependencies := map[string]models.JobSpecDependency{}
 	for _, dep := range conf.Dependencies {
 		dependencies[dep] = models.JobSpecDependency{}
+	}
+
+	// prep hooks
+	var hooks []models.JobSpecHook
+	for _, hook := range conf.Hooks {
+		adaptHook, err := hook.ToSpec(adapt.supportedHookRepo)
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+		hooks = append(hooks, adaptHook)
 	}
 
 	// prep window
@@ -143,6 +184,7 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 		},
 		Assets:       models.JobAssets{}.FromMap(conf.Asset),
 		Dependencies: dependencies,
+		Hooks:        hooks,
 	}
 	return job, nil
 }
@@ -174,6 +216,7 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		},
 		Asset:        spec.Assets.ToMap(),
 		Dependencies: []string{},
+		Hooks:        []JobHook{},
 	}
 
 	if spec.Schedule.EndDate != nil {
@@ -181,6 +224,11 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 	}
 	for name := range spec.Dependencies {
 		parsed.Dependencies = append(parsed.Dependencies, name)
+	}
+
+	// prep hooks
+	for _, hook := range spec.Hooks {
+		parsed.Hooks = append(parsed.Hooks, JobHook{}.FromSpec(hook))
 	}
 
 	return parsed, nil

@@ -36,6 +36,7 @@ func TestProjectRepository(t *testing.T) {
 		return dbConn
 	}
 
+	transporterKafkaBrokerKey := "KAFKA_BROKERS"
 	testConfigs := []models.ProjectSpec{
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
@@ -48,7 +49,8 @@ func TestProjectRepository(t *testing.T) {
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "t-optimus-id",
 			Config: map[string]string{
-				"bucket": "gs://some_folder",
+				"bucket":                  "gs://some_folder",
+				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
 			},
 		},
 	}
@@ -95,6 +97,7 @@ func TestProjectRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
+			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()

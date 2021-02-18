@@ -11,14 +11,17 @@ import (
 
 type Adapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
+	supportedHookRepo models.SupportedHookRepo
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo) *Adapter {
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *Adapter {
 	return &Adapter{
 		supportedTaskRepo: supportedTaskRepo,
+		supportedHookRepo: supportedHookRepo,
 	}
 }
 
+// ToSpec converts the postgres' Job representation to the optimus' JobSpec
 func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
@@ -39,6 +42,20 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	}
 	for _, asset := range assetsRaw {
 		jobAssets = append(jobAssets, asset.ToSpec())
+	}
+
+	//prep hooks
+	jobHooks := []models.JobSpecHook{}
+	hooksRaw := []JobHook{}
+	if err := json.Unmarshal(conf.Hooks, &hooksRaw); err != nil {
+		return models.JobSpec{}, err
+	}
+	for _, hook := range hooksRaw {
+		hookSpec, err := hook.ToSpec(adapt.supportedHookRepo)
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+		jobHooks = append(jobHooks, hookSpec)
 	}
 
 	execUnit, err := adapt.supportedTaskRepo.GetByName(conf.TaskName)
@@ -71,10 +88,12 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 		},
 		Assets:       *(models.JobAssets{}).New(jobAssets),
 		Dependencies: dependencies,
+		Hooks:        jobHooks,
 	}
 	return job, nil
 }
 
+// FromSpec converts the optimus representation of JobSpec to postgres' Job
 func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
@@ -101,6 +120,15 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		return Job{}, err
 	}
 
+	hooks := []JobHook{}
+	for _, hook := range spec.Hooks {
+		hooks = append(hooks, JobHook{}.FromSpec(hook))
+	}
+	hooksJSON, err := json.Marshal(hooks)
+	if err != nil {
+		return Job{}, err
+	}
+
 	return Job{
 		ID:               spec.ID,
 		Version:          spec.Version,
@@ -118,6 +146,7 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		WindowOffset:     spec.Task.Window.Offset.Nanoseconds(),
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
 		Assets:           assetsJSON,
+		Hooks:            hooksJSON,
 	}, nil
 }
 
