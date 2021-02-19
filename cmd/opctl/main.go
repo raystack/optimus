@@ -40,7 +40,7 @@ func main() {
 
 	// this is just default scheduler
 	// should be configurable by user if needed
-	models.Scheduler = airflow.NewScheduler(resources.FileSystem, nil)
+	models.Scheduler = airflow.NewScheduler(resources.FileSystem, nil, nil)
 
 	//init specs
 	jobSpecRepo := local.NewJobSpecRepository(

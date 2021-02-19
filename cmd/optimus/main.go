@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jinzhu/gorm"
@@ -276,6 +276,7 @@ func main() {
 		&gcs.GcsObjectWriter{
 			Client: googleStorage,
 		},
+		&http.Client{},
 	)
 
 	// registered project store repository factory, its a wrapper over a storage
@@ -342,6 +343,7 @@ func main() {
 			},
 			time.Now().UTC,
 		),
+		models.Scheduler,
 	))
 
 	// prepare http proxy

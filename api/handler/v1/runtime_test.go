@@ -2,6 +2,9 @@ package v1_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -13,8 +16,6 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"testing"
-	"time"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
@@ -26,6 +27,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -141,6 +143,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				instanceService,
+				nil,
 			)
 
 			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName, Type: "task", ScheduledAt: scheduledAtTimestamp}
@@ -190,14 +193,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				nil,
+				nil,
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
 			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
-				Succcess: true,
-				Message:  "saved successfully",
+				Success: true,
+				Message: "saved successfully",
 			}, resp)
 		})
 		t.Run("should return error if saving to respository fails", func(t *testing.T) {
@@ -230,6 +234,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				),
 				projectRepoFactory,
 				v1.NewAdapter(models.TaskRegistry, nil),
+				nil,
 				nil,
 				nil,
 			)
@@ -314,6 +319,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				),
 				projectRepoFactory,
 				adapter,
+				nil,
 				nil,
 				nil,
 			)

@@ -164,7 +164,7 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("Clear", func(t *testing.T) {
-		t.Run("should clear the instance data from specs", func(t *testing.T) {
+		t.Run("should clear the instanceSpec data from specs", func(t *testing.T) {
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 			instanceSpecRepo := new(mock.InstanceSpecRepository)
 			instanceSpecRepo.On("Clear", scheduledAt).Return(nil)
