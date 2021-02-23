@@ -1,101 +1,11 @@
 package postgres
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/lib/pq"
 	"github.com/pkg/errors"
-	"gorm.io/datatypes"
 	"github.com/odpf/optimus/models"
 )
-
-// Job are inputs from user to create a job
-// postgres representation of the job
-type Job struct {
-	ID            uuid.UUID `gorm:"primary_key;type:uuid;"`
-	Version       int
-	Name          string `gorm:"not null" json:"name"`
-	Owner         string
-	StartDate     time.Time
-	EndDate       *time.Time
-	Interval      string
-	DependsOnPast bool
-	CatchUp       bool
-	Dependencies  pq.StringArray
-
-	ProjectID uuid.UUID
-	Project   Project `gorm:"foreignKey:ProjectID"`
-
-	TaskName         string
-	TaskConfig       datatypes.JSON
-	WindowSize       int64 //duration in nanos
-	WindowOffset     int64
-	WindowTruncateTo string
-
-	Assets datatypes.JSON
-	Hooks  datatypes.JSON
-
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt *time.Time
-}
-
-type JobTask struct {
-	Name   string
-	Config map[string]string
-
-	WindowSize       time.Duration
-	WindowOffset     time.Duration
-	WindowTruncateTo string
-}
-
-type JobAsset struct {
-	Name  string
-	Value string
-}
-
-func (a JobAsset) ToSpec() models.JobSpecAsset {
-	return models.JobSpecAsset{
-		Name:  a.Name,
-		Value: a.Value,
-	}
-}
-
-func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
-	return JobAsset{
-		Name:  spec.Name,
-		Value: spec.Value,
-	}
-}
-
-type JobHook struct {
-	Name   string
-	Type   string
-	Config map[string]string
-}
-
-// ToSpec converts the postgres' JobHook representation to the optimus' models.JobSpecHook
-func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobSpecHook, error) {
-	hookUnit, err := supportedHookRepo.GetByName(a.Name)
-	if err != nil {
-		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
-	}
-	return models.JobSpecHook{
-		Config: a.Config,
-		Type:   a.Type,
-		Unit:   hookUnit,
-	}, nil
-}
-
-func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
-	return JobHook{
-		Name:   spec.Unit.GetName(),
-		Config: spec.Config,
-		Type:   spec.Type,
-	}
-}
 
 type jobSpecRepository struct {
 	db      *gorm.DB

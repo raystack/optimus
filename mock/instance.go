@@ -1,10 +1,11 @@
 package mock
 
 import (
+	"time"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"time"
 )
 
 type InstanceSpecRepoFactory struct {
@@ -41,11 +42,8 @@ type InstanceService struct {
 	mock.Mock
 }
 
-func (s *InstanceService) Register(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
-	args := s.Called(jobSpec, scheduledAt)
+func (s *InstanceService) Register(jobSpec models.JobSpec, scheduledAt time.Time,
+	taskType models.InstanceType) (models.InstanceSpec, error) {
+	args := s.Called(jobSpec, scheduledAt, taskType)
 	return args.Get(0).(models.InstanceSpec), args.Error(1)
-}
-
-func (s *InstanceService) Clear(jobSpec models.JobSpec, scheduledAt time.Time) error {
-	return s.Called(jobSpec, scheduledAt).Error(0)
 }

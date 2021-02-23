@@ -4,10 +4,96 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/lib/pq"
+
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"github.com/odpf/optimus/models"
 )
+
+// Job are inputs from user to create a job
+// postgres representation of the job
+type Job struct {
+	ID            uuid.UUID `gorm:"primary_key;type:uuid;"`
+	Version       int
+	Name          string `gorm:"not null" json:"name"`
+	Owner         string
+	StartDate     time.Time
+	EndDate       *time.Time
+	Interval      string
+	DependsOnPast *bool
+	CatchUp       *bool
+	Dependencies  pq.StringArray
+
+	ProjectID uuid.UUID
+	Project   Project `gorm:"foreignKey:ProjectID"`
+
+	TaskName         string
+	TaskConfig       datatypes.JSON
+	WindowSize       *int64 //duration in nanos
+	WindowOffset     *int64
+	WindowTruncateTo *string
+
+	Assets datatypes.JSON
+	Hooks  datatypes.JSON
+
+	CreatedAt time.Time `gorm:"not null" json:"created_at"`
+	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+	DeletedAt *time.Time
+}
+
+type JobTask struct {
+	Name   string
+	Config map[string]string
+
+	WindowSize       time.Duration
+	WindowOffset     time.Duration
+	WindowTruncateTo string
+}
+
+type JobAsset struct {
+	Name  string
+	Value string
+}
+
+func (a JobAsset) ToSpec() models.JobSpecAsset {
+	return models.JobSpecAsset{
+		Name:  a.Name,
+		Value: a.Value,
+	}
+}
+
+func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
+	return JobAsset{
+		Name:  spec.Name,
+		Value: spec.Value,
+	}
+}
+
+type JobHook struct {
+	Name   string
+	Config map[string]string
+}
+
+// ToSpec converts the postgres' JobHook representation to the optimus' models.JobSpecHook
+func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobSpecHook, error) {
+	hookUnit, err := supportedHookRepo.GetByName(a.Name)
+	if err != nil {
+		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+	}
+	return models.JobSpecHook{
+		Config: a.Config,
+		Unit:   hookUnit,
+	}, nil
+}
+
+func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
+	return JobHook{
+		Name:   spec.Unit.GetName(),
+		Config: spec.Config,
+	}
+}
 
 type Adapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
@@ -74,16 +160,16 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 			Interval:  conf.Interval,
 		},
 		Behavior: models.JobSpecBehavior{
-			CatchUp:       conf.CatchUp,
-			DependsOnPast: conf.DependsOnPast,
+			CatchUp:       *conf.CatchUp,
+			DependsOnPast: *conf.DependsOnPast,
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
 			Config: taskConf,
 			Window: models.JobSpecTaskWindow{
-				Size:       time.Duration(conf.WindowSize),
-				Offset:     time.Duration(conf.WindowOffset),
-				TruncateTo: conf.WindowTruncateTo,
+				Size:       time.Duration(*conf.WindowSize),
+				Offset:     time.Duration(*conf.WindowOffset),
+				TruncateTo: *conf.WindowTruncateTo,
 			},
 		},
 		Assets:       *(models.JobAssets{}).New(jobAssets),
@@ -129,6 +215,9 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		return Job{}, err
 	}
 
+	wsize := spec.Task.Window.Size.Nanoseconds()
+	woffset := spec.Task.Window.Offset.Nanoseconds()
+
 	return Job{
 		ID:               spec.ID,
 		Version:          spec.Version,
@@ -137,14 +226,14 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		StartDate:        spec.Schedule.StartDate,
 		EndDate:          spec.Schedule.EndDate,
 		Interval:         spec.Schedule.Interval,
-		DependsOnPast:    spec.Behavior.DependsOnPast,
-		CatchUp:          spec.Behavior.CatchUp,
+		DependsOnPast:    &spec.Behavior.DependsOnPast,
+		CatchUp:          &spec.Behavior.CatchUp,
 		Dependencies:     dependencies,
 		TaskName:         spec.Task.Unit.GetName(),
 		TaskConfig:       datatypes.JSON(taskConfigJSON),
-		WindowSize:       spec.Task.Window.Size.Nanoseconds(),
-		WindowOffset:     spec.Task.Window.Offset.Nanoseconds(),
-		WindowTruncateTo: spec.Task.Window.TruncateTo,
+		WindowSize:       &wsize,
+		WindowOffset:     &woffset,
+		WindowTruncateTo: &spec.Task.Window.TruncateTo,
 		Assets:           assetsJSON,
 		Hooks:            hooksJSON,
 	}, nil

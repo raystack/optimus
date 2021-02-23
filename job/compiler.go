@@ -34,24 +34,28 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 		return models.Job{}, ErrEmptyTemplateFile
 	}
 
-	tmpl, err := template.New("airflow").Funcs(sprig.TxtFuncMap()).Parse(string(airflowTemplate))
+	tmpl, err := template.New("compiler").Funcs(sprig.TxtFuncMap()).Parse(string(airflowTemplate))
 	if err != nil {
 		return models.Job{}, err
 	}
 
 	var buf bytes.Buffer
 	if err = tmpl.Execute(&buf, struct {
-		Project      models.ProjectSpec
-		Job          models.JobSpec
-		Hostname     string
-		HookTypePre  string
-		HookTypePost string
+		Project                    models.ProjectSpec
+		Job                        models.JobSpec
+		Hostname                   string
+		HookTypePre                string
+		HookTypePost               string
+		InstanceTypeTransformation string
+		InstanceTypeHook           string
 	}{
-		Project:      proj,
-		Job:          jobSpec,
-		Hostname:     com.hostname,
-		HookTypePre:  models.HookTypePre,
-		HookTypePost: models.HookTypePost,
+		Project:                    proj,
+		Job:                        jobSpec,
+		Hostname:                   com.hostname,
+		HookTypePre:                string(models.HookTypePre),
+		HookTypePost:               string(models.HookTypePost),
+		InstanceTypeTransformation: string(models.InstanceTypeTransformation),
+		InstanceTypeHook:           string(models.InstanceTypeHook),
 	}); err != nil {
 		return models.Job{}, err
 	}

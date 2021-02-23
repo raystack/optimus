@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	ProjectStoragePathKey = "storage_path"
-	ProjectSchedulerHost  = "scheduler_host"
+	ProjectStoragePathKey = "STORAGE_PATH"
+	ProjectSchedulerHost  = "SCHEDULER_HOST"
 )
 
 type ProjectSpec struct {

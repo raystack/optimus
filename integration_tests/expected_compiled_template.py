@@ -62,7 +62,7 @@ transformation_bq = SuperKubernetesPodOperator(
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
         "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
-        "TASK_TYPE":'base', "TASK_NAME": "bq",
+        "TASK_TYPE":'transformation', "TASK_NAME": "bq",
         "SCHEDULED_AT":'{{ next_execution_date }}',
     },
     reattach_on_restart=True,

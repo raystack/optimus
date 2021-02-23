@@ -37,6 +37,8 @@ type JobRepository interface {
 type InstanceSpecRepository interface {
 	Save(models.InstanceSpec) error
 	GetByScheduledAt(time.Time) (models.InstanceSpec, error)
+
+	// Clear will not delete the record but will reset all the run details
 	Clear(time.Time) error
 }
 

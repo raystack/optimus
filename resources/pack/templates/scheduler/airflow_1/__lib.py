@@ -149,6 +149,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         execution_date = context['execution_date']
         window_start, window_end = self.generate_window(execution_date, self.window_size, self.window_offset, self.window_truncate_upto)
         self.log.info("consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
+        self.log.info("upstream interval: {}".format(dag_to_wait.schedule_interval))
 
         # find success iterations we need in window
         expected_upstream_executions = []

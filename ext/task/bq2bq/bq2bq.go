@@ -83,8 +83,8 @@ func (b *BQ2BQ) GetQuestions() []*survey.Question {
 func (b *BQ2BQ) GetConfig() map[string]string {
 	return map[string]string{
 		"PROJECT":       "{{.Project}}",
-		"DATASET":       "{{.Dataset}}",
 		"TABLE":         "{{.Table}}",
+		"DATASET":       "{{.Dataset}}",
 		"LOAD_METHOD":   "{{.LoadMethod}}",
 		"SQL_TYPE":      "STANDARD",
 		"TASK_TIMEZONE": "UTC",
@@ -100,11 +100,12 @@ func (b *BQ2BQ) GetAssets() map[string]string {
 
 // GenerateDestination uses config details to build target table
 func (b *BQ2BQ) GenerateDestination(data models.UnitData) (string, error) {
-	_, ok1 := data.Config["PROJECT"]
-	_, ok2 := data.Config["DATASET"]
-	_, ok3 := data.Config["TABLE"]
+	proj, ok1 := data.Config["PROJECT"]
+	dataset, ok2 := data.Config["DATASET"]
+	tab, ok3 := data.Config["TABLE"]
 	if ok1 && ok2 && ok3 {
-		return fmt.Sprintf("%s.%s.%s", data.Config["PROJECT"], data.Config["DATASET"], data.Config["TABLE"]), nil
+		return fmt.Sprintf("%s.%s.%s", proj,
+			dataset, tab), nil
 	}
 	return "", errors.New("missing config key required to generate destination")
 }
@@ -201,5 +202,7 @@ func createTableName(proj, dataset, table string) string {
 }
 
 func init() {
-	models.TaskRegistry.Add(&BQ2BQ{})
+	if err := models.TaskRegistry.Add(&BQ2BQ{}); err != nil {
+		panic(err)
+	}
 }

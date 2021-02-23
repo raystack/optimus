@@ -21,8 +21,8 @@ import (
 var (
 	assetOutputDir string
 	scheduledAt    string
-	taskType       string
-	taskName       string
+	runType        string
+	runName        string
 
 	taskInputDirectory  = "in"
 	taskOutputDirectory = "out"
@@ -42,9 +42,9 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 	cmd.MarkFlagRequired("output-dir")
 	cmd.Flags().StringVar(&scheduledAt, "scheduled-at", "", "time at which the job was scheduled for execution")
 	cmd.MarkFlagRequired("scheduled-at")
-	cmd.Flags().StringVar(&taskType, "type", "", "type of task, could be base/hook")
+	cmd.Flags().StringVar(&runType, "type", "", "type of task, could be base/hook")
 	cmd.MarkFlagRequired("type")
-	cmd.Flags().StringVar(&taskName, "name", "", "name of task, could be bq2bq/transporter/predator")
+	cmd.Flags().StringVar(&runName, "name", "", "name of task, could be bq2bq/transporter/predator")
 	cmd.MarkFlagRequired("name")
 
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the tenant")
@@ -93,12 +93,16 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry)
+	instanceType, err := models.InstanceType("").New(runType) // do this more cleanly
+	if err != nil {
+		return err
+	}
 
 	// fetch Instance by calling the optimus API
 	jobResponse, err := runtime.RegisterInstance(ctx, &pb.RegisterInstanceRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
-		Type:        taskType,
+		Type:        runType,
 		ScheduledAt: jobScheduledTimeProto,
 	})
 	if err != nil {
@@ -120,7 +124,11 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 	if err != nil {
 		return err
 	}
-	envMap, fileMap, err := instance.NewFeatureManager(project, jobSpec, instanceSpec).Generate(taskType, taskName)
+
+	envMap, fileMap, err := instance.NewFeatureManager(
+		project, jobSpec, instanceSpec).Generate(
+		instanceType, runName,
+	)
 	if err != nil {
 		return err
 	}

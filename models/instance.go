@@ -4,12 +4,18 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/google/uuid"
 )
 
 const (
 	// run data types
-	InstanceDataTypeEnv  = "env"
+	// env can be used to templatize assets and configs of task and hooks
+	// at run time
+	InstanceDataTypeEnv = "env"
+	// files will be used to store temporary data passed around for inter-task
+	// communication
 	InstanceDataTypeFile = "file"
 
 	// InstanceDataTypeEnvFileName is run data env type file name
@@ -23,9 +29,21 @@ const (
 	InstanceStateSuccess = "success"
 
 	// InstanceType is the kind of execution happening at the time
-	InstanceTypeTransformation = "transformation"
-	InstanceTypeHook           = "hook"
+	InstanceTypeTransformation InstanceType = "transformation"
+	InstanceTypeHook           InstanceType = "hook"
 )
+
+type InstanceType string
+
+func (I InstanceType) New(val string) (InstanceType, error) {
+	switch val {
+	case "transformation":
+		fallthrough
+	case "hook":
+		return InstanceType(val), nil
+	}
+	return InstanceType(""), errors.Errorf("failed to convert to instance type, invalid val: %s", val)
+}
 
 type InstanceSpec struct {
 	ID          uuid.UUID
@@ -38,19 +56,13 @@ type InstanceSpec struct {
 type InstanceSpecData struct {
 	Name  string
 	Value string
-	Task  string
 	Type  string
 }
 
-func (j *InstanceSpec) DataToJSON() (string, error) {
-	blob, err := json.Marshal(j.Data)
-	if err != nil {
-		return "", err
-	}
-	return string(blob), nil
+func (j *InstanceSpec) DataToJSON() ([]byte, error) {
+	return json.Marshal(j.Data)
 }
 
 type InstanceService interface {
-	Register(JobSpec, time.Time) (InstanceSpec, error)
-	Clear(JobSpec, time.Time) error
+	Register(jobSpec JobSpec, scheduledAt time.Time, taskType InstanceType) (InstanceSpec, error)
 }

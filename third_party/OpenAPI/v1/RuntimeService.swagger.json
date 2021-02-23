@@ -211,9 +211,6 @@
         "name": {
           "type": "string"
         },
-        "type": {
-          "type": "string"
-        },
         "config": {
           "type": "object",
           "additionalProperties": {

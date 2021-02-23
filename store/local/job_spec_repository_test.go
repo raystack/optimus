@@ -199,7 +199,7 @@ func TestSpecRepository(t *testing.T) {
 
 			specCopy := spec
 			specCopy.Hooks = []models.JobSpecHook{
-				{Type: models.HookTypePre, Config: map[string]string{"key": "value"}, Unit: hookUnit1},
+				{Config: map[string]string{"key": "value"}, Unit: hookUnit1},
 			}
 
 			fsNew := new(mock.FileSystem)
@@ -222,7 +222,8 @@ func TestSpecRepository(t *testing.T) {
 			repoNew := local.NewJobSpecRepository(fsNew, adapterNew)
 			err = repoNew.Save(specCopy)
 			assert.Nil(t, err)
-			testContentsNew := strings.ReplaceAll(testContents, "hooks: []\n", "hooks:\n- name: g-hook\n  type: pre\n  config:\n    key: value\n")
+			testContentsNew := strings.ReplaceAll(testContents, "hooks: []\n",
+				"hooks:\n- name: g-hook\n  config:\n    key: value\n")
 			assert.Equal(t, testContentsNew, bufNew.String())
 		})
 	})
