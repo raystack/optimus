@@ -53,15 +53,15 @@ Use the following command as an example
 
 Configuration inputs can either be passed as command arguments or set as environment variable
 
-| command                | env name               | required | description               |
-| ---------------------- | ---------------------- | -------- | ------------------------- |
+| command                | env name               | required | description                                                       |
+| ---------------------- | ---------------------- | -------- | ----------------------------------------------------------------- |
 | server-port            | SERVER_PORT            | N        | port on which service will listen for http calls, default. `8080` |
-| log-level              | LOG_LEVEL              | N        | log level - DEBUG, INFO, WARNING, ERROR, FATAL
-| ingress-host           | INGRESS_HOST           | Y        |                           |
-| db-host                | DB_HOST                | Y        |                           |
-| db-name                | DB_NAME                | Y        |                           |
-| db-user                | DB_USER                | Y        |                           |
-| db-password            | DB_PASSWORD            | Y        |                           |
+| log-level              | LOG_LEVEL              | N        | log level - DEBUG, INFO, WARNING, ERROR, FATAL                    |
+| ingress-host           | INGRESS_HOST           | Y        |                                                                   |
+| db-host                | DB_HOST                | Y        |                                                                   |
+| db-name                | DB_NAME                | Y        |                                                                   |
+| db-user                | DB_USER                | Y        |                                                                   |
+| db-password            | DB_PASSWORD            | Y        |                                                                   |
 
 You need to export GOOGLE_APPLICATION_CREDENTIALS with path to your service key, without this jazz cannot access GCS and GCR for deployment
 
