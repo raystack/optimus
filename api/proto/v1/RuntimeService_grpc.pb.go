@@ -21,8 +21,9 @@ type RuntimeServiceClient interface {
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
 	DeploySpecification(ctx context.Context, in *DeploySpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeploySpecificationClient, error)
 	RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error)
+	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
-	UpdateInstance(ctx context.Context, in *UpdateInstanceRequest, opts ...grpc.CallOption) (*UpdateInstanceResponse, error)
+	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
 }
 
 type runtimeServiceClient struct {
@@ -83,6 +84,15 @@ func (c *runtimeServiceClient) RegisterProject(ctx context.Context, in *Register
 	return out, nil
 }
 
+func (c *runtimeServiceClient) ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error) {
+	out := new(ListProjectsResponse)
+	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/ListProjects", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *runtimeServiceClient) RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error) {
 	out := new(RegisterInstanceResponse)
 	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/RegisterInstance", in, out, opts...)
@@ -92,9 +102,9 @@ func (c *runtimeServiceClient) RegisterInstance(ctx context.Context, in *Registe
 	return out, nil
 }
 
-func (c *runtimeServiceClient) UpdateInstance(ctx context.Context, in *UpdateInstanceRequest, opts ...grpc.CallOption) (*UpdateInstanceResponse, error) {
-	out := new(UpdateInstanceResponse)
-	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/UpdateInstance", in, out, opts...)
+func (c *runtimeServiceClient) JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error) {
+	out := new(JobStatusResponse)
+	err := c.cc.Invoke(ctx, "/apiv1.RuntimeService/JobStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +118,9 @@ type RuntimeServiceServer interface {
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
 	DeploySpecification(*DeploySpecificationRequest, RuntimeService_DeploySpecificationServer) error
 	RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error)
+	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
-	UpdateInstance(context.Context, *UpdateInstanceRequest) (*UpdateInstanceResponse, error)
+	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -126,11 +137,14 @@ func (UnimplementedRuntimeServiceServer) DeploySpecification(*DeploySpecificatio
 func (UnimplementedRuntimeServiceServer) RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterProject not implemented")
 }
+func (UnimplementedRuntimeServiceServer) ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListProjects not implemented")
+}
 func (UnimplementedRuntimeServiceServer) RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterInstance not implemented")
 }
-func (UnimplementedRuntimeServiceServer) UpdateInstance(context.Context, *UpdateInstanceRequest) (*UpdateInstanceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateInstance not implemented")
+func (UnimplementedRuntimeServiceServer) JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JobStatus not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
 
@@ -202,6 +216,24 @@ func _RuntimeService_RegisterProject_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeService_ListProjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListProjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).ListProjects(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/apiv1.RuntimeService/ListProjects",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).ListProjects(ctx, req.(*ListProjectsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RuntimeService_RegisterInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterInstanceRequest)
 	if err := dec(in); err != nil {
@@ -220,20 +252,20 @@ func _RuntimeService_RegisterInstance_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_UpdateInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateInstanceRequest)
+func _RuntimeService_JobStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JobStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuntimeServiceServer).UpdateInstance(ctx, in)
+		return srv.(RuntimeServiceServer).JobStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/apiv1.RuntimeService/UpdateInstance",
+		FullMethod: "/apiv1.RuntimeService/JobStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).UpdateInstance(ctx, req.(*UpdateInstanceRequest))
+		return srv.(RuntimeServiceServer).JobStatus(ctx, req.(*JobStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -254,12 +286,16 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RuntimeService_RegisterProject_Handler,
 		},
 		{
+			MethodName: "ListProjects",
+			Handler:    _RuntimeService_ListProjects_Handler,
+		},
+		{
 			MethodName: "RegisterInstance",
 			Handler:    _RuntimeService_RegisterInstance_Handler,
 		},
 		{
-			MethodName: "UpdateInstance",
-			Handler:    _RuntimeService_UpdateInstance_Handler,
+			MethodName: "JobStatus",
+			Handler:    _RuntimeService_JobStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

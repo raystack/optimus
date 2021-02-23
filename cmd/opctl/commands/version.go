@@ -16,7 +16,7 @@ func versionCommand(l logger, clientVer string) *cli.Command {
 		Short: "Print the client version information",
 		Run: func(c *cli.Command, args []string) {
 			l.Printf("client: %s", clientVer)
-			if deployHost != "" {
+			if optimusHost != "" {
 				srvVer, err := getVersionRequest(l, clientVer)
 				if err != nil {
 					panic(err)
@@ -25,14 +25,14 @@ func versionCommand(l logger, clientVer string) *cli.Command {
 			}
 		},
 	}
-	c.Flags().StringVar(&deployHost, "host", "", "deployment service endpoint url")
+	c.Flags().StringVar(&optimusHost, "host", "", "deployment service endpoint url")
 	return c
 }
 
 // getVersionRequest send a job request to service
 func getVersionRequest(l logger, clientVer string) (ver string, err error) {
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(deployHost); err != nil {
+	if conn, err = createConnection(optimusHost); err != nil {
 		return "", err
 	}
 	defer conn.Close()

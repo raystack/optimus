@@ -39,6 +39,7 @@ type RuntimeServiceServer struct {
 	adapter            ProtoAdapter
 	projectRepoFactory ProjectRepoFactory
 	instSvc            models.InstanceService
+	scheduler          models.SchedulerUnit
 
 	progressObserver progress.Observer
 	Now              func() time.Time
@@ -93,8 +94,26 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	}
 
 	return &pb.RegisterProjectResponse{
-		Succcess: true,
-		Message:  "saved successfully",
+		Success: true,
+		Message: "saved successfully",
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) ListProjects(ctx context.Context,
+	req *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projects, err := projectRepo.GetAll()
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to retrive saved projects", err.Error()))
+	}
+
+	projSpecsProto := []*pb.ProjectSpecification{}
+	for _, project := range projects {
+		projSpecsProto = append(projSpecsProto, sv.adapter.ToProjectProto(project))
+	}
+
+	return &pb.ListProjectsResponse{
+		All: projSpecsProto,
 	}, nil
 }
 
@@ -142,9 +161,41 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 	}, nil
 }
 
+func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusRequest) (*pb.
+	JobStatusResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+	}
+
+	jobStatuses, err := sv.scheduler.GetJobStatus(ctx, projSpec, req.GetJobName())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to fetch jobStatus %s", err.Error(),
+			req.GetJobName()))
+	}
+
+	adaptedJobStatus := []*pb.JobStatus{}
+	for _, jobStatus := range jobStatuses {
+		ts, err := ptypes.TimestampProto(jobStatus.ScheduledAt)
+		if err != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to parse time for %s", err.Error(),
+				req.GetJobName()))
+		}
+		adaptedJobStatus = append(adaptedJobStatus, &pb.JobStatus{
+			State:       jobStatus.State.String(),
+			ScheduledAt: ts,
+		})
+	}
+	return &pb.JobStatusResponse{
+		All: adaptedJobStatus,
+	}, nil
+}
+
 func NewRuntimeServiceServer(version string, jobSvc models.JobService,
 	projectRepoFactory ProjectRepoFactory, adapter ProtoAdapter,
-	progressObserver progress.Observer, instSvc models.InstanceService) *RuntimeServiceServer {
+	progressObserver progress.Observer, instSvc models.InstanceService,
+	scheduler models.SchedulerUnit) *RuntimeServiceServer {
 	return &RuntimeServiceServer{
 		version:            version,
 		jobSvc:             jobSvc,
@@ -152,6 +203,7 @@ func NewRuntimeServiceServer(version string, jobSvc models.JobService,
 		projectRepoFactory: projectRepoFactory,
 		progressObserver:   progressObserver,
 		instSvc:            instSvc,
+		scheduler:          scheduler,
 	}
 }
 
@@ -164,11 +216,11 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 	switch evt := e.(type) {
 	case *job.EventJobUpload:
 		resp := &pb.DeploySpecificationResponse{
-			Succcess: true,
-			JobName:  evt.Job.Name,
+			Success: true,
+			JobName: evt.Job.Name,
 		}
 		if evt.Err != nil {
-			resp.Succcess = false
+			resp.Success = false
 			resp.Message = evt.Err.Error()
 		}
 

@@ -32,7 +32,9 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	for _, dep := range spec.Dependencies {
-		dependencies[dep] = models.JobSpecDependency{}
+		dependencies[dep.GetName()] = models.JobSpecDependency{
+			Type: models.JobSpecDependencyType(dep.GetType()),
+		}
 	}
 
 	window, err := prepareWindow(spec)
@@ -119,16 +121,18 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		WindowOffset:     spec.Task.Window.OffsetString(),
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
 		Assets:           spec.Assets.ToMap(),
-		Dependencies:     []string{},
+		Dependencies:     []*pb.JobDependency{},
 		Hooks:            adapt.toHookProto(spec.Hooks),
 	}
 	if spec.Schedule.EndDate != nil {
 		conf.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)
 	}
-	for name := range spec.Dependencies {
-		conf.Dependencies = append(conf.Dependencies, name)
+	for name, dep := range spec.Dependencies {
+		conf.Dependencies = append(conf.Dependencies, &pb.JobDependency{
+			Name: name,
+			Type: int32(dep.Type),
+		})
 	}
-
 	return conf, nil
 }
 

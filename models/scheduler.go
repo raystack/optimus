@@ -2,6 +2,17 @@ package models
 
 import (
 	"context"
+	"time"
+)
+
+var (
+	// Scheduler is a single unit initialized at the start of application
+	// based on config. This will be used to perform adhoc operations
+	// to support target scheduling engine
+	Scheduler SchedulerUnit
+
+	JobStatusStateSuccess JobStatusState = "success"
+	JobStatusStateFailed  JobStatusState = "failed"
 )
 
 // SchedulerUnit is implemented by supported schedulers
@@ -24,9 +35,18 @@ type SchedulerUnit interface {
 	// Bootstrap will be executed per project when the application boots up
 	// this can be used to do adhoc commands for initialization of scheduler
 	Bootstrap(context.Context, ProjectSpec) error
+
+	// GetJobStatus should return the current and previous status of job
+	GetJobStatus(ctx context.Context, projSpec ProjectSpec, jobName string) ([]JobStatus, error)
 }
 
-// Scheduler is a single unit initialized at the start of application
-// based on config. This will be used to perform adhoc operations
-// to support target scheduling engine
-var Scheduler SchedulerUnit
+type JobStatusState string
+
+func (j JobStatusState) String() string {
+	return string(j)
+}
+
+type JobStatus struct {
+	ScheduledAt time.Time
+	State       JobStatusState
+}

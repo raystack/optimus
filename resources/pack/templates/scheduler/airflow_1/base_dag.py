@@ -1,31 +1,13 @@
-import os
-import json
-import calendar
-import re
 from typing import Any, Callable, Dict, Optional
 from datetime import datetime, timedelta, timezone
-from string import Template
-from croniter import croniter
 
-from airflow.kubernetes import kube_client, pod_launcher
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
-from airflow.hooks.http_hook import HttpHook
-from airflow.operators.python_operator import PythonOperator
-from airflow.sensors.base_sensor_operator import BaseSensorOperator
-from airflow.contrib.operators.kubernetes_pod_operator import KubernetesPodOperator
 from airflow.kubernetes.secret import Secret
-from airflow.sensors.external_task_sensor import ExternalTaskSensor
-from airflow.exceptions import AirflowException
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.db import provide_session
 from airflow.configuration import conf
 from airflow.utils.state import State
-from airflow.hooks.base_hook import BaseHook
 from airflow.utils.weight_rule import WeightRule
-
-import kubernetes.client.models as k8s
-from airflow.kubernetes.volume import Volume
-from airflow.kubernetes.volume_mount import VolumeMount
 
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
     SlackWebhookOperator

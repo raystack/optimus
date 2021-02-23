@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	deployHost                string
+	optimusHost               string
 	deployProject             string
-	errDeployFail             = errors.New("🔥 unable to complete request successfully")
+	errRequestFail            = errors.New("🔥 unable to complete request successfully")
 	errRequestTimedOut        = errors.New("🔥 request timed out while checking the status")
 	errResponseParseError     = errors.New("🔥 unable to parse server response")
 	errUnhandledServerRequest = errors.New("🔥 server is unable to process this request at the moment")
@@ -30,17 +30,17 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 		Use:   "deploy",
 		Short: "Deploy current project to server",
 	}
-	cmd.Flags().StringVar(&deployHost, "host", "", "deployment service endpoint url")
+	cmd.Flags().StringVar(&optimusHost, "host", "", "deployment service endpoint url")
 	cmd.MarkFlagRequired("host")
 	cmd.Flags().StringVar(&deployProject, "project", "", "project name of deployee")
 	cmd.MarkFlagRequired("project")
 
 	cmd.Run = func(c *cli.Command, args []string) {
-		l.Printf("deploying project %s at %s\nplease wait...\n", deployProject, deployHost)
+		l.Printf("deploying project %s at %s\nplease wait...\n", deployProject, optimusHost)
 
 		if err := postDeploymentRequest(l, jobSpecRepo); err != nil {
 			l.Print(err)
-			l.Print(errDeployFail)
+			l.Print(errRequestFail)
 			os.Exit(1)
 		}
 	}
@@ -51,7 +51,7 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err error) {
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(deployHost); err != nil {
+	if conn, err = createConnection(optimusHost); err != nil {
 		return err
 	}
 	defer conn.Close()
@@ -93,7 +93,7 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err e
 			}
 			return errors.Wrapf(err, "failed to receive deployment ack")
 		}
-		if !resp.GetSucccess() {
+		if !resp.GetSuccess() {
 			return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
 		}
 

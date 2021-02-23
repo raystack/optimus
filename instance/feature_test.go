@@ -12,10 +12,10 @@ import (
 )
 
 func TestDataBuilder(t *testing.T) {
-	t.Run("GetData", func(t *testing.T) {
-		t.Run("should return compiled instance config", func(t *testing.T) {
+	t.Run("Generate", func(t *testing.T) {
+		t.Run("should return compiled instanceSpec config", func(t *testing.T) {
 
-			projectName := "humara-project"
+			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
 				Name: projectName,
@@ -99,7 +99,7 @@ func TestDataBuilder(t *testing.T) {
 				},
 			}
 
-			envMap, fileMap, err := instance.NewDataBuilder().GetData(projectSpec, jobSpec, instanceSpec, models.InstanceTypeHook, transporterHook)
+			envMap, fileMap, err := instance.NewFeatureManager(projectSpec, jobSpec, instanceSpec).Generate(models.InstanceTypeHook, transporterHook)
 			fmt.Println(envMap, fileMap, err)
 			assert.Nil(t, err)
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])

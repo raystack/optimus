@@ -20,6 +20,26 @@
   ],
   "paths": {
     "/api/v1/project": {
+      "get": {
+        "operationId": "RuntimeService_ListProjects",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiv1ListProjectsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "RuntimeService"
+        ]
+      },
       "post": {
         "operationId": "RuntimeService_RegisterProject",
         "responses": {
@@ -44,6 +64,42 @@
             "schema": {
               "$ref": "#/definitions/apiv1RegisterProjectRequest"
             }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/job/{jobName}/status": {
+      "get": {
+        "operationId": "RuntimeService_JobStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiv1JobStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -88,7 +144,7 @@
     "apiv1DeploySpecificationResponse": {
       "type": "object",
       "properties": {
-        "succcess": {
+        "success": {
           "type": "boolean"
         },
         "message": {
@@ -134,6 +190,18 @@
         },
         "type": {
           "type": "string"
+        }
+      }
+    },
+    "apiv1JobDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },
@@ -203,7 +271,7 @@
         "dependencies": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/apiv1JobDependency"
           }
         },
         "assets": {
@@ -216,6 +284,40 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/apiv1JobSpecHook"
+          }
+        }
+      }
+    },
+    "apiv1JobStatus": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "apiv1JobStatusResponse": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1JobStatus"
+          }
+        }
+      }
+    },
+    "apiv1ListProjectsResponse": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1ProjectSpecification"
           }
         }
       }
@@ -259,16 +361,13 @@
     "apiv1RegisterProjectResponse": {
       "type": "object",
       "properties": {
-        "succcess": {
+        "success": {
           "type": "boolean"
         },
         "message": {
           "type": "string"
         }
       }
-    },
-    "apiv1UpdateInstanceResponse": {
-      "type": "object"
     },
     "apiv1VersionRequest": {
       "type": "object",

@@ -20,6 +20,13 @@ var (
 
 const (
 	JobDatetimeLayout = "2006-01-02"
+
+	// within a project
+	JobSpecDependencyTypeIntra = 0
+	// within optimus but cross project
+	JobSpecDependencyTypeInter = 1
+	// outside optimus
+	JobSpecDependencyTypeExtra = 2
 )
 
 // JobSpec represents a job
@@ -181,10 +188,11 @@ func (w *JobSpecTaskWindow) String() string {
 	return fmt.Sprintf("size_%dh", int(w.Size.Hours()))
 }
 
+type JobSpecDependencyType int8
+
 type JobSpecDependency struct {
-	Job *JobSpec
-	// TODO specify type of depen, if its static or gen at runtime
-	// Type {STATIC, RUNTIME}
+	Job  *JobSpec
+	Type JobSpecDependencyType
 }
 
 // JobService provides a high-level operations on DAGs

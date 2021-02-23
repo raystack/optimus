@@ -33,8 +33,17 @@ service RuntimeService {
             body: "*"
         };
     }
+    rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/project"
+        };
+    }
     rpc RegisterInstance(RegisterInstanceRequest) returns (RegisterInstanceResponse) {}
-    rpc UpdateInstance(UpdateInstanceRequest) returns (UpdateInstanceResponse) {}
+    rpc JobStatus(JobStatusRequest) returns (JobStatusResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/project/{project_name}/job/{job_name}/status"
+        };
+    }
 }
 
 message VersionRequest {
@@ -80,13 +89,18 @@ message JobSpecification {
     string window_offset = 12;
     string window_truncate_to = 13;
 
-    repeated string dependencies = 14;
+    repeated JobDependency dependencies = 14;
     map<string, string> assets = 15;
     repeated JobSpecHook hooks = 16;
 }
 
+message JobDependency {
+    string name = 1;
+    int32 type = 2;
+}
+
 message DeploySpecificationResponse {
-    bool succcess = 1;
+    bool success = 1;
     string message = 2;
     string job_name = 3;
 }
@@ -96,8 +110,14 @@ message RegisterProjectRequest {
 }
 
 message RegisterProjectResponse {
-    bool succcess = 1;
+    bool success = 1;
     string message = 2;
+}
+
+message ListProjectsRequest {}
+
+message ListProjectsResponse {
+    repeated ProjectSpecification all = 1;
 }
 
 message InstanceSpec {
@@ -127,8 +147,16 @@ message RegisterInstanceResponse {
     InstanceSpec instance = 3;
 }
 
-// TODO for storing xcom like data
-message UpdateInstanceRequest {
+message JobStatusRequest {
+    string project_name = 1;
+    string job_name = 2;
 }
-message UpdateInstanceResponse {
+
+message JobStatusResponse {
+    repeated JobStatus all = 1;
+}
+
+message JobStatus {
+    string state = 1;
+    google.protobuf.Timestamp scheduled_at = 2;
 }
