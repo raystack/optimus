@@ -4,15 +4,16 @@ package integration_tests
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/resources"
-	"testing"
-	"time"
 )
 
 func TestCompiler(t *testing.T) {
@@ -83,7 +84,7 @@ func TestCompiler(t *testing.T) {
 
 		t.Run("should compile template without any error", func(t *testing.T) {
 			// read scheduler template file
-			scheduler := airflow.NewScheduler(resources.FileSystem, nil)
+			scheduler := airflow.NewScheduler(resources.FileSystem, nil, nil)
 			airflowTemplateFile, err := resources.FileSystem.Open(scheduler.GetTemplatePath())
 			assert.Nil(t, err)
 			defer airflowTemplateFile.Close()
