@@ -5,6 +5,7 @@ package integration_tests
 import (
 	"bytes"
 	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,11 +26,13 @@ func TestCompiler(t *testing.T) {
 	hookUnit := new(mock.HookUnit)
 	hookUnit.On("GetName").Return(transporterHook)
 	hookUnit.On("GetImage").Return("odpf/namespace/hook-image:latest")
+	hookUnit.On("GetType").Return(models.HookTypePost)
 
 	predatorHook := "predator"
 	hookUnit2 := new(mock.HookUnit)
 	hookUnit2.On("GetName").Return(predatorHook)
 	hookUnit2.On("GetImage").Return("odpf/namespace/predator-image:latest")
+	hookUnit2.On("GetType").Return(models.HookTypePost)
 
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
@@ -77,7 +80,7 @@ func TestCompiler(t *testing.T) {
 	}
 
 	t.Run("Compile", func(t *testing.T) {
-		templatePath := "./../resources/pack/templates/scheduler/airflow_1/base_dag.py"
+		templatePath := "./resources/pack/templates/scheduler/airflow_1/base_dag.py"
 		compiledTemplateOutput := "./expected_compiled_template.py"
 
 		t.Run("should compile template without any error", func(t *testing.T) {
@@ -107,7 +110,14 @@ func TestCompiler(t *testing.T) {
 			assert.Nil(t, err)
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
-			assert.Equal(t, string(expectedCompiledOutput), string(dag.Contents))
+
+			// trim whitespace and new line
+			expectedOutput := strings.ReplaceAll(string(expectedCompiledOutput), "\n", "")
+			expectedOutput = strings.ReplaceAll(expectedOutput, " ", "")
+			actualOutput := strings.ReplaceAll(string(dag.Contents), "\n", "")
+			actualOutput = strings.ReplaceAll(actualOutput, " ", "")
+
+			assert.Equal(t, expectedOutput, actualOutput)
 		})
 	})
 }

@@ -60,7 +60,7 @@ func (repo *jobSpecRepository) Delete(name string) error {
 func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 	jobs := []Job{}
-	if err := repo.db.Find(&jobs).Error; err != nil {
+	if err := repo.db.Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
 		return specs, err
 	}
 	for _, job := range jobs {

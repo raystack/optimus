@@ -18,6 +18,8 @@ SECRET_KEY = Variable.get("secret_key", "auth.json")
 SECRET_VOLUME_PATH = '/opt/optimus/secrets/'
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
+DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
+DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
 
 gcloud_credentials_path = '{}{}'.format(SECRET_VOLUME_PATH, SECRET_KEY)
 gcloud_secret = Secret(
@@ -26,15 +28,15 @@ gcloud_secret = Secret(
     SECRET_NAME,
     SECRET_KEY)
 
-
 default_args = {
     "owner": "mee@mee",
     "depends_on_past": False ,
-    "retries": 3,
-    "retry_delay": timedelta(seconds=300),
-    "start_date": datetime.strptime("2000-11-11", "%Y-%m-%d"),
-    "on_failure_callback": alert_failed_to_slack,
+    "retries": DAG_RETRIES,
+    "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
     "priority_weight": 2000,
+    "start_date": datetime.strptime("2000-11-11", "%Y-%m-%d"),
+
+    "on_failure_callback": alert_failed_to_slack,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -117,10 +119,12 @@ hook_predator =  SuperKubernetesPodOperator(
    reattach_on_restart=True,
 )
 
-
-# set inter-dependencies of task and hooks
-hook_transporter >> transformation_bq
+# set inter-dependencies between task and hooks
+transformation_bq >> hook_transporter
 transformation_bq >> hook_predator
+# hooks loop ends
+
+# set inter-dependencies between hooks and hooks
 # hooks loop ends
 
 # create upstream sensors
