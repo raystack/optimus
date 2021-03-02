@@ -62,6 +62,7 @@ func (sv *RuntimeServiceServer) DeploySpecification(req *pb.DeploySpecificationR
 		return status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
+	var jobsToKeep []models.JobSpec
 	for _, reqJob := range req.GetJobs() {
 		adaptJob, err := sv.adapter.FromJobProto(reqJob)
 		if err != nil {
@@ -72,6 +73,7 @@ func (sv *RuntimeServiceServer) DeploySpecification(req *pb.DeploySpecificationR
 		if err != nil {
 			return status.Error(codes.Internal, fmt.Sprintf("%s: failed to save %s", err.Error(), adaptJob.Name))
 		}
+		jobsToKeep = append(jobsToKeep, adaptJob)
 	}
 
 	observers := new(progress.ObserverChain)
@@ -79,6 +81,13 @@ func (sv *RuntimeServiceServer) DeploySpecification(req *pb.DeploySpecificationR
 	observers.Join(&jobSyncObserver{
 		stream: respStream,
 	})
+
+	// delete specs not sent for deployment
+	// currently we don't support deploying a single dag at a time so this will change
+	// once we do that
+	if err := sv.jobSvc.KeepOnly(projSpec, jobsToKeep, observers); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("%s: failed to delete jobs", err.Error()))
+	}
 
 	if err := sv.jobSvc.Sync(projSpec, observers); err != nil {
 		return status.Error(codes.Internal, fmt.Sprintf("%s: failed to sync jobs", err.Error()))
@@ -138,14 +147,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: cannot adapt job %s", err.Error(), jobSpec.Name))
 	}
 
-	// if type is base and an existing job run exists, delete job run
-	// if not return the stored job run
-	if req.Type == models.InstanceTypeTransformation {
-		if err := sv.instSvc.Clear(jobSpec, jobScheduledTime); err != nil {
-			return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to clear instance of job %s", err.Error(), req.GetScheduledAt()))
-		}
-	}
-	instance, err := sv.instSvc.Register(jobSpec, jobScheduledTime)
+	instance, err := sv.instSvc.Register(jobSpec, jobScheduledTime, models.InstanceType(req.Type))
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to register instance of job %s", err.Error(), req.GetJobName()))
 	}

@@ -15,3 +15,4 @@ temp
 test_coverage.html
 /opctl
 jobs
+resources/resource_fs.go

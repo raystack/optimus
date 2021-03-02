@@ -152,7 +152,7 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 	var inputs Job
 	dec := yaml.NewDecoder(fd)
 	if err = dec.Decode(&inputs); err != nil {
-		return jobSpec, fmt.Errorf("error parsing dag spec in %s: %v", dirName, err)
+		return jobSpec, errors.Wrapf(err, "error parsing job spec in %s", dirName)
 	}
 	if err := validator.Validate(inputs); err != nil {
 		return jobSpec, errors.Wrapf(err, "failed to validate job specification: %s", dirName)

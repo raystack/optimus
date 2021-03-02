@@ -66,12 +66,10 @@ func TestCompiler(t *testing.T) {
 		),
 		Hooks: []models.JobSpecHook{
 			{
-				Type:   models.HookTypePre,
 				Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
 				Unit:   hookUnit,
 			},
 			{
-				Type:   models.HookTypePost,
 				Config: map[string]string{"FILTER_EXPRESSION2": "event_timestamp > 10000"},
 				Unit:   hookUnit2,
 			},

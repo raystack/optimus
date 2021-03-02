@@ -5,6 +5,7 @@ package postgres
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
@@ -54,9 +55,11 @@ func TestJobRepository(t *testing.T) {
 	gHook := "g-hook"
 	hookUnit1 := new(mock.HookUnit)
 	hookUnit1.On("GetName").Return(gHook)
+	hookUnit1.On("GetType").Return(models.HookTypePre)
 	tHook := "g-hook"
 	hookUnit2 := new(mock.HookUnit)
 	hookUnit2.On("GetName").Return(tHook)
+	hookUnit2.On("GetType").Return(models.HookTypePre)
 
 	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
@@ -75,6 +78,11 @@ func TestJobRepository(t *testing.T) {
 				Config: map[string]string{
 					"do": "this",
 				},
+				Window: models.JobSpecTaskWindow{
+					Size:       time.Hour * 24,
+					Offset:     0,
+					TruncateTo: "h",
+				},
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -86,7 +94,6 @@ func TestJobRepository(t *testing.T) {
 			),
 			Hooks: []models.JobSpecHook{
 				{
-					Type:   models.HookTypePre,
 					Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
 					Unit:   hookUnit1,
 				},
@@ -129,7 +136,7 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, "query.sql", checkModel.Assets.GetAll()[0].Name)
 
 			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Type)
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.GetType())
 			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 			assert.Equal(t, 1, len(checkModel.Hooks))
@@ -179,6 +186,9 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			assert.Equal(t, gTask, checkModel.Task.Unit.GetName())
 
+			testModelA.Task.Window.Offset = time.Hour * 2
+			testModelA.Task.Window.Size = 0
+
 			//try for update
 			testModelA.Task.Unit = execUnit2
 			err = repo.Save(testModelA)
@@ -187,6 +197,8 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, tTask, checkModel.Task.Unit.GetName())
+			assert.Equal(t, time.Hour*2, checkModel.Task.Window.Offset)
+			assert.Equal(t, time.Duration(0), checkModel.Task.Window.Size)
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
@@ -222,7 +234,6 @@ func TestJobRepository(t *testing.T) {
 			// add a hook and it should be saved and retrievable
 			testModel.Hooks = []models.JobSpecHook{
 				{
-					Type:   models.HookTypePre,
 					Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
 					Unit:   hookUnit1,
 				},
@@ -236,13 +247,12 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
 			assert.Equal(t, 1, len(checkModel.Hooks))
 			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Type)
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.GetType())
 			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 
 			// add one more hook and it should be saved and retrievable
 			testModel.Hooks = append(testModel.Hooks, models.JobSpecHook{
-				Type:   models.HookTypePre,
 				Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000", "KAFKA_TOPIC": "my_topic.name.kafka"},
 				Unit:   hookUnit1,
 			})
@@ -255,11 +265,11 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
 			assert.Equal(t, 2, len(checkModel.Hooks))
 			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Type)
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.GetType())
 			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 			assert.Equal(t, tHook, checkModel.Hooks[1].Unit.GetName())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[1].Type)
+			assert.Equal(t, models.HookTypePre, checkModel.Hooks[1].Unit.GetType())
 			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[1].Config["FILTER_EXPRESSION"])
 			assert.Equal(t, "my_topic.name.kafka", checkModel.Hooks[1].Config["KAFKA_TOPIC"])
 			assert.Equal(t, hookUnit1, checkModel.Hooks[1].Unit)

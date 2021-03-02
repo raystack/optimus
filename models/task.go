@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -20,7 +18,8 @@ type Transformation interface {
 	GetQuestions() []*survey.Question
 
 	// GetConfig will be passed down to execution unit as env vars
-	// they can be templatized by enclosing question `name` parameter inside doube braces preceded by .
+	// all configs must be prefixed by task name in upper case
+	// they can be templatize by enclosing question `name` parameter inside double braces preceded by .
 	// for example
 	// "project": "{{.Project}}"
 	// where `Project` is a question asked by user in GetQuestions
@@ -29,7 +28,7 @@ type Transformation interface {
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(UnitData) (string, error)
 
-	// GetDependencies returns names of job destiantion on which this unit
+	// GetDependencies returns names of job destination on which this unit
 	// is dependent on
 	GenerateDependencies(UnitData) ([]string, error)
 }
@@ -74,17 +73,17 @@ func (s *supportedTasks) GetAll() []Transformation {
 
 func (s *supportedTasks) Add(newUnit Transformation) error {
 	if newUnit.GetName() == "" {
-		return fmt.Errorf("task name cannot be empty")
+		return errors.New("task name cannot be empty")
 	}
 
 	// check if name is already used
 	if _, ok := s.data[newUnit.GetName()]; ok {
-		return fmt.Errorf("task name already in use %s", newUnit.GetName())
+		return errors.Errorf("task name already in use %s", newUnit.GetName())
 	}
 
 	// image is a required field
 	if newUnit.GetImage() == "" {
-		return fmt.Errorf("task image cannot be empty")
+		return errors.New("task image cannot be empty")
 	}
 
 	// check if we can add the provided task
@@ -94,7 +93,7 @@ func (s *supportedTasks) Add(newUnit Transformation) error {
 		for ekey := range existingTask.GetAssets() {
 			for nkey := range newUnit.GetAssets() {
 				if nkey == ekey {
-					return fmt.Errorf("asset file name already in use %s", nkey)
+					return errors.Errorf("asset file name already in use %s", nkey)
 				}
 			}
 		}

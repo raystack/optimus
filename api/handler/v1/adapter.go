@@ -156,7 +156,6 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 		data = append(data, &pb.InstanceSpecData{
 			Name:  asset.Name,
 			Value: asset.Value,
-			Task:  asset.Task,
 			Type:  asset.Type,
 		})
 	}
@@ -178,7 +177,6 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 		data = append(data, models.InstanceSpecData{
 			Name:  asset.Name,
 			Value: asset.Value,
-			Task:  asset.Task,
 			Type:  asset.Type,
 		})
 	}
@@ -204,7 +202,6 @@ func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 			return nil, err
 		}
 		hooks = append(hooks, models.JobSpecHook{
-			Type:   hook.Type,
 			Config: hook.Config,
 			Unit:   hookUnit,
 		})
@@ -216,7 +213,6 @@ func (adapt *Adapter) toHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 	for _, hook := range hooks {
 		protoHooks = append(protoHooks, &pb.JobSpecHook{
 			Name:   hook.Unit.GetName(),
-			Type:   hook.Type,
 			Config: hook.Config,
 		})
 	}

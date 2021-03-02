@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/instance"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -90,17 +92,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 				State:       models.InstanceStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  "EXECUTION_TIME",
+						Name:  instance.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  "DSTART",
+						Name:  instance.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  "DEND",
+						Name:  instance.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -127,7 +129,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			instanceService := new(mock.InstanceService)
-			instanceService.On("Register", jobSpec, scheduledAt).Return(instanceSpec, nil)
+			instanceService.On("Register", jobSpec, scheduledAt, models.InstanceTypeTransformation).Return(instanceSpec, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -146,7 +148,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName, Type: "task", ScheduledAt: scheduledAtTimestamp}
+			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName,
+				Type: string(models.InstanceTypeTransformation), ScheduledAt: scheduledAtTimestamp}
 			resp, err := runtimeServiceServer.RegisterInstance(context.TODO(), &versionRequest)
 			assert.Nil(t, err)
 
@@ -265,6 +268,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			execUnit1 := new(mock.ExecutionUnit)
 			execUnit1.On("GetName").Return(taskName)
 			execUnit1.On("GetImage").Return("imageName")
+
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpecs := []models.JobSpec{

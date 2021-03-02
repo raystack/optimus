@@ -2,17 +2,18 @@ package transporter
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/iancoleman/strcase"
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
-	"strings"
 )
 
-const (
-	DefaultStencilUrl = "http://odpf/artifactory/proto-descriptors/ocean-proton/latest"
-)
-
+// Transporter pushes BQ data to Kafka
+// required configs:
+// - TRANSPORTER_KAFKA_BROKERS
+// - TRANSPORTER_STENCIL_HOST e.g. http://odpf/artifactory/proto-descriptors/ocean-proton/latest
 type Transporter struct {
 }
 
@@ -28,6 +29,10 @@ func (t *Transporter) GetDescription() string {
 	return "BigQuery to Kafka Transformer"
 }
 
+func (t *Transporter) GetType() models.HookType {
+	return models.HookTypePost
+}
+
 func (t *Transporter) GetQuestions() []*survey.Question {
 	return []*survey.Question{
 		{
@@ -36,7 +41,6 @@ func (t *Transporter) GetQuestions() []*survey.Question {
 				Message: "Filter expression for extracting transformation rows?",
 				Help:    "for example: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'",
 			},
-			Validate: survey.MinLength(3),
 		},
 	}
 }
@@ -46,19 +50,18 @@ func (t *Transporter) GetConfig(jobUnitData models.UnitData) (map[string]string,
 	dataset, ok2 := jobUnitData.Config["DATASET"]
 	table, ok3 := jobUnitData.Config["TABLE"]
 	if !ok1 || !ok2 || !ok3 {
-		return nil, errors.New("missing config key required to generate config")
+		return nil, errors.New("missing config key required to generate configuration")
 	}
 
 	return map[string]string{
 		"KAFKA_TOPIC":                       getKafkaTopicName(project, dataset, table),
 		"PROTO_SCHEMA":                      getProtoSchemaForBQTable(project, dataset, table),
-		"STENCIL_URL":                       DefaultStencilUrl,
-		"JOB_LABELS":                        "owner=optimus",
+		"STENCIL_URL":                       `{{ "{{.GLOBAL__TRANSPORTER_STENCIL_HOST}}" }}`,
 		"FILTER_EXPRESSION":                 "{{.FilterExpression}}",
-		"BQ_PROJECT":                        project,
-		"BQ_DATASET":                        dataset,
-		"BQ_TABLE":                          table,
-		"PRODUCER_CONFIG_BOOTSTRAP_SERVERS": `{{ "{{.transporterKafkaBroker}}" }}`,
+		"BQ_PROJECT":                        `{{ "{{.TASK__PROJECT}}" }}`,
+		"BQ_DATASET":                        `{{ "{{.TASK__DATASET}}" }}`,
+		"BQ_TABLE":                          `{{ "{{.TASK__TABLE}}" }}`,
+		"PRODUCER_CONFIG_BOOTSTRAP_SERVERS": `{{ "{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}" }}`,
 	}, nil
 }
 
@@ -83,6 +86,12 @@ func getKafkaTopicName(project, dataset, table string) string {
 	return topicName
 }
 
+func (t *Transporter) GetDependsOn() []string {
+	return []string{"predator"}
+}
+
 func init() {
-	models.HookRegistry.Add(&Transporter{})
+	if err := models.HookRegistry.Add(&Transporter{}); err != nil {
+		panic(err)
+	}
 }

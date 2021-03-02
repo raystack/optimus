@@ -1,10 +1,11 @@
 package job_test
 
 import (
-	"github.com/pkg/errors"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/job"
@@ -14,9 +15,14 @@ import (
 
 func TestDependencyResolver(t *testing.T) {
 	t.Run("Resolve", func(t *testing.T) {
-		t.Run("it should resolve dependencies", func(t *testing.T) {
-			execUnit := new(mock.ExecutionUnit)
-			defer execUnit.AssertExpectations(t)
+		t.Run("it should resolve runtime dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.ExecutionUnit)
+			defer execUnit1.AssertExpectations(t)
+
+			hookUnit1 := new(mock.HookUnit)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.HookUnit)
+			defer hookUnit2.AssertExpectations(t)
 
 			jobSpec1 := models.JobSpec{
 				Version: 1,
@@ -27,12 +33,24 @@ func TestDependencyResolver(t *testing.T) {
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
-					Unit: execUnit,
+					Unit: execUnit1,
 					Config: map[string]string{
 						"foo": "bar",
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      hookUnit1,
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      hookUnit2,
+						DependsOn: nil,
+					},
+				},
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -43,7 +61,7 @@ func TestDependencyResolver(t *testing.T) {
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
-					Unit: execUnit,
+					Unit: execUnit1,
 					Config: map[string]string{
 						"foo": "baz",
 					},
@@ -55,10 +73,16 @@ func TestDependencyResolver(t *testing.T) {
 			unitData := models.UnitData{Config: jobSpec1.Task.Config, Assets: jobSpec1.Assets.ToMap()}
 			unitData2 := models.UnitData{Config: jobSpec2.Task.Config, Assets: jobSpec2.Assets.ToMap()}
 
-			execUnit.On("GenerateDestination", unitData).Return("project.dataset.table1_destination", nil)
-			execUnit.On("GenerateDestination", unitData2).Return("project.dataset.table2_destination", nil)
-			execUnit.On("GenerateDependencies", unitData).Return([]string{"project.dataset.table2_destination"}, nil)
-			execUnit.On("GenerateDependencies", unitData2).Return([]string{}, nil)
+			// task dependencies
+			execUnit1.On("GenerateDestination", unitData).Return("project.dataset.table1_destination", nil)
+			execUnit1.On("GenerateDestination", unitData2).Return("project.dataset.table2_destination", nil)
+			execUnit1.On("GenerateDependencies", unitData).Return([]string{"project.dataset.table2_destination"}, nil)
+			execUnit1.On("GenerateDependencies", unitData2).Return([]string{}, nil)
+
+			// hook dependency
+			hookUnit1.On("GetName").Return("hook1")
+			hookUnit1.On("GetDependsOn").Return([]string{})
+			hookUnit2.On("GetDependsOn").Return([]string{"hook1"})
 
 			resolver := job.NewDependencyResolver()
 			resolvedJobSpecs, err := resolver.Resolve(jobSpecs)
@@ -67,9 +91,11 @@ func TestDependencyResolver(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, map[string]models.JobSpecDependency{jobSpec2.Name: {Job: &jobSpec2}}, resolvedJobSpecs[0].Dependencies)
 			assert.Equal(t, map[string]models.JobSpecDependency{}, resolvedJobSpecs[1].Dependencies)
+			assert.Equal(t, []*models.JobSpecHook{&resolvedJobSpecs[0].Hooks[0]},
+				resolvedJobSpecs[0].Hooks[1].DependsOn)
 		})
 
-		t.Run("it should resolve all dependencies including static dependency", func(t *testing.T) {
+		t.Run("it should resolve all dependencies including static unresolved dependency", func(t *testing.T) {
 			execUnit := new(mock.ExecutionUnit)
 			defer execUnit.AssertExpectations(t)
 
@@ -240,7 +266,7 @@ func TestDependencyResolver(t *testing.T) {
 			resolvedJobSpecs, err := resolver.Resolve(jobSpecs)
 			sort.Slice(resolvedJobSpecs, func(i, j int) bool { return resolvedJobSpecs[i].Name < resolvedJobSpecs[j].Name })
 
-			assert.Equal(t, "random error", err.Error())
+			assert.Equal(t, "failed to resolve dependency destination for test1: random error", err.Error())
 			assert.Nil(t, resolvedJobSpecs)
 		})
 

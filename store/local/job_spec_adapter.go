@@ -57,7 +57,6 @@ type JobTaskWindow struct {
 
 type JobHook struct {
 	Name   string
-	Type   string
 	Config map[string]string `yaml:"config,omitempty"`
 }
 
@@ -68,7 +67,6 @@ func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobS
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
 	}
 	return models.JobSpecHook{
-		Type:   a.Type,
 		Config: a.Config,
 		Unit:   hookUnit,
 	}, nil
@@ -78,7 +76,6 @@ func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobS
 func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	return JobHook{
 		Name:   spec.Unit.GetName(),
-		Type:   spec.Type,
 		Config: spec.Config,
 	}
 }
@@ -140,7 +137,9 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	for _, dep := range conf.Dependencies {
-		dependencies[dep] = models.JobSpecDependency{}
+		dependencies[dep] = models.JobSpecDependency{
+			Type: models.JobSpecDependencyTypeIntra,
+		}
 	}
 
 	// prep hooks
@@ -161,7 +160,7 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	execUnit, err := adapt.supportedTaskRepo.GetByName(conf.Task.Name)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpec{}, errors.Wrapf(err, "spec reading error, failed to find exec unit %s", conf.Task.Name)
 	}
 
 	job := models.JobSpec{

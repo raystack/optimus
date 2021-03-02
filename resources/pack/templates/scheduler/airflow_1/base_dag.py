@@ -18,6 +18,8 @@ SECRET_KEY = Variable.get("secret_key", "auth.json")
 SECRET_VOLUME_PATH = '/opt/optimus/secrets/'
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
+DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
+DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
 
 gcloud_credentials_path = '{}{}'.format(SECRET_VOLUME_PATH, SECRET_KEY)
 gcloud_secret = Secret(
@@ -26,22 +28,22 @@ gcloud_secret = Secret(
     SECRET_NAME,
     SECRET_KEY)
 
-
 default_args = {
-    "owner": "{{.Job.Owner}}",
+    "owner": {{.Job.Owner | quote}},
     "depends_on_past": {{- if .Job.Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
-    "retries": 3,
-    "retry_delay": timedelta(seconds=300),
-    "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
-    "on_failure_callback": alert_failed_to_slack,
+    "retries": DAG_RETRIES,
+    "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
     "priority_weight": {{.Job.Task.Priority}},
+    "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
+    {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02" | quote}},"%Y-%m-%d"),{{- else -}}{{- end}}
+    "on_failure_callback": alert_failed_to_slack,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
 dag = DAG(
-    dag_id="{{.Job.Name}}",
+    dag_id={{.Job.Name | quote}},
     default_args=default_args,
-    schedule_interval="{{.Job.Schedule.Interval}}",
+    schedule_interval={{.Job.Schedule.Interval | quote}},
     catchup ={{ if .Job.Behavior.CatchUp }} True{{ else }} False{{ end }}
 )
 
@@ -51,7 +53,7 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
     image = "{}".format("{{.Job.Task.Unit.GetImage}}"),
     cmds=[],
     name="{{.Job.Task.Unit.GetName | replace "_" "-" }}",
-    task_id="{{.Job.Task.Unit.GetName}}",
+    task_id={{.Job.Task.Unit.GetName | quote}},
     get_logs=True,
     dag=dag,
     in_cluster=True,
@@ -62,7 +64,7 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
         "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME": '{{.Hostname}}',
         "JOB_DIR":'/data', "PROJECT":'{{.Project.Name}}',
-        "TASK_TYPE":'base', "TASK_NAME": "{{.Job.Task.Unit.GetName}}",
+        "TASK_TYPE":'{{$.InstanceTypeTransformation}}', "TASK_NAME": "{{.Job.Task.Unit.GetName}}",
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
     },
     reattach_on_restart=True,
@@ -70,7 +72,7 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
 
 # hooks loop start
 {{ range $_, $t := .Job.Hooks }}
-hook_{{$t.Unit.GetName}} =  SuperKubernetesPodOperator(
+hook_{{$t.Unit.GetName}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{$t.Unit.GetImage}}",
@@ -87,7 +89,7 @@ hook_{{$t.Unit.GetName}} =  SuperKubernetesPodOperator(
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
         "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOSTNAME": '{{$.Hostname}}',
         "JOB_DIR":'/data', "PROJECT":'{{$.Project.Name}}',
-        "TASK_TYPE":'hook', "TASK_NAME": "{{$t.Unit.GetName}}",
+        "TASK_TYPE":'{{$.InstanceTypeHook}}', "TASK_NAME": "{{$t.Unit.GetName}}",
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
    },
@@ -96,14 +98,22 @@ hook_{{$t.Unit.GetName}} =  SuperKubernetesPodOperator(
 {{- end }}
 
 
-# set inter-dependencies of task and hooks
+# set inter-dependencies between task and hooks
 {{- range $_, $t := .Job.Hooks }}
-{{- if eq $t.Type $.HookTypePre }}
+{{- if eq $t.Unit.GetType $.HookTypePre }}
 hook_{{$t.Unit.GetName}} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end -}}
-{{- if eq $t.Type $.HookTypePost }}
+{{- if eq $t.Unit.GetType $.HookTypePost }}
 transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$t.Unit.GetName}}
 {{- end -}}
+{{- end }}
+# hooks loop ends
+
+# set inter-dependencies between hooks and hooks
+{{- range $_, $t := .Job.Hooks }}
+{{- range $_, $depend := $t.DependsOn }}
+hook_{{$depend.Unit.GetName}} >> hook_{{$t.Unit.GetName}}
+{{- end }}
 {{- end }}
 # hooks loop ends
 

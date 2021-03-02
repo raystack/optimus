@@ -103,7 +103,7 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 		return err
 	}
 
-	var sourceDagNames []string
+	var sourceJobNames []string
 	for _, jobSpec := range jobSpecs {
 		if err = srv.upload(jobSpec, jobRepo, proj, progressObserver); err != nil {
 			srv.notifyProgress(progressObserver, &EventJobUpload{
@@ -116,7 +116,7 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 			})
 		}
 
-		sourceDagNames = append(sourceDagNames, jobSpec.Name)
+		sourceJobNames = append(sourceJobNames, jobSpec.Name)
 	}
 
 	// get all the stored jobs
@@ -127,22 +127,48 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 
 	// filter what we need to keep/delete
 	var destjobNames []string
-	for _, dag := range jobs {
-		destjobNames = append(destjobNames, dag.Name)
+	for _, job := range jobs {
+		destjobNames = append(destjobNames, job.Name)
 	}
-	jobsToDelete := setSubstract(destjobNames, sourceDagNames)
+	jobsToDelete := setSubstract(destjobNames, sourceJobNames)
 	jobsToDelete = jobDeletionFilter(jobsToDelete)
 
 	for _, dagName := range jobsToDelete {
-		// delete raw spec
-		if err := jobSpecRepo.Delete(dagName); err != nil {
-			return err
-		}
 		// delete compiled spec
 		if err := jobRepo.Delete(dagName); err != nil {
 			return err
 		}
 		srv.notifyProgress(progressObserver, &EventJobRemoteDelete{dagName})
+	}
+	return nil
+}
+
+func (srv *Service) KeepOnly(proj models.ProjectSpec, specsToKeep []models.JobSpec, progressObserver progress.Observer) error {
+	jobSpecRepo := srv.jobSpecRepoFactory.New(proj)
+	jobSpecs, err := jobSpecRepo.GetAll()
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch specs for project %s", proj.Name)
+	}
+	var specsPresentNames []string
+	for _, jobSpec := range jobSpecs {
+		specsPresentNames = append(specsPresentNames, jobSpec.Name)
+	}
+
+	var specsToKeepNames []string
+	for _, jobSpec := range specsToKeep {
+		specsToKeepNames = append(specsToKeepNames, jobSpec.Name)
+	}
+
+	// filter what we need to keep/delete
+	jobsToDelete := setSubstract(specsPresentNames, specsToKeepNames)
+	jobsToDelete = jobDeletionFilter(jobsToDelete)
+
+	for _, jobName := range jobsToDelete {
+		// delete raw spec
+		if err := jobSpecRepo.Delete(jobName); err != nil {
+			return errors.Wrapf(err, "failed to delete spec: %s", jobName)
+		}
+		srv.notifyProgress(progressObserver, &EventSavedJobDelete{jobName})
 	}
 	return nil
 }
@@ -221,8 +247,12 @@ type (
 	}
 
 	// EventJobRemoteDelete signifies that a
-	// job from a remote repository is being deleted
+	// compiled job from a remote repository is being deleted
 	EventJobRemoteDelete struct{ Name string }
+
+	// EventSavedJobDelete signifies that a raw
+	// job from a repository is being deleted
+	EventSavedJobDelete struct{ Name string }
 
 	// EventJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
@@ -246,6 +276,10 @@ func (e *EventJobUpload) String() string {
 }
 
 func (e *EventJobRemoteDelete) String() string {
+	return fmt.Sprintf("deleting: %s", e.Name)
+}
+
+func (e *EventSavedJobDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
 }
 

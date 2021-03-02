@@ -1,8 +1,20 @@
 package instance
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+)
+
+const (
+	// TaskConfigPrefix will be used to prefix all the config variables of
+	// transformation instance, i.e. task
+	TaskConfigPrefix = "TASK__"
+
+	// ProjectConfigPrefix will be used to prefix all the config variables of
+	// a project, i.e. registered entities
+	ProjectConfigPrefix = "GLOBAL__"
 )
 
 // FeatureManager fetches all config data for a given instanceSpecinstance and compiles all
@@ -21,35 +33,75 @@ type FeatureManager struct {
 // returns a map of env variables and a map[fileName]fileContent
 // It compiles any templates/macros present in the config.
 func (fm *FeatureManager) Generate(
-	taskType string,
-	taskName string,
-) (map[string]string, map[string]string, error) {
-	envMap, fileMap := fm.getInstanceData()
+	runType models.InstanceType,
+	runName string,
+) (envMap map[string]string, fileMap map[string]string, err error) {
+	envMap = make(map[string]string)
+	fileMap = make(map[string]string)
 
-	// append job spec assets to list of files needs to write
-	for _, jobAsset := range fm.jobSpec.Assets.GetAll() {
-		fileMap[jobAsset.Name] = jobAsset.Value
+	// project configs will be used for templating
+	// prefix project configs to avoid conflicts with project/instance configs
+	projectConfig := map[string]string{}
+	for key, val := range fm.getProjectConfigMap() {
+		projectConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
 	}
 
-	envMap, err := fm.getExecUnitConfigMap(fm.jobSpec, taskType, taskName, envMap)
+	// instance env will be used for templating
+	instanceEnvMap, instanceFileMap := fm.getInstanceData()
+
+	// merge both
+	projectInstanceConfigs := mergeStringMap(instanceEnvMap, projectConfig)
+
+	// prepare configs
+	envMap, err = fm.generateEnvs(runName, runType, projectInstanceConfigs)
+
+	// transformation may need instance variables as well
+	envMap = mergeStringMap(envMap, instanceEnvMap)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
-	// now compile all the values in the map.
-	// while compiling we'll also include the config defined at the projectSpec level
-	templateValues := fm.getProjectConfigMap()
-	for k, v := range envMap {
-		templateValues[k] = v
-	}
-	if envMap, err = fm.compileTemplates(templateValues, envMap); err != nil {
-		return nil, nil, err
-	}
-	if fileMap, err = fm.compileTemplates(templateValues, fileMap); err != nil {
-		return nil, nil, err
+	// do the same for asset files
+	// append job spec assets to list of files need to write
+	fileMap = mergeStringMap(instanceFileMap, fm.jobSpec.Assets.ToMap())
+	if fileMap, err = fm.compileTemplates(projectInstanceConfigs, fileMap); err != nil {
+		return
 	}
 
 	return envMap, fileMap, nil
+}
+
+func (fm *FeatureManager) generateEnvs(runName string, runType models.InstanceType,
+	projectInstanceConfigs map[string]string) (map[string]string, error) {
+	transformationConfigs, hookConfigs, err := fm.getConfigMaps(fm.jobSpec, runName, runType)
+	if err != nil {
+		return nil, err
+	}
+
+	// templatize configs for transformation with project and instance
+	if transformationConfigs, err = fm.compileTemplates(projectInstanceConfigs, transformationConfigs); err != nil {
+		return nil, err
+	}
+
+	// if this is requested for transformation, just return from here
+	if runType == models.InstanceTypeTransformation {
+		return transformationConfigs, nil
+	}
+
+	// prefix transformation configs to avoid conflicts with project/instance configs
+	prefixedTransformationConfigs := map[string]string{}
+	for key, val := range transformationConfigs {
+		prefixedTransformationConfigs[fmt.Sprintf("%s%s", TaskConfigPrefix, key)] = val
+	}
+
+	// templatize configs of hook with transformation, project and instance
+	projectInstanceTransformationConfigs := mergeStringMap(projectInstanceConfigs, prefixedTransformationConfigs)
+	if hookConfigs, err = fm.compileTemplates(projectInstanceTransformationConfigs, hookConfigs); err != nil {
+		return nil, err
+	}
+
+	// merge transformation and hook configs
+	return mergeStringMap(prefixedTransformationConfigs, hookConfigs), nil
 }
 
 func (fm *FeatureManager) compileTemplates(templateValues, templateMap map[string]string) (map[string]string, error) {
@@ -97,29 +149,42 @@ func (fm *FeatureManager) getInstanceData() (map[string]string, map[string]strin
 	return envMap, fileMap
 }
 
-func (fm *FeatureManager) getExecUnitConfigMap(jobSpec models.JobSpec, taskType string, taskName string,
-	envMap map[string]string) (map[string]string, error) {
+func (fm *FeatureManager) getConfigMaps(jobSpec models.JobSpec, runName string,
+	runType models.InstanceType) (map[string]string,
+	map[string]string, error) {
+	transformationMap := map[string]string{}
+	for key, val := range jobSpec.Task.Config {
+		transformationMap[key] = val
+	}
 
-	if taskType == models.InstanceTypeTransformation {
-		for key, val := range jobSpec.Task.Config {
-			envMap[key] = val
-		}
-	} else if taskType == models.InstanceTypeHook {
-		hook, err := jobSpec.GetHookByName(taskName)
+	hookMap := map[string]string{}
+	if runType == models.InstanceTypeHook {
+		hook, err := jobSpec.GetHookByName(runName)
 		if err != nil {
-			return nil, errors.Wrapf(err, "requested hook not found %s", taskName)
+			return nil, nil, errors.Wrapf(err, "requested hook not found %s", runName)
 		}
 		for key, val := range hook.Config {
-			envMap[key] = val
+			hookMap[key] = val
 		}
 	}
-	return envMap, nil
+	return transformationMap, hookMap, nil
 }
 
 func NewFeatureManager(projectSpec models.ProjectSpec, jobSpec models.JobSpec, instanceSpec models.InstanceSpec) *FeatureManager {
 	return &FeatureManager{
-		projectSpec: projectSpec,
-		jobSpec: jobSpec,
+		projectSpec:  projectSpec,
+		jobSpec:      jobSpec,
 		instanceSpec: instanceSpec,
 	}
+}
+
+func mergeStringMap(mp1, mp2 map[string]string) (mp3 map[string]string) {
+	mp3 = make(map[string]string)
+	for k, v := range mp1 {
+		mp3[k] = v
+	}
+	for k, v := range mp2 {
+		mp3[k] = v
+	}
+	return mp3
 }

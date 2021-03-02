@@ -40,7 +40,7 @@ type JobSpec struct {
 	Schedule     JobSpecSchedule
 	Behavior     JobSpecBehavior
 	Task         JobSpecTask
-	Dependencies map[string]JobSpecDependency
+	Dependencies map[string]JobSpecDependency // job name to dependency
 	Assets       JobAssets
 	Hooks        []JobSpecHook
 }
@@ -103,6 +103,7 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 		floatingEnd = floatingEnd.Add(nearestSunday)
 		floatingEnd = floatingEnd.Truncate(24 * time.Hour)
 	}
+	// todo add truncate to month
 
 	// TODO: test if these values are correct
 	windowEnd := floatingEnd.Add(windowOffset)
@@ -111,9 +112,9 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 }
 
 type JobSpecHook struct {
-	Type   string
-	Config map[string]string
-	Unit   HookUnit
+	Config    map[string]string
+	Unit      HookUnit
+	DependsOn []*JobSpecHook
 }
 
 type JobSpecAsset struct {
@@ -201,6 +202,9 @@ type JobService interface {
 	Create(JobSpec, ProjectSpec) error
 	GetByName(string, ProjectSpec) (JobSpec, error)
 	Sync(ProjectSpec, progress.Observer) error
+
+	// KeepOnly deletes all jobs except the ones provided
+	KeepOnly(ProjectSpec, []JobSpec, progress.Observer) error
 }
 
 // JobCompiler takes template file of a scheduler and after applying

@@ -245,11 +245,70 @@ func TestDAGService(t *testing.T) {
 			// fetch currently stored
 			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
 			// delete unwanted
-			jobSpecRepo.On("Delete", jobs[1].Name).Return(nil)
+			//jobSpecRepo.On("Delete", jobs[1].Name).Return(nil)
 			jobRepo.On("Delete", jobs[1].Name).Return(nil)
 
 			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver)
 			err := svc.Sync(projSpec, nil)
+			assert.Nil(t, err)
+		})
+	})
+	t.Run("KeepOnly", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		t.Run("should keep only provided specs and delete rest", func(t *testing.T) {
+			jobSpecsBase := []models.JobSpec{
+				{
+					Version: 1,
+					Name:    "test-1",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+				{
+					Version: 1,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+			}
+
+			toKeep := []models.JobSpec{
+				{
+					Version: 1,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+			}
+
+			// used to store raw job specs
+			jobSpecRepo := new(mock.JobSpecRepository)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			jobSpecRepoFac.On("New", projSpec).Return(jobSpecRepo)
+			// fetch currently stored
+			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			// delete unwanted
+			jobSpecRepo.On("Delete", jobSpecsBase[0].Name).Return(nil)
+
+			svc := job.NewService(jobSpecRepoFac, nil, nil, nil, nil)
+			err := svc.KeepOnly(projSpec, toKeep, nil)
 			assert.Nil(t, err)
 		})
 	})

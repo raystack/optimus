@@ -33,28 +33,20 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Com
 		Use:   "job",
 		Short: "create a new Job",
 		RunE: func(cmd *cli.Command, args []string) error {
-			jobInput, err := createJobSurvey(l)
+			jobInput, err := createJobSurvey(jobSpecRepo)
 			if err != nil {
 				return err
 			}
-
 			spec, err := local.NewAdapter(models.TaskRegistry, models.HookRegistry).ToSpec(jobInput)
 			if err != nil {
 				return err
 			}
-			_, err = jobSpecRepo.GetByName(spec.Name)
-			if err == nil {
-				return errors.Errorf("job %s already exists", spec.Name)
-			}
-			if err == models.ErrNoSuchSpec || err == models.ErrNoDAGSpecs {
-				return jobSpecRepo.Save(spec)
-			}
-			return err
+			return jobSpecRepo.Save(spec)
 		},
 	}
 }
 
-func createJobSurvey(l logger) (local.Job, error) {
+func createJobSurvey(jobSpecRepo store.JobSpecRepository) (local.Job, error) {
 	// TODO: take an additional input "--spec-dir" with default as "." in order to save job specs to a specific directory
 	availableTasks := []string{}
 	for _, task := range models.TaskRegistry.GetAll() {
@@ -67,7 +59,7 @@ func createJobSurvey(l logger) (local.Job, error) {
 			Prompt: &survey.Input{
 				Message: "What is the job name?",
 			},
-			Validate: validateJobName,
+			Validate: survey.ComposeValidators(validateJobName, IsJobNameUnique(jobSpecRepo)),
 		},
 		{
 			Name: "owner",
@@ -214,9 +206,10 @@ func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) 
 	emptyJobSpec := models.JobSpec{}
 	var availableHooks []string
 	for _, hook := range models.HookRegistry.GetAll() {
+		// TODO: this should be generated at runtime based on what base task is
+		// selected, support it when we add more than one type of task
 		availableHooks = append(availableHooks, hook.GetName())
 	}
-	hooksType := []string{models.HookTypePost, models.HookTypePre}
 
 	var qs = []*survey.Question{
 		{
@@ -224,15 +217,6 @@ func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) 
 			Prompt: &survey.Select{
 				Message: "Which hook to run?",
 				Options: availableHooks,
-			},
-			Validate: survey.Required,
-		},
-		{
-			Name: "hookType",
-			Prompt: &survey.Select{
-				Message: "Where should the hook run with respect to task?",
-				Options: hooksType,
-				Default: hooksType[0],
 			},
 			Validate: survey.Required,
 		},
@@ -289,7 +273,6 @@ func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) 
 		}
 		jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
 			Unit:   executionHook,
-			Type:   baseInputs["hookType"],
 			Config: hookConfig,
 		})
 	}
@@ -306,26 +289,14 @@ func selectJobSurvey(jobSpecRepo store.JobSpecRepository) (string, error) {
 	for _, job := range jobs {
 		allJobNames = append(allJobNames, job.Name)
 	}
-
-	var qs = []*survey.Question{
-		{
-			Name: "job",
-			Prompt: &survey.Select{
-				Message: "Select a Job",
-				Options: allJobNames,
-			},
-			Validate: survey.Required,
-		},
-	}
-	baseInputsRaw := make(map[string]interface{})
-	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
+	selectJob := ""
+	if err := survey.AskOne(&survey.Select{
+		Message: "Select a Job",
+		Options: allJobNames,
+	}, &selectJob); err != nil {
 		return "", err
 	}
-	baseInputs, err := convertToStringMap(baseInputsRaw)
-	if err != nil {
-		return "", err
-	}
-	return baseInputs["job"], nil
+	return selectJob, nil
 }
 
 func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool {
@@ -360,7 +331,7 @@ var (
 	validateDate    = validatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
 	validateNoSlash = validatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
 	validateName    = survey.ComposeValidators(
-		validatorFactory.NewFromRegex(`^[a-zA-Z0-9_\-]+$`, `invalid name (can only contain characters A-Z (in either case), 0-9, "-" or "_")`),
+		validatorFactory.NewFromRegex(`^[a-zA-Z0-9_\-]+$`, `can only contain characters A-Z (in either case), 0-9, "-" or "_"`),
 		survey.MinLength(3),
 	)
 	validateGreaterThanZero = func(val interface{}) error {
@@ -376,7 +347,22 @@ var (
 
 	validateResourceName = validatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`, `invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
-	// taskNames cannot contain slashes, since they're compiled as docker images
-	// and using slash may end up causing problems with docker push
-	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3), survey.MaxLength(1024))
+	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3),
+		survey.MaxLength(1024))
 )
+
+// IsJobNameUnique return a validator that checks if the job already exists with the same name
+func IsJobNameUnique(repository store.JobSpecRepository) survey.Validator {
+	return func(val interface{}) error {
+		if str, ok := val.(string); ok {
+			if _, err := repository.GetByName(str); err == nil {
+				return fmt.Errorf("job with the provided name already exists")
+			}
+		} else {
+			// otherwise we cannot convert the value into a string and cannot find a job name
+			return fmt.Errorf("invalid type of job name %v", reflect.TypeOf(val).Name())
+		}
+		// the input is fine
+		return nil
+	}
+}

@@ -67,8 +67,18 @@ You need to export GOOGLE_APPLICATION_CREDENTIALS with path to your service key,
 
 ### To register a project as an entity
 ```
-curl -X POST "localhost/api/v1/project" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"project\": { \"name\": \"project-name\", \"config\": { \"environment\": \"integration\", \"storagePath\": \"gs://bucket-path\" } }}"
+curl -X POST "localhost/api/v1/project" -H "accept: application/json" -H "Content-Type: 
+application/json" -d "{ \"project\": { \"name\": \"project-name\", \"config\": { \"ENVIRONMENT\": \"integration\", 
+\"STORAGE_PATH\": \"gs://bucket-path\" } }}"
 ```
+Minimum basic configs required for optimus to work
+- STORAGE_PATH: path of an object store to keep compiled jobs
+- SCHEDULER_HOST: hostname of the scheduler for interacting with APIs
+
+Execution unit configs which will be exposed as globals
+- TRANSPORTER_KAFKA_BROKERS  e.g. localhost:9092
+- TRANSPORTER_STENCIL_HOST e.g. http://odpf/artifactory/proto-descriptors/ocean-proton/latest
+- PREDATOR_HOST 
 
 ## Built With
 * [Golang](https://golang.org/) - The Programming Language

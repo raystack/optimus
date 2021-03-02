@@ -2,14 +2,17 @@ package models
 
 import (
 	"fmt"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/pkg/errors"
 )
 
 const (
-	HookTypePre  = "pre"
-	HookTypePost = "post"
+	HookTypePre  HookType = "pre"
+	HookTypePost HookType = "post"
 )
+
+type HookType string
 
 type HookUnit interface {
 	GetName() string
@@ -26,8 +29,16 @@ type HookUnit interface {
 	//
 	// you can also save templates within the job spec eg, "BROKERS": `{{ "{{.transporterKafkaBroker}}" }}` will
 	// store "BROKERS": '{{.transporterKafkaBroker}}' inside the job spec; which gets compiled by taking values
-	// from project config.
+	// from project config or runtime variables provided part of a instance. i.e.
+	// DSTART, DEND, EXECUTION_TIME
 	GetConfig(jobUnitData UnitData) (map[string]string, error)
+
+	// GetDependsOn returns list of hooks this should be executed after
+	GetDependsOn() []string
+
+	// GetType provides the place of execution, could be before the transformation
+	// after the transformation, etc
+	GetType() HookType
 }
 
 var (
