@@ -4,9 +4,9 @@ require (
 	cloud.google.com/go v0.65.0
 	cloud.google.com/go/storage v1.10.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
-	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/fatih/color v1.7.0
 	github.com/gernest/wow v0.1.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
