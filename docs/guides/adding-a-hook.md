@@ -48,7 +48,6 @@ task:
 dependencies: []
 hooks:
 - name: transporter
-  type: post
   config:
     BQ_DATASET: data
     BQ_PROJECT: example

@@ -1,9 +1,9 @@
-# What's new in v2
+# What's new in v2 so far
 
 - Binary is called `opctl` now instead of optimus.
 - There are no dags, tasks anymore. Specifications are now called job and there is
   only a single file for it.
-- There is no properties.cfg file, all these configs goes in same job.yaml file.
+- There are no `properties.cfg` file, all these configs goes in same job.yaml file.
 - Jobs have a single `asset` folder where the query should go for BQ transformation.
 - Task window configuration which was specified in `properties.cfg` earlier also goes in 
   `job.yaml`.
@@ -13,7 +13,7 @@
 ```sql
 Select * from sometable where event_time < "{{.DSTART}}"
 ```
-- `query.sql` and all other asset files now supports functions evaluations defined 
+- `query.sql` and all other asset files now supports compile time functions evaluations defined 
   at golang [docs](https://golang.org/pkg/text/template/) and [sprig](http://masterminds.github.io/sprig/) 
   library.
 

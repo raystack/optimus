@@ -5,7 +5,7 @@ It can be scheduled, configured and is always mapped to a single transformation 
 (eg, BQ-to-BQ, GCS-to-BQ, etc). It can have dependencies over other jobs and should
 only execute once the dependent job is successfully completed. 
 
-A job can also be configured with Hooks as part of its lifecycle, which can 
+A job can also be configured with Hooks as part of its lifecycle, which can be
 triggered before or after the job. Please go through [concepts](../concepts/index.md) 
 to know more about it.
 
