@@ -1,0 +1,147 @@
+# BQ2BQ Task
+
+## Creating Task
+Command to create a task :
+```
+opctl create job
+```
+This command will invoke an interactive cli that contains configurations that 
+need to be filled for the task. The tasks files will be generated at 
+`{PWD}/jobs/{JOB_NAME}/assets` folder. 
+
+Inside the assets folder there could be several files, one that is 
+needed to configure this task is :
+
+* query.sql - file that contains the transformation query
+
+This will also configure the `job.yaml` with few defaults and few inputs requested at the time
+of creation. User still able to change the config values after the file is generated.
+
+For example `job.yaml` config :
+
+```yaml
+version: 1
+name: example_job
+owner: example@opctl.com
+schedule:
+  start_date: "2021-02-18"
+  interval: 0 3 * * *
+behavior:
+  depends_on_past: false
+  catch_up: true
+task:
+  name: bq2bq
+  config:
+    DATASET: data
+    JOB_LABELS: owner=optimus
+    LOAD_METHOD: APPEND
+    PROJECT: example
+    SQL_TYPE: STANDARD
+    TABLE: hello_table
+    TASK_TIMEZONE: UTC
+  window:
+    size: 24h
+    offset: "0"
+    truncate_to: d
+```
+
+Here are the details of each configuration and the allowed values :
+
+| Config Name             | Description                                                                                                     | Values                              |
+| ----------------------- |-----------------------------------------------------------------------------------------------------------------| ------------------------------------|
+| `PROJECT`                | google cloud platform project id of the destination bigquery table                                              | ...                                 |
+| `DATASET`                | bigquery dataset name of the destination table                                                                  | ...                                 |
+| `TABLE`                 | the table name of the destination table                                                                         | ...                                 |
+| `TASK_WINDOW`           | window of transformation, to provide DSTART and DEND macros values for sql transformation                       | HOURLY, DAILY, WEEKLY, MONTHLY      |
+| `TASK_TIMEZONE`         | timezone of transformation, a timezone that the input datetime will be translated to in tz database name format | UTC, Asia/Jakarta, America/New_York |
+| `LOAD_METHOD`          | method to load data to the destination tables                                                                   | APPEND, REPLACE, MERGE              |
+
+### Load Method
+
+The way data loaded to destination table depends on the partition configuration of the destination tables
+
+| Load Method  | No Partition                                                                                   | Partitioned Table                                                                          |
+| -------------|------------------------------------------------------------------------------------------------| -------------------------------------------------------------------------------------------|
+| APPEND       | Append new records to destination table                                                        | Append new records to destination table per partition based on localised start_time        |
+| REPLACE      | Truncate/Clean the table before insert new records                                             | Clean records in destination partition before insert new record to new partition           |
+| MERGE        | Load the data using DML Merge statement, all of the load logic lies on DML merge statement     | Load the data using DML Merge statement, all of the load logic lies on DML merge statement |
+
+## query.sql file
+
+The *query.sql* file contains transformation logic
+
+```sql
+select count(1) as count, date(created_time) as dt
+from `project.dataset.tablename`
+where date(created_time) >= '{{.DSTART}}' and date(booking_creation_time) < '{{.DEND}}'
+group by dt
+```
+
+### SQL macros
+
+Macros is special variables in SQL that will be replaced by actual values when transformation executed
+
+There are several SQL macros available
+
+* {{.DSTART}} - start date/datetime of the window
+* {{.DEND}} - end date/datetime of the window
+* {{.DESTINATION}} - full qualified table name used in DML statement
+
+The value of `DSTART` and `DEND` depends on `TASK_WINDOW` config in `job.yaml`
+
+| Window Name   | DSTART                                                             | DEND                           
+
+|
+| ------------- |--------------------------------------------------------------------| ---------------------------------------------------------------------|
+| DAILY         | The current date taken from input, for example 2019-01-01          | The next day after DSTART date 
+2019-01-02                            |
+| WEEKLY        | Start of the week date for example : 2019-04-01                    | End date of the week , for example : 2019-04-07                      |
+| MONTHLY       | Start of the month date, example : 2019-01-01                      | End date of the month, for example : 2019-01-31                      |
+| HOURLY        | Datetime of the start of the hour, for example 2019-01-01 01:00:00 | Datetime the start of the next hour, for example 2019-01-01 02:00:00 |
+
+
+Macros in SQL transformation example :
+
+```sql
+select count(1) as count, date(created_time) as dt
+from `project.dataset.tablename`
+where date(created_time) >= '{{.DSTART}}' and date(booking_creation_time) < '{{.DEND}}'
+group by dt
+```
+
+Rendered SQL for DAILY window example :
+
+```sql
+select count(1) as count, date(created_time) as dt
+from `project.dataset.tablename`
+where date(created_time) >= '2019-01-01' and date(booking_creation_time) < '2019-01-02'
+group by dt
+```
+
+Rendered SQL for HOURLY window example :
+the value of `DSTART` and `DEND` is YYYY-mm-dd HH:MM:SS formatted datetime 
+
+```sql
+select count(1) as count, date(created_time) as dt
+from `project.dataset.tablename`
+where date(created_time) >= '2019-01-01 06:00:00' and date(booking_creation_time) < '2019-01-01 07:00:00'
+group by dt
+```
+
+destination_table macros example :
+
+```sql
+MERGE `destination_table` S
+using
+(
+select count(1) as count, date(created_time) as dt
+from `project.dataset.tablename`
+where date(created_time) >= '{{.DSTART}}' and date(created_time) < '{{.DEND}}'
+group by dt
+) N
+on S.date = N.date
+WHEN MATCHED then
+UPDATE SET `count` = N.count
+when not matched then
+INSERT (`date`, `count`) VALUES(N.date, N.count)
+```
