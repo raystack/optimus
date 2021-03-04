@@ -30,7 +30,11 @@ Some examples of hooks are:
 
 Each hook has its own set of configs and share the same asset folder as the base job.
 Hook can inherit configurations from the base transformation or from a global configuration
-store.
+store. 
+>The fundamental difference between a hook and a task is, task can have dependencies
+over other jobs inside the repository whereas hook can only depend on other hooks within
+the job.
+
 
 ## Job Specification
 
@@ -106,7 +110,6 @@ name: example_job
 ... omitting few configs ...
 hooks:
 - name: transporter
-  type: post
   config:
     BQ_TABLE: hello_table
     FILTER_EXPRESSION: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'
@@ -162,7 +165,8 @@ Optimus also injects few helper functions provided in [sprig](http://masterminds
 library.
 For example:
 ```sql
-select CONCAT("Hello, ", "{{.DEND}}") as message
+{{$start_time = now}}
+select CONCAT("Hello, ", "{{$start_time}}") as message
 ```
 
 ## Scheduler
@@ -217,7 +221,7 @@ This will help fully utilize the Scheduler capabilities
 ## Optimus Adapters
 
 Optimus uses adapters to supports extensible tasks and hooks which needs to be 
-registered on a central [repository](https://github.com/odpf/lib/optimus-adapters).
+registered on a central repository.
 
 TODO
 

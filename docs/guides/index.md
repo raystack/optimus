@@ -2,6 +2,11 @@
 
 Welcome to Optimus Guides. Please use the links below to navigate.
 
-- [Using CLI to create a Job](creating-a-job.md)
-- [Using CLI to create a Hook](adding-a-hook.md)
-- [Publishing from BigQuery to Kafka](publishing-from-bigquery-to-kafka.md)
+* Quickstart
+    * [Creating a job](guides/creating-a-job.md)
+    * [Adding a hook](guides/adding-a-hook.md)
+* Tasks
+    * [BigQuery to BigQuery Transformation](guides/task-bq2bq.md)
+* Hooks
+    * [Publishing BigQuery to Kafka](guides/publishing-from-bigquery-to-kafka.md)
+    * [Profiling and Auditing BigQuery tables](guides/predator.md)
