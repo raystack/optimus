@@ -3,6 +3,7 @@ package job
 import (
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 var (
@@ -12,124 +13,98 @@ var (
 type dependencyResolver struct {
 }
 
-// Resolve resolves dependency between specs passed as args
-// if a jobSpec refer to a dependency that is not passed as args, it will be
-// ignored so ideally this is built to pass all specs at a time and resolve
-// dependencies of all specs of a single project
-func (r *dependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	// build map of jobDestination => models.JobSpec
-	jobToDestinationMap, err := r.getJobToDestinationMap(jobSpecs)
+// Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
+func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error) {
+	// resolve inter/intra dependencies inferred by optimus
+	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, jobSpecRepo)
 	if err != nil {
-		return nil, err
-	}
-
-	// build map of jobName => models.JobSpec
-	jobSpecMapByName := map[string]models.JobSpec{}
-	for _, jobSpec := range jobSpecs {
-		jobSpecMapByName[jobSpec.Name] = jobSpec
-	}
-
-	// resolve dependencies inferred from all optimus jobs
-	jobSpecs, err = r.resolveInferredDependencies(jobSpecs, jobToDestinationMap)
-	if err != nil {
-		return nil, err
+		return models.JobSpec{}, err
 	}
 
 	// resolve statically defined dependencies
-	jobSpecs, err = r.resolveStaticDependencies(jobSpecs, jobSpecMapByName)
+	jobSpec, err = r.resolveStaticDependencies(jobSpec, projectSpec, jobSpecRepo)
 	if err != nil {
-		return nil, err
+		return models.JobSpec{}, err
 	}
 
 	// resolve inter hook dependencies
-	jobSpecs, err = r.resolveHookDependencies(jobSpecs)
+	jobSpec, err = r.resolveHookDependencies(jobSpec)
 	if err != nil {
-		return nil, err
+		return models.JobSpec{}, err
 	}
 
-	return jobSpecs, nil
+	return jobSpec, nil
 }
 
-func (r *dependencyResolver) getJobToDestinationMap(jobSpecs []models.JobSpec) (map[string]models.JobSpec, error) {
-	jobToDestinationMap := map[string]models.JobSpec{}
-	for _, jobSpec := range jobSpecs {
-		jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
-			Config: jobSpec.Task.Config,
-			Assets: jobSpec.Assets.ToMap(),
-		})
+func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository) (models.JobSpec, error) {
+	// get destinations of dependencies
+	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(models.UnitData{
+		Config: jobSpec.Task.Config,
+		Assets: jobSpec.Assets.ToMap(),
+	})
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+
+	// get job spec of these destinations and append to current jobSpec
+	for _, depDestination := range jobDependenciesDestination {
+		depSpec, depProj, err := jobSpecRepo.GetByDestination(depDestination)
 		if err != nil {
-			return nil, err
+			return models.JobSpec{}, errors.Wrapf(err, "could not find destination %s", depDestination)
 		}
-		jobToDestinationMap[jobDestination] = jobSpec
+
+		// determine the type of dependency
+		dep := models.JobSpecDependency{Job: &depSpec, Project: &depProj}
+		dep.Type = r.getJobSpecDependencyType(dep, projectSpec.Name)
+		jobSpec.Dependencies[depSpec.Name] = dep
 	}
-	return jobToDestinationMap, nil
+
+	return jobSpec, nil
 }
 
-func (r *dependencyResolver) resolveInferredDependencies(jobSpecs []models.JobSpec, jobToDestinationMap map[string]models.JobSpec) ([]models.JobSpec, error) {
-	for jobIdx, jobSpec := range jobSpecs {
-		// get destinations of dependencies
-		jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(models.UnitData{
-			Config: jobSpec.Task.Config,
-			Assets: jobSpec.Assets.ToMap(),
-		})
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to resolve dependency destination for %s", jobSpec.Name)
-		}
-
-		// get job spec of these destinations and append to current jobSpec
-		// this will resolve runtime dependencies
-		for _, depDestination := range jobDependenciesDestination {
-			depSpec, ok := jobToDestinationMap[depDestination]
-			if !ok {
-				return jobSpecs, errors.Errorf("invalid job specs, undefined destination %s", depDestination)
-			}
-			jobSpec.Dependencies[depSpec.Name] = models.JobSpecDependency{
-				Job:  &depSpec,
-				Type: models.JobSpecDependencyTypeIntra,
-			}
-		}
-
-		jobSpecs[jobIdx] = jobSpec
+func (r *dependencyResolver) getJobSpecDependencyType(dependency models.JobSpecDependency, currentJobSpecProject string) models.JobSpecDependencyType {
+	if dependency.Project.Name == currentJobSpecProject {
+		return models.JobSpecDependencyTypeIntra
 	}
-	return jobSpecs, nil
+	return models.JobSpecDependencyTypeInter
 }
 
-// update named dependencies if unresolved with its spec model
+// update named (explicit/static) dependencies if unresolved with its spec model
 // this can normally happen when reading specs from a store[local/postgres]
-func (r *dependencyResolver) resolveStaticDependencies(jobSpecs []models.JobSpec, jobSpecMapByName map[string]models.JobSpec) ([]models.JobSpec, error) {
-	for jobIdx, jobSpec := range jobSpecs {
-		for depName, depSpec := range jobSpec.Dependencies {
-			if depSpec.Job == nil {
-				job, ok := jobSpecMapByName[depName]
-				if !ok {
-					return jobSpecs, errors.Wrap(ErrUnknownDependency, depName)
-				}
-				depSpec.Job = &job
-				jobSpec.Dependencies[depName] = depSpec
+func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository) (models.JobSpec, error) {
+	// update static dependencies if unresolved with its spec model
+	for depName, depSpec := range jobSpec.Dependencies {
+		if depSpec.Job == nil {
+			job, err := jobSpecRepo.GetByName(depName)
+			if err != nil {
+				return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownDependency, depName)
 			}
+			depSpec.Job = &job
+			// currently we allow only intra project static dependencies, so resolve project to current project,
+			// and dependency type to Intra.
+			depSpec.Project = &projectSpec
+			depSpec.Type = models.JobSpecDependencyTypeIntra
+			jobSpec.Dependencies[depName] = depSpec
 		}
-		jobSpecs[jobIdx] = jobSpec
 	}
-	return jobSpecs, nil
+
+	return jobSpec, nil
 }
 
 // hooks can be dependent on each other inside a job spec, this will populate
 // the local array that points to its dependent hook
-func (r *dependencyResolver) resolveHookDependencies(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	for jobIdx, jobSpec := range jobSpecs {
-		for hookIdx, jobHook := range jobSpec.Hooks {
-			jobHook.DependsOn = nil
-			for _, depends := range jobHook.Unit.GetDependsOn() {
-				dependentHook, err := jobSpec.GetHookByName(depends)
-				if err == nil {
-					jobHook.DependsOn = append(jobHook.DependsOn, &dependentHook)
-				}
+func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (models.JobSpec, error) {
+	for hookIdx, jobHook := range jobSpec.Hooks {
+		jobHook.DependsOn = nil
+		for _, depends := range jobHook.Unit.GetDependsOn() {
+			dependentHook, err := jobSpec.GetHookByName(depends)
+			if err == nil {
+				jobHook.DependsOn = append(jobHook.DependsOn, &dependentHook)
 			}
-			jobSpec.Hooks[hookIdx] = jobHook
 		}
-		jobSpecs[jobIdx] = jobSpec
+		jobSpec.Hooks[hookIdx] = jobHook
 	}
-	return jobSpecs, nil
+	return jobSpec, nil
 }
 
 // NewDependencyResolver creates a new instance of Resolver

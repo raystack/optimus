@@ -45,6 +45,14 @@ func (repo *JobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return []models.JobSpec{}, args.Error(1)
 }
 
+func (repo *JobSpecRepository) GetByDestination(dest string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(dest)
+	if args.Get(0) != nil {
+		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
+	}
+	return models.JobSpec{}, models.ProjectSpec{}, args.Error(2)
+}
+
 // JobRepoFactory to store compiled specs
 type JobRepoFactory struct {
 	mock.Mock
@@ -111,9 +119,9 @@ type DependencyResolver struct {
 	mock.Mock
 }
 
-func (srv *DependencyResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	args := srv.Called(jobSpecs)
-	return args.Get(0).([]models.JobSpec), args.Error(1)
+func (srv *DependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error) {
+	args := srv.Called(projectSpec, jobSpecRepo, jobSpec)
+	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
 type PriorityResolver struct {

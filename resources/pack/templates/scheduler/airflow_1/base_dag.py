@@ -10,7 +10,7 @@ from airflow.utils.state import State
 from airflow.utils.weight_rule import WeightRule
 
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
-    SlackWebhookOperator
+    SlackWebhookOperator, CrossTenantDependencySensor
 
 
 SECRET_NAME = Variable.get("secret_name", "optimus-google-credentials")
@@ -96,39 +96,35 @@ hook_{{$t.Unit.GetName}} = SuperKubernetesPodOperator(
    reattach_on_restart=True,
 )
 {{- end }}
-
-
-# set inter-dependencies between task and hooks
-{{- range $_, $t := .Job.Hooks }}
-{{- if eq $t.Unit.GetType $.HookTypePre }}
-hook_{{$t.Unit.GetName}} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
-{{- end -}}
-{{- if eq $t.Unit.GetType $.HookTypePost }}
-transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$t.Unit.GetName}}
-{{- end -}}
-{{- end }}
 # hooks loop ends
 
-# set inter-dependencies between hooks and hooks
-{{- range $_, $t := .Job.Hooks }}
-{{- range $_, $depend := $t.DependsOn }}
-hook_{{$depend.Unit.GetName}} >> hook_{{$t.Unit.GetName}}
-{{- end }}
-{{- end }}
-# hooks loop ends
 
 # create upstream sensors
-{{- range $i, $t := $.Job.Dependencies}}
-wait_{{$t.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    external_dag_id = "{{$t.Job.Name}}",
-    window_size = {{$t.Job.Task.Window.Size.Hours }},
-    window_offset = {{$t.Job.Task.Window.Offset.Hours }},
-    window_truncate_upto = "{{$t.Job.Task.Window.TruncateTo}}",
-    task_id = "wait-{{$t.Job.Name}}-{{$t.Job.Task.Unit.GetName}}",
+{{- range $_, $dependency := $.Job.Dependencies}}
+{{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
+wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
+    external_dag_id = "{{$dependency.Job.Name}}",
+    window_size = {{$dependency.Job.Task.Window.Size.Hours }},
+    window_offset = {{$dependency.Job.Task.Window.Offset.Hours }},
+    window_truncate_upto = "{{$dependency.Job.Task.Window.TruncateTo}}",
+    task_id = "wait-{{$dependency.Job.Name}}-{{$dependency.Job.Task.Unit.GetName}}",
     poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
 )
+{{- end -}}
+
+{{- if eq $dependency.Type $.JobSpecDependencyTypeInter }}
+wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = CrossTenantDependencySensor(
+    optimus_host="{{$.Hostname}}",
+    optimus_project="{{$dependency.Project.Name}}",
+    optimus_job="{{$dependency.Job.Name}}",
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait-{{$dependency.Job.Name}}-{{$dependency.Job.Task.Unit.GetName}}",
+    dag=dag
+)
+{{- end -}}
 {{- end}}
 
 # arrange inter task dependencies
@@ -138,3 +134,20 @@ wait_{{$t.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExt
 {{- range $i, $t := $.Job.Dependencies }}
 wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
+
+# set inter-dependencies between task and hooks
+{{- range $_, $task := .Job.Hooks }}
+{{- if eq $task.Unit.GetType $.HookTypePre }}
+hook_{{$task.Unit.GetName}} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- end -}}
+{{- if eq $task.Unit.GetType $.HookTypePost }}
+transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$task.Unit.GetName}}
+{{- end -}}
+{{- end }}
+
+# set inter-dependencies between hooks and hooks
+{{- range $_, $t := .Job.Hooks }}
+{{- range $_, $depend := $t.DependsOn }}
+hook_{{$depend.Unit.GetName}} >> hook_{{$t.Unit.GetName}}
+{{- end }}
+{{- end }}

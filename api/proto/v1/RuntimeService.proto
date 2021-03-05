@@ -21,12 +21,17 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 
 service RuntimeService {
     rpc Version(VersionRequest) returns (VersionResponse) {
-        option (google.api.http) = {            
+        option (google.api.http) = {
             post: "/api/v1/version"
             body: "*"
         };
     }
     rpc DeploySpecification(DeploySpecificationRequest) returns (stream DeploySpecificationResponse) {}
+    rpc DumpSpecification(DumpSpecificationRequest) returns (DumpSpecificationResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/project/{project_name}/job/{job_name}/dump"
+        };
+    }
     rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {
         option (google.api.http) = {
             post: "/api/v1/project"
@@ -38,10 +43,20 @@ service RuntimeService {
             get: "/api/v1/project"
         };
     }
-    rpc RegisterInstance(RegisterInstanceRequest) returns (RegisterInstanceResponse) {}
+    rpc RegisterInstance(RegisterInstanceRequest) returns (RegisterInstanceResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/instance"
+            body: "*"
+        };
+    }
     rpc JobStatus(JobStatusRequest) returns (JobStatusResponse) {
         option (google.api.http) = {
             get: "/api/v1/project/{project_name}/job/{job_name}/status"
+        };
+    }
+    rpc GetWindow(GetWindowRequest) returns (GetWindowResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/window"
         };
     }
 }
@@ -57,6 +72,11 @@ message VersionResponse {
 message DeploySpecificationRequest {
     string project_name = 1;
     repeated JobSpecification jobs = 2;
+}
+
+message DumpSpecificationRequest {
+    string project_name = 1;
+    string job_name = 2;
 }
 
 message ProjectSpecification {
@@ -102,6 +122,11 @@ message DeploySpecificationResponse {
     bool success = 1;
     string message = 2;
     string job_name = 3;
+}
+
+message DumpSpecificationResponse {
+    bool success = 1;
+    string content = 2;
 }
 
 message RegisterProjectRequest {
@@ -158,4 +183,17 @@ message JobStatusResponse {
 message JobStatus {
     string state = 1;
     google.protobuf.Timestamp scheduled_at = 2;
+}
+
+message GetWindowRequest {
+    google.protobuf.Timestamp scheduled_at = 1;
+    string size = 2;
+    string offset = 3;
+    string truncate_to = 4;
+
+}
+
+message GetWindowResponse {
+    google.protobuf.Timestamp start = 1;
+    google.protobuf.Timestamp end = 2;
 }

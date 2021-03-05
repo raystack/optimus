@@ -5,7 +5,6 @@ package integration_tests
 import (
 	"bytes"
 	"io/ioutil"
-	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +25,7 @@ func TestCompiler(t *testing.T) {
 	hookUnit := new(mock.HookUnit)
 	hookUnit.On("GetName").Return(transporterHook)
 	hookUnit.On("GetImage").Return("odpf/namespace/hook-image:latest")
-	hookUnit.On("GetType").Return(models.HookTypePost)
+	hookUnit.On("GetType").Return(models.HookTypePre)
 
 	predatorHook := "predator"
 	hookUnit2 := new(mock.HookUnit)
@@ -38,8 +37,12 @@ func TestCompiler(t *testing.T) {
 		Name: "foo-project",
 	}
 
-	spec := models.JobSpec{
-		Name:  "foo",
+	externalProjSpec := models.ProjectSpec{
+		Name: "foo-external-project",
+	}
+
+	depSpecIntra := models.JobSpec{
+		Name:  "foo-intra-dep-job",
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
@@ -58,7 +61,67 @@ func TestCompiler(t *testing.T) {
 				TruncateTo: "d",
 			},
 		},
-		Dependencies: map[string]models.JobSpecDependency{},
+	}
+
+	depSpecInter := models.JobSpec{
+		Name:  "foo-inter-dep-job",
+		Owner: "mee@mee",
+		Behavior: models.JobSpecBehavior{
+			CatchUp:       true,
+			DependsOnPast: false,
+		},
+		Schedule: models.JobSpecSchedule{
+			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
+			Interval:  "* * * * *",
+		},
+		Task: models.JobSpecTask{
+			Unit:     execUnit,
+			Priority: 2000,
+			Window: models.JobSpecTaskWindow{
+				Size:       time.Hour,
+				Offset:     0,
+				TruncateTo: "d",
+			},
+		},
+	}
+
+	scheduleEndDate := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+	hook1 := models.JobSpecHook{
+		Config:    map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
+		Unit:      hookUnit,
+		DependsOn: nil,
+	}
+	hook2 := models.JobSpecHook{
+		Config:    map[string]string{"FILTER_EXPRESSION2": "event_timestamp > 10000"},
+		Unit:      hookUnit2,
+		DependsOn: []*models.JobSpecHook{&hook1},
+	}
+	spec := models.JobSpec{
+		Name:  "foo",
+		Owner: "mee@mee",
+		Behavior: models.JobSpecBehavior{
+			CatchUp:       true,
+			DependsOnPast: false,
+		},
+		Schedule: models.JobSpecSchedule{
+			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
+			EndDate:   &scheduleEndDate,
+			Interval:  "* * * * *",
+		},
+		Task: models.JobSpecTask{
+			Unit:     execUnit,
+			Priority: 2000,
+			Window: models.JobSpecTaskWindow{
+				Size:       time.Hour,
+				Offset:     0,
+				TruncateTo: "d",
+			},
+		},
+		Dependencies: map[string]models.JobSpecDependency{
+			// we'll add resolved dependencies
+			"destination1": {Job: &depSpecIntra, Project: &projSpec, Type: models.JobSpecDependencyTypeIntra},
+			"destination2": {Job: &depSpecInter, Project: &externalProjSpec, Type: models.JobSpecDependencyTypeInter},
+		},
 		Assets: *models.JobAssets{}.New(
 			[]models.JobSpecAsset{
 				{
@@ -67,20 +130,11 @@ func TestCompiler(t *testing.T) {
 				},
 			},
 		),
-		Hooks: []models.JobSpecHook{
-			{
-				Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
-				Unit:   hookUnit,
-			},
-			{
-				Config: map[string]string{"FILTER_EXPRESSION2": "event_timestamp > 10000"},
-				Unit:   hookUnit2,
-			},
-		},
+		Hooks: []models.JobSpecHook{hook1, hook2},
 	}
 
 	t.Run("Compile", func(t *testing.T) {
-		templatePath := "./resources/pack/templates/scheduler/airflow_1/base_dag.py"
+		templatePath := "./../resources/pack/templates/scheduler/airflow_1/base_dag.py"
 		compiledTemplateOutput := "./expected_compiled_template.py"
 
 		t.Run("should compile template without any error", func(t *testing.T) {
@@ -110,14 +164,7 @@ func TestCompiler(t *testing.T) {
 			assert.Nil(t, err)
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
-
-			// trim whitespace and new line
-			expectedOutput := strings.ReplaceAll(string(expectedCompiledOutput), "\n", "")
-			expectedOutput = strings.ReplaceAll(expectedOutput, " ", "")
-			actualOutput := strings.ReplaceAll(string(dag.Contents), "\n", "")
-			actualOutput = strings.ReplaceAll(actualOutput, " ", "")
-
-			assert.Equal(t, expectedOutput, actualOutput)
+			assert.Equal(t, string(expectedCompiledOutput), string(dag.Contents))
 		})
 	})
 }

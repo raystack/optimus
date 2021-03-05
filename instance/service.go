@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gorm.io/gorm"
+	"github.com/jinzhu/gorm"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"

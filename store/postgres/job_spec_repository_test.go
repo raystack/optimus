@@ -47,10 +47,10 @@ func TestJobRepository(t *testing.T) {
 
 	gTask := "g-task"
 	tTask := "t-task"
+	destination := "p.d.t"
 	execUnit1 := new(mock.ExecutionUnit)
 	execUnit1.On("GetName").Return(gTask)
 	execUnit2 := new(mock.ExecutionUnit)
-	execUnit2.On("GetName").Return(tTask)
 
 	gHook := "g-hook"
 	hookUnit1 := new(mock.HookUnit)
@@ -118,6 +118,12 @@ func TestJobRepository(t *testing.T) {
 		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
+
+			unitData1 := models.UnitData{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+			execUnit1.On("GenerateDestination", unitData1).Return(destination, nil)
+			defer execUnit1.AssertExpectations(t)
+			defer execUnit2.AssertExpectations(t)
+
 			testModels := []models.JobSpec{}
 			testModels = append(testModels, testConfigs...)
 
@@ -149,6 +155,15 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
+			unitData1 := models.UnitData{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+			execUnit1.On("GenerateDestination", unitData1).Return("p.d.t", nil)
+			defer execUnit1.AssertExpectations(t)
+
+			unitData2 := models.UnitData{Config: testConfigs[2].Task.Config, Assets: testConfigs[2].Assets.ToMap()}
+			execUnit2.On("GetName").Return(tTask)
+			execUnit2.On("GenerateDestination", unitData2).Return("p.d.t", nil)
+			defer execUnit2.AssertExpectations(t)
+
 			repo := NewJobRepository(db, projectSpec, adapter)
 
 			//try for create
@@ -173,6 +188,16 @@ func TestJobRepository(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			testModelA := testConfigs[0]
+
+			unitData1 := models.UnitData{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+			execUnit1.On("GenerateDestination", unitData1).Return("p.d.t", nil)
+			execUnit1.On("GetName").Return(tTask)
+			defer execUnit1.AssertExpectations(t)
+
+			unitData2 := models.UnitData{Config: testConfigs[2].Task.Config, Assets: testConfigs[2].Assets.ToMap()}
+			execUnit2.On("GenerateDestination", unitData1).Return("p.d.t", nil)
+			execUnit2.On("GenerateDestination", unitData2).Return("p.d.t", nil)
+			defer execUnit2.AssertExpectations(t)
 
 			repo := NewJobRepository(db, projectSpec, adapter)
 
@@ -309,5 +334,22 @@ func TestJobRepository(t *testing.T) {
 		checkModels, err := repo.GetAll()
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModels))
+	})
+
+	t.Run("GetByDestination", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		repo := NewJobRepository(db, projectSpec, adapter)
+
+		err := repo.Insert(testModels[0])
+		assert.Nil(t, err)
+
+		j, p, err := repo.GetByDestination(destination)
+		assert.Nil(t, err)
+		assert.Equal(t, testConfigs[0].Name, j.Name)
+		assert.Equal(t, projectSpec.Name, p.Name)
 	})
 }

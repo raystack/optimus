@@ -1,0 +1,1 @@
+apache-airflow[postgres,statsd,kubernetes]==1.10.12

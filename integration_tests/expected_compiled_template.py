@@ -10,7 +10,7 @@ from airflow.utils.state import State
 from airflow.utils.weight_rule import WeightRule
 
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
-    SlackWebhookOperator
+    SlackWebhookOperator, CrossTenantDependencySensor
 
 
 SECRET_NAME = Variable.get("secret_name", "optimus-google-credentials")
@@ -35,7 +35,7 @@ default_args = {
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
     "priority_weight": 2000,
     "start_date": datetime.strptime("2000-11-11", "%Y-%m-%d"),
-
+    "end_date": datetime.strptime("2020-11-11","%Y-%m-%d"),
     "on_failure_callback": alert_failed_to_slack,
     "weight_rule": WeightRule.ABSOLUTE
 }
@@ -72,7 +72,7 @@ transformation_bq = SuperKubernetesPodOperator(
 
 # hooks loop start
 
-hook_transporter =  SuperKubernetesPodOperator(
+hook_transporter = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "odpf/namespace/hook-image:latest",
@@ -95,7 +95,7 @@ hook_transporter =  SuperKubernetesPodOperator(
    },
    reattach_on_restart=True,
 )
-hook_predator =  SuperKubernetesPodOperator(
+hook_predator = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "odpf/namespace/predator-image:latest",
@@ -118,18 +118,40 @@ hook_predator =  SuperKubernetesPodOperator(
    },
    reattach_on_restart=True,
 )
-
-# set inter-dependencies between task and hooks
-transformation_bq >> hook_transporter
-transformation_bq >> hook_predator
 # hooks loop ends
 
-# set inter-dependencies between hooks and hooks
-# hooks loop ends
 
 # create upstream sensors
+wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
+    external_dag_id = "foo-intra-dep-job",
+    window_size = 1,
+    window_offset = 0,
+    window_truncate_upto = "d",
+    task_id = "wait-foo-intra-dep-job-bq",
+    poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    dag=dag
+)
+wait_foo__dash__inter__dash__dep__dash__job = CrossTenantDependencySensor(
+    optimus_host="http://airflow.io",
+    optimus_project="foo-external-project",
+    optimus_job="foo-inter-dep-job",
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait-foo-inter-dep-job-bq",
+    dag=dag
+)
 
 # arrange inter task dependencies
 ####################################
 
 # upstream sensors -> base transformation task
+wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
+wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
+
+# set inter-dependencies between task and hooks
+hook_transporter >> transformation_bq
+transformation_bq >> hook_predator
+
+# set inter-dependencies between hooks and hooks
+hook_transporter >> hook_predator

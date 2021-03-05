@@ -112,6 +112,10 @@ func (repo *jobRepository) GetByName(jobName string) (models.JobSpec, error) {
 	return jobSpec, nil
 }
 
+func (repo *jobRepository) GetByDestination(jobName string) (models.JobSpec, models.ProjectSpec, error) {
+	panic("GetByDestination() should not be invoked with local.JobSpecRepo")
+}
+
 // Delete deletes a requested job by name
 func (repo *jobRepository) Delete(jobName string) error {
 	panic("unimplemented")

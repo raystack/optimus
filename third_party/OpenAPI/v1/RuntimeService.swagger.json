@@ -19,6 +19,38 @@
     "application/json"
   ],
   "paths": {
+    "/api/v1/instance": {
+      "post": {
+        "operationId": "RuntimeService_RegisterInstance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiv1RegisterInstanceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apiv1RegisterInstanceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/api/v1/project": {
       "get": {
         "operationId": "RuntimeService_ListProjects",
@@ -64,6 +96,42 @@
             "schema": {
               "$ref": "#/definitions/apiv1RegisterProjectRequest"
             }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/job/{jobName}/dump": {
+      "get": {
+        "operationId": "RuntimeService_DumpSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiv1DumpSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -138,6 +206,55 @@
           "RuntimeService"
         ]
       }
+    },
+    "/api/v1/window": {
+      "get": {
+        "operationId": "RuntimeService_GetWindow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiv1GetWindowResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scheduledAt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "truncateTo",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -152,6 +269,30 @@
         },
         "jobName": {
           "type": "string"
+        }
+      }
+    },
+    "apiv1DumpSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "apiv1GetWindowResponse": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },
@@ -330,6 +471,24 @@
           "additionalProperties": {
             "type": "string"
           }
+        }
+      }
+    },
+    "apiv1RegisterInstanceRequest": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },

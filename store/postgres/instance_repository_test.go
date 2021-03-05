@@ -50,7 +50,6 @@ func TestInstanceRepository(t *testing.T) {
 	execUnit1 := new(mock.ExecutionUnit)
 	execUnit1.On("GetName").Return(gTask)
 	execUnit2 := new(mock.ExecutionUnit)
-	execUnit2.On("GetName").Return(tTask)
 
 	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
@@ -102,6 +101,11 @@ func TestInstanceRepository(t *testing.T) {
 			Job: jobConfigs[1],
 		},
 	}
+
+	unitData := models.UnitData{Config: jobConfigs[0].Task.Config, Assets: jobConfigs[0].Assets.ToMap()}
+	execUnit1.On("GenerateDestination", unitData).Return("p.d.t", nil)
+	defer execUnit1.AssertExpectations(t)
+	defer execUnit2.AssertExpectations(t)
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()

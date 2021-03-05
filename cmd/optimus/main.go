@@ -296,6 +296,14 @@ func main() {
 		}
 	}
 
+	// registered job store repository factory
+	jobSpecRepoFac := &jobSpecRepoFactory{
+		db: dbConn,
+	}
+	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost)
+	dependencyResolver := job.NewDependencyResolver()
+	priorityResolver := job.NewPriorityResolver()
+
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
 	logrusEntry := logrus.NewEntry(log)
 	// Shared options for the logger, with a custom gRPC code to log level function.
@@ -323,16 +331,14 @@ func main() {
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		Version,
 		job.NewService(
-			&jobSpecRepoFactory{
-				db: dbConn,
-			},
+			jobSpecRepoFac,
 			&jobRepoFactory{
 				gcsClient: googleStorage,
 				schd:      models.Scheduler,
 			},
-			job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost),
-			job.NewDependencyResolver(),
-			job.NewPriorityResolver(),
+			jobCompiler,
+			dependencyResolver,
+			priorityResolver,
 		),
 		projectRepoFac,
 		v1.NewAdapter(models.TaskRegistry, models.HookRegistry),

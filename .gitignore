@@ -15,4 +15,13 @@ temp
 test_coverage.html
 /opctl
 jobs
-resources/resource_fs.go
+/resources/resource_fs.go
+/auth.json
+/development.env
+/resources/resource_fs.go
+__pycache__
+
+# git ignore generate files related to gRPC and proto
+/api/proto/protoc-gen-openapiv2/
+/api/proto/v1/*.pb.go
+/api/proto/v1/*.pb.gw.go

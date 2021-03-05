@@ -26,7 +26,7 @@ func getMultiDependencyObject(specs map[string]models.JobSpec, dependencySpec1 s
 func TestPriorityWeightResolver(t *testing.T) {
 	noDependency := map[string]models.JobSpecDependency{}
 
-	t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
+	t.Run("Resolve should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
 		spec1 := "dag1-no-deps"
 		spec2 := "dag2-deps-on-dag1"
 		spec3 := "dag3-deps-on-dag2"
@@ -100,7 +100,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
+	t.Run("Resolve should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
 		// run the test multiple times
 		for i := 1; i < 10; i++ {
 			var (
@@ -170,7 +170,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByDAG should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
+	t.Run("Resolve should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {
 		spec1 := "dag1-no-deps"
 		spec2 := "dag2-deps-on-dag1"
 		spec3 := "dag3-deps-on-dag2"
@@ -211,7 +211,54 @@ func TestPriorityWeightResolver(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByDAG should fail when circular dependency is detected (atleast one DAG with no dependency)", func(t *testing.T) {
+	t.Run("Resolve with a external tenant dependency should assign correct weights", func(t *testing.T) {
+		spec1 := "dag1-no-deps"
+		spec2 := "dag2-deps-on-dag1"
+		spec3 := "dag3-deps-on-dag2"
+		spec4 := "dag4-no-deps"
+		spec5 := "dag5-deps-on-dag1"
+
+		var (
+			specs   = make(map[string]models.JobSpec)
+			dagSpec = make([]models.JobSpec, 0)
+		)
+
+		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec1])
+
+		// for the spec2, we'll add external spec as dependency
+		externalSpecName := "external-dag-dep"
+		externalSpec := models.JobSpec{Name: externalSpecName, Dependencies: noDependency}
+		deps2 := getDependencyObject(specs, spec1)
+		deps2[externalSpecName] = models.JobSpecDependency{Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
+			Type: models.JobSpecDependencyTypeInter}
+		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: deps2}
+		dagSpec = append(dagSpec, specs[spec2])
+
+		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getDependencyObject(specs, spec2)}
+		dagSpec = append(dagSpec, specs[spec3])
+
+		specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
+		dagSpec = append(dagSpec, specs[spec4])
+
+		specs[spec5] = models.JobSpec{Name: spec5, Dependencies: getDependencyObject(specs, spec1)}
+		dagSpec = append(dagSpec, specs[spec5])
+
+		assginer := job.NewPriorityResolver()
+		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+		assert.Nil(t, err)
+
+		max := job.MaxPriorityWeight
+		max_1 := max - job.PriorityWeightGap*1
+		max_2 := max - job.PriorityWeightGap*2
+		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1}
+
+		for _, jobSpec := range resolvedJobSpecs {
+			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
+		}
+	})
+
+	t.Run("Resolve should fail when circular dependency is detected (atleast one DAG with no dependency)", func(t *testing.T) {
 		spec1 := "dag1-no-deps"
 		spec2 := "dag2-deps-on-dag1"
 		spec3 := "dag3-deps-on-dag2"
@@ -247,7 +294,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assert.Contains(t, err.Error(), job.ErrCyclicDependencyEncountered.Error())
 	})
 
-	t.Run("GetByDAG should give minWeight when all DAGs are dependent on each other", func(t *testing.T) {
+	t.Run("Resolve should give minWeight when all DAGs are dependent on each other", func(t *testing.T) {
 		spec2 := "dag2-deps-on-dag1"
 		spec3 := "dag3-deps-on-dag2"
 
@@ -279,7 +326,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assert.Equal(t, "error occurred while resolving priority: dag2-deps-on-dag1: "+job.ErrPriorityNotFound.Error(), err.Error())
 	})
 
-	t.Run("GetByDAG should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
+	t.Run("Resolve should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
 		spec1 := "dag1-no-deps"
 		spec4 := "dag4-no-deps"
 
@@ -306,7 +353,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByDAG should assign correct weight to single DAG", func(t *testing.T) {
+	t.Run("Resolve should assign correct weight to single DAG", func(t *testing.T) {
 		spec1 := "dag1-no-deps"
 		var (
 			specs   = make(map[string]models.JobSpec)
@@ -328,7 +375,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByDAG should minWeight when weight for a non existing DAG is requested", func(t *testing.T) {
+	t.Run("Resolve should minWeight when weight for a non existing DAG is requested", func(t *testing.T) {
 		spec1 := "dag1-no-deps"
 		spec2 := "dag2-non-existing"
 

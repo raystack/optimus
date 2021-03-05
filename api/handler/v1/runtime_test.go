@@ -338,4 +338,154 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, "rpc error: code = Internal desc = failed to save job: a-data-job: a random error: failed to save a-data-job", err.Error())
 		})
 	})
+
+	t.Run("GetWindow", func(t *testing.T) {
+		t.Run("should return the correct window date range", func(t *testing.T) {
+			Version := "1.0.1"
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			scheduledAtTimestamp, _ := ptypes.TimestampProto(scheduledAt)
+			req := pb.GetWindowRequest{
+				ScheduledAt: scheduledAtTimestamp,
+				Size:        "24h",
+				Offset:      "24h",
+				TruncateTo:  "d",
+			}
+			resp, err := runtimeServiceServer.GetWindow(context.TODO(), &req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "2020-11-11T00:00:00Z", ptypes.TimestampString(resp.GetStart()))
+			assert.Equal(t, "2020-11-12T00:00:00Z", ptypes.TimestampString(resp.GetEnd()))
+		})
+		t.Run("should return error if any of the required fields in request is missing", func(t *testing.T) {
+			Version := "1.0.1"
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			scheduledAtTimestamp, _ := ptypes.TimestampProto(scheduledAt)
+			req := pb.GetWindowRequest{
+				ScheduledAt: scheduledAtTimestamp,
+				Size:        "",
+				Offset:      "24h",
+				TruncateTo:  "d",
+			}
+			_, err := runtimeServiceServer.GetWindow(context.TODO(), &req)
+			assert.Equal(t, "rpc error: code = FailedPrecondition desc = window size, offset and truncate_to must be provided", err.Error())
+		})
+	})
+
+	t.Run("DumpSpecification", func(t *testing.T) {
+		t.Run("should dump specification of a job", func(t *testing.T) {
+			Version := "1.0.1"
+
+			projectName := "a-data-project"
+			jobName := "a-data-job"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			execUnit1 := new(mock.ExecutionUnit)
+			defer execUnit1.AssertExpectations(t)
+
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Unit: execUnit1,
+					Config: map[string]string{
+						"do": "this",
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.JobSpecRepository)
+			jobSpecRepository.On("GetByName", jobName).Return(jobSpec, nil)
+			jobSpecRepository.On("GetAll").Return([]models.JobSpec{jobSpec}, nil)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
+			jobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
+			defer jobSpecRepoFactory.AssertExpectations(t)
+
+			compiler := new(mock.Compiler)
+			compiler.On("Compile", jobSpec, projectSpec).Return(models.Job{
+				Name:     "name-of-dag",
+				Contents: []byte("content-of-dag"),
+			}, nil)
+			defer compiler.AssertExpectations(t)
+
+			dependencyResolver := new(mock.DependencyResolver)
+			dependencyResolver.On("Resolve", projectSpec, jobSpecRepository, jobSpec).Return(jobSpec, nil)
+			defer dependencyResolver.AssertExpectations(t)
+
+			priorityResolver := new(mock.PriorityResolver)
+			priorityResolver.On("Resolve", []models.JobSpec{jobSpec}).Return([]models.JobSpec{jobSpec}, nil)
+			defer priorityResolver.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				job.NewService(
+					jobSpecRepoFactory,
+					nil,
+					compiler,
+					dependencyResolver,
+					priorityResolver,
+				),
+				projectRepoFactory,
+				v1.NewAdapter(models.TaskRegistry, nil),
+				nil,
+				nil,
+				nil,
+			)
+
+			req := pb.DumpSpecificationRequest{
+				ProjectName: projectName,
+				JobName:     jobName,
+			}
+			resp, err := runtimeServiceServer.DumpSpecification(context.TODO(), &req)
+			assert.Nil(t, err)
+			assert.Equal(t, true, resp.GetSuccess())
+			assert.Equal(t, "content-of-dag", resp.GetContent())
+		})
+	})
 }
