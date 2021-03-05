@@ -82,13 +82,12 @@ func (b *BQ2BQ) GetQuestions() []*survey.Question {
 
 func (b *BQ2BQ) GetConfig() map[string]string {
 	return map[string]string{
-		"PROJECT":       "{{.Project}}",
-		"TABLE":         "{{.Table}}",
-		"DATASET":       "{{.Dataset}}",
-		"LOAD_METHOD":   "{{.LoadMethod}}",
-		"SQL_TYPE":      "STANDARD",
-		"TASK_TIMEZONE": "UTC",
-		"JOB_LABELS":    "owner=optimus",
+		"PROJECT":     "{{.Project}}",
+		"TABLE":       "{{.Table}}",
+		"DATASET":     "{{.Dataset}}",
+		"LOAD_METHOD": "{{.LoadMethod}}",
+		"SQL_TYPE":    "STANDARD",
+		"JOB_LABELS":  "owner=optimus",
 	}
 }
 

@@ -21,7 +21,17 @@ jobs
 /resources/resource_fs.go
 __pycache__
 
+# even though file is ignored, this is actually checked in the repository
+# because viper treats file with no extension as valid config files
+# as well and treat optimus binary(because config name and binary name is same)
+# generated in this directory as an actual config file
+# one solution is to generate optimus binaries in a dist/ folder
+# other is to change the config name
+# TODO
+optimus.yaml
+
 # git ignore generate files related to gRPC and proto
 /api/proto/protoc-gen-openapiv2/
 /api/proto/v1/*.pb.go
 /api/proto/v1/*.pb.gw.go
+/api/proto/google/

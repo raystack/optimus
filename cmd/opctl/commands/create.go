@@ -128,7 +128,7 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository) (local.Job, error) {
 			Catchup:       true,
 			DependsOnPast: false,
 		},
-		Dependencies: []string{},
+		Dependencies: []local.JobDependency{},
 		Hooks:        []local.JobHook{},
 	}
 

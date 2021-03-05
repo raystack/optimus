@@ -115,7 +115,7 @@ message JobSpecification {
 
 message JobDependency {
     string name = 1;
-    int32 type = 2;
+    string type = 2;
 }
 
 message DeploySpecificationResponse {

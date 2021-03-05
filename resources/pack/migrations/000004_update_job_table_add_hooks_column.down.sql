@@ -1,1 +1,0 @@
-ALTER TABLE job DROP IF EXISTS hooks;

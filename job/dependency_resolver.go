@@ -7,11 +7,14 @@ import (
 )
 
 var (
-	ErrUnknownDependency = errors.New("unknown dependency")
+	ErrUnknownDependency            = errors.New("unknown local dependency")
+	UnknownRuntimeDependencyMessage = "could not find registered destination '%s' during compiling dependencies for the provided job '%s', " +
+		"please check if the source is correct, " +
+		"if it is and want this to be ignored as dependency, " +
+		"check docs how this can be done in used transformation task"
 )
 
-type dependencyResolver struct {
-}
+type dependencyResolver struct{}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
 func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error) {
@@ -50,7 +53,7 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 	for _, depDestination := range jobDependenciesDestination {
 		depSpec, depProj, err := jobSpecRepo.GetByDestination(depDestination)
 		if err != nil {
-			return models.JobSpec{}, errors.Wrapf(err, "could not find destination %s", depDestination)
+			return models.JobSpec{}, errors.Wrapf(err, UnknownRuntimeDependencyMessage, depDestination, jobSpec.Name)
 		}
 
 		// determine the type of dependency
@@ -80,10 +83,7 @@ func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, p
 				return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownDependency, depName)
 			}
 			depSpec.Job = &job
-			// currently we allow only intra project static dependencies, so resolve project to current project,
-			// and dependency type to Intra.
 			depSpec.Project = &projectSpec
-			depSpec.Type = models.JobSpecDependencyTypeIntra
 			jobSpec.Dependencies[depName] = depSpec
 		}
 	}

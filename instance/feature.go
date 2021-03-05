@@ -17,7 +17,7 @@ const (
 	ProjectConfigPrefix = "GLOBAL__"
 )
 
-// FeatureManager fetches all config data for a given instanceSpecinstance and compiles all
+// FeatureManager fetches all config data for a given instanceSpec and compiles all
 // macros/templates.
 // Feature here is a term used for the input required for tasks to execute.
 // Raw task assets may not be executable in there default state and needs to be

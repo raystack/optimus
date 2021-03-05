@@ -113,25 +113,32 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	for _, childSpec := range dagSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
+			var isExternal = false
 			parentSpec, ok := dagSpecMap[depDAG.Job.Name]
 			if !ok {
-				if depDAG.Type == models.JobSpecDependencyTypeInter {
-					// when the dependency of a jobSpec belong to some other tenant, the jobSpec won't
-					// be available in jobSpecs []models.JobSpec object (which is tenant specific)
-					// so we'll add a dummy JobSpec for that cross tenant dependency.
-					parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
-				} else {
+				if depDAG.Type == models.JobSpecDependencyTypeIntra {
 					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
+				} else {
+					// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
+					// be available in jobSpecs []models.JobSpec object (which is tenant specific)
+					// so we'll add a dummy JobSpec for that cross tenant/external dependency.
+					parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
+					isExternal = true
 				}
 			}
 			parentNode := a.findOrCreateDAGNode(tree, parentSpec)
 			parentNode.AddDependent(childNode)
 			tree.AddNode(parentNode)
+			if isExternal {
+				// dependency that are outside current project will be considered as root because
+				// optimus don't know dependencies of those external parents
+				tree.MarkRoot(parentNode)
+			}
 		}
 
 		// the DAGs with no dependencies are root nodes for the tree
 		if len(childSpec.Dependencies) == 0 {
-			tree.SetRoot(childNode)
+			tree.MarkRoot(childNode)
 		}
 	}
 
@@ -190,8 +197,8 @@ func (t *MultiRootDAGTree) GetRootNodes() []*DAGNode {
 	return nodes
 }
 
-// SetRoot marks a node as root
-func (t *MultiRootDAGTree) SetRoot(node *DAGNode) {
+// MarkRoot marks a node as root
+func (t *MultiRootDAGTree) MarkRoot(node *DAGNode) {
 	t.rootNodes = append(t.rootNodes, node.GetName())
 }
 

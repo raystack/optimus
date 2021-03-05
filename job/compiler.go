@@ -48,9 +48,9 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 		HookTypePost               string
 		InstanceTypeTransformation string
 		InstanceTypeHook           string
-		JobSpecDependencyTypeIntra int
-		JobSpecDependencyTypeInter int
-		JobSpecDependencyTypeExtra int
+		JobSpecDependencyTypeIntra string
+		JobSpecDependencyTypeInter string
+		JobSpecDependencyTypeExtra string
 	}{
 		Project:                    proj,
 		Job:                        jobSpec,
@@ -59,9 +59,9 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 		HookTypePost:               string(models.HookTypePost),
 		InstanceTypeTransformation: string(models.InstanceTypeTransformation),
 		InstanceTypeHook:           string(models.InstanceTypeHook),
-		JobSpecDependencyTypeIntra: models.JobSpecDependencyTypeIntra,
-		JobSpecDependencyTypeInter: models.JobSpecDependencyTypeInter,
-		JobSpecDependencyTypeExtra: models.JobSpecDependencyTypeExtra,
+		JobSpecDependencyTypeIntra: string(models.JobSpecDependencyTypeIntra),
+		JobSpecDependencyTypeInter: string(models.JobSpecDependencyTypeInter),
+		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
 	}); err != nil {
 		return models.Job{}, err
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -123,10 +124,14 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
 
+	var dependencyErrors error
 	for idx, jobSpec := range jobSpecs {
 		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(proj, jobSpecRepo, jobSpec); err != nil {
-			return err
+			dependencyErrors = multierror.Append(dependencyErrors, err)
 		}
+	}
+	if dependencyErrors != nil {
+		return dependencyErrors
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 

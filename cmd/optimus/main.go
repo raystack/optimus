@@ -290,6 +290,7 @@ func main() {
 	}
 	// bootstrap scheduler for registered projects
 	for _, proj := range registeredProjects {
+		logger.I("bootstrap project ", proj.Name)
 		if err := models.Scheduler.Bootstrap(context.Background(), proj); err != nil {
 			// TODO: ideally should panic out
 			logger.E(err)

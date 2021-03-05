@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
-
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"github.com/odpf/optimus/models"
@@ -25,7 +23,7 @@ type Job struct {
 	DependsOnPast *bool
 	CatchUp       *bool
 	Destination   string
-	Dependencies  pq.StringArray
+	Dependencies  datatypes.JSON
 
 	ProjectID uuid.UUID
 	Project   Project `gorm:"foreignKey:ProjectID"`
@@ -112,10 +110,11 @@ func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo mo
 func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
-	for _, dep := range conf.Dependencies {
-		dependencies[dep] = models.JobSpecDependency{}
+	if err := json.Unmarshal(conf.Dependencies, &dependencies); err != nil {
+		return models.JobSpec{}, err
 	}
 
+	// prep task conf
 	taskConf := map[string]string{}
 	if err := json.Unmarshal(conf.TaskConfig, &taskConf); err != nil {
 		return models.JobSpec{}, err
@@ -186,9 +185,15 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
 
-	dependencies := []string{}
-	for dep := range spec.Dependencies {
-		dependencies = append(dependencies, dep)
+	// prep dependencies, make them dirty first(remove job and project)
+	for idx, dep := range spec.Dependencies {
+		dep.Project = nil
+		dep.Job = nil
+		spec.Dependencies[idx] = dep
+	}
+	dependenciesJSON, err := json.Marshal(spec.Dependencies)
+	if err != nil {
+		return Job{}, err
 	}
 
 	// prep task config
@@ -238,9 +243,9 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		DependsOnPast:    &spec.Behavior.DependsOnPast,
 		CatchUp:          &spec.Behavior.CatchUp,
 		Destination:      jobDestination,
-		Dependencies:     dependencies,
+		Dependencies:     dependenciesJSON,
 		TaskName:         spec.Task.Unit.GetName(),
-		TaskConfig:       datatypes.JSON(taskConfigJSON),
+		TaskConfig:       taskConfigJSON,
 		WindowSize:       &wsize,
 		WindowOffset:     &woffset,
 		WindowTruncateTo: &spec.Task.Window.TruncateTo,

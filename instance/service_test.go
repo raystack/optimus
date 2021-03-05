@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	mock2 "github.com/stretchr/testify/mock"
+
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +18,7 @@ import (
 func TestService(t *testing.T) {
 	execUnit := new(mock.ExecutionUnit)
 	execUnit.On("GetName").Return("bq")
+	execUnit.On("GenerateDestination", mock2.AnythingOfType("models.UnitData")).Return("proj.data.tab", nil)
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -65,6 +68,11 @@ func TestService(t *testing.T) {
 						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
+					{
+						Name:  instance.ConfigKeyDestination,
+						Value: "proj.data.tab",
+						Type:  models.InstanceDataTypeEnv,
+					},
 				},
 			}
 
@@ -104,6 +112,11 @@ func TestService(t *testing.T) {
 					{
 						Name:  instance.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  instance.ConfigKeyDestination,
+						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -147,6 +160,11 @@ func TestService(t *testing.T) {
 						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
+					{
+						Name:  instance.ConfigKeyDestination,
+						Value: "proj.data.tab",
+						Type:  models.InstanceDataTypeEnv,
+					},
 				},
 			}
 
@@ -185,6 +203,11 @@ func TestService(t *testing.T) {
 					{
 						Name:  instance.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  instance.ConfigKeyDestination,
+						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},

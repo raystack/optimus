@@ -28,6 +28,8 @@ func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
 	existingResource, err := repo.GetByName(spec.Name)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return repo.Insert(spec)
+	} else if err != nil {
+		return errors.Wrap(err, "unable to find spec by name")
 	}
 	resource, err := repo.adapter.FromSpec(spec)
 	if err != nil {
