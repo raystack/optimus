@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 	"github.com/odpf/optimus/instance"
 
 	"github.com/odpf/optimus/mock"

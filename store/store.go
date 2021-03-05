@@ -14,6 +14,7 @@ type JobSpecRepository interface {
 	GetByName(string) (models.JobSpec, error)
 	GetAll() ([]models.JobSpec, error)
 	Delete(string) error
+	GetByDestination(string) (models.JobSpec, models.ProjectSpec, error)
 }
 
 // ProjectRepository represents a storage interface for registered projects

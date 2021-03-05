@@ -3,8 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -16,10 +14,15 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"time"
 )
 
 type ProjectRepoFactory interface {
 	New() store.ProjectRepository
+}
+
+type JobRepoFactory interface {
+	New(spec models.ProjectSpec) store.JobSpecRepository
 }
 
 type ProtoAdapter interface {
@@ -96,6 +99,26 @@ func (sv *RuntimeServiceServer) DeploySpecification(req *pb.DeploySpecificationR
 	return nil
 }
 
+func (sv *RuntimeServiceServer) DumpSpecification(ctx context.Context, req *pb.DumpSpecificationRequest) (*pb.DumpSpecificationResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+	}
+
+	reqJobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), projSpec)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: job %s not found", err.Error(), req.GetJobName()))
+	}
+
+	compiledJob, err := sv.jobSvc.Compile(projSpec, reqJobSpec)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to compile %s", err.Error(), reqJobSpec.Name))
+	}
+
+	return &pb.DumpSpecificationResponse{Success: true, Content: string(compiledJob.Contents)}, nil
+}
+
 func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	if err := projectRepo.Save(sv.adapter.FromProjectProto(req.GetProject())); err != nil {
@@ -163,8 +186,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusRequest) (*pb.
-	JobStatusResponse, error) {
+func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusRequest) (*pb.JobStatusResponse, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
@@ -194,10 +216,42 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 	}, nil
 }
 
-func NewRuntimeServiceServer(version string, jobSvc models.JobService,
-	projectRepoFactory ProjectRepoFactory, adapter ProtoAdapter,
-	progressObserver progress.Observer, instSvc models.InstanceService,
-	scheduler models.SchedulerUnit) *RuntimeServiceServer {
+func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+	scheduledTime, err := ptypes.Timestamp(req.GetScheduledAt())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to parse schedule time %s", err.Error(), req.GetScheduledAt()))
+	}
+
+	if req.GetSize() == "" || req.GetOffset() == "" || req.GetTruncateTo() == "" {
+		return nil, status.Error(codes.FailedPrecondition, "window size, offset and truncate_to must be provided")
+	}
+
+	window, err := prepareWindow(req.GetSize(), req.GetOffset(), req.GetTruncateTo())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	windowStart, err1 := ptypes.TimestampProto(window.GetStart(scheduledTime))
+	windowEnd, err2 := ptypes.TimestampProto(window.GetEnd(scheduledTime))
+	if err1 != nil || err2 != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to convert timestamp %s", err.Error(), scheduledTime))
+	}
+
+	return &pb.GetWindowResponse{
+		Start: windowStart,
+		End:   windowEnd,
+	}, nil
+}
+
+func NewRuntimeServiceServer(
+	version string,
+	jobSvc models.JobService,
+	projectRepoFactory ProjectRepoFactory,
+	adapter ProtoAdapter,
+	progressObserver progress.Observer,
+	instSvc models.InstanceService,
+	scheduler models.SchedulerUnit,
+) *RuntimeServiceServer {
 	return &RuntimeServiceServer{
 		version:            version,
 		jobSvc:             jobSvc,

@@ -73,6 +73,24 @@ func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return specs, nil
 }
 
+func (repo *jobSpecRepository) GetByDestination(destination string) (models.JobSpec, models.ProjectSpec, error) {
+	var r Job
+	if err := repo.db.Preload("Project").Where("destination = ?", destination).Find(&r).Error; err != nil {
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+
+	jSpec, err := repo.adapter.ToSpec(r)
+	if err != nil {
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+
+	pSpec, err := r.Project.ToSpec()
+	if err != nil {
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+	return jSpec, pSpec, err
+}
+
 func NewJobRepository(db *gorm.DB, project models.ProjectSpec, adapter *Adapter) *jobSpecRepository {
 	return &jobSpecRepository{
 		db:      db,

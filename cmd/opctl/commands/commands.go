@@ -58,7 +58,7 @@ func New(
 	cmd.AddCommand(createCommand(l, jobSpecRepo))
 	cmd.AddCommand(versionCommand(l, version))
 	cmd.AddCommand(deployCommand(l, jobSpecRepo))
-	cmd.AddCommand(dumpCommand(l, jobSpecRepo, scheduler))
+	cmd.AddCommand(dumpCommand(l))
 
 	// admin specific commands
 	switch os.Getenv("OPTIMUS_ADMIN") {

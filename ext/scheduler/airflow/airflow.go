@@ -95,6 +95,9 @@ func (a *scheduler) migrateLibFileInGCS(ctx context.Context, bucket, objDir stri
 
 	// copy to gcs
 	dst, err := a.objWriter.NewWriter(ctx, bucket, objDir)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if derr := dst.Close(); derr != nil {
 			if err == nil {

@@ -17,7 +17,7 @@ const (
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
-	Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error)
+	Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error)
 }
 
 // JobSpecRepoFactory is used to store job specs
@@ -75,6 +75,43 @@ func (srv *Service) upload(jobSpec models.JobSpec, jobRepo store.JobRepository, 
 	return nil
 }
 
+// Compile takes a jobSpec of a project, resolves dependencies.priorities and returns the compiled Job
+func (srv *Service) Compile(projSpec models.ProjectSpec, jobSpec models.JobSpec) (models.Job, error) {
+	jobSpecRepo := srv.jobSpecRepoFactory.New(projSpec)
+	jobSpecs, err := jobSpecRepo.GetAll()
+	if err != nil {
+		return models.Job{}, errors.Wrapf(err, "failed to retrive jobs")
+	}
+
+	// resolve dependencies
+	for idx, jSpec := range jobSpecs {
+		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(projSpec, jobSpecRepo, jSpec); err != nil {
+			return models.Job{}, errors.Wrapf(err, "failed to resolve dependencies %s", jSpec.Name)
+		}
+	}
+
+	// resolve priority of all jobSpecs
+	jobSpecs, err = srv.priorityResolver.Resolve(jobSpecs)
+
+	// get our input job from the request
+	var resolvedJobSpec models.JobSpec
+	for _, jSpec := range jobSpecs {
+		if jSpec.Name == jobSpec.Name {
+			resolvedJobSpec = jSpec
+		}
+	}
+	if resolvedJobSpec.Name == "" {
+		return models.Job{}, errors.Errorf("missing job during compile %s", jobSpec.Name)
+	}
+
+	// compile
+	compiledJob, err := srv.compiler.Compile(resolvedJobSpec, projSpec)
+	if err != nil {
+		return models.Job{}, errors.Wrapf(err, "failed to compile %s", resolvedJobSpec.Name)
+	}
+	return compiledJob, nil
+}
+
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
 // assign proper priority weights, compiles it and uploads it to the destination
 // store
@@ -86,9 +123,10 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
 
-	jobSpecs, err = srv.dependencyResolver.Resolve(jobSpecs)
-	if err != nil {
-		return err
+	for idx, jobSpec := range jobSpecs {
+		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(proj, jobSpecRepo, jobSpec); err != nil {
+			return err
+		}
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 

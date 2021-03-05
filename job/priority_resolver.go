@@ -108,13 +108,21 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	}
 
 	// build a multi root tree and assign dependencies
+	// ignore any other dependency apart from intra-tenant
 	tree := NewMultiRootDAGTree()
 	for _, childSpec := range dagSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
 			parentSpec, ok := dagSpecMap[depDAG.Job.Name]
 			if !ok {
-				return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
+				if depDAG.Type == models.JobSpecDependencyTypeInter {
+					// when the dependency of a jobSpec belong to some other tenant, the jobSpec won't
+					// be available in jobSpecs []models.JobSpec object (which is tenant specific)
+					// so we'll add a dummy JobSpec for that cross tenant dependency.
+					parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
+				} else {
+					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
+				}
 			}
 			parentNode := a.findOrCreateDAGNode(tree, parentSpec)
 			parentNode.AddDependent(childNode)

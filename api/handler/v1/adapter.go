@@ -37,7 +37,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		}
 	}
 
-	window, err := prepareWindow(spec)
+	window, err := prepareWindow(spec.WindowSize, spec.WindowOffset, spec.WindowTruncateTo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -77,26 +77,26 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	}, nil
 }
 
-func prepareWindow(spec *pb.JobSpecification) (models.JobSpecTaskWindow, error) {
+func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}
 	window.Size = time.Hour * 24
 	window.Offset = 0
 	window.TruncateTo = "d"
 
-	if spec.WindowTruncateTo != "" {
-		window.TruncateTo = spec.WindowTruncateTo
+	if truncateTo != "" {
+		window.TruncateTo = truncateTo
 	}
-	if spec.WindowSize != "" {
-		window.Size, err = time.ParseDuration(spec.WindowSize)
+	if windowSize != "" {
+		window.Size, err = time.ParseDuration(windowSize)
 		if err != nil {
-			return window, errors.Wrapf(err, "failed to parse task window of %v with size %v", spec.Name, spec.WindowSize)
+			return window, errors.Wrapf(err, "failed to parse task window with size %v", windowSize)
 		}
 	}
-	if spec.WindowOffset != "" {
-		window.Offset, err = time.ParseDuration(spec.WindowOffset)
+	if windowOffset != "" {
+		window.Offset, err = time.ParseDuration(windowOffset)
 		if err != nil {
-			return window, errors.Wrapf(err, "failed to parse task window of %v with offset %v", spec.Name, spec.WindowOffset)
+			return window, errors.Wrapf(err, "failed to parse task window with offset %v", windowOffset)
 		}
 	}
 	return window, nil

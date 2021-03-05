@@ -192,8 +192,9 @@ func (w *JobSpecTaskWindow) String() string {
 type JobSpecDependencyType int8
 
 type JobSpecDependency struct {
-	Job  *JobSpec
-	Type JobSpecDependencyType
+	Project *ProjectSpec
+	Job     *JobSpec
+	Type    JobSpecDependencyType
 }
 
 // JobService provides a high-level operations on DAGs
@@ -202,6 +203,7 @@ type JobService interface {
 	Create(JobSpec, ProjectSpec) error
 	GetByName(string, ProjectSpec) (JobSpec, error)
 	Sync(ProjectSpec, progress.Observer) error
+	Compile(ProjectSpec, JobSpec) (Job, error)
 
 	// KeepOnly deletes all jobs except the ones provided
 	KeepOnly(ProjectSpec, []JobSpec, progress.Observer) error

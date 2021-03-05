@@ -24,6 +24,7 @@ type Job struct {
 	Interval      string
 	DependsOnPast *bool
 	CatchUp       *bool
+	Destination   string
 	Dependencies  pq.StringArray
 
 	ProjectID uuid.UUID
@@ -218,6 +219,14 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 	wsize := spec.Task.Window.Size.Nanoseconds()
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
+	jobDestination, err := spec.Task.Unit.GenerateDestination(models.UnitData{
+		Config: spec.Task.Config,
+		Assets: spec.Assets.ToMap(),
+	})
+	if err != nil {
+		return Job{}, err
+	}
+
 	return Job{
 		ID:               spec.ID,
 		Version:          spec.Version,
@@ -228,6 +237,7 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		Interval:         spec.Schedule.Interval,
 		DependsOnPast:    &spec.Behavior.DependsOnPast,
 		CatchUp:          &spec.Behavior.CatchUp,
+		Destination:      jobDestination,
 		Dependencies:     dependencies,
 		TaskName:         spec.Task.Unit.GetName(),
 		TaskConfig:       datatypes.JSON(taskConfigJSON),
