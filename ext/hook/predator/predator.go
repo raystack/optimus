@@ -1,7 +1,10 @@
 package transporter
 
 import (
+	"github.com/odpf/optimus/utils"
+
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
 )
 
@@ -27,13 +30,14 @@ func (t *Predator) GetType() models.HookType {
 	return models.HookTypePost
 }
 
-func (t *Predator) GetQuestions() []*survey.Question {
-	return []*survey.Question{
+func (t *Predator) AskQuestions(_ models.UnitOptions) (map[string]interface{}, error) {
+	questions := []*survey.Question{
 		{
 			Name: "FilterExpression",
 			Prompt: &survey.Input{
 				Message: "Filter expression for extracting transformation rows?",
 				Help:    "for example: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'",
+				Default: "",
 			},
 			Validate: survey.MinLength(5),
 		},
@@ -53,19 +57,61 @@ func (t *Predator) GetQuestions() []*survey.Question {
 			},
 		},
 	}
+	inputsRaw := make(map[string]interface{})
+	if err := survey.Ask(questions, &inputsRaw); err != nil {
+		return nil, err
+	}
+	return inputsRaw, nil
 }
 
-func (t *Predator) GetConfig(_ models.UnitData) (map[string]string, error) {
-	return map[string]string{
-		"AUDIT_TIME":   `{{ "{{.EXECUTION_TIME}}" }}`,
-		"FILTER":       "{{.FilterExpression}}",
-		"GROUP":        "{{.Group}}",
-		"MODE":         "{{.Mode}}",
-		"PREDATOR_URL": `{{ "{{.GLOBAL__PREDATOR_HOST}}" }}`,
-		"SUB_COMMAND":  "profile_audit",
-		"BQ_PROJECT":   `{{ "{{.TASK__PROJECT}}" }}`,
-		"BQ_DATASET":   `{{ "{{.TASK__DATASET}}" }}`,
-		"BQ_TABLE":     `{{ "{{.TASK__TABLE}}" }}`,
+func (t *Predator) GenerateConfig(hookInputs map[string]interface{}, _ models.UnitData) (models.JobSpecConfigs, error) {
+	_, ok1 := hookInputs["FilterExpression"]
+	_, ok2 := hookInputs["Group"]
+	_, ok3 := hookInputs["Mode"]
+	if !ok1 || !ok2 || !ok3 {
+		return nil, errors.New("missing config key required to generate configuration")
+	}
+	stringInputs, err := utils.ConvertToStringMap(hookInputs)
+	if err != nil {
+		return nil, errors.Wrap(err, "unidentified config in hook")
+	}
+	return models.JobSpecConfigs{
+		{
+			Name:  "AUDIT_TIME",
+			Value: `{{.EXECUTION_TIME}}`,
+		},
+		{
+			Name:  "FILTER",
+			Value: stringInputs["FilterExpression"],
+		},
+		{
+			Name:  "GROUP",
+			Value: stringInputs["Group"],
+		},
+		{
+			Name:  "MODE",
+			Value: stringInputs["Mode"],
+		},
+		{
+			Name:  "PREDATOR_URL",
+			Value: `{{.GLOBAL__PREDATOR_HOST}}`,
+		},
+		{
+			Name:  "SUB_COMMAND",
+			Value: "profile_audit",
+		},
+		{
+			Name:  "BQ_PROJECT",
+			Value: `{{.TASK__PROJECT}}`,
+		},
+		{
+			Name:  "BQ_DATASET",
+			Value: `{{.TASK__DATASET}}`,
+		},
+		{
+			Name:  "BQ_TABLE",
+			Value: `{{.TASK__TABLE}}`,
+		},
 	}, nil
 }
 

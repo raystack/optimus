@@ -73,8 +73,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Unit: execUnit1,
-					Config: map[string]string{
-						"do": "this",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
 					},
 				},
 				Assets: *models.JobAssets{}.New(
@@ -267,7 +270,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			execUnit1 := new(mock.ExecutionUnit)
 			execUnit1.On("GetName").Return(taskName)
-			execUnit1.On("GetImage").Return("imageName")
 
 			defer execUnit1.AssertExpectations(t)
 
@@ -276,8 +278,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Name: jobName1,
 					Task: models.JobSpecTask{
 						Unit: execUnit1,
-						Config: map[string]string{
-							"do": "this",
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
 						},
 					},
 					Assets: *models.JobAssets{}.New(
@@ -309,8 +314,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 
-			models.TaskRegistry.Add(execUnit1)
-			adapter := v1.NewAdapter(models.TaskRegistry, nil)
+			allTasksRepo := new(mock.SupportedTaskRepo)
+			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			adapter := v1.NewAdapter(allTasksRepo, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
@@ -414,8 +420,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Unit: execUnit1,
-					Config: map[string]string{
-						"do": "this",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
 					},
 				},
 				Assets: *models.JobAssets{}.New(
@@ -455,7 +464,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer compiler.AssertExpectations(t)
 
 			dependencyResolver := new(mock.DependencyResolver)
-			dependencyResolver.On("Resolve", projectSpec, jobSpecRepository, jobSpec).Return(jobSpec, nil)
+			dependencyResolver.On("Resolve", projectSpec, jobSpecRepository, jobSpec, nil).Return(jobSpec, nil)
 			defer dependencyResolver.AssertExpectations(t)
 
 			priorityResolver := new(mock.PriorityResolver)

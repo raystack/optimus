@@ -55,7 +55,7 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 	cmd.Run = func(c *cli.Command, args []string) {
 		jobName := args[0]
 		l.Printf("requesting resources for project %s, job %s at %s\nplease wait...\n", projectName, jobName, optimusHost)
-
+		l.Printf("run name %s, run type %s, scheduled at %s\n", runName, runType, scheduledAt)
 		// append base path to input file directory
 		inputDirectory := filepath.Join(assetOutputDir, taskInputDirectory)
 
@@ -144,7 +144,7 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 	// write all env into a file
 	envFileBlob := ""
 	for key, val := range envMap {
-		envFileBlob += fmt.Sprintf("%s=\"%s\"\n", key, val)
+		envFileBlob += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 	filePath := filepath.Join(inputDirectory, models.InstanceDataTypeEnvFileName)
 	if err := writeToFileFn(filePath, envFileBlob, l.Writer()); err != nil {

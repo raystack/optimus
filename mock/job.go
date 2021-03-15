@@ -2,6 +2,7 @@ package mock
 
 import (
 	"github.com/stretchr/testify/mock"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -119,8 +120,9 @@ type DependencyResolver struct {
 	mock.Mock
 }
 
-func (srv *DependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error) {
-	args := srv.Called(projectSpec, jobSpecRepo, jobSpec)
+func (srv *DependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
+	jobSpec models.JobSpec, obs progress.Observer) (models.JobSpec, error) {
+	args := srv.Called(projectSpec, jobSpecRepo, jobSpec, obs)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 

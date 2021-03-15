@@ -75,8 +75,10 @@ func TestJobRepository(t *testing.T) {
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit1,
-				Config: map[string]string{
-					"do": "this",
+				Config: []models.JobSpecConfigItem{
+					{
+						"do", "this",
+					},
 				},
 				Window: models.JobSpecTaskWindow{
 					Size:       time.Hour * 24,
@@ -107,8 +109,10 @@ func TestJobRepository(t *testing.T) {
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit2,
-				Config: map[string]string{
-					"do": "this",
+				Config: []models.JobSpecConfigItem{
+					{
+						"do", "this",
+					},
 				},
 			},
 		},
@@ -315,7 +319,7 @@ func TestJobRepository(t *testing.T) {
 		checkModel, err := repo.GetByName(testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus-id", checkModel.Name)
-		assert.Equal(t, "this", checkModel.Task.Config["do"])
+		assert.Equal(t, "this", checkModel.Task.Config[0].Value)
 	})
 
 	t.Run("GetAll", func(t *testing.T) {

@@ -2,10 +2,15 @@ package store
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 
 	"github.com/odpf/optimus/models"
+)
+
+var (
+	ErrResourceNotFound = errors.New("resource not found")
 )
 
 // JobSpecRepository represents a storage interface for Job specifications

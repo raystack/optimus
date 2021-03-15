@@ -17,6 +17,7 @@ const (
 	ProjectConfigPrefix = "GLOBAL__"
 )
 
+// TODO: think of a better name
 // FeatureManager fetches all config data for a given instanceSpec and compiles all
 // macros/templates.
 // Feature here is a term used for the input required for tasks to execute.
@@ -153,8 +154,8 @@ func (fm *FeatureManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 	runType models.InstanceType) (map[string]string,
 	map[string]string, error) {
 	transformationMap := map[string]string{}
-	for key, val := range jobSpec.Task.Config {
-		transformationMap[key] = val
+	for _, val := range jobSpec.Task.Config {
+		transformationMap[val.Name] = val.Value
 	}
 
 	hookMap := map[string]string{}
@@ -163,8 +164,8 @@ func (fm *FeatureManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "requested hook not found %s", runName)
 		}
-		for key, val := range hook.Config {
-			hookMap[key] = val
+		for _, val := range hook.Config {
+			hookMap[val.Name] = val.Value
 		}
 	}
 	return transformationMap, hookMap, nil

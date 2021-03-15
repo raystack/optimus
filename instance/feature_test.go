@@ -47,10 +47,19 @@ func TestFeature(t *testing.T) {
 						Offset:     0,
 						TruncateTo: "d",
 					},
-					Config: map[string]string{
-						"BQ_VAL": "22",
-						"EXECT":  "{{.EXECUTION_TIME}}",
-						"BUCKET": "{{.GLOBAL__bucket}}",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "BQ_VAL",
+							Value: "22",
+						},
+						{
+							Name:  "EXECT",
+							Value: "{{.EXECUTION_TIME}}",
+						},
+						{
+							Name:  "BUCKET",
+							Value: "{{.GLOBAL__bucket}}",
+						},
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
@@ -144,8 +153,11 @@ func TestFeature(t *testing.T) {
 						Offset:     0,
 						TruncateTo: "d",
 					},
-					Config: map[string]string{
-						"BQ_VAL": "22",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "BQ_VAL",
+							Value: "22",
+						},
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
@@ -159,11 +171,23 @@ func TestFeature(t *testing.T) {
 				),
 				Hooks: []models.JobSpecHook{
 					{
-						Config: map[string]string{
-							"SAMPLE_CONFIG":                     "200",
-							"INHERIT_CONFIG":                    "{{.TASK__BQ_VAL}}",
-							"FILTER_EXPRESSION":                 "event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'",
-							"PRODUCER_CONFIG_BOOTSTRAP_SERVERS": `{{.GLOBAL__transporterKafkaBroker}}`,
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "SAMPLE_CONFIG",
+								Value: "200",
+							},
+							{
+								Name:  "INHERIT_CONFIG",
+								Value: "{{.TASK__BQ_VAL}}",
+							},
+							{
+								Name:  "FILTER_EXPRESSION",
+								Value: "event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'",
+							},
+							{
+								Name:  "PRODUCER_CONFIG_BOOTSTRAP_SERVERS",
+								Value: `{{.GLOBAL__transporterKafkaBroker}}`,
+							},
 						},
 						Unit: hookUnit,
 					},

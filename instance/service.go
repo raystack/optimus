@@ -3,7 +3,6 @@ package instance
 import (
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 
 	"github.com/odpf/optimus/models"
@@ -38,7 +37,7 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	switch instanceType {
 	case models.InstanceTypeTransformation:
 		// clear and save fresh
-		if err := jobRunRepo.Clear(scheduledAt); err != nil {
+		if err := jobRunRepo.Clear(scheduledAt); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 			return models.InstanceSpec{}, errors.Wrapf(err, "failed to clear instance of job %s",
 				scheduledAt.String())
 		}
@@ -48,7 +47,7 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	case models.InstanceTypeHook:
 		// store only if not already exists
 		_, err := jobRunRepo.GetByScheduledAt(scheduledAt)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			if err := jobRunRepo.Save(instanceToSave); err != nil {
 				return models.InstanceSpec{}, err
 			}

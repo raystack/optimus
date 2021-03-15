@@ -62,9 +62,10 @@ transformation_bq = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.io',
+        "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
-        "TASK_TYPE":'transformation', "TASK_NAME": "bq",
+        "TASK_TYPE":'transformation', "TASK_NAME":'bq',
         "SCHEDULED_AT":'{{ next_execution_date }}',
     },
     reattach_on_restart=True,
@@ -87,9 +88,10 @@ hook_transporter = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.io',
+        "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
-        "TASK_TYPE":'hook', "TASK_NAME": "transporter",
+        "TASK_TYPE":'hook', "TASK_NAME":'transporter',
         "SCHEDULED_AT":'{{ next_execution_date }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
    },
@@ -110,9 +112,10 @@ hook_predator = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME": 'http://airflow.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.io',
+        "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
-        "TASK_TYPE":'hook', "TASK_NAME": "predator",
+        "TASK_TYPE":'hook', "TASK_NAME":'predator',
         "SCHEDULED_AT":'{{ next_execution_date }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
    },

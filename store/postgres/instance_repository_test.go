@@ -62,8 +62,10 @@ func TestInstanceRepository(t *testing.T) {
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit1,
-				Config: map[string]string{
-					"do": "this",
+				Config: []models.JobSpecConfigItem{
+					{
+						"do", "this",
+					},
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -82,8 +84,10 @@ func TestInstanceRepository(t *testing.T) {
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit2,
-				Config: map[string]string{
-					"do": "this",
+				Config: []models.JobSpecConfigItem{
+					{
+						"do", "this",
+					},
 				},
 			},
 		},

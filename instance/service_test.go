@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/store"
+
 	mock2 "github.com/stretchr/testify/mock"
 
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/instance"
@@ -122,7 +123,7 @@ func TestService(t *testing.T) {
 				},
 			}
 
-			instanceSpecRepo.On("GetByScheduledAt", scheduledAt).Return(instanceSpec, gorm.ErrRecordNotFound).Once()
+			instanceSpecRepo.On("GetByScheduledAt", scheduledAt).Return(instanceSpec, store.ErrResourceNotFound).Once()
 			instanceSpecRepo.On("GetByScheduledAt", scheduledAt).Return(instanceSpec, nil).Once()
 			instanceSpecRepo.On("Save", instanceSpec).Return(nil)
 			defer instanceSpecRepo.AssertExpectations(t)

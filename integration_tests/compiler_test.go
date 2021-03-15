@@ -131,10 +131,13 @@ func TestCompiler(t *testing.T) {
 			},
 		),
 		Hooks: []models.JobSpecHook{hook1, hook2},
+		Labels: map[string]string{
+			"orchestrator": "optimus",
+		},
 	}
 
 	t.Run("Compile", func(t *testing.T) {
-		templatePath := "./../resources/pack/templates/scheduler/airflow_1/base_dag.py"
+		templatePath := "./resources/pack/templates/scheduler/airflow_1/base_dag.py"
 		compiledTemplateOutput := "./expected_compiled_template.py"
 
 		t.Run("should compile template without any error", func(t *testing.T) {
@@ -160,11 +163,12 @@ func TestCompiler(t *testing.T) {
 				templatePath,
 				"http://airflow.io",
 			)
-			dag, err := com.Compile(spec, projSpec)
+			job, err := com.Compile(spec, projSpec)
 			assert.Nil(t, err)
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
-			assert.Equal(t, string(expectedCompiledOutput), string(dag.Contents))
+			assert.Equal(t, string(expectedCompiledOutput), string(job.Contents))
+
 		})
 	})
 }

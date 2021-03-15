@@ -3,6 +3,8 @@ package v1
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -14,7 +16,6 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"time"
 )
 
 type ProjectRepoFactory interface {
@@ -111,7 +112,7 @@ func (sv *RuntimeServiceServer) DumpSpecification(ctx context.Context, req *pb.D
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: job %s not found", err.Error(), req.GetJobName()))
 	}
 
-	compiledJob, err := sv.jobSvc.Compile(projSpec, reqJobSpec)
+	compiledJob, err := sv.jobSvc.Dump(projSpec, reqJobSpec)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to compile %s", err.Error(), reqJobSpec.Name))
 	}
@@ -273,6 +274,7 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 	case *job.EventJobUpload:
 		resp := &pb.DeploySpecificationResponse{
 			Success: true,
+			Ack:     true,
 			JobName: evt.Job.Name,
 		}
 		if evt.Err != nil {
@@ -283,5 +285,14 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error(errors.Wrapf(err, "failed to send deploy spec ack for: %s", evt.Job.Name))
 		}
+	case *job.EventJobSpecUnknownDependencyUsed:
+		resp := &pb.DeploySpecificationResponse{
+			JobName: evt.Job,
+			Message: evt.String(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error(errors.Wrapf(err, "failed to send unknown dependency notification for: %s", evt.Job))
+		}
 	}
+
 }

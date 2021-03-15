@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/odpf/optimus/store"
+
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -77,7 +79,7 @@ func (repo *instanceRepository) Insert(spec models.InstanceSpec) error {
 
 func (repo *instanceRepository) Save(spec models.InstanceSpec) error {
 	existingResource, err := repo.GetByScheduledAt(spec.ScheduledAt)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find instance by schedule")
@@ -107,6 +109,9 @@ func (repo *instanceRepository) Clear(scheduled time.Time) error {
 func (repo *instanceRepository) GetByScheduledAt(scheduled time.Time) (models.InstanceSpec, error) {
 	var r Instance
 	if err := repo.db.Preload("Job").Where("job_id = ? AND scheduled_at = ?", repo.job.ID, scheduled).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.InstanceSpec{}, store.ErrResourceNotFound
+		}
 		return models.InstanceSpec{}, err
 	}
 	return r.ToSpec(repo.job)

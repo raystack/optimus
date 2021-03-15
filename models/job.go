@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,6 +40,8 @@ type JobSpec struct {
 
 	Version      int
 	Name         string
+	Description  string
+	Labels       []JobSpecLabelItem
 	Owner        string
 	Schedule     JobSpecSchedule
 	Behavior     JobSpecBehavior
@@ -48,13 +51,26 @@ type JobSpec struct {
 	Hooks        []JobSpecHook
 }
 
-func (js *JobSpec) GetHookByName(name string) (JobSpecHook, error) {
+func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
 	for _, hook := range js.Hooks {
 		if hook.Unit.GetName() == name {
 			return hook, nil
 		}
 	}
 	return JobSpecHook{}, ErrNoSuchHook
+}
+
+func (js JobSpec) GetLabelsAsString() string {
+	labels := ""
+	for _, l := range js.Labels {
+		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(l.Name), strings.TrimSpace(l.Value))
+	}
+	return strings.TrimRight(labels, ",")
+}
+
+type JobSpecLabelItem struct {
+	Name  string
+	Value string
 }
 
 type JobSpecSchedule struct {
@@ -70,9 +86,26 @@ type JobSpecBehavior struct {
 
 type JobSpecTask struct {
 	Unit     Transformation
-	Config   map[string]string
+	Config   JobSpecConfigs
 	Window   JobSpecTaskWindow
 	Priority int
+}
+
+// using array to keep order, map would be more performant
+type JobSpecConfigs []JobSpecConfigItem
+
+func (j JobSpecConfigs) Get(name string) (string, bool) {
+	for _, conf := range j {
+		if conf.Name == name {
+			return conf.Value, true
+		}
+	}
+	return "", false
+}
+
+type JobSpecConfigItem struct {
+	Name  string
+	Value string
 }
 
 type JobSpecTaskWindow struct {
@@ -147,7 +180,7 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 }
 
 type JobSpecHook struct {
-	Config    map[string]string
+	Config    JobSpecConfigs
 	Unit      HookUnit
 	DependsOn []*JobSpecHook
 }
@@ -242,7 +275,7 @@ type JobService interface {
 	Create(JobSpec, ProjectSpec) error
 	GetByName(string, ProjectSpec) (JobSpec, error)
 	Sync(ProjectSpec, progress.Observer) error
-	Compile(ProjectSpec, JobSpec) (Job, error)
+	Dump(ProjectSpec, JobSpec) (Job, error)
 
 	// KeepOnly deletes all jobs except the ones provided
 	KeepOnly(ProjectSpec, []JobSpec, progress.Observer) error

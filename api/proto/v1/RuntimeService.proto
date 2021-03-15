@@ -86,7 +86,7 @@ message ProjectSpecification {
 
 message JobSpecHook {
     string name = 1;
-    map<string, string> config = 3;
+    repeated JobConfigItem config = 2;
 }
 
 message JobSpecification {
@@ -102,7 +102,7 @@ message JobSpecification {
     bool catch_up = 8;
 
     string task_name = 9;
-    map<string, string> config = 10;
+    repeated JobConfigItem config = 10;
 
     string window_size = 11;
     string window_offset = 12;
@@ -111,6 +111,14 @@ message JobSpecification {
     repeated JobDependency dependencies = 14;
     map<string, string> assets = 15;
     repeated JobSpecHook hooks = 16;
+
+    string description = 17;
+    repeated JobLabelItem labels = 18;
+}
+
+message JobConfigItem {
+    string name = 1;
+    string value = 2;
 }
 
 message JobDependency {
@@ -118,10 +126,16 @@ message JobDependency {
     string type = 2;
 }
 
+message JobLabelItem {
+    string name = 1;
+    string value = 2;
+}
+
 message DeploySpecificationResponse {
     bool success = 1;
-    string message = 2;
-    string job_name = 3;
+    bool ack = 2;
+    string message = 3;
+    string job_name = 4;
 }
 
 message DumpSpecificationResponse {
