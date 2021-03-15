@@ -98,7 +98,9 @@ func TestDependencyResolver(t *testing.T) {
 			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
 			assert.Nil(t, err)
 
-			assert.Equal(t, map[string]models.JobSpecDependency{jobSpec2.Name: {Job: &jobSpec2, Project: &projectSpec}}, resolvedJobSpec1.Dependencies)
+			assert.Equal(t, map[string]models.JobSpecDependency{
+				jobSpec2.Name: {Job: &jobSpec2, Project: &projectSpec, Type: models.JobSpecDependencyTypeIntra},
+			}, resolvedJobSpec1.Dependencies)
 			assert.Equal(t, map[string]models.JobSpecDependency{}, resolvedJobSpec2.Dependencies)
 			assert.Equal(t, []*models.JobSpecHook{&resolvedJobSpec1.Hooks[0]}, resolvedJobSpec1.Hooks[1].DependsOn)
 		})
@@ -137,7 +139,7 @@ func TestDependencyResolver(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: &jobSpec3}},
+				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: &jobSpec3, Type: models.JobSpecDependencyTypeIntra}},
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -172,7 +174,10 @@ func TestDependencyResolver(t *testing.T) {
 			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
 			assert.Nil(t, err)
 
-			assert.Equal(t, map[string]models.JobSpecDependency{jobSpec2.Name: {Job: &jobSpec2, Project: &projectSpec}, jobSpec3.Name: {Job: &jobSpec3}}, resolvedJobSpec1.Dependencies)
+			assert.Equal(t, map[string]models.JobSpecDependency{
+				jobSpec2.Name: {Job: &jobSpec2, Project: &projectSpec, Type: models.JobSpecDependencyTypeIntra},
+				jobSpec3.Name: {Job: &jobSpec3, Type: models.JobSpecDependencyTypeIntra},
+			}, resolvedJobSpec1.Dependencies)
 			assert.Equal(t, map[string]models.JobSpecDependency{}, resolvedJobSpec2.Dependencies)
 		})
 
@@ -223,7 +228,9 @@ func TestDependencyResolver(t *testing.T) {
 			resolver := job.NewDependencyResolver()
 			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
 
-			assert.Equal(t, "could not find destination project.dataset.table2_destination: random error", err.Error())
+			assert.Error(t, errors.Wrapf(errors.New("random error"), job.UnknownRuntimeDependencyMessage,
+				"project.dataset.table2_destination", jobSpec1.Name),
+				err.Error())
 			assert.Equal(t, models.JobSpec{}, resolvedJobSpec1)
 		})
 
@@ -293,7 +300,9 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver()
 			_, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
-			assert.Equal(t, "could not find destination project.dataset.table3_destination: spec not found", err.Error())
+			assert.Error(t, errors.Wrapf(errors.New("spec not found"), job.UnknownRuntimeDependencyMessage,
+				"project.dataset.table3_destination", jobSpec1.Name),
+				err.Error())
 		})
 
 		t.Run("it should fail for unknown static dependency", func(t *testing.T) {
@@ -343,7 +352,7 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver()
 			_, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
-			assert.Equal(t, "unknown dependency for job static_dep: spec not found", err.Error())
+			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
 		})
 
 		t.Run("it should resolve any unresolved static dependency", func(t *testing.T) {
@@ -380,7 +389,8 @@ func TestDependencyResolver(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil}}, // explicitly setting this to nil. which should get resolved
+				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
+				// explicitly setting this to nil. which should get resolved
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -417,7 +427,10 @@ func TestDependencyResolver(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.Nil(t, err)
-			assert.Equal(t, map[string]models.JobSpecDependency{jobSpec2.Name: {Job: &jobSpec2, Project: &projectSpec}, jobSpec3.Name: {Job: &jobSpec3, Project: &projectSpec}}, resolvedJobSpec1.Dependencies)
+			assert.Equal(t, map[string]models.JobSpecDependency{
+				jobSpec2.Name: {Job: &jobSpec2, Project: &projectSpec, Type: models.JobSpecDependencyTypeIntra},
+				jobSpec3.Name: {Job: &jobSpec3, Project: &projectSpec, Type: models.JobSpecDependencyTypeIntra},
+			}, resolvedJobSpec1.Dependencies)
 			assert.Equal(t, map[string]models.JobSpecDependency{}, resolvedJobSpec2.Dependencies)
 		})
 
@@ -463,7 +476,8 @@ func TestDependencyResolver(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil}}, // explicitly setting a dirty dependency
+				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
+				// explicitly setting a dirty dependency
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,

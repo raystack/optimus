@@ -3,17 +3,19 @@ package instance
 import (
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
 
 const (
+	// these configs can be used as macros in task/hook config and job assets
 	ConfigKeyDstart        = "DSTART"
 	ConfigKeyDend          = "DEND"
 	ConfigKeyExecutionTime = "EXECUTION_TIME"
+	ConfigKeyDestination   = "JOB_DESTINATION"
 )
 
 type InstanceSpecRepoFactory interface {
@@ -28,7 +30,10 @@ type Service struct {
 func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	instanceType models.InstanceType) (models.InstanceSpec, error) {
 	jobRunRepo := s.repoFac.New(jobSpec)
-	instanceToSave := s.prepInstance(jobSpec, scheduledAt)
+	instanceToSave, err := s.prepInstance(jobSpec, scheduledAt)
+	if err != nil {
+		return models.InstanceSpec{}, errors.Wrap(err, "failed to register instance")
+	}
 
 	switch instanceType {
 	case models.InstanceTypeTransformation:
@@ -63,7 +68,15 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	return instanceSpec, nil
 }
 
-func (s *Service) prepInstance(jobSpec models.JobSpec, scheduledAt time.Time) models.InstanceSpec {
+func (s *Service) prepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
+	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
+		Config: jobSpec.Task.Config,
+		Assets: jobSpec.Assets.ToMap(),
+	})
+	if err != nil {
+		return models.InstanceSpec{}, errors.Wrapf(err, "failed to generate destination for job %s", jobSpec.Name)
+	}
+
 	return models.InstanceSpec{
 		Job:         jobSpec,
 		ScheduledAt: scheduledAt,
@@ -86,8 +99,13 @@ func (s *Service) prepInstance(jobSpec models.JobSpec, scheduledAt time.Time) mo
 				Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
+			{
+				Name:  ConfigKeyDestination,
+				Value: jobDestination,
+				Type:  models.InstanceDataTypeEnv,
+			},
 		},
-	}
+	}, nil
 }
 
 func NewService(repoFac InstanceSpecRepoFactory, timeFunc func() time.Time) *Service {

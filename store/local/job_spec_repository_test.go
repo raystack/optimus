@@ -41,7 +41,7 @@ task:
     offset: "0"
     truncate_to: d
 dependencies:
-- bar
+- job: bar
 hooks: []
 `
 
@@ -79,8 +79,11 @@ func TestSpecRepository(t *testing.T) {
 		Asset: map[string]string{
 			"query.sql": "select * from 1",
 		},
-		Dependencies: []string{
-			"bar",
+		Dependencies: []local.JobDependency{
+			{
+				JobName: "bar",
+				Type:    models.JobSpecDependencyTypeIntra.String(),
+			},
 		},
 	}
 	spec := models.JobSpec{
@@ -108,6 +111,37 @@ func TestSpecRepository(t *testing.T) {
 		},
 		Dependencies: map[string]models.JobSpecDependency{
 			"bar": {},
+		},
+		Assets: models.JobAssets{}.FromMap(map[string]string{
+			"query.sql": "select * from 1",
+		}),
+	}
+
+	spec2 := models.JobSpec{
+		Version: 1,
+		Name:    "test",
+		Owner:   "optimus",
+		Schedule: models.JobSpecSchedule{
+			StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+			Interval:  "@daily",
+		},
+		Behavior: models.JobSpecBehavior{
+			CatchUp:       true,
+			DependsOnPast: false,
+		},
+		Task: models.JobSpecTask{
+			Unit: execUnit,
+			Window: models.JobSpecTaskWindow{
+				Offset:     0,
+				Size:       time.Hour * 24,
+				TruncateTo: "d",
+			},
+			Config: map[string]string{
+				"table": "tab1",
+			},
+		},
+		Dependencies: map[string]models.JobSpecDependency{
+			"bar": {Type: models.JobSpecDependencyTypeIntra},
 		},
 		Assets: models.JobAssets{}.FromMap(map[string]string{
 			"query.sql": "select * from 1",
@@ -273,7 +307,7 @@ func TestSpecRepository(t *testing.T) {
 			repo := local.NewJobSpecRepository(fsm, adapter)
 			returnedSpec, err := repo.GetByName(spec.Name)
 			assert.Nil(t, err)
-			assert.Equal(t, spec, returnedSpec)
+			assert.Equal(t, spec2, returnedSpec)
 		})
 		t.Run("should use cache if file is requested more than once", func(t *testing.T) {
 			jobfile := new(mock.File)
@@ -319,11 +353,11 @@ func TestSpecRepository(t *testing.T) {
 			repo := local.NewJobSpecRepository(fsm, adapter)
 			returnedSpec, err := repo.GetByName(spec.Name)
 			assert.Nil(t, err)
-			assert.Equal(t, spec, returnedSpec)
+			assert.Equal(t, spec2, returnedSpec)
 
 			returnedSpecAgain, err := repo.GetByName(spec.Name)
 			assert.Nil(t, err)
-			assert.Equal(t, spec, returnedSpecAgain)
+			assert.Equal(t, spec2, returnedSpecAgain)
 		})
 		t.Run("should return ErrNoDAGSpecs in case no job folder exist", func(t *testing.T) {
 			// mock for reading the directory
@@ -417,7 +451,7 @@ task:
   window:
     size: 24h
     offset: "0"
-    tuncate_to: d
+    truncate_to: d
 `,
 			`version: 1
 name: fooo

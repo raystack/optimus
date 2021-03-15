@@ -145,3 +145,25 @@ UPDATE SET `count` = N.count
 when not matched then
 INSERT (`date`, `count`) VALUES(N.date, N.count)
 ```
+
+## SQL Helpers
+
+Sometimes default behaviour of how tasks are being understood by optimus is not ideal. You can change this using helpers inside the query.sql file. To use, simply add them inside sql multiline comments where it’s required.
+At the moment there is only one sql helper:
+
+- `@ignoreupstream`: By default, Optimus adds all the external tables used inside the query file as its upstream 
+dependency. This helper can help ignore unwanted waits for upstream dependency to finish before the current transformation can be executed.
+Helper needs to be added just before the external table name. For example:
+```sql
+select
+hakai,
+rasengan,
+`over`,
+load_timestamp as `event_timestamp`
+from /* @ignoreupstream */
+`g-data-gojek-id-standardized.playground.sample_select`
+WHERE
+DATE(`load_timestamp`) >= DATE('dstart')
+AND DATE(`load_timestamp`) < DATE('dend')
+```
+

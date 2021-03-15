@@ -28,7 +28,7 @@ type Job struct {
 	Behavior     JobBehavior
 	Task         JobTask
 	Asset        map[string]string `yaml:"asset,omitempty"`
-	Dependencies []string
+	Dependencies []JobDependency
 	Hooks        []JobHook
 }
 
@@ -52,7 +52,7 @@ type JobTask struct {
 type JobTaskWindow struct {
 	Size       string
 	Offset     string
-	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|)$"`
+	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|M)$"`
 }
 
 type JobHook struct {
@@ -105,6 +105,11 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	return window, nil
 }
 
+type JobDependency struct {
+	JobName string `yaml:"job"`
+	Type    string `yaml:"type,omitempty"`
+}
+
 type Adapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
 	supportedHookRepo models.SupportedHookRepo
@@ -137,8 +142,17 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	for _, dep := range conf.Dependencies {
-		dependencies[dep] = models.JobSpecDependency{
-			Type: models.JobSpecDependencyTypeIntra,
+		depType := models.JobSpecDependencyTypeIntra
+		switch dep.Type {
+		case string(models.JobSpecDependencyTypeIntra):
+			depType = models.JobSpecDependencyTypeIntra
+		case string(models.JobSpecDependencyTypeInter):
+			depType = models.JobSpecDependencyTypeInter
+		case string(models.JobSpecDependencyTypeExtra):
+			depType = models.JobSpecDependencyTypeExtra
+		}
+		dependencies[dep.JobName] = models.JobSpecDependency{
+			Type: depType,
 		}
 	}
 
@@ -173,8 +187,8 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 			Interval:  conf.Schedule.Interval,
 		},
 		Behavior: models.JobSpecBehavior{
-			CatchUp:       true,
-			DependsOnPast: false,
+			CatchUp:       conf.Behavior.Catchup,
+			DependsOnPast: conf.Behavior.DependsOnPast,
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -214,15 +228,18 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 			},
 		},
 		Asset:        spec.Assets.ToMap(),
-		Dependencies: []string{},
+		Dependencies: []JobDependency{},
 		Hooks:        []JobHook{},
 	}
 
 	if spec.Schedule.EndDate != nil {
 		parsed.Schedule.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)
 	}
-	for name := range spec.Dependencies {
-		parsed.Dependencies = append(parsed.Dependencies, name)
+	for name, dep := range spec.Dependencies {
+		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
+			JobName: name,
+			Type:    dep.Type.String(),
+		})
 	}
 
 	// prep hooks

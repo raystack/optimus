@@ -257,6 +257,51 @@ func TestService(t *testing.T) {
 			err := svc.Sync(projSpec, nil)
 			assert.Nil(t, err)
 		})
+		t.Run("should batch dependency resolution errors if any for all jobs", func(t *testing.T) {
+			jobSpecsBase := []models.JobSpec{
+				{
+					Version: 1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+				{
+					Version: 1,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+			}
+
+			// used to store raw job specs
+			jobSpecRepo := new(mock.JobSpecRepository)
+			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			jobSpecRepoFac.On("New", projSpec).Return(jobSpecRepo)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0]).Return(models.JobSpec{}, errors.New("error test"))
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[1]).Return(models.JobSpec{},
+				errors.New("error test-2"))
+			defer depenResolver.AssertExpectations(t)
+
+			svc := job.NewService(jobSpecRepoFac, nil, nil, depenResolver, nil)
+			err := svc.Sync(projSpec, nil)
+			assert.NotNil(t, err)
+			assert.Equal(t, "2 errors occurred:\n\t* error test\n\t* error test-2\n\n", err.Error())
+		})
 	})
 	t.Run("KeepOnly", func(t *testing.T) {
 		projSpec := models.ProjectSpec{

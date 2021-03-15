@@ -127,7 +127,7 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     window_size = 1,
     window_offset = 0,
     window_truncate_upto = "d",
-    task_id = "wait-foo-intra-dep-job-bq",
+    task_id = "wait_foo-intra-dep-job-bq",
     poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
@@ -138,7 +138,7 @@ wait_foo__dash__inter__dash__dep__dash__job = CrossTenantDependencySensor(
     optimus_job="foo-inter-dep-job",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait-foo-inter-dep-job-bq",
+    task_id="wait_foo-inter-dep-job-bq",
     dag=dag
 )
 

@@ -107,7 +107,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     window_size = {{$dependency.Job.Task.Window.Size.Hours }},
     window_offset = {{$dependency.Job.Task.Window.Offset.Hours }},
     window_truncate_upto = "{{$dependency.Job.Task.Window.TruncateTo}}",
-    task_id = "wait-{{$dependency.Job.Name}}-{{$dependency.Job.Task.Unit.GetName}}",
+    task_id = "wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.GetName}}",
     poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
@@ -121,7 +121,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     optimus_job="{{$dependency.Job.Name}}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait-{{$dependency.Job.Name}}-{{$dependency.Job.Task.Unit.GetName}}",
+    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.GetName}}",
     dag=dag
 )
 {{- end -}}

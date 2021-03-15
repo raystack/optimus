@@ -63,6 +63,8 @@ func (repo *projectRepository) Save(spec models.ProjectSpec) error {
 	existingResource, err := repo.GetByName(spec.Name)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return repo.Insert(spec)
+	} else if err != nil {
+		return errors.Wrap(err, "unable to find project by name")
 	}
 	resource, err := Project{}.FromSpec(spec)
 	if err != nil {

@@ -130,7 +130,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	for name, dep := range spec.Dependencies {
 		conf.Dependencies = append(conf.Dependencies, &pb.JobDependency{
 			Name: name,
-			Type: int32(dep.Type),
+			Type: dep.Type.String(),
 		})
 	}
 	return conf, nil

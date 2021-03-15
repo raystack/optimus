@@ -219,12 +219,12 @@ func TestPriorityWeightResolver(t *testing.T) {
 		spec5 := "dag5-deps-on-dag1"
 
 		var (
-			specs   = make(map[string]models.JobSpec)
-			dagSpec = make([]models.JobSpec, 0)
+			specs    = make(map[string]models.JobSpec)
+			jobSpecs = make([]models.JobSpec, 0)
 		)
 
 		specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency}
-		dagSpec = append(dagSpec, specs[spec1])
+		jobSpecs = append(jobSpecs, specs[spec1])
 
 		// for the spec2, we'll add external spec as dependency
 		externalSpecName := "external-dag-dep"
@@ -233,25 +233,34 @@ func TestPriorityWeightResolver(t *testing.T) {
 		deps2[externalSpecName] = models.JobSpecDependency{Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
 			Type: models.JobSpecDependencyTypeInter}
 		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: deps2}
-		dagSpec = append(dagSpec, specs[spec2])
+		jobSpecs = append(jobSpecs, specs[spec2])
 
 		specs[spec3] = models.JobSpec{Name: spec3, Dependencies: getDependencyObject(specs, spec2)}
-		dagSpec = append(dagSpec, specs[spec3])
+		jobSpecs = append(jobSpecs, specs[spec3])
 
 		specs[spec4] = models.JobSpec{Name: spec4, Dependencies: noDependency}
-		dagSpec = append(dagSpec, specs[spec4])
+		jobSpecs = append(jobSpecs, specs[spec4])
 
 		specs[spec5] = models.JobSpec{Name: spec5, Dependencies: getDependencyObject(specs, spec1)}
-		dagSpec = append(dagSpec, specs[spec5])
+		jobSpecs = append(jobSpecs, specs[spec5])
+
+		// for the spec2, we'll add external spec as dependency
+		jobnameWithExternalDep := "job-with-1-external-dep"
+		jobnameWithExternalDepDependencies := map[string]models.JobSpecDependency{
+			externalSpecName: {Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
+				Type: models.JobSpecDependencyTypeInter},
+		}
+		jobSpecs = append(jobSpecs, models.JobSpec{Name: jobnameWithExternalDep, Dependencies: jobnameWithExternalDepDependencies})
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(dagSpec)
+		resolvedJobSpecs, err := assginer.Resolve(jobSpecs)
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
 		max_1 := max - job.PriorityWeightGap*1
 		max_2 := max - job.PriorityWeightGap*2
-		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1}
+		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1,
+			jobnameWithExternalDep: max_1}
 
 		for _, jobSpec := range resolvedJobSpecs {
 			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
@@ -455,7 +464,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		assert.Equal(t, []*job.DAGNode{}, tree.GetRootNodes())
 
 		// should return root nodes, when added as root
-		tree.SetRoot(node1)
+		tree.MarkRoot(node1)
 		assert.Equal(t, []*job.DAGNode{node1}, tree.GetRootNodes())
 
 		// adding nodes should maintain the dependency relationship
@@ -505,7 +514,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 		tree := job.NewMultiRootDAGTree()
 		tree.AddNode(node1)
-		tree.SetRoot(node1)
+		tree.MarkRoot(node1)
 		tree.AddNode(node2)
 		tree.AddNode(node3)
 
@@ -553,7 +562,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		node1 := job.NewDAGNode(d1)
 		node1.AddDependent(node11).AddDependent(node12)
 		tree.AddNode(node1)
-		tree.SetRoot(node1)
+		tree.MarkRoot(node1)
 
 		node11.AddDependent(node111).AddDependent(node112)
 		tree.AddNode(node11)
@@ -591,7 +600,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 		tree := job.NewMultiRootDAGTree()
 		tree.AddNode(node2)
-		tree.SetRoot(node2)
+		tree.MarkRoot(node2)
 
 		err := tree.IsCyclic()
 		assert.Nil(t, err)
@@ -627,13 +636,13 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 		tree := job.NewMultiRootDAGTree()
 		tree.AddNode(node1)
-		tree.SetRoot(node1)
+		tree.MarkRoot(node1)
 		tree.AddNode(node2)
 		tree.AddNode(node3)
 
 		tree.AddNode(node11)
 		tree.AddNode(node21)
-		tree.SetRoot(node21)
+		tree.MarkRoot(node21)
 		tree.AddNode(node31)
 		tree.AddNode(node41)
 

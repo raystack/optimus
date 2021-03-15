@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS job (
    interval VARCHAR(50),
    depends_on_past BOOLEAN,
    catch_up BOOLEAN,
-   dependencies VARCHAR(220) ARRAY,
+   dependencies JSONB,
 
    task_name VARCHAR(200),
    task_config JSONB,
@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS job (
    window_truncate_to VARCHAR(10),
 
    assets JSONB,
+   hooks JSONB,
 
    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,

@@ -79,6 +79,8 @@ func (repo *instanceRepository) Save(spec models.InstanceSpec) error {
 	existingResource, err := repo.GetByScheduledAt(spec.ScheduledAt)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return repo.Insert(spec)
+	} else if err != nil {
+		return errors.Wrap(err, "unable to find instance by schedule")
 	}
 
 	job, err := repo.jobAdapter.FromSpec(repo.job)

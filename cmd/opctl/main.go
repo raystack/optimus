@@ -79,7 +79,7 @@ func initConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found
 		} else {
-			panic(fmt.Errorf("unable to read optimus config file %v", err))
+			panic(fmt.Errorf("unable to read optimus config file %v (%s)", err, viper.ConfigFileUsed()))
 		}
 	}
 	Config.Host = viper.GetString("host")

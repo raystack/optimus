@@ -341,8 +341,7 @@
           "type": "string"
         },
         "type": {
-          "type": "integer",
-          "format": "int32"
+          "type": "string"
         }
       }
     },
