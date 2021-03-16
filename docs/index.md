@@ -28,3 +28,7 @@ with, so that you can have a better understanding of how it's supposed to be use
 
 ### References
 - [Functional Data Warehouse](https://medium.com/@maximebeauchemin/functional-data-engineering-a-modern-paradigm-for-batch-data-processing-2327ec32c42a)
+
+
+NOTE: This is still in early stages and not stable for production at the moment.
+We are taking feedback and making breaking changes based on user requirements.

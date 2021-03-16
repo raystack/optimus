@@ -44,12 +44,10 @@ task:
   name: bq2bq
   config:
     DATASET: playground
-    JOB_LABELS: owner=optimus
     LOAD_METHOD: REPLACE
     PROJECT: gcp-project
     SQL_TYPE: STANDARD
     TABLE: hello_test_table
-    TASK_TIMEZONE: UTC
   window:
     size: 24h
     offset: "0"
@@ -62,7 +60,7 @@ hooks:
       BQ_DATASET: '{{.TASK__DATASET}}'
       BQ_PROJECT: '{{.TASK__PROJECT}}'
       BQ_TABLE: '{{.TASK__TABLE}}'
-      FILTER: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'
+      FILTER: 'event_timestamp >= "{{.DSTART}}" AND event_timestamp < "{{.DEND}}"'
       GROUP: __PARTITION__
       MODE: complete
       PREDATOR_URL: '{{.GLOBAL__PREDATOR_HOST}}'

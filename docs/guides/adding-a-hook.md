@@ -25,6 +25,7 @@ the job specification would look like:
 version: 1
 name: example_job
 owner: example@opctl.com
+description: example job to demonstrate hook
 schedule:
   start_date: "2021-02-18"
   interval: 0 3 * * *
@@ -35,28 +36,28 @@ task:
   name: bq2bq
   config:
     DATASET: data
-    JOB_LABELS: owner=optimus
     LOAD_METHOD: APPEND
     PROJECT: example
     SQL_TYPE: STANDARD
     TABLE: hello_table
-    TASK_TIMEZONE: UTC
   window:
     size: 24h
     offset: "0"
     truncate_to: d
+labels:
+  orchestrator: optimus
 dependencies: []
 hooks:
 - name: transporter
   config:
-    BQ_DATASET: data
-    BQ_PROJECT: example
-    BQ_TABLE: hello_table
-    FILTER_EXPRESSION: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'
+    BQ_DATASET: '{{.TASK__DATASET}}' # inherited from task configs
+    BQ_PROJECT: '{{.TASK__PROJECT}}'
+    BQ_TABLE: '{{.TASK__TABLE}}'
+    FILTER_EXPRESSION: 'event_timestamp >= "{{.DSTART}}" AND event_timestamp < "{{.DEND}}"'
     KAFKA_TOPIC: optimus_example-data-hello_table
     PRODUCER_CONFIG_BOOTSTRAP_SERVERS: '{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}'
     PROTO_SCHEMA: example.data.HelloTable
-    STENCIL_URL: '{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}'
+    STENCIL_URL: '{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}' # will be defined as global config
 ```
 
 Now to finish this, create a commit and push changes to target repository.

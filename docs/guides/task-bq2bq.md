@@ -33,12 +33,10 @@ task:
   name: bq2bq
   config:
     DATASET: data
-    JOB_LABELS: owner=optimus
     LOAD_METHOD: APPEND
     PROJECT: example
     SQL_TYPE: STANDARD
     TABLE: hello_table
-    TASK_TIMEZONE: UTC
   window:
     size: 24h
     offset: "0"
@@ -49,12 +47,11 @@ Here are the details of each configuration and the allowed values :
 
 | Config Name             | Description                                                                                                     | Values                              |
 | ----------------------- |-----------------------------------------------------------------------------------------------------------------| ------------------------------------|
-| `PROJECT`                | google cloud platform project id of the destination bigquery table                                              | ...                                 |
-| `DATASET`                | bigquery dataset name of the destination table                                                                  | ...                                 |
+| `PROJECT`               | google cloud platform project id of the destination bigquery table                                              | ...                                 |
+| `DATASET`               | bigquery dataset name of the destination table                                                                  | ...                                 |
 | `TABLE`                 | the table name of the destination table                                                                         | ...                                 |
-| `TASK_WINDOW`           | window of transformation, to provide DSTART and DEND macros values for sql transformation                       | HOURLY, DAILY, WEEKLY, MONTHLY      |
-| `TASK_TIMEZONE`         | timezone of transformation, a timezone that the input datetime will be translated to in tz database name format | UTC, Asia/Jakarta, America/New_York |
-| `LOAD_METHOD`          | method to load data to the destination tables                                                                   | APPEND, REPLACE, MERGE              |
+| `LOAD_METHOD`           | method to load data to the destination tables                                                                   | APPEND, REPLACE, MERGE              |
+| `PARTITION_FILTER`      | Used to identify target partitions to replace in a REPLACE query. This can be left empty and optimus will figure the target partitions automatically but its cheaper and faster to specify the condition. This filter will be used as a where clause in a merge statement to delete the partitions from the destination table. | event_timestamp >= "{{.DSTART}}" AND event_timestamp < "{{.DEND}}"      |
 
 ### Load Method
 
@@ -85,19 +82,16 @@ There are several SQL macros available
 
 * {{.DSTART}} - start date/datetime of the window
 * {{.DEND}} - end date/datetime of the window
-* {{.DESTINATION}} - full qualified table name used in DML statement
+* {{.JOB_DESTINATION}} - full qualified table name used in DML statement
 
-The value of `DSTART` and `DEND` depends on `TASK_WINDOW` config in `job.yaml`
+The value of `DSTART` and `DEND` depends on `window` config in `job.yaml`. This is very similar to Optimus v1
 
-| Window Name   | DSTART                                                             | DEND                           
-
-|
-| ------------- |--------------------------------------------------------------------| ---------------------------------------------------------------------|
-| DAILY         | The current date taken from input, for example 2019-01-01          | The next day after DSTART date 
-2019-01-02                            |
-| WEEKLY        | Start of the week date for example : 2019-04-01                    | End date of the week , for example : 2019-04-07                      |
-| MONTHLY       | Start of the month date, example : 2019-01-01                      | End date of the month, for example : 2019-01-31                      |
-| HOURLY        | Datetime of the start of the hour, for example 2019-01-01 01:00:00 | Datetime the start of the next hour, for example 2019-01-01 02:00:00 |
+| Window config                       | DSTART                                                             | DEND
+| ----------------------------------- |--------------------------------------------------------------------| ---------------------------------------------------------------------|
+| size:24h, offset:0, truncate_to:d   | The current date taken from input, for example 2019-01-01          | The next day after DSTART date 2019-01-02                            |
+| size:168h, offset:0, truncate_to:w  | Start of the week date for example : 2019-04-01                    | End date of the week , for example : 2019-04-07                      |
+| size:1M, offset:0, truncate_to:M    | Start of the month date, example : 2019-01-01                      | End date of the month, for example : 2019-01-31                      |
+| size:2h, offset:0, truncate_to:h    | Datetime of the start of the hour, for example 2019-01-01 01:00:00 | Datetime the start of the next hour, for example 2019-01-01 02:00:00 |
 
 
 Macros in SQL transformation example :
@@ -131,7 +125,7 @@ group by dt
 destination_table macros example :
 
 ```sql
-MERGE `destination_table` S
+MERGE `{{.JOB_DESTINATION}}` S
 using
 (
 select count(1) as count, date(created_time) as dt

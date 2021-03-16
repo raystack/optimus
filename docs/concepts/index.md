@@ -52,8 +52,10 @@ Following is a sample job specification:
 version: 1
 name: example_job
 owner: example@opctl.com
+description: sample example job
 schedule:
   start_date: "2021-02-18"
+  end_date: "2021-02-25"
   interval: 0 3 * * *
 behavior:
   depends_on_past: false
@@ -61,18 +63,20 @@ behavior:
 task:
   name: bq2bq
   config:
-    DATASET: data
-    JOB_LABELS: owner=optimus
-    LOAD_METHOD: APPEND
     PROJECT: example
-    SQL_TYPE: STANDARD
+    DATASET: data
     TABLE: hello_table
-    TASK_TIMEZONE: UTC
+    LOAD_METHOD: APPEND
+    SQL_TYPE: STANDARD
+    PARTITION_FILTER: 'event_timestamp >= "{{.DSTART}}" AND event_timestamp < "{{.DEND}}"'
   window:
     size: 24h
     offset: "0"
     truncate_to: d
-dependencies: []
+labels:
+  orchestrator: optimus
+dependencies:
+- job: sample_internal_job
 hooks:
 - name: transporter
   type: post
@@ -80,6 +84,7 @@ hooks:
     KAFKA_TOPIC: optimus_example-data-hello_table
     PRODUCER_CONFIG_BOOTSTRAP_SERVERS: '{{.transporterKafkaBroker}}'
     PROTO_SCHEMA: example.data.HelloTable
+    ...
 ```
 
 ## Macros & Templates

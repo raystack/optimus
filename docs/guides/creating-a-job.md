@@ -91,17 +91,17 @@ behavior:
 task:
   name: bq2bq
   config:
-    DATASET: data
-    JOB_LABELS: owner=optimus
-    LOAD_METHOD: APPEND
     PROJECT: example
-    SQL_TYPE: STANDARD
+    DATASET: data
     TABLE: hello_table
-    TASK_TIMEZONE: UTC
+    LOAD_METHOD: APPEND
+    SQL_TYPE: STANDARD
   window:
     size: 24h
     offset: "0"
     truncate_to: d
+labels:
+   orchestrator: optimus
 dependencies: []
 hooks: []
 ```
