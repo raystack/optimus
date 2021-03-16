@@ -99,7 +99,7 @@ APPEND  - Append to existing table
 in destination table. These partitions will be replaced with sql query result.
 Leave empty for optimus to automatically figure this out although it will be 
 faster and cheaper to provide the exact condition.
-for example: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'"
+for example: DATE(event_timestamp) >= DATE("{{.DSTART}}") AND DATE(event_timestamp) < DATE("{{.DEND}}")
 `,
 		}, &filterExp); err != nil {
 			return nil, err

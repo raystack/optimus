@@ -39,7 +39,7 @@ func (t *Transporter) AskQuestions(_ models.UnitOptions) (map[string]interface{}
 			Name: "FilterExpression",
 			Prompt: &survey.Input{
 				Message: "Filter expression for extracting transformation rows?",
-				Help:    "for example: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'",
+				Help:    `for example: DATE(event_timestamp) >= DATE("{{.DSTART}}") AND DATE(event_timestamp) < DATE("{{.DEND}}")`,
 				Default: "",
 			},
 		},

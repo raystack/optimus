@@ -96,8 +96,13 @@ func TestJobRepository(t *testing.T) {
 			),
 			Hooks: []models.JobSpecHook{
 				{
-					Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
-					Unit:   hookUnit1,
+					Config: []models.JobSpecConfigItem{
+						{
+							Name:  "FILTER_EXPRESSION",
+							Value: "event_timestamp > 10000",
+						},
+					},
+					Unit: hookUnit1,
 				},
 			},
 		},
@@ -147,9 +152,11 @@ func TestJobRepository(t *testing.T) {
 
 			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
 			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.GetType())
-			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 			assert.Equal(t, 1, len(checkModel.Hooks))
+
+			cval, _ := checkModel.Hooks[0].Config.Get("FILTER_EXPRESSION")
+			assert.Equal(t, "event_timestamp > 10000", cval)
 		})
 	})
 	t.Run("Upsert", func(t *testing.T) {
@@ -263,8 +270,13 @@ func TestJobRepository(t *testing.T) {
 			// add a hook and it should be saved and retrievable
 			testModel.Hooks = []models.JobSpecHook{
 				{
-					Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
-					Unit:   hookUnit1,
+					Config: []models.JobSpecConfigItem{
+						{
+							Name:  "FILTER_EXPRESSION",
+							Value: "event_timestamp > 10000",
+						},
+					},
+					Unit: hookUnit1,
 				},
 			}
 			err = repo.Save(testModel)
@@ -277,13 +289,24 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, 1, len(checkModel.Hooks))
 			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
 			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.GetType())
-			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
+
+			val1a, _ := checkModel.Hooks[0].Config.Get("FILTER_EXPRESSION")
+			assert.Equal(t, "event_timestamp > 10000", val1a)
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 
 			// add one more hook and it should be saved and retrievable
 			testModel.Hooks = append(testModel.Hooks, models.JobSpecHook{
-				Config: map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000", "KAFKA_TOPIC": "my_topic.name.kafka"},
-				Unit:   hookUnit1,
+				Config: []models.JobSpecConfigItem{
+					{
+						Name:  "FILTER_EXPRESSION",
+						Value: "event_timestamp > 10000",
+					},
+					{
+						Name:  "KAFKA_TOPIC",
+						Value: "my_topic.name.kafka",
+					},
+				},
+				Unit: hookUnit1,
 			})
 			err = repo.Save(testModel)
 			assert.Nil(t, err)
@@ -295,13 +318,18 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, 2, len(checkModel.Hooks))
 			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.GetName())
 			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.GetType())
-			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[0].Config["FILTER_EXPRESSION"])
+
+			val1b, _ := checkModel.Hooks[0].Config.Get("FILTER_EXPRESSION")
+			assert.Equal(t, "event_timestamp > 10000", val1b)
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 			assert.Equal(t, tHook, checkModel.Hooks[1].Unit.GetName())
 			assert.Equal(t, models.HookTypePre, checkModel.Hooks[1].Unit.GetType())
-			assert.Equal(t, "event_timestamp > 10000", checkModel.Hooks[1].Config["FILTER_EXPRESSION"])
-			assert.Equal(t, "my_topic.name.kafka", checkModel.Hooks[1].Config["KAFKA_TOPIC"])
 			assert.Equal(t, hookUnit1, checkModel.Hooks[1].Unit)
+
+			val1, _ := checkModel.Hooks[1].Config.Get("FILTER_EXPRESSION")
+			val2, _ := checkModel.Hooks[1].Config.Get("KAFKA_TOPIC")
+			assert.Equal(t, "event_timestamp > 10000", val1)
+			assert.Equal(t, "my_topic.name.kafka", val2)
 		})
 	})
 

@@ -87,12 +87,22 @@ func TestCompiler(t *testing.T) {
 
 	scheduleEndDate := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 	hook1 := models.JobSpecHook{
-		Config:    map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
+		Config: []models.JobSpecConfigItem{
+			{
+				Name:  "FILTER_EXPRESSION",
+				Value: "event_timestamp > 10000",
+			},
+		},
 		Unit:      hookUnit,
 		DependsOn: nil,
 	}
 	hook2 := models.JobSpecHook{
-		Config:    map[string]string{"FILTER_EXPRESSION2": "event_timestamp > 10000"},
+		Config: []models.JobSpecConfigItem{
+			{
+				Name:  "FILTER_EXPRESSION2",
+				Value: "event_timestamp > 10000",
+			},
+		},
 		Unit:      hookUnit2,
 		DependsOn: []*models.JobSpecHook{&hook1},
 	}
@@ -131,8 +141,11 @@ func TestCompiler(t *testing.T) {
 			},
 		),
 		Hooks: []models.JobSpecHook{hook1, hook2},
-		Labels: map[string]string{
-			"orchestrator": "optimus",
+		Labels: []models.JobSpecLabelItem{
+			{
+				Name:  "orchestrator",
+				Value: "optimus",
+			},
 		},
 	}
 

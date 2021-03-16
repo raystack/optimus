@@ -61,7 +61,7 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 				r.notifyProgress(observer, &EventJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
 				continue
 			}
-			return jobSpec, errors.Wrap(err, "runtime dependency failed")
+			return jobSpec, errors.Wrap(err, "runtime dependency evaluation failed")
 		}
 
 		// determine the type of dependency

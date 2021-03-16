@@ -197,7 +197,7 @@ project if needed to.
 Overall dependencies can be divided into three types
 - Intra: Jobs depending on other jobs within same tenant repository
 - Inter: Jobs depending on other jobs over other tenant repository
-- Extra: Jobs depending on an external dependency outside Optimus
+- Extra: Jobs depending on an external dependency outside Optimus [TODO]
 
 ## Priority Resolver
 
@@ -221,12 +221,12 @@ for it. That is, in a dependency tree, whatever is at the root(depends on nothin
 be prioritised first like Standardised layer dags and then it will move to downstream 
 sensors and tasks.
 
-This will help fully utilize the Scheduler capabilities
+This will help fully utilize the Scheduler capabilities.
 
 ## Optimus Adapters
 
 Optimus uses adapters to supports extensible tasks and hooks which needs to be 
-registered on a central repository.
+registered in a central repository.
 
 TODO
 
