@@ -1,12 +1,14 @@
 package commands
 
 import (
-	"bytes"
 	"fmt"
+	"os"
 	"reflect"
-	"strings"
-	"text/template"
 	"time"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/odpf/optimus/utils"
 
 	"strconv"
 
@@ -17,6 +19,11 @@ import (
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
 )
+
+func errExit(l logger, err error) {
+	l.Println("ERROR: ", err)
+	os.Exit(1)
+}
 
 func createCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
@@ -32,16 +39,19 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Com
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
-		RunE: func(cmd *cli.Command, args []string) error {
+		Run: func(cmd *cli.Command, args []string) {
 			jobInput, err := createJobSurvey(jobSpecRepo)
 			if err != nil {
-				return err
+				errExit(l, err)
 			}
 			spec, err := local.NewAdapter(models.TaskRegistry, models.HookRegistry).ToSpec(jobInput)
 			if err != nil {
-				return err
+				errExit(l, err)
 			}
-			return jobSpecRepo.Save(spec)
+			if err := jobSpecRepo.Save(spec); err != nil {
+				errExit(l, err)
+			}
+			l.Println("job created successfully", spec.Name)
 		},
 	}
 }
@@ -100,7 +110,7 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository) (local.Job, error) {
 	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
 		return local.Job{}, err
 	}
-	baseInputs, err := convertToStringMap(baseInputsRaw)
+	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
 	if err != nil {
 		return local.Job{}, err
 	}
@@ -115,8 +125,7 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository) (local.Job, error) {
 			Interval:  baseInputs["interval"],
 		},
 		Task: local.JobTask{
-			Name:   baseInputs["task"],
-			Config: map[string]string{},
+			Name: baseInputs["task"],
 			Window: local.JobTaskWindow{
 				Size:       "24h",
 				Offset:     "0",
@@ -130,6 +139,12 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository) (local.Job, error) {
 		},
 		Dependencies: []local.JobDependency{},
 		Hooks:        []local.JobHook{},
+		Labels: yaml.MapSlice{
+			{
+				Key:   "orchestrator",
+				Value: "optimus",
+			},
+		},
 	}
 
 	executionTask, err := models.TaskRegistry.GetByName(jobInput.Task.Name)
@@ -137,43 +152,19 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository) (local.Job, error) {
 		return jobInput, err
 	}
 
-	questions := executionTask.GetQuestions()
-	if len(questions) > 0 {
-		taskInputsRaw := make(map[string]interface{})
-		if err := survey.Ask(questions, &taskInputsRaw); err != nil {
-			return jobInput, err
-		}
+	taskInputsRaw, err := executionTask.AskQuestions(models.UnitOptions{})
+	if err != nil {
+		return jobInput, err
+	}
 
-		taskInputs, err := convertToStringMap(taskInputsRaw)
-		if err != nil {
-			return jobInput, err
-		}
-
-		// process configs
-		for key, val := range executionTask.GetConfig() {
-			tmpl, err := template.New(key).Parse(val)
-			if err != nil {
-				return jobInput, err
-			}
-			var buf bytes.Buffer
-			if err = tmpl.Execute(&buf, taskInputs); err != nil {
-				return jobInput, err
-			}
-			jobInput.Task.Config[key] = strings.TrimSpace(buf.String())
-		}
-
-		// process assets
-		for key, val := range executionTask.GetAssets() {
-			tmpl, err := template.New(key).Parse(val)
-			if err != nil {
-				return jobInput, err
-			}
-			var buf bytes.Buffer
-			if err = tmpl.Execute(&buf, taskInputs); err != nil {
-				return jobInput, err
-			}
-			jobInput.Asset[key] = strings.TrimSpace(buf.String())
-		}
+	taskConf, err := executionTask.GenerateConfig(taskInputsRaw, models.UnitOptions{})
+	if err != nil {
+		return jobInput, err
+	}
+	jobInput.Task.Config = local.JobSpecConfigToYamlSlice(taskConf)
+	jobInput.Asset, err = executionTask.GenerateAssets(taskInputsRaw, models.UnitOptions{})
+	if err != nil {
+		return jobInput, err
 	}
 
 	return jobInput, nil
@@ -192,7 +183,7 @@ func createHookSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Co
 			if err != nil {
 				return err
 			}
-			jobSpec, err = createHookSurvey(l, jobSpec)
+			jobSpec, err = createHookSurvey(jobSpec)
 			if err != nil {
 				return err
 			}
@@ -202,7 +193,7 @@ func createHookSubCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Co
 	return cmd
 }
 
-func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) {
+func createHookSurvey(jobSpec models.JobSpec) (models.JobSpec, error) {
 	emptyJobSpec := models.JobSpec{}
 	var availableHooks []string
 	for _, hook := range models.HookRegistry.GetAll() {
@@ -225,7 +216,7 @@ func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) 
 	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
 		return emptyJobSpec, err
 	}
-	baseInputs, err := convertToStringMap(baseInputsRaw)
+	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
 	if err != nil {
 		return emptyJobSpec, err
 	}
@@ -240,42 +231,22 @@ func createHookSurvey(l logger, jobSpec models.JobSpec) (models.JobSpec, error) 
 		return emptyJobSpec, err
 	}
 
-	questions := executionHook.GetQuestions()
-	if len(questions) > 0 {
-		taskInputsRaw := make(map[string]interface{})
-		if err := survey.Ask(questions, &taskInputsRaw); err != nil {
-			return emptyJobSpec, err
-		}
-
-		taskInputs, err := convertToStringMap(taskInputsRaw)
-		if err != nil {
-			return emptyJobSpec, err
-		}
-
-		hookConfig := map[string]string{}
-		rawConfigs, err := executionHook.GetConfig(models.UnitData{
-			Config: jobSpec.Task.Config,
-			Assets: jobSpec.Assets.ToMap(),
-		})
-		if err != nil {
-			return emptyJobSpec, err
-		}
-		for key, val := range rawConfigs {
-			tmpl, err := template.New(key).Parse(val)
-			if err != nil {
-				return emptyJobSpec, err
-			}
-			var buf bytes.Buffer
-			if err = tmpl.Execute(&buf, taskInputs); err != nil {
-				return emptyJobSpec, err
-			}
-			hookConfig[key] = strings.TrimSpace(buf.String())
-		}
-		jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
-			Unit:   executionHook,
-			Config: hookConfig,
-		})
+	hookInputsRaw, err := executionHook.AskQuestions(models.UnitOptions{})
+	if err != nil {
+		return emptyJobSpec, err
 	}
+	hookConfigs, err := executionHook.GenerateConfig(hookInputsRaw, models.UnitData{
+		Config: jobSpec.Task.Config,
+		Assets: jobSpec.Assets.ToMap(),
+	})
+	if err != nil {
+		return emptyJobSpec, err
+	}
+
+	jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
+		Unit:   executionHook,
+		Config: hookConfigs,
+	})
 	return jobSpec, nil
 }
 
@@ -306,24 +277,6 @@ func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool 
 		}
 	}
 	return false
-}
-
-func convertToStringMap(inputs map[string]interface{}) (map[string]string, error) {
-	conv := map[string]string{}
-
-	for key, val := range inputs {
-		switch reflect.TypeOf(val).Name() {
-		case "int":
-			conv[key] = strconv.Itoa(val.(int))
-		case "string":
-			conv[key] = val.(string)
-		case "OptionAnswer":
-			conv[key] = val.(survey.OptionAnswer).Value
-		default:
-			return conv, errors.New("unknown type found while parsing user inputs")
-		}
-	}
-	return conv, nil
 }
 
 var (

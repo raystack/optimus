@@ -137,7 +137,7 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0]).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			// resolve priority
@@ -236,7 +236,7 @@ func TestService(t *testing.T) {
 			jobRepo.On("GetAll").Return(jobs, nil)
 
 			// resolve dependencies
-			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0]).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 
 			// resolve priority
 			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
@@ -292,8 +292,8 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0]).Return(models.JobSpec{}, errors.New("error test"))
-			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[1]).Return(models.JobSpec{},
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0], nil).Return(models.JobSpec{}, errors.New("error test"))
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[1], nil).Return(models.JobSpec{},
 				errors.New("error test-2"))
 			defer depenResolver.AssertExpectations(t)
 
@@ -362,11 +362,11 @@ func TestService(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
-	t.Run("Compile", func(t *testing.T) {
+	t.Run("Dump", func(t *testing.T) {
 		projSpec := models.ProjectSpec{
 			Name: "proj",
 		}
-		t.Run("should successfully store job specs for the requested project", func(t *testing.T) {
+		t.Run("should successfully generate compiled job", func(t *testing.T) {
 			jobSpecsBase := []models.JobSpec{
 				{
 					Version: 1,
@@ -431,7 +431,7 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0]).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			// resolve priority
@@ -448,7 +448,7 @@ func TestService(t *testing.T) {
 			}
 
 			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver)
-			compiledJob, err := svc.Compile(projSpec, jobSpecsBase[0])
+			compiledJob, err := svc.Dump(projSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 			assert.Equal(t, "come string", string(compiledJob.Contents))
 			assert.Equal(t, "test", compiledJob.Name)

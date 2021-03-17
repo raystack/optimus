@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -67,8 +69,11 @@ func TestSpecRepository(t *testing.T) {
 		},
 		Task: local.JobTask{
 			Name: "foo",
-			Config: map[string]string{
-				"table": "tab1",
+			Config: yaml.MapSlice{
+				{
+					Key:   "table",
+					Value: "tab1",
+				},
 			},
 			Window: local.JobTaskWindow{
 				Size:       "24h",
@@ -105,8 +110,11 @@ func TestSpecRepository(t *testing.T) {
 				Size:       time.Hour * 24,
 				TruncateTo: "d",
 			},
-			Config: map[string]string{
-				"table": "tab1",
+			Config: models.JobSpecConfigs{
+				{
+					Name:  "table",
+					Value: "tab1",
+				},
 			},
 		},
 		Dependencies: map[string]models.JobSpecDependency{
@@ -136,10 +144,14 @@ func TestSpecRepository(t *testing.T) {
 				Size:       time.Hour * 24,
 				TruncateTo: "d",
 			},
-			Config: map[string]string{
-				"table": "tab1",
+			Config: models.JobSpecConfigs{
+				{
+					Name:  "table",
+					Value: "tab1",
+				},
 			},
 		},
+		Labels: []models.JobSpecLabelItem{},
 		Dependencies: map[string]models.JobSpecDependency{
 			"bar": {Type: models.JobSpecDependencyTypeIntra},
 		},
@@ -233,7 +245,12 @@ func TestSpecRepository(t *testing.T) {
 
 			specCopy := spec
 			specCopy.Hooks = []models.JobSpecHook{
-				{Config: map[string]string{"key": "value"}, Unit: hookUnit1},
+				{Config: models.JobSpecConfigs{
+					{
+						Name:  "key",
+						Value: "value",
+					},
+				}, Unit: hookUnit1},
 			}
 
 			fsNew := new(mock.FileSystem)
@@ -486,7 +503,8 @@ hooks: []
 					DependsOnPast: false,
 				},
 				Task: models.JobSpecTask{
-					Unit: execUnit,
+					Unit:   execUnit,
+					Config: models.JobSpecConfigs{},
 					Window: models.JobSpecTaskWindow{
 						Offset:     0,
 						Size:       time.Hour * 24,
@@ -495,6 +513,7 @@ hooks: []
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 				Assets:       models.JobAssets{},
+				Labels:       []models.JobSpecLabelItem{},
 			},
 			{
 				Version: 1,
@@ -509,7 +528,8 @@ hooks: []
 					DependsOnPast: false,
 				},
 				Task: models.JobSpecTask{
-					Unit: execUnit,
+					Unit:   execUnit,
+					Config: models.JobSpecConfigs{},
 					Window: models.JobSpecTaskWindow{
 						Offset:     0,
 						Size:       time.Hour * 24,
@@ -518,6 +538,7 @@ hooks: []
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 				Assets:       models.JobAssets{},
+				Labels:       []models.JobSpecLabelItem{},
 			},
 		}
 

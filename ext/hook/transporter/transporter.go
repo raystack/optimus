@@ -33,35 +33,65 @@ func (t *Transporter) GetType() models.HookType {
 	return models.HookTypePost
 }
 
-func (t *Transporter) GetQuestions() []*survey.Question {
-	return []*survey.Question{
+func (t *Transporter) AskQuestions(_ models.UnitOptions) (map[string]interface{}, error) {
+	questions := []*survey.Question{
 		{
 			Name: "FilterExpression",
 			Prompt: &survey.Input{
 				Message: "Filter expression for extracting transformation rows?",
-				Help:    "for example: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'",
+				Help:    `for example: DATE(event_timestamp) >= DATE("{{.DSTART}}") AND DATE(event_timestamp) < DATE("{{.DEND}}")`,
+				Default: "",
 			},
 		},
 	}
+	inputsRaw := make(map[string]interface{})
+	if err := survey.Ask(questions, &inputsRaw); err != nil {
+		return nil, err
+	}
+	return inputsRaw, nil
 }
 
-func (t *Transporter) GetConfig(jobUnitData models.UnitData) (map[string]string, error) {
-	project, ok1 := jobUnitData.Config["PROJECT"]
-	dataset, ok2 := jobUnitData.Config["DATASET"]
-	table, ok3 := jobUnitData.Config["TABLE"]
-	if !ok1 || !ok2 || !ok3 {
+func (t *Transporter) GenerateConfig(hookInputs map[string]interface{}, jobUnitData models.UnitData) (models.JobSpecConfigs, error) {
+	project, ok1 := jobUnitData.Config.Get("PROJECT")
+	dataset, ok2 := jobUnitData.Config.Get("DATASET")
+	table, ok3 := jobUnitData.Config.Get("TABLE")
+	filterExp, ok4 := hookInputs["FilterExpression"]
+	if !ok1 || !ok2 || !ok3 || !ok4 {
 		return nil, errors.New("missing config key required to generate configuration")
 	}
-
-	return map[string]string{
-		"KAFKA_TOPIC":                       getKafkaTopicName(project, dataset, table),
-		"PROTO_SCHEMA":                      getProtoSchemaForBQTable(project, dataset, table),
-		"STENCIL_URL":                       `{{ "{{.GLOBAL__TRANSPORTER_STENCIL_HOST}}" }}`,
-		"FILTER_EXPRESSION":                 "{{.FilterExpression}}",
-		"BQ_PROJECT":                        `{{ "{{.TASK__PROJECT}}" }}`,
-		"BQ_DATASET":                        `{{ "{{.TASK__DATASET}}" }}`,
-		"BQ_TABLE":                          `{{ "{{.TASK__TABLE}}" }}`,
-		"PRODUCER_CONFIG_BOOTSTRAP_SERVERS": `{{ "{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}" }}`,
+	return models.JobSpecConfigs{
+		{
+			Name:  "KAFKA_TOPIC",
+			Value: getKafkaTopicName(project, dataset, table),
+		},
+		{
+			Name:  "PROTO_SCHEMA",
+			Value: getProtoSchemaForBQTable(project, dataset, table),
+		},
+		{
+			Name:  "STENCIL_URL",
+			Value: `{{.GLOBAL__TRANSPORTER_STENCIL_HOST}}`,
+		},
+		{
+			Name:  "FILTER_EXPRESSION",
+			Value: filterExp.(string),
+		},
+		{
+			Name:  "BQ_PROJECT",
+			Value: `{{.TASK__PROJECT}}`,
+		},
+		{
+			Name:  "BQ_DATASET",
+			Value: `{{.TASK__DATASET}}`,
+		},
+		{
+			Name:  "BQ_TABLE",
+			Value: `{{.TASK__TABLE}}`,
+		},
+		{
+			Name:  "PRODUCER_CONFIG_BOOTSTRAP_SERVERS",
+			Value: `{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}`,
+		},
 	}, nil
 }
 

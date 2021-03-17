@@ -17,6 +17,8 @@ type Job struct {
 	Version       int
 	Name          string `gorm:"not null" json:"name"`
 	Owner         string
+	Description   string
+	Labels        datatypes.JSON
 	StartDate     time.Time
 	EndDate       *time.Time
 	Interval      string
@@ -42,15 +44,6 @@ type Job struct {
 	DeletedAt *time.Time
 }
 
-type JobTask struct {
-	Name   string
-	Config map[string]string
-
-	WindowSize       time.Duration
-	WindowOffset     time.Duration
-	WindowTruncateTo string
-}
-
 type JobAsset struct {
 	Name  string
 	Value string
@@ -72,7 +65,7 @@ func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
 
 type JobHook struct {
 	Name   string
-	Config map[string]string
+	Config datatypes.JSON
 }
 
 // ToSpec converts the postgres' JobHook representation to the optimus' models.JobSpecHook
@@ -81,17 +74,27 @@ func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobS
 	if err != nil {
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
 	}
+
+	conf := models.JobSpecConfigs{}
+	if err := json.Unmarshal(a.Config, &conf); err != nil {
+		return models.JobSpecHook{}, err
+	}
+
 	return models.JobSpecHook{
-		Config: a.Config,
+		Config: conf,
 		Unit:   hookUnit,
 	}, nil
 }
 
-func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
+func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
+	configJSON, err := json.Marshal(spec.Config)
+	if err != nil {
+		return JobHook{}, err
+	}
 	return JobHook{
 		Name:   spec.Unit.GetName(),
-		Config: spec.Config,
-	}
+		Config: configJSON,
+	}, nil
 }
 
 type Adapter struct {
@@ -108,6 +111,14 @@ func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo mo
 
 // ToSpec converts the postgres' Job representation to the optimus' JobSpec
 func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
+
+	labels := []models.JobSpecLabelItem{}
+	if conf.Labels != nil {
+		if err := json.Unmarshal(conf.Labels, &labels); err != nil {
+			return models.JobSpec{}, err
+		}
+	}
+
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	if err := json.Unmarshal(conf.Dependencies, &dependencies); err != nil {
@@ -115,7 +126,7 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	}
 
 	// prep task conf
-	taskConf := map[string]string{}
+	taskConf := models.JobSpecConfigs{}
 	if err := json.Unmarshal(conf.TaskConfig, &taskConf); err != nil {
 		return models.JobSpec{}, err
 	}
@@ -150,10 +161,12 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	}
 
 	job := models.JobSpec{
-		ID:      conf.ID,
-		Version: conf.Version,
-		Name:    conf.Name,
-		Owner:   conf.Owner,
+		ID:          conf.ID,
+		Version:     conf.Version,
+		Name:        conf.Name,
+		Owner:       conf.Owner,
+		Description: conf.Description,
+		Labels:      labels,
 		Schedule: models.JobSpecSchedule{
 			StartDate: conf.StartDate,
 			EndDate:   conf.EndDate,
@@ -185,6 +198,11 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
 
+	labelsJSON, err := json.Marshal(spec.Labels)
+	if err != nil {
+		return Job{}, err
+	}
+
 	// prep dependencies, make them dirty first(remove job and project)
 	for idx, dep := range spec.Dependencies {
 		dep.Project = nil
@@ -214,7 +232,11 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 
 	hooks := []JobHook{}
 	for _, hook := range spec.Hooks {
-		hooks = append(hooks, JobHook{}.FromSpec(hook))
+		h, err := JobHook{}.FromSpec(hook)
+		if err != nil {
+			return Job{}, err
+		}
+		hooks = append(hooks, h)
 	}
 	hooksJSON, err := json.Marshal(hooks)
 	if err != nil {
@@ -237,6 +259,8 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		Version:          spec.Version,
 		Name:             spec.Name,
 		Owner:            spec.Owner,
+		Description:      spec.Description,
+		Labels:           labelsJSON,
 		StartDate:        spec.Schedule.StartDate,
 		EndDate:          spec.Schedule.EndDate,
 		Interval:         spec.Schedule.Interval,

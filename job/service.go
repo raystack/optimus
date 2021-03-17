@@ -18,7 +18,8 @@ const (
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
-	Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error)
+	Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
+		jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 }
 
 // JobSpecRepoFactory is used to store job specs
@@ -76,8 +77,8 @@ func (srv *Service) upload(jobSpec models.JobSpec, jobRepo store.JobRepository, 
 	return nil
 }
 
-// Compile takes a jobSpec of a project, resolves dependencies.priorities and returns the compiled Job
-func (srv *Service) Compile(projSpec models.ProjectSpec, jobSpec models.JobSpec) (models.Job, error) {
+// Dump takes a jobSpec of a project, resolves dependencies.priorities and returns the compiled Job
+func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (models.Job, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(projSpec)
 	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {
@@ -86,7 +87,7 @@ func (srv *Service) Compile(projSpec models.ProjectSpec, jobSpec models.JobSpec)
 
 	// resolve dependencies
 	for idx, jSpec := range jobSpecs {
-		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(projSpec, jobSpecRepo, jSpec); err != nil {
+		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(projSpec, jobSpecRepo, jSpec, nil); err != nil {
 			return models.Job{}, errors.Wrapf(err, "failed to resolve dependencies %s", jSpec.Name)
 		}
 	}
@@ -126,7 +127,7 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 
 	var dependencyErrors error
 	for idx, jobSpec := range jobSpecs {
-		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(proj, jobSpecRepo, jobSpec); err != nil {
+		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(proj, jobSpecRepo, jobSpec, progressObserver); err != nil {
 			dependencyErrors = multierror.Append(dependencyErrors, err)
 		}
 	}
@@ -278,6 +279,13 @@ type (
 	// successfully resolved
 	EventJobSpecDependencyResolve struct{}
 
+	// EventJobSpecUnknownDependencyUsed represents a job spec has used
+	// dependencies which are unknown/unresolved
+	EventJobSpecUnknownDependencyUsed struct {
+		Job        string
+		Dependency string
+	}
+
 	// EventJobSpecCompile represents a specification
 	// being compiled to a Job
 	EventJobSpecCompile struct{ Name string }
@@ -299,8 +307,7 @@ type (
 
 	// EventJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
-	EventJobPriorityWeightAssign struct {
-	}
+	EventJobPriorityWeightAssign struct{}
 )
 
 func (e *EventJobSpecFetch) String() string {
@@ -332,4 +339,8 @@ func (e *EventJobPriorityWeightAssign) String() string {
 
 func (e *EventJobSpecDependencyResolve) String() string {
 	return fmt.Sprintf("dependencies resolved")
+}
+
+func (e *EventJobSpecUnknownDependencyUsed) String() string {
+	return fmt.Sprintf("could not find registered destination '%s' during compiling dependencies for the provided job %s", e.Dependency, e.Job)
 }

@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/models"
 )
@@ -37,12 +36,13 @@ func (repo *HookUnit) GetImage() string {
 func (repo *HookUnit) GetDescription() string {
 	return repo.Called().Get(0).(string)
 }
-func (repo *HookUnit) GetQuestions() []*survey.Question {
-	return repo.Called().Get(0).([]*survey.Question)
+func (repo *HookUnit) AskQuestions(opt models.UnitOptions) (map[string]interface{}, error) {
+	args := repo.Called(opt)
+	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
-func (repo *HookUnit) GetConfig(jobUnitData models.UnitData) (map[string]string, error) {
-	args := repo.Called(jobUnitData)
-	return args.Get(0).(map[string]string), args.Error(1)
+func (repo *HookUnit) GenerateConfig(inp map[string]interface{}, jobUnitData models.UnitData) (models.JobSpecConfigs, error) {
+	args := repo.Called(inp, jobUnitData)
+	return args.Get(0).(models.JobSpecConfigs), args.Error(1)
 }
 func (repo *HookUnit) GetDependsOn() []string {
 	return repo.Called().Get(0).([]string)

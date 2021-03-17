@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/odpf/optimus/store"
+
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -61,7 +63,7 @@ func (repo *projectRepository) Insert(resource models.ProjectSpec) error {
 
 func (repo *projectRepository) Save(spec models.ProjectSpec) error {
 	existingResource, err := repo.GetByName(spec.Name)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find project by name")
@@ -79,6 +81,9 @@ func (repo *projectRepository) Save(spec models.ProjectSpec) error {
 func (repo *projectRepository) GetByName(name string) (models.ProjectSpec, error) {
 	var r Project
 	if err := repo.db.Where("name = ?", name).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.ProjectSpec{}, store.ErrResourceNotFound
+		}
 		return models.ProjectSpec{}, err
 	}
 	return r.ToSpec()
@@ -87,6 +92,9 @@ func (repo *projectRepository) GetByName(name string) (models.ProjectSpec, error
 func (repo *projectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error) {
 	var r Project
 	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.ProjectSpec{}, store.ErrResourceNotFound
+		}
 		return models.ProjectSpec{}, err
 	}
 	return r.ToSpec()

@@ -264,6 +264,9 @@
         "success": {
           "type": "boolean"
         },
+        "ack": {
+          "type": "boolean"
+        },
         "message": {
           "type": "string"
         },
@@ -334,6 +337,17 @@
         }
       }
     },
+    "apiv1JobConfigItem": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "apiv1JobDependency": {
       "type": "object",
       "properties": {
@@ -345,6 +359,17 @@
         }
       }
     },
+    "apiv1JobLabelItem": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "apiv1JobSpecHook": {
       "type": "object",
       "properties": {
@@ -352,9 +377,9 @@
           "type": "string"
         },
         "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1JobConfigItem"
           }
         }
       }
@@ -391,9 +416,9 @@
           "type": "string"
         },
         "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1JobConfigItem"
           }
         },
         "windowSize": {
@@ -421,6 +446,15 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/apiv1JobSpecHook"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiv1JobLabelItem"
           }
         }
       }

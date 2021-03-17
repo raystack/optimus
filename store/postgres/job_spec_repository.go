@@ -5,6 +5,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type jobSpecRepository struct {
@@ -26,10 +27,10 @@ func (repo *jobSpecRepository) Insert(spec models.JobSpec) error {
 
 func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
 	existingResource, err := repo.GetByName(spec.Name)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find spec by name")
+		return errors.Wrap(err, "unable to retrieve spec by name")
 	}
 	resource, err := repo.adapter.FromSpec(spec)
 	if err != nil {
@@ -42,14 +43,21 @@ func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
 func (repo *jobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
 	var r Job
 	if err := repo.db.Preload("Project").Where("id = ?", id).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, store.ErrResourceNotFound
+		}
 		return models.JobSpec{}, err
 	}
+
 	return repo.adapter.ToSpec(r)
 }
 
 func (repo *jobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 	var r Job
 	if err := repo.db.Preload("Project").Where("project_id = ? AND name = ?", repo.project.ID, name).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, store.ErrResourceNotFound
+		}
 		return models.JobSpec{}, err
 	}
 	return repo.adapter.ToSpec(r)
@@ -78,6 +86,9 @@ func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
 func (repo *jobSpecRepository) GetByDestination(destination string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
 	if err := repo.db.Preload("Project").Where("destination = ?", destination).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, models.ProjectSpec{}, store.ErrResourceNotFound
+		}
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
 

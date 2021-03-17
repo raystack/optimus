@@ -62,9 +62,10 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME": '{{.Hostname}}',
+        "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME":'{{.Hostname}}',
+        "JOB_LABELS":'{{.Job.GetLabelsAsString}}',
         "JOB_DIR":'/data', "PROJECT":'{{.Project.Name}}',
-        "TASK_TYPE":'{{$.InstanceTypeTransformation}}', "TASK_NAME": "{{.Job.Task.Unit.GetName}}",
+        "TASK_TYPE":'{{$.InstanceTypeTransformation}}', "TASK_NAME":'{{.Job.Task.Unit.GetName}}',
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
     },
     reattach_on_restart=True,
@@ -87,9 +88,10 @@ hook_{{$t.Unit.GetName}} = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOSTNAME": '{{$.Hostname}}',
+        "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOSTNAME":'{{$.Hostname}}',
+        "JOB_LABELS":'{{$.Job.GetLabelsAsString}}',
         "JOB_DIR":'/data', "PROJECT":'{{$.Project.Name}}',
-        "TASK_TYPE":'{{$.InstanceTypeHook}}', "TASK_NAME": "{{$t.Unit.GetName}}",
+        "TASK_TYPE":'{{$.InstanceTypeHook}}', "TASK_NAME":'{{$t.Unit.GetName}}',
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
    },

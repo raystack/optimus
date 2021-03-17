@@ -53,10 +53,28 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
+	labels := []models.JobSpecLabelItem{}
+	for _, l := range spec.Labels {
+		labels = append(labels, models.JobSpecLabelItem{
+			Name:  l.Name,
+			Value: l.Value,
+		})
+	}
+
+	taskConfigs := models.JobSpecConfigs{}
+	for _, l := range spec.Config {
+		taskConfigs = append(taskConfigs, models.JobSpecConfigItem{
+			Name:  l.Name,
+			Value: l.Value,
+		})
+	}
+
 	return models.JobSpec{
-		Version: int(spec.Version),
-		Name:    spec.Name,
-		Owner:   spec.Owner,
+		Version:     int(spec.Version),
+		Name:        spec.Name,
+		Owner:       spec.Owner,
+		Description: spec.Description,
+		Labels:      labels,
 		Schedule: models.JobSpecSchedule{
 			Interval:  spec.Interval,
 			StartDate: startDate,
@@ -69,7 +87,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
-			Config: spec.Config,
+			Config: taskConfigs,
 			Window: window,
 		},
 		Dependencies: dependencies,
@@ -116,13 +134,13 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
 		TaskName:         spec.Task.Unit.GetName(),
-		Config:           spec.Task.Config,
 		WindowSize:       spec.Task.Window.SizeString(),
 		WindowOffset:     spec.Task.Window.OffsetString(),
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []*pb.JobDependency{},
 		Hooks:            adapt.toHookProto(spec.Hooks),
+		Description:      spec.Description,
 	}
 	if spec.Schedule.EndDate != nil {
 		conf.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)
@@ -133,6 +151,25 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 			Type: dep.Type.String(),
 		})
 	}
+
+	taskConfigs := []*pb.JobConfigItem{}
+	for _, c := range spec.Task.Config {
+		taskConfigs = append(taskConfigs, &pb.JobConfigItem{
+			Name:  c.Name,
+			Value: c.Value,
+		})
+	}
+	conf.Config = taskConfigs
+
+	labels := []*pb.JobLabelItem{}
+	for _, c := range spec.Labels {
+		labels = append(labels, &pb.JobLabelItem{
+			Name:  c.Name,
+			Value: c.Value,
+		})
+	}
+	conf.Labels = labels
+
 	return conf, nil
 }
 
@@ -201,8 +238,17 @@ func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 		if err != nil {
 			return nil, err
 		}
+
+		configs := models.JobSpecConfigs{}
+		for _, l := range hook.Config {
+			configs = append(configs, models.JobSpecConfigItem{
+				Name:  l.Name,
+				Value: l.Value,
+			})
+		}
+
 		hooks = append(hooks, models.JobSpecHook{
-			Config: hook.Config,
+			Config: configs,
 			Unit:   hookUnit,
 		})
 	}
@@ -211,9 +257,17 @@ func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 
 func (adapt *Adapter) toHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
 	for _, hook := range hooks {
+		hookConfigs := []*pb.JobConfigItem{}
+		for _, c := range hook.Config {
+			hookConfigs = append(hookConfigs, &pb.JobConfigItem{
+				Name:  c.Name,
+				Value: c.Value,
+			})
+		}
+
 		protoHooks = append(protoHooks, &pb.JobSpecHook{
 			Name:   hook.Unit.GetName(),
-			Config: hook.Config,
+			Config: hookConfigs,
 		})
 	}
 	return

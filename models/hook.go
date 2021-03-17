@@ -3,7 +3,6 @@ package models
 import (
 	"fmt"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/pkg/errors"
 )
 
@@ -20,18 +19,18 @@ type HookUnit interface {
 	GetDescription() string
 
 	// GetQuestions list down all the cli inputs required to generate spec files
-	// name used for question will be directly mapped to GetConfig() parameters
-	GetQuestions() []*survey.Question
+	// name used for question will be directly mapped to GenerateConfig() parameters
+	AskQuestions(UnitOptions) (map[string]interface{}, error)
 
-	// GetConfig will be passed down to hook unit as env vars
-	// they can be templatized by enclosing question `name` parameter inside double braces preceded by .
-	// for example, "project": "{{.Project}}" where `Project` is a question asked by user in GetQuestions.
+	// GenerateConfig will be passed down to hook unit as env vars
+	// hookInputs - answers for the questions as inputs from user
+	// unitData - parent task configs
 	//
-	// you can also save templates within the job spec eg, "BROKERS": `{{ "{{.transporterKafkaBroker}}" }}` will
+	// using templates within the hook config, eg "BROKERS": `{{ "{{.transporterKafkaBroker}}" }}`, will
 	// store "BROKERS": '{{.transporterKafkaBroker}}' inside the job spec; which gets compiled by taking values
 	// from project config or runtime variables provided part of a instance. i.e.
 	// DSTART, DEND, EXECUTION_TIME
-	GetConfig(jobUnitData UnitData) (map[string]string, error)
+	GenerateConfig(hookInputs map[string]interface{}, parentTaskData UnitData) (JobSpecConfigs, error)
 
 	// GetDependsOn returns list of hooks this should be executed after
 	GetDependsOn() []string

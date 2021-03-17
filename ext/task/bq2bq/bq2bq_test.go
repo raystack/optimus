@@ -13,10 +13,19 @@ func TestBQ2BQ(t *testing.T) {
 		t.Run("should properly generate a destination provided correct config inputs", func(t *testing.T) {
 			b2b := &bq2bq.BQ2BQ{}
 			dst, err := b2b.GenerateDestination(models.UnitData{
-				Config: map[string]string{
-					"PROJECT": "proj",
-					"DATASET": "datas",
-					"TABLE":   "tab",
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "PROJECT",
+						Value: "proj",
+					},
+					{
+						Name:  "DATASET",
+						Value: "datas",
+					},
+					{
+						Name:  "TABLE",
+						Value: "tab",
+					},
 				},
 			})
 			assert.Nil(t, err)
@@ -25,9 +34,15 @@ func TestBQ2BQ(t *testing.T) {
 		t.Run("should throw an error if any on of the config is missing to generate destination", func(t *testing.T) {
 			b2b := &bq2bq.BQ2BQ{}
 			_, err := b2b.GenerateDestination(models.UnitData{
-				Config: map[string]string{
-					"DATASET": "datas",
-					"TABLE":   "tab",
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "DATASET",
+						Value: "datas",
+					},
+					{
+						Name:  "TABLE",
+						Value: "tab",
+					},
 				},
 			})
 			assert.NotNil(t, err)
@@ -183,10 +198,19 @@ func TestBQ2BQ(t *testing.T) {
 						Assets: map[string]string{
 							"query.sql": test.Query,
 						},
-						Config: map[string]string{
-							"PROJECT": "proj",
-							"DATASET": "datas",
-							"TABLE":   "tab",
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "PROJECT",
+								Value: "proj",
+							},
+							{
+								Name:  "DATASET",
+								Value: "datas",
+							},
+							{
+								Name:  "TABLE",
+								Value: "tab",
+							},
 						},
 					}
 					b2b := &bq2bq.BQ2BQ{}

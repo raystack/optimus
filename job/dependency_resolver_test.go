@@ -41,8 +41,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit1,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -69,8 +72,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit1,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -93,9 +99,9 @@ func TestDependencyResolver(t *testing.T) {
 			hookUnit2.On("GetDependsOn").Return([]string{"hook1"})
 
 			resolver := job.NewDependencyResolver()
-			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 			assert.Nil(t, err)
-			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
+			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2, nil)
 			assert.Nil(t, err)
 
 			assert.Equal(t, map[string]models.JobSpecDependency{
@@ -119,8 +125,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baa",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baa",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -135,8 +144,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: &jobSpec3, Type: models.JobSpecDependencyTypeIntra}},
@@ -151,8 +163,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -169,9 +184,9 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData2).Return([]string{}, nil)
 
 			resolver := job.NewDependencyResolver()
-			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 			assert.Nil(t, err)
-			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
+			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2, nil)
 			assert.Nil(t, err)
 
 			assert.Equal(t, map[string]models.JobSpecDependency{
@@ -195,8 +210,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -211,8 +229,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -226,7 +247,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData).Return([]string{"project.dataset.table2_destination"}, nil)
 
 			resolver := job.NewDependencyResolver()
-			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 
 			assert.Error(t, errors.Wrapf(errors.New("random error"), job.UnknownRuntimeDependencyMessage,
 				"project.dataset.table2_destination", jobSpec1.Name),
@@ -248,8 +269,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -262,10 +286,8 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData).Return([]string{"p.d.t"}, errors.New("random error"))
 
 			resolver := job.NewDependencyResolver()
-			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 
-			// assert.Equal(t, "failed to resolve dependency destination for test1: random error", err.Error())
-			// assert.Nil(t, resolvedJobSpecs)
 			assert.Equal(t, "random error", err.Error())
 			assert.Equal(t, models.JobSpec{}, resolvedJobSpec1)
 		})
@@ -284,8 +306,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -299,7 +324,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData).Return([]string{"project.dataset.table3_destination"}, nil)
 
 			resolver := job.NewDependencyResolver()
-			_, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			_, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 			assert.Error(t, errors.Wrapf(errors.New("spec not found"), job.UnknownRuntimeDependencyMessage,
 				"project.dataset.table3_destination", jobSpec1.Name),
 				err.Error())
@@ -319,8 +344,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -335,8 +363,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{"static_dep": {Job: nil}},
@@ -351,7 +382,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData2).Return([]string{"project.dataset.table1_destination"}, nil)
 
 			resolver := job.NewDependencyResolver()
-			_, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
+			_, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2, nil)
 			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
 		})
 
@@ -369,8 +400,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baa",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baa",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -385,8 +419,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
@@ -402,8 +439,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -421,9 +461,9 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData2).Return([]string{}, nil)
 
 			resolver := job.NewDependencyResolver()
-			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 			assert.Nil(t, err)
-			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
+			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2, nil)
 			assert.Nil(t, err)
 
 			assert.Nil(t, err)
@@ -456,8 +496,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baa",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baa",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -472,8 +515,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "bar",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
@@ -489,8 +535,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -505,8 +554,11 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Task: models.JobSpecTask{
 					Unit: execUnit,
-					Config: map[string]string{
-						"foo": "baz",
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
 					},
 				},
 				Dependencies: make(map[string]models.JobSpecDependency),
@@ -528,9 +580,9 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", unitData2).Return([]string{}, nil)
 
 			resolver := job.NewDependencyResolver()
-			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1)
+			resolvedJobSpec1, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec1, nil)
 			assert.Nil(t, err)
-			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2)
+			resolvedJobSpec2, err := resolver.Resolve(projectSpec, jobSpecRepository, jobSpec2, nil)
 			assert.Nil(t, err)
 
 			assert.Nil(t, err)

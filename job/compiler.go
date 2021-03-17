@@ -63,7 +63,7 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 		JobSpecDependencyTypeInter: string(models.JobSpecDependencyTypeInter),
 		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
 	}); err != nil {
-		return models.Job{}, err
+		return models.Job{}, errors.Wrap(err, "failed to templatize job")
 	}
 
 	return models.Job{

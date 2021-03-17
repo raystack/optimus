@@ -87,12 +87,22 @@ func TestCompiler(t *testing.T) {
 
 	scheduleEndDate := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 	hook1 := models.JobSpecHook{
-		Config:    map[string]string{"FILTER_EXPRESSION": "event_timestamp > 10000"},
+		Config: []models.JobSpecConfigItem{
+			{
+				Name:  "FILTER_EXPRESSION",
+				Value: "event_timestamp > 10000",
+			},
+		},
 		Unit:      hookUnit,
 		DependsOn: nil,
 	}
 	hook2 := models.JobSpecHook{
-		Config:    map[string]string{"FILTER_EXPRESSION2": "event_timestamp > 10000"},
+		Config: []models.JobSpecConfigItem{
+			{
+				Name:  "FILTER_EXPRESSION2",
+				Value: "event_timestamp > 10000",
+			},
+		},
 		Unit:      hookUnit2,
 		DependsOn: []*models.JobSpecHook{&hook1},
 	}
@@ -131,10 +141,16 @@ func TestCompiler(t *testing.T) {
 			},
 		),
 		Hooks: []models.JobSpecHook{hook1, hook2},
+		Labels: []models.JobSpecLabelItem{
+			{
+				Name:  "orchestrator",
+				Value: "optimus",
+			},
+		},
 	}
 
 	t.Run("Compile", func(t *testing.T) {
-		templatePath := "./../resources/pack/templates/scheduler/airflow_1/base_dag.py"
+		templatePath := "./resources/pack/templates/scheduler/airflow_1/base_dag.py"
 		compiledTemplateOutput := "./expected_compiled_template.py"
 
 		t.Run("should compile template without any error", func(t *testing.T) {
@@ -160,11 +176,12 @@ func TestCompiler(t *testing.T) {
 				templatePath,
 				"http://airflow.io",
 			)
-			dag, err := com.Compile(spec, projSpec)
+			job, err := com.Compile(spec, projSpec)
 			assert.Nil(t, err)
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
-			assert.Equal(t, string(expectedCompiledOutput), string(dag.Contents))
+			assert.Equal(t, string(expectedCompiledOutput), string(job.Contents))
+
 		})
 	})
 }

@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/odpf/optimus/utils"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/optimus/models"
 )
@@ -51,8 +53,8 @@ func (b *BQ2BQ) GetImage() string {
 	return "odpf/optimus-task-bq2bq:latest"
 }
 
-func (b *BQ2BQ) GetQuestions() []*survey.Question {
-	return []*survey.Question{
+func (b *BQ2BQ) AskQuestions(_ models.UnitOptions) (map[string]interface{}, error) {
+	questions := []*survey.Question{
 		{
 			Name:     "Project",
 			Prompt:   &survey.Input{Message: "Project ID:"},
@@ -72,36 +74,91 @@ func (b *BQ2BQ) GetQuestions() []*survey.Question {
 			Name: "LoadMethod",
 			Prompt: &survey.Select{
 				Message: "Load method to use on destination?",
-				Options: []string{"REPLACE", "APPEND", "MERGE"},
+				Options: []string{"REPLACE", "MERGE", "APPEND"},
 				Default: "MERGE",
+				Help: `
+REPLACE - Deletes existing partition and insert result of select query
+MERGE   - DML statements, BQ scripts
+APPEND  - Append to existing table
+`,
 			},
 			Validate: survey.Required,
 		},
 	}
+	inputsRaw := make(map[string]interface{})
+	if err := survey.Ask(questions, &inputsRaw); err != nil {
+		return nil, err
+	}
+
+	if load, ok := inputsRaw["LoadMethod"]; ok && load.(survey.OptionAnswer).Value == "REPLACE" {
+		filterExp := ""
+		if err := survey.AskOne(&survey.Input{
+			Message: "Partition filter expression",
+			Default: "",
+			Help: `Where condition over partitioned column used to delete existing partitions
+in destination table. These partitions will be replaced with sql query result.
+Leave empty for optimus to automatically figure this out although it will be 
+faster and cheaper to provide the exact condition.
+for example: DATE(event_timestamp) >= DATE("{{.DSTART}}") AND DATE(event_timestamp) < DATE("{{.DEND}}")
+`,
+		}, &filterExp); err != nil {
+			return nil, err
+		}
+		inputsRaw["Filter"] = filterExp
+	}
+	return inputsRaw, nil
 }
 
-func (b *BQ2BQ) GetConfig() map[string]string {
-	return map[string]string{
-		"PROJECT":     "{{.Project}}",
-		"TABLE":       "{{.Table}}",
-		"DATASET":     "{{.Dataset}}",
-		"LOAD_METHOD": "{{.LoadMethod}}",
-		"SQL_TYPE":    "STANDARD",
-		"JOB_LABELS":  "owner=optimus",
+func (b *BQ2BQ) GenerateConfig(inputs map[string]interface{}, _ models.UnitOptions) (models.JobSpecConfigs, error) {
+	stringInputs, err := utils.ConvertToStringMap(inputs)
+	if err != nil {
+		return nil, nil
 	}
+	conf := models.JobSpecConfigs{
+		{
+			Name:  "PROJECT",
+			Value: stringInputs["Project"],
+		},
+		{
+			Name:  "TABLE",
+			Value: stringInputs["Table"],
+		},
+		{
+			Name:  "DATASET",
+			Value: stringInputs["Dataset"],
+		},
+		{
+			Name:  "LOAD_METHOD",
+			Value: stringInputs["LoadMethod"],
+		},
+		{
+			Name:  "SQL_TYPE",
+			Value: "STANDARD",
+		},
+	}
+	if _, ok := stringInputs["Filter"]; ok {
+		conf = append(conf, models.JobSpecConfigItem{
+			Name:  "PARTITION_FILTER",
+			Value: stringInputs["Filter"],
+		})
+	}
+	return conf, nil
 }
 
-func (b *BQ2BQ) GetAssets() map[string]string {
+func (b *BQ2BQ) GenerateAssets(_ map[string]interface{}, _ models.UnitOptions) (map[string]string, error) {
 	return map[string]string{
-		queryFileName: `Select * from "project.dataset.table"`,
-	}
+		queryFileName: `-- SQL query goes here
+
+Select * from "project.dataset.table";
+`,
+	}, nil
 }
 
 // GenerateDestination uses config details to build target table
 func (b *BQ2BQ) GenerateDestination(data models.UnitData) (string, error) {
-	proj, ok1 := data.Config["PROJECT"]
-	dataset, ok2 := data.Config["DATASET"]
-	tab, ok3 := data.Config["TABLE"]
+	proj, ok1 := data.Config.Get("PROJECT")
+	dataset, ok2 := data.Config.Get("DATASET")
+	tab, ok3 := data.Config.Get("TABLE")
 	if ok1 && ok2 && ok3 {
 		return fmt.Sprintf("%s.%s.%s", proj,
 			dataset, tab), nil

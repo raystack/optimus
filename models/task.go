@@ -2,28 +2,26 @@ package models
 
 import (
 	"github.com/pkg/errors"
-
-	"github.com/AlecAivazis/survey/v2"
 )
 
 // Transformation needs to be implemented to register a task
 type Transformation interface {
 	GetName() string
 	GetImage() string
-	GetAssets() map[string]string
 	GetDescription() string
 
-	// GetQuestions list down all the cli inputs required to generate spec files
-	// name used for question will be directly mapped to GetConfig() parameters
-	GetQuestions() []*survey.Question
+	// AskQuestions list down all the cli inputs required to generate spec files
+	// name used for question will be directly mapped to GenerateConfig() parameters
+	AskQuestions(UnitOptions) (map[string]interface{}, error)
 
-	// GetConfig will be passed down to execution unit as env vars
-	// all configs must be prefixed by task name in upper case
-	// they can be templatize by enclosing question `name` parameter inside double braces preceded by .
-	// for example
-	// "project": "{{.Project}}"
-	// where `Project` is a question asked by user in GetQuestions
-	GetConfig() map[string]string
+	// GenerateConfig will be passed down to execution unit as env vars
+	// they will be generated based on results of AskQuestions
+	// if DryRun is true in UnitOptions, should not throw error for missing inputs
+	GenerateConfig(inputs map[string]interface{}, opt UnitOptions) (JobSpecConfigs, error)
+
+	// GenerateAssets will be passed down to execution unit as files
+	// if DryRun is true in UnitOptions, should not throw error for missing inputs
+	GenerateAssets(inputs map[string]interface{}, opt UnitOptions) (map[string]string, error)
 
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(UnitData) (string, error)
@@ -34,12 +32,16 @@ type Transformation interface {
 }
 
 type UnitData struct {
-	Config map[string]string
+	Config JobSpecConfigs
 	Assets map[string]string
 }
 
+type UnitOptions struct {
+	DryRun bool
+}
+
 var (
-	// TaskRegistry are a list of tasks that are supported as base task in a job
+	// TaskRegistry is a list of tasks that are supported as base task in a job
 	TaskRegistry = &supportedTasks{
 		data: map[string]Transformation{},
 	}
@@ -64,7 +66,7 @@ func (s *supportedTasks) GetByName(name string) (Transformation, error) {
 }
 
 func (s *supportedTasks) GetAll() []Transformation {
-	list := []Transformation{}
+	var list []Transformation
 	for _, unit := range s.data {
 		list = append(list, unit)
 	}
@@ -87,11 +89,17 @@ func (s *supportedTasks) Add(newUnit Transformation) error {
 	}
 
 	// check if we can add the provided task
+	nAssets, err := newUnit.GenerateAssets(nil, UnitOptions{DryRun: true})
+	if err != nil {
+		return err
+	}
 	for _, existingTask := range s.data {
+		eAssets, _ := existingTask.GenerateAssets(nil, UnitOptions{DryRun: true})
+
 		// config file names need to be unique in assets folder
 		// so each asset name should be unique
-		for ekey := range existingTask.GetAssets() {
-			for nkey := range newUnit.GetAssets() {
+		for ekey := range eAssets {
+			for nkey := range nAssets {
 				if nkey == ekey {
 					return errors.Errorf("asset file name already in use %s", nkey)
 				}

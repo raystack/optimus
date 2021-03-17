@@ -2,6 +2,7 @@ package job
 
 import (
 	"github.com/pkg/errors"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -17,9 +18,10 @@ var (
 type dependencyResolver struct{}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
-func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository, jobSpec models.JobSpec) (models.JobSpec, error) {
+func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
+	jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error) {
 	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, jobSpecRepo)
+	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, jobSpecRepo, observer)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -39,7 +41,8 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo
 	return jobSpec, nil
 }
 
-func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository) (models.JobSpec, error) {
+func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+	jobSpecRepo store.JobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies
 	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(models.UnitData{
 		Config: jobSpec.Task.Config,
@@ -53,7 +56,12 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 	for _, depDestination := range jobDependenciesDestination {
 		depSpec, depProj, err := jobSpecRepo.GetByDestination(depDestination)
 		if err != nil {
-			return models.JobSpec{}, errors.Wrapf(err, UnknownRuntimeDependencyMessage, depDestination, jobSpec.Name)
+			if err == store.ErrResourceNotFound {
+				// should not fail for unknown dependency
+				r.notifyProgress(observer, &EventJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
+				continue
+			}
+			return jobSpec, errors.Wrap(err, "runtime dependency evaluation failed")
 		}
 
 		// determine the type of dependency
@@ -105,6 +113,13 @@ func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (mo
 		jobSpec.Hooks[hookIdx] = jobHook
 	}
 	return jobSpec, nil
+}
+
+func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {
+	if observer == nil {
+		return
+	}
+	observer.Notify(e)
 }
 
 // NewDependencyResolver creates a new instance of Resolver

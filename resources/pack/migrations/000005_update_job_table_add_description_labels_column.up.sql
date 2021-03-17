@@ -1,0 +1,3 @@
+ALTER TABLE job
+    ADD IF NOT EXISTS description TEXT,
+    ADD IF NOT EXISTS labels JSONB;

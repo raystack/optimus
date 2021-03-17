@@ -93,6 +93,7 @@ The value of `DSTART` and `DEND` depends on `window` config in `job.yaml`. This 
 | size:1M, offset:0, truncate_to:M    | Start of the month date, example : 2019-01-01                      | End date of the month, for example : 2019-01-31                      |
 | size:2h, offset:0, truncate_to:h    | Datetime of the start of the hour, for example 2019-01-01 01:00:00 | Datetime the start of the next hour, for example 2019-01-01 02:00:00 |
 
+Please find more details under [concepts](../concepts/intervals-and-windows.md) section.
 
 Macros in SQL transformation example :
 

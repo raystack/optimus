@@ -93,12 +93,17 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err e
 			}
 			return errors.Wrapf(err, "failed to receive deployment ack")
 		}
-		if !resp.GetSuccess() {
-			return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
+		if resp.Ack {
+			// ack for the job spec
+			if !resp.GetSuccess() {
+				return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
+			}
+			jobCounter++
+			l.Printf("%d/%d. %s successfully deployed\n", jobCounter, totalJobs, resp.GetJobName())
+		} else {
+			// ordinary progress event
+			l.Printf("info '%s': %s\n", resp.GetJobName(), resp.GetMessage())
 		}
-
-		jobCounter++
-		l.Printf("%d/%d. %s successfully deployed\n", jobCounter, totalJobs, resp.GetJobName())
 	}
 
 	l.Println("deployment completed successfully")

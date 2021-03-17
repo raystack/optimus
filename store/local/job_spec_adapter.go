@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/pkg/errors"
 	"gopkg.in/validator.v2"
 	"github.com/odpf/optimus/models"
@@ -24,10 +26,12 @@ type Job struct {
 	Version      int    `yaml:"version,omitempty" validate:"min=1,max=100"`
 	Name         string `validate:"min=3,max=1024"`
 	Owner        string `yaml:"owner" validate:"min=3,max=1024"`
+	Description  string `yaml:"description,omitempty"`
 	Schedule     JobSchedule
 	Behavior     JobBehavior
 	Task         JobTask
 	Asset        map[string]string `yaml:"asset,omitempty"`
+	Labels       yaml.MapSlice     `yaml:"labels,omitempty"`
 	Dependencies []JobDependency
 	Hooks        []JobHook
 }
@@ -45,7 +49,7 @@ type JobBehavior struct {
 
 type JobTask struct {
 	Name   string
-	Config map[string]string `yaml:"config,omitempty"`
+	Config yaml.MapSlice `yaml:"config,omitempty"`
 	Window JobTaskWindow
 }
 
@@ -57,7 +61,7 @@ type JobTaskWindow struct {
 
 type JobHook struct {
 	Name   string
-	Config map[string]string `yaml:"config,omitempty"`
+	Config yaml.MapSlice `yaml:"config,omitempty"`
 }
 
 // ToSpec converts the local's JobHook representation to the optimus' models.JobSpecHook
@@ -67,7 +71,7 @@ func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobS
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
 	}
 	return models.JobSpecHook{
-		Config: a.Config,
+		Config: JobSpecConfigFromYamlSlice(a.Config),
 		Unit:   hookUnit,
 	}, nil
 }
@@ -76,7 +80,7 @@ func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobS
 func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	return JobHook{
 		Name:   spec.Unit.GetName(),
-		Config: spec.Config,
+		Config: JobSpecConfigToYamlSlice(spec.Config),
 	}
 }
 
@@ -177,10 +181,28 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, errors.Wrapf(err, "spec reading error, failed to find exec unit %s", conf.Task.Name)
 	}
 
+	labels := []models.JobSpecLabelItem{}
+	for _, label := range conf.Labels {
+		labels = append(labels, models.JobSpecLabelItem{
+			Name:  label.Key.(string),
+			Value: label.Value.(string),
+		})
+	}
+
+	taskConf := models.JobSpecConfigs{}
+	for _, c := range conf.Task.Config {
+		taskConf = append(taskConf, models.JobSpecConfigItem{
+			Name:  c.Key.(string),
+			Value: c.Value.(string),
+		})
+	}
+
 	job := models.JobSpec{
-		Version: conf.Version,
-		Name:    strings.TrimSpace(conf.Name),
-		Owner:   conf.Owner,
+		Version:     conf.Version,
+		Name:        strings.TrimSpace(conf.Name),
+		Owner:       conf.Owner,
+		Description: conf.Description,
+		Labels:      labels,
 		Schedule: models.JobSpecSchedule{
 			StartDate: startDate,
 			EndDate:   endDate,
@@ -192,7 +214,7 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
-			Config: conf.Task.Config,
+			Config: taskConf,
 			Window: window,
 		},
 		Assets:       models.JobAssets{}.FromMap(conf.Asset),
@@ -206,10 +228,29 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("exec unit is nil")
 	}
+
+	labels := yaml.MapSlice{}
+	for _, l := range spec.Labels {
+		labels = append(labels, yaml.MapItem{
+			Key:   l.Name,
+			Value: l.Value,
+		})
+	}
+
+	taskConf := yaml.MapSlice{}
+	for _, l := range spec.Task.Config {
+		taskConf = append(taskConf, yaml.MapItem{
+			Key:   l.Name,
+			Value: l.Value,
+		})
+	}
+
 	parsed := Job{
-		Version: spec.Version,
-		Name:    spec.Name,
-		Owner:   spec.Owner,
+		Version:     spec.Version,
+		Name:        spec.Name,
+		Owner:       spec.Owner,
+		Description: spec.Description,
+		Labels:      labels,
 		Schedule: JobSchedule{
 			Interval:  spec.Schedule.Interval,
 			StartDate: spec.Schedule.StartDate.Format(models.JobDatetimeLayout),
@@ -220,7 +261,7 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 		},
 		Task: JobTask{
 			Name:   spec.Task.Unit.GetName(),
-			Config: spec.Task.Config,
+			Config: taskConf,
 			Window: JobTaskWindow{
 				Size:       spec.Task.Window.SizeString(),
 				Offset:     spec.Task.Window.OffsetString(),
@@ -248,4 +289,26 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 	}
 
 	return parsed, nil
+}
+
+func JobSpecConfigToYamlSlice(conf models.JobSpecConfigs) yaml.MapSlice {
+	conv := yaml.MapSlice{}
+	for _, c := range conf {
+		conv = append(conv, yaml.MapItem{
+			Key:   c.Name,
+			Value: c.Value,
+		})
+	}
+	return conv
+}
+
+func JobSpecConfigFromYamlSlice(conf yaml.MapSlice) models.JobSpecConfigs {
+	conv := models.JobSpecConfigs{}
+	for _, c := range conf {
+		conv = append(conv, models.JobSpecConfigItem{
+			Name:  c.Key.(string),
+			Value: c.Value.(string),
+		})
+	}
+	return conv
 }
