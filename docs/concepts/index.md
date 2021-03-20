@@ -82,7 +82,7 @@ hooks:
   type: post
   config:
     KAFKA_TOPIC: optimus_example-data-hello_table
-    PRODUCER_CONFIG_BOOTSTRAP_SERVERS: '{{.transporterKafkaBroker}}'
+    PRODUCER_CONFIG_BOOTSTRAP_SERVERS: '{{.GLOBAL__TransporterKafkaBroker}}'
     PROTO_SCHEMA: example.data.HelloTable
     ...
 ```
@@ -91,7 +91,7 @@ hooks:
 
 Optimus allows using pre-defined macros/templates to make the pipelines more
 dynamic and extensible. Macros can be used in Job/Hooks configurations or Assets.
-Some of the macros are:
+Some macros are:
 
 - `"{{.DEND}}"`: this macro is replaced with the current execution date
   (in YYYY-MM-DD format) of the task (note that this is the execution date
@@ -118,6 +118,12 @@ hooks:
   config:
     BQ_TABLE: hello_table
     FILTER_EXPRESSION: event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'
+```
+Macros can be chained together via pipe-sign with predefined functions.
+- `Date`: Converters Timestamp to Date. For example
+```sql
+SELECT * FROM table1
+WHERE DATE(event_timestamp) < '{{ .DSTART|Date }}'
 ```
 
 ## Configuration
@@ -170,8 +176,44 @@ Optimus also injects few helper functions provided in [sprig](http://masterminds
 library.
 For example:
 ```sql
-{{$start_time = now}}
-select CONCAT("Hello, ", "{{$start_time}}") as message
+{{ $name := "admin" }}
+select CONCAT("Hello, ", "{{.name}}") as message
+```
+
+Section of code can be imported from different asset files using 
+[template](https://golang.org/pkg/text/template/#hdr-Actions). For example:
+
+- File `partials.tmpl`
+```sql
+DECLARE t1 TIMESTAMP;
+```
+- Another file `query.sql`
+```sql
+{{template "partials.tmpl"}}
+SET t1 = '2021-02-10T10:00:00+00:00';
+```
+During execution `query.sql` will be rendered as:
+```sql
+DECLARE t1 TIMESTAMP;
+SET t1 = '2021-02-10T10:00:00+00:00';
+```
+whereas `partials.tmpl` will be left as it is because file was saved with `.tmpl`
+extension.
+
+Similarly, a single file can contain multiple blocks of code that can function
+as macro of code replacement. For example:
+- `file.data` 
+```
+  Name: {{ template "name"}}, Gender: {{ template "gender" }}
+```
+- `partials.tmpl`
+```
+  {{- define "name" -}} Adam {{- end}}
+  {{- define "gender" -}} Male {{- end}}
+```
+This will render `file.data` as
+```
+Name: Adam, Gender: Male
 ```
 
 ## Scheduler

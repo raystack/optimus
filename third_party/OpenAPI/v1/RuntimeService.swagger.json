@@ -265,7 +265,8 @@
           "type": "boolean"
         },
         "ack": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": "non ack responses are more of a progress/info response and\nand not success or failure status"
         },
         "message": {
           "type": "string"

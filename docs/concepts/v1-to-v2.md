@@ -8,13 +8,23 @@
 - Task window configuration which was specified in `properties.cfg` earlier also goes in 
   `job.yaml`.
 - Macros are now formatted differently and follows golang template conventions.
-  instead of simply calling them via name, they needs to be enclosed in curly braces.
+  Instead of simply calling them via the name, they need to be enclosed in curly braces.
   For example:
 ```sql
 Select * from sometable where event_time < "{{.DSTART}}"
 ```
+- Macro replacements:
+  - `dstart`: `{{.DSTART}}`
+  - `dend`: `{{.DEND}}`
+  - `__execution_time__`: `{{.EXECUTION_TIME}}`
+  - `__destination_table__`: `{{.JOB_DESTINATION}}`
+  > **Note**: dstart and dend used to provide date of the window start/end whereas
+  now these convert to timestamp of window start/end, for example: 
+  `2021-02-10T10:00:00+00:00` <br>
+  To get the same value as before, macro can be pared with a pipe function:
+  `{{ .DSTART | Date }}` that is `2021-02-10` 
 - `query.sql` and all other asset files now supports compile time functions 
-  evaluations defined at golang [docs](https://golang.org/pkg/text/template/) 
+  evaluations defined in golang [docs](https://golang.org/pkg/text/template/) 
   and [sprig](http://masterminds.github.io/sprig/) library.
 - No more `USE_SPILLOVER` config in properties.cfg. If the transformation needs 
   to be idempotent which we suggest it should always be, `REPLACE` load method can
@@ -31,7 +41,7 @@ Select * from sometable where event_time < "{{.DSTART}}"
     in a `Merge` statement to delete existing partitions from the destination table.
     This is cheaper and faster, for example: `
     ```
-    DATE(event_timestamp) >= DATE("{{.DSTART}}") AND DATE(event_timestamp) < DATE("{{.DEND}}")
+    DATE(event_timestamp) >= "{{.DSTART|Date}}" AND DATE(event_timestamp) < "{{ .DEND|Date }}"
     ```
 - New fields compare to v1
   - `description`: Description of the job

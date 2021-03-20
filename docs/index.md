@@ -22,6 +22,7 @@ with, so that you can have a better understanding of how it's supposed to be use
     * [Profiling and Auditing BigQuery tables](guides/predator.md)
 * [Concepts](concepts/index.md)
   * [Intervals and Windows](concepts/intervals-and-windows.md)
+  * [Asset templating](concepts.md#Assets)
 * [Whats new in Optimus v2](concepts/v1-to-v2.md)
 * [FAQ](reference/FAQ.md)
 * [Contributing](contribute/contributing.md)

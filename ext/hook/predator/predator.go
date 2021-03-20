@@ -36,7 +36,7 @@ func (t *Predator) AskQuestions(_ models.UnitOptions) (map[string]interface{}, e
 			Name: "FilterExpression",
 			Prompt: &survey.Input{
 				Message: "Filter expression for extracting transformation rows?",
-				Help:    `for example: DATE(event_timestamp) >= DATE("{{.DSTART}}") AND DATE(event_timestamp) < DATE("{{.DEND}}")`,
+				Help:    `for example: DATE(event_timestamp) >= "{{ .DSTART|Date }}" AND DATE(event_timestamp) < "{{ .DEND|Date }}"`,
 				Default: "",
 			},
 			Validate: survey.MinLength(5),

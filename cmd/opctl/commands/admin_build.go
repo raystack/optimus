@@ -27,7 +27,8 @@ var (
 	taskInputDirectory  = "in"
 	taskOutputDirectory = "out"
 
-	writeToFileFn = utils.WriteStringToFileIndexed()
+	writeToFileFn  = utils.WriteStringToFileIndexed()
+	templateEngine = instance.NewGoEngine()
 )
 
 func adminBuildInstanceCommand(l logger) *cli.Command {
@@ -126,7 +127,7 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 	}
 
 	envMap, fileMap, err := instance.NewFeatureManager(
-		project, jobSpec, instanceSpec).Generate(
+		project, jobSpec, instanceSpec, templateEngine).Generate(
 		instanceType, runName,
 	)
 	if err != nil {
