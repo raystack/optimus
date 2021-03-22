@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/kushsharma/parallel"
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -61,36 +62,12 @@ func (srv *Service) GetByName(name string, proj models.ProjectSpec) (models.JobS
 	return jobSpec, nil
 }
 
-// upload compiles a Job and uploads it to the destination store
-func (srv *Service) upload(jobSpec models.JobSpec, jobRepo store.JobRepository, proj models.ProjectSpec, progressObserver progress.Observer) error {
-	compiledJob, err := srv.compiler.Compile(jobSpec, proj)
-	if err != nil {
-		return err
-	}
-	srv.notifyProgress(progressObserver, &EventJobSpecCompile{
-		Name: jobSpec.Name,
-	})
-
-	if err = jobRepo.Save(compiledJob); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Dump takes a jobSpec of a project, resolves dependencies.priorities and returns the compiled Job
 func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (models.Job, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(projSpec)
-	jobSpecs, err := jobSpecRepo.GetAll()
+	jobSpecs, err := srv.getDependencyResolvedSpecs(projSpec, jobSpecRepo, nil)
 	if err != nil {
-		return models.Job{}, errors.Wrapf(err, "failed to retrive jobs")
-	}
-
-	// resolve dependencies
-	for idx, jSpec := range jobSpecs {
-		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(projSpec, jobSpecRepo, jSpec, nil); err != nil {
-			return models.Job{}, errors.Wrapf(err, "failed to resolve dependencies %s", jSpec.Name)
-		}
+		return models.Job{}, err
 	}
 
 	// resolve priority of all jobSpecs
@@ -120,20 +97,10 @@ func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (m
 // store
 func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Observer) error {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(proj)
-	jobSpecs, err := jobSpecRepo.GetAll()
-	if err != nil {
-		return errors.Wrapf(err, "failed to retrive jobs")
-	}
-	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
 
-	var dependencyErrors error
-	for idx, jobSpec := range jobSpecs {
-		if jobSpecs[idx], err = srv.dependencyResolver.Resolve(proj, jobSpecRepo, jobSpec, progressObserver); err != nil {
-			dependencyErrors = multierror.Append(dependencyErrors, err)
-		}
-	}
-	if dependencyErrors != nil {
-		return dependencyErrors
+	jobSpecs, err := srv.getDependencyResolvedSpecs(proj, jobSpecRepo, progressObserver)
+	if err != nil {
+		return err
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 
@@ -148,20 +115,8 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 		return err
 	}
 
-	var sourceJobNames []string
-	for _, jobSpec := range jobSpecs {
-		if err = srv.upload(jobSpec, jobRepo, proj, progressObserver); err != nil {
-			srv.notifyProgress(progressObserver, &EventJobUpload{
-				Job: jobSpec,
-				Err: err,
-			})
-		} else {
-			srv.notifyProgress(progressObserver, &EventJobUpload{
-				Job: jobSpec,
-			})
-		}
-
-		sourceJobNames = append(sourceJobNames, jobSpec.Name)
+	if err = srv.uploadSpecs(jobSpecs, jobRepo, proj, progressObserver); err != nil {
+		return err
 	}
 
 	// get all the stored jobs
@@ -175,6 +130,10 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	for _, job := range jobs {
 		destjobNames = append(destjobNames, job.Name)
 	}
+	var sourceJobNames []string
+	for _, jobSpec := range jobSpecs {
+		sourceJobNames = append(sourceJobNames, jobSpec.Name)
+	}
 	jobsToDelete := setSubstract(destjobNames, sourceJobNames)
 	jobsToDelete = jobDeletionFilter(jobsToDelete)
 
@@ -184,6 +143,72 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 			return err
 		}
 		srv.notifyProgress(progressObserver, &EventJobRemoteDelete{dagName})
+	}
+	return nil
+}
+
+func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
+	progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
+
+	// fetch all
+	jobSpecs, err := jobSpecRepo.GetAll()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to retrive jobs")
+	}
+	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
+
+	// resolve specs in parallel
+	runner := parallel.NewRunner()
+	for _, jobSpec := range jobSpecs {
+		currentSpec := jobSpec
+		runner.Add(func() (interface{}, error) {
+			resolvedSpec, err := srv.dependencyResolver.Resolve(proj, jobSpecRepo, currentSpec, progressObserver)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to resolve dependency for %s", currentSpec.Name)
+			}
+			return resolvedSpec, nil
+		})
+	}
+
+	for _, state := range runner.Run() {
+		if state.Err != nil {
+			resolvedErrors = multierror.Append(resolvedErrors, state.Err)
+		} else {
+			resolvedSpecs = append(resolvedSpecs, state.Val.(models.JobSpec))
+		}
+	}
+
+	return resolvedSpecs, resolvedErrors
+}
+
+// uploadSpecs compiles a Job and uploads it to the destination store
+func (srv *Service) uploadSpecs(jobSpecs []models.JobSpec, jobRepo store.JobRepository,
+	proj models.ProjectSpec, progressObserver progress.Observer) error {
+
+	runner := parallel.NewRunner()
+	for _, jobSpec := range jobSpecs {
+		currentSpec := jobSpec
+		runner.Add(func() (interface{}, error) {
+			compiledJob, err := srv.compiler.Compile(currentSpec, proj)
+			if err != nil {
+				return nil, err
+			}
+			srv.notifyProgress(progressObserver, &EventJobSpecCompile{
+				Name: currentSpec.Name,
+			})
+
+			if err = jobRepo.Save(compiledJob); err != nil {
+				return nil, err
+			}
+			return nil, nil
+		})
+	}
+
+	for runIdx, state := range runner.Run() {
+		srv.notifyProgress(progressObserver, &EventJobUpload{
+			Job: jobSpecs[runIdx],
+			Err: state.Err,
+		})
 	}
 	return nil
 }

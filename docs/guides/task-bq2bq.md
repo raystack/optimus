@@ -158,7 +158,7 @@ rasengan,
 `over`,
 load_timestamp as `event_timestamp`
 from /* @ignoreupstream */
-`g-data-gojek-id-standardized.playground.sample_select`
+`g-project.playground.sample_select`
 WHERE
 DATE(`load_timestamp`) >= DATE('{{.DSTART}}')
 AND DATE(`load_timestamp`) < DATE('{{.DEND}}')

@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -301,7 +302,9 @@ func TestService(t *testing.T) {
 			svc := job.NewService(jobSpecRepoFac, nil, nil, depenResolver, nil)
 			err := svc.Sync(projSpec, nil)
 			assert.NotNil(t, err)
-			assert.Equal(t, "2 errors occurred:\n\t* error test\n\t* error test-2\n\n", err.Error())
+			assert.True(t, strings.Contains(err.Error(), "2 errors occurred"))
+			assert.True(t, strings.Contains(err.Error(), "error test"))
+			assert.True(t, strings.Contains(err.Error(), "error test-2"))
 		})
 	})
 	t.Run("KeepOnly", func(t *testing.T) {

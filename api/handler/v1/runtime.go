@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	pb "github.com/odpf/optimus/api/proto/v1"
+	"github.com/odpf/optimus/core/logger"
 	log "github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/job"
@@ -66,6 +67,8 @@ func (sv *RuntimeServiceServer) Version(ctx context.Context, version *pb.Version
 }
 
 func (sv *RuntimeServiceServer) DeploySpecification(req *pb.DeploySpecificationRequest, respStream pb.RuntimeService_DeploySpecificationServer) error {
+	startTime := time.Now()
+
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
@@ -100,9 +103,10 @@ func (sv *RuntimeServiceServer) DeploySpecification(req *pb.DeploySpecificationR
 	}
 
 	if err := sv.jobSvc.Sync(projSpec, observers); err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("%s: failed to sync jobs", err.Error()))
+		return status.Error(codes.Internal, fmt.Sprintf("%s\nfailed to sync jobs", err.Error()))
 	}
 
+	logger.I("finished deployment in", time.Since(startTime))
 	return nil
 }
 
@@ -318,6 +322,14 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error(errors.Wrapf(err, "failed to send deploy spec ack for: %s", evt.Job.Name))
+		}
+	case *job.EventJobRemoteDelete:
+		resp := &pb.DeploySpecificationResponse{
+			JobName: evt.Name,
+			Message: evt.String(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error(errors.Wrapf(err, "failed to send delete notification for: %s", evt.Name))
 		}
 	case *job.EventJobSpecUnknownDependencyUsed:
 		resp := &pb.DeploySpecificationResponse{

@@ -2,6 +2,7 @@ package instance
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
@@ -30,16 +31,16 @@ var (
 // transformed before they can work as inputs. Input could be through
 // environment variables or as a file.
 type ContextManager struct {
-	projectSpec  models.ProjectSpec
-	jobSpec      models.JobSpec
-	instanceSpec models.InstanceSpec
-	engine       models.TemplateEngine
+	projectSpec models.ProjectSpec
+	jobSpec     models.JobSpec
+	engine      models.TemplateEngine
 }
 
 // Generate fetches and compiles all config data related to an instance and
 // returns a map of env variables and a map[fileName]fileContent
 // It compiles any templates/macros present in the config.
 func (fm *ContextManager) Generate(
+	instanceSpec models.InstanceSpec,
 	runType models.InstanceType,
 	runName string,
 ) (envMap map[string]string, fileMap map[string]string, err error) {
@@ -54,7 +55,7 @@ func (fm *ContextManager) Generate(
 	}
 
 	// instance env will be used for templating
-	instanceEnvMap, instanceFileMap := fm.getInstanceData()
+	instanceEnvMap, instanceFileMap := fm.getInstanceData(instanceSpec)
 
 	// merge both
 	projectInstanceContext := mergeStringMap(instanceEnvMap, projectConfig)
@@ -122,14 +123,6 @@ func (fm *ContextManager) compileTemplates(templateValueMap, templateContext map
 	return templateValueMap, nil
 }
 
-func (fm *ContextManager) getAssetFilesMap(jobSpec models.JobSpec, fileMap map[string]string) map[string]string {
-	return jobSpec.Assets.ToMap()
-	for _, jobAsset := range jobSpec.Assets.GetAll() {
-		fileMap[jobAsset.Name] = jobAsset.Value
-	}
-	return fileMap
-}
-
 func (fm *ContextManager) getProjectConfigMap() map[string]string {
 	configMap := map[string]string{}
 	for key, val := range fm.projectSpec.Config {
@@ -138,12 +131,12 @@ func (fm *ContextManager) getProjectConfigMap() map[string]string {
 	return configMap
 }
 
-func (fm *ContextManager) getInstanceData() (map[string]string, map[string]string) {
+func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]string, map[string]string) {
 	envMap := map[string]string{}
 	fileMap := map[string]string{}
 
-	if fm.instanceSpec.Data != nil {
-		for _, jobRunData := range fm.instanceSpec.Data {
+	if instanceSpec.Data != nil {
+		for _, jobRunData := range instanceSpec.Data {
 			switch jobRunData.Type {
 			case models.InstanceDataTypeFile:
 				fileMap[jobRunData.Name] = jobRunData.Value
@@ -176,13 +169,12 @@ func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 	return transformationMap, hookMap, nil
 }
 
-func NewFeatureManager(projectSpec models.ProjectSpec, jobSpec models.JobSpec,
-	instanceSpec models.InstanceSpec, engine models.TemplateEngine) *ContextManager {
+func NewContextManager(projectSpec models.ProjectSpec, jobSpec models.JobSpec,
+	engine models.TemplateEngine) *ContextManager {
 	return &ContextManager{
-		projectSpec:  projectSpec,
-		jobSpec:      jobSpec,
-		instanceSpec: instanceSpec,
-		engine:       engine,
+		projectSpec: projectSpec,
+		jobSpec:     jobSpec,
+		engine:      engine,
 	}
 }
 
@@ -203,4 +195,26 @@ func convertStringToInterfaceMap(i map[string]string) map[string]interface{} {
 		o[k] = v
 	}
 	return o
+}
+
+func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine) (map[string]string, error) {
+	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
+		Config: jobSpec.Task.Config,
+		Assets: jobSpec.Assets.ToMap(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	templates, err := engine.CompileFiles(jobSpec.Assets.ToMap(), map[string]interface{}{
+		ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+		ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+		ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+		ConfigKeyDestination:   jobDestination,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to compile templates")
+	}
+
+	return templates, nil
 }

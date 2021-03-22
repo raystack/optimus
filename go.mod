@@ -2,6 +2,7 @@ module github.com/odpf/optimus
 
 require (
 	cloud.google.com/go v0.65.0
+	cloud.google.com/go/bigquery v1.8.0
 	cloud.google.com/go/storage v1.10.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig/v3 v3.2.2
@@ -20,6 +21,8 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jinzhu/gorm v1.9.16
+	github.com/kr/pretty v0.2.0 // indirect
+	github.com/kushsharma/parallel v0.0.0-20210331050424-5719e027cd64
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
@@ -33,6 +36,7 @@ require (
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/oauth2 v0.0.0-20210201163806-010130855d6c
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/api v0.30.0

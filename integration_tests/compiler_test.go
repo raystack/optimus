@@ -19,18 +19,18 @@ import (
 func TestCompiler(t *testing.T) {
 	execUnit := new(mock.ExecutionUnit)
 	execUnit.On("GetName").Return("bq")
-	execUnit.On("GetImage").Return("odpf/namespace/image:latest")
+	execUnit.On("GetImage").Return("example.io/namespace/image:latest")
 
 	transporterHook := "transporter"
 	hookUnit := new(mock.HookUnit)
 	hookUnit.On("GetName").Return(transporterHook)
-	hookUnit.On("GetImage").Return("odpf/namespace/hook-image:latest")
+	hookUnit.On("GetImage").Return("example.io/namespace/hook-image:latest")
 	hookUnit.On("GetType").Return(models.HookTypePre)
 
 	predatorHook := "predator"
 	hookUnit2 := new(mock.HookUnit)
 	hookUnit2.On("GetName").Return(predatorHook)
-	hookUnit2.On("GetImage").Return("odpf/namespace/predator-image:latest")
+	hookUnit2.On("GetImage").Return("example.io/namespace/predator-image:latest")
 	hookUnit2.On("GetType").Return(models.HookTypePost)
 
 	projSpec := models.ProjectSpec{

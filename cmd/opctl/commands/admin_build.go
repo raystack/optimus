@@ -137,9 +137,9 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectNam
 		return err
 	}
 
-	envMap, fileMap, err := instance.NewFeatureManager(
-		project, jobSpec, instanceSpec, templateEngine).Generate(
-		instanceType, runName,
+	envMap, fileMap, err := instance.NewContextManager(
+		project, jobSpec, templateEngine).Generate(
+		instanceSpec, instanceType, runName,
 	)
 	if err != nil {
 		return err
