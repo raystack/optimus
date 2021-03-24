@@ -2,6 +2,7 @@ package v1_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -145,6 +147,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
+
+				nil,
 				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				instanceService,
@@ -173,7 +177,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectSpec := models.ProjectSpec{
 				Name: projectName,
 				Config: map[string]string{
-					"bucket": "gs://some_folder",
+					"BUCKET": "gs://some_folder",
 				},
 			}
 			adapter := v1.NewAdapter(models.TaskRegistry, nil)
@@ -196,6 +200,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
+				nil,
 				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				nil,
@@ -210,13 +215,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Message: "saved successfully",
 			}, resp)
 		})
-		t.Run("should return error if saving to respository fails", func(t *testing.T) {
+		t.Run("should return error if saving to repository fails", func(t *testing.T) {
 			projectName := "a-data-project"
 
 			projectSpec := models.ProjectSpec{
 				Name: projectName,
 				Config: map[string]string{
-					"bucket": "gs://some_folder",
+					"BUCKET": "gs://some_folder",
 				},
 			}
 			adapter := v1.NewAdapter(models.TaskRegistry, nil)
@@ -239,6 +244,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
+				nil,
 				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				nil,
@@ -249,6 +255,127 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
 			assert.Equal(t, "rpc error: code = Internal desc = a random error: failed to save project a-data-project", err.Error())
 			assert.Nil(t, resp)
+		})
+	})
+
+	t.Run("RegisterSecret", func(t *testing.T) {
+		t.Run("should register a secret successfully", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+			adapter := v1.NewAdapter(nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			sec := models.ProjectSecretItem{
+				Name:  "hello",
+				Value: "world",
+			}
+
+			projectSecretRepository := new(mock.ProjectSecretRepository)
+			projectSecretRepository.On("Save", sec).Return(nil)
+			defer projectSecretRepository.AssertExpectations(t)
+
+			projectSecretRepoFactory := new(mock.ProjectSecretRepoFactory)
+			projectSecretRepoFactory.On("New", projectSpec).Return(projectSecretRepository)
+			defer projectSecretRepoFactory.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				job.NewService(
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				),
+				projectRepoFactory,
+				projectSecretRepoFactory,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			secretRequest := pb.RegisterSecretRequest{
+				ProjectName: projectSpec.Name,
+				SecretName:  "hello",
+				Value:       base64.StdEncoding.EncodeToString([]byte("world")),
+			}
+			resp, err := runtimeServiceServer.RegisterSecret(context.TODO(), &secretRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.RegisterSecretResponse{
+				Success: true,
+			}, resp)
+		})
+		t.Run("should return error if saving to secret repository fails", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+			adapter := v1.NewAdapter(nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			sec := models.ProjectSecretItem{
+				Name:  "hello",
+				Value: "world",
+			}
+
+			projectSecretRepository := new(mock.ProjectSecretRepository)
+			projectSecretRepository.On("Save", sec).Return(errors.New("random error"))
+			defer projectSecretRepository.AssertExpectations(t)
+
+			projectSecretRepoFactory := new(mock.ProjectSecretRepoFactory)
+			projectSecretRepoFactory.On("New", projectSpec).Return(projectSecretRepository)
+			defer projectSecretRepoFactory.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				job.NewService(
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				),
+				projectRepoFactory,
+				projectSecretRepoFactory,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			secretRequest := pb.RegisterSecretRequest{
+				ProjectName: projectSpec.Name,
+				SecretName:  "hello",
+				Value:       base64.StdEncoding.EncodeToString([]byte("world")),
+			}
+			resp, err := runtimeServiceServer.RegisterSecret(context.TODO(), &secretRequest)
+			assert.Nil(t, resp)
+			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to save secret hello", err.Error())
 		})
 	})
 
@@ -328,6 +455,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 				),
 				projectRepoFactory,
+				nil,
 				adapter,
 				nil,
 				nil,
@@ -357,6 +485,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 			scheduledAtTimestamp, _ := ptypes.TimestampProto(scheduledAt)
@@ -377,6 +506,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -481,6 +611,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					priorityResolver,
 				),
 				projectRepoFactory,
+				nil,
 				v1.NewAdapter(models.TaskRegistry, nil),
 				nil,
 				nil,

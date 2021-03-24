@@ -27,11 +27,16 @@ var (
 	taskInputDirectory  = "in"
 	taskOutputDirectory = "out"
 
-	writeToFileFn  = utils.WriteStringToFileIndexed()
 	templateEngine = instance.NewGoEngine()
+
+	adminBuildInstanceTimeout = time.Minute * 1
 )
 
 func adminBuildInstanceCommand(l logger) *cli.Command {
+	var (
+		optimusHost string
+		projectName string
+	)
 	cmd := &cli.Command{
 		Use:     "instance",
 		Short:   "Builds a Job instance including the assets for a scheduled execution",
@@ -60,7 +65,7 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 		// append base path to input file directory
 		inputDirectory := filepath.Join(assetOutputDir, taskInputDirectory)
 
-		if err := getInstanceBuildRequest(l, jobName, inputDirectory); err != nil {
+		if err := getInstanceBuildRequest(l, jobName, inputDirectory, optimusHost, projectName); err != nil {
 			l.Print(err)
 			l.Print(errRequestFail)
 			os.Exit(1)
@@ -72,7 +77,7 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 // getInstanceBuildRequest fetches a JobRun from the store (eg, postgres)
 // Based on the response, it builds assets like query, env and config
 // for the Job Run which is saved into output files.
-func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err error) {
+func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectName string) (err error) {
 
 	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, scheduledAt)
 	if err != nil {
@@ -83,13 +88,19 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 		return errors.Wrapf(err, "unable to parse timestamp to proto %s", jobScheduledTime.String())
 	}
 
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(optimusHost); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Println("can't reach optimus service, timing out")
+		}
 		return err
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), adminBuildInstanceTimeout)
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
@@ -100,7 +111,7 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 	}
 
 	// fetch Instance by calling the optimus API
-	jobResponse, err := runtime.RegisterInstance(ctx, &pb.RegisterInstanceRequest{
+	jobResponse, err := runtime.RegisterInstance(timeoutCtx, &pb.RegisterInstanceRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 		Type:        runType,
@@ -133,6 +144,8 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory string) (err erro
 	if err != nil {
 		return err
 	}
+
+	writeToFileFn := utils.WriteStringToFileIndexed()
 
 	// write all files in the fileMap to respective files
 	for fileName, fileContent := range fileMap {

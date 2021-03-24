@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
@@ -11,7 +12,15 @@ import (
 	pb "github.com/odpf/optimus/api/proto/v1"
 )
 
+const (
+	adminStatusTimeout = time.Second * 10
+)
+
 func adminGetStatusCommand(l logger) *cli.Command {
+	var (
+		optimusHost string
+		projectName string
+	)
 	cmd := &cli.Command{
 		Use:     "status",
 		Short:   "Get current job status",
@@ -28,7 +37,7 @@ func adminGetStatusCommand(l logger) *cli.Command {
 		l.Printf("requesting status for project %s, job %s[%s] at %s\nplease wait...\n",
 			projectName, jobName, scheduledAt, optimusHost)
 
-		if err := getJobStatusRequest(l, jobName, scheduledAt); err != nil {
+		if err := getJobStatusRequest(l, jobName, scheduledAt, optimusHost, projectName); err != nil {
 			l.Print(err)
 			l.Print(errRequestFail)
 			os.Exit(1)
@@ -37,19 +46,25 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	return cmd
 }
 
-func getJobStatusRequest(l logger, jobName, scheduledAt string) error {
+func getJobStatusRequest(l logger, jobName, scheduledAt, host, projectName string) error {
 	var err error
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(optimusHost); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Println("can't reach optimus service, timing out")
+		}
 		return err
 	}
 	defer conn.Close()
 
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), adminStatusTimeout)
+	defer cancel()
+
 	runtime := pb.NewRuntimeServiceClient(conn)
-	jobStatusResponse, err := runtime.JobStatus(ctx, &pb.JobStatusRequest{
+	jobStatusResponse, err := runtime.JobStatus(timeoutCtx, &pb.JobStatusRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 	})

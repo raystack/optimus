@@ -1,6 +1,7 @@
 package job_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -132,7 +133,7 @@ func TestService(t *testing.T) {
 			defer jobRepo.AssertExpectations(t)
 
 			jobRepoFac := new(mock.JobRepoFactory)
-			jobRepoFac.On("New", projSpec).Return(jobRepo, nil)
+			jobRepoFac.On("New", context.Background(), projSpec).Return(jobRepo, nil)
 			defer jobRepoFac.AssertExpectations(t)
 
 			// resolve dependencies
@@ -240,7 +241,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
-			jobRepoFac.On("New", projSpec).Return(jobRepo, nil)
+			jobRepoFac.On("New", context.Background(), projSpec).Return(jobRepo, nil)
 
 			// compile to dag and save the first one
 			compiler.On("Compile", jobSpecsAfterPriorityResolve[0], projSpec).Return(jobs[0], nil)

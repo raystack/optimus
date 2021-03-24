@@ -43,7 +43,7 @@ ui: build-ui generate build-optimus
 unit-test:
 	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test
 
-smoke-test: build
+smoke-test: build-ctl
 	@bash ./scripts/smoke-test.sh
 
 integration-test: build

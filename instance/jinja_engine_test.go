@@ -100,10 +100,10 @@ func TestJinjaCompiler(t *testing.T) {
 				{
 					map[string]string{
 						"query": `
-				{% import "macros.tpl" greetings -%}
+				{% import "macros.tplz" greetings -%}
 				event_timestamp > \"{{DSTART}}\" AND event_timestamp <= \"{{DEND}}\"
 				{{- greetings("rick") -}}`,
-						"macros.tpl": `
+						"macros.tplz": `
 				{%- macro greetings(to, at=DSTART, name2="guest") export %}
 				Greetings to {{ to }} at {{ at }}. Howdy, {% if name2 == "guest" %}anonymous guest{% else %}{{ name2 }}{% endif %}!
 				{%- endmacro %}`,
@@ -112,7 +112,7 @@ func TestJinjaCompiler(t *testing.T) {
 						"query": `
 				event_timestamp > \"2021-02-10T10:00:00+00:00\" AND event_timestamp <= \"2021-02-11T10:00:00+00:00\"
 				Greetings to rick at 2021-02-10T10:00:00+00:00. Howdy, anonymous guest!`,
-						"macros.tpl": ``,
+						"macros.tplz": ``,
 					},
 				},
 				{

@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+	"github.com/odpf/optimus/store"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	mocked "github.com/odpf/optimus/mock"
@@ -27,6 +30,15 @@ func (m *MockHttpClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{}, nil
 }
 
+type MockedObjectWriterFactory struct {
+	mock.Mock
+}
+
+func (m *MockedObjectWriterFactory) New(ctx context.Context, path, writerSecret string) (store.ObjectWriter, error) {
+	args := m.Called(ctx, path, writerSecret)
+	return args.Get(0).(store.ObjectWriter), args.Error(1)
+}
+
 func TestAirflow(t *testing.T) {
 	ctx := context.Background()
 	t.Run("Bootstrap", func(t *testing.T) {
@@ -40,15 +52,25 @@ func TestAirflow(t *testing.T) {
 			ow := new(mocked.ObjectWriter)
 			defer ow.AssertExpectations(t)
 
+			owf := new(MockedObjectWriterFactory)
+			owf.On("New", ctx, "gs://mybucket/hello", "test-secret").Return(ow, nil)
+			defer owf.AssertExpectations(t)
+
 			bucket := "mybucket"
 			objectPath := fmt.Sprintf("/hello/%s/%s", "dags", "__lib.py")
 			ow.On("NewWriter", ctx, bucket, objectPath).Return(wc, nil)
 
-			air := airflow.NewScheduler(resources.FileSystem, ow, nil)
+			air := airflow.NewScheduler(resources.FileSystem, owf, nil)
 			err := air.Bootstrap(context.Background(), models.ProjectSpec{
 				Name: "proj-name",
 				Config: map[string]string{
 					models.ProjectStoragePathKey: "gs://mybucket/hello",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSecretStorageKey,
+						Value: "test-secret",
+					},
 				},
 			})
 			assert.Nil(t, err)

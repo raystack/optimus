@@ -3,7 +3,6 @@ package instance
 import (
 	"bytes"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -25,7 +24,7 @@ func (c *JinjaEngine) CompileFiles(files map[string]string, context map[string]i
 	templateSet := pongo2.NewSet("inmemory", NewInMemoryTemplateLoader(files))
 	for name, content := range files {
 		// don't render files starting with
-		if strings.HasSuffix(name, IgnoreTemplateRenderExtension) {
+		if shouldIgnoreFile(name) {
 			rendered[name] = content
 			continue
 		}

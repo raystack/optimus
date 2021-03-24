@@ -29,18 +29,22 @@ type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+type ObjectWriterFactory interface {
+	New(ctx context.Context, writerPath, writerSecret string) (store.ObjectWriter, error)
+}
+
 type scheduler struct {
-	objWriter  store.ObjectWriter
-	templateFS http.FileSystem
+	objWriterFac ObjectWriterFactory
+	templateFS   http.FileSystem
 
 	httpClient HttpClient
 }
 
-func NewScheduler(lfs http.FileSystem, ow store.ObjectWriter, httpClient HttpClient) *scheduler {
+func NewScheduler(lfs http.FileSystem, ow ObjectWriterFactory, httpClient HttpClient) *scheduler {
 	return &scheduler{
-		templateFS: lfs,
-		objWriter:  ow,
-		httpClient: httpClient,
+		templateFS:   lfs,
+		objWriterFac: ow,
+		httpClient:   httpClient,
 	}
 }
 
@@ -63,24 +67,27 @@ func (a *scheduler) GetTemplatePath() string {
 func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
 	storagePath, ok := proj.Config[models.ProjectStoragePathKey]
 	if !ok {
-		return errors.Errorf("%s not configured for project %s", models.ProjectStoragePathKey, proj.Name)
+		return errors.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, proj.Name)
 	}
+	storageSecret, ok := proj.Secret.GetByName(models.ProjectSecretStorageKey)
+	if !ok {
+		return errors.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, proj.Name)
+	}
+
 	p, err := url.Parse(storagePath)
 	if err != nil {
 		return err
 	}
-
-	switch p.Scheme {
-	case "gs":
-		return a.migrateLibFileInGCS(ctx, p.Hostname(), filepath.Join(p.Path, a.GetJobsDir(), filepath.Base(baseLibFilePath)))
+	objectWriter, err := a.objWriterFac.New(ctx, storagePath, storageSecret)
+	if err != nil {
+		return errors.Errorf("object writer failed for %s", proj.Name)
 	}
-
-	return errors.Errorf("unsupported storage config %s in %s of project %s", storagePath, models.ProjectStoragePathKey, proj.Name)
+	return a.migrateLibFileToWriter(ctx, objectWriter, p.Hostname(), filepath.Join(p.Path, a.GetJobsDir(), filepath.Base(baseLibFilePath)))
 }
 
-func (a *scheduler) migrateLibFileInGCS(ctx context.Context, bucket, objDir string) (err error) {
+func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objDir string) (err error) {
 
-	// copy lib file to GCS
+	// copy lib file
 	baseLibFile, err := a.templateFS.Open(baseLibFilePath)
 	if err != nil {
 		return err
@@ -93,8 +100,8 @@ func (a *scheduler) migrateLibFileInGCS(ctx context.Context, bucket, objDir stri
 		return err
 	}
 
-	// copy to gcs
-	dst, err := a.objWriter.NewWriter(ctx, bucket, objDir)
+	// copy to fs
+	dst, err := objWriter.NewWriter(ctx, bucket, objDir)
 	if err != nil {
 		return err
 	}

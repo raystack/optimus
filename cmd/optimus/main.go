@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/api/option"
+
 	"cloud.google.com/go/storage"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
@@ -71,6 +73,7 @@ var Config = struct {
 	MaxIdleDBConn string
 	MaxOpenDBConn string
 	IngressHost   string
+	AppKey        string
 }{
 	ServerPort:    "9100",
 	ServerHost:    "0.0.0.0",
@@ -146,6 +149,11 @@ var cfgRules = map[*string]cfg{
 		Cmd:  "ingress-host",
 		Desc: "service ingress host for jobs to communicate back to optimus",
 	},
+	&Config.AppKey: {
+		Env:  "APP_KEY",
+		Cmd:  "app-key",
+		Desc: "random 32 character hash used for encrypting secrets",
+	},
 }
 
 func validateConfig() error {
@@ -183,32 +191,51 @@ func (fac *jobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecReposit
 // jobRepoFactory stores compiled specifications that will be consumed by a
 // scheduler
 type jobRepoFactory struct {
-	gcsClient *storage.Client
-	schd      models.SchedulerUnit
+	objWriterFac objectWriterFactory
+	schd         models.SchedulerUnit
 }
 
-func (fac *jobRepoFactory) New(proj models.ProjectSpec) (store.JobRepository, error) {
+func (fac *jobRepoFactory) New(ctx context.Context, proj models.ProjectSpec) (store.JobRepository, error) {
 	storagePath, ok := proj.Config[models.ProjectStoragePathKey]
 	if !ok {
 		return nil, errors.Errorf("%s not configured for project %s", models.ProjectStoragePathKey, proj.Name)
 	}
+	storageSecret, ok := proj.Secret.GetByName(models.ProjectSecretStorageKey)
+	if !ok {
+		return nil, errors.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, proj.Name)
+	}
+
 	p, err := url.Parse(storagePath)
 	if err != nil {
 		return nil, err
 	}
 	switch p.Scheme {
 	case "gs":
-		return gcs.NewJobRepository(p.Hostname(), filepath.Join(p.Path, fac.schd.GetJobsDir()), fac.schd.GetJobsExtension(), fac.gcsClient), nil
+		storageClient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(storageSecret)))
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating google storage client")
+		}
+		return gcs.NewJobRepository(p.Hostname(), filepath.Join(p.Path, fac.schd.GetJobsDir()), fac.schd.GetJobsExtension(), storageClient), nil
 	}
 	return nil, errors.Errorf("unsupported storage config %s in %s of project %s", storagePath, models.ProjectStoragePathKey, proj.Name)
 }
 
 type projectRepoFactory struct {
-	db *gorm.DB
+	db   *gorm.DB
+	hash models.ApplicationKey
 }
 
 func (fac *projectRepoFactory) New() store.ProjectRepository {
-	return postgres.NewProjectRepository(fac.db)
+	return postgres.NewProjectRepository(fac.db, fac.hash)
+}
+
+type projectSecretRepoFactory struct {
+	db   *gorm.DB
+	hash models.ApplicationKey
+}
+
+func (fac *projectSecretRepoFactory) New(spec models.ProjectSpec) store.ProjectSecretRepository {
+	return postgres.NewSecretRepository(fac.db, spec, fac.hash)
 }
 
 type instanceRepoFactory struct {
@@ -217,6 +244,28 @@ type instanceRepoFactory struct {
 
 func (fac *instanceRepoFactory) New(spec models.JobSpec) store.InstanceSpecRepository {
 	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+}
+
+type objectWriterFactory struct {
+}
+
+func (o *objectWriterFactory) New(ctx context.Context, writerPath, writerSecret string) (store.ObjectWriter, error) {
+	p, err := url.Parse(writerPath)
+	if err != nil {
+		return nil, err
+	}
+
+	switch p.Scheme {
+	case "gs":
+		gcsClient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(writerSecret)))
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating google storage client")
+		}
+		return &gcs.GcsObjectWriter{
+			Client: gcsClient,
+		}, nil
+	}
+	return nil, errors.Errorf("unsupported storage config %s", writerPath)
 }
 
 type pipelineLogObserver struct {
@@ -264,25 +313,23 @@ func main() {
 		panic(err)
 	}
 
-	// gcs storage client for storing project compiled specifications
-	googleStorage, err := storage.NewClient(context.Background())
-	if err != nil {
-		logger.F("error creating google storage client: %v", err)
-	}
-
 	// init default scheduler, should be configurable by user configs later
 	models.Scheduler = airflow.NewScheduler(
 		resources.FileSystem,
-		&gcs.GcsObjectWriter{
-			Client: googleStorage,
-		},
+		&objectWriterFactory{},
 		&http.Client{},
 	)
+
+	appHash, err := models.NewApplicationSecret(Config.AppKey)
+	if err != nil {
+		panic(err)
+	}
 
 	// registered project store repository factory, its a wrapper over a storage
 	// interface
 	projectRepoFac := &projectRepoFactory{
-		db: dbConn,
+		db:   dbConn,
+		hash: appHash,
 	}
 	registeredProjects, err := projectRepoFac.New().GetAll()
 	if err != nil {
@@ -290,11 +337,23 @@ func main() {
 	}
 	// bootstrap scheduler for registered projects
 	for _, proj := range registeredProjects {
-		logger.I("bootstrap project ", proj.Name)
-		if err := models.Scheduler.Bootstrap(context.Background(), proj); err != nil {
-			// TODO: ideally should panic out
-			logger.E(err)
-		}
+		func() {
+			bootstrapCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
+			logger.I("bootstrapping project ", proj.Name)
+			if err := models.Scheduler.Bootstrap(bootstrapCtx, proj); err != nil {
+				// Major ERROR, but we can't make this fatal
+				// other projects might be working fine though
+				logger.E(err)
+			}
+			logger.I("bootstrapped project ", proj.Name)
+		}()
+	}
+
+	projectSecretRepoFac := &projectSecretRepoFactory{
+		db:   dbConn,
+		hash: appHash,
 	}
 
 	// registered job store repository factory
@@ -334,14 +393,14 @@ func main() {
 		job.NewService(
 			jobSpecRepoFac,
 			&jobRepoFactory{
-				gcsClient: googleStorage,
-				schd:      models.Scheduler,
+				schd: models.Scheduler,
 			},
 			jobCompiler,
 			dependencyResolver,
 			priorityResolver,
 		),
 		projectRepoFac,
+		projectSecretRepoFac,
 		v1.NewAdapter(models.TaskRegistry, models.HookRegistry),
 		progressObs,
 		instance.NewService(
@@ -353,13 +412,15 @@ func main() {
 		models.Scheduler,
 	))
 
+	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer grpcDialCancel()
+
 	// prepare http proxy
 	gwmux := runtime.NewServeMux(
 		runtime.WithErrorHandler(runtime.DefaultHTTPErrorHandler),
 	)
 	// gRPC dialup options to proxy http connections
-	grpcConn, err := grpc.Dial(grpcAddr, []grpc.DialOption{
-		grpc.WithTimeout(10 * time.Second),
+	grpcConn, err := grpc.DialContext(timeoutGrpcDialCtx, grpcAddr, []grpc.DialOption{
 		grpc.WithInsecure(),
 	}...)
 	if err != nil {

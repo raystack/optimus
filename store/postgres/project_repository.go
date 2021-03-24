@@ -14,9 +14,10 @@ import (
 )
 
 type Project struct {
-	ID        uuid.UUID `gorm:"primary_key;type:uuid"`
-	Name      string    `gorm:"not null;unique"`
-	Config    datatypes.JSON
+	ID     uuid.UUID `gorm:"primary_key;type:uuid"`
+	Name   string    `gorm:"not null;unique"`
+	Config datatypes.JSON
+
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 	DeletedAt *time.Time
@@ -30,7 +31,7 @@ func (p Project) FromSpec(spec models.ProjectSpec) (Project, error) {
 	return Project{
 		ID:     spec.ID,
 		Name:   spec.Name,
-		Config: datatypes.JSON(jsonBytes),
+		Config: jsonBytes,
 	}, nil
 }
 
@@ -46,8 +47,22 @@ func (p Project) ToSpec() (models.ProjectSpec, error) {
 	}, nil
 }
 
+func (p Project) ToSpecWithSecrets(secrets []models.ProjectSecretItem) (models.ProjectSpec, error) {
+	var conf map[string]string
+	if err := json.Unmarshal(p.Config, &conf); err != nil {
+		return models.ProjectSpec{}, nil
+	}
+	return models.ProjectSpec{
+		ID:     p.ID,
+		Name:   p.Name,
+		Config: conf,
+		Secret: secrets,
+	}, nil
+}
+
 type projectRepository struct {
-	db *gorm.DB
+	db   *gorm.DB
+	hash models.ApplicationKey
 }
 
 func (repo *projectRepository) Insert(resource models.ProjectSpec) error {
@@ -86,7 +101,11 @@ func (repo *projectRepository) GetByName(name string) (models.ProjectSpec, error
 		}
 		return models.ProjectSpec{}, err
 	}
-	return r.ToSpec()
+	secrets, err := repo.fetchSecrets(r.ID)
+	if err != nil {
+		return models.ProjectSpec{}, errors.Wrap(err, "failed to fetch secrets")
+	}
+	return r.ToSpecWithSecrets(secrets)
 }
 
 func (repo *projectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error) {
@@ -97,7 +116,12 @@ func (repo *projectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error)
 		}
 		return models.ProjectSpec{}, err
 	}
-	return r.ToSpec()
+
+	secrets, err := repo.fetchSecrets(r.ID)
+	if err != nil {
+		return models.ProjectSpec{}, errors.Wrap(err, "failed to fetch secrets")
+	}
+	return r.ToSpecWithSecrets(secrets)
 }
 
 func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
@@ -107,7 +131,12 @@ func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
 		return specs, err
 	}
 	for _, proj := range projs {
-		adapt, err := proj.ToSpec()
+		secrets, err := repo.fetchSecrets(proj.ID)
+		if err != nil {
+			return specs, errors.Wrap(err, "failed to fetch secrets")
+		}
+
+		adapt, err := proj.ToSpecWithSecrets(secrets)
 		if err != nil {
 			return specs, err
 		}
@@ -116,8 +145,28 @@ func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
 	return specs, nil
 }
 
-func NewProjectRepository(db *gorm.DB) *projectRepository {
+func (repo *projectRepository) fetchSecrets(projectID uuid.UUID) ([]models.ProjectSecretItem, error) {
+	var r []Secret
+	var adapted []models.ProjectSecretItem
+	if err := repo.db.Where("project_id = ?", projectID).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// do nothing
+		}
+		return adapted, err
+	}
+	for _, secret := range r {
+		secretItem, err := secret.ToSpec(repo.hash)
+		if err != nil {
+			return adapted, nil
+		}
+		adapted = append(adapted, secretItem)
+	}
+	return adapted, nil
+}
+
+func NewProjectRepository(db *gorm.DB, hash models.ApplicationKey) *projectRepository {
 	return &projectRepository{
-		db: db,
+		db:   db,
+		hash: hash,
 	}
 }

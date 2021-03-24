@@ -45,8 +45,9 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 	jobSpecRepo store.JobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies
 	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(models.UnitData{
-		Config: jobSpec.Task.Config,
-		Assets: jobSpec.Assets.ToMap(),
+		Config:  jobSpec.Task.Config,
+		Assets:  jobSpec.Assets.ToMap(),
+		Project: projectSpec,
 	})
 	if err != nil {
 		return models.JobSpec{}, err

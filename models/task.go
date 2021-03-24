@@ -32,8 +32,14 @@ type Transformation interface {
 }
 
 type UnitData struct {
+	// Task configs
 	Config JobSpecConfigs
+
+	// Job assets
 	Assets map[string]string
+
+	// Job project
+	Project ProjectSpec
 }
 
 type UnitOptions struct {

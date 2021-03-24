@@ -60,7 +60,7 @@ func (j Instance) FromSpec(spec models.InstanceSpec, job Job) (Instance, error) 
 type instanceRepository struct {
 	db         *gorm.DB
 	job        models.JobSpec
-	jobAdapter *Adapter
+	jobAdapter *JobSpecAdapter
 
 	Now func()
 }
@@ -117,7 +117,7 @@ func (repo *instanceRepository) GetByScheduledAt(scheduled time.Time) (models.In
 	return r.ToSpec(repo.job)
 }
 
-func NewInstanceRepository(db *gorm.DB, job models.JobSpec, jobAdapter *Adapter) *instanceRepository {
+func NewInstanceRepository(db *gorm.DB, job models.JobSpec, jobAdapter *JobSpecAdapter) *instanceRepository {
 	return &instanceRepository{
 		db:         db,
 		job:        job,

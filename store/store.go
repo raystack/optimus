@@ -29,6 +29,13 @@ type ProjectRepository interface {
 	GetAll() ([]models.ProjectSpec, error)
 }
 
+// ProjectSecretRepository stores secrets attached to projects
+type ProjectSecretRepository interface {
+	Save(item models.ProjectSecretItem) error
+	GetByName(string) (models.ProjectSecretItem, error)
+	GetAll() ([]models.ProjectSecretItem, error)
+}
+
 // JobRepository represents a storage interface for compiled specifications for
 // JobSpecs
 type JobRepository interface {

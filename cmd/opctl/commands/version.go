@@ -2,6 +2,9 @@ package commands
 
 import (
 	"context"
+	"time"
+
+	"github.com/odpf/optimus/config"
 
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
@@ -9,30 +12,39 @@ import (
 	pb "github.com/odpf/optimus/api/proto/v1"
 )
 
-func versionCommand(l logger, clientVer string) *cli.Command {
+const (
+	versionTimeout = time.Second * 2
+)
+
+func versionCommand(l logger, clientVer string, conf config.Opctl) *cli.Command {
 	// Version prints the current version of the tool.
 	c := &cli.Command{
 		Use:   "version",
 		Short: "Print the client version information",
 		Run: func(c *cli.Command, args []string) {
 			l.Printf("client: %s", clientVer)
-			if optimusHost != "" {
-				srvVer, err := getVersionRequest(l, clientVer)
+			if conf.Host != "" {
+				srvVer, err := getVersionRequest(clientVer, conf.Host)
 				if err != nil {
+					if errors.Is(err, context.DeadlineExceeded) {
+						return
+					}
 					panic(err)
 				}
 				l.Printf("server: %s", srvVer)
 			}
 		},
 	}
-	c.Flags().StringVar(&optimusHost, "host", "", "deployment service endpoint url")
 	return c
 }
 
 // getVersionRequest send a job request to service
-func getVersionRequest(l logger, clientVer string) (ver string, err error) {
+func getVersionRequest(clientVer string, host string) (ver string, err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(optimusHost); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		return "", err
 	}
 	defer conn.Close()

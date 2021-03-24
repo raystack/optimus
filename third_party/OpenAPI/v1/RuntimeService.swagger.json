@@ -175,6 +175,50 @@
         ]
       }
     },
+    "/api/v1/project/{projectName}/secret/{secretName}": {
+      "post": {
+        "operationId": "RuntimeService_RegisterSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiv1RegisterSecretResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "secretName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apiv1RegisterSecretRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/api/v1/version": {
       "post": {
         "operationId": "RuntimeService_Version",
@@ -549,6 +593,31 @@
       }
     },
     "apiv1RegisterProjectResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "apiv1RegisterSecretRequest": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "secretName": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "apiv1RegisterSecretResponse": {
       "type": "object",
       "properties": {
         "success": {

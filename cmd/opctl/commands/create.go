@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/odpf/optimus/config"
+
 	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/utils"
@@ -25,7 +27,7 @@ func errExit(l logger, err error) {
 	os.Exit(1)
 }
 
-func createCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func createCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Opctl) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new resource",

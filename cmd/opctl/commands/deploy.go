@@ -2,8 +2,12 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"time"
+
+	"github.com/odpf/optimus/config"
 
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
@@ -15,32 +19,36 @@ import (
 )
 
 var (
-	optimusHost               string
-	deployProject             string
 	errRequestFail            = errors.New("🔥 unable to complete request successfully")
 	errRequestTimedOut        = errors.New("🔥 request timed out while checking the status")
 	errResponseParseError     = errors.New("🔥 unable to parse server response")
 	errUnhandledServerRequest = errors.New("🔥 server is unable to process this request at the moment")
+
+	// (kush.sharma)
+	// If application ever gets slower than 5 mins, instead of increasing timeout
+	// fix where its taking that much time and optimise!
+	deploymentTimeout = time.Minute * 5
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Opctl) *cli.Command {
+	var projectName string
+	var ignoreJobs bool
 
 	cmd := &cli.Command{
 		Use:   "deploy",
 		Short: "Deploy current project to server",
 	}
-	cmd.Flags().StringVar(&optimusHost, "host", "", "deployment service endpoint url")
-	cmd.MarkFlagRequired("host")
-	cmd.Flags().StringVar(&deployProject, "project", "", "project name of deployee")
+	cmd.Flags().StringVar(&projectName, "project", "", "project name of deployee")
 	cmd.MarkFlagRequired("project")
+	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "ignore deployment of jobs")
 
 	cmd.Run = func(c *cli.Command, args []string) {
-		l.Printf("deploying project %s at %s\nplease wait...\n", deployProject, optimusHost)
+		l.Printf("deploying project %s at %s\nplease wait...\n", projectName, conf.Host)
 
-		if err := postDeploymentRequest(l, jobSpecRepo); err != nil {
-			l.Print(err)
-			l.Print(errRequestFail)
+		if err := postDeploymentRequest(l, projectName, jobSpecRepo, conf, ignoreJobs); err != nil {
+			l.Println(err)
+			l.Println(errRequestFail)
 			os.Exit(1)
 		}
 	}
@@ -49,19 +57,47 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err error) {
+func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSpecRepository, conf config.Opctl, ignoreJobDeployment bool) (err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(optimusHost); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Println("can't reach optimus service")
+		}
 		return err
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	deployTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), deploymentTimeout)
+	defer deployCancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry)
 
+	// update project config if needed
+	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
+		Project: &pb.ProjectSpecification{
+			Name:   projectName,
+			Config: conf.Global,
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to update project configurations, %s", registerResponse.Message))
+	} else if !registerResponse.Success {
+		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
+	}
+	l.Println("updated project configuration")
+
+	if ignoreJobDeployment {
+		// skip job deployment if this is true
+		l.Println("skipping job deployment")
+		return nil
+	}
+
+	// deploy job specifications
+	l.Println("deploying jobs")
 	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {
 		return err
@@ -75,11 +111,14 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err e
 		}
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
-	respStream, err := runtime.DeploySpecification(ctx, &pb.DeploySpecificationRequest{
+	respStream, err := runtime.DeploySpecification(deployTimeoutCtx, &pb.DeploySpecificationRequest{
 		Jobs:        adaptedJobSpecs,
-		ProjectName: deployProject,
+		ProjectName: projectName,
 	})
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Println("deployment process took too long, timing out")
+		}
 		return errors.Wrapf(err, "deployement failed")
 	}
 
@@ -108,17 +147,4 @@ func postDeploymentRequest(l logger, jobSpecRepo store.JobSpecRepository) (err e
 
 	l.Println("deployment completed successfully")
 	return nil
-}
-
-func createConnection(host string) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	opts = append(opts, grpc.WithBlock())
-
-	conn, err := grpc.Dial(host, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn, nil
 }

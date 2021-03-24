@@ -36,7 +36,7 @@ func (e *GoEngine) CompileFiles(files map[string]string, context map[string]inte
 	// render templates
 	for name, content := range files {
 		// don't render files starting with
-		if strings.HasSuffix(name, IgnoreTemplateRenderExtension) {
+		if shouldIgnoreFile(name) {
 			rendered[name] = content
 			continue
 		}
@@ -60,6 +60,15 @@ func (e *GoEngine) CompileString(input string, context map[string]interface{}) (
 		return "", err
 	}
 	return strings.TrimSpace(buf.String()), nil
+}
+
+func shouldIgnoreFile(name string) bool {
+	for _, ext := range IgnoreTemplateRenderExtension {
+		if strings.HasSuffix(name, ext) {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *GoEngine) init() {

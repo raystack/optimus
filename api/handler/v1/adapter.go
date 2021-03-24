@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -9,6 +10,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+// Note: all config keys will be converted to upper case automatically
 type Adapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
 	supportedHookRepo models.SupportedHookRepo
@@ -155,7 +157,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	taskConfigs := []*pb.JobConfigItem{}
 	for _, c := range spec.Task.Config {
 		taskConfigs = append(taskConfigs, &pb.JobConfigItem{
-			Name:  c.Name,
+			Name:  strings.ToUpper(c.Name),
 			Value: c.Value,
 		})
 	}
@@ -181,9 +183,13 @@ func (adapt *Adapter) ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecifi
 }
 
 func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
+	pConf := map[string]string{}
+	for key, val := range conf.GetConfig() {
+		pConf[strings.ToUpper(key)] = val
+	}
 	return models.ProjectSpec{
 		Name:   conf.GetName(),
-		Config: conf.GetConfig(),
+		Config: pConf,
 	}
 }
 
@@ -242,7 +248,7 @@ func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 		configs := models.JobSpecConfigs{}
 		for _, l := range hook.Config {
 			configs = append(configs, models.JobSpecConfigItem{
-				Name:  l.Name,
+				Name:  strings.ToUpper(l.Name),
 				Value: l.Value,
 			})
 		}

@@ -15,6 +15,7 @@ require (
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
+	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/iancoleman/strcase v0.1.3
@@ -31,6 +32,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/oauth2 v0.0.0-20210201163806-010130855d6c
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/api v0.30.0

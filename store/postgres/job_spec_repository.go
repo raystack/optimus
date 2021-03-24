@@ -11,7 +11,7 @@ import (
 type jobSpecRepository struct {
 	db      *gorm.DB
 	project models.ProjectSpec
-	adapter *Adapter
+	adapter *JobSpecAdapter
 }
 
 func (repo *jobSpecRepository) Insert(spec models.JobSpec) error {
@@ -104,7 +104,7 @@ func (repo *jobSpecRepository) GetByDestination(destination string) (models.JobS
 	return jSpec, pSpec, err
 }
 
-func NewJobRepository(db *gorm.DB, project models.ProjectSpec, adapter *Adapter) *jobSpecRepository {
+func NewJobRepository(db *gorm.DB, project models.ProjectSpec, adapter *JobSpecAdapter) *jobSpecRepository {
 	return &jobSpecRepository{
 		db:      db,
 		project: project,

@@ -9,6 +9,36 @@ but has grown beyond that and handles things like bigquery table management,
 dependency resolution. This document describes the concepts that Optimus works 
 with, so that you can have a better understanding of how it's supposed to be used.
 
+## Features
+- BigQuery
+  - Schedule BigQuery transformation
+  - Query compile time templating (variables, loop, if statements, macros, etc)
+  - Table creation
+  - BigQuery View creation **[WIP]**
+  - BigQuery UDF creation **[in roadmap]**
+  - Audit/Profile BigQuery tables
+  - Sink BigQuery tables to Kafka
+  - Automatic dependency resolution: In BigQuery if a query references
+    tables/views as source, jobs required to create these tables will be added
+    as dependencies automatically and optimus will wait for them to finish first.
+  - Cross tenant dependency: Optimus is a multi-tenant service, if there are two
+    tenants registered, serviceA and serviceB then service B can write queries
+    referencing serviceA as source and Optimus will handle this dependency as well
+  - Dry run query: Before SQL query is scheduled for transformation, during 
+    deployment query will be dry-run to make sure it passes basic sanity 
+    checks **[WIP]**
+- Extensibility to support Python transformation **[in roadmap]**
+- Extensibility to support Spark transformations **[in roadmap]**
+- Task versioning: If there is a scheduled job *A* and this gets modified as
+  *A1* then it is possible to schedule same job for a date range as *A* and 
+  thereafter as *A1*. **[in roadmap]**
+- Git based specification management
+- HTTP/GRPC based specification management **[in roadmap]**
+  
+NOTE: This is still in early stages and very close to use for production.
+We are taking feedback and making breaking changes based on user requirements.
+
+
 # Table of Contents:
 * [Installation](installation.md)
 * Guides
@@ -29,7 +59,3 @@ with, so that you can have a better understanding of how it's supposed to be use
 
 ### References
 - [Functional Data Warehouse](https://medium.com/@maximebeauchemin/functional-data-engineering-a-modern-paradigm-for-batch-data-processing-2327ec32c42a)
-
-
-NOTE: This is still in early stages and not stable for production at the moment.
-We are taking feedback and making breaking changes based on user requirements.
