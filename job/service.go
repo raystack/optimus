@@ -9,6 +9,7 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -43,6 +44,7 @@ type Service struct {
 	jobRepoFactory     JobRepoFactory
 	dependencyResolver DependencyResolver
 	priorityResolver   PriorityResolver
+	metaSvcFactory     meta.MetaSvcFactory
 }
 
 // CreateJob constructs a Job and commits it to store
@@ -116,6 +118,10 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	}
 
 	if err = srv.uploadSpecs(jobSpecs, jobRepo, proj, progressObserver); err != nil {
+		return err
+	}
+
+	if err = srv.publishMetadata(jobSpecs, progressObserver); err != nil {
 		return err
 	}
 
@@ -210,6 +216,17 @@ func (srv *Service) uploadSpecs(jobSpecs []models.JobSpec, jobRepo store.JobRepo
 			Err: state.Err,
 		})
 	}
+}
+
+func (srv *Service) publishMetadata(jobSpecs []models.JobSpec, progressObserver progress.Observer) error {
+	if srv.metaSvcFactory == nil {
+		return nil
+	}
+
+	metadataService := srv.metaSvcFactory.New()
+	if err := metadataService.Publish(jobSpecs, progressObserver); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -285,7 +302,7 @@ func jobDeletionFilter(dagNames []string) []string {
 // the necessary dependencies as arguments
 func NewService(jobSpecRepoFactory JobSpecRepoFactory, jobRepoFact JobRepoFactory,
 	compiler models.JobCompiler, dependencyResolver DependencyResolver,
-	priorityResolver PriorityResolver,
+	priorityResolver PriorityResolver, metaSvcFactory meta.MetaSvcFactory,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory: jobSpecRepoFactory,
@@ -293,6 +310,7 @@ func NewService(jobSpecRepoFactory JobSpecRepoFactory, jobRepoFact JobRepoFactor
 		compiler:           compiler,
 		dependencyResolver: dependencyResolver,
 		priorityResolver:   priorityResolver,
+		metaSvcFactory:     metaSvcFactory,
 	}
 }
 

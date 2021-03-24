@@ -28,3 +28,4 @@ optimus.yaml
 /api/proto/v1/*.pb.go
 /api/proto/v1/*.pb.gw.go
 /api/proto/google/
+/proton/

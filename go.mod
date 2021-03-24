@@ -10,6 +10,7 @@ require (
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
 	github.com/gernest/wow v0.1.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.1.2
@@ -27,6 +28,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/segmentio/kafka-go v0.4.12
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/sirupsen/logrus v1.7.0
