@@ -43,6 +43,10 @@ service RuntimeService {
             get: "/api/v1/project"
         };
     }
+
+    // TODO
+    // rpc ListJobs() returns () {}
+
     rpc RegisterInstance(RegisterInstanceRequest) returns (RegisterInstanceResponse) {
         option (google.api.http) = {
             post: "/api/v1/instance"
@@ -70,8 +74,11 @@ message VersionResponse {
 }
 
 message DeploySpecificationRequest {
-    string project_name = 1;
+    string project_name = 1; // unique project identifier
     repeated JobSpecification jobs = 2;
+
+    // TODO: not implemented yet, default behaviour is to treat this true always till then
+    bool synchronize = 3; // deletes job that are not sent as part of this deployment
 }
 
 message DumpSpecificationRequest {
@@ -133,7 +140,11 @@ message JobLabelItem {
 
 message DeploySpecificationResponse {
     bool success = 1;
+
+    // non ack responses are more of a progress/info response and
+    // and not success or failure status
     bool ack = 2;
+
     string message = 3;
     string job_name = 4;
 }

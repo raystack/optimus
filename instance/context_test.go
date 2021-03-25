@@ -99,7 +99,7 @@ func TestFeature(t *testing.T) {
 			}
 
 			envMap, fileMap, err := instance.NewFeatureManager(projectSpec, jobSpec,
-				instanceSpec).Generate(models.InstanceTypeTransformation, "bq")
+				instanceSpec, instance.NewGoEngine()).Generate(models.InstanceTypeTransformation, "bq")
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
@@ -219,7 +219,7 @@ func TestFeature(t *testing.T) {
 				},
 			}
 
-			envMap, fileMap, err := instance.NewFeatureManager(projectSpec, jobSpec, instanceSpec).Generate(models.InstanceTypeHook, transporterHook)
+			envMap, fileMap, err := instance.NewFeatureManager(projectSpec, jobSpec, instanceSpec, instance.NewGoEngine()).Generate(models.InstanceTypeHook, transporterHook)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])

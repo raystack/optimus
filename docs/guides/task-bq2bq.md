@@ -70,7 +70,7 @@ The *query.sql* file contains transformation logic
 ```sql
 select count(1) as count, date(created_time) as dt
 from `project.dataset.tablename`
-where date(created_time) >= '{{.DSTART}}' and date(booking_creation_time) < '{{.DEND}}'
+where date(created_time) >= '{{.DSTART|Date}}' and date(booking_creation_time) < '{{.DEND|Date}}'
 group by dt
 ```
 
@@ -80,9 +80,11 @@ Macros is special variables in SQL that will be replaced by actual values when t
 
 There are several SQL macros available
 
-* {{.DSTART}} - start date/datetime of the window
-* {{.DEND}} - end date/datetime of the window
-* {{.JOB_DESTINATION}} - full qualified table name used in DML statement
+- {{.DSTART}} - start date/datetime of the window as `2021-02-10T10:00:00+00:00`
+  that is, RFC3339
+- {{.DEND}} - end date/datetime of the window, as RFC3339
+- {{.JOB_DESTINATION}} - full qualified table name used in DML statement
+- {{.EXECUTION_TIME}} - full qualified table name used in DML statement
 
 The value of `DSTART` and `DEND` depends on `window` config in `job.yaml`. This is very similar to Optimus v1
 
@@ -100,7 +102,7 @@ Macros in SQL transformation example :
 ```sql
 select count(1) as count, date(created_time) as dt
 from `project.dataset.tablename`
-where date(created_time) >= '{{.DSTART}}' and date(booking_creation_time) < '{{.DEND}}'
+where date(created_time) >= '{{.DSTART|Date}}' and date(booking_creation_time) < '{{.DEND|Date}}'
 group by dt
 ```
 
@@ -158,7 +160,7 @@ load_timestamp as `event_timestamp`
 from /* @ignoreupstream */
 `g-data-gojek-id-standardized.playground.sample_select`
 WHERE
-DATE(`load_timestamp`) >= DATE('dstart')
-AND DATE(`load_timestamp`) < DATE('dend')
+DATE(`load_timestamp`) >= DATE('{{.DSTART}}')
+AND DATE(`load_timestamp`) < DATE('{{.DEND}}')
 ```
 

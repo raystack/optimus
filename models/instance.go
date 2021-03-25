@@ -66,3 +66,9 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 type InstanceService interface {
 	Register(jobSpec JobSpec, scheduledAt time.Time, taskType InstanceType) (InstanceSpec, error)
 }
+
+// TemplateEngine compiles raw text templates using provided values
+type TemplateEngine interface {
+	CompileFiles(files map[string]string, context map[string]interface{}) (map[string]string, error)
+	CompileString(input string, context map[string]interface{}) (string, error)
+}
