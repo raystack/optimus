@@ -13,6 +13,15 @@ import (
 )
 
 func TestSecretRepository(t *testing.T) {
+	projectSpec := models.ProjectSpec{
+		ID:   uuid.Must(uuid.NewRandom()),
+		Name: "t-optimus-project",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
+	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
+
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {
@@ -33,16 +42,9 @@ func TestSecretRepository(t *testing.T) {
 			panic(err)
 		}
 
+		projRepo := NewProjectRepository(dbConn, hash)
+		assert.Nil(t, projRepo.Save(projectSpec))
 		return dbConn
-	}
-
-	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
-		Name: "t-optimus-project",
-		Config: map[string]string{
-			"bucket": "gs://some_folder",
-		},
 	}
 
 	testConfigs := []models.ProjectSecretItem{
