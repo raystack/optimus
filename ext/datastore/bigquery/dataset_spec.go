@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
-	v1 "github.com/odpf/optimus/api/proto/v1"
+	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 )
 

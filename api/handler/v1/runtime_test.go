@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
 	v1 "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/v1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"

@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
-	pb "github.com/odpf/optimus/api/proto/v1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 )
 
@@ -59,11 +59,6 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
-	labels := map[string]string{}
-	for _, l := range spec.Labels {
-		labels[l.Name] = l.Value
-	}
-
 	taskConfigs := models.JobSpecConfigs{}
 	for _, l := range spec.Config {
 		taskConfigs = append(taskConfigs, models.JobSpecConfigItem{
@@ -77,7 +72,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		Name:        spec.Name,
 		Owner:       spec.Owner,
 		Description: spec.Description,
-		Labels:      labels,
+		Labels:      spec.Labels,
 		Schedule: models.JobSpecSchedule{
 			Interval:  spec.Interval,
 			StartDate: startDate,
@@ -144,6 +139,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		Dependencies:     []*pb.JobDependency{},
 		Hooks:            adapt.ToHookProto(spec.Hooks),
 		Description:      spec.Description,
+		Labels:           spec.Labels,
 	}
 	if spec.Schedule.EndDate != nil {
 		conf.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)
@@ -163,15 +159,6 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		})
 	}
 	conf.Config = taskConfigs
-
-	labels := []*pb.JobLabelItem{}
-	for k, v := range spec.Labels {
-		labels = append(labels, &pb.JobLabelItem{
-			Name:  k,
-			Value: v,
-		})
-	}
-	conf.Labels = labels
 
 	return conf, nil
 }

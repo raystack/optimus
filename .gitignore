@@ -28,4 +28,8 @@ optimus.yaml
 /api/proto/v1/*.pb.go
 /api/proto/v1/*.pb.gw.go
 /api/proto/google/
+/api/proto/odpf
 /proton/
+
+/third_party/*
+!/third_party/OpenAPI/odpf/optimus/RuntimeService.swagger.json

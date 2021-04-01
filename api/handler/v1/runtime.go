@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	pb "github.com/odpf/optimus/api/proto/v1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
 	log "github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"

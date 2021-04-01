@@ -35,7 +35,7 @@ import (
 
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/v1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
 	_ "github.com/odpf/optimus/ext/datastore"

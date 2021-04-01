@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	pb "github.com/odpf/optimus/api/proto/v1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 )
 
 const (
