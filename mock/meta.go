@@ -22,8 +22,8 @@ type MetaService struct {
 	mock.Mock
 }
 
-func (srv *MetaService) Publish(jobSpecs []models.JobSpec, po progress.Observer) error {
-	return srv.Called(jobSpecs, po).Error(0)
+func (srv *MetaService) Publish(projectSpec models.ProjectSpec, jobSpecs []models.JobSpec, po progress.Observer) error {
+	return srv.Called(projectSpec, jobSpecs, po).Error(0)
 }
 
 type MetaWriter struct {
@@ -60,12 +60,12 @@ type MetaBuilder struct {
 	mock.Mock
 }
 
-func (b *MetaBuilder) FromJobSpec(jobSpec models.JobSpec) (*models.ResourceMetadata, error) {
-	args := b.Called(jobSpec)
-	return args.Get(0).(*models.ResourceMetadata), args.Error(1)
+func (b *MetaBuilder) FromJobSpec(proj models.ProjectSpec, jobSpec models.JobSpec) (*models.JobMetadata, error) {
+	args := b.Called(proj, jobSpec)
+	return args.Get(0).(*models.JobMetadata), args.Error(1)
 }
 
-func (b *MetaBuilder) CompileMessage(r *models.ResourceMetadata) ([]byte, error) {
+func (b *MetaBuilder) CompileMessage(r *models.JobMetadata) ([]byte, error) {
 	args := b.Called(r)
 	return args.Get(0).([]byte), args.Error(1)
 }

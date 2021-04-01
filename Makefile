@@ -35,8 +35,9 @@ pack-files: ./resources/pack ./resources/resource_fs_gen.go
 	@go generate ./resources
 
 generate-proto: ./api/proto
+	@echo " > cloning protos from odpf/proton"
 	@rm -rf proton/
-	@git clone --single-branch --branch optimus-metadata-proto  https://github.com/odpf/proton
+	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch v0.1.2
 	@echo " > generating protos"
 	@buf generate
 

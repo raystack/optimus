@@ -5,12 +5,12 @@ import (
 )
 
 type MetadataService interface {
-	Publish([]JobSpec, progress.Observer) error
+	Publish(ProjectSpec, []JobSpec, progress.Observer) error
 }
 
-type MetadataBuilder interface {
-	FromJobSpec(jobSpec JobSpec) (*ResourceMetadata, error)
-	CompileMessage(*ResourceMetadata) ([]byte, error)
+type JobMetadataAdapter interface {
+	FromJobSpec(ProjectSpec, JobSpec) (*JobMetadata, error)
+	CompileMessage(*JobMetadata) ([]byte, error)
 	CompileKey(string) ([]byte, error)
 }
 
@@ -19,20 +19,22 @@ type MetadataWriter interface {
 	Flush() error
 }
 
-type ResourceMetadata struct {
+type JobMetadata struct {
 	Urn          string
+	Name         string
+	Tenant       string
 	Version      int
 	Description  string
 	Labels       []JobSpecLabelItem
 	Owner        string
-	Task         TaskMetadata
+	Task         JobTaskMetadata
 	Schedule     JobSpecSchedule
 	Behavior     JobSpecBehavior
 	Dependencies []JobDependencyMetadata
-	Hooks        []HookMetadata
+	Hooks        []JobHookMetadata
 }
 
-type TaskMetadata struct {
+type JobTaskMetadata struct {
 	Name        string
 	Image       string
 	Description string
@@ -42,7 +44,7 @@ type TaskMetadata struct {
 	Priority    int
 }
 
-type HookMetadata struct {
+type JobHookMetadata struct {
 	Name        string
 	Image       string
 	Description string
@@ -52,7 +54,7 @@ type HookMetadata struct {
 }
 
 type JobDependencyMetadata struct {
-	Project string
-	Job     string
-	Type    string
+	Tenant string
+	Job    string
+	Type   string
 }

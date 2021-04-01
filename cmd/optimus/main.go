@@ -77,7 +77,7 @@ var Config = struct {
 	MaxOpenDBConn       string
 	IngressHost         string
 	AppKey              string
-	KafkaTopic          string
+	KafkaJobTopic       string
 	KafkaBrokers        string
 	KafkaBatchSize      string
 	MetaWriterBatchSize string
@@ -89,7 +89,7 @@ var Config = struct {
 	MaxOpenDBConn:       "10",
 	DBSSLMode:           "disable",
 	DBPassword:          "-",
-	KafkaTopic:          "resource_optimus_log",
+	KafkaJobTopic:       "resource_optimus_job_log",
 	KafkaBatchSize:      "50",
 	MetaWriterBatchSize: "50",
 	KafkaBrokers:        "-",
@@ -165,10 +165,10 @@ var cfgRules = map[*string]cfg{
 		Cmd:  "app-key",
 		Desc: "random 32 character hash used for encrypting secrets",
 	},
-	&Config.KafkaTopic: {
-		Env:  "KAFKA_TOPIC",
-		Cmd:  "kafka-topic",
-		Desc: "kafka topic where metadata of optimus needs to be published",
+	&Config.KafkaJobTopic: {
+		Env:  "KAFKA_JOB_TOPIC",
+		Cmd:  "kafka-job-topic",
+		Desc: "kafka topic where metadata of optimus Job needs to be published",
 	},
 	&Config.KafkaBrokers: {
 		Env:  "KAFKA_BROKERS",
@@ -306,7 +306,7 @@ type metadataServiceFactory struct {
 func (factory *metadataServiceFactory) New() models.MetadataService {
 	return meta.NewService(
 		factory.writer,
-		&meta.Builder{},
+		&meta.JobAdapter{},
 	)
 }
 
@@ -448,19 +448,19 @@ func main() {
 	if err != nil {
 		mainLog.Fatalf("error reading writer batch size: %v", err)
 	}
-	kafkaWriter := NewKafkaWriter(Config.KafkaTopic, strings.Split(Config.KafkaBrokers, ","), kafkaBatchSize)
+	kafkaWriter := NewKafkaWriter(Config.KafkaJobTopic, strings.Split(Config.KafkaBrokers, ","), kafkaBatchSize)
 	if kafkaWriter != nil {
-		mainLog.Infof("metadata publishing is enabled with brokers %s", Config.KafkaBrokers)
+		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", Config.KafkaBrokers, Config.KafkaJobTopic)
 		metaWriter := meta.NewWriter(kafkaWriter, writerBatchSize)
 		defer kafkaWriter.Close()
 		metaSvcFactory = &metadataServiceFactory{
 			writer: metaWriter,
 		}
 	} else {
-		mainLog.Info("metadata publishing is disabled")
+		mainLog.Info("job metadata publishing is disabled")
 	}
 
-	// runtime service instance over gprc
+	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		Version,
 		job.NewService(

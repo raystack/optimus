@@ -9,7 +9,14 @@ import (
 	"time"
 )
 
-func TestBuilder(t *testing.T) {
+func TestJobAdapter(t *testing.T) {
+	projectSpec := models.ProjectSpec{
+		Name: "humara-projectSpec",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
+
 	execUnit := new(mock.ExecutionUnit)
 	hookUnit := new(mock.HookUnit)
 
@@ -93,15 +100,17 @@ func TestBuilder(t *testing.T) {
 	hookUnit.On("GetType").Return(models.HookTypePost)
 	hookUnit.On("GetDependsOn").Return([]string{"some_value"})
 
-	t.Run("should build ResourceMetadata from JobSpec without any error", func(t *testing.T) {
+	t.Run("should build JobMetadata from JobSpec without any error", func(t *testing.T) {
 		jobSpec1 := jobSpecs[0]
-		expectedResourceMetadata := &models.ResourceMetadata{
-			Urn:         "job-1",
+		expectedResourceMetadata := &models.JobMetadata{
+			Urn:         "humara-projectSpec::job/job-1",
+			Name:        "job-1",
+			Tenant:      "humara-projectSpec",
 			Version:     100,
 			Description: "",
 			Labels:      jobSpec1.Labels,
 			Owner:       "mee@mee",
-			Task: models.TaskMetadata{
+			Task: models.JobTaskMetadata{
 				Name:        "bq2bq",
 				Image:       "image",
 				Description: "description",
@@ -116,11 +125,11 @@ func TestBuilder(t *testing.T) {
 			Schedule: jobSpec1.Schedule,
 			Behavior: jobSpec1.Behavior,
 			Dependencies: []models.JobDependencyMetadata{{
-				Project: "some_other_project",
-				Job:     "job-2",
-				Type:    models.JobSpecDependencyTypeInter.String(),
+				Tenant: "some_other_project",
+				Job:    "job-2",
+				Type:   models.JobSpecDependencyTypeInter.String(),
 			}},
-			Hooks: []models.HookMetadata{{
+			Hooks: []models.JobHookMetadata{{
 				Name:        "transporter",
 				Image:       "h_image",
 				Description: "h_description",
@@ -136,14 +145,14 @@ func TestBuilder(t *testing.T) {
 				DependsOn: []string{"some_value"},
 			}},
 		}
-		resourceMetadata, err := meta.Builder{}.FromJobSpec(jobSpec1)
+		resourceMetadata, err := meta.JobAdapter{}.FromJobSpec(projectSpec, jobSpec1)
 		assert.Nil(t, err)
 		assert.Equal(t, expectedResourceMetadata, resourceMetadata)
 
-		_, err = meta.Builder{}.CompileKey(jobSpec1.Name)
+		_, err = meta.JobAdapter{}.CompileKey(jobSpec1.Name)
 		assert.Nil(t, err)
 
-		_, err = meta.Builder{}.CompileMessage(resourceMetadata)
+		_, err = meta.JobAdapter{}.CompileMessage(resourceMetadata)
 		assert.Nil(t, err)
 	})
 }

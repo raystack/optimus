@@ -299,6 +299,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
 				),
 				projectRepoFactory,
 				projectSecretRepoFactory,
@@ -354,6 +355,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				job.NewService(
+					nil,
 					nil,
 					nil,
 					nil,

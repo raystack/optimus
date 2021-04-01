@@ -11,6 +11,7 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	testMock "github.com/stretchr/testify/mock"
 )
 
 func TestService(t *testing.T) {
@@ -368,7 +369,7 @@ func TestService(t *testing.T) {
 			defer jobRepo.AssertExpectations(t)
 
 			jobRepoFac := new(mock.JobRepoFactory)
-			jobRepoFac.On("New", projSpec).Return(jobRepo, nil)
+			jobRepoFac.On("New", testMock.Anything, projSpec).Return(jobRepo, nil)
 			defer jobRepoFac.AssertExpectations(t)
 
 			// resolve dependencies
@@ -385,7 +386,7 @@ func TestService(t *testing.T) {
 			defer compiler.AssertExpectations(t)
 
 			metaSvc := new(mock.MetaService)
-			metaSvc.On("Publish", jobSpecsAfterPriorityResolve, nil).Return(nil)
+			metaSvc.On("Publish", projSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
 			defer metaSvc.AssertExpectations(t)
 
 			metaSvcFact := new(mock.MetaSvcFactory)

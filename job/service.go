@@ -121,7 +121,7 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 		return err
 	}
 
-	if err = srv.publishMetadata(jobSpecs, progressObserver); err != nil {
+	if err = srv.publishMetadata(proj, jobSpecs, progressObserver); err != nil {
 		return err
 	}
 
@@ -216,15 +216,16 @@ func (srv *Service) uploadSpecs(jobSpecs []models.JobSpec, jobRepo store.JobRepo
 			Err: state.Err,
 		})
 	}
+	return nil
 }
 
-func (srv *Service) publishMetadata(jobSpecs []models.JobSpec, progressObserver progress.Observer) error {
+func (srv *Service) publishMetadata(proj models.ProjectSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) error {
 	if srv.metaSvcFactory == nil {
 		return nil
 	}
 
-	metadataService := srv.metaSvcFactory.New()
-	if err := metadataService.Publish(jobSpecs, progressObserver); err != nil {
+	metadataJobService := srv.metaSvcFactory.New()
+	if err := metadataJobService.Publish(proj, jobSpecs, progressObserver); err != nil {
 		return err
 	}
 	return nil
