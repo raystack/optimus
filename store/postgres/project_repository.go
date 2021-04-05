@@ -18,6 +18,9 @@ type Project struct {
 	Name   string    `gorm:"not null;unique"`
 	Config datatypes.JSON
 
+	// Secrets are read only and will not be saved by updating it here
+	Secrets []Secret
+
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 	DeletedAt *time.Time
@@ -47,16 +50,24 @@ func (p Project) ToSpec() (models.ProjectSpec, error) {
 	}, nil
 }
 
-func (p Project) ToSpecWithSecrets(secrets []models.ProjectSecretItem) (models.ProjectSpec, error) {
+func (p Project) ToSpecWithSecrets(h models.ApplicationKey) (models.ProjectSpec, error) {
 	var conf map[string]string
 	if err := json.Unmarshal(p.Config, &conf); err != nil {
 		return models.ProjectSpec{}, nil
+	}
+	specSecrets := models.ProjectSecrets{}
+	for _, sec := range p.Secrets {
+		specSecret, err := sec.ToSpec(h)
+		if err != nil {
+			return models.ProjectSpec{}, err
+		}
+		specSecrets = append(specSecrets, specSecret)
 	}
 	return models.ProjectSpec{
 		ID:     p.ID,
 		Name:   p.Name,
 		Config: conf,
-		Secret: secrets,
+		Secret: specSecrets,
 	}, nil
 }
 
@@ -95,73 +106,40 @@ func (repo *projectRepository) Save(spec models.ProjectSpec) error {
 
 func (repo *projectRepository) GetByName(name string) (models.ProjectSpec, error) {
 	var r Project
-	if err := repo.db.Where("name = ?", name).Find(&r).Error; err != nil {
+	if err := repo.db.Preload("Secrets").Where("name = ?", name).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
 		return models.ProjectSpec{}, err
 	}
-	secrets, err := repo.fetchSecrets(r.ID)
-	if err != nil {
-		return models.ProjectSpec{}, errors.Wrap(err, "failed to fetch secrets")
-	}
-	return r.ToSpecWithSecrets(secrets)
+	return r.ToSpecWithSecrets(repo.hash)
 }
 
 func (repo *projectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error) {
 	var r Project
-	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.db.Preload("Secrets").Where("id = ?", id).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
 		return models.ProjectSpec{}, err
 	}
-
-	secrets, err := repo.fetchSecrets(r.ID)
-	if err != nil {
-		return models.ProjectSpec{}, errors.Wrap(err, "failed to fetch secrets")
-	}
-	return r.ToSpecWithSecrets(secrets)
+	return r.ToSpecWithSecrets(repo.hash)
 }
 
 func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
 	specs := []models.ProjectSpec{}
 	projs := []Project{}
-	if err := repo.db.Find(&projs).Error; err != nil {
+	if err := repo.db.Preload("Secrets").Find(&projs).Error; err != nil {
 		return specs, err
 	}
 	for _, proj := range projs {
-		secrets, err := repo.fetchSecrets(proj.ID)
-		if err != nil {
-			return specs, errors.Wrap(err, "failed to fetch secrets")
-		}
-
-		adapt, err := proj.ToSpecWithSecrets(secrets)
+		adapt, err := proj.ToSpecWithSecrets(repo.hash)
 		if err != nil {
 			return specs, err
 		}
 		specs = append(specs, adapt)
 	}
 	return specs, nil
-}
-
-func (repo *projectRepository) fetchSecrets(projectID uuid.UUID) ([]models.ProjectSecretItem, error) {
-	var r []Secret
-	var adapted []models.ProjectSecretItem
-	if err := repo.db.Where("project_id = ?", projectID).Find(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// do nothing
-		}
-		return adapted, err
-	}
-	for _, secret := range r {
-		secretItem, err := secret.ToSpec(repo.hash)
-		if err != nil {
-			return adapted, nil
-		}
-		adapted = append(adapted, secretItem)
-	}
-	return adapted, nil
 }
 
 func NewProjectRepository(db *gorm.DB, hash models.ApplicationKey) *projectRepository {

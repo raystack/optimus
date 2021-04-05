@@ -4,6 +4,7 @@ package postgres
 
 import (
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -52,6 +53,14 @@ func TestProjectRepository(t *testing.T) {
 			Name: "t-optimus",
 			Config: map[string]string{
 				"bucket":                  "gs://some_folder",
+				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
+			},
+		},
+		{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "t-optimus-2",
+			Config: map[string]string{
+				"bucket":                  "gs://some_folder-2",
 				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
 			},
 		},
@@ -154,8 +163,54 @@ func TestProjectRepository(t *testing.T) {
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
+		err = NewSecretRepository(db, testModels[0], hash).Save(models.ProjectSecretItem{
+			Name:  "t1",
+			Value: "v1",
+		})
+		assert.Nil(t, err)
+
 		checkModel, err := repo.GetByName(testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
+
+		sec, _ := checkModel.Secret.GetByName("t1")
+		assert.Equal(t, "v1", sec)
+
+	})
+	t.Run("GetAll", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+		testModels := []models.ProjectSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		repo := NewProjectRepository(db, hash)
+
+		assert.Nil(t, repo.Insert(testModels[2]))
+		assert.Nil(t, repo.Insert(testModels[3]))
+
+		err := NewSecretRepository(db, testModels[2], hash).Save(models.ProjectSecretItem{
+			Name:  "t1",
+			Value: "v1",
+		})
+		assert.Nil(t, err)
+		err = NewSecretRepository(db, testModels[3], hash).Save(models.ProjectSecretItem{
+			Name:  "t2",
+			Value: "v2",
+		})
+		assert.Nil(t, err)
+
+		checkModels, err := repo.GetAll()
+		assert.Nil(t, err)
+		sort.Slice(checkModels, func(i, j int) bool {
+			return checkModels[i].Name < checkModels[j].Name
+		})
+
+		assert.Equal(t, "t-optimus", checkModels[0].Name)
+		sec, _ := checkModels[0].Secret.GetByName("t1")
+		assert.Equal(t, "v1", sec)
+
+		assert.Equal(t, "t-optimus-2", checkModels[1].Name)
+		sec, _ = checkModels[1].Secret.GetByName("t2")
+		assert.Equal(t, "v2", sec)
 	})
 }

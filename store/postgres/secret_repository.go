@@ -52,7 +52,7 @@ func (p Secret) ToSpec(hash models.ApplicationKey) (models.ProjectSecretItem, er
 	}
 
 	// decrypt secret
-	decoded, err := cryptopasta.Decrypt(encrypted, hash.GetKey())
+	cleartext, err := cryptopasta.Decrypt(encrypted, hash.GetKey())
 	if err != nil {
 		return models.ProjectSecretItem{}, err
 	}
@@ -60,7 +60,7 @@ func (p Secret) ToSpec(hash models.ApplicationKey) (models.ProjectSecretItem, er
 	return models.ProjectSecretItem{
 		ID:    p.ID,
 		Name:  p.Name,
-		Value: string(decoded),
+		Value: string(cleartext),
 	}, nil
 }
 
