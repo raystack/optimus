@@ -97,20 +97,20 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	}, nil
 }
 
-type Adapter struct {
+type JobSpecAdapter struct {
 	supportedTaskRepo models.SupportedTaskRepo
 	supportedHookRepo models.SupportedHookRepo
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *Adapter {
-	return &Adapter{
+func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *JobSpecAdapter {
+	return &JobSpecAdapter{
 		supportedTaskRepo: supportedTaskRepo,
 		supportedHookRepo: supportedHookRepo,
 	}
 }
 
 // ToSpec converts the postgres' Job representation to the optimus' JobSpec
-func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
+func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	labels := []models.JobSpecLabelItem{}
 	if conf.Labels != nil {
@@ -193,7 +193,7 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromSpec converts the optimus representation of JobSpec to postgres' Job
-func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
+func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
@@ -278,7 +278,7 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 	}, nil
 }
 
-func (adapt Adapter) FromSpecWithProject(spec models.JobSpec, proj models.ProjectSpec) (Job, error) {
+func (adapt JobSpecAdapter) FromSpecWithProject(spec models.JobSpec, proj models.ProjectSpec) (Job, error) {
 	adaptJob, err := adapt.FromSpec(spec)
 	if err != nil {
 		return adaptJob, err

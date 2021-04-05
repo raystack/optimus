@@ -94,7 +94,7 @@ dynamic and extensible. Macros can be used in Job/Hooks configurations or Assets
 Some macros are:
 
 - `"{{.DEND}}"`: this macro is replaced with the current execution date
-  (in YYYY-MM-DD format) of the task (note that this is the execution date
+  (in yyyy-mm-ddThh:mm:ssZ format) of the task (note that this is the execution date
   of when the task was supposed to run, not when it actually runs). It would
   translate to a timestamp in runtime. eg, "2021-01-30T00:00:00Z"
 - `"{{.DSTART}}"`: the value of this macro is DEND minus the task window. For
@@ -183,13 +183,13 @@ select CONCAT("Hello, ", "{{.name}}") as message
 Section of code can be imported from different asset files using 
 [template](https://golang.org/pkg/text/template/#hdr-Actions). For example:
 
-- File `partials.tmpl`
+- File `partials.gtpl`
 ```sql
 DECLARE t1 TIMESTAMP;
 ```
 - Another file `query.sql`
 ```sql
-{{template "partials.tmpl"}}
+{{template "partials.gtpl"}}
 SET t1 = '2021-02-10T10:00:00+00:00';
 ```
 During execution `query.sql` will be rendered as:
@@ -197,7 +197,7 @@ During execution `query.sql` will be rendered as:
 DECLARE t1 TIMESTAMP;
 SET t1 = '2021-02-10T10:00:00+00:00';
 ```
-whereas `partials.tmpl` will be left as it is because file was saved with `.tmpl`
+whereas `partials.gtpl` will be left as it is because file was saved with `.gtpl`
 extension.
 
 Similarly, a single file can contain multiple blocks of code that can function
@@ -206,7 +206,7 @@ as macro of code replacement. For example:
 ```
   Name: {{ template "name"}}, Gender: {{ template "gender" }}
 ```
-- `partials.tmpl`
+- `partials.gtpl`
 ```
   {{- define "name" -}} Adam {{- end}}
   {{- define "gender" -}} Male {{- end}}

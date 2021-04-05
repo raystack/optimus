@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -59,8 +61,8 @@ type JobRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobRepoFactory) New(proj models.ProjectSpec) (store.JobRepository, error) {
-	args := repo.Called(proj)
+func (repo *JobRepoFactory) New(ctx context.Context, proj models.ProjectSpec) (store.JobRepository, error) {
+	args := repo.Called(ctx, proj)
 	return args.Get(0).(store.JobRepository), args.Error(1)
 }
 

@@ -14,9 +14,13 @@ import (
 )
 
 type Project struct {
-	ID        uuid.UUID `gorm:"primary_key;type:uuid"`
-	Name      string    `gorm:"not null;unique"`
-	Config    datatypes.JSON
+	ID     uuid.UUID `gorm:"primary_key;type:uuid"`
+	Name   string    `gorm:"not null;unique"`
+	Config datatypes.JSON
+
+	// Secrets are read only and will not be saved by updating it here
+	Secrets []Secret
+
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 	DeletedAt *time.Time
@@ -30,7 +34,7 @@ func (p Project) FromSpec(spec models.ProjectSpec) (Project, error) {
 	return Project{
 		ID:     spec.ID,
 		Name:   spec.Name,
-		Config: datatypes.JSON(jsonBytes),
+		Config: jsonBytes,
 	}, nil
 }
 
@@ -46,8 +50,30 @@ func (p Project) ToSpec() (models.ProjectSpec, error) {
 	}, nil
 }
 
+func (p Project) ToSpecWithSecrets(h models.ApplicationKey) (models.ProjectSpec, error) {
+	var conf map[string]string
+	if err := json.Unmarshal(p.Config, &conf); err != nil {
+		return models.ProjectSpec{}, nil
+	}
+	specSecrets := models.ProjectSecrets{}
+	for _, sec := range p.Secrets {
+		specSecret, err := sec.ToSpec(h)
+		if err != nil {
+			return models.ProjectSpec{}, err
+		}
+		specSecrets = append(specSecrets, specSecret)
+	}
+	return models.ProjectSpec{
+		ID:     p.ID,
+		Name:   p.Name,
+		Config: conf,
+		Secret: specSecrets,
+	}, nil
+}
+
 type projectRepository struct {
-	db *gorm.DB
+	db   *gorm.DB
+	hash models.ApplicationKey
 }
 
 func (repo *projectRepository) Insert(resource models.ProjectSpec) error {
@@ -80,34 +106,34 @@ func (repo *projectRepository) Save(spec models.ProjectSpec) error {
 
 func (repo *projectRepository) GetByName(name string) (models.ProjectSpec, error) {
 	var r Project
-	if err := repo.db.Where("name = ?", name).Find(&r).Error; err != nil {
+	if err := repo.db.Preload("Secrets").Where("name = ?", name).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
 		return models.ProjectSpec{}, err
 	}
-	return r.ToSpec()
+	return r.ToSpecWithSecrets(repo.hash)
 }
 
 func (repo *projectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error) {
 	var r Project
-	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.db.Preload("Secrets").Where("id = ?", id).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
 		return models.ProjectSpec{}, err
 	}
-	return r.ToSpec()
+	return r.ToSpecWithSecrets(repo.hash)
 }
 
 func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
 	specs := []models.ProjectSpec{}
 	projs := []Project{}
-	if err := repo.db.Find(&projs).Error; err != nil {
+	if err := repo.db.Preload("Secrets").Find(&projs).Error; err != nil {
 		return specs, err
 	}
 	for _, proj := range projs {
-		adapt, err := proj.ToSpec()
+		adapt, err := proj.ToSpecWithSecrets(repo.hash)
 		if err != nil {
 			return specs, err
 		}
@@ -116,8 +142,9 @@ func (repo *projectRepository) GetAll() ([]models.ProjectSpec, error) {
 	return specs, nil
 }
 
-func NewProjectRepository(db *gorm.DB) *projectRepository {
+func NewProjectRepository(db *gorm.DB, hash models.ApplicationKey) *projectRepository {
 	return &projectRepository{
-		db: db,
+		db:   db,
+		hash: hash,
 	}
 }

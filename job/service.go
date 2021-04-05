@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -29,7 +30,7 @@ type JobSpecRepoFactory interface {
 
 // JobRepoFactory is used to store compiled jobs
 type JobRepoFactory interface {
-	New(models.ProjectSpec) (store.JobRepository, error)
+	New(context.Context, models.ProjectSpec) (store.JobRepository, error)
 }
 
 // Service compiles all jobs with its dependencies, priority and
@@ -142,7 +143,7 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	}
 	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
 
-	jobRepo, err := srv.jobRepoFactory.New(proj)
+	jobRepo, err := srv.jobRepoFactory.New(context.Background(), proj)
 	if err != nil {
 		return err
 	}

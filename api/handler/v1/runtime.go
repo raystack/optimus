@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -26,6 +27,10 @@ type JobRepoFactory interface {
 	New(spec models.ProjectSpec) store.JobSpecRepository
 }
 
+type SecretRepoFactory interface {
+	New(spec models.ProjectSpec) store.ProjectSecretRepository
+}
+
 type ProtoAdapter interface {
 	FromJobProto(*pb.JobSpecification) (models.JobSpec, error)
 	ToJobProto(models.JobSpec) (*pb.JobSpecification, error)
@@ -42,6 +47,7 @@ type RuntimeServiceServer struct {
 	jobSvc             models.JobService
 	adapter            ProtoAdapter
 	projectRepoFactory ProjectRepoFactory
+	secretRepoFactory  SecretRepoFactory
 	instSvc            models.InstanceService
 	scheduler          models.SchedulerUnit
 
@@ -244,10 +250,37 @@ func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindow
 	}, nil
 }
 
+func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.RegisterSecretRequest) (*pb.RegisterSecretResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+	}
+
+	// decode base64
+	base64Decoded, err := base64.StdEncoding.DecodeString(req.GetValue())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to decode base64 string", err.Error()))
+	}
+
+	secretRepo := sv.secretRepoFactory.New(projSpec)
+	if err := secretRepo.Save(models.ProjectSecretItem{
+		Name:  req.GetSecretName(),
+		Value: string(base64Decoded),
+	}); err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to save secret %s", err.Error(), req.GetSecretName()))
+	}
+
+	return &pb.RegisterSecretResponse{
+		Success: true,
+	}, nil
+}
+
 func NewRuntimeServiceServer(
 	version string,
 	jobSvc models.JobService,
 	projectRepoFactory ProjectRepoFactory,
+	secretRepoFactory SecretRepoFactory,
 	adapter ProtoAdapter,
 	progressObserver progress.Observer,
 	instSvc models.InstanceService,
@@ -261,6 +294,7 @@ func NewRuntimeServiceServer(
 		progressObserver:   progressObserver,
 		instSvc:            instSvc,
 		scheduler:          scheduler,
+		secretRepoFactory:  secretRepoFactory,
 	}
 }
 
@@ -294,5 +328,4 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 			obs.log.Error(errors.Wrapf(err, "failed to send unknown dependency notification for: %s", evt.Job))
 		}
 	}
-
 }

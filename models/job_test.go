@@ -1,8 +1,10 @@
-package models
+package models_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/odpf/optimus/models"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -126,7 +128,7 @@ func TestJob(t *testing.T) {
 			}
 
 			for _, tcase := range cases {
-				win := &JobSpecTaskWindow{
+				win := &models.JobSpecTaskWindow{
 					Size:       tcase.WindowSize,
 					Offset:     tcase.WindowOffset,
 					TruncateTo: tcase.WindowTruncateUpto,

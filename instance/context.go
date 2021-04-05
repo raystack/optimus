@@ -15,10 +15,12 @@ const (
 	// ProjectConfigPrefix will be used to prefix all the config variables of
 	// a project, i.e. registered entities
 	ProjectConfigPrefix = "GLOBAL__"
+)
 
+var (
 	// IgnoreTemplateRenderExtension used as extension on a file will skip template
 	// rendering of it
-	IgnoreTemplateRenderExtension = ".tmpl"
+	IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
 )
 
 // ContextManager fetches all config data for a given instanceSpec and compiles all

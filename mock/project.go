@@ -34,6 +34,33 @@ func (fac *ProjectRepoFactory) New() store.ProjectRepository {
 	return args.Get(0).(store.ProjectRepository)
 }
 
+type ProjectSecretRepoFactory struct {
+	mock.Mock
+}
+
+func (fac *ProjectSecretRepoFactory) New(p models.ProjectSpec) store.ProjectSecretRepository {
+	args := fac.Called(p)
+	return args.Get(0).(store.ProjectSecretRepository)
+}
+
+type ProjectSecretRepository struct {
+	mock.Mock
+}
+
+func (pr *ProjectSecretRepository) Save(spec models.ProjectSecretItem) error {
+	return pr.Called(spec).Error(0)
+}
+
+func (pr *ProjectSecretRepository) GetByName(name string) (models.ProjectSecretItem, error) {
+	args := pr.Called(name)
+	return args.Get(0).(models.ProjectSecretItem), args.Error(1)
+}
+
+func (pr *ProjectSecretRepository) GetAll() ([]models.ProjectSecretItem, error) {
+	args := pr.Called()
+	return args.Get(0).([]models.ProjectSecretItem), args.Error(1)
+}
+
 type PipelineLogObserver struct {
 	mock.Mock
 }

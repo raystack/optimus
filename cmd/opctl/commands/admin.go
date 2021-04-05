@@ -4,10 +4,6 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-var (
-	projectName string
-)
-
 // adminCommand requests a resource from optimus
 func adminCommand(l logger) *cli.Command {
 	cmd := &cli.Command{

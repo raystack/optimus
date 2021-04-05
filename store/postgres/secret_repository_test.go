@@ -4,7 +4,6 @@ package postgres
 
 import (
 	"os"
-	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,7 +12,16 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func TestProjectRepository(t *testing.T) {
+func TestSecretRepository(t *testing.T) {
+	projectSpec := models.ProjectSpec{
+		ID:   uuid.Must(uuid.NewRandom()),
+		Name: "t-optimus-project",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
+	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
+
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {
@@ -34,45 +42,34 @@ func TestProjectRepository(t *testing.T) {
 			panic(err)
 		}
 
+		projRepo := NewProjectRepository(dbConn, hash)
+		assert.Nil(t, projRepo.Save(projectSpec))
 		return dbConn
 	}
 
-	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-
-	transporterKafkaBrokerKey := "KAFKA_BROKERS"
-	testConfigs := []models.ProjectSpec{
+	testConfigs := []models.ProjectSecretItem{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "g-optimus",
+			ID:    uuid.Must(uuid.NewRandom()),
+			Name:  "g-optimus",
+			Value: "secret",
 		},
 		{
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "t-optimus",
-			Config: map[string]string{
-				"bucket":                  "gs://some_folder",
-				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
-			},
-		},
-		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "t-optimus-2",
-			Config: map[string]string{
-				"bucket":                  "gs://some_folder-2",
-				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
-			},
+			ID:    uuid.Must(uuid.NewRandom()),
+			Name:  "t-optimus",
+			Value: "super-secret",
 		},
 	}
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
-		testModels := []models.ProjectSpec{}
+		testModels := []models.ProjectSecretItem{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewProjectRepository(db, hash)
+		repo := NewSecretRepository(db, projectSpec, hash)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -91,7 +88,7 @@ func TestProjectRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			repo := NewProjectRepository(db, hash)
+			repo := NewSecretRepository(db, projectSpec, hash)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -108,17 +105,17 @@ func TestProjectRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
-			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
+			assert.Equal(t, "super-secret", checkModel.Value)
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			testModelA := testConfigs[2]
 
-			repo := NewProjectRepository(db, hash)
+			repo := NewSecretRepository(db, projectSpec, hash)
 
 			//try for create
-			testModelA.Config["bucket"] = "gs://some_folder"
+			testModelA.Value = "gs://some_folder"
 			err := repo.Save(testModelA)
 			assert.Nil(t, err)
 
@@ -127,13 +124,13 @@ func TestProjectRepository(t *testing.T) {
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
 			//try for update
-			testModelA.Config["bucket"] = "gs://another_folder"
+			testModelA.Value = "gs://another_folder"
 			err = repo.Save(testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
-			assert.Equal(t, "gs://another_folder", checkModel.Config["bucket"])
+			assert.Equal(t, "gs://another_folder", checkModel.Value)
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
@@ -141,7 +138,7 @@ func TestProjectRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
-			repo := NewProjectRepository(db, hash)
+			repo := NewSecretRepository(db, projectSpec, hash)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -155,62 +152,16 @@ func TestProjectRepository(t *testing.T) {
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
-		testModels := []models.ProjectSpec{}
+		testModels := []models.ProjectSecretItem{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewProjectRepository(db, hash)
+		repo := NewSecretRepository(db, projectSpec, hash)
 
 		err := repo.Insert(testModels[0])
-		assert.Nil(t, err)
-
-		err = NewSecretRepository(db, testModels[0], hash).Save(models.ProjectSecretItem{
-			Name:  "t1",
-			Value: "v1",
-		})
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByName(testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
-
-		sec, _ := checkModel.Secret.GetByName("t1")
-		assert.Equal(t, "v1", sec)
-
-	})
-	t.Run("GetAll", func(t *testing.T) {
-		db := DBSetup()
-		defer db.Close()
-		testModels := []models.ProjectSpec{}
-		testModels = append(testModels, testConfigs...)
-
-		repo := NewProjectRepository(db, hash)
-
-		assert.Nil(t, repo.Insert(testModels[2]))
-		assert.Nil(t, repo.Insert(testModels[3]))
-
-		err := NewSecretRepository(db, testModels[2], hash).Save(models.ProjectSecretItem{
-			Name:  "t1",
-			Value: "v1",
-		})
-		assert.Nil(t, err)
-		err = NewSecretRepository(db, testModels[3], hash).Save(models.ProjectSecretItem{
-			Name:  "t2",
-			Value: "v2",
-		})
-		assert.Nil(t, err)
-
-		checkModels, err := repo.GetAll()
-		assert.Nil(t, err)
-		sort.Slice(checkModels, func(i, j int) bool {
-			return checkModels[i].Name < checkModels[j].Name
-		})
-
-		assert.Equal(t, "t-optimus", checkModels[0].Name)
-		sec, _ := checkModels[0].Secret.GetByName("t1")
-		assert.Equal(t, "v1", sec)
-
-		assert.Equal(t, "t-optimus-2", checkModels[1].Name)
-		sec, _ = checkModels[1].Secret.GetByName("t2")
-		assert.Equal(t, "v2", sec)
 	})
 }

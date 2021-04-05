@@ -1,8 +1,12 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
+
+	"google.golang.org/grpc"
 
 	"github.com/fatih/color"
 	cli "github.com/spf13/cobra"
@@ -23,6 +27,10 @@ var (
 	coloredNotice  = fmt.Sprint
 	coloredError   = fmt.Sprint
 	coloredSuccess = fmt.Sprint
+
+	OptimusDialTimeout = time.Second * 2
+	ConfigName         = "optimus"
+	ConfigExtension    = "yaml"
 )
 
 func programPrologue(ver string) string {
@@ -35,7 +43,7 @@ func New(
 	l logger,
 	jobSpecRepo store.JobSpecRepository,
 	version string,
-	config config.ConfigCLI,
+	conf config.Opctl,
 	scheduler models.SchedulerUnit,
 ) *cli.Command {
 
@@ -55,10 +63,11 @@ func New(
 
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "disable colored output")
 
-	cmd.AddCommand(createCommand(l, jobSpecRepo))
-	cmd.AddCommand(versionCommand(l, version))
-	cmd.AddCommand(deployCommand(l, jobSpecRepo))
-	cmd.AddCommand(dumpCommand(l))
+	cmd.AddCommand(createCommand(l, jobSpecRepo, conf))
+	cmd.AddCommand(versionCommand(l, version, conf))
+	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf))
+	cmd.AddCommand(renderCommand(l, conf, jobSpecRepo))
+	cmd.AddCommand(configCommand(l))
 
 	// admin specific commands
 	switch os.Getenv("OPTIMUS_ADMIN") {
@@ -71,4 +80,17 @@ func New(
 	}
 
 	return cmd
+}
+
+func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithBlock())
+
+	conn, err := grpc.DialContext(ctx, host, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }
