@@ -91,6 +91,8 @@ func (a JobAdapter) CompileMessage(jobMetadata *models.JobMetadata) ([]byte, err
 
 	return proto.Marshal(&pb.JobMetadata{
 		Urn:         jobMetadata.Urn,
+		Name:        jobMetadata.Name,
+		Tenant:      jobMetadata.Tenant,
 		Version:     int32(jobMetadata.Version),
 		Description: jobMetadata.Description,
 		Labels:      a.compileLabels(jobMetadata),

@@ -29,3 +29,4 @@ optimus.yaml
 /api/proto/v1/*.pb.gw.go
 /api/proto/google/
 /proton/
+third_party/OpenAPI/odpf/raccoon/
