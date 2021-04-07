@@ -1,6 +1,8 @@
 package job
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -15,7 +17,10 @@ var (
 		"check docs how this can be done in used transformation task"
 )
 
-type dependencyResolver struct{}
+type dependencyResolver struct {
+	assetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error)
+	Now           func() time.Time
+}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
 func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
@@ -43,12 +48,20 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo
 
 func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	jobSpecRepo store.JobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
-	// get destinations of dependencies
-	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(models.UnitData{
-		Config:  jobSpec.Task.Config,
-		Assets:  jobSpec.Assets.ToMap(),
-		Project: projectSpec,
-	})
+
+	compiledAssets, err := r.assetCompiler(jobSpec, r.Now())
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+
+	// get destinations of dependencies, assets should be
+	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(
+		models.UnitData{
+			Config:  jobSpec.Task.Config,
+			Assets:  compiledAssets,
+			Project: projectSpec,
+		},
+	)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -124,6 +137,11 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 }
 
 // NewDependencyResolver creates a new instance of Resolver
-func NewDependencyResolver() *dependencyResolver {
-	return &dependencyResolver{}
+func NewDependencyResolver(
+	assetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error),
+) *dependencyResolver {
+	return &dependencyResolver{
+		assetCompiler: assetCompiler,
+		Now:           time.Now,
+	}
 }

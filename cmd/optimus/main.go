@@ -276,6 +276,13 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 	obs.log.Info(evt)
 }
 
+func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error) {
+	engine := instance.NewGoEngine()
+	return func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error) {
+		return instance.DumpAssets(jobSpec, scheduledAt, engine)
+	}
+}
+
 func init() {
 	for v, cfg := range cfgRules {
 		flag.StringVar(v, cfg.Cmd, lookupEnvOrString(cfg.Env, *v), cfg.Desc)
@@ -361,7 +368,9 @@ func main() {
 		db: dbConn,
 	}
 	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost)
-	dependencyResolver := job.NewDependencyResolver()
+	dependencyResolver := job.NewDependencyResolver(
+		jobSpecAssetDump(),
+	)
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.

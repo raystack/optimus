@@ -5,9 +5,31 @@
 
 Optimus helps your organization to build & manage data pipelines with ease.
 
-Some features of Optimus:
-* Interactive CLI
-* Automatic Dependency Resolution
+## Features
+- BigQuery
+    - Schedule BigQuery transformation
+    - Query compile time templating (variables, loop, if statements, macros, etc)
+    - Table creation
+    - BigQuery View creation **[WIP]**
+    - BigQuery UDF creation **[in roadmap]**
+    - Audit/Profile BigQuery tables
+    - Sink BigQuery tables to Kafka
+    - Automatic dependency resolution: In BigQuery if a query references
+      tables/views as source, jobs required to create these tables will be added
+      as dependencies automatically and optimus will wait for them to finish first.
+    - Cross tenant dependency: Optimus is a multi-tenant service, if there are two
+      tenants registered, serviceA and serviceB then service B can write queries
+      referencing serviceA as source and Optimus will handle this dependency as well
+    - Dry run query: Before SQL query is scheduled for transformation, during
+      deployment query will be dry-run to make sure it passes basic sanity
+      checks
+- Extensibility to support Python transformation **[in roadmap]**
+- Extensibility to support Spark transformations **[in roadmap]**
+- Task versioning: If there is a scheduled job *A* and this gets modified as
+  *A1* then it is possible to schedule same job for a date range as *A* and
+  thereafter as *A1*. **[in roadmap]**
+- Git based specification management
+- HTTP/GRPC based specification management **[in roadmap]**
 
 ### Compiling from source
 Optimus requires the following dependencies:
@@ -21,12 +43,8 @@ $ cd optimus
 $ make
 $ cp opctl /usr/bin && cp optimus /usr/bin # copy the executables to a location in $PATH
 ```
-The last step isn't necessarily required. Feel free to put the compiled executeable anywhere you want.
+The last step isn't necessarily required. Feel free to put the compiled executable anywhere you want.
 If during compilation, golang is unable to find odpf.github.io dependencies, try using
-```bash
-go env -w GOPRIVATE=odpf.github.io 
-git config --global url."git@odpf.github.io:".insteadOf "https://odpf.github.io/"
-```
 
 Note: building from source requires `buf` and `protoc-gen-go` binaries to be available in your shell path. If not found, you
 can add following lines to your ~/.bashrc or ~/.zshrc.
@@ -67,7 +85,7 @@ You need to export GOOGLE_APPLICATION_CREDENTIALS with path to your service key,
 
 ### To register a project as an entity
 ```
-curl -X POST "localhost/api/v1/project" -H "accept: application/json" -H "Content-Type: 
+curl -X POST "optimus.example.io/api/v1/project" -H "accept: application/json" -H "Content-Type: 
 application/json" -d "{ \"project\": { \"name\": \"project-name\", \"config\": { \"ENVIRONMENT\": \"integration\", 
 \"STORAGE_PATH\": \"gs://bucket-path\" } }}"
 ```
@@ -76,9 +94,9 @@ Minimum basic configs required for optimus to work
 - SCHEDULER_HOST: hostname of the scheduler for interacting with APIs
 
 Execution unit configs which will be exposed as globals
-- TRANSPORTER_KAFKA_BROKERS  e.g. localhost:9092
-- TRANSPORTER_STENCIL_HOST e.g. http://odpf/artifactory/proto-descriptors/ocean-proton/latest
-- PREDATOR_HOST 
+- TRANSPORTER_KAFKA_BROKERS
+- TRANSPORTER_STENCIL_HOST
+- PREDATOR_HOST
 
 ## Built With
 * [Golang](https://golang.org/) - The Programming Language
@@ -91,7 +109,4 @@ Execution unit configs which will be exposed as globals
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/odpf/optimus/tags).
-
-
-###### Have any feedbacks or want to contribute? Contact us at #data-engineering slack channel
+We use [SemVer](http://semver.org/) for versioning.

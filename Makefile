@@ -63,11 +63,6 @@ addhooks:
 	chmod -R +x .githooks/
 	git config core.hooksPath .githooks/
 
-init:
-	@echo "> configuring git for odpf.github.io"
-	go env -w GOPRIVATE=odpf.github.io
-	git config --global url."git@odpf.github.io:".insteadOf "https://odpf.github.io/"
-
 install:
 	@echo "> installing dependencies"
 	go get -u github.com/golang/protobuf/proto@v1.4.3

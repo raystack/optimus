@@ -10,7 +10,7 @@ import (
 
 // Predator profiles and audits BQ tables
 // required configs
-// - PREDATOR_HOST, 
+// - PREDATOR_HOST
 type Predator struct {
 }
 

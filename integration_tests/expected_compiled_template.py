@@ -50,7 +50,7 @@ dag = DAG(
 transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{}".format("odpf/namespace/image:latest"),
+    image = "{}".format("example.io/namespace/image:latest"),
     cmds=[],
     name="bq",
     task_id="bq",
@@ -76,7 +76,7 @@ transformation_bq = SuperKubernetesPodOperator(
 hook_transporter = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "odpf/namespace/hook-image:latest",
+    image = "example.io/namespace/hook-image:latest",
     cmds=[],
     name="hook_transporter",
     task_id="hook_transporter",
@@ -100,7 +100,7 @@ hook_transporter = SuperKubernetesPodOperator(
 hook_predator = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "odpf/namespace/predator-image:latest",
+    image = "example.io/namespace/predator-image:latest",
     cmds=[],
     name="hook_predator",
     task_id="hook_predator",

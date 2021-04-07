@@ -63,20 +63,8 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 
 		now := time.Now()
 		l.Println("assuming execution time as current time of", now.Format(models.InstanceScheduledAtTimeLayout))
-		jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
-			Config: jobSpec.Task.Config,
-			Assets: jobSpec.Assets.ToMap(),
-		})
-		if err != nil {
-			errExit(l, err)
-		}
 
-		templates, err := templateEngine.CompileFiles(jobSpec.Assets.ToMap(), map[string]interface{}{
-			instance.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(now).Format(models.InstanceScheduledAtTimeLayout),
-			instance.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(now).Format(models.InstanceScheduledAtTimeLayout),
-			instance.ConfigKeyExecutionTime: now.Format(models.InstanceScheduledAtTimeLayout),
-			instance.ConfigKeyDestination:   jobDestination,
-		})
+		templates, err := instance.DumpAssets(jobSpec, now, templateEngine)
 		if err != nil {
 			errExit(l, err)
 		}

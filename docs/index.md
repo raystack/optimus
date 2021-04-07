@@ -26,7 +26,7 @@ with, so that you can have a better understanding of how it's supposed to be use
     referencing serviceA as source and Optimus will handle this dependency as well
   - Dry run query: Before SQL query is scheduled for transformation, during 
     deployment query will be dry-run to make sure it passes basic sanity 
-    checks **[WIP]**
+    checks
 - Extensibility to support Python transformation **[in roadmap]**
 - Extensibility to support Spark transformations **[in roadmap]**
 - Task versioning: If there is a scheduled job *A* and this gets modified as

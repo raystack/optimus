@@ -1,15 +1,20 @@
 package bq2bq
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 
-	"github.com/odpf/optimus/utils"
-
+	"cloud.google.com/go/bigquery"
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/utils"
 )
 
 var (
@@ -35,10 +40,22 @@ var (
 	queryCommentPatterns = regexp.MustCompile("(--.*)|(((/\\*)+?[\\w\\W]*?(\\*/)+))")
 	helperPattern        = regexp.MustCompile("(\\/\\*\\s*(@[a-zA-Z0-9_-]+)\\s*\\*\\/)")
 
-	queryFileName = "query.sql"
+	QueryFileName = "query.sql"
+
+	// Required secret
+	SecretName = "BQ2BQ_QUERY"
+
+	TimeoutDuration = time.Second * 15
+
+	FakeSelectStmt = "SELECT * from `%s` WHERE FALSE LIMIT 1"
 )
 
+type ClientFactory interface {
+	New(ctx context.Context, svcAccount string) (bqiface.Client, error)
+}
+
 type BQ2BQ struct {
+	ClientFac ClientFactory
 }
 
 func (b *BQ2BQ) GetName() string {
@@ -146,7 +163,7 @@ func (b *BQ2BQ) GenerateConfig(inputs map[string]interface{}, _ models.UnitOptio
 
 func (b *BQ2BQ) GenerateAssets(_ map[string]interface{}, _ models.UnitOptions) (map[string]string, error) {
 	return map[string]string{
-		queryFileName: `-- SQL query goes here
+		QueryFileName: `-- SQL query goes here
 
 Select * from "project.dataset.table";
 `,
@@ -166,8 +183,86 @@ func (b *BQ2BQ) GenerateDestination(data models.UnitData) (string, error) {
 }
 
 // GenerateDependencies uses assets to find out the source tables of this
-// transformation. Config is required to generate destination and avoid cycles
+// transformation.
+// Try using BQ APIs to search for referenced tables. This work for Select stmts
+// but not for Merge/Scripts, for them use regex based search and then create
+// fake select stmts. Fake statements help finding actual referenced tables in
+// case regex based table is a view & not actually a source table. Because this
+// fn should generate the actual source as dependency
 func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
+	svcAcc, ok := data.Project.Secret.GetByName(SecretName)
+	if !ok || len(svcAcc) == 0 {
+		return nil, errors.New(fmt.Sprintf("secret %s required to generate dependencies not found for %s", SecretName, b.GetName()))
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), TimeoutDuration)
+	defer cancel()
+	client, err := b.ClientFac.New(timeoutCtx, svcAcc)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	// try to resolve referenced tables directly from BQ APIs
+	referencedTables, err := b.FindDependenciesWithAPIs(timeoutCtx, client, data.Assets[QueryFileName])
+	if err != nil {
+		return nil, err
+	}
+	if len(referencedTables) != 0 {
+		return referencedTables, nil
+	}
+
+	// could be BQ script, find table names using regex and create
+	// fake Select STMTs to find actual referenced tables
+	parsedDependencies, err := b.FindDependenciesWithRegex(data)
+	if err != nil {
+		return nil, err
+	}
+
+	resultChan := make(chan []string)
+	eg, apiCtx := errgroup.WithContext(timeoutCtx) // it will stop executing further after first error
+	for _, tableName := range parsedDependencies {
+		fakeQuery := fmt.Sprintf(FakeSelectStmt, tableName)
+		// find dependencies in parallel
+		eg.Go(func() error {
+			//prepare dummy query
+			deps, err := b.FindDependenciesWithAPIs(timeoutCtx, client, fakeQuery)
+			if err != nil {
+				return err
+			}
+			select {
+			case resultChan <- deps:
+				return nil
+			// timeoutCtx requests to be cancelled
+			case <-apiCtx.Done():
+				return apiCtx.Err()
+			}
+		})
+	}
+
+	go func() {
+		// if all done, stop waiting for results
+		eg.Wait()
+		close(resultChan)
+	}()
+
+	// accumulate results
+	dependencies := []string{}
+	for dep := range resultChan {
+		dependencies = append(dependencies, dep...)
+	}
+
+	// check if wait was finished because of an error
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return deduplicateStrings(dependencies), nil
+}
+
+// FindDependenciesWithRegex look for table patterns in SQL query to find
+// source tables.
+// Config is required to generate destination and avoid cycles
+func (b *BQ2BQ) FindDependenciesWithRegex(data models.UnitData) ([]string, error) {
 	// we look for certain patterns in the query source code
 	// in particular, we look for the following constructs
 	// * from {table} ...
@@ -188,9 +283,18 @@ func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
 	// this also means that otherwise valid reference to "dataset.table"
 	// will not be recognised.
 
-	queryString := data.Assets[queryFileName]
+	queryString := data.Assets[QueryFileName]
 	tablesFound := make(map[string]bool)
 	pseudoTables := make(map[string]bool)
+
+	// we mark destination as a pseudo table to avoid a dependency
+	// cycle. This is for supporting DML queries that may also refer
+	// to themselves.
+	dest, err := b.GenerateDestination(data)
+	if err != nil {
+		return nil, err
+	}
+	pseudoTables[dest] = true
 
 	// remove comments from query
 	matches := queryCommentPatterns.FindAllStringSubmatch(queryString, -1)
@@ -205,15 +309,6 @@ func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
 		// replace full match
 		queryString = strings.ReplaceAll(queryString, match[0], " ")
 	}
-
-	// we mark destination as a pseudo table to avoid a dependency
-	// cycle. This is for supporting DML queries that may also refer
-	// to themselves.
-	dest, err := b.GenerateDestination(data)
-	if err != nil {
-		return nil, err
-	}
-	pseudoTables[dest] = true
 
 	matches = tableDestinationPatterns.FindAllStringSubmatch(queryString, -1)
 	for _, match := range matches {
@@ -252,12 +347,65 @@ func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
 	return tables, nil
 }
 
+func (b *BQ2BQ) FindDependenciesWithAPIs(ctx context.Context, client bqiface.Client, query string) ([]string, error) {
+	q := client.Query(query)
+	q.SetQueryConfig(bqiface.QueryConfig{
+		QueryConfig: bigquery.QueryConfig{
+			Q:      query,
+			DryRun: true,
+		},
+	})
+
+	job, err := q.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Dry run is not asynchronous, so get the latest status and statistics.
+	status := job.LastStatus()
+	if err := status.Err(); err != nil {
+		return nil, err
+	}
+
+	details, ok := status.Statistics.Details.(*bigquery.QueryStatistics)
+	if !ok {
+		return nil, errors.New("failed to cast to Query Statistics")
+	}
+
+	tables := []string{}
+	for _, tab := range details.ReferencedTables {
+		tables = append(tables, tab.FullyQualifiedName())
+	}
+	return tables, nil
+}
+
 func createTableName(proj, dataset, table string) string {
 	return fmt.Sprintf("%s.%s.%s", proj, dataset, table)
 }
 
+func deduplicateStrings(in []string) []string {
+	if len(in) == 0 {
+		return in
+	}
+
+	sort.Strings(in)
+	j := 0
+	for i := 1; i < len(in); i++ {
+		if in[j] == in[i] {
+			continue
+		}
+		j++
+		// preserve the original data
+		// in[i], in[j] = in[j], in[i]
+		// only set what is required
+		in[j] = in[i]
+	}
+	return in[:j+1]
+}
+
 func init() {
-	if err := models.TaskRegistry.Add(&BQ2BQ{}); err != nil {
+	if err := models.TaskRegistry.Add(&BQ2BQ{
+		ClientFac: &defaultBQClientFactory{},
+	}); err != nil {
 		panic(err)
 	}
 }

@@ -45,12 +45,15 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 
 	cmd.Run = func(c *cli.Command, args []string) {
 		l.Printf("deploying project %s at %s\nplease wait...\n", projectName, conf.Host)
+		start := time.Now()
 
 		if err := postDeploymentRequest(l, projectName, jobSpecRepo, conf, ignoreJobs); err != nil {
 			l.Println(err)
 			l.Println(errRequestFail)
 			os.Exit(1)
 		}
+
+		l.Printf("deployment took %v\n", time.Since(start))
 	}
 
 	return cmd

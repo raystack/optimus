@@ -13,7 +13,7 @@ import (
 // Transporter pushes BQ data to Kafka
 // required configs:
 // - TRANSPORTER_KAFKA_BROKERS
-// - TRANSPORTER_STENCIL_HOST e.g. http://odpf/artifactory/proto-descriptors/ocean-proton/latest
+// - TRANSPORTER_STENCIL_HOST
 type Transporter struct {
 }
 
