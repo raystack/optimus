@@ -13,6 +13,10 @@ const (
 
 type HookType string
 
+func (ht HookType) String() string {
+	return string(ht)
+}
+
 type HookUnit interface {
 	GetName() string
 	GetImage() string

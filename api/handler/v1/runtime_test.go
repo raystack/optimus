@@ -144,7 +144,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil,
+					nil, nil,
 				),
 				projectRepoFactory,
 
@@ -197,7 +197,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil,
+					nil, nil,
 				),
 				projectRepoFactory,
 				nil,
@@ -241,7 +241,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil,
+					nil, nil,
 				),
 				projectRepoFactory,
 				nil,
@@ -294,6 +294,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				job.NewService(
+					nil,
 					nil,
 					nil,
 					nil,
@@ -354,6 +355,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				job.NewService(
+					nil,
 					nil,
 					nil,
 					nil,
@@ -452,7 +454,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil,
+					nil, nil,
 				),
 				projectRepoFactory,
 				nil,
@@ -608,7 +610,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					compiler,
 					dependencyResolver,
-					priorityResolver,
+					priorityResolver, nil,
 				),
 				projectRepoFactory,
 				nil,

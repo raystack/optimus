@@ -14,6 +14,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/segmentio/kafka-go"
+	"github.com/odpf/optimus/meta"
+
 	"google.golang.org/api/option"
 
 	"cloud.google.com/go/storage"
@@ -62,26 +65,34 @@ var (
 
 // Config for the service
 var Config = struct {
-	ServerPort    string
-	ServerHost    string
-	LogLevel      string
-	DBHost        string
-	DBUser        string
-	DBPassword    string
-	DBName        string
-	DBSSLMode     string
-	MaxIdleDBConn string
-	MaxOpenDBConn string
-	IngressHost   string
-	AppKey        string
+	ServerPort          string
+	ServerHost          string
+	LogLevel            string
+	DBHost              string
+	DBUser              string
+	DBPassword          string
+	DBName              string
+	DBSSLMode           string
+	MaxIdleDBConn       string
+	MaxOpenDBConn       string
+	IngressHost         string
+	AppKey              string
+	KafkaJobTopic       string
+	KafkaBrokers        string
+	KafkaBatchSize      string
+	MetaWriterBatchSize string
 }{
-	ServerPort:    "9100",
-	ServerHost:    "0.0.0.0",
-	LogLevel:      "DEBUG",
-	MaxIdleDBConn: "5",
-	MaxOpenDBConn: "10",
-	DBSSLMode:     "disable",
-	DBPassword:    "-",
+	ServerPort:          "9100",
+	ServerHost:          "0.0.0.0",
+	LogLevel:            "DEBUG",
+	MaxIdleDBConn:       "5",
+	MaxOpenDBConn:       "10",
+	DBSSLMode:           "disable",
+	DBPassword:          "-",
+	KafkaJobTopic:       "resource_optimus_job_log",
+	KafkaBatchSize:      "50",
+	MetaWriterBatchSize: "50",
+	KafkaBrokers:        "-",
 }
 
 func lookupEnvOrString(key, fallback string) string {
@@ -153,6 +164,26 @@ var cfgRules = map[*string]cfg{
 		Env:  "APP_KEY",
 		Cmd:  "app-key",
 		Desc: "random 32 character hash used for encrypting secrets",
+	},
+	&Config.KafkaJobTopic: {
+		Env:  "KAFKA_JOB_TOPIC",
+		Cmd:  "kafka-job-topic",
+		Desc: "kafka topic where metadata of optimus Job needs to be published",
+	},
+	&Config.KafkaBrokers: {
+		Env:  "KAFKA_BROKERS",
+		Cmd:  "kafka-brokers",
+		Desc: "comma seperated kafka brokers to use for publishing metadata, leave empty to disable metadata publisher",
+	},
+	&Config.KafkaBatchSize: {
+		Env:  "KAFKA_BATCH_SIZE",
+		Cmd:  "kafka-batch-size",
+		Desc: "limit on how many messages will be buffered before being sent to a kafka partition.",
+	},
+	&Config.MetaWriterBatchSize: {
+		Env:  "META_WRITER_BATCH_SIZE",
+		Cmd:  "meta-writer-batch-size",
+		Desc: "limit on how many messages will be buffered before being sent to a writer.",
 	},
 }
 
@@ -266,6 +297,17 @@ func (o *objectWriterFactory) New(ctx context.Context, writerPath, writerSecret 
 		}, nil
 	}
 	return nil, errors.Errorf("unsupported storage config %s", writerPath)
+}
+
+type metadataServiceFactory struct {
+	writer *meta.Writer
+}
+
+func (factory *metadataServiceFactory) New() models.MetadataService {
+	return meta.NewService(
+		factory.writer,
+		&meta.JobAdapter{},
+	)
 }
 
 type pipelineLogObserver struct {
@@ -396,7 +438,29 @@ func main() {
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
 
-	// runtime service instance over gprc
+	// prepare factory writer for metadata
+	var metaSvcFactory meta.MetaSvcFactory
+	kafkaBatchSize, err := strconv.Atoi(Config.KafkaBatchSize)
+	if err != nil {
+		mainLog.Fatalf("error reading kafka batch size: %v", err)
+	}
+	writerBatchSize, err := strconv.Atoi(Config.MetaWriterBatchSize)
+	if err != nil {
+		mainLog.Fatalf("error reading writer batch size: %v", err)
+	}
+	kafkaWriter := NewKafkaWriter(Config.KafkaJobTopic, strings.Split(Config.KafkaBrokers, ","), kafkaBatchSize)
+	if kafkaWriter != nil {
+		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", Config.KafkaBrokers, Config.KafkaJobTopic)
+		metaWriter := meta.NewWriter(kafkaWriter, writerBatchSize)
+		defer kafkaWriter.Close()
+		metaSvcFactory = &metadataServiceFactory{
+			writer: metaWriter,
+		}
+	} else {
+		mainLog.Info("job metadata publishing is disabled")
+	}
+
+	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		Version,
 		job.NewService(
@@ -407,6 +471,7 @@ func main() {
 			jobCompiler,
 			dependencyResolver,
 			priorityResolver,
+			metaSvcFactory,
 		),
 		projectRepoFac,
 		projectSecretRepoFac,
@@ -504,4 +569,18 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	}), &http2.Server{})
+}
+
+// NewKafkaWriter creates a new kafka client that will be used for meta publishing
+func NewKafkaWriter(topic string, brokers []string, batchSize int) *kafka.Writer {
+	// check if metadata publisher is disabled
+	if len(brokers) == 0 || (len(brokers) == 1 && (brokers[0] == "-" || brokers[0] == "")) {
+		return nil
+	}
+
+	return kafka.NewWriter(kafka.WriterConfig{
+		Topic:     topic,
+		Brokers:   brokers,
+		BatchSize: batchSize,
+	})
 }
