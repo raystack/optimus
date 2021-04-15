@@ -25,7 +25,7 @@ func (r badReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("bad reader")
 }
 
-var testContents = `version: 1
+var testJobContents = `version: 1
 name: test
 owner: optimus
 schedule:
@@ -47,13 +47,13 @@ dependencies:
 hooks: []
 `
 
-func TestSpecRepository(t *testing.T) {
+func TestJobSpecRepository(t *testing.T) {
 	// prepare adapter
-	execUnit := new(mock.ExecutionUnit)
-	execUnit.On("GetName").Return("foo")
-	allTasksRepo := new(mock.SupportedTaskRepo)
+	execUnit := new(mock.Transformer)
+	execUnit.On("Name").Return("foo")
+	allTasksRepo := new(mock.SupportedTransformationRepo)
 	allTasksRepo.On("GetByName", "foo").Return(execUnit, nil)
-	adapter := local.NewAdapter(allTasksRepo, nil)
+	adapter := local.NewJobSpecAdapter(allTasksRepo, nil)
 
 	jobConfig := local.Job{
 		Version: 1,
@@ -151,7 +151,7 @@ func TestSpecRepository(t *testing.T) {
 				},
 			},
 		},
-		Labels: []models.JobSpecLabelItem{},
+		Labels: map[string]string{},
 		Dependencies: map[string]models.JobSpecDependency{
 			"bar": {Type: models.JobSpecDependencyTypeIntra},
 		},
@@ -169,7 +169,7 @@ func TestSpecRepository(t *testing.T) {
 			bufAst := new(bytes.Buffer)
 
 			fs.On("OpenForWrite", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(ast, nil)
-			fs.On("OpenForWrite", filepath.Join(spec.Name, local.SpecFileName)).Return(dst, nil)
+			fs.On("OpenForWrite", filepath.Join(spec.Name, local.JobSpecFileName)).Return(dst, nil)
 			defer fs.AssertExpectations(t)
 
 			ast.On("Write").Return(bufAst)
@@ -183,7 +183,7 @@ func TestSpecRepository(t *testing.T) {
 			repo := local.NewJobSpecRepository(fs, adapter)
 			err := repo.Save(spec)
 			assert.Nil(t, err)
-			assert.Equal(t, testContents, buf.String())
+			assert.Equal(t, testJobContents, buf.String())
 			asset, _ := spec.Assets.GetByName("query.sql")
 			assert.Equal(t, asset.Value, bufAst.String())
 		})
@@ -224,24 +224,24 @@ func TestSpecRepository(t *testing.T) {
 			ast.On("Write").Return(bufAst)
 			ast.On("Close").Return(nil)
 
-			fs.On("OpenForWrite", filepath.Join(spec.Name, local.SpecFileName)).Return(dst, nil)
+			fs.On("OpenForWrite", filepath.Join(spec.Name, local.JobSpecFileName)).Return(dst, nil)
 			dst.On("Write").Return(buf)
 			dst.On("Close").Return(nil)
 
 			repo := local.NewJobSpecRepository(fs, adapter)
 			err := repo.Save(spec)
 			assert.Nil(t, err)
-			assert.Equal(t, testContents, buf.String())
+			assert.Equal(t, testJobContents, buf.String())
 			asset, _ := spec.Assets.GetByName("query.sql")
 			assert.Equal(t, asset.Value, bufAst.String())
 
 			// update the spec.
 			hookName := "g-hook"
 			hookUnit1 := new(mock.HookUnit)
-			hookUnit1.On("GetName").Return(hookName)
+			hookUnit1.On("Name").Return(hookName)
 			allHooksRepo := new(mock.SupportedHookRepo)
 			allHooksRepo.On("GetByName", hookName).Return(hookUnit1, nil)
-			adapterNew := local.NewAdapter(allTasksRepo, allHooksRepo)
+			adapterNew := local.NewJobSpecAdapter(allTasksRepo, allHooksRepo)
 
 			specCopy := spec
 			specCopy.Hooks = []models.JobSpecHook{
@@ -266,16 +266,16 @@ func TestSpecRepository(t *testing.T) {
 			astNew.On("Write").Return(bufAstNew)
 			astNew.On("Close").Return(nil)
 
-			fsNew.On("OpenForWrite", filepath.Join(specCopy.Name, local.SpecFileName)).Return(dstNew, nil)
+			fsNew.On("OpenForWrite", filepath.Join(specCopy.Name, local.JobSpecFileName)).Return(dstNew, nil)
 			dstNew.On("Write").Return(bufNew)
 			dstNew.On("Close").Return(nil)
 
 			repoNew := local.NewJobSpecRepository(fsNew, adapterNew)
 			err = repoNew.Save(specCopy)
 			assert.Nil(t, err)
-			testContentsNew := strings.ReplaceAll(testContents, "hooks: []\n",
+			testJobContentsNew := strings.ReplaceAll(testJobContents, "hooks: []\n",
 				"hooks:\n- name: g-hook\n  config:\n    key: value\n")
-			assert.Equal(t, testContentsNew, bufNew.String())
+			assert.Equal(t, testJobContentsNew, bufNew.String())
 		})
 	})
 
@@ -286,12 +286,13 @@ func TestSpecRepository(t *testing.T) {
 			assetfile := new(mock.File)
 
 			jobdr := new(mock.File)
-			jobdr.On("Readdirnames", -1).Return([]string{local.SpecFileName, local.AssetFolderName}, nil)
+			jobdr.On("Readdirnames", -1).Return([]string{local.JobSpecFileName, local.AssetFolderName}, nil)
+			jobdr.On("IsDir").Return(true, nil)
 			jobdr.On("Close").Return(nil)
 			defer jobdr.AssertExpectations(t)
 
 			// job file
-			jobfile.On("Read").Return(bytes.NewBufferString(testContents))
+			jobfile.On("Read").Return(bytes.NewBufferString(testJobContents))
 			jobfile.On("Close").Return(nil)
 			defer jobfile.AssertExpectations(t)
 
@@ -302,6 +303,7 @@ func TestSpecRepository(t *testing.T) {
 
 			// single asset file
 			assetfile.On("Read").Return(bytes.NewBufferString(jobConfig.Asset["query.sql"]))
+			assetfile.On("IsDir").Return(false, nil)
 			assetfile.On("Close").Return(nil)
 			defer assetfile.AssertExpectations(t)
 
@@ -314,9 +316,9 @@ func TestSpecRepository(t *testing.T) {
 			// root dir reading
 			fsm := new(mock.FileSystem)
 			fsm.On("Open", ".").Return(rootdir, nil)
-			fsm.On("Open", filepath.Join(".", local.SpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
+			fsm.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
 			fsm.On("Open", spec.Name).Return(jobdr, nil)
-			fsm.On("Open", filepath.Join(spec.Name, local.SpecFileName)).Return(jobfile, nil).Once()
+			fsm.On("Open", filepath.Join(spec.Name, local.JobSpecFileName)).Return(jobfile, nil).Once()
 			fsm.On("Open", filepath.Join(spec.Name, local.AssetFolderName)).Return(assetDirfile, nil)
 			fsm.On("Open", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(assetfile, nil)
 			defer fsm.AssertExpectations(t)
@@ -332,12 +334,13 @@ func TestSpecRepository(t *testing.T) {
 			assetfile := new(mock.File)
 
 			jobdr := new(mock.File)
-			jobdr.On("Readdirnames", -1).Return([]string{local.SpecFileName, local.AssetFolderName}, nil)
+			jobdr.On("Readdirnames", -1).Return([]string{local.JobSpecFileName, local.AssetFolderName}, nil)
+			jobdr.On("IsDir").Return(true, nil)
 			jobdr.On("Close").Return(nil)
 			defer jobdr.AssertExpectations(t)
 
 			// job file
-			jobfile.On("Read").Return(bytes.NewBufferString(testContents))
+			jobfile.On("Read").Return(bytes.NewBufferString(testJobContents))
 			jobfile.On("Close").Return(nil)
 			defer jobfile.AssertExpectations(t)
 
@@ -348,6 +351,7 @@ func TestSpecRepository(t *testing.T) {
 
 			// single asset file
 			assetfile.On("Read").Return(bytes.NewBufferString(jobConfig.Asset["query.sql"]))
+			assetfile.On("IsDir").Return(false, nil)
 			assetfile.On("Close").Return(nil)
 			defer assetfile.AssertExpectations(t)
 
@@ -360,9 +364,9 @@ func TestSpecRepository(t *testing.T) {
 			// root dir reading
 			fsm := new(mock.FileSystem)
 			fsm.On("Open", ".").Return(rootdir, nil).Once()
-			fsm.On("Open", filepath.Join(".", local.SpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
+			fsm.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
 			fsm.On("Open", spec.Name).Return(jobdr, nil)
-			fsm.On("Open", filepath.Join(spec.Name, local.SpecFileName)).Return(jobfile, nil)
+			fsm.On("Open", filepath.Join(spec.Name, local.JobSpecFileName)).Return(jobfile, nil)
 			fsm.On("Open", filepath.Join(spec.Name, local.AssetFolderName)).Return(assetDirfile, nil)
 			fsm.On("Open", filepath.Join(spec.Name, local.AssetFolderName, "query.sql")).Return(assetfile, nil)
 			defer fsm.AssertExpectations(t)
@@ -385,7 +389,7 @@ func TestSpecRepository(t *testing.T) {
 
 			mfs := new(mock.FileSystem)
 			mfs.On("Open", ".").Return(rootdir, nil)
-			mfs.On("Open", filepath.Join(".", local.SpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
+			mfs.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
 			defer mfs.AssertExpectations(t)
 
 			repo := local.NewJobSpecRepository(mfs, adapter)
@@ -401,14 +405,15 @@ func TestSpecRepository(t *testing.T) {
 
 			jobdr := new(mock.File)
 			jobdr.On("Readdirnames", -1).Return([]string{}, nil)
+			jobdr.On("IsDir").Return(true, nil)
 			jobdr.On("Close").Return(nil)
 			defer jobdr.AssertExpectations(t)
 
 			fsm := new(mock.FileSystem)
 			fsm.On("Open", ".").Return(rootdir, nil).Once()
-			fsm.On("Open", filepath.Join(".", local.SpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
+			fsm.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(rootdir, fs.ErrNoSuchFile)
 			fsm.On("Open", spec.Name).Return(jobdr, nil)
-			fsm.On("Open", filepath.Join(spec.Name, local.SpecFileName)).Return(jobdr, fs.ErrNoSuchFile)
+			fsm.On("Open", filepath.Join(spec.Name, local.JobSpecFileName)).Return(jobdr, fs.ErrNoSuchFile)
 			defer fsm.AssertExpectations(t)
 
 			repo := local.NewJobSpecRepository(fsm, adapter)
@@ -424,7 +429,8 @@ func TestSpecRepository(t *testing.T) {
 			jobfile := new(mock.File)
 
 			jobdr := new(mock.File)
-			jobdr.On("Readdirnames", -1).Return([]string{local.SpecFileName}, nil)
+			jobdr.On("Readdirnames", -1).Return([]string{local.JobSpecFileName}, nil)
+			jobdr.On("IsDir").Return(true, nil)
 			jobdr.On("Close").Return(nil)
 			defer jobdr.AssertExpectations(t)
 
@@ -443,7 +449,7 @@ func TestSpecRepository(t *testing.T) {
 			fsm := new(mock.FileSystem)
 			fsm.On("Open", ".").Return(rootdir, nil)
 			fsm.On("Open", spec.Name).Return(jobdr, nil)
-			fsm.On("Open", filepath.Join(spec.Name, local.SpecFileName)).Return(jobfile, nil).Once()
+			fsm.On("Open", filepath.Join(spec.Name, local.JobSpecFileName)).Return(jobfile, nil).Once()
 			defer fsm.AssertExpectations(t)
 
 			repo := local.NewJobSpecRepository(fsm, adapter)
@@ -513,7 +519,7 @@ hooks: []
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 				Assets:       models.JobAssets{},
-				Labels:       []models.JobSpecLabelItem{},
+				Labels:       map[string]string{},
 			},
 			{
 				Version: 1,
@@ -538,7 +544,7 @@ hooks: []
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 				Assets:       models.JobAssets{},
-				Labels:       []models.JobSpecLabelItem{},
+				Labels:       map[string]string{},
 			},
 		}
 
@@ -551,12 +557,13 @@ hooks: []
 				jobdr := new(mock.File)
 				assetDirfile := new(mock.File)
 
-				jobdr.On("Readdirnames", -1).Return([]string{local.SpecFileName, local.AssetFolderName}, nil)
+				jobdr.On("Readdirnames", -1).Return([]string{local.JobSpecFileName, local.AssetFolderName}, nil)
+				jobdr.On("IsDir").Return(true, nil)
 				jobdr.On("Close").Return(nil)
 				defer jobdr.AssertExpectations(t)
 				fsm.On("Open", jobspec.Name).Return(jobdr, nil)
 
-				fsm.On("Open", filepath.Join(jobspec.Name, local.SpecFileName)).Return(jobfile, nil).Once()
+				fsm.On("Open", filepath.Join(jobspec.Name, local.JobSpecFileName)).Return(jobfile, nil).Once()
 				fsm.On("Open", filepath.Join(jobspec.Name, local.AssetFolderName)).Return(assetDirfile, nil)
 
 				jobfile.On("Read").Return(bytes.NewBufferString(content[idx]))
@@ -575,7 +582,7 @@ hooks: []
 			defer dir.AssertExpectations(t)
 
 			fsm.On("Open", ".").Return(dir, nil)
-			fsm.On("Open", filepath.Join(".", local.SpecFileName)).Return(dir, fs.ErrNoSuchFile)
+			fsm.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(dir, fs.ErrNoSuchFile)
 
 			repo := local.NewJobSpecRepository(fsm, adapter)
 			result, err := repo.GetAll()
@@ -601,7 +608,7 @@ hooks: []
 
 			mfs := new(mock.FileSystem)
 			mfs.On("Open", ".").Return(dir, nil)
-			mfs.On("Open", filepath.Join(".", local.SpecFileName)).Return(dir, fs.ErrNoSuchFile)
+			mfs.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(dir, fs.ErrNoSuchFile)
 			defer mfs.AssertExpectations(t)
 
 			repo := local.NewJobSpecRepository(mfs, adapter)
@@ -612,7 +619,6 @@ hooks: []
 			readErr := errors.New("not a directory")
 			dir := new(mock.File)
 			dir.On("Readdirnames", -1).Return([]string{}, readErr)
-			dir.On("Close").Return(nil)
 			defer dir.AssertExpectations(t)
 
 			mfs := new(mock.FileSystem)
@@ -639,11 +645,12 @@ hooks: []
 			defer dir.AssertExpectations(t)
 
 			mfs.On("Open", dirName).Return(jobDir, nil)
-			jobDir.On("Readdirnames", -1).Return([]string{local.SpecFileName}, nil)
+			jobDir.On("Readdirnames", -1).Return([]string{local.JobSpecFileName}, nil)
+			jobDir.On("IsDir").Return(true, nil)
 			jobDir.On("Close").Return(nil)
 			defer jobDir.AssertExpectations(t)
 
-			mfs.On("Open", filepath.Join(dirName, local.SpecFileName)).Return(jobFile, nil)
+			mfs.On("Open", filepath.Join(dirName, local.JobSpecFileName)).Return(jobFile, nil)
 			jobFile.On("Read").Return(new(badReader))
 			jobFile.On("Close").Return(nil)
 			defer jobFile.AssertExpectations(t)
@@ -661,12 +668,14 @@ hooks: []
 				jobdr := new(mock.File)
 				assetDirfile := new(mock.File)
 
-				jobdr.On("Readdirnames", -1).Return([]string{local.SpecFileName, local.AssetFolderName}, nil)
+				jobdr.On("Readdirnames", -1).Return([]string{local.JobSpecFileName, local.AssetFolderName}, nil)
+				jobdr.On("IsDir").Return(true, nil)
+
 				jobdr.On("Close").Return(nil)
 				defer jobdr.AssertExpectations(t)
 				fsm.On("Open", jobspec.Name).Return(jobdr, nil)
 
-				fsm.On("Open", filepath.Join(jobspec.Name, local.SpecFileName)).Return(jobfile, nil).Once()
+				fsm.On("Open", filepath.Join(jobspec.Name, local.JobSpecFileName)).Return(jobfile, nil).Once()
 				fsm.On("Open", filepath.Join(jobspec.Name, local.AssetFolderName)).Return(assetDirfile, nil)
 
 				jobfile.On("Read").Return(bytes.NewBufferString(content[idx]))
@@ -685,7 +694,7 @@ hooks: []
 			defer dir.AssertExpectations(t)
 
 			fsm.On("Open", ".").Return(dir, nil)
-			fsm.On("Open", filepath.Join(".", local.SpecFileName)).Return(dir, fs.ErrNoSuchFile)
+			fsm.On("Open", filepath.Join(".", local.JobSpecFileName)).Return(dir, fs.ErrNoSuchFile)
 
 			repo := local.NewJobSpecRepository(fsm, adapter)
 			result, err := repo.GetAll()

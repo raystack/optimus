@@ -31,7 +31,7 @@ type Job struct {
 	Behavior     JobBehavior
 	Task         JobTask
 	Asset        map[string]string `yaml:"asset,omitempty"`
-	Labels       yaml.MapSlice     `yaml:"labels,omitempty"`
+	Labels       map[string]string `yaml:"labels,omitempty"`
 	Dependencies []JobDependency
 	Hooks        []JobHook
 }
@@ -65,7 +65,7 @@ type JobHook struct {
 }
 
 // ToSpec converts the local's JobHook representation to the optimus' models.JobSpecHook
-func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobSpecHook, error) {
+func (a JobHook) ToSpec(supportedHookRepo models.HookRepo) (models.JobSpecHook, error) {
 	hookUnit, err := supportedHookRepo.GetByName(a.Name)
 	if err != nil {
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
@@ -79,7 +79,7 @@ func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobS
 // FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
 func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	return JobHook{
-		Name:   spec.Unit.GetName(),
+		Name:   spec.Unit.Name(),
 		Config: JobSpecConfigToYamlSlice(spec.Config),
 	}
 }
@@ -114,19 +114,19 @@ type JobDependency struct {
 	Type    string `yaml:"type,omitempty"`
 }
 
-type Adapter struct {
-	supportedTaskRepo models.SupportedTaskRepo
-	supportedHookRepo models.SupportedHookRepo
+type JobSpecAdapter struct {
+	supportedTaskRepo models.TransformationRepo
+	supportedHookRepo models.HookRepo
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *Adapter {
-	return &Adapter{
+func NewJobSpecAdapter(supportedTaskRepo models.TransformationRepo, supportedHookRepo models.HookRepo) *JobSpecAdapter {
+	return &JobSpecAdapter{
 		supportedTaskRepo: supportedTaskRepo,
 		supportedHookRepo: supportedHookRepo,
 	}
 }
 
-func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
+func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	var err error
 
 	// parse dates
@@ -181,12 +181,9 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, errors.Wrapf(err, "spec reading error, failed to find exec unit %s", conf.Task.Name)
 	}
 
-	labels := []models.JobSpecLabelItem{}
-	for _, label := range conf.Labels {
-		labels = append(labels, models.JobSpecLabelItem{
-			Name:  label.Key.(string),
-			Value: label.Value.(string),
-		})
+	labels := map[string]string{}
+	for k, v := range conf.Labels {
+		labels[k] = v
 	}
 
 	taskConf := models.JobSpecConfigs{}
@@ -224,17 +221,14 @@ func (adapt Adapter) ToSpec(conf Job) (models.JobSpec, error) {
 	return job, nil
 }
 
-func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
+func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("exec unit is nil")
 	}
 
-	labels := yaml.MapSlice{}
-	for _, l := range spec.Labels {
-		labels = append(labels, yaml.MapItem{
-			Key:   l.Name,
-			Value: l.Value,
-		})
+	labels := map[string]string{}
+	for k, v := range spec.Labels {
+		labels[k] = v
 	}
 
 	taskConf := yaml.MapSlice{}
@@ -260,7 +254,7 @@ func (adapt Adapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Catchup:       spec.Behavior.CatchUp,
 		},
 		Task: JobTask{
-			Name:   spec.Task.Unit.GetName(),
+			Name:   spec.Task.Unit.Name(),
 			Config: taskConf,
 			Window: JobTaskWindow{
 				Size:       spec.Task.Window.SizeString(),

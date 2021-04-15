@@ -15,6 +15,7 @@ import (
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
 
+	_ "github.com/odpf/optimus/ext/datastore"
 	_ "github.com/odpf/optimus/ext/hook"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
@@ -42,8 +43,14 @@ func main() {
 	//init specs
 	jobSpecRepo := local.NewJobSpecRepository(
 		&fs.LocalFileSystem{BasePath: Config.Job.Path},
-		local.NewAdapter(models.TaskRegistry, models.HookRegistry),
+		local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
 	)
+	datastoreSpecsFs := map[string]fs.FileSystem{}
+	for _, dsConfig := range Config.Datastore {
+		datastoreSpecsFs[dsConfig.Type] = &fs.LocalFileSystem{
+			BasePath: dsConfig.Path,
+		}
+	}
 
 	cmd := commands.New(
 		logger,
@@ -51,6 +58,10 @@ func main() {
 		Version,
 		Config,
 		models.Scheduler,
+		datastoreSpecsFs,
+		models.TaskRegistry,
+		models.HookRegistry,
+		models.DatastoreRegistry,
 	)
 	// error is already logged by Cobra, no need to log them again
 	if err := cmd.Execute(); err != nil {

@@ -95,7 +95,7 @@ func renderJobCommand(l logger, conf config.Opctl) *cli.Command {
 
 	cmd.Run = func(c *cli.Command, args []string) {
 		jobName := args[0]
-		if err := dumpJobSpecificationBuildRequest(l, projectName, jobName, conf); err != nil {
+		if err := renderJobSpecificationBuildRequest(l, projectName, jobName, conf); err != nil {
 			l.Println(err)
 			os.Exit(1)
 		}
@@ -104,7 +104,7 @@ func renderJobCommand(l logger, conf config.Opctl) *cli.Command {
 	return cmd
 }
 
-func dumpJobSpecificationBuildRequest(l logger, projectName, jobName string, conf config.Opctl) (err error) {
+func renderJobSpecificationBuildRequest(l logger, projectName, jobName string, conf config.Opctl) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -122,7 +122,7 @@ func dumpJobSpecificationBuildRequest(l logger, projectName, jobName string, con
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	// fetch compiled JobSpec by calling the optimus API
-	jobResponse, err := runtime.DumpSpecification(dumpTimeoutCtx, &pb.DumpSpecificationRequest{
+	jobResponse, err := runtime.DumpJobSpecification(dumpTimeoutCtx, &pb.DumpJobSpecificationRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 	})

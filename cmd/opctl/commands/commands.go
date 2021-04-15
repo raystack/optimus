@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/odpf/optimus/core/fs"
+
 	"google.golang.org/grpc"
 
 	"github.com/fatih/color"
@@ -28,6 +30,9 @@ var (
 	coloredError   = fmt.Sprint
 	coloredSuccess = fmt.Sprint
 
+	GRPCMaxClientSendSize = 25 << 20 // 25MB
+	GRPCMaxClientRecvSize = 25 << 20 // 25MB
+
 	OptimusDialTimeout = time.Second * 2
 	ConfigName         = "optimus"
 	ConfigExtension    = "yaml"
@@ -45,6 +50,11 @@ func New(
 	version string,
 	conf config.Opctl,
 	scheduler models.SchedulerUnit,
+
+	datastoreSpecsFs map[string]fs.FileSystem,
+	tfRepo models.TransformationRepo,
+	hookRepo models.HookRepo,
+	dsRepo models.DatastoreRepo,
 ) *cli.Command {
 
 	var programName = "opctl"
@@ -63,11 +73,11 @@ func New(
 
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "disable colored output")
 
-	cmd.AddCommand(createCommand(l, jobSpecRepo, conf))
+	cmd.AddCommand(createCommand(l, conf, jobSpecRepo, tfRepo, hookRepo, dsRepo, datastoreSpecsFs))
 	cmd.AddCommand(versionCommand(l, version, conf))
-	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf))
+	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf, dsRepo, datastoreSpecsFs))
 	cmd.AddCommand(renderCommand(l, conf, jobSpecRepo))
-	cmd.AddCommand(configCommand(l))
+	cmd.AddCommand(configCommand(l, dsRepo))
 
 	// admin specific commands
 	switch os.Getenv("OPTIMUS_ADMIN") {
@@ -84,8 +94,14 @@ func New(
 
 func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	opts = append(opts, grpc.WithBlock())
+	opts = append(opts,
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallSendMsgSize(GRPCMaxClientSendSize),
+			grpc.MaxCallRecvMsgSize(GRPCMaxClientRecvSize),
+		),
+	)
 
 	conn, err := grpc.DialContext(ctx, host, opts...)
 	if err != nil {

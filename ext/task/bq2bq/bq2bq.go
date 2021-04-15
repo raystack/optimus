@@ -45,9 +45,9 @@ var (
 	// Required secret
 	SecretName = "BQ2BQ_QUERY"
 
-	TimeoutDuration = time.Second * 15
-
-	FakeSelectStmt = "SELECT * from `%s` WHERE FALSE LIMIT 1"
+	TimeoutDuration = time.Second * 120
+	MaxBQApiRetries = 3
+	FakeSelectStmt  = "SELECT * from `%s` WHERE FALSE LIMIT 1"
 )
 
 type ClientFactory interface {
@@ -58,19 +58,19 @@ type BQ2BQ struct {
 	ClientFac ClientFactory
 }
 
-func (b *BQ2BQ) GetName() string {
+func (b *BQ2BQ) Name() string {
 	return "bq2bq"
 }
 
-func (b *BQ2BQ) GetDescription() string {
+func (b *BQ2BQ) Description() string {
 	return "BigQuery to BigQuery transformation task"
 }
 
-func (b *BQ2BQ) GetImage() string {
+func (b *BQ2BQ) Image() string {
 	return "odpf/optimus-task-bq2bq:latest"
 }
 
-func (b *BQ2BQ) AskQuestions(_ models.UnitOptions) (map[string]interface{}, error) {
+func (b *BQ2BQ) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestionResponse, error) {
 	questions := []*survey.Question{
 		{
 			Name:     "Project",
@@ -104,7 +104,7 @@ APPEND  - Append to existing table
 	}
 	inputsRaw := make(map[string]interface{})
 	if err := survey.Ask(questions, &inputsRaw); err != nil {
-		return nil, err
+		return models.AskQuestionResponse{}, err
 	}
 
 	if load, ok := inputsRaw["LoadMethod"]; ok && load.(survey.OptionAnswer).Value == "REPLACE" {
@@ -118,17 +118,19 @@ Leave empty for optimus to automatically figure this out although it will be
 faster and cheaper to provide the exact condition.
 for example: DATE(event_timestamp) >= "{{ .DSTART|Date }}" AND DATE(event_timestamp) < "{{ .DEND|Date }}"`,
 		}, &filterExp); err != nil {
-			return nil, err
+			return models.AskQuestionResponse{}, err
 		}
 		inputsRaw["Filter"] = filterExp
 	}
-	return inputsRaw, nil
+	return models.AskQuestionResponse{
+		Answers: inputsRaw,
+	}, nil
 }
 
-func (b *BQ2BQ) GenerateConfig(inputs map[string]interface{}, _ models.UnitOptions) (models.JobSpecConfigs, error) {
-	stringInputs, err := utils.ConvertToStringMap(inputs)
+func (b *BQ2BQ) GenerateConfig(request models.GenerateConfigRequest) (models.GenerateConfigResponse, error) {
+	stringInputs, err := utils.ConvertToStringMap(request.Inputs)
 	if err != nil {
-		return nil, nil
+		return models.GenerateConfigResponse{}, nil
 	}
 	conf := models.JobSpecConfigs{
 		{
@@ -158,28 +160,33 @@ func (b *BQ2BQ) GenerateConfig(inputs map[string]interface{}, _ models.UnitOptio
 			Value: stringInputs["Filter"],
 		})
 	}
-	return conf, nil
+	return models.GenerateConfigResponse{
+		Config: conf,
+	}, nil
 }
 
-func (b *BQ2BQ) GenerateAssets(_ map[string]interface{}, _ models.UnitOptions) (map[string]string, error) {
-	return map[string]string{
-		QueryFileName: `-- SQL query goes here
+func (b *BQ2BQ) GenerateAssets(_ models.GenerateAssetsRequest) (models.GenerateAssetsResponse, error) {
+	return models.GenerateAssetsResponse{
+		Assets: map[string]string{
+			QueryFileName: `-- SQL query goes here
 
 Select * from "project.dataset.table";
 `,
+		},
 	}, nil
 }
 
 // GenerateDestination uses config details to build target table
-func (b *BQ2BQ) GenerateDestination(data models.UnitData) (string, error) {
-	proj, ok1 := data.Config.Get("PROJECT")
-	dataset, ok2 := data.Config.Get("DATASET")
-	tab, ok3 := data.Config.Get("TABLE")
+func (b *BQ2BQ) GenerateDestination(request models.GenerateDestinationRequest) (models.GenerateDestinationResponse, error) {
+	proj, ok1 := request.Config.Get("PROJECT")
+	dataset, ok2 := request.Config.Get("DATASET")
+	tab, ok3 := request.Config.Get("TABLE")
 	if ok1 && ok2 && ok3 {
-		return fmt.Sprintf("%s.%s.%s", proj,
-			dataset, tab), nil
+		return models.GenerateDestinationResponse{
+			Destination: fmt.Sprintf("%s.%s.%s", proj, dataset, tab),
+		}, nil
 	}
-	return "", errors.New("missing config key required to generate destination")
+	return models.GenerateDestinationResponse{}, errors.New("missing config key required to generate destination")
 }
 
 // GenerateDependencies uses assets to find out the source tables of this
@@ -189,34 +196,33 @@ func (b *BQ2BQ) GenerateDestination(data models.UnitData) (string, error) {
 // fake select stmts. Fake statements help finding actual referenced tables in
 // case regex based table is a view & not actually a source table. Because this
 // fn should generate the actual source as dependency
-func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
-	svcAcc, ok := data.Project.Secret.GetByName(SecretName)
-	if !ok || len(svcAcc) == 0 {
-		return nil, errors.New(fmt.Sprintf("secret %s required to generate dependencies not found for %s", SecretName, b.GetName()))
-	}
-
+func (b *BQ2BQ) GenerateDependencies(request models.GenerateDependenciesRequest) (models.GenerateDependenciesResponse, error) {
+	// TODO(kush.sharma): should we ask context as input? Not sure if its okay
+	// for the task to allow handling there own timeouts/deadlines
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), TimeoutDuration)
 	defer cancel()
-	client, err := b.ClientFac.New(timeoutCtx, svcAcc)
-	if err != nil {
-		return nil, err
+
+	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
+	if !ok || len(svcAcc) == 0 {
+		return models.GenerateDependenciesResponse{}, errors.New(fmt.Sprintf("secret %s required to generate dependencies not found for %s", SecretName, b.Name()))
 	}
-	defer client.Close()
 
 	// try to resolve referenced tables directly from BQ APIs
-	referencedTables, err := b.FindDependenciesWithAPIs(timeoutCtx, client, data.Assets[QueryFileName])
+	referencedTables, err := b.FindDependenciesWithRetryableDryRun(timeoutCtx, request.Assets[QueryFileName], svcAcc)
 	if err != nil {
-		return nil, err
+		return models.GenerateDependenciesResponse{}, err
 	}
 	if len(referencedTables) != 0 {
-		return referencedTables, nil
+		return models.GenerateDependenciesResponse{
+			Dependencies: referencedTables,
+		}, nil
 	}
 
 	// could be BQ script, find table names using regex and create
 	// fake Select STMTs to find actual referenced tables
-	parsedDependencies, err := b.FindDependenciesWithRegex(data)
+	parsedDependencies, err := b.FindDependenciesWithRegex(request)
 	if err != nil {
-		return nil, err
+		return models.GenerateDependenciesResponse{}, err
 	}
 
 	resultChan := make(chan []string)
@@ -226,7 +232,7 @@ func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
 		// find dependencies in parallel
 		eg.Go(func() error {
 			//prepare dummy query
-			deps, err := b.FindDependenciesWithAPIs(timeoutCtx, client, fakeQuery)
+			deps, err := b.FindDependenciesWithRetryableDryRun(timeoutCtx, fakeQuery, svcAcc)
 			if err != nil {
 				return err
 			}
@@ -254,15 +260,17 @@ func (b *BQ2BQ) GenerateDependencies(data models.UnitData) ([]string, error) {
 
 	// check if wait was finished because of an error
 	if err := eg.Wait(); err != nil {
-		return nil, err
+		return models.GenerateDependenciesResponse{}, err
 	}
-	return deduplicateStrings(dependencies), nil
+	return models.GenerateDependenciesResponse{
+		Dependencies: deduplicateStrings(dependencies),
+	}, nil
 }
 
 // FindDependenciesWithRegex look for table patterns in SQL query to find
 // source tables.
 // Config is required to generate destination and avoid cycles
-func (b *BQ2BQ) FindDependenciesWithRegex(data models.UnitData) ([]string, error) {
+func (b *BQ2BQ) FindDependenciesWithRegex(request models.GenerateDependenciesRequest) ([]string, error) {
 	// we look for certain patterns in the query source code
 	// in particular, we look for the following constructs
 	// * from {table} ...
@@ -283,18 +291,22 @@ func (b *BQ2BQ) FindDependenciesWithRegex(data models.UnitData) ([]string, error
 	// this also means that otherwise valid reference to "dataset.table"
 	// will not be recognised.
 
-	queryString := data.Assets[QueryFileName]
+	queryString := request.Assets[QueryFileName]
 	tablesFound := make(map[string]bool)
 	pseudoTables := make(map[string]bool)
 
 	// we mark destination as a pseudo table to avoid a dependency
 	// cycle. This is for supporting DML queries that may also refer
 	// to themselves.
-	dest, err := b.GenerateDestination(data)
+	dest, err := b.GenerateDestination(models.GenerateDestinationRequest{
+		Config:  request.Config,
+		Assets:  request.Assets,
+		Project: request.Project,
+	})
 	if err != nil {
 		return nil, err
 	}
-	pseudoTables[dest] = true
+	pseudoTables[dest.Destination] = true
 
 	// remove comments from query
 	matches := queryCommentPatterns.FindAllStringSubmatch(queryString, -1)
@@ -347,7 +359,28 @@ func (b *BQ2BQ) FindDependenciesWithRegex(data models.UnitData) ([]string, error
 	return tables, nil
 }
 
-func (b *BQ2BQ) FindDependenciesWithAPIs(ctx context.Context, client bqiface.Client, query string) ([]string, error) {
+func (b *BQ2BQ) FindDependenciesWithRetryableDryRun(ctx context.Context, query, svcAccSecret string) ([]string, error) {
+	for try := 1; try <= MaxBQApiRetries; try++ {
+		client, err := b.ClientFac.New(ctx, svcAccSecret)
+		if err != nil {
+			return nil, errors.New("bigquery client")
+		}
+		deps, err := b.FindDependenciesWithDryRun(ctx, client, query)
+		if err != nil {
+			if strings.Contains(err.Error(), "net/http: TLS handshake timeout") ||
+				strings.Contains(err.Error(), "unexpected EOF") {
+				// retry
+				continue
+			}
+
+			return nil, err
+		}
+		return deps, nil
+	}
+	return nil, errors.New("bigquery api retries exhausted")
+}
+
+func (b *BQ2BQ) FindDependenciesWithDryRun(ctx context.Context, client bqiface.Client, query string) ([]string, error) {
 	q := client.Query(query)
 	q.SetQueryConfig(bqiface.QueryConfig{
 		QueryConfig: bigquery.QueryConfig{
@@ -358,12 +391,12 @@ func (b *BQ2BQ) FindDependenciesWithAPIs(ctx context.Context, client bqiface.Cli
 
 	job, err := q.Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query run")
 	}
 	// Dry run is not asynchronous, so get the latest status and statistics.
 	status := job.LastStatus()
 	if err := status.Err(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query status")
 	}
 
 	details, ok := status.Statistics.Details.(*bigquery.QueryStatistics)

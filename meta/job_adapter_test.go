@@ -1,12 +1,13 @@
 package meta_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"testing"
-	"time"
 )
 
 func TestJobAdapter(t *testing.T) {
@@ -17,7 +18,7 @@ func TestJobAdapter(t *testing.T) {
 		},
 	}
 
-	execUnit := new(mock.ExecutionUnit)
+	execUnit := new(mock.Transformer)
 	hookUnit := new(mock.HookUnit)
 
 	jobSpecs := []models.JobSpec{
@@ -25,10 +26,7 @@ func TestJobAdapter(t *testing.T) {
 			Name:    "job-1",
 			Owner:   "mee@mee",
 			Version: 100,
-			Labels: []models.JobSpecLabelItem{{
-				Name:  "l1",
-				Value: "lv1",
-			}},
+			Labels:  map[string]string{"l1": "lv1"},
 			Behavior: models.JobSpecBehavior{
 				CatchUp:       true,
 				DependsOnPast: false,
@@ -86,19 +84,19 @@ func TestJobAdapter(t *testing.T) {
 		},
 	}
 
-	execUnit.On("GetName").Return("bq2bq")
-	execUnit.On("GetImage").Return("image")
-	execUnit.On("GetDescription").Return("description")
-	execUnit.On("GenerateDestination", models.UnitData{
+	execUnit.On("Name").Return("bq2bq")
+	execUnit.On("Image").Return("image")
+	execUnit.On("Description").Return("description")
+	execUnit.On("GenerateDestination", models.GenerateDestinationRequest{
 		Config: jobSpecs[0].Task.Config,
 		Assets: jobSpecs[0].Assets.ToMap(),
-	}).Return("destination_table", nil)
+	}).Return(models.GenerateDestinationResponse{Destination: "destination_table"}, nil)
 
-	hookUnit.On("GetName").Return("transporter")
-	hookUnit.On("GetImage").Return("h_image")
-	hookUnit.On("GetDescription").Return("h_description")
-	hookUnit.On("GetType").Return(models.HookTypePost)
-	hookUnit.On("GetDependsOn").Return([]string{"some_value"})
+	hookUnit.On("Name").Return("transporter")
+	hookUnit.On("Image").Return("h_image")
+	hookUnit.On("Description").Return("h_description")
+	hookUnit.On("Type").Return(models.HookTypePost)
+	hookUnit.On("DependsOn").Return([]string{"some_value"})
 
 	t.Run("should build JobMetadata from JobSpec without any error", func(t *testing.T) {
 		jobSpec1 := jobSpecs[0]
@@ -108,7 +106,7 @@ func TestJobAdapter(t *testing.T) {
 			Tenant:      "humara-projectSpec",
 			Version:     100,
 			Description: "",
-			Labels:      jobSpec1.Labels,
+			Labels:      meta.CompileSpecLabels(jobSpec1),
 			Owner:       "mee@mee",
 			Task: models.JobTaskMetadata{
 				Name:        "bq2bq",

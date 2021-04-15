@@ -198,7 +198,7 @@ func convertStringToInterfaceMap(i map[string]string) map[string]interface{} {
 }
 
 func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine) (map[string]string, error) {
-	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
+	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: jobSpec.Task.Config,
 		Assets: jobSpec.Assets.ToMap(),
 	})

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,10 +12,11 @@ import (
 )
 
 var (
-	ErrNoSuchSpec  = errors.New("job spec not found")
+	ErrNoSuchSpec  = errors.New("spec not found")
 	ErrNoDAGSpecs  = errors.New("no job specifications found")
 	ErrNoSuchJob   = errors.New("job not found")
 	ErrNoJobs      = errors.New("no job found")
+	ErrNoResources = errors.New("no resources found")
 	ErrNoSuchAsset = errors.New("asset not found")
 	ErrNoSuchHook  = errors.New("hook not found")
 )
@@ -41,7 +43,7 @@ type JobSpec struct {
 	Version      int
 	Name         string
 	Description  string
-	Labels       []JobSpecLabelItem
+	Labels       map[string]string
 	Owner        string
 	Schedule     JobSpecSchedule
 	Behavior     JobSpecBehavior
@@ -53,7 +55,7 @@ type JobSpec struct {
 
 func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
 	for _, hook := range js.Hooks {
-		if hook.Unit.GetName() == name {
+		if hook.Unit.Name() == name {
 			return hook, nil
 		}
 	}
@@ -62,15 +64,10 @@ func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
 
 func (js JobSpec) GetLabelsAsString() string {
 	labels := ""
-	for _, l := range js.Labels {
-		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(l.Name), strings.TrimSpace(l.Value))
+	for k, v := range js.Labels {
+		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(k), strings.TrimSpace(v))
 	}
 	return strings.TrimRight(labels, ",")
-}
-
-type JobSpecLabelItem struct {
-	Name  string
-	Value string
 }
 
 type JobSpecSchedule struct {
@@ -274,11 +271,14 @@ type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(JobSpec, ProjectSpec) error
 	GetByName(string, ProjectSpec) (JobSpec, error)
-	Sync(ProjectSpec, progress.Observer) error
+	Sync(context.Context, ProjectSpec, progress.Observer) error
 	Dump(ProjectSpec, JobSpec) (Job, error)
 
 	// KeepOnly deletes all jobs except the ones provided
 	KeepOnly(ProjectSpec, []JobSpec, progress.Observer) error
+
+	// GetAll reads all job specifications
+	GetAll(ProjectSpec) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

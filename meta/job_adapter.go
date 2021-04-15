@@ -2,12 +2,13 @@ package meta
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/proton/odpf/metadata/optimus"
-	"time"
 )
 
 type JobAdapter struct {
@@ -18,7 +19,7 @@ func (a JobAdapter) buildUrn(projectSpec models.ProjectSpec, jobSpec models.JobS
 }
 
 func (a JobAdapter) FromJobSpec(projectSpec models.ProjectSpec, jobSpec models.JobSpec) (*models.JobMetadata, error) {
-	taskDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
+	taskDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: jobSpec.Task.Config,
 		Assets: jobSpec.Assets.ToMap(),
 	})
@@ -26,10 +27,10 @@ func (a JobAdapter) FromJobSpec(projectSpec models.ProjectSpec, jobSpec models.J
 		return nil, err
 	}
 	taskMetadata := models.JobTaskMetadata{
-		Name:        jobSpec.Task.Unit.GetName(),
-		Image:       jobSpec.Task.Unit.GetImage(),
-		Description: jobSpec.Task.Unit.GetDescription(),
-		Destination: taskDestination,
+		Name:        jobSpec.Task.Unit.Name(),
+		Image:       jobSpec.Task.Unit.Image(),
+		Description: jobSpec.Task.Unit.Description(),
+		Destination: taskDestination.Destination,
 		Config:      jobSpec.Task.Config,
 		Window:      jobSpec.Task.Window,
 		Priority:    jobSpec.Task.Priority,
@@ -41,7 +42,7 @@ func (a JobAdapter) FromJobSpec(projectSpec models.ProjectSpec, jobSpec models.J
 		Tenant:       projectSpec.Name,
 		Version:      jobSpec.Version,
 		Description:  jobSpec.Description,
-		Labels:       jobSpec.Labels,
+		Labels:       CompileSpecLabels(jobSpec),
 		Owner:        jobSpec.Owner,
 		Task:         taskMetadata,
 		Schedule:     jobSpec.Schedule,
@@ -60,12 +61,12 @@ func (a JobAdapter) FromJobSpec(projectSpec models.ProjectSpec, jobSpec models.J
 
 	for _, hook := range jobSpec.Hooks {
 		resourceMetadata.Hooks = append(resourceMetadata.Hooks, models.JobHookMetadata{
-			Name:        hook.Unit.GetName(),
-			Image:       hook.Unit.GetImage(),
-			Description: hook.Unit.GetDescription(),
+			Name:        hook.Unit.Name(),
+			Image:       hook.Unit.Image(),
+			Description: hook.Unit.Description(),
 			Config:      hook.Config,
-			Type:        hook.Unit.GetType(),
-			DependsOn:   hook.Unit.GetDependsOn(),
+			Type:        hook.Unit.Type(),
+			DependsOn:   hook.Unit.DependsOn(),
 		})
 	}
 
@@ -95,7 +96,7 @@ func (a JobAdapter) CompileMessage(jobMetadata *models.JobMetadata) ([]byte, err
 		Tenant:      jobMetadata.Tenant,
 		Version:     int32(jobMetadata.Version),
 		Description: jobMetadata.Description,
-		Labels:      a.compileLabels(jobMetadata),
+		Labels:      a.compileProtoLabels(jobMetadata),
 		Owner:       jobMetadata.Owner,
 		Task:        a.compileTask(jobMetadata),
 		Schedule:    jobSchedule,
@@ -188,11 +189,21 @@ func (a JobAdapter) compileDependency(resource *models.JobMetadata) (dependencie
 	return
 }
 
-func (a JobAdapter) compileLabels(resource *models.JobMetadata) (labels []*pb.JobLabel) {
+func (a JobAdapter) compileProtoLabels(resource *models.JobMetadata) (labels []*pb.JobLabel) {
 	for _, config := range resource.Labels {
 		labels = append(labels, &pb.JobLabel{
 			Name:  config.Name,
 			Value: config.Value,
+		})
+	}
+	return
+}
+
+func CompileSpecLabels(resource models.JobSpec) (labels []models.JobMetadataLabelItem) {
+	for k, v := range resource.Labels {
+		labels = append(labels, models.JobMetadataLabelItem{
+			Name:  k,
+			Value: v,
 		})
 	}
 	return

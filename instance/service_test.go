@@ -17,9 +17,10 @@ import (
 )
 
 func TestService(t *testing.T) {
-	execUnit := new(mock.ExecutionUnit)
-	execUnit.On("GetName").Return("bq")
-	execUnit.On("GenerateDestination", mock2.AnythingOfType("models.UnitData")).Return("proj.data.tab", nil)
+	execUnit := new(mock.Transformer)
+	execUnit.On("Name").Return("bq")
+	execUnit.On("GenerateDestination", mock2.AnythingOfType("models.GenerateDestinationRequest")).Return(
+		models.GenerateDestinationResponse{Destination: "proj.data.tab"}, nil)
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",

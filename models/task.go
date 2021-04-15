@@ -6,32 +6,62 @@ import (
 
 // Transformation needs to be implemented to register a task
 type Transformation interface {
-	GetName() string
-	GetImage() string
-	GetDescription() string
+	Name() string
+	Image() string
+	Description() string
 
 	// AskQuestions list down all the cli inputs required to generate spec files
 	// name used for question will be directly mapped to GenerateConfig() parameters
-	AskQuestions(UnitOptions) (map[string]interface{}, error)
+	AskQuestions(AskQuestionRequest) (AskQuestionResponse, error)
 
 	// GenerateConfig will be passed down to execution unit as env vars
 	// they will be generated based on results of AskQuestions
 	// if DryRun is true in UnitOptions, should not throw error for missing inputs
-	GenerateConfig(inputs map[string]interface{}, opt UnitOptions) (JobSpecConfigs, error)
+	GenerateConfig(GenerateConfigRequest) (GenerateConfigResponse, error)
 
 	// GenerateAssets will be passed down to execution unit as files
 	// if DryRun is true in UnitOptions, should not throw error for missing inputs
-	GenerateAssets(inputs map[string]interface{}, opt UnitOptions) (map[string]string, error)
+	GenerateAssets(GenerateAssetsRequest) (GenerateAssetsResponse, error)
 
 	// GenerateDestination derive destination from config and assets
-	GenerateDestination(UnitData) (string, error)
+	GenerateDestination(GenerateDestinationRequest) (GenerateDestinationResponse, error)
 
 	// GetDependencies returns names of job destination on which this unit
 	// is dependent on
-	GenerateDependencies(UnitData) ([]string, error)
+	GenerateDependencies(GenerateDependenciesRequest) (GenerateDependenciesResponse, error)
 }
 
-type UnitData struct {
+type UnitOptions struct {
+	DryRun bool
+}
+
+type AskQuestionRequest struct {
+	UnitOptions
+}
+
+type AskQuestionResponse struct {
+	Answers map[string]interface{}
+}
+
+type GenerateConfigRequest struct {
+	Inputs map[string]interface{}
+	UnitOptions
+}
+
+type GenerateConfigResponse struct {
+	Config JobSpecConfigs
+}
+
+type GenerateAssetsRequest struct {
+	Inputs map[string]interface{}
+	UnitOptions
+}
+
+type GenerateAssetsResponse struct {
+	Assets map[string]string
+}
+
+type GenerateDestinationRequest struct {
 	// Task configs
 	Config JobSpecConfigs
 
@@ -40,10 +70,29 @@ type UnitData struct {
 
 	// Job project
 	Project ProjectSpec
+
+	UnitOptions
 }
 
-type UnitOptions struct {
-	DryRun bool
+type GenerateDestinationResponse struct {
+	Destination string
+}
+
+type GenerateDependenciesRequest struct {
+	// Task configs
+	Config JobSpecConfigs
+
+	// Job assets
+	Assets map[string]string
+
+	// Job project
+	Project ProjectSpec
+
+	UnitOptions
+}
+
+type GenerateDependenciesResponse struct {
+	Dependencies []string
 }
 
 var (
@@ -58,7 +107,7 @@ type supportedTasks struct {
 	data map[string]Transformation
 }
 
-type SupportedTaskRepo interface {
+type TransformationRepo interface {
 	GetByName(string) (Transformation, error)
 	GetAll() []Transformation
 	Add(Transformation) error
@@ -80,32 +129,40 @@ func (s *supportedTasks) GetAll() []Transformation {
 }
 
 func (s *supportedTasks) Add(newUnit Transformation) error {
-	if newUnit.GetName() == "" {
+	if newUnit.Name() == "" {
 		return errors.New("task name cannot be empty")
 	}
 
 	// check if name is already used
-	if _, ok := s.data[newUnit.GetName()]; ok {
-		return errors.Errorf("task name already in use %s", newUnit.GetName())
+	if _, ok := s.data[newUnit.Name()]; ok {
+		return errors.Errorf("task name already in use %s", newUnit.Name())
 	}
 
 	// image is a required field
-	if newUnit.GetImage() == "" {
+	if newUnit.Image() == "" {
 		return errors.New("task image cannot be empty")
 	}
 
 	// check if we can add the provided task
-	nAssets, err := newUnit.GenerateAssets(nil, UnitOptions{DryRun: true})
+	nAssets, err := newUnit.GenerateAssets(GenerateAssetsRequest{
+		UnitOptions: UnitOptions{
+			DryRun: true,
+		},
+	})
 	if err != nil {
 		return err
 	}
 	for _, existingTask := range s.data {
-		eAssets, _ := existingTask.GenerateAssets(nil, UnitOptions{DryRun: true})
+		response, _ := existingTask.GenerateAssets(GenerateAssetsRequest{
+			UnitOptions: UnitOptions{
+				DryRun: true,
+			},
+		})
 
 		// config file names need to be unique in assets folder
 		// so each asset name should be unique
-		for ekey := range eAssets {
-			for nkey := range nAssets {
+		for ekey := range response.Assets {
+			for nkey := range nAssets.Assets {
 				if nkey == ekey {
 					return errors.Errorf("asset file name already in use %s", nkey)
 				}
@@ -113,6 +170,6 @@ func (s *supportedTasks) Add(newUnit Transformation) error {
 		}
 	}
 
-	s.data[newUnit.GetName()] = newUnit
+	s.data[newUnit.Name()] = newUnit
 	return nil
 }

@@ -25,8 +25,8 @@ func TestFeature(t *testing.T) {
 				},
 			}
 
-			execUnit := new(mock.ExecutionUnit)
-			execUnit.On("GetName").Return("bq")
+			execUnit := new(mock.Transformer)
+			execUnit.On("Name").Return("bq")
 
 			jobSpec := models.JobSpec{
 				Name:  "foo",
@@ -127,12 +127,12 @@ func TestFeature(t *testing.T) {
 				},
 			}
 
-			execUnit := new(mock.ExecutionUnit)
-			execUnit.On("GetName").Return("bq")
+			execUnit := new(mock.Transformer)
+			execUnit.On("Name").Return("bq")
 
 			transporterHook := "transporter"
 			hookUnit := new(mock.HookUnit)
-			hookUnit.On("GetName").Return(transporterHook)
+			hookUnit.On("Name").Return(transporterHook)
 
 			jobSpec := models.JobSpec{
 				Name:  "foo",

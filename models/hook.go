@@ -18,13 +18,20 @@ func (ht HookType) String() string {
 }
 
 type HookUnit interface {
-	GetName() string
-	GetImage() string
-	GetDescription() string
+	Name() string
+	Image() string
+	Description() string
+
+	// DependsOn returns list of hooks this should be executed after
+	DependsOn() []string
+
+	// GetType provides the place of execution, could be before the transformation
+	// after the transformation, etc
+	Type() HookType
 
 	// GetQuestions list down all the cli inputs required to generate spec files
 	// name used for question will be directly mapped to GenerateConfig() parameters
-	AskQuestions(UnitOptions) (map[string]interface{}, error)
+	AskQuestions(request AskQuestionRequest) (AskQuestionResponse, error)
 
 	// GenerateConfig will be passed down to hook unit as env vars
 	// hookInputs - answers for the questions as inputs from user
@@ -34,14 +41,14 @@ type HookUnit interface {
 	// store "BROKERS": '{{.transporterKafkaBroker}}' inside the job spec; which gets compiled by taking values
 	// from project config or runtime variables provided part of a instance. i.e.
 	// DSTART, DEND, EXECUTION_TIME
-	GenerateConfig(hookInputs map[string]interface{}, parentTaskData UnitData) (JobSpecConfigs, error)
+	GenerateConfig(GenerateConfigWithTaskRequest) (GenerateConfigResponse, error)
+}
 
-	// GetDependsOn returns list of hooks this should be executed after
-	GetDependsOn() []string
+type GenerateConfigWithTaskRequest struct {
+	// TaskConfig of the parent on which this task belongs to
+	TaskConfig JobSpecConfigs
 
-	// GetType provides the place of execution, could be before the transformation
-	// after the transformation, etc
-	GetType() HookType
+	GenerateConfigRequest
 }
 
 var (
@@ -52,7 +59,7 @@ var (
 	ErrUnsupportedHook = errors.New("unsupported hook requested")
 )
 
-type SupportedHookRepo interface {
+type HookRepo interface {
 	GetByName(string) (HookUnit, error)
 	GetAll() []HookUnit
 	Add(HookUnit) error
@@ -78,20 +85,20 @@ func (s *supportedHooks) GetAll() []HookUnit {
 }
 
 func (s *supportedHooks) Add(newUnit HookUnit) error {
-	if newUnit.GetName() == "" {
+	if newUnit.Name() == "" {
 		return fmt.Errorf("hook name cannot be empty")
 	}
 
 	// check if name is already used
-	if _, ok := s.data[newUnit.GetName()]; ok {
-		return fmt.Errorf("hook name already in use %s", newUnit.GetName())
+	if _, ok := s.data[newUnit.Name()]; ok {
+		return fmt.Errorf("hook name already in use %s", newUnit.Name())
 	}
 
 	// image is a required field
-	if newUnit.GetImage() == "" {
+	if newUnit.Image() == "" {
 		return fmt.Errorf("hook image cannot be empty")
 	}
 
-	s.data[newUnit.GetName()] = newUnit
+	s.data[newUnit.Name()] = newUnit
 	return nil
 }

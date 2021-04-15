@@ -14,23 +14,23 @@ import (
 type Predator struct {
 }
 
-func (t *Predator) GetName() string {
+func (t *Predator) Name() string {
 	return "predator"
 }
 
-func (t *Predator) GetImage() string {
+func (t *Predator) Image() string {
 	return "odpf/optimus-task-predator:latest"
 }
 
-func (t *Predator) GetDescription() string {
+func (t *Predator) Description() string {
 	return "Auditing and Profiling Tool for BigQuery"
 }
 
-func (t *Predator) GetType() models.HookType {
+func (t *Predator) Type() models.HookType {
 	return models.HookTypePost
 }
 
-func (t *Predator) AskQuestions(_ models.UnitOptions) (map[string]interface{}, error) {
+func (t *Predator) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestionResponse, error) {
 	questions := []*survey.Question{
 		{
 			Name: "FilterExpression",
@@ -59,63 +59,65 @@ func (t *Predator) AskQuestions(_ models.UnitOptions) (map[string]interface{}, e
 	}
 	inputsRaw := make(map[string]interface{})
 	if err := survey.Ask(questions, &inputsRaw); err != nil {
-		return nil, err
+		return models.AskQuestionResponse{}, err
 	}
-	return inputsRaw, nil
+	return models.AskQuestionResponse{Answers: inputsRaw}, nil
 }
 
-func (t *Predator) GenerateConfig(hookInputs map[string]interface{}, _ models.UnitData) (models.JobSpecConfigs, error) {
-	_, ok1 := hookInputs["FilterExpression"]
-	_, ok2 := hookInputs["Group"]
-	_, ok3 := hookInputs["Mode"]
+func (t *Predator) GenerateConfig(request models.GenerateConfigWithTaskRequest) (models.GenerateConfigResponse, error) {
+	_, ok1 := request.Inputs["FilterExpression"]
+	_, ok2 := request.Inputs["Group"]
+	_, ok3 := request.Inputs["Mode"]
 	if !ok1 || !ok2 || !ok3 {
-		return nil, errors.New("missing config key required to generate configuration")
+		return models.GenerateConfigResponse{}, errors.New("missing config key required to generate configuration")
 	}
-	stringInputs, err := utils.ConvertToStringMap(hookInputs)
+	stringInputs, err := utils.ConvertToStringMap(request.Inputs)
 	if err != nil {
-		return nil, errors.Wrap(err, "unidentified config in hook")
+		return models.GenerateConfigResponse{}, errors.Wrap(err, "unidentified config in hook")
 	}
-	return models.JobSpecConfigs{
-		{
-			Name:  "AUDIT_TIME",
-			Value: `{{.EXECUTION_TIME}}`,
-		},
-		{
-			Name:  "FILTER",
-			Value: stringInputs["FilterExpression"],
-		},
-		{
-			Name:  "GROUP",
-			Value: stringInputs["Group"],
-		},
-		{
-			Name:  "MODE",
-			Value: stringInputs["Mode"],
-		},
-		{
-			Name:  "PREDATOR_URL",
-			Value: `{{.GLOBAL__PREDATOR_HOST}}`,
-		},
-		{
-			Name:  "SUB_COMMAND",
-			Value: "profile_audit",
-		},
-		{
-			Name:  "BQ_PROJECT",
-			Value: `{{.TASK__PROJECT}}`,
-		},
-		{
-			Name:  "BQ_DATASET",
-			Value: `{{.TASK__DATASET}}`,
-		},
-		{
-			Name:  "BQ_TABLE",
-			Value: `{{.TASK__TABLE}}`,
+	return models.GenerateConfigResponse{
+		Config: models.JobSpecConfigs{
+			{
+				Name:  "AUDIT_TIME",
+				Value: `{{.EXECUTION_TIME}}`,
+			},
+			{
+				Name:  "FILTER",
+				Value: stringInputs["FilterExpression"],
+			},
+			{
+				Name:  "GROUP",
+				Value: stringInputs["Group"],
+			},
+			{
+				Name:  "MODE",
+				Value: stringInputs["Mode"],
+			},
+			{
+				Name:  "PREDATOR_URL",
+				Value: `{{.GLOBAL__PREDATOR_HOST}}`,
+			},
+			{
+				Name:  "SUB_COMMAND",
+				Value: "profile_audit",
+			},
+			{
+				Name:  "BQ_PROJECT",
+				Value: `{{.TASK__PROJECT}}`,
+			},
+			{
+				Name:  "BQ_DATASET",
+				Value: `{{.TASK__DATASET}}`,
+			},
+			{
+				Name:  "BQ_TABLE",
+				Value: `{{.TASK__TABLE}}`,
+			},
 		},
 	}, nil
 }
 
-func (t *Predator) GetDependsOn() []string {
+func (t *Predator) DependsOn() []string {
 	return []string{}
 }
 

@@ -57,7 +57,7 @@ func TestAirflow(t *testing.T) {
 			defer owf.AssertExpectations(t)
 
 			bucket := "mybucket"
-			objectPath := fmt.Sprintf("/hello/%s/%s", "dags", "__lib.py")
+			objectPath := fmt.Sprintf("hello/%s/%s", "dags", "__lib.py")
 			ow.On("NewWriter", ctx, bucket, objectPath).Return(wc, nil)
 
 			air := airflow.NewScheduler(resources.FileSystem, owf, nil)

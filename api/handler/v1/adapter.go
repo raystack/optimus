@@ -1,8 +1,11 @@
 package v1
 
 import (
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
@@ -12,8 +15,9 @@ import (
 
 // Note: all config keys will be converted to upper case automatically
 type Adapter struct {
-	supportedTaskRepo models.SupportedTaskRepo
-	supportedHookRepo models.SupportedHookRepo
+	supportedTaskRepo      models.TransformationRepo
+	supportedHookRepo      models.HookRepo
+	supportedDatastoreRepo models.DatastoreRepo
 }
 
 func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, error) {
@@ -50,17 +54,14 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	}
 
 	// adapt hooks
-	hooks, err := adapt.fromHookProto(spec.Hooks)
+	hooks, err := adapt.FromHookProto(spec.Hooks)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
 
-	labels := []models.JobSpecLabelItem{}
+	labels := map[string]string{}
 	for _, l := range spec.Labels {
-		labels = append(labels, models.JobSpecLabelItem{
-			Name:  l.Name,
-			Value: l.Value,
-		})
+		labels[l.Name] = l.Value
 	}
 
 	taskConfigs := models.JobSpecConfigs{}
@@ -135,13 +136,13 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		StartDate:        spec.Schedule.StartDate.Format(models.JobDatetimeLayout),
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
-		TaskName:         spec.Task.Unit.GetName(),
+		TaskName:         spec.Task.Unit.Name(),
 		WindowSize:       spec.Task.Window.SizeString(),
 		WindowOffset:     spec.Task.Window.OffsetString(),
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []*pb.JobDependency{},
-		Hooks:            adapt.toHookProto(spec.Hooks),
+		Hooks:            adapt.ToHookProto(spec.Hooks),
 		Description:      spec.Description,
 	}
 	if spec.Schedule.EndDate != nil {
@@ -164,10 +165,10 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	conf.Config = taskConfigs
 
 	labels := []*pb.JobLabelItem{}
-	for _, c := range spec.Labels {
+	for k, v := range spec.Labels {
 		labels = append(labels, &pb.JobLabelItem{
-			Name:  c.Name,
-			Value: c.Value,
+			Name:  k,
+			Value: v,
 		})
 	}
 	conf.Labels = labels
@@ -237,7 +238,7 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 	}, nil
 }
 
-func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobSpecHook, error) {
+func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobSpecHook, error) {
 	var hooks []models.JobSpecHook
 	for _, hook := range hooksProto {
 		hookUnit, err := adapt.supportedHookRepo.GetByName(hook.Name)
@@ -261,7 +262,7 @@ func (adapt *Adapter) fromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 	return hooks, nil
 }
 
-func (adapt *Adapter) toHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
+func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
 	for _, hook := range hooks {
 		hookConfigs := []*pb.JobConfigItem{}
 		for _, c := range hook.Config {
@@ -272,16 +273,53 @@ func (adapt *Adapter) toHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 		}
 
 		protoHooks = append(protoHooks, &pb.JobSpecHook{
-			Name:   hook.Unit.GetName(),
+			Name:   hook.Unit.Name(),
 			Config: hookConfigs,
 		})
 	}
 	return
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *Adapter {
+func (adapt *Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
+	typeController, ok := spec.Datastore.Types()[spec.Type]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name()))
+	}
+	buf, err := typeController.Adapter().ToProtobuf(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	protoSpec := &pb.ResourceSpecification{}
+	if err := proto.Unmarshal(buf, protoSpec); err != nil {
+		return nil, err
+	}
+	return protoSpec, nil
+}
+
+func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification) (models.ResourceSpec, error) {
+	storeName := spec.Datastore
+	storer, err := adapt.supportedDatastoreRepo.GetByName(storeName)
+	if err != nil {
+		return models.ResourceSpec{}, err
+	}
+
+	typeController, ok := storer.Types()[models.ResourceType(spec.GetType())]
+	if !ok {
+		return models.ResourceSpec{}, errors.New(fmt.Sprintf("unsupported type %s for datastore %s", spec.Type, storeName))
+	}
+	buf, err := proto.Marshal(spec)
+	if err != nil {
+		return models.ResourceSpec{}, err
+	}
+	return typeController.Adapter().FromProtobuf(buf)
+}
+
+func NewAdapter(supportedTaskRepo models.TransformationRepo,
+	supportedHookRepo models.HookRepo, datastoreRepo models.DatastoreRepo) *Adapter {
 	return &Adapter{
-		supportedTaskRepo: supportedTaskRepo,
-		supportedHookRepo: supportedHookRepo,
+		supportedTaskRepo:      supportedTaskRepo,
+		supportedHookRepo:      supportedHookRepo,
+		supportedDatastoreRepo: datastoreRepo,
 	}
 }

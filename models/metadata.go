@@ -25,13 +25,18 @@ type JobMetadata struct {
 	Tenant       string
 	Version      int
 	Description  string
-	Labels       []JobSpecLabelItem
+	Labels       []JobMetadataLabelItem
 	Owner        string
 	Task         JobTaskMetadata
 	Schedule     JobSpecSchedule
 	Behavior     JobSpecBehavior
 	Dependencies []JobDependencyMetadata
 	Hooks        []JobHookMetadata
+}
+
+type JobMetadataLabelItem struct {
+	Name  string
+	Value string
 }
 
 type JobTaskMetadata struct {

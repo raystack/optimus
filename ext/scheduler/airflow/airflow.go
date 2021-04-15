@@ -82,7 +82,7 @@ func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 	if err != nil {
 		return errors.Errorf("object writer failed for %s", proj.Name)
 	}
-	return a.migrateLibFileToWriter(ctx, objectWriter, p.Hostname(), filepath.Join(p.Path, a.GetJobsDir(), filepath.Base(baseLibFilePath)))
+	return a.migrateLibFileToWriter(ctx, objectWriter, p.Hostname(), filepath.Join(strings.Trim(p.Path, "/"), a.GetJobsDir(), filepath.Base(baseLibFilePath)))
 }
 
 func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objDir string) (err error) {

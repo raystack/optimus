@@ -14,7 +14,7 @@ with, so that you can have a better understanding of how it's supposed to be use
   - Schedule BigQuery transformation
   - Query compile time templating (variables, loop, if statements, macros, etc)
   - Table creation
-  - BigQuery View creation **[WIP]**
+  - BigQuery View creation
   - BigQuery UDF creation **[in roadmap]**
   - Audit/Profile BigQuery tables
   - Sink BigQuery tables to Kafka
