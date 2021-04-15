@@ -4,4 +4,4 @@ build:
     - api/proto/
     - third_party/grpc-gateway
     - third_party/googleapis
-    - proton/
+    - proton/odpf/metadata

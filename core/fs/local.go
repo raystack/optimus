@@ -18,6 +18,14 @@ func (f file) Readdirnames(n int) ([]string, error) {
 	return f.File.Readdirnames(n)
 }
 
+func (f file) IsDir() (bool, error) {
+	fi, err := f.Stat()
+	if err != nil {
+		return false, err
+	}
+	return fi.IsDir(), err
+}
+
 func (f file) Write(p []byte) (n int, err error) {
 	if f.readOnly {
 		return 0, errNotWritable

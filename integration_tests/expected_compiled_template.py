@@ -34,8 +34,8 @@ default_args = {
     "retries": DAG_RETRIES,
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
     "priority_weight": 2000,
-    "start_date": datetime.strptime("2000-11-11", "%Y-%m-%d"),
-    "end_date": datetime.strptime("2020-11-11","%Y-%m-%d"),
+    "start_date": datetime.strptime("2000-11-11T00:00:00", "%Y-%m-%dT%H:%M:%S"),
+    "end_date": datetime.strptime("2020-11-11T00:00:00","%Y-%m-%dT%H:%M:%S"),
     "on_failure_callback": alert_failed_to_slack,
     "weight_rule": WeightRule.ABSOLUTE
 }

@@ -69,7 +69,7 @@ type JobHook struct {
 }
 
 // ToSpec converts the postgres' JobHook representation to the optimus' models.JobSpecHook
-func (a JobHook) ToSpec(supportedHookRepo models.SupportedHookRepo) (models.JobSpecHook, error) {
+func (a JobHook) ToSpec(supportedHookRepo models.HookRepo) (models.JobSpecHook, error) {
 	hookUnit, err := supportedHookRepo.GetByName(a.Name)
 	if err != nil {
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
@@ -92,17 +92,17 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 		return JobHook{}, err
 	}
 	return JobHook{
-		Name:   spec.Unit.GetName(),
+		Name:   spec.Unit.Name(),
 		Config: configJSON,
 	}, nil
 }
 
 type JobSpecAdapter struct {
-	supportedTaskRepo models.SupportedTaskRepo
-	supportedHookRepo models.SupportedHookRepo
+	supportedTaskRepo models.TransformationRepo
+	supportedHookRepo models.HookRepo
 }
 
-func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo models.SupportedHookRepo) *JobSpecAdapter {
+func NewAdapter(supportedTaskRepo models.TransformationRepo, supportedHookRepo models.HookRepo) *JobSpecAdapter {
 	return &JobSpecAdapter{
 		supportedTaskRepo: supportedTaskRepo,
 		supportedHookRepo: supportedHookRepo,
@@ -112,7 +112,7 @@ func NewAdapter(supportedTaskRepo models.SupportedTaskRepo, supportedHookRepo mo
 // ToSpec converts the postgres' Job representation to the optimus' JobSpec
 func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
-	labels := []models.JobSpecLabelItem{}
+	labels := map[string]string{}
 	if conf.Labels != nil {
 		if err := json.Unmarshal(conf.Labels, &labels); err != nil {
 			return models.JobSpec{}, err
@@ -246,7 +246,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	wsize := spec.Task.Window.Size.Nanoseconds()
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
-	jobDestination, err := spec.Task.Unit.GenerateDestination(models.UnitData{
+	jobDestination, err := spec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: spec.Task.Config,
 		Assets: spec.Assets.ToMap(),
 	})
@@ -266,9 +266,9 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		Interval:         spec.Schedule.Interval,
 		DependsOnPast:    &spec.Behavior.DependsOnPast,
 		CatchUp:          &spec.Behavior.CatchUp,
-		Destination:      jobDestination,
+		Destination:      jobDestination.Destination,
 		Dependencies:     dependenciesJSON,
-		TaskName:         spec.Task.Unit.GetName(),
+		TaskName:         spec.Task.Unit.Name(),
 		TaskConfig:       taskConfigJSON,
 		WindowSize:       &wsize,
 		WindowOffset:     &woffset,

@@ -47,11 +47,11 @@ func TestInstanceRepository(t *testing.T) {
 
 	gTask := "g-task"
 	tTask := "t-task"
-	execUnit1 := new(mock.ExecutionUnit)
-	execUnit1.On("GetName").Return(gTask)
-	execUnit2 := new(mock.ExecutionUnit)
+	execUnit1 := new(mock.Transformer)
+	execUnit1.On("Name").Return(gTask)
+	execUnit2 := new(mock.Transformer)
 
-	allTasksRepo := new(mock.SupportedTaskRepo)
+	allTasksRepo := new(mock.SupportedTransformationRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
 	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
 	adapter := NewAdapter(allTasksRepo, nil)
@@ -106,8 +106,8 @@ func TestInstanceRepository(t *testing.T) {
 		},
 	}
 
-	unitData := models.UnitData{Config: jobConfigs[0].Task.Config, Assets: jobConfigs[0].Assets.ToMap()}
-	execUnit1.On("GenerateDestination", unitData).Return("p.d.t", nil)
+	unitData := models.GenerateDestinationRequest{Config: jobConfigs[0].Task.Config, Assets: jobConfigs[0].Assets.ToMap()}
+	execUnit1.On("GenerateDestination", unitData).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 	defer execUnit1.AssertExpectations(t)
 	defer execUnit2.AssertExpectations(t)
 

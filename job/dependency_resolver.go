@@ -56,7 +56,7 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 
 	// get destinations of dependencies, assets should be
 	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(
-		models.UnitData{
+		models.GenerateDependenciesRequest{
 			Config:  jobSpec.Task.Config,
 			Assets:  compiledAssets,
 			Project: projectSpec,
@@ -67,7 +67,7 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 	}
 
 	// get job spec of these destinations and append to current jobSpec
-	for _, depDestination := range jobDependenciesDestination {
+	for _, depDestination := range jobDependenciesDestination.Dependencies {
 		depSpec, depProj, err := jobSpecRepo.GetByDestination(depDestination)
 		if err != nil {
 			if err == store.ErrResourceNotFound {
@@ -118,7 +118,7 @@ func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, p
 func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (models.JobSpec, error) {
 	for hookIdx, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
-		for _, depends := range jobHook.Unit.GetDependsOn() {
+		for _, depends := range jobHook.Unit.DependsOn() {
 			dependentHook, err := jobSpec.GetHookByName(depends)
 			if err == nil {
 				jobHook.DependsOn = append(jobHook.DependsOn, &dependentHook)

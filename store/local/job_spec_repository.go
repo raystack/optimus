@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	SpecFileName    = "job.yaml"
+	JobSpecFileName = "job.yaml"
 	AssetFolderName = "assets"
 )
 
@@ -31,7 +31,7 @@ type jobRepository struct {
 		// cache is mapped with jobSpec name -> jobSpec
 		data map[string]models.JobSpec
 	}
-	adapter *Adapter
+	adapter *JobSpecAdapter
 }
 
 func (repo *jobRepository) Save(job models.JobSpec) error {
@@ -181,6 +181,13 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 				return jobSpec, err
 			}
 
+			if isDir, err := assetFd.IsDir(); err == nil && isDir {
+				assetFd.Close()
+				continue
+			} else if err != nil {
+				return jobSpec, err
+			}
+
 			raw, err := ioutil.ReadAll(assetFd)
 			if err != nil {
 				return jobSpec, err
@@ -202,19 +209,11 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 func (repo *jobRepository) scanDirs(path string) ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 
-	currentDir, err := repo.fs.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer currentDir.Close()
-
-	fileNames, err := currentDir.Readdirnames(-1)
-	if err != nil {
-		return nil, err
-	}
-
 	// filter folders & scan recursively
-	folders := repo.getDirs(fileNames)
+	folders, err := repo.getDirs(path)
+	if err != nil {
+		return nil, err
+	}
 	for _, folder := range folders {
 		s, err := repo.scanDirs(filepath.Join(path, folder))
 		if err != nil && err != fs.ErrNoSuchFile {
@@ -236,22 +235,49 @@ func (repo *jobRepository) scanDirs(path string) ([]models.JobSpec, error) {
 	return specs, nil
 }
 
-func (repo *jobRepository) getDirs(paths []string) []string {
+// getDirs return names of all the folders in provided path
+func (repo *jobRepository) getDirs(dirPath string) ([]string, error) {
+	currentDir, err := repo.fs.Open(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fileNames, err := currentDir.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+	currentDir.Close()
+
 	folderPath := []string{}
-	for _, path := range paths {
-		if strings.HasPrefix(path, ".") {
+	for _, fileName := range fileNames {
+		if strings.HasPrefix(fileName, ".") {
 			continue
 		}
-		if specSuffixRegex.FindString(path) == "" && path != AssetFolderName {
-			folderPath = append(folderPath, path)
+		if specSuffixRegex.FindString(fileName) != "" || fileName == AssetFolderName {
+			continue
 		}
+
+		fd, err := repo.fs.Open(filepath.Join(dirPath, fileName))
+		if err != nil {
+			return nil, err
+		}
+		if isDir, err := fd.IsDir(); err == nil && !isDir {
+			fd.Close()
+			continue
+		} else if err != nil {
+			fd.Close()
+			return nil, err
+		}
+		fd.Close()
+
+		folderPath = append(folderPath, fileName)
 	}
-	return folderPath
+	return folderPath, nil
 }
 
 // jobFilePath generates the filename for a given job
 func (repo *jobRepository) jobFilePath(name string) string {
-	return filepath.Join(name, SpecFileName)
+	return filepath.Join(name, JobSpecFileName)
 }
 
 // assetFolderPath generates the directory for a given job that
@@ -266,7 +292,7 @@ func (repo *jobRepository) assetFilePath(job string, file string) string {
 	return filepath.Join(repo.assetFolderPath(job), file)
 }
 
-func NewJobSpecRepository(fs fs.FileSystem, adapter *Adapter) *jobRepository {
+func NewJobSpecRepository(fs fs.FileSystem, adapter *JobSpecAdapter) *jobRepository {
 	repo := new(jobRepository)
 	repo.fs = fs
 	repo.cache.dirty = true

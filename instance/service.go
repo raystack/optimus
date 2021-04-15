@@ -68,7 +68,7 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 }
 
 func (s *Service) prepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
-	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.UnitData{
+	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: jobSpec.Task.Config,
 		Assets: jobSpec.Assets.ToMap(),
 	})
@@ -100,7 +100,7 @@ func (s *Service) prepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (m
 			},
 			{
 				Name:  ConfigKeyDestination,
-				Value: jobDestination,
+				Value: jobDestination.Destination,
 				Type:  models.InstanceDataTypeEnv,
 			},
 		},

@@ -34,6 +34,11 @@ func (file *File) Readdirnames(n int) ([]string, error) {
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (file *File) IsDir() (bool, error) {
+	args := file.Called()
+	return args.Get(0).(bool), args.Error(1)
+}
+
 type FileSystem struct {
 	mock.Mock
 }

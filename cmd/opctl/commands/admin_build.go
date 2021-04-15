@@ -104,7 +104,7 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectNam
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry)
+	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry)
 	instanceType, err := models.InstanceType("").New(runType) // do this more cleanly
 	if err != nil {
 		return err

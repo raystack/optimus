@@ -12,5 +12,5 @@ plugins:
   - name: openapiv2
     out: third_party/OpenAPI
   - name: go
-    out: proton/
+    out: proton/odpf/metadata
     opt: paths=source_relative

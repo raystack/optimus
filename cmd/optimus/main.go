@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
+	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/meta"
 
 	"google.golang.org/api/option"
@@ -37,6 +38,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/v1"
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
+	_ "github.com/odpf/optimus/ext/datastore"
 	_ "github.com/odpf/optimus/ext/hook"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	_ "github.com/odpf/optimus/ext/task"
@@ -61,6 +63,8 @@ var (
 	termChan = make(chan os.Signal, 1)
 
 	shutdownWait = 30 * time.Second
+
+	GRPCMaxRecvMsgSize = 25 << 20 // 25MB
 )
 
 // Config for the service
@@ -277,6 +281,15 @@ func (fac *instanceRepoFactory) New(spec models.JobSpec) store.InstanceSpecRepos
 	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
 }
 
+// resourceSpecRepoFactory stores raw resource specifications
+type resourceSpecRepoFactory struct {
+	db *gorm.DB
+}
+
+func (fac *resourceSpecRepoFactory) New(proj models.ProjectSpec, ds models.Datastorer) store.ResourceSpecRepository {
+	return postgres.NewResourceSpecRepository(fac.db, proj, ds)
+}
+
 type objectWriterFactory struct {
 }
 
@@ -434,6 +447,7 @@ func main() {
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
 			grpc_logrus.UnaryServerInterceptor(logrusEntry, opts...),
 		),
+		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
@@ -473,9 +487,12 @@ func main() {
 			priorityResolver,
 			metaSvcFactory,
 		),
+		datastore.NewService(&resourceSpecRepoFactory{
+			db: dbConn,
+		}, models.DatastoreRegistry),
 		projectRepoFac,
 		projectSecretRepoFac,
-		v1.NewAdapter(models.TaskRegistry, models.HookRegistry),
+		v1.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry),
 		progressObs,
 		instance.NewService(
 			&instanceRepoFactory{

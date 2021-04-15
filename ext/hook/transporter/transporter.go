@@ -17,23 +17,23 @@ import (
 type Transporter struct {
 }
 
-func (t *Transporter) GetName() string {
+func (t *Transporter) Name() string {
 	return "transporter"
 }
 
-func (t *Transporter) GetImage() string {
+func (t *Transporter) Image() string {
 	return "odpf/optimus-task-transporter:latest"
 }
 
-func (t *Transporter) GetDescription() string {
+func (t *Transporter) Description() string {
 	return "BigQuery to Kafka Transformer"
 }
 
-func (t *Transporter) GetType() models.HookType {
+func (t *Transporter) Type() models.HookType {
 	return models.HookTypePost
 }
 
-func (t *Transporter) AskQuestions(_ models.UnitOptions) (map[string]interface{}, error) {
+func (t *Transporter) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestionResponse, error) {
 	questions := []*survey.Question{
 		{
 			Name: "FilterExpression",
@@ -46,51 +46,53 @@ func (t *Transporter) AskQuestions(_ models.UnitOptions) (map[string]interface{}
 	}
 	inputsRaw := make(map[string]interface{})
 	if err := survey.Ask(questions, &inputsRaw); err != nil {
-		return nil, err
+		return models.AskQuestionResponse{}, err
 	}
-	return inputsRaw, nil
+	return models.AskQuestionResponse{Answers: inputsRaw}, nil
 }
 
-func (t *Transporter) GenerateConfig(hookInputs map[string]interface{}, jobUnitData models.UnitData) (models.JobSpecConfigs, error) {
-	project, ok1 := jobUnitData.Config.Get("PROJECT")
-	dataset, ok2 := jobUnitData.Config.Get("DATASET")
-	table, ok3 := jobUnitData.Config.Get("TABLE")
-	filterExp, ok4 := hookInputs["FilterExpression"]
+func (t *Transporter) GenerateConfig(request models.GenerateConfigWithTaskRequest) (models.GenerateConfigResponse, error) {
+	project, ok1 := request.TaskConfig.Get("PROJECT")
+	dataset, ok2 := request.TaskConfig.Get("DATASET")
+	table, ok3 := request.TaskConfig.Get("TABLE")
+	filterExp, ok4 := request.Inputs["FilterExpression"]
 	if !ok1 || !ok2 || !ok3 || !ok4 {
-		return nil, errors.New("missing config key required to generate configuration")
+		return models.GenerateConfigResponse{}, errors.New("missing config key required to generate configuration")
 	}
-	return models.JobSpecConfigs{
-		{
-			Name:  "KAFKA_TOPIC",
-			Value: getKafkaTopicName(project, dataset, table),
-		},
-		{
-			Name:  "PROTO_SCHEMA",
-			Value: getProtoSchemaForBQTable(project, dataset, table),
-		},
-		{
-			Name:  "STENCIL_URL",
-			Value: `{{.GLOBAL__TRANSPORTER_STENCIL_HOST}}`,
-		},
-		{
-			Name:  "FILTER_EXPRESSION",
-			Value: filterExp.(string),
-		},
-		{
-			Name:  "BQ_PROJECT",
-			Value: `{{.TASK__PROJECT}}`,
-		},
-		{
-			Name:  "BQ_DATASET",
-			Value: `{{.TASK__DATASET}}`,
-		},
-		{
-			Name:  "BQ_TABLE",
-			Value: `{{.TASK__TABLE}}`,
-		},
-		{
-			Name:  "PRODUCER_CONFIG_BOOTSTRAP_SERVERS",
-			Value: `{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}`,
+	return models.GenerateConfigResponse{
+		Config: models.JobSpecConfigs{
+			{
+				Name:  "KAFKA_TOPIC",
+				Value: getKafkaTopicName(project, dataset, table),
+			},
+			{
+				Name:  "PROTO_SCHEMA",
+				Value: getProtoSchemaForBQTable(project, dataset, table),
+			},
+			{
+				Name:  "STENCIL_URL",
+				Value: `{{.GLOBAL__TRANSPORTER_STENCIL_HOST}}`,
+			},
+			{
+				Name:  "FILTER_EXPRESSION",
+				Value: filterExp.(string),
+			},
+			{
+				Name:  "BQ_PROJECT",
+				Value: `{{.TASK__PROJECT}}`,
+			},
+			{
+				Name:  "BQ_DATASET",
+				Value: `{{.TASK__DATASET}}`,
+			},
+			{
+				Name:  "BQ_TABLE",
+				Value: `{{.TASK__TABLE}}`,
+			},
+			{
+				Name:  "PRODUCER_CONFIG_BOOTSTRAP_SERVERS",
+				Value: `{{.GLOBAL__TRANSPORTER_KAFKA_BROKERS}}`,
+			},
 		},
 	}, nil
 }
@@ -116,7 +118,7 @@ func getKafkaTopicName(project, dataset, table string) string {
 	return topicName
 }
 
-func (t *Transporter) GetDependsOn() []string {
+func (t *Transporter) DependsOn() []string {
 	return []string{"predator"}
 }
 

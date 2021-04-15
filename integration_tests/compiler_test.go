@@ -17,21 +17,21 @@ import (
 )
 
 func TestCompiler(t *testing.T) {
-	execUnit := new(mock.ExecutionUnit)
-	execUnit.On("GetName").Return("bq")
-	execUnit.On("GetImage").Return("example.io/namespace/image:latest")
+	execUnit := new(mock.Transformer)
+	execUnit.On("Name").Return("bq")
+	execUnit.On("Image").Return("example.io/namespace/image:latest")
 
 	transporterHook := "transporter"
 	hookUnit := new(mock.HookUnit)
-	hookUnit.On("GetName").Return(transporterHook)
-	hookUnit.On("GetImage").Return("example.io/namespace/hook-image:latest")
-	hookUnit.On("GetType").Return(models.HookTypePre)
+	hookUnit.On("Name").Return(transporterHook)
+	hookUnit.On("Image").Return("example.io/namespace/hook-image:latest")
+	hookUnit.On("Type").Return(models.HookTypePre)
 
 	predatorHook := "predator"
 	hookUnit2 := new(mock.HookUnit)
-	hookUnit2.On("GetName").Return(predatorHook)
-	hookUnit2.On("GetImage").Return("example.io/namespace/predator-image:latest")
-	hookUnit2.On("GetType").Return(models.HookTypePost)
+	hookUnit2.On("Name").Return(predatorHook)
+	hookUnit2.On("Image").Return("example.io/namespace/predator-image:latest")
+	hookUnit2.On("Type").Return(models.HookTypePost)
 
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
@@ -141,11 +141,8 @@ func TestCompiler(t *testing.T) {
 			},
 		),
 		Hooks: []models.JobSpecHook{hook1, hook2},
-		Labels: []models.JobSpecLabelItem{
-			{
-				Name:  "orchestrator",
-				Value: "optimus",
-			},
+		Labels: map[string]string{
+			"orchestrator": "optimus",
 		},
 	}
 

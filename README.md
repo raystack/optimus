@@ -10,7 +10,7 @@ Optimus helps your organization to build & manage data pipelines with ease.
     - Schedule BigQuery transformation
     - Query compile time templating (variables, loop, if statements, macros, etc)
     - Table creation
-    - BigQuery View creation **[WIP]**
+    - BigQuery View creation
     - BigQuery UDF creation **[in roadmap]**
     - Audit/Profile BigQuery tables
     - Sink BigQuery tables to Kafka

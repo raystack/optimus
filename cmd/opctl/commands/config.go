@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/odpf/optimus/models"
+
 	"github.com/AlecAivazis/survey/v2"
 	cli "github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -14,16 +16,16 @@ const (
 	defaultHost = "localhost"
 )
 
-func configCommand(l logger) *cli.Command {
+func configCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 	c := &cli.Command{
 		Use:   "config",
 		Short: "Manage opctl configuration required to deploy specifications",
 	}
-	c.AddCommand(configInitCommand(l))
+	c.AddCommand(configInitCommand(l, dsRepo))
 	return c
 }
 
-func configInitCommand(l logger) *cli.Command {
+func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 	c := &cli.Command{
 		Use:   "init",
 		Short: "Initialize opctl configuration file",
@@ -51,13 +53,14 @@ func configInitCommand(l logger) *cli.Command {
 					},
 				},
 			}
-			initialAnswers := map[string]interface{}{}
-			if err := survey.Ask(questions, &initialAnswers); err != nil {
+			answers := map[string]interface{}{}
+			if err := survey.Ask(questions, &answers); err != nil {
 				errExit(l, err)
 			}
-			conf.Job.Path = initialAnswers["JobPath"].(string)
+			conf.Job.Path = answers["JobPath"].(string)
 
-			if option, ok := initialAnswers["RegisterConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+			// for global config
+			if option, ok := answers["RegisterConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
 				conf.Global = map[string]string{}
 				registerMore := "Yes"
 				for registerMore == "Yes" {
@@ -90,6 +93,52 @@ func configInitCommand(l logger) *cli.Command {
 					}
 					conf.Global[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
 				}
+			}
+
+			// for datastore
+			questions = []*survey.Question{
+				{
+					Name: "RegisterDatastore",
+					Prompt: &survey.Select{
+						Message: "Register datastore configs?",
+						Options: []string{"Yes", "No"},
+						Default: "No",
+					},
+				},
+			}
+			answers = map[string]interface{}{}
+			if err := survey.Ask(questions, &answers); err != nil {
+				errExit(l, err)
+			}
+			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+				dsOptions := []string{}
+				for _, ds := range dsRepo.GetAll() {
+					dsOptions = append(dsOptions, ds.Name())
+				}
+				conf.Datastore = []config.Datastore{}
+				configAnswers := map[string]interface{}{}
+				if err := survey.Ask([]*survey.Question{
+					{
+						Name: "Type",
+						Prompt: &survey.Select{
+							Message: "Type of the datastore",
+							Options: dsOptions,
+						},
+					},
+					{
+						Name: "Path",
+						Prompt: &survey.Input{
+							Message: "Path for specifications",
+						},
+						Validate: survey.MinLength(1),
+					},
+				}, &configAnswers); err != nil {
+					errExit(l, err)
+				}
+				conf.Datastore = append(conf.Datastore, config.Datastore{
+					Type: configAnswers["Type"].(survey.OptionAnswer).Value,
+					Path: configAnswers["Path"].(string),
+				})
 			}
 
 			confMarshaled, err := yaml.Marshal(conf)

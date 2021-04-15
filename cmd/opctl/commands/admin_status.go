@@ -72,7 +72,7 @@ func getJobStatusRequest(l logger, jobName, scheduledAt, host, projectName strin
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 
-	jobStatuses := jobStatusResponse.GetAll()
+	jobStatuses := jobStatusResponse.GetStatuses()
 
 	sort.Slice(jobStatuses, func(i, j int) bool {
 		return jobStatuses[i].ScheduledAt.Seconds < jobStatuses[j].ScheduledAt.Seconds

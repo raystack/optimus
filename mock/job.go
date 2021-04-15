@@ -72,22 +72,27 @@ type JobRepository struct {
 	mock.Mock
 }
 
-func (repo *JobRepository) Save(t models.Job) error {
-	return repo.Called(t).Error(0)
+func (repo *JobRepository) Save(ctx context.Context, t models.Job) error {
+	return repo.Called(ctx, t).Error(0)
 }
 
-func (repo *JobRepository) GetByName(name string) (models.Job, error) {
-	args := repo.Called(name)
+func (repo *JobRepository) GetByName(ctx context.Context, name string) (models.Job, error) {
+	args := repo.Called(ctx, name)
 	return args.Get(0).(models.Job), args.Error(1)
 }
 
-func (repo *JobRepository) GetAll() ([]models.Job, error) {
-	args := repo.Called()
+func (repo *JobRepository) GetAll(ctx context.Context) ([]models.Job, error) {
+	args := repo.Called(ctx)
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
-func (repo *JobRepository) Delete(name string) error {
-	args := repo.Called(name)
+func (repo *JobRepository) ListNames(ctx context.Context) ([]string, error) {
+	args := repo.Called(ctx)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (repo *JobRepository) Delete(ctx context.Context, name string) error {
+	args := repo.Called(ctx, name)
 	return args.Error(0)
 }
 

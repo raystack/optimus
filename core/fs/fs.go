@@ -22,6 +22,8 @@ type File interface {
 	// Readdirnames returns a list of files within the directory
 	// if the file is NOT a directory, it should return ErrInvalidDirectory
 	Readdirnames(n int) ([]string, error)
+
+	IsDir() (bool, error)
 }
 
 // FileSystem implements interface to a storage system

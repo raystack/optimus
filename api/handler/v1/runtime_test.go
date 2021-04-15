@@ -30,7 +30,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				nil,
+				nil, nil,
 				nil,
 				nil,
 				nil,
@@ -66,8 +66,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			execUnit1 := new(mock.ExecutionUnit)
-			execUnit1.On("GetName").Return(taskName)
+			execUnit1 := new(mock.Transformer)
+			execUnit1.On("Name").Return(taskName)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
@@ -144,12 +144,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil, nil,
-				),
+					nil,
+					nil,
+				), nil,
 				projectRepoFactory,
 
 				nil,
-				v1.NewAdapter(models.TaskRegistry, nil),
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
 				instanceService,
 				nil,
@@ -160,7 +161,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resp, err := runtimeServiceServer.RegisterInstance(context.TODO(), &versionRequest)
 			assert.Nil(t, err)
 
-			adapter := v1.NewAdapter(models.TaskRegistry, nil)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
 			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
 			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
@@ -180,7 +181,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					"BUCKET": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(models.TaskRegistry, nil)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("Save", projectSpec).Return(nil)
@@ -197,11 +198,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil, nil,
-				),
+					nil,
+					nil,
+				), nil,
 				projectRepoFactory,
 				nil,
-				v1.NewAdapter(models.TaskRegistry, nil),
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
 				nil,
 				nil,
@@ -224,7 +226,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					"BUCKET": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(models.TaskRegistry, nil)
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("Save", projectSpec).Return(errors.New("a random error"))
@@ -241,11 +243,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil, nil,
-				),
+					nil,
+					nil,
+				), nil,
 				projectRepoFactory,
 				nil,
-				v1.NewAdapter(models.TaskRegistry, nil),
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
 				nil,
 				nil,
@@ -268,7 +271,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					"BUCKET": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(nil, nil)
+			adapter := v1.NewAdapter(nil, nil, nil)
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
@@ -300,7 +303,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-				),
+				), nil,
 				projectRepoFactory,
 				projectSecretRepoFactory,
 				adapter,
@@ -329,7 +332,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					"BUCKET": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(nil, nil)
+			adapter := v1.NewAdapter(nil, nil, nil)
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
@@ -361,7 +364,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-				),
+				), nil,
 				projectRepoFactory,
 				projectSecretRepoFactory,
 				adapter,
@@ -381,7 +384,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 	})
 
-	t.Run("DeploySpecification", func(t *testing.T) {
+	t.Run("DeployJobSpecification", func(t *testing.T) {
 		t.Run("should return error if fails to save Job", func(t *testing.T) {
 			Version := "1.0.1"
 
@@ -397,8 +400,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			execUnit1 := new(mock.ExecutionUnit)
-			execUnit1.On("GetName").Return(taskName)
+			execUnit1 := new(mock.Transformer)
+			execUnit1.On("Name").Return(taskName)
 
 			defer execUnit1.AssertExpectations(t)
 
@@ -443,9 +446,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 
-			allTasksRepo := new(mock.SupportedTaskRepo)
+			allTasksRepo := new(mock.SupportedTransformationRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
-			adapter := v1.NewAdapter(allTasksRepo, nil)
+			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
@@ -454,8 +457,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					nil, nil,
-				),
+					nil,
+					nil,
+				), nil,
 				projectRepoFactory,
 				nil,
 				adapter,
@@ -469,8 +473,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
 				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
 			}
-			deployRequest := pb.DeploySpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted}
-			err := runtimeServiceServer.DeploySpecification(&deployRequest, nil)
+			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted}
+			err := runtimeServiceServer.DeployJobSpecification(&deployRequest, nil)
 			assert.Equal(t, "rpc error: code = Internal desc = failed to save job: a-data-job: a random error: failed to save a-data-job", err.Error())
 		})
 	})
@@ -481,7 +485,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				nil,
+				nil, nil,
 				nil,
 				nil,
 				nil,
@@ -508,7 +512,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				nil,
+				nil, nil,
 				nil,
 				nil,
 				nil,
@@ -529,7 +533,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 	})
 
-	t.Run("DumpSpecification", func(t *testing.T) {
+	t.Run("DumpJobSpecification", func(t *testing.T) {
 		t.Run("should dump specification of a job", func(t *testing.T) {
 			Version := "1.0.1"
 
@@ -544,7 +548,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			execUnit1 := new(mock.ExecutionUnit)
+			execUnit1 := new(mock.Transformer)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
@@ -610,24 +614,183 @@ func TestRuntimeServiceServer(t *testing.T) {
 					nil,
 					compiler,
 					dependencyResolver,
-					priorityResolver, nil,
-				),
+					priorityResolver,
+					nil,
+				), nil,
 				projectRepoFactory,
 				nil,
-				v1.NewAdapter(models.TaskRegistry, nil),
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
 				nil,
 				nil,
 			)
 
-			req := pb.DumpSpecificationRequest{
+			req := pb.DumpJobSpecificationRequest{
 				ProjectName: projectName,
 				JobName:     jobName,
 			}
-			resp, err := runtimeServiceServer.DumpSpecification(context.TODO(), &req)
+			resp, err := runtimeServiceServer.DumpJobSpecification(context.TODO(), &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 			assert.Equal(t, "content-of-dag", resp.GetContent())
+		})
+	})
+
+	t.Run("CreateResource", func(t *testing.T) {
+		t.Run("should create datastore resource successfully", func(t *testing.T) {
+			projectName := "a-data-project"
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			// prepare mocked datastore
+			dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
+
+			dsTypeTableController := new(mock.DatastoreTypeController)
+			dsTypeTableController.On("Adapter").Return(dsTypeTableAdapter)
+
+			dsTypeDatasetController := new(mock.DatastoreTypeController)
+			dsTypeDatasetController.On("Adapter").Return(dsTypeTableAdapter)
+
+			dsController := map[models.ResourceType]models.DatastoreTypeController{
+				models.ResourceTypeDataset: dsTypeTableController,
+			}
+			datastorer := new(mock.Datastorer)
+			datastorer.On("Types").Return(dsController)
+			datastorer.On("Name").Return("bq")
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(datastorer, nil)
+
+			resourceSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+
+			dsTypeTableAdapter.On("FromProtobuf", mock2.Anything).Return(resourceSpec, nil)
+
+			req := pb.CreateResourceRequest{
+				ProjectName:   projectName,
+				DatastoreName: "bq",
+				Resource: &pb.ResourceSpecification{
+					Version:   1,
+					Name:      "proj.datas",
+					Datastore: "bq",
+					Type:      models.ResourceTypeDataset.String(),
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			resourceSvc := new(mock.DatastoreService)
+			resourceSvc.On("CreateResource", context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			defer resourceSvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				nil, resourceSvc,
+				projectRepoFactory,
+				nil,
+				v1.NewAdapter(nil, nil, dsRepo),
+				nil,
+				nil,
+				nil,
+			)
+
+			resp, err := runtimeServiceServer.CreateResource(context.TODO(), &req)
+			assert.Nil(t, err)
+			assert.Equal(t, true, resp.GetSuccess())
+		})
+	})
+
+	t.Run("UpdateResource", func(t *testing.T) {
+		t.Run("should update datastore resource successfully", func(t *testing.T) {
+			projectName := "a-data-project"
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			// prepare mocked datastore
+			dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
+
+			dsTypeTableController := new(mock.DatastoreTypeController)
+			dsTypeTableController.On("Adapter").Return(dsTypeTableAdapter)
+
+			dsTypeDatasetController := new(mock.DatastoreTypeController)
+			dsTypeDatasetController.On("Adapter").Return(dsTypeTableAdapter)
+
+			dsController := map[models.ResourceType]models.DatastoreTypeController{
+				models.ResourceTypeDataset: dsTypeTableController,
+			}
+			datastorer := new(mock.Datastorer)
+			datastorer.On("Types").Return(dsController)
+			datastorer.On("Name").Return("bq")
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(datastorer, nil)
+
+			resourceSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+
+			dsTypeTableAdapter.On("FromProtobuf", mock2.Anything).Return(resourceSpec, nil)
+
+			req := pb.UpdateResourceRequest{
+				ProjectName:   projectName,
+				DatastoreName: "bq",
+				Resource: &pb.ResourceSpecification{
+					Version:   1,
+					Name:      "proj.datas",
+					Datastore: "bq",
+					Type:      models.ResourceTypeDataset.String(),
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			resourceSvc := new(mock.DatastoreService)
+			resourceSvc.On("UpdateResource", context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			defer resourceSvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				nil, resourceSvc,
+				projectRepoFactory,
+				nil,
+				v1.NewAdapter(nil, nil, dsRepo),
+				nil,
+				nil,
+				nil,
+			)
+
+			resp, err := runtimeServiceServer.UpdateResource(context.TODO(), &req)
+			assert.Nil(t, err)
+			assert.Equal(t, true, resp.GetSuccess())
 		})
 	})
 }

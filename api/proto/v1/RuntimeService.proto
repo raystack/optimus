@@ -4,21 +4,22 @@ package apiv1;
 import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/odpf/optimus/proto/api/v1";
 
 // These annotations are used when generating the OpenAPI file.
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     info: {
-      version: "1.0";
+      version: "0.1";
     };
     external_docs: {
-      url: "https://github.com/odpf/optimus";
       description: "Optimus server";
     }
     schemes: HTTP;
 };
 
+// WARNING: This is still in active development and can have breaking changes
 service RuntimeService {
     rpc Version(VersionRequest) returns (VersionResponse) {
         option (google.api.http) = {
@@ -26,12 +27,20 @@ service RuntimeService {
             body: "*"
         };
     }
-    rpc DeploySpecification(DeploySpecificationRequest) returns (stream DeploySpecificationResponse) {}
-    rpc DumpSpecification(DumpSpecificationRequest) returns (DumpSpecificationResponse) {
+
+    rpc DeployJobSpecification(DeployJobSpecificationRequest) returns (stream DeployJobSpecificationResponse) {}
+    rpc ListJobSpecification(ListJobSpecificationRequest) returns (ListJobSpecificationResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/project/{project_name}/job"
+        };
+    }
+
+    rpc DumpJobSpecification(DumpJobSpecificationRequest) returns (DumpJobSpecificationResponse) {
         option (google.api.http) = {
             get: "/api/v1/project/{project_name}/job/{job_name}/dump"
         };
     }
+
     rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse) {
         option (google.api.http) = {
             post: "/api/v1/project"
@@ -44,15 +53,11 @@ service RuntimeService {
             body: "*"
         };
     }
-
     rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
         option (google.api.http) = {
             get: "/api/v1/project"
         };
     }
-
-    // TODO
-    // rpc ListJobs() returns () {}
 
     rpc RegisterInstance(RegisterInstanceRequest) returns (RegisterInstanceResponse) {
         option (google.api.http) = {
@@ -70,28 +75,40 @@ service RuntimeService {
             get: "/api/v1/window"
         };
     }
+
+    // DeployResourceSpecification migrate all resource specifications of a datastore in project
+    rpc DeployResourceSpecification(DeployResourceSpecificationRequest) returns (stream DeployResourceSpecificationResponse) {}
+    // ListResourceSpecification lists all resource specifications of a datastore in project
+    rpc ListResourceSpecification(ListResourceSpecificationRequest) returns (ListResourceSpecificationResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/project/{project_name}/datastore/{datastore_name}/resource"
+        };
+    }
+
+    // Datastore CRUD
+    rpc CreateResource(CreateResourceRequest) returns (CreateResourceResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/project/{project_name}/datastore/{datastore_name}/resource"
+            body: "*"
+        };
+    }
+    rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/project/{project_name}/datastore/{datastore_name}/resource/{resource_name}"
+        };
+    }
+    rpc UpdateResource(UpdateResourceRequest) returns (UpdateResourceResponse) {
+        option (google.api.http) = {
+            put: "/api/v1/project/{project_name}/datastore/{datastore_name}/resource"
+            body: "*"
+        };
+    }
+    // TODO(kush.sharma): unsupported ATM
+    //rpc DeleteResource(DeleteResourceRequest) returns (DeleteResourceResponse) {}
+
 }
 
-message VersionRequest {
-    string client = 1;
-}
-
-message VersionResponse {
-    string server = 1;
-}
-
-message DeploySpecificationRequest {
-    string project_name = 1; // unique project identifier
-    repeated JobSpecification jobs = 2;
-
-    // TODO: not implemented yet, default behaviour is to treat this true always till then
-    bool synchronize = 3; // deletes job that are not sent as part of this deployment
-}
-
-message DumpSpecificationRequest {
-    string project_name = 1;
-    string job_name = 2;
-}
+// models
 
 message ProjectSpecification {
     string name = 1;
@@ -109,7 +126,7 @@ message JobSpecification {
     string owner = 3;
 
     string start_date = 4;
-    string end_date = 5;
+    string end_date = 5; // optional
     string interval = 6;
 
     bool depends_on_past = 7;
@@ -124,9 +141,10 @@ message JobSpecification {
 
     repeated JobDependency dependencies = 14;
     map<string, string> assets = 15;
-    repeated JobSpecHook hooks = 16;
 
-    string description = 17;
+    repeated JobSpecHook hooks = 16; // optional
+
+    string description = 17; // optional
     repeated JobLabelItem labels = 18;
 }
 
@@ -145,7 +163,62 @@ message JobLabelItem {
     string value = 2;
 }
 
-message DeploySpecificationResponse {
+message ProjectSecret {
+    string name = 1;
+    string value = 2;
+}
+
+message InstanceSpec {
+    string state = 1;
+    google.protobuf.Timestamp scheduled_at = 2;
+    repeated InstanceSpecData data = 3;
+    string job_name = 4;
+}
+
+message InstanceSpecData {
+    string name = 1;
+    string value = 2;
+    string task = 3;
+    string type = 4;
+}
+
+message JobStatus {
+    string state = 1;
+    google.protobuf.Timestamp scheduled_at = 2;
+}
+
+// ResourceSpecification are datastore specification representation of a resource
+message ResourceSpecification {
+    int32 version = 1;
+    string name = 2;
+
+    string datastore = 3;
+    string type = 4;
+
+    google.protobuf.Struct spec = 5;
+    map<string, string> assets = 6;
+    map<string, string> labels = 7;
+}
+
+// rpc req/res
+
+message VersionRequest {
+    string client = 1;
+}
+
+message VersionResponse {
+    string server = 1;
+}
+
+message DeployJobSpecificationRequest {
+    string project_name = 1; // unique project identifier
+    repeated JobSpecification jobs = 2;
+
+    // TODO: not implemented yet, default behaviour is to treat this true always till then
+    bool synchronize = 3; // deletes job that are not sent as part of this deployment
+}
+
+message DeployJobSpecificationResponse {
     bool success = 1;
 
     // non ack responses are more of a progress/info response and
@@ -156,7 +229,20 @@ message DeploySpecificationResponse {
     string job_name = 4;
 }
 
-message DumpSpecificationResponse {
+message ListJobSpecificationRequest {
+    string project_name = 1;
+}
+
+message ListJobSpecificationResponse{
+    repeated JobSpecification jobs = 1;
+}
+
+message DumpJobSpecificationRequest {
+    string project_name = 1;
+    string job_name = 2;
+}
+
+message DumpJobSpecificationResponse {
     bool success = 1;
     string content = 2;
 }
@@ -181,29 +267,10 @@ message RegisterSecretResponse {
     string message = 2;
 }
 
-message ProjectSecret {
-    string name = 1;
-    string value = 2;
-}
-
 message ListProjectsRequest {}
 
 message ListProjectsResponse {
-    repeated ProjectSpecification all = 1;
-}
-
-message InstanceSpec {
-    string state = 1;
-    google.protobuf.Timestamp scheduled_at = 2;
-    repeated InstanceSpecData data = 3;
-    string job_name = 4;
-}
-
-message InstanceSpecData {
-    string name = 1;
-    string value = 2;
-    string task = 3;
-    string type = 4;
+    repeated ProjectSpecification projects = 1;
 }
 
 message RegisterInstanceRequest {
@@ -225,12 +292,7 @@ message JobStatusRequest {
 }
 
 message JobStatusResponse {
-    repeated JobStatus all = 1;
-}
-
-message JobStatus {
-    string state = 1;
-    google.protobuf.Timestamp scheduled_at = 2;
+    repeated JobStatus statuses = 1;
 }
 
 message GetWindowRequest {
@@ -244,4 +306,65 @@ message GetWindowRequest {
 message GetWindowResponse {
     google.protobuf.Timestamp start = 1;
     google.protobuf.Timestamp end = 2;
+}
+
+message DeployResourceSpecificationRequest {
+    string project_name = 1;
+    string datastore_name = 2;
+    repeated ResourceSpecification resources = 3;
+}
+
+message DeployResourceSpecificationResponse {
+    bool success = 1;
+
+    // non ack responses are more of a progress/info response and
+    // and not success or failure status
+    bool ack = 2;
+
+    string message = 3;
+    string resource_name = 4;
+}
+
+// ListResourceSpecificationRequest lists all resource specifications of a datastore in project
+message ListResourceSpecificationRequest {
+    string project_name = 1;
+    string datastore_name = 2;
+}
+
+message ListResourceSpecificationResponse {
+    repeated ResourceSpecification resources = 1;
+}
+
+message CreateResourceRequest {
+    string project_name = 1;
+    string datastore_name = 2;
+    ResourceSpecification resource = 3;
+}
+
+message CreateResourceResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message ReadResourceRequest {
+    string project_name = 1;
+    string datastore_name = 2;
+    string resource_name = 3;
+}
+
+message ReadResourceResponse {
+    bool success = 1;
+    string message = 2;
+    ResourceSpecification resource = 3;
+}
+
+message UpdateResourceRequest {
+    string project_name = 1;
+    string datastore_name = 2;
+    ResourceSpecification resource = 3;
+}
+
+message UpdateResourceResponse {
+    bool success = 1;
+    string message = 2;
 }

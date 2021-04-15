@@ -15,6 +15,7 @@ import (
 )
 
 func TestJobRepository(t *testing.T) {
+	ctx := context.Background()
 	t.Run("Save", func(t *testing.T) {
 		testJob := models.Job{
 			Name:     "test",
@@ -44,7 +45,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 			}
 
-			err := repo.Save(testJob)
+			err := repo.Save(ctx, testJob)
 			assert.Nil(t, err)
 			assert.Equal(t, string(testJob.Contents), out.String())
 		})
@@ -72,7 +73,7 @@ func TestJobRepository(t *testing.T) {
 				Suffix:       ".py",
 			}
 
-			err := repo.Save(testJob)
+			err := repo.Save(ctx, testJob)
 			assert.Nil(t, err)
 			assert.Equal(t, string(testJob.Contents), out.String())
 		})
@@ -96,7 +97,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 			}
 
-			err := repo.Save(testJob)
+			err := repo.Save(ctx, testJob)
 			assert.Equal(t, writeError, err)
 		})
 		t.Run("should return error if opening the object fails", func(t *testing.T) {
@@ -112,7 +113,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket:       bucket,
 				Prefix:       prefix,
 			}
-			err := repo.Save(testJob)
+			err := repo.Save(ctx, testJob)
 			assert.Equal(t, bucketError, err)
 		})
 	})
@@ -143,7 +144,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(ctx, jobName)
 
 			assert.Nil(t, err)
 		})
@@ -156,7 +157,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete("")
+			err := repo.Delete(ctx, "")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return ErrNoSuchDAG when job is not exist", func(t *testing.T) {
@@ -180,7 +181,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(ctx, jobName)
 
 			assert.Equal(t, models.ErrNoSuchJob, err)
 		})
@@ -206,7 +207,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(ctx, jobName)
 
 			assert.Equal(t, anotherError, err)
 		})
@@ -233,7 +234,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(ctx, jobName)
 
 			assert.Equal(t, anError, err)
 		})
@@ -252,7 +253,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(jobName)
+			err := repo.Delete(ctx, jobName)
 
 			assert.NotNil(t, err)
 		})
@@ -300,7 +301,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			result, err := repo.GetByName(exampleJob.Name)
+			result, err := repo.GetByName(ctx, exampleJob.Name)
 
 			assert.Nil(t, err)
 			assert.Equal(t, exampleJob, result)
@@ -334,7 +335,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			_, err := repo.GetByName(nonExistentDAGName)
+			_, err := repo.GetByName(ctx, nonExistentDAGName)
 
 			assert.Equal(t, models.ErrNoSuchJob, err)
 		})
@@ -358,7 +359,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			_, err := repo.GetByName("random-job")
+			_, err := repo.GetByName(ctx, "random-job")
 			assert.Equal(t, expected, err)
 		})
 		t.Run("should return error when failed to get object info", func(t *testing.T) {
@@ -391,7 +392,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			_, err := repo.GetByName(nonExistentDAGName)
+			_, err := repo.GetByName(ctx, nonExistentDAGName)
 
 			assert.Equal(t, anotherError, err)
 		})
@@ -406,7 +407,7 @@ func TestJobRepository(t *testing.T) {
 				Client:       client,
 				ObjectReader: or,
 			}
-			_, err := repo.GetByName("")
+			_, err := repo.GetByName(ctx, "")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return error when to get reader", func(t *testing.T) {
@@ -438,7 +439,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			_, err := repo.GetByName(exampleJob.Name)
+			_, err := repo.GetByName(ctx, exampleJob.Name)
 
 			assert.Equal(t, anotherError, err)
 		})
@@ -477,7 +478,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			_, err := repo.GetByName(exampleJob.Name)
+			_, err := repo.GetByName(ctx, exampleJob.Name)
 
 			assert.Equal(t, anotherError, err)
 		})
@@ -550,7 +551,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			result, err := repo.GetAll()
+			result, err := repo.GetAll(ctx)
 
 			assert.Nil(t, err)
 			assert.Equal(t, jobs, result)
@@ -576,7 +577,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket:       bucket,
 				Prefix:       prefix,
 			}
-			_, err := repo.GetAll()
+			_, err := repo.GetAll(ctx)
 			assert.Equal(t, expected, err)
 		})
 		t.Run("should return error when failed to get list of the files", func(t *testing.T) {
@@ -610,7 +611,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket:       bucket,
 				Prefix:       prefix,
 			}
-			_, err := repo.GetAll()
+			_, err := repo.GetAll(ctx)
 			assert.Equal(t, expected, err)
 		})
 		t.Run("should return error when failed to get the reader of a file", func(t *testing.T) {
@@ -652,7 +653,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket:       bucket,
 				Prefix:       prefix,
 			}
-			_, err := repo.GetAll()
+			_, err := repo.GetAll(ctx)
 
 			assert.Equal(t, err, getReaderError)
 		})
@@ -699,7 +700,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			_, err := repo.GetAll()
+			_, err := repo.GetAll(ctx)
 
 			assert.NotNil(t, err)
 		})
@@ -768,7 +769,7 @@ func TestJobRepository(t *testing.T) {
 				Prefix:       prefix,
 				Suffix:       suffix,
 			}
-			result, err := repo.GetAll()
+			result, err := repo.GetAll(ctx)
 
 			assert.Nil(t, err)
 			assert.Equal(t, jobs, result)

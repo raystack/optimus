@@ -8,13 +8,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	testMock "github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	testMock "github.com/stretchr/testify/mock"
 )
 
 func TestService(t *testing.T) {
+	ctx := context.Background()
 	t.Run("Create", func(t *testing.T) {
 		t.Run("should create a new JobSpec and store in repository", func(t *testing.T) {
 			jobSpec := models.JobSpec{
@@ -131,7 +132,7 @@ func TestService(t *testing.T) {
 
 			// used to store compiled job specs
 			jobRepo := new(mock.JobRepository)
-			jobRepo.On("GetAll").Return(jobs, nil)
+			jobRepo.On("ListNames", ctx).Return([]string{"test"}, nil)
 			defer jobRepo.AssertExpectations(t)
 
 			jobRepoFac := new(mock.JobRepoFactory)
@@ -154,11 +155,11 @@ func TestService(t *testing.T) {
 			// compile to dag and save
 			for idx, compiledJob := range jobs {
 				compiler.On("Compile", jobSpecsAfterPriorityResolve[idx], projSpec).Return(compiledJob, nil)
-				jobRepo.On("Save", compiledJob).Return(nil)
+				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
 			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, nil)
-			err := svc.Sync(projSpec, nil)
+			err := svc.Sync(ctx, projSpec, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should delete job specs from target store if there are existing specs that are no longer present in job specs", func(t *testing.T) {
@@ -236,7 +237,7 @@ func TestService(t *testing.T) {
 			defer compiler.AssertExpectations(t)
 
 			jobSpecRepoFac.On("New", projSpec).Return(jobSpecRepo)
-			jobRepo.On("GetAll").Return(jobs, nil)
+			jobRepo.On("ListNames", ctx).Return([]string{"test", "test2"}, nil)
 
 			// resolve dependencies
 			depenResolver.On("Resolve", projSpec, jobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
@@ -247,17 +248,17 @@ func TestService(t *testing.T) {
 
 			// compile to dag and save the first one
 			compiler.On("Compile", jobSpecsAfterPriorityResolve[0], projSpec).Return(jobs[0], nil)
-			jobRepo.On("Save", jobs[0]).Return(nil)
+			jobRepo.On("Save", ctx, jobs[0]).Return(nil)
 
 			// fetch currently stored
 			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
 
 			// delete unwanted
 			//jobSpecRepo.On("Delete", jobs[1].Name).Return(nil)
-			jobRepo.On("Delete", jobs[1].Name).Return(nil)
+			jobRepo.On("Delete", ctx, jobs[1].Name).Return(nil)
 
 			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, nil)
-			err := svc.Sync(projSpec, nil)
+			err := svc.Sync(ctx, projSpec, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should batch dependency resolution errors if any for all jobs", func(t *testing.T) {
@@ -301,7 +302,7 @@ func TestService(t *testing.T) {
 			defer depenResolver.AssertExpectations(t)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, depenResolver, nil, nil)
-			err := svc.Sync(projSpec, nil)
+			err := svc.Sync(ctx, projSpec, nil)
 			assert.NotNil(t, err)
 			assert.True(t, strings.Contains(err.Error(), "2 errors occurred"))
 			assert.True(t, strings.Contains(err.Error(), "error test"))
@@ -365,7 +366,7 @@ func TestService(t *testing.T) {
 
 			// used to store compiled job specs
 			jobRepo := new(mock.JobRepository)
-			jobRepo.On("GetAll").Return(jobs, nil)
+			jobRepo.On("ListNames", ctx).Return([]string{"test"}, nil)
 			defer jobRepo.AssertExpectations(t)
 
 			jobRepoFac := new(mock.JobRepoFactory)
@@ -396,11 +397,11 @@ func TestService(t *testing.T) {
 			// compile to dag and save
 			for idx, compiledJob := range jobs {
 				compiler.On("Compile", jobSpecsAfterPriorityResolve[idx], projSpec).Return(compiledJob, nil)
-				jobRepo.On("Save", compiledJob).Return(nil)
+				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
 			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, metaSvcFact)
-			err := svc.Sync(projSpec, nil)
+			err := svc.Sync(ctx, projSpec, nil)
 			assert.Nil(t, err)
 		})
 	})

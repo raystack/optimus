@@ -31,8 +31,8 @@ type JobRepository struct {
 	fileExtension string
 }
 
-func (repo *JobRepository) Save(j models.Job) (err error) {
-	dst, err := repo.ObjectWriter.NewWriter(context.Background(), repo.Bucket, repo.pathFor(j))
+func (repo *JobRepository) Save(ctx context.Context, j models.Job) (err error) {
+	dst, err := repo.ObjectWriter.NewWriter(ctx, repo.Bucket, repo.pathFor(j))
 	if err != nil {
 		return err
 	}
@@ -50,8 +50,7 @@ func (repo *JobRepository) Save(j models.Job) (err error) {
 	return err
 }
 
-func (repo *JobRepository) Delete(jobName string) error {
-	ctx := context.Background()
+func (repo *JobRepository) Delete(ctx context.Context, jobName string) error {
 	if strings.TrimSpace(jobName) == "" {
 		return errEmptyJobName
 	}
@@ -72,7 +71,7 @@ func (repo *JobRepository) Delete(jobName string) error {
 		return err
 	}
 
-	err = objectHandle.Delete(context.Background())
+	err = objectHandle.Delete(ctx)
 	if err != nil {
 		return err
 	}
@@ -80,9 +79,7 @@ func (repo *JobRepository) Delete(jobName string) error {
 	return nil
 }
 
-func (repo *JobRepository) GetAll() ([]models.Job, error) {
-	ctx := context.Background()
-
+func (repo *JobRepository) GetAll(ctx context.Context) ([]models.Job, error) {
 	bucket := repo.Client.Bucket(repo.Bucket)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {
@@ -97,11 +94,9 @@ func (repo *JobRepository) GetAll() ([]models.Job, error) {
 	var objAttrs []*storage.ObjectAttrs
 	for {
 		objAttr, err := it.Next()
-
 		if err != nil && err != iterator.Done {
 			return nil, err
 		}
-
 		if err == iterator.Done {
 			break
 		}
@@ -134,12 +129,40 @@ func (repo *JobRepository) GetAll() ([]models.Job, error) {
 	return jobs, nil
 }
 
-func (repo *JobRepository) GetByName(jobName string) (models.Job, error) {
+func (repo *JobRepository) ListNames(ctx context.Context) ([]string, error) {
+	bucket := repo.Client.Bucket(repo.Bucket)
+	_, err := bucket.Attrs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query := storage.Query{
+		Prefix: repo.Prefix,
+	}
+	it := bucket.Objects(ctx, &query)
+
+	var jobNames []string
+	for {
+		objAttr, err := it.Next()
+		if err != nil && err != iterator.Done {
+			return nil, err
+		}
+		if err == iterator.Done {
+			break
+		}
+
+		if strings.HasSuffix(objAttr.Name, repo.Suffix) {
+			jobNames = append(jobNames, repo.jobNameFromPath(objAttr.Name))
+		}
+	}
+	return jobNames, nil
+}
+
+func (repo *JobRepository) GetByName(ctx context.Context, jobName string) (models.Job, error) {
 	if strings.TrimSpace(jobName) == "" {
 		return models.Job{}, errEmptyJobName
 	}
 
-	ctx := context.Background()
 	bucket := repo.Client.Bucket(repo.Bucket)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {

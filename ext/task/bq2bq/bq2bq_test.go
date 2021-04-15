@@ -143,7 +143,7 @@ func TestBQ2BQ(t *testing.T) {
 	t.Run("GenerateDestination", func(t *testing.T) {
 		t.Run("should properly generate a destination provided correct config inputs", func(t *testing.T) {
 			b2b := &bq2bq.BQ2BQ{}
-			dst, err := b2b.GenerateDestination(models.UnitData{
+			dst, err := b2b.GenerateDestination(models.GenerateDestinationRequest{
 				Config: models.JobSpecConfigs{
 					{
 						Name:  "PROJECT",
@@ -160,11 +160,11 @@ func TestBQ2BQ(t *testing.T) {
 				},
 			})
 			assert.Nil(t, err)
-			assert.Equal(t, "proj.datas.tab", dst)
+			assert.Equal(t, "proj.datas.tab", dst.Destination)
 		})
 		t.Run("should throw an error if any on of the config is missing to generate destination", func(t *testing.T) {
 			b2b := &bq2bq.BQ2BQ{}
-			_, err := b2b.GenerateDestination(models.UnitData{
+			_, err := b2b.GenerateDestination(models.GenerateDestinationRequest{
 				Config: models.JobSpecConfigs{
 					{
 						Name:  "DATASET",
@@ -326,7 +326,7 @@ func TestBQ2BQ(t *testing.T) {
 
 			for _, test := range testCases {
 				t.Run(test.Name, func(t *testing.T) {
-					data := models.UnitData{
+					data := models.GenerateDependenciesRequest{
 						Assets: map[string]string{
 							"query.sql": test.Query,
 						},
@@ -354,7 +354,7 @@ func TestBQ2BQ(t *testing.T) {
 		})
 	})
 
-	t.Run("FindDependenciesWithAPIs", func(t *testing.T) {
+	t.Run("FindDependenciesWithDryRun", func(t *testing.T) {
 		type args struct {
 			query string
 		}
@@ -454,13 +454,13 @@ SELECT * FROM ` + "`project.playground.sample_replace_view`" + ` LIMIT 1000
 				defer client.AssertExpectations(t)
 
 				b := &bq2bq.BQ2BQ{}
-				got, err := b.FindDependenciesWithAPIs(ctx, client, tt.args.query)
+				got, err := b.FindDependenciesWithDryRun(ctx, client, tt.args.query)
 				if (err != nil) != tt.wantErr {
-					t.Errorf("FindDependenciesWithAPIs() error = %v, wantErr %v", err, tt.wantErr)
+					t.Errorf("FindDependenciesWithDryRun() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
 				if !reflect.DeepEqual(got, tt.wantFromFn) {
-					t.Errorf("FindDependenciesWithAPIs() got = %v, want %v", got, tt.wantFromFn)
+					t.Errorf("FindDependenciesWithDryRun() got = %v, want %v", got, tt.wantFromFn)
 				}
 			})
 		}
@@ -469,7 +469,7 @@ SELECT * FROM ` + "`project.playground.sample_replace_view`" + ` LIMIT 1000
 	t.Run("GenerateDependencies", func(t *testing.T) {
 		t.Run("should generate dependencies using BQ APIs for select statements", func(t *testing.T) {
 			expectedDeps := []string{"proj:dataset.table1"}
-			data := models.UnitData{
+			data := models.GenerateDependenciesRequest{
 				Assets: map[string]string{
 					"query.sql": "Select * from proj.dataset.table1",
 				},
@@ -519,7 +519,6 @@ SELECT * FROM ` + "`project.playground.sample_replace_view`" + ` LIMIT 1000
 
 			client := new(bqClientMock)
 			client.On("Query", data.Assets[bq2bq.QueryFileName]).Return(qry)
-			client.On("Close").Return(nil)
 			defer client.AssertExpectations(t)
 
 			bqClientFac := new(bqClientFactoryMock)
@@ -534,7 +533,7 @@ SELECT * FROM ` + "`project.playground.sample_replace_view`" + ` LIMIT 1000
 				t.Errorf("error = %v", err)
 				return
 			}
-			if !reflect.DeepEqual(got, expectedDeps) {
+			if !reflect.DeepEqual(got.Dependencies, expectedDeps) {
 				t.Errorf("got = %v, want %v", got, expectedDeps)
 			}
 		})
@@ -543,7 +542,7 @@ SELECT * FROM ` + "`project.playground.sample_replace_view`" + ` LIMIT 1000
 				"proj:dataset.table1",
 				"proj:dataset.table2",
 			}
-			data := models.UnitData{
+			data := models.GenerateDependenciesRequest{
 				Assets: map[string]string{
 					"query.sql": `
 DECLARE t1 timestamp;
@@ -639,7 +638,6 @@ Select * from proj.dataset.table2;
 			client.On("Query", data.Assets[bq2bq.QueryFileName]).Return(qryScript)
 			client.On("Query", fmt.Sprintf(bq2bq.FakeSelectStmt, "proj.dataset.table1")).Return(qrySelect1)
 			client.On("Query", fmt.Sprintf(bq2bq.FakeSelectStmt, "proj.dataset.table2")).Return(qrySelect2)
-			client.On("Close").Return(nil)
 			defer client.AssertExpectations(t)
 
 			bqClientFac := new(bqClientFactoryMock)
@@ -654,7 +652,7 @@ Select * from proj.dataset.table2;
 				t.Errorf("error = %v", err)
 				return
 			}
-			if !reflect.DeepEqual(got, expectedDeps) {
+			if !reflect.DeepEqual(got.Dependencies, expectedDeps) {
 				t.Errorf("got = %v, want %v", got, expectedDeps)
 			}
 		})

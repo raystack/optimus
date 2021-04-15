@@ -64,6 +64,14 @@ func (srv *Service) GetByName(name string, proj models.ProjectSpec) (models.JobS
 	return jobSpec, nil
 }
 
+func (srv *Service) GetAll(proj models.ProjectSpec) ([]models.JobSpec, error) {
+	jobSpecs, err := srv.jobSpecRepoFactory.New(proj).GetAll()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to retrive jobs")
+	}
+	return jobSpecs, nil
+}
+
 // Dump takes a jobSpec of a project, resolves dependencies.priorities and returns the compiled Job
 func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (models.Job, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(projSpec)
@@ -97,7 +105,7 @@ func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (m
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
 // assign proper priority weights, compiles it and uploads it to the destination
 // store
-func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Observer) error {
+func (srv *Service) Sync(ctx context.Context, proj models.ProjectSpec, progressObserver progress.Observer) error {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(proj)
 
 	jobSpecs, err := srv.getDependencyResolvedSpecs(proj, jobSpecRepo, progressObserver)
@@ -112,12 +120,12 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 	}
 	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
 
-	jobRepo, err := srv.jobRepoFactory.New(context.Background(), proj)
+	jobRepo, err := srv.jobRepoFactory.New(ctx, proj)
 	if err != nil {
 		return err
 	}
 
-	if err = srv.uploadSpecs(jobSpecs, jobRepo, proj, progressObserver); err != nil {
+	if err = srv.uploadSpecs(ctx, jobSpecs, jobRepo, proj, progressObserver); err != nil {
 		return err
 	}
 
@@ -125,27 +133,22 @@ func (srv *Service) Sync(proj models.ProjectSpec, progressObserver progress.Obse
 		return err
 	}
 
-	// get all the stored jobs
-	jobs, err := jobRepo.GetAll()
+	// get all the stored job names
+	destJobNames, err := jobRepo.ListNames(ctx)
 	if err != nil {
 		return err
 	}
 
 	// filter what we need to keep/delete
-	var destjobNames []string
-	for _, job := range jobs {
-		destjobNames = append(destjobNames, job.Name)
-	}
 	var sourceJobNames []string
 	for _, jobSpec := range jobSpecs {
 		sourceJobNames = append(sourceJobNames, jobSpec.Name)
 	}
-	jobsToDelete := setSubstract(destjobNames, sourceJobNames)
+	jobsToDelete := setSubstract(destJobNames, sourceJobNames)
 	jobsToDelete = jobDeletionFilter(jobsToDelete)
-
 	for _, dagName := range jobsToDelete {
 		// delete compiled spec
-		if err := jobRepo.Delete(dagName); err != nil {
+		if err := jobRepo.Delete(ctx, dagName); err != nil {
 			return err
 		}
 		srv.notifyProgress(progressObserver, &EventJobRemoteDelete{dagName})
@@ -188,7 +191,7 @@ func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, jobSpecR
 }
 
 // uploadSpecs compiles a Job and uploads it to the destination store
-func (srv *Service) uploadSpecs(jobSpecs []models.JobSpec, jobRepo store.JobRepository,
+func (srv *Service) uploadSpecs(ctx context.Context, jobSpecs []models.JobSpec, jobRepo store.JobRepository,
 	proj models.ProjectSpec, progressObserver progress.Observer) error {
 
 	runner := parallel.NewRunner()
@@ -203,7 +206,7 @@ func (srv *Service) uploadSpecs(jobSpecs []models.JobSpec, jobRepo store.JobRepo
 				Name: currentSpec.Name,
 			})
 
-			if err = jobRepo.Save(compiledJob); err != nil {
+			if err = jobRepo.Save(ctx, compiledJob); err != nil {
 				return nil, err
 			}
 			return nil, nil

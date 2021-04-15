@@ -7,6 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/fatih/color v1.7.0
+	github.com/fatih/structs v1.1.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
 	github.com/gernest/wow v0.1.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -26,6 +27,7 @@ require (
 	github.com/kushsharma/parallel v0.0.0-20210331050424-5719e027cd64
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/mitchellh/mapstructure v1.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.12
@@ -47,7 +49,7 @@ require (
 	google.golang.org/protobuf v1.25.1-0.20201208041424-160c7477e0e8
 	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gorm.io/datatypes v1.0.0
 )
 

@@ -1,0 +1,173 @@
+package models
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/odpf/optimus/core/progress"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+)
+
+const (
+	ResourceTypeTable   ResourceType = "table"
+	ResourceTypeDataset ResourceType = "dataset"
+	ResourceTypeView    ResourceType = "view"
+)
+
+type ResourceType string
+
+func (r ResourceType) String() string {
+	return string(r)
+}
+
+type ResourceSpec struct {
+	ID uuid.UUID
+
+	Version   int
+	Name      string
+	Type      ResourceType
+	Datastore Datastorer
+
+	Spec   interface{}
+	Assets ResourceAssets
+	Labels map[string]string
+}
+
+type ResourceAssets map[string]string
+
+func (r ResourceAssets) GetByName(n string) (string, bool) {
+	v, ok := r[n]
+	return v, ok
+}
+
+// Datastorer needs to be satisfied with supported data store types
+// Datastore CRUD should be safe from race conditions
+type Datastorer interface {
+	Name() string
+	Description() string
+	Types() map[ResourceType]DatastoreTypeController
+
+	// CreateResource will create the requested resource if not exists
+	// if already exists, do nothing
+	CreateResource(context.Context, CreateResourceRequest) error
+
+	// UpdateResource will create the requested resource if not exists
+	// if already exists, update it
+	UpdateResource(context.Context, UpdateResourceRequest) error
+
+	// ReadResource will read the requested resource if exists else error
+	ReadResource(context.Context, ReadResourceRequest) (ReadResourceResponse, error)
+
+	// DeleteResource will delete the requested resource if exists
+	DeleteResource(context.Context, DeleteResourceRequest) error
+}
+
+type DatastoreTypeController interface {
+	Adapter() DatastoreSpecAdapter
+	Validator() DatastoreSpecValidator
+
+	// assets that will be created as templates when the resource is created
+	// for the first time
+	DefaultAssets() map[string]string
+}
+
+// DatastoreSpecAdapter dictates how spec will be serialized/deserialized in
+// various wire formats if needed
+type DatastoreSpecAdapter interface {
+	ToYaml(spec ResourceSpec) ([]byte, error)
+	FromYaml([]byte) (ResourceSpec, error)
+
+	ToProtobuf(ResourceSpec) ([]byte, error)
+	FromProtobuf([]byte) (ResourceSpec, error)
+}
+
+// DatastoreSpecValidator verifies if resource is as expected, in case of validation
+// failure, return with non nil error
+type DatastoreSpecValidator func(spec ResourceSpec) error
+
+type CreateResourceRequest struct {
+	Resource ResourceSpec
+	Project  ProjectSpec
+}
+
+type UpdateResourceRequest struct {
+	Resource ResourceSpec
+	Project  ProjectSpec
+}
+
+type ResourceExistsRequest struct {
+	Resource ResourceSpec
+	Project  ProjectSpec
+}
+
+type ReadResourceRequest struct {
+	Resource ResourceSpec
+	Project  ProjectSpec
+}
+
+type ReadResourceResponse struct {
+	Resource ResourceSpec
+}
+
+type DeleteResourceRequest struct {
+	Resource ResourceSpec
+	Project  ProjectSpec
+}
+
+var (
+	DatastoreRegistry = &supportedDatastore{
+		data: map[string]Datastorer{},
+	}
+	ErrUnsupportedDatastore = errors.New("unsupported datastore requested")
+)
+
+type DatastoreRepo interface {
+	GetByName(string) (Datastorer, error)
+	GetAll() []Datastorer
+	Add(Datastorer) error
+}
+
+type supportedDatastore struct {
+	data map[string]Datastorer
+}
+
+func (s *supportedDatastore) GetByName(name string) (Datastorer, error) {
+	if unit, ok := s.data[name]; ok {
+		return unit, nil
+	}
+	return nil, errors.Wrap(ErrUnsupportedDatastore, name)
+}
+
+func (s *supportedDatastore) GetAll() []Datastorer {
+	list := []Datastorer{}
+	for _, unit := range s.data {
+		list = append(list, unit)
+	}
+	return list
+}
+
+func (s *supportedDatastore) Add(newUnit Datastorer) error {
+	if newUnit.Name() == "" {
+		return fmt.Errorf("datastore name cannot be empty")
+	}
+
+	// check if name is already used
+	if _, ok := s.data[newUnit.Name()]; ok {
+		return fmt.Errorf("datastore name already in use %s", newUnit.Name())
+	}
+
+	s.data[newUnit.Name()] = newUnit
+	return nil
+}
+
+type DatastoreService interface {
+	// does not really fetch resource metadata, just the user provided spec
+	GetAll(spec ProjectSpec, datastoreName string) ([]ResourceSpec, error)
+
+	CreateResource(ctx context.Context, spec ProjectSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
+	UpdateResource(ctx context.Context, spec ProjectSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
+	ReadResource(ctx context.Context, spec ProjectSpec, datastoreName, name string) (ResourceSpec, error)
+	DeleteResource(ctx context.Context, spec ProjectSpec, datastoreName, name string) error
+}

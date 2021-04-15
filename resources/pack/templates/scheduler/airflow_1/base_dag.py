@@ -34,8 +34,8 @@ default_args = {
     "retries": DAG_RETRIES,
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
     "priority_weight": {{.Job.Task.Priority}},
-    "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02" | quote }}, "%Y-%m-%d"),
-    {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02" | quote}},"%Y-%m-%d"),{{- else -}}{{- end}}
+    "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02T15:04:05" | quote }}, "%Y-%m-%dT%H:%M:%S"),
+    {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}},"%Y-%m-%dT%H:%M:%S"),{{- else -}}{{- end}}
     "on_failure_callback": alert_failed_to_slack,
     "weight_rule": WeightRule.ABSOLUTE
 }
@@ -47,13 +47,13 @@ dag = DAG(
     catchup ={{ if .Job.Behavior.CatchUp }} True{{ else }} False{{ end }}
 )
 
-transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
+transformation_{{.Job.Task.Unit.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{}".format("{{.Job.Task.Unit.GetImage}}"),
+    image = "{}".format("{{.Job.Task.Unit.Image}}"),
     cmds=[],
-    name="{{.Job.Task.Unit.GetName | replace "_" "-" }}",
-    task_id={{.Job.Task.Unit.GetName | quote}},
+    name="{{.Job.Task.Unit.Name | replace "_" "-" }}",
+    task_id={{.Job.Task.Unit.Name | quote}},
     get_logs=True,
     dag=dag,
     in_cluster=True,
@@ -65,7 +65,7 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
         "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME":'{{.Hostname}}',
         "JOB_LABELS":'{{.Job.GetLabelsAsString}}',
         "JOB_DIR":'/data', "PROJECT":'{{.Project.Name}}',
-        "TASK_TYPE":'{{$.InstanceTypeTransformation}}', "TASK_NAME":'{{.Job.Task.Unit.GetName}}',
+        "TASK_TYPE":'{{$.InstanceTypeTransformation}}', "TASK_NAME":'{{.Job.Task.Unit.Name}}',
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
     },
     reattach_on_restart=True,
@@ -73,13 +73,13 @@ transformation_{{.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "
 
 # hooks loop start
 {{ range $_, $t := .Job.Hooks }}
-hook_{{$t.Unit.GetName}} = SuperKubernetesPodOperator(
+hook_{{$t.Unit.Name}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{{$t.Unit.GetImage}}",
+    image = "{{$t.Unit.Image}}",
     cmds=[],
-    name="hook_{{$t.Unit.GetName}}",
-    task_id="hook_{{$t.Unit.GetName}}",
+    name="hook_{{$t.Unit.Name}}",
+    task_id="hook_{{$t.Unit.Name}}",
     get_logs=True,
     dag=dag,
     in_cluster=True,
@@ -91,7 +91,7 @@ hook_{{$t.Unit.GetName}} = SuperKubernetesPodOperator(
         "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOSTNAME":'{{$.Hostname}}',
         "JOB_LABELS":'{{$.Job.GetLabelsAsString}}',
         "JOB_DIR":'/data', "PROJECT":'{{$.Project.Name}}',
-        "TASK_TYPE":'{{$.InstanceTypeHook}}', "TASK_NAME":'{{$t.Unit.GetName}}',
+        "TASK_TYPE":'{{$.InstanceTypeHook}}', "TASK_NAME":'{{$t.Unit.Name}}',
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
    },
@@ -109,7 +109,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     window_size = {{$dependency.Job.Task.Window.Size.Hours }},
     window_offset = {{$dependency.Job.Task.Window.Offset.Hours }},
     window_truncate_upto = "{{$dependency.Job.Task.Window.TruncateTo}}",
-    task_id = "wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.GetName}}",
+    task_id = "wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.Name}}",
     poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
@@ -123,7 +123,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     optimus_job="{{$dependency.Job.Name}}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.GetName}}",
+    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.Name}}",
     dag=dag
 )
 {{- end -}}
@@ -134,22 +134,22 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 
 # upstream sensors -> base transformation task
 {{- range $i, $t := $.Job.Dependencies }}
-wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
+wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$.Job.Task.Unit.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 
 # set inter-dependencies between task and hooks
 {{- range $_, $task := .Job.Hooks }}
-{{- if eq $task.Unit.GetType $.HookTypePre }}
-hook_{{$task.Unit.GetName}} >> transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- if eq $task.Unit.Type $.HookTypePre }}
+hook_{{$task.Unit.Name}} >> transformation_{{$.Job.Task.Unit.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end -}}
-{{- if eq $task.Unit.GetType $.HookTypePost }}
-transformation_{{$.Job.Task.Unit.GetName | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$task.Unit.GetName}}
+{{- if eq $task.Unit.Type $.HookTypePost }}
+transformation_{{$.Job.Task.Unit.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$task.Unit.Name}}
 {{- end -}}
 {{- end }}
 
 # set inter-dependencies between hooks and hooks
 {{- range $_, $t := .Job.Hooks }}
 {{- range $_, $depend := $t.DependsOn }}
-hook_{{$depend.Unit.GetName}} >> hook_{{$t.Unit.GetName}}
+hook_{{$depend.Unit.Name}} >> hook_{{$t.Unit.Name}}
 {{- end }}
 {{- end }}
