@@ -81,6 +81,8 @@ func ensureStandardView(ctx context.Context, tableHandle bqiface.Table, t BQTabl
 	for k, v := range t.Metadata.Labels {
 		m.SetLabel(k, v)
 	}
-	_, err = tableHandle.Update(ctx, m, meta.ETag)
+	if _, err := tableHandle.Update(ctx, m, meta.ETag); err != nil {
+		return err
+	}
 	return nil
 }

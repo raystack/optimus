@@ -39,7 +39,7 @@ func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.C
 	return ensureTable(ctx, table, bqResource, upsert)
 }
 
-// ensureTable make sures table exits with provided config and update if required
+// ensureTable make sures table exists with provided config and update if required
 func ensureTable(ctx context.Context, tableHandle bqiface.Table, t BQTable, upsert bool) error {
 	meta, err := tableHandle.Metadata(ctx)
 	if err != nil {

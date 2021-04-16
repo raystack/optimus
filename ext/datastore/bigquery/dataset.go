@@ -22,7 +22,7 @@ var (
 func createDataset(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
 	bqResource, ok := spec.Spec.(BQDataset)
 	if !ok {
-		return errors.New("failed to read table spec for bigquery")
+		return errors.New("failed to read dataset spec for bigquery")
 	}
 
 	// inherit from base
@@ -68,9 +68,12 @@ func ensureDataset(ctx context.Context, datasetHandle bqiface.Dataset, bqResourc
 	if bqResource.Metadata.DefaultTableExpiration > 0 {
 		m.DefaultTableExpiration = time.Hour * time.Duration(bqResource.Metadata.DefaultTableExpiration)
 	}
-	_, err = datasetHandle.Update(ctx, bqiface.DatasetMetadataToUpdate{
+	datasetMetadataToUpdate := bqiface.DatasetMetadataToUpdate{
 		DatasetMetadataToUpdate: m,
-	}, meta.ETag)
+	}
+	if _, err := datasetHandle.Update(ctx, datasetMetadataToUpdate, meta.ETag); err != nil {
+		return err
+	}
 	return nil
 }
 
