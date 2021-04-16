@@ -86,9 +86,9 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 }
 
 func bqFieldModeFrom(fm fieldMode) string {
-	if fm.repeated == true {
+	if fm.repeated {
 		return "repeated"
-	} else if fm.required == true {
+	} else if fm.required {
 		return "required"
 	}
 	return "nullable"
