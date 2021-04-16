@@ -7,8 +7,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	pb "github.com/odpf/optimus/api/proto/odpf/metadata/optimus"
 	"github.com/odpf/optimus/models"
-	pb "github.com/odpf/optimus/proton/odpf/metadata/optimus"
 )
 
 type JobAdapter struct {

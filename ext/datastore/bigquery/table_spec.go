@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
-	v1 "github.com/odpf/optimus/api/proto/v1"
+	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 )
 
@@ -180,7 +180,6 @@ func (s tableSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-
 	resSpec := &v1.ResourceSpecification{
 		Version:   int32(optResource.Version),
 		Name:      optResource.Name,
