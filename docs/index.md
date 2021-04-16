@@ -3,18 +3,19 @@
 Welcome to optimus documentation. We're still a work in progress, 
 so expect more documentation soon!
 
-Optimus was built to supersede bi_apps and bi-airflow, the current stack that powers
-GOJEK's data warehouse. It started off originally as a scaffolding tool, 
-but has grown beyond that and handles things like bigquery table management, 
-dependency resolution. This document describes the concepts that Optimus works 
-with, so that you can have a better understanding of how it's supposed to be used.
+Optimus is an ETL orchestration tool that helps manage warehouse resources and 
+schedule transformation over cron interval. Warehouses like Bigquery can be used
+to create, update, read, delete different types of resources(dataset/table/standard view).
+Similarly, jobs can be SQL transformations taking inputs from single/multiple
+source tables executing over fixed schedule interval. Optimus was made from start
+to be extensible, which is, adding support of different kind of warehouses, 
+transformers can be done easily.
 
 ## Features
 - BigQuery
   - Schedule BigQuery transformation
   - Query compile time templating (variables, loop, if statements, macros, etc)
-  - Table creation
-  - BigQuery View creation
+  - BigQuery Dataset/Table/View creation
   - BigQuery UDF creation **[in roadmap]**
   - Audit/Profile BigQuery tables
   - Sink BigQuery tables to Kafka
@@ -33,7 +34,7 @@ with, so that you can have a better understanding of how it's supposed to be use
   *A1* then it is possible to schedule same job for a date range as *A* and 
   thereafter as *A1*. **[in roadmap]**
 - Git based specification management
-- HTTP/GRPC based specification management **[in roadmap]**
+- GRPC/REST based specification management **[in roadmap]**
   
 NOTE: This is still in early stages and very close to use for production.
 We are taking feedback and making breaking changes based on user requirements.
@@ -45,14 +46,18 @@ We are taking feedback and making breaking changes based on user requirements.
   * Quickstart
     * [Creating a job](guides/creating-a-job.md)
     * [Adding a hook](guides/adding-a-hook.md)
-  * Tasks
+  * Transformer
     * [BigQuery to BigQuery Transformation](guides/task-bq2bq.md)
-  * Hooks
+  * Hook
     * [Publishing BigQuery to Kafka](guides/publishing-from-bigquery-to-kafka.md)
     * [Profiling and Auditing BigQuery tables](guides/predator.md)
+  * Datastore
+    * [Create bigquery dataset](guides/create-bigquery-dataset.md)
+    * [Create bigquery table](guides/create-bigquery-table.md)
+    * [Create bigquery view](guides/create-bigquery-view.md)
 * [Concepts](concepts/index.md)
   * [Intervals and Windows](concepts/intervals-and-windows.md)
-  * [Asset templating](concepts.md#Assets)
+  * [Asset templating](concepts/index.md#Assets)
 * [Whats new in Optimus v2](concepts/v1-to-v2.md)
 * [FAQ](reference/FAQ.md)
 * [Contributing](contribute/contributing.md)

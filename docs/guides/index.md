@@ -3,10 +3,14 @@
 Welcome to Optimus Guides. Please use the links below to navigate.
 
 * Quickstart
-    * [Creating a job](guides/creating-a-job.md)
-    * [Adding a hook](guides/adding-a-hook.md)
+  * [Creating a job](creating-a-job.md)
+  * [Adding a hook](adding-a-hook.md)
 * Tasks
-    * [BigQuery to BigQuery Transformation](guides/task-bq2bq.md)
+  * [BigQuery to BigQuery Transformation](task-bq2bq.md)
 * Hooks
-    * [Publishing BigQuery to Kafka](guides/publishing-from-bigquery-to-kafka.md)
-    * [Profiling and Auditing BigQuery tables](guides/predator.md)
+  * [Publishing BigQuery to Kafka](publishing-from-bigquery-to-kafka.md)
+  * [Profiling and Auditing BigQuery tables](predator.md)
+* Datastore
+  * [Create bigquery dataset](create-bigquery-dataset.md)
+  * [Create bigquery table](create-bigquery-table.md)
+  * [Create bigquery view](create-bigquery-view.md)

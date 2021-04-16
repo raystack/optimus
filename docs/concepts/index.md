@@ -1,5 +1,12 @@
 # Concepts
 
+## Opctl
+
+Optimus provides a cli used to interact with Optimus service. Although 
+it is not necessary to use this and GRPC/REST can also be used directly which is
+what CLI does internally. `Opctl` is generally recommended in a Git repository to
+version control specifications and bootstrap base specification files.
+
 ## Job
 
 A Job is the fundamental unit of the data pipeline which enables a data transformation 
@@ -9,7 +16,7 @@ operation few of which are:
 - Date from when a transformation should start executing
 - How much data this job will consume at every transformation
 
-Each job has a single base transformation, we call them **Task**. 
+Each job has a single base transformation, we call them **Transformer** or **Task**. 
 Some examples of jobs include:
 1. BQ2BQTask - transformation from BigQuery to BigQuery in SQL
 2. SparkSQLTask - transformation from BQ/GCS to BQ/GCS in SparkSQL
@@ -271,6 +278,18 @@ Optimus uses adapters to supports extensible tasks and hooks which needs to be
 registered in a central repository.
 
 TODO
+
+## Datastore
+
+Optimus datastores are managed warehouses that provides CRUD on resources 
+attached to it. Each warehouse supports fixed set of resource types, each type
+has its own specification schema.
+
+At the moment, Optimus supports BigQuery datastore for 3 types of resources:
+- [Dataset](https://cloud.google.com/bigquery/docs/datasets-intro)
+- [Table](https://cloud.google.com/bigquery/docs/tables-intro)
+- [Standard View](https://cloud.google.com/bigquery/docs/views-intro)
+
 
 ## Secret Management
 TODO

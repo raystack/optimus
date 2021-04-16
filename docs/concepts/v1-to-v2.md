@@ -14,8 +14,8 @@
 Select * from sometable where event_time < "{{.DSTART}}"
 ```
 - Macro replacements:
-  - `dstart`: `{{.DSTART}}`
-  - `dend`: `{{.DEND}}`
+  - `dstart`: `{{.DSTART}}` or `{{.DSTART | Date}}` to cast it as date
+  - `dend`: `{{.DEND | Date}}`
   - `__execution_time__`: `{{.EXECUTION_TIME}}`
   - `__destination_table__`: `{{.JOB_DESTINATION}}`
   > **Note**: dstart and dend used to provide date of the window start/end whereas
@@ -58,5 +58,8 @@ dependencies:
   - `start_date`: self-explanatory as opctl generates them, same as V1
   - `end_date`: when the job should finish executing the schedule
   - `interval`: self-explanatory as opctl generates them, same as V1
+- Support for creating datasets/tables/views
+  - Specification used to create tables have changed, please go through documentation
+  for details
   
 
