@@ -498,7 +498,9 @@ func main() {
 			&instanceRepoFactory{
 				db: dbConn,
 			},
-			time.Now().UTC,
+			func() time.Time {
+				return time.Now().UTC()
+			},
 		),
 		models.Scheduler,
 	))

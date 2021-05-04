@@ -29,7 +29,7 @@ type Service struct {
 func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	instanceType models.InstanceType) (models.InstanceSpec, error) {
 	jobRunRepo := s.repoFac.New(jobSpec)
-	instanceToSave, err := s.prepInstance(jobSpec, scheduledAt)
+	instanceToSave, err := s.PrepInstance(jobSpec, scheduledAt)
 	if err != nil {
 		return models.InstanceSpec{}, errors.Wrap(err, "failed to register instance")
 	}
@@ -67,7 +67,7 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	return instanceSpec, nil
 }
 
-func (s *Service) prepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
+func (s *Service) PrepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
 	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: jobSpec.Task.Config,
 		Assets: jobSpec.Assets.ToMap(),

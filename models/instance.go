@@ -60,6 +60,9 @@ type InstanceSpecData struct {
 }
 
 func (j *InstanceSpec) DataToJSON() ([]byte, error) {
+	if len(j.Data) == 0 {
+		return nil, nil
+	}
 	return json.Marshal(j.Data)
 }
 

@@ -19,7 +19,7 @@ type Instance struct {
 	JobID uuid.UUID `gorm:"not null"`
 	Job   Job       `gorm:"foreignKey:JobID;association_autoupdate:false"`
 
-	ScheduledAt time.Time
+	ScheduledAt *time.Time `gorm:"not null"`
 	State       string
 	Data        datatypes.JSON
 
@@ -30,13 +30,20 @@ type Instance struct {
 
 func (j Instance) ToSpec(job models.JobSpec) (models.InstanceSpec, error) {
 	data := []models.InstanceSpecData{}
-	if err := json.Unmarshal(j.Data, &data); err != nil {
-		return models.InstanceSpec{}, err
+	if j.Data != nil {
+		if err := json.Unmarshal(j.Data, &data); err != nil {
+			return models.InstanceSpec{}, err
+		}
+	}
+
+	var schdAt time.Time
+	if j.ScheduledAt != nil {
+		schdAt = *j.ScheduledAt
 	}
 
 	return models.InstanceSpec{
 		ID:          j.ID,
-		ScheduledAt: j.ScheduledAt,
+		ScheduledAt: schdAt,
 		State:       j.State,
 		Data:        data,
 		Job:         job,
@@ -48,11 +55,16 @@ func (j Instance) FromSpec(spec models.InstanceSpec, job Job) (Instance, error) 
 	if err != nil {
 		return Instance{}, err
 	}
+
+	var schdAt *time.Time = nil
+	if !spec.ScheduledAt.IsZero() {
+		schdAt = &spec.ScheduledAt
+	}
 	return Instance{
 		ID:          spec.ID,
-		ScheduledAt: spec.ScheduledAt,
+		ScheduledAt: schdAt,
 		State:       spec.State,
-		Data:        datatypes.JSON(dataJSON),
+		Data:        dataJSON,
 		JobID:       job.ID,
 	}, nil
 }
@@ -102,8 +114,9 @@ func (repo *instanceRepository) Clear(scheduled time.Time) error {
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
-	// TODO: check if existinJobSpecRun.Data is set to nil by itself since it's a pointer.
-	return repo.db.Model(&existingJobSpecRun).Update("data = ?", nil).Error
+	var r Instance
+	r.ID = existingJobSpecRun.ID
+	return repo.db.Model(&r).Update(map[string]interface{}{"data": nil}).Error
 }
 
 func (repo *instanceRepository) GetByScheduledAt(scheduled time.Time) (models.InstanceSpec, error) {

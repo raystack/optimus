@@ -248,4 +248,19 @@ func TestService(t *testing.T) {
 			assert.Equal(t, models.InstanceSpec{}, returnedInstanceSpec)
 		})
 	})
+
+	t.Run("PrepInstance", func(t *testing.T) {
+		t.Run("while preparing instance execution time should be correct", func(t *testing.T) {
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			srv := instance.NewService(nil, func() time.Time {
+				return time.Now().UTC()
+			})
+			prep1, err := srv.PrepInstance(jobSpec, scheduledAt)
+			assert.Nil(t, err)
+			time.Sleep(time.Second)
+			prep2, err := srv.PrepInstance(jobSpec, scheduledAt)
+			assert.Nil(t, err)
+			assert.NotEqual(t, prep1.Data, prep2.Data)
+		})
+	})
 }

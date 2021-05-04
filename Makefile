@@ -8,20 +8,15 @@ OPMS_VERSION := "$(shell git rev-parse --short HEAD)"
 
 all: build
 
-.PHONY: build build-optimus build-jazz smoke-test unit-test test clean generate dist init addhooks build-ui ui
+.PHONY: build build-optimus smoke-test unit-test test clean generate dist init
 
 build-ctl: generate
 	@echo " > building opctl version ${CTL_VERSION}"
 	@go build -ldflags "-X main.Version=${CTL_VERSION}" ${NAME}/cmd/opctl
 
-# optimus uses hard-coded version strings for now
 build-optimus: generate
 	@echo " > building optimus version ${OPMS_VERSION}"
 	@go build -ldflags "-X 'main.Version=${OPMS_VERSION}'" ${NAME}/cmd/optimus
-
-build-ui:
-	@echo " > building ui"
-	@cd ./web/ui && npm i && npm run build && cp -r ./dist/ ../../resources/ui/
 
 build: build-optimus build-ctl
 	@echo " - build complete"
@@ -41,8 +36,6 @@ generate-proto:
 	@echo " > generating protos"
 	@buf generate
 
-ui: build-ui generate build-optimus
-
 unit-test:
 	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test
 
@@ -59,12 +52,7 @@ dist: generate
 	@bash ./scripts/build-distributables.sh
 
 clean:
-	rm -rf optimus opctl dist/
-	rm -rf ./resources/ui/*
-
-addhooks:
-	chmod -R +x .githooks/
-	git config core.hooksPath .githooks/
+	rm -rf ./optimus ./opctl ./dist ./proton
 
 install:
 	@echo "> installing dependencies"
