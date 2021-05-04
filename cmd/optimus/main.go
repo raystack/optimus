@@ -54,7 +54,7 @@ import (
 var (
 	// Version of the service
 	// overridden by the build system. see "Makefile"
-	Version = "0.1"
+	Version = "dev"
 
 	// AppName is used to prefix Version
 	AppName = "optimus"
@@ -331,10 +331,14 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 	obs.log.Info(evt)
 }
 
-func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error) {
+func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 	engine := instance.NewGoEngine()
-	return func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error) {
-		return instance.DumpAssets(jobSpec, scheduledAt, engine)
+	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+		aMap, err := instance.DumpAssets(jobSpec, scheduledAt, engine)
+		if err != nil {
+			return models.JobAssets{}, err
+		}
+		return models.JobAssets{}.FromMap(aMap), nil
 	}
 }
 
@@ -423,9 +427,7 @@ func main() {
 		db: dbConn,
 	}
 	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost)
-	dependencyResolver := job.NewDependencyResolver(
-		jobSpecAssetDump(),
-	)
+	dependencyResolver := job.NewDependencyResolver()
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
@@ -483,6 +485,7 @@ func main() {
 				schd: models.Scheduler,
 			},
 			jobCompiler,
+			jobSpecAssetDump(),
 			dependencyResolver,
 			priorityResolver,
 			metaSvcFactory,

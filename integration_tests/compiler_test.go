@@ -171,7 +171,7 @@ func TestCompiler(t *testing.T) {
 			com := job.NewCompiler(
 				fsm,
 				templatePath,
-				"http://airflow.io",
+				"http://airflow.example.io",
 			)
 			job, err := com.Compile(spec, projSpec)
 			assert.Nil(t, err)

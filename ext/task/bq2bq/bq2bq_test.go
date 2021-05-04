@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
+
+	"github.com/patrickmn/go-cache"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
@@ -160,7 +163,7 @@ func TestBQ2BQ(t *testing.T) {
 				},
 			})
 			assert.Nil(t, err)
-			assert.Equal(t, "proj.datas.tab", dst.Destination)
+			assert.Equal(t, "proj:datas.tab", dst.Destination)
 		})
 		t.Run("should throw an error if any on of the config is missing to generate destination", func(t *testing.T) {
 			b2b := &bq2bq.BQ2BQ{}
@@ -537,6 +540,87 @@ SELECT * FROM ` + "`project.playground.sample_replace_view`" + ` LIMIT 1000
 				t.Errorf("got = %v, want %v", got, expectedDeps)
 			}
 		})
+		t.Run("should generate dependencies using BQ APIs for select statements then reuse cache for the next time", func(t *testing.T) {
+			expectedDeps := []string{"proj:dataset.table1"}
+			data := models.GenerateDependenciesRequest{
+				Assets: map[string]string{
+					"query.sql": "Select * from proj.dataset.table1",
+				},
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "PROJECT",
+						Value: "proj",
+					},
+					{
+						Name:  "DATASET",
+						Value: "datas",
+					},
+					{
+						Name:  "TABLE",
+						Value: "tab",
+					},
+				},
+				Project: models.ProjectSpec{Secret: models.ProjectSecrets{
+					{
+						Name:  bq2bq.SecretName,
+						Value: "some_secret",
+					},
+				}},
+			}
+
+			job := new(bqJob)
+			job.On("LastStatus").Return(&bigquery.JobStatus{
+				Errors: nil,
+				Statistics: &bigquery.JobStatistics{
+					Details: &bigquery.QueryStatistics{
+						ReferencedTables: []*bigquery.Table{
+							{
+								ProjectID: "proj",
+								DatasetID: "dataset",
+								TableID:   "table1",
+							},
+						},
+					},
+				},
+			})
+			defer job.AssertExpectations(t)
+
+			qry := new(bqQuery)
+			qry.On("Run", mock.Anything).Return(job, nil).Once()
+			qry.On("SetQueryConfig", mock.AnythingOfType("bqiface.QueryConfig")).Once()
+			defer qry.AssertExpectations(t)
+
+			client := new(bqClientMock)
+			client.On("Query", data.Assets[bq2bq.QueryFileName]).Return(qry).Once()
+			defer client.AssertExpectations(t)
+
+			bqClientFac := new(bqClientFactoryMock)
+			bqClientFac.On("New", mock.Anything, "some_secret").Return(client, nil).Once()
+			defer bqClientFac.AssertExpectations(t)
+
+			b := &bq2bq.BQ2BQ{
+				ClientFac: bqClientFac,
+				C:         cache.New(bq2bq.CacheTTL, bq2bq.CacheCleanUp),
+			}
+			got, err := b.GenerateDependencies(data)
+			if err != nil {
+				t.Errorf("error = %v", err)
+				return
+			}
+			if !reflect.DeepEqual(got.Dependencies, expectedDeps) {
+				t.Errorf("got = %v, want %v", got, expectedDeps)
+			}
+
+			// should be cached
+			got, err = b.GenerateDependencies(data)
+			if err != nil {
+				t.Errorf("error = %v", err)
+				return
+			}
+			if !reflect.DeepEqual(got.Dependencies, expectedDeps) {
+				t.Errorf("got = %v, want %v", got, expectedDeps)
+			}
+		})
 		t.Run("should generate dependencies using regex first then BQ APIs for Scripts", func(t *testing.T) {
 			expectedDeps := []string{
 				"proj:dataset.table1",
@@ -652,6 +736,7 @@ Select * from proj.dataset.table2;
 				t.Errorf("error = %v", err)
 				return
 			}
+			sort.Strings(got.Dependencies)
 			if !reflect.DeepEqual(got.Dependencies, expectedDeps) {
 				t.Errorf("got = %v, want %v", got, expectedDeps)
 			}

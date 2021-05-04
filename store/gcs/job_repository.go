@@ -66,7 +66,7 @@ func (repo *JobRepository) Delete(ctx context.Context, jobName string) error {
 	_, err = objectHandle.Attrs(ctx)
 	if err != nil {
 		if err == storage.ErrObjectNotExist {
-			return models.ErrNoSuchJob
+			return errors.Wrap(models.ErrNoSuchJob, jobName)
 		}
 		return err
 	}
@@ -175,7 +175,7 @@ func (repo *JobRepository) GetByName(ctx context.Context, jobName string) (model
 	_, err = objHandle.Attrs(ctx)
 	if err != nil {
 		if err == storage.ErrObjectNotExist {
-			return models.Job{}, models.ErrNoSuchJob
+			return models.Job{}, errors.Wrap(models.ErrNoSuchJob, jobName)
 		}
 		return models.Job{}, err
 	}

@@ -16,6 +16,10 @@ import (
 
 func TestService(t *testing.T) {
 	ctx := context.Background()
+	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+		return jobSpec.Assets, nil
+	}
+
 	t.Run("Create", func(t *testing.T) {
 		t.Run("should create a new JobSpec and store in repository", func(t *testing.T) {
 			jobSpec := models.JobSpec{
@@ -39,7 +43,7 @@ func TestService(t *testing.T) {
 			repoFac.On("New", projSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, nil, nil, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil)
 			err := svc.Create(jobSpec, projSpec)
 			assert.Nil(t, err)
 		})
@@ -65,7 +69,7 @@ func TestService(t *testing.T) {
 			repoFac.On("New", projSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, nil, nil, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil)
 			err := svc.Create(jobSpec, projSpec)
 			assert.NotNil(t, err)
 		})
@@ -158,7 +162,7 @@ func TestService(t *testing.T) {
 				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, nil)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil)
 			err := svc.Sync(ctx, projSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -257,7 +261,7 @@ func TestService(t *testing.T) {
 			//jobSpecRepo.On("Delete", jobs[1].Name).Return(nil)
 			jobRepo.On("Delete", ctx, jobs[1].Name).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, nil)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil)
 			err := svc.Sync(ctx, projSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -301,7 +305,7 @@ func TestService(t *testing.T) {
 				errors.New("error test-2"))
 			defer depenResolver.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, depenResolver, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, nil)
 			err := svc.Sync(ctx, projSpec, nil)
 			assert.NotNil(t, err)
 			assert.True(t, strings.Contains(err.Error(), "2 errors occurred"))
@@ -400,7 +404,7 @@ func TestService(t *testing.T) {
 				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, metaSvcFact)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, metaSvcFact)
 			err := svc.Sync(ctx, projSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -459,7 +463,7 @@ func TestService(t *testing.T) {
 			// delete unwanted
 			jobSpecRepo.On("Delete", jobSpecsBase[0].Name).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, nil, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil)
 			err := svc.KeepOnly(projSpec, toKeep, nil)
 			assert.Nil(t, err)
 		})
@@ -549,7 +553,7 @@ func TestService(t *testing.T) {
 				compiler.On("Compile", jobSpecsAfterPriorityResolve[idx], projSpec).Return(compiledJob, nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, depenResolver, priorityResolver, nil)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil)
 			compiledJob, err := svc.Dump(projSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 			assert.Equal(t, "come string", string(compiledJob.Contents))

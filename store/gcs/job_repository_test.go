@@ -183,7 +183,7 @@ func TestJobRepository(t *testing.T) {
 			}
 			err := repo.Delete(ctx, jobName)
 
-			assert.Equal(t, models.ErrNoSuchJob, err)
+			assert.Error(t, models.ErrNoSuchJob, err)
 		})
 		t.Run("should return err when unable to get the object info", func(t *testing.T) {
 			anotherError := errors.New("another error")
@@ -337,7 +337,7 @@ func TestJobRepository(t *testing.T) {
 			}
 			_, err := repo.GetByName(ctx, nonExistentDAGName)
 
-			assert.Equal(t, models.ErrNoSuchJob, err)
+			assert.Error(t, models.ErrNoSuchJob, err)
 		})
 		t.Run("should return error when failed to get the bucket", func(t *testing.T) {
 			expected := errors.New("failed to get bucket attrs")

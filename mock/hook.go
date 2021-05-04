@@ -24,7 +24,7 @@ func (repo *SupportedHookRepo) Add(t models.HookUnit) error {
 }
 
 type HookUnit struct {
-	mock.Mock
+	mock.Mock `hash:"-"`
 }
 
 func (repo *HookUnit) Name() string {

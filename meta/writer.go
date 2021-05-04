@@ -54,7 +54,7 @@ func (w *Writer) Flush() error {
 		err = w.client.WriteMessages(context.Background(), w.bufferedMessages...)
 		if err == nil {
 			w.bufferedMessages = make([]kafka.Message, 0)
-			fmt.Println("Published metadata for ", len(w.bufferedMessages), "specs")
+			fmt.Println("Published metadata for", len(w.bufferedMessages), "specs")
 		}
 	}
 	return err

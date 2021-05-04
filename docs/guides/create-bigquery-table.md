@@ -73,9 +73,11 @@ For example following is a valid directory structure
 ### Creating table over REST
 
 Optimus exposes Create/Update rest APIS
+```
 Create: POST /api/v1/project/{project_name}/datastore/{datastore_name}/resource
 Update: PUT /api/v1/project/{project_name}/datastore/{datastore_name}/resource
 Read: GET /api/v1/project/{project_name}/datastore/{datastore_name}/resource/{resource_name}
+```
 
 ```json
 {

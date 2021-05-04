@@ -6,7 +6,12 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/mitchellh/hashstructure/v2"
+	"github.com/patrickmn/go-cache"
+	"github.com/spf13/cast"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/AlecAivazis/survey/v2"
@@ -43,11 +48,15 @@ var (
 	QueryFileName = "query.sql"
 
 	// Required secret
-	SecretName = "BQ2BQ_QUERY"
+	SecretName = "TASK_BQ2BQ"
 
 	TimeoutDuration = time.Second * 120
 	MaxBQApiRetries = 3
 	FakeSelectStmt  = "SELECT * from `%s` WHERE FALSE LIMIT 1"
+
+	CacheTTL         = time.Minute * 60
+	CacheCleanUp     = time.Minute * 30
+	ErrCacheNotFound = errors.New("item not found")
 )
 
 type ClientFactory interface {
@@ -56,6 +65,8 @@ type ClientFactory interface {
 
 type BQ2BQ struct {
 	ClientFac ClientFactory
+	mu        sync.Mutex
+	C         *cache.Cache
 }
 
 func (b *BQ2BQ) Name() string {
@@ -177,13 +188,14 @@ Select * from "project.dataset.table";
 }
 
 // GenerateDestination uses config details to build target table
+// this format should match with GenerateDependencies output
 func (b *BQ2BQ) GenerateDestination(request models.GenerateDestinationRequest) (models.GenerateDestinationResponse, error) {
 	proj, ok1 := request.Config.Get("PROJECT")
 	dataset, ok2 := request.Config.Get("DATASET")
 	tab, ok3 := request.Config.Get("TABLE")
 	if ok1 && ok2 && ok3 {
 		return models.GenerateDestinationResponse{
-			Destination: fmt.Sprintf("%s.%s.%s", proj, dataset, tab),
+			Destination: fmt.Sprintf("%s:%s.%s", proj, dataset, tab),
 		}, nil
 	}
 	return models.GenerateDestinationResponse{}, errors.New("missing config key required to generate destination")
@@ -196,7 +208,18 @@ func (b *BQ2BQ) GenerateDestination(request models.GenerateDestinationRequest) (
 // fake select stmts. Fake statements help finding actual referenced tables in
 // case regex based table is a view & not actually a source table. Because this
 // fn should generate the actual source as dependency
-func (b *BQ2BQ) GenerateDependencies(request models.GenerateDependenciesRequest) (models.GenerateDependenciesResponse, error) {
+// BQ2BQ dependencies are BQ tables in format "project:dataset.table"
+func (b *BQ2BQ) GenerateDependencies(request models.GenerateDependenciesRequest) (response models.GenerateDependenciesResponse, err error) {
+	response.Dependencies = []string{}
+
+	// check if exists in cache
+	if cachedResponse, err := b.IsCached(request); err == nil {
+		// cache ready
+		return cachedResponse, nil
+	} else if err != ErrCacheNotFound {
+		return models.GenerateDependenciesResponse{}, err
+	}
+
 	// TODO(kush.sharma): should we ask context as input? Not sure if its okay
 	// for the task to allow handling there own timeouts/deadlines
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), TimeoutDuration)
@@ -204,67 +227,74 @@ func (b *BQ2BQ) GenerateDependencies(request models.GenerateDependenciesRequest)
 
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || len(svcAcc) == 0 {
-		return models.GenerateDependenciesResponse{}, errors.New(fmt.Sprintf("secret %s required to generate dependencies not found for %s", SecretName, b.Name()))
+		return response, errors.New(fmt.Sprintf("secret %s required to generate dependencies not found for %s", SecretName, b.Name()))
 	}
 
 	// try to resolve referenced tables directly from BQ APIs
-	referencedTables, err := b.FindDependenciesWithRetryableDryRun(timeoutCtx, request.Assets[QueryFileName], svcAcc)
+	response.Dependencies, err = b.FindDependenciesWithRetryableDryRun(timeoutCtx, request.Assets[QueryFileName], svcAcc)
 	if err != nil {
-		return models.GenerateDependenciesResponse{}, err
-	}
-	if len(referencedTables) != 0 {
-		return models.GenerateDependenciesResponse{
-			Dependencies: referencedTables,
-		}, nil
+		return response, err
 	}
 
-	// could be BQ script, find table names using regex and create
-	// fake Select STMTs to find actual referenced tables
-	parsedDependencies, err := b.FindDependenciesWithRegex(request)
+	if len(response.Dependencies) == 0 {
+		// could be BQ script, find table names using regex and create
+		// fake Select STMTs to find actual referenced tables
+		parsedDependencies, err := b.FindDependenciesWithRegex(request)
+		if err != nil {
+			return response, err
+		}
+
+		resultChan := make(chan []string)
+		eg, apiCtx := errgroup.WithContext(timeoutCtx) // it will stop executing further after first error
+		for _, tableName := range parsedDependencies {
+			fakeQuery := fmt.Sprintf(FakeSelectStmt, tableName)
+			// find dependencies in parallel
+			eg.Go(func() error {
+				//prepare dummy query
+				deps, err := b.FindDependenciesWithRetryableDryRun(timeoutCtx, fakeQuery, svcAcc)
+				if err != nil {
+					return err
+				}
+				select {
+				case resultChan <- deps:
+					return nil
+				// timeoutCtx requests to be cancelled
+				case <-apiCtx.Done():
+					return apiCtx.Err()
+				}
+			})
+		}
+
+		go func() {
+			// if all done, stop waiting for results
+			eg.Wait()
+			close(resultChan)
+		}()
+
+		// accumulate results
+		for dep := range resultChan {
+			response.Dependencies = append(response.Dependencies, dep...)
+		}
+
+		// check if wait was finished because of an error
+		if err := eg.Wait(); err != nil {
+			return response, err
+		}
+	}
+
+	// before returning remove self
+	selfTable, err := b.GenerateDestination(models.GenerateDestinationRequest{
+		Config:  request.Config,
+		Assets:  request.Assets,
+		Project: request.Project,
+	})
 	if err != nil {
-		return models.GenerateDependenciesResponse{}, err
+		return response, err
 	}
+	response.Dependencies = removeString(response.Dependencies, selfTable.Destination)
+	b.Cache(request, response)
 
-	resultChan := make(chan []string)
-	eg, apiCtx := errgroup.WithContext(timeoutCtx) // it will stop executing further after first error
-	for _, tableName := range parsedDependencies {
-		fakeQuery := fmt.Sprintf(FakeSelectStmt, tableName)
-		// find dependencies in parallel
-		eg.Go(func() error {
-			//prepare dummy query
-			deps, err := b.FindDependenciesWithRetryableDryRun(timeoutCtx, fakeQuery, svcAcc)
-			if err != nil {
-				return err
-			}
-			select {
-			case resultChan <- deps:
-				return nil
-			// timeoutCtx requests to be cancelled
-			case <-apiCtx.Done():
-				return apiCtx.Err()
-			}
-		})
-	}
-
-	go func() {
-		// if all done, stop waiting for results
-		eg.Wait()
-		close(resultChan)
-	}()
-
-	// accumulate results
-	dependencies := []string{}
-	for dep := range resultChan {
-		dependencies = append(dependencies, dep...)
-	}
-
-	// check if wait was finished because of an error
-	if err := eg.Wait(); err != nil {
-		return models.GenerateDependenciesResponse{}, err
-	}
-	return models.GenerateDependenciesResponse{
-		Dependencies: deduplicateStrings(dependencies),
-	}, nil
+	return response, nil
 }
 
 // FindDependenciesWithRegex look for table patterns in SQL query to find
@@ -368,7 +398,9 @@ func (b *BQ2BQ) FindDependenciesWithRetryableDryRun(ctx context.Context, query, 
 		deps, err := b.FindDependenciesWithDryRun(ctx, client, query)
 		if err != nil {
 			if strings.Contains(err.Error(), "net/http: TLS handshake timeout") ||
-				strings.Contains(err.Error(), "unexpected EOF") {
+				strings.Contains(err.Error(), "unexpected EOF") ||
+				strings.Contains(err.Error(), "i/o timeout") ||
+				strings.Contains(err.Error(), "connection reset by peer") {
 				// retry
 				continue
 			}
@@ -435,9 +467,61 @@ func deduplicateStrings(in []string) []string {
 	return in[:j+1]
 }
 
+func removeString(s []string, match string) []string {
+	if len(s) == 0 {
+		return s
+	}
+	idx := -1
+	for i, tab := range s {
+		if tab == match {
+			idx = i
+			break
+		}
+	}
+	// not found
+	if idx < 0 {
+		return s
+	}
+	s[len(s)-1], s[idx] = s[idx], s[len(s)-1]
+	return s[:len(s)-1]
+}
+
+func (b *BQ2BQ) IsCached(request models.GenerateDependenciesRequest) (models.GenerateDependenciesResponse, error) {
+	if b.C == nil {
+		return models.GenerateDependenciesResponse{}, ErrCacheNotFound
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	requestHash, err := hashstructure.Hash(request, hashstructure.FormatV2, nil)
+	if err != nil {
+		return models.GenerateDependenciesResponse{}, err
+	}
+	hashString := cast.ToString(requestHash)
+	if item, ok := b.C.Get(hashString); ok {
+		return item.(models.GenerateDependenciesResponse), nil
+	}
+	return models.GenerateDependenciesResponse{}, ErrCacheNotFound
+}
+
+func (b *BQ2BQ) Cache(request models.GenerateDependenciesRequest, response models.GenerateDependenciesResponse) error {
+	if b.C == nil {
+		return nil
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	requestHash, err := hashstructure.Hash(request, hashstructure.FormatV2, nil)
+	if err != nil {
+		return err
+	}
+	hashString := cast.ToString(requestHash)
+	b.C.Set(hashString, response, cache.DefaultExpiration)
+	return nil
+}
+
 func init() {
 	if err := models.TaskRegistry.Add(&BQ2BQ{
 		ClientFac: &defaultBQClientFactory{},
+		C:         cache.New(CacheTTL, CacheCleanUp),
 	}); err != nil {
 		panic(err)
 	}

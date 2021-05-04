@@ -78,6 +78,7 @@ func New(
 	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf, dsRepo, datastoreSpecsFs))
 	cmd.AddCommand(renderCommand(l, conf, jobSpecRepo))
 	cmd.AddCommand(configCommand(l, dsRepo))
+	cmd.AddCommand(validateCommand(l, conf, jobSpecRepo))
 
 	// admin specific commands
 	switch os.Getenv("OPTIMUS_ADMIN") {

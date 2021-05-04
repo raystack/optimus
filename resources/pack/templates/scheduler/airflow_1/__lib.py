@@ -6,6 +6,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from string import Template
 from typing import Any, Callable, Dict, List, Optional
+import pendulum
 
 import requests
 from airflow.configuration import conf
@@ -29,6 +30,8 @@ from croniter import croniter
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
+# UTC time zone as a tzinfo instance.
+utc = pendulum.timezone('UTC')
 
 def lookup_non_standard_cron_expression(expr: str) -> str:
     expr_mapping = {
@@ -119,19 +122,20 @@ class SuperExternalTaskSensor(BaseSensorOperator):
     :param allowed_states: list of allowed states, default is ``['success']``
     :type allowed_states: list
     :param window_size: size of the window in hours to look for successful 
-        runs in upstream dag. E.g, "24" will check for last 24 hours from
+        runs in upstream dag. E.g, "24h" will check for last 24 hours from
         current execution date of this dag. It checks for number of successful
         iterations of upstream dag in provided window. All of them needs to be
         successful for this sensor to complete. Defaults to a day of window(24)
-    :type window_size: int
+    :type window_size: str
     """
 
     @apply_defaults
     def __init__(self, 
                 external_dag_id,
-                window_size: int,
-                window_offset: int,
-                window_truncate_upto: str,
+                window_size: str,
+                window_offset: str,
+                window_truncate_to: str,
+                optimus_hostname: str,
                 *args, 
                 **kwargs):
 
@@ -147,8 +151,9 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         self.upstream_dag = external_dag_id
         self.window_size = window_size
         self.window_offset = window_offset
-        self.window_truncate_upto = window_truncate_upto
+        self.window_truncate_to = window_truncate_to
         self.allowed_upstream_states = [State.SUCCESS]
+        self._optimus_client = OptimusAPIClient(optimus_hostname)
 
         super(SuperExternalTaskSensor, self).__init__(*args, **kwargs)
 
@@ -170,27 +175,20 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
         # calculate windows
         execution_date = context['execution_date']
-        window_start, window_end = self.generate_window(execution_date, self.window_size, self.window_offset, self.window_truncate_upto)
+        window_start, window_end = self.generate_window(execution_date, self.window_size, self.window_offset, self.window_truncate_to)
         self.log.info("consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
         self.log.info("upstream interval: {}".format(dag_to_wait.schedule_interval))
 
         # find success iterations we need in window
-        expected_upstream_executions = []
-        cron_schedule = lookup_non_standard_cron_expression(dag_to_wait.schedule_interval)
-        dag_cron = croniter(cron_schedule, window_start.replace(tzinfo=None))
-        while True:
-            next_run = dag_cron.get_next(datetime)
-            if next_run > window_end.replace(tzinfo=None):
-                break
-            expected_upstream_executions.append(next_run)
+        expected_upstream_executions = self._get_expected_upstream_executions(dag_to_wait.schedule_interval, window_start, window_end)
         self.log.info("expected upstream executions ({}): {}".format(len(expected_upstream_executions), expected_upstream_executions))
 
         # upstream dag runs between input window with success state
         actual_upstream_executions = [ r.execution_date for r in session.query(DagRun.execution_date)
             .filter(
                 DagRun.dag_id == self.upstream_dag,
-                DagRun.execution_date > window_start,
-                DagRun.execution_date <= window_end,
+                DagRun.execution_date > window_start.replace(tzinfo=utc),
+                DagRun.execution_date <= window_end.replace(tzinfo=utc),
                 DagRun.external_trigger == False,
                 DagRun.state.in_(self.allowed_upstream_states)
             ).order_by(DagRun.execution_date).all() ]
@@ -206,27 +204,23 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
         return True
 
-    def generate_window(self, end_time, window_size, window_offset, window_truncate_upto):
-        floating_end = end_time
+    def generate_window(self, execution_date, window_size, window_offset, window_truncate_to):
+        format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
+        execution_date_str = execution_date.strftime(format_rfc3339)
+        # ignore offset
+        task_window = JobSpecTaskWindow(window_size, 0, window_truncate_to, self._optimus_client)
+        return task_window.get(execution_date_str)
 
-        # apply truncation
-        if window_truncate_upto == "w":
-            # remove time upto days and find nearest week
-            # get week lists for current month
-            week_matrix_per_month = calendar.Calendar().monthdatescalendar(end_time.year, end_time.month)
-            # find week where current day lies
-            current_week = None
-            for week in week_matrix_per_month:
-                for day in week:
-                    if day == end_time.date():
-                        current_week = week
-
-            floating_end = datetime.combine(current_week[6], end_time.timetz())
-            floating_end = floating_end.replace(tzinfo=timezone.utc)
-
-        end = floating_end #+ timedelta(seconds=window_offset * 60 * 60)
-        start = end - timedelta(seconds=window_size * 60 * 60)
-        return start, end
+    def _get_expected_upstream_executions(self, schedule_interval, window_start, window_end):
+        expected_upstream_executions = []
+        cron_schedule = lookup_non_standard_cron_expression(schedule_interval)
+        dag_cron = croniter(cron_schedule, window_start.replace(tzinfo=None))
+        while True:
+            next_run = dag_cron.get_next(datetime)
+            if next_run > window_end.replace(tzinfo=None):
+                break
+            expected_upstream_executions.append(next_run.replace(tzinfo=utc))
+        return expected_upstream_executions
 
 
 class SlackWebhookOperator(BaseOperator):
@@ -495,14 +489,14 @@ class CrossTenantDependencySensor(BaseSensorOperator):
     @apply_defaults
     def __init__(
             self,
-            optimus_host: str,
+            optimus_hostname: str,
             optimus_project: str,
             optimus_job: str,
             **kwargs) -> None:
         super().__init__(**kwargs)
         self.optimus_project = optimus_project
         self.optimus_job = optimus_job
-        self._optimus_client = OptimusAPIClient(optimus_host)
+        self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def execute(self, context):
         execution_date = context['execution_date']
@@ -511,7 +505,9 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         # parse relevant metadata from the job metadata to build the task window
         job_metadata = self._optimus_client.get_job_metadata(execution_date_str, self.optimus_project, self.optimus_job)
         cron_schedule = lookup_non_standard_cron_expression(job_metadata['job']['interval'])
-        task_window = JobSpecTaskWindow(job_metadata['job']['windowSize'], job_metadata['job']['windowOffset'], job_metadata['job']['windowTruncateTo'], self._optimus_client)
+
+        # ignore offset
+        task_window = JobSpecTaskWindow(job_metadata['job']['windowSize'], 0, job_metadata['job']['windowTruncateTo'], self._optimus_client)
         window_start, window_end = task_window.get(execution_date_str)
 
         expected_upstream_executions = self._get_expected_upstream_executions(cron_schedule, window_start, window_end)

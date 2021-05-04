@@ -27,9 +27,9 @@ var (
 	errResponseParseError     = errors.New("🔥 unable to parse server response")
 	errUnhandledServerRequest = errors.New("🔥 server is unable to process this request at the moment")
 
-	// (kush.sharma): If application ever gets slower than 3 minutes, instead
+	// (kush.sharma): If application ever gets slower than 5 minutes, instead
 	// of increasing timeout fix where its taking that much time and optimise!
-	deploymentTimeout = time.Minute * 3
+	deploymentTimeout = time.Minute * 5
 )
 
 // deployCommand pushes current repo to optimus service
@@ -85,7 +85,7 @@ func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSp
 	defer deployCancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry)
+	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, datastoreRepo)
 
 	// update project config if needed
 	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
@@ -95,7 +95,7 @@ func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSp
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to update project configurations, %s", registerResponse.Message))
+		return errors.Wrap(err, "failed to update project configurations")
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
 	}

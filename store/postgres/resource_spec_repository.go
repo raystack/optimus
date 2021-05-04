@@ -118,6 +118,10 @@ func (repo *resourceSpecRepository) Insert(resource models.ResourceSpec) error {
 	if err != nil {
 		return err
 	}
+	// if soft deleted earlier
+	if err := repo.HardDelete(resource.Name); err != nil {
+		return err
+	}
 	return repo.db.Create(&p).Error
 }
 
@@ -178,6 +182,10 @@ func (repo *resourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
 
 func (repo *resourceSpecRepository) Delete(name string) error {
 	return repo.db.Where("project_id = ? AND datastore = ? AND name = ? ", repo.project.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
+}
+
+func (repo *resourceSpecRepository) HardDelete(name string) error {
+	return repo.db.Unscoped().Where("project_id = ? AND datastore = ? AND name = ? ", repo.project.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
 }
 
 func NewResourceSpecRepository(db *gorm.DB, project models.ProjectSpec, ds models.Datastorer) *resourceSpecRepository {

@@ -136,6 +136,16 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository, transformationRepo mod
 			},
 			Validate: ValidateCronInterval,
 		},
+		{
+			Name: "window",
+			Prompt: &survey.Select{
+				Message: "Transformation window",
+				Options: []string{"hourly", "daily", "weekly", "monthly"},
+				Default: "daily",
+				Help: `Time window for which transformation is consuming data,
+this effects runtime dependencies and template macros`,
+			},
+		},
 	}
 	baseInputsRaw := make(map[string]interface{})
 	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
@@ -156,12 +166,8 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository, transformationRepo mod
 			Interval:  baseInputs["interval"],
 		},
 		Task: local.JobTask{
-			Name: baseInputs["task"],
-			Window: local.JobTaskWindow{
-				Size:       "24h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Name:   baseInputs["task"],
+			Window: getWindowParameters(baseInputs["window"]),
 		},
 		Asset: map[string]string{},
 		Behavior: local.JobBehavior{
@@ -431,5 +437,41 @@ func IsValidDatastoreSpec(valiFn models.DatastoreSpecValidator) survey.Validator
 		}
 		// the input is fine
 		return nil
+	}
+}
+
+func getWindowParameters(winName string) local.JobTaskWindow {
+	switch winName {
+	case "hourly":
+		return local.JobTaskWindow{
+			Size:       "1h",
+			Offset:     "0",
+			TruncateTo: "h",
+		}
+	case "daily":
+		return local.JobTaskWindow{
+			Size:       "24h",
+			Offset:     "0",
+			TruncateTo: "d",
+		}
+	case "weekly":
+		return local.JobTaskWindow{
+			Size:       "168h",
+			Offset:     "0",
+			TruncateTo: "w",
+		}
+	case "monthly":
+		return local.JobTaskWindow{
+			Size:       "720h",
+			Offset:     "0",
+			TruncateTo: "M",
+		}
+	}
+
+	//default
+	return local.JobTaskWindow{
+		Size:       "24h",
+		Offset:     "0",
+		TruncateTo: "d",
 	}
 }

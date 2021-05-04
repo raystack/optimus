@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/job"
+
 	"github.com/odpf/optimus/instance"
 
 	"github.com/golang/protobuf/ptypes"
@@ -16,13 +18,15 @@ import (
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
 	logger.Init("INFO")
+	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+		return jobSpec.Assets, nil
+	}
 
 	t.Run("Version", func(t *testing.T) {
 		t.Run("should save specs and return with data", func(t *testing.T) {
@@ -123,15 +127,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, projectSpec).Return(jobSpec, nil)
 			defer jobService.AssertExpectations(t)
-
-			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByName", jobName).Return(jobSpec, nil)
-			defer jobSpecRepository.AssertExpectations(t)
-
-			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
-			jobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
-			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			instanceService := new(mock.InstanceService)
 			instanceService.On("Register", jobSpec, scheduledAt, models.InstanceTypeTransformation).Return(instanceSpec, nil)
@@ -139,14 +136,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				job.NewService(
-					jobSpecRepoFactory,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-				), nil,
+				jobService,
+				nil,
 				projectRepoFactory,
 
 				nil,
@@ -191,16 +182,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				job.NewService(
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-				), nil,
+				jobService, nil,
 				projectRepoFactory,
 				nil,
 				v1.NewAdapter(models.TaskRegistry, nil, nil),
@@ -236,16 +223,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				job.NewService(
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-				), nil,
+				jobService, nil,
 				projectRepoFactory,
 				nil,
 				v1.NewAdapter(models.TaskRegistry, nil, nil),
@@ -294,16 +277,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectSecretRepoFactory.On("New", projectSpec).Return(projectSecretRepository)
 			defer projectSecretRepoFactory.AssertExpectations(t)
 
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				job.NewService(
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-				), nil,
+				jobService, nil,
 				projectRepoFactory,
 				projectSecretRepoFactory,
 				adapter,
@@ -355,16 +334,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectSecretRepoFactory.On("New", projectSpec).Return(projectSecretRepository)
 			defer projectSecretRepoFactory.AssertExpectations(t)
 
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				job.NewService(
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-				), nil,
+				jobService, nil,
 				projectRepoFactory,
 				projectSecretRepoFactory,
 				adapter,
@@ -443,9 +418,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
 			allTasksRepo := new(mock.SupportedTransformationRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
@@ -454,6 +426,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				job.NewService(
 					jobSpecRepoFactory,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -529,7 +502,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				TruncateTo:  "d",
 			}
 			_, err := runtimeServiceServer.GetWindow(context.TODO(), &req)
-			assert.Equal(t, "rpc error: code = FailedPrecondition desc = window size, offset and truncate_to must be provided", err.Error())
+			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
 		})
 	})
 
@@ -580,9 +553,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
 			jobSpecRepository := new(mock.JobSpecRepository)
 			jobSpecRepository.On("GetByName", jobName).Return(jobSpec, nil)
 			jobSpecRepository.On("GetAll").Return([]models.JobSpec{jobSpec}, nil)
@@ -613,6 +583,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					jobSpecRepoFactory,
 					nil,
 					compiler,
+					dumpAssets,
 					dependencyResolver,
 					priorityResolver,
 					nil,
@@ -679,10 +650,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: "bq",
 				Resource: &pb.ResourceSpecification{
-					Version:   1,
-					Name:      "proj.datas",
-					Datastore: "bq",
-					Type:      models.ResourceTypeDataset.String(),
+					Version: 1,
+					Name:    "proj.datas",
+					Type:    models.ResourceTypeDataset.String(),
 				},
 			}
 
@@ -758,10 +728,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: "bq",
 				Resource: &pb.ResourceSpecification{
-					Version:   1,
-					Name:      "proj.datas",
-					Datastore: "bq",
-					Type:      models.ResourceTypeDataset.String(),
+					Version: 1,
+					Name:    "proj.datas",
+					Type:    models.ResourceTypeDataset.String(),
 				},
 			}
 

@@ -44,7 +44,7 @@ type ProtoAdapter interface {
 	FromInstanceProto(*pb.InstanceSpec) (models.InstanceSpec, error)
 	ToInstanceProto(models.InstanceSpec) (*pb.InstanceSpec, error)
 
-	FromResourceProto(res *pb.ResourceSpecification) (models.ResourceSpec, error)
+	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
 }
 
@@ -78,7 +78,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	var jobsToKeep []models.JobSpec
@@ -121,7 +121,7 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	jobSpecs, err := sv.jobSvc.GetAll(projSpec)
@@ -146,7 +146,7 @@ func (sv *RuntimeServiceServer) DumpJobSpecification(ctx context.Context, req *p
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	reqJobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), projSpec)
@@ -160,6 +160,54 @@ func (sv *RuntimeServiceServer) DumpJobSpecification(ctx context.Context, req *p
 	}
 
 	return &pb.DumpJobSpecificationResponse{Success: true, Content: string(compiledJob.Contents)}, nil
+}
+
+func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+	}
+
+	j, err := sv.adapter.FromJobProto(req.GetJob())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to adapt job %s\n%s", req.GetJob().Name, err.Error()))
+	}
+	reqJobs := []models.JobSpec{j}
+
+	if err = sv.jobSvc.Check(projSpec, reqJobs, nil); err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to compile jobs\n%s", err.Error()))
+	}
+	return &pb.CheckJobSpecificationResponse{Success: true}, nil
+}
+
+func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, respStream pb.RuntimeService_CheckJobSpecificationsServer) error {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+	}
+
+	observers := new(progress.ObserverChain)
+	observers.Join(sv.progressObserver)
+	observers.Join(&jobCheckObserver{
+		stream: respStream,
+		log:    logrus.New(),
+	})
+
+	reqJobs := []models.JobSpec{}
+	for _, jobProto := range req.GetJobs() {
+		j, err := sv.adapter.FromJobProto(jobProto)
+		if err != nil {
+			return status.Error(codes.Internal, fmt.Sprintf("failed to adapt job %s\n%s", jobProto.Name, err.Error()))
+		}
+		reqJobs = append(reqJobs, j)
+	}
+
+	if err = sv.jobSvc.Check(projSpec, reqJobs, observers); err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("failed to compile jobs\n%s", err.Error()))
+	}
+	return nil
 }
 
 func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
@@ -195,13 +243,13 @@ func (sv *RuntimeServiceServer) ListProjects(ctx context.Context,
 func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.RegisterInstanceResponse, error) {
 	jobScheduledTime, err := ptypes.Timestamp(req.GetScheduledAt())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to parse schedule time of job %s", err.Error(), req.GetScheduledAt()))
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%s: failed to parse schedule time of job %s", err.Error(), req.GetScheduledAt()))
 	}
 
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), projSpec)
@@ -233,7 +281,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	jobStatuses, err := sv.scheduler.GetJobStatus(ctx, projSpec, req.GetJobName())
@@ -266,7 +314,7 @@ func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindow
 	}
 
 	if req.GetSize() == "" || req.GetOffset() == "" || req.GetTruncateTo() == "" {
-		return nil, status.Error(codes.FailedPrecondition, "window size, offset and truncate_to must be provided")
+		return nil, status.Error(codes.InvalidArgument, "window size, offset and truncate_to must be provided")
 	}
 
 	window, err := prepareWindow(req.GetSize(), req.GetOffset(), req.GetTruncateTo())
@@ -293,13 +341,13 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 	// decode base64
 	base64Decoded, err := base64.StdEncoding.DecodeString(req.GetValue())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to decode base64 string", err.Error()))
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%s: failed to decode base64 string", err.Error()))
 	}
 
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	secretRepo := sv.secretRepoFactory.New(projSpec)
@@ -319,10 +367,10 @@ func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.Crea
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
-	optResource, err := sv.adapter.FromResourceProto(req.Resource)
+	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to parse resource %s", err.Error(), req.Resource.GetName()))
 	}
@@ -339,10 +387,10 @@ func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.Upda
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
-	optResource, err := sv.adapter.FromResourceProto(req.Resource)
+	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to parse resource %s", err.Error(), req.Resource.GetName()))
 	}
@@ -359,7 +407,7 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	response, err := sv.resourceSvc.ReadResource(ctx, projSpec, req.DatastoreName, req.ResourceName)
@@ -384,12 +432,12 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	var resourceSpecs []models.ResourceSpec
 	for _, resourceProto := range req.GetResources() {
-		adapted, err := sv.adapter.FromResourceProto(resourceProto)
+		adapted, err := sv.adapter.FromResourceProto(resourceProto, req.DatastoreName)
 		if err != nil {
 			return status.Error(codes.Internal, fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName()))
 		}
@@ -414,7 +462,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
 	resourceSpecs, err := sv.resourceSvc.GetAll(projSpec, req.DatastoreName)
@@ -519,6 +567,35 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error(errors.Wrapf(err, "failed to send deploy spec ack for: %s", evt.Spec.Name))
+		}
+	}
+}
+
+type jobCheckObserver struct {
+	stream pb.RuntimeService_CheckJobSpecificationsServer
+	log    logrus.FieldLogger
+}
+
+func (obs *jobCheckObserver) Notify(e progress.Event) {
+	switch evt := e.(type) {
+	case *job.EventJobCheckFailed:
+		resp := &pb.CheckJobSpecificationsResponse{
+			Success: false,
+			Ack:     true,
+			JobName: evt.Name,
+			Message: evt.String(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error(errors.Wrapf(err, "failed to send check ack for: %s", evt.Name))
+		}
+	case *job.EventJobCheckSuccess:
+		resp := &pb.CheckJobSpecificationsResponse{
+			Success: true,
+			Ack:     true,
+			JobName: evt.Name,
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error(errors.Wrapf(err, "failed to send check ack for: %s", evt.Name))
 		}
 	}
 }
