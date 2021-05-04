@@ -119,7 +119,6 @@ func (repo *jobRepository) GetByDestination(jobName string) (models.JobSpec, mod
 // Delete deletes a requested job by name
 func (repo *jobRepository) Delete(jobName string) error {
 	panic("unimplemented")
-	return nil
 }
 
 func (repo *jobRepository) refreshCache() error {

@@ -77,7 +77,7 @@ func TestJobRepository(t *testing.T) {
 				Unit: execUnit1,
 				Config: []models.JobSpecConfigItem{
 					{
-						"do", "this",
+						Name: "do", Value: "this",
 					},
 				},
 				Window: models.JobSpecTaskWindow{
@@ -116,7 +116,7 @@ func TestJobRepository(t *testing.T) {
 				Unit: execUnit2,
 				Config: []models.JobSpecConfigItem{
 					{
-						"do", "this",
+						Name: "do", Value: "this",
 					},
 				},
 			},

@@ -42,15 +42,15 @@ type DatastoreTypeController struct {
 	mock.Mock
 }
 
-func (d DatastoreTypeController) Adapter() models.DatastoreSpecAdapter {
+func (d *DatastoreTypeController) Adapter() models.DatastoreSpecAdapter {
 	return d.Called().Get(0).(models.DatastoreSpecAdapter)
 }
 
-func (d DatastoreTypeController) Validator() models.DatastoreSpecValidator {
+func (d *DatastoreTypeController) Validator() models.DatastoreSpecValidator {
 	return d.Called().Get(0).(models.DatastoreSpecValidator)
 }
 
-func (d DatastoreTypeController) DefaultAssets() map[string]string {
+func (d *DatastoreTypeController) DefaultAssets() map[string]string {
 	return d.Called().Get(0).(map[string]string)
 }
 
@@ -58,22 +58,22 @@ type DatastoreTypeAdapter struct {
 	mock.Mock
 }
 
-func (d DatastoreTypeAdapter) ToYaml(spec models.ResourceSpec) ([]byte, error) {
+func (d *DatastoreTypeAdapter) ToYaml(spec models.ResourceSpec) ([]byte, error) {
 	args := d.Called(spec)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (d DatastoreTypeAdapter) FromYaml(bytes []byte) (models.ResourceSpec, error) {
+func (d *DatastoreTypeAdapter) FromYaml(bytes []byte) (models.ResourceSpec, error) {
 	args := d.Called(bytes)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
 
-func (d DatastoreTypeAdapter) ToProtobuf(spec models.ResourceSpec) ([]byte, error) {
+func (d *DatastoreTypeAdapter) ToProtobuf(spec models.ResourceSpec) ([]byte, error) {
 	args := d.Called(spec)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (d DatastoreTypeAdapter) FromProtobuf(bytes []byte) (models.ResourceSpec, error) {
+func (d *DatastoreTypeAdapter) FromProtobuf(bytes []byte) (models.ResourceSpec, error) {
 	args := d.Called(bytes)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
@@ -82,25 +82,25 @@ type DatastoreService struct {
 	mock.Mock
 }
 
-func (d DatastoreService) GetAll(spec models.ProjectSpec, datastoreName string) ([]models.ResourceSpec, error) {
+func (d *DatastoreService) GetAll(spec models.ProjectSpec, datastoreName string) ([]models.ResourceSpec, error) {
 	args := d.Called(spec, datastoreName)
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
 }
 
-func (d DatastoreService) CreateResource(ctx context.Context, spec models.ProjectSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
+func (d *DatastoreService) CreateResource(ctx context.Context, spec models.ProjectSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	return d.Called(ctx, spec, resourceSpecs, obs).Error(0)
 }
 
-func (d DatastoreService) UpdateResource(ctx context.Context, spec models.ProjectSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
+func (d *DatastoreService) UpdateResource(ctx context.Context, spec models.ProjectSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	return d.Called(ctx, spec, resourceSpecs, obs).Error(0)
 }
 
-func (d DatastoreService) ReadResource(ctx context.Context, spec models.ProjectSpec, datastoreName, name string) (models.ResourceSpec, error) {
+func (d *DatastoreService) ReadResource(ctx context.Context, spec models.ProjectSpec, datastoreName, name string) (models.ResourceSpec, error) {
 	args := d.Called(ctx, spec, datastoreName, name)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
 
-func (d DatastoreService) DeleteResource(ctx context.Context, spec models.ProjectSpec, datastoreName, name string) error {
+func (d *DatastoreService) DeleteResource(ctx context.Context, spec models.ProjectSpec, datastoreName, name string) error {
 	return d.Called(ctx, spec, datastoreName, name).Error(1)
 }
 
@@ -126,7 +126,7 @@ type ResourceSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (r ResourceSpecRepoFactory) New(spec models.ProjectSpec, storer models.Datastorer) store.ResourceSpecRepository {
+func (r *ResourceSpecRepoFactory) New(spec models.ProjectSpec, storer models.Datastorer) store.ResourceSpecRepository {
 	return r.Called(spec, storer).Get(0).(store.ResourceSpecRepository)
 }
 
@@ -134,20 +134,20 @@ type ResourceSpecRepository struct {
 	mock.Mock
 }
 
-func (r ResourceSpecRepository) Save(spec models.ResourceSpec) error {
+func (r *ResourceSpecRepository) Save(spec models.ResourceSpec) error {
 	return r.Called(spec).Error(0)
 }
 
-func (r ResourceSpecRepository) GetByName(s string) (models.ResourceSpec, error) {
+func (r *ResourceSpecRepository) GetByName(s string) (models.ResourceSpec, error) {
 	args := r.Called(s)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
 
-func (r ResourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
+func (r *ResourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
 	args := r.Called()
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
 }
 
-func (r ResourceSpecRepository) Delete(s string) error {
+func (r *ResourceSpecRepository) Delete(s string) error {
 	return r.Called(s).Error(0)
 }
