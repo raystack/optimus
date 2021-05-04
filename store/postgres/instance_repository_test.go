@@ -43,7 +43,7 @@ func TestInstanceRepository(t *testing.T) {
 				Unit: execUnit1,
 				Config: []models.JobSpecConfigItem{
 					{
-						"do", "this",
+						Name: "do", Value: "this",
 					},
 				},
 			},
@@ -62,7 +62,7 @@ func TestInstanceRepository(t *testing.T) {
 				Unit: execUnit2,
 				Config: []models.JobSpecConfigItem{
 					{
-						"do", "this",
+						Name: "do", Value: "this",
 					},
 				},
 			},

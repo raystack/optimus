@@ -38,7 +38,7 @@ type BQDataset struct {
 type BQDatasetMetadata struct {
 	Description            string            `yaml:",omitempty" structs:"description,omitempty"`
 	DefaultTableExpiration int64             `yaml:"table_expiration,omitempty" structs:"table_expiration,omitempty"`
-	Labels                 map[string]string `yaml:"-" structs:"-""` // will be inherited by base resource
+	Labels                 map[string]string `yaml:"-" structs:"-"` // will be inherited by base resource
 
 	Location string `yaml:",omitempty" structs:"location,omitempty"`
 }

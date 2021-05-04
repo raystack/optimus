@@ -8,7 +8,7 @@ OPMS_VERSION := "$(shell git rev-parse --short HEAD)"
 
 all: build
 
-.PHONY: build build-optimus smoke-test unit-test test clean generate dist init
+.PHONY: build build-optimus smoke-test unit-test test clean generate dist init vet
 
 build-ctl: generate
 	@echo " > building opctl version ${CTL_VERSION}"
@@ -21,7 +21,7 @@ build-optimus: generate
 build: build-optimus build-ctl
 	@echo " - build complete"
 	
-test: smoke-test unit-test
+test: smoke-test unit-test vet
 
 generate: pack-files generate-proto
 	
@@ -44,6 +44,9 @@ smoke-test: build-ctl
 
 integration-test: build
 	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m
+
+vet:
+	go vet ./...
 
 coverage:
 	go test -coverprofile test_coverage.html ./... -tags=unit_test && go tool cover -html=test_coverage.html
