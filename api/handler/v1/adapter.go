@@ -284,8 +284,7 @@ func (adapt *Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpe
 	return protoSpec, nil
 }
 
-func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification) (models.ResourceSpec, error) {
-	storeName := spec.Datastore
+func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error) {
 	storer, err := adapt.supportedDatastoreRepo.GetByName(storeName)
 	if err != nil {
 		return models.ResourceSpec{}, err

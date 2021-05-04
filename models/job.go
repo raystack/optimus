@@ -195,7 +195,6 @@ func (a JobAssets) FromMap(mp map[string]string) JobAssets {
 	if len(mp) == 0 {
 		return JobAssets{}
 	}
-
 	assets := JobAssets{
 		data: make([]JobSpecAsset, 0),
 	}
@@ -209,6 +208,9 @@ func (a JobAssets) FromMap(mp map[string]string) JobAssets {
 }
 
 func (a *JobAssets) ToMap() map[string]string {
+	if len(a.data) == 0 {
+		return nil
+	}
 	mp := map[string]string{}
 	for _, asset := range a.data {
 		mp[asset.Name] = asset.Value
@@ -272,7 +274,9 @@ type JobService interface {
 	Create(JobSpec, ProjectSpec) error
 	GetByName(string, ProjectSpec) (JobSpec, error)
 	Sync(context.Context, ProjectSpec, progress.Observer) error
+
 	Dump(ProjectSpec, JobSpec) (Job, error)
+	Check(ProjectSpec, []JobSpec, progress.Observer) error
 
 	// KeepOnly deletes all jobs except the ones provided
 	KeepOnly(ProjectSpec, []JobSpec, progress.Observer) error

@@ -5,12 +5,16 @@ import (
 	"context"
 	"sync"
 
+	"google.golang.org/api/drive/v2"
+
 	"google.golang.org/api/option"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2/google"
+
+	storageV1 "google.golang.org/api/storage/v1"
 )
 
 const (
@@ -28,7 +32,8 @@ func (fac *defaultBQClientFactory) New(ctx context.Context, svcAccount string) (
 	fac.mu.Lock()
 	defer fac.mu.Unlock()
 
-	cred, err := google.CredentialsFromJSON(ctx, []byte(svcAccount), bigquery.Scope)
+	cred, err := google.CredentialsFromJSON(ctx, []byte(svcAccount),
+		bigquery.Scope, storageV1.CloudPlatformScope, drive.DriveScope)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read secret")
 	}

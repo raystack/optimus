@@ -4,7 +4,7 @@ type Opctl struct {
 	Version   int
 	Host      string
 	Job       Job
-	Datastore []Datastore `yaml:"datastore,omitempty"`
+	Datastore []Datastore `yaml:"datastore"`
 	Global    map[string]string
 
 	// TODO: Add a name field once we have auth

@@ -1,6 +1,8 @@
 package local
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,12 @@ import (
 
 const (
 	JobConfigVersion = 1
+)
+
+var (
+	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)")
+	HoursInMonth         = time.Duration(30) * 24 * time.Hour
+	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
 func init() {
@@ -94,18 +102,31 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	if conf.Task.Window.TruncateTo != "" {
 		window.TruncateTo = conf.Task.Window.TruncateTo
 	}
+
+	// check if string contains monthly notation
 	if conf.Task.Window.Size != "" {
-		window.Size, err = time.ParseDuration(conf.Task.Window.Size)
+		window.Size, err = tryParsingInMonths(conf.Task.Window.Size)
 		if err != nil {
-			return window, errors.Wrapf(err, "failed to parse task window of %s with size %v", conf.Name, conf.Task.Window.Size)
+			// treat as normal duration
+			window.Size, err = time.ParseDuration(conf.Task.Window.Size)
+			if err != nil {
+				return window, errors.Wrapf(err, "failed to parse task window %s with size %v", conf.Name, conf.Task.Window.Size)
+			}
 		}
 	}
+
+	// check if string contains monthly notation
 	if conf.Task.Window.Offset != "" {
-		window.Offset, err = time.ParseDuration(conf.Task.Window.Offset)
+		window.Offset, err = tryParsingInMonths(conf.Task.Window.Offset)
 		if err != nil {
-			return window, errors.Wrapf(err, "failed to parse task window %s with offset %v", conf.Name, conf.Task.Window.Offset)
+			// treat as normal duration
+			window.Offset, err = time.ParseDuration(conf.Task.Window.Offset)
+			if err != nil {
+				return window, errors.Wrapf(err, "failed to parse task window %s with offset %v", conf.Name, conf.Task.Window.Offset)
+			}
 		}
 	}
+
 	return window, nil
 }
 
@@ -117,13 +138,6 @@ type JobDependency struct {
 type JobSpecAdapter struct {
 	supportedTaskRepo models.TransformationRepo
 	supportedHookRepo models.HookRepo
-}
-
-func NewJobSpecAdapter(supportedTaskRepo models.TransformationRepo, supportedHookRepo models.HookRepo) *JobSpecAdapter {
-	return &JobSpecAdapter{
-		supportedTaskRepo: supportedTaskRepo,
-		supportedHookRepo: supportedHookRepo,
-	}
 }
 
 func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
@@ -285,6 +299,13 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	return parsed, nil
 }
 
+func NewJobSpecAdapter(supportedTaskRepo models.TransformationRepo, supportedHookRepo models.HookRepo) *JobSpecAdapter {
+	return &JobSpecAdapter{
+		supportedTaskRepo: supportedTaskRepo,
+		supportedHookRepo: supportedHookRepo,
+	}
+}
+
 func JobSpecConfigToYamlSlice(conf models.JobSpecConfigs) yaml.MapSlice {
 	conv := yaml.MapSlice{}
 	for _, c := range conf {
@@ -305,4 +326,33 @@ func JobSpecConfigFromYamlSlice(conf yaml.MapSlice) models.JobSpecConfigs {
 		})
 	}
 	return conv
+}
+
+// check if string contains monthly notation
+func tryParsingInMonths(str string) (time.Duration, error) {
+	sz := time.Duration(0)
+	monthMatches := monthExp.FindAllStringSubmatch(str, -1)
+	if len(monthMatches) > 0 && len(monthMatches[0]) == 4 {
+		// replace month notation with days first, treating 1M as 30 days
+		monthsCount, err := strconv.Atoi(monthMatches[0][2])
+		if err != nil {
+			return sz, errors.Wrapf(err, "failed to parse task configuration of %s", str)
+		}
+		sz = HoursInMonth * time.Duration(monthsCount)
+		if monthMatches[0][1] == "-" {
+			sz *= -1
+		}
+
+		str = strings.TrimSpace(monthExp.ReplaceAllString(str, ""))
+		if len(str) > 0 {
+			// check if there is remaining time that we can still parse
+			remainingTime, err := time.ParseDuration(str)
+			if err != nil {
+				return sz, errors.Wrapf(err, "failed to parse task configuration of %s", str)
+			}
+			sz += remainingTime
+		}
+		return sz, nil
+	}
+	return sz, ErrNotAMonthDuration
 }

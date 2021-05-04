@@ -62,7 +62,7 @@ transformation_bq = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "TASK_TYPE":'transformation', "TASK_NAME":'bq',
@@ -88,7 +88,7 @@ hook_transporter = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "TASK_TYPE":'hook', "TASK_NAME":'transporter',
@@ -112,7 +112,7 @@ hook_predator = SuperKubernetesPodOperator(
     secrets=[gcloud_secret],
     env_vars={
         "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "TASK_TYPE":'hook', "TASK_NAME":'predator',
@@ -127,16 +127,17 @@ hook_predator = SuperKubernetesPodOperator(
 # create upstream sensors
 wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     external_dag_id = "foo-intra-dep-job",
-    window_size = 1,
-    window_offset = 0,
-    window_truncate_upto = "d",
+    window_size = "1h0m0s",
+    window_offset = "0s",
+    window_truncate_to = "d",
+    optimus_hostname = "http://airflow.example.io",
     task_id = "wait_foo-intra-dep-job-bq",
     poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout = SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
 )
 wait_foo__dash__inter__dash__dep__dash__job = CrossTenantDependencySensor(
-    optimus_host="http://airflow.io",
+    optimus_hostname="http://airflow.example.io",
     optimus_project="foo-external-project",
     optimus_job="foo-inter-dep-job",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,

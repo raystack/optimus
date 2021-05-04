@@ -109,9 +109,39 @@ type JobService struct {
 	mock.Mock
 }
 
-// CreateJob constructs a DAG and commits it to a storage
-func (srv *JobService) CreateJob(inputs models.JobSpec) error {
-	return srv.Called(inputs).Error(0)
+func (j *JobService) Create(spec models.JobSpec, spec2 models.ProjectSpec) error {
+	args := j.Called(spec, spec2)
+	return args.Error(0)
+}
+
+func (j *JobService) GetByName(jobname string, spec models.ProjectSpec) (models.JobSpec, error) {
+	args := j.Called(jobname, spec)
+	return args.Get(0).(models.JobSpec), args.Error(1)
+}
+
+func (j *JobService) Sync(ctx context.Context, spec models.ProjectSpec, observer progress.Observer) error {
+	args := j.Called(ctx, spec, observer)
+	return args.Error(0)
+}
+
+func (j *JobService) Dump(spec models.ProjectSpec, spec2 models.JobSpec) (models.Job, error) {
+	args := j.Called(spec, spec2)
+	return args.Get(0).(models.Job), args.Error(1)
+}
+
+func (j *JobService) Check(spec models.ProjectSpec, specs []models.JobSpec, observer progress.Observer) error {
+	args := j.Called(spec, specs, observer)
+	return args.Error(0)
+}
+
+func (j *JobService) KeepOnly(spec models.ProjectSpec, specs []models.JobSpec, observer progress.Observer) error {
+	args := j.Called(spec, specs, observer)
+	return args.Error(0)
+}
+
+func (j *JobService) GetAll(spec models.ProjectSpec) ([]models.JobSpec, error) {
+	args := j.Called(spec)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
 type Compiler struct {

@@ -24,7 +24,7 @@ func (repo *SupportedTransformationRepo) Add(t models.Transformation) error {
 }
 
 type Transformer struct {
-	mock.Mock
+	mock.Mock `hash:"-"`
 }
 
 func (repo *Transformer) Name() string {

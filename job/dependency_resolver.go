@@ -1,8 +1,6 @@
 package job
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -17,14 +15,12 @@ var (
 		"check docs how this can be done in used transformation task"
 )
 
-type dependencyResolver struct {
-	assetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error)
-	Now           func() time.Time
-}
+type dependencyResolver struct{}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
 func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
 	jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error) {
+
 	// resolve inter/intra dependencies inferred by optimus
 	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, jobSpecRepo, observer)
 	if err != nil {
@@ -49,16 +45,11 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo
 func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	jobSpecRepo store.JobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 
-	compiledAssets, err := r.assetCompiler(jobSpec, r.Now())
-	if err != nil {
-		return models.JobSpec{}, err
-	}
-
 	// get destinations of dependencies, assets should be
 	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(
 		models.GenerateDependenciesRequest{
 			Config:  jobSpec.Task.Config,
-			Assets:  compiledAssets,
+			Assets:  jobSpec.Assets.ToMap(),
 			Project: projectSpec,
 		},
 	)
@@ -137,11 +128,6 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 }
 
 // NewDependencyResolver creates a new instance of Resolver
-func NewDependencyResolver(
-	assetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (map[string]string, error),
-) *dependencyResolver {
-	return &dependencyResolver{
-		assetCompiler: assetCompiler,
-		Now:           time.Now,
-	}
+func NewDependencyResolver() *dependencyResolver {
+	return &dependencyResolver{}
 }

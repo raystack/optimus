@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
@@ -17,7 +18,12 @@ import (
 const (
 	//PersistJobPrefix is used to keep the job during sync even if they are not in source repo
 	PersistJobPrefix string = "__"
+
+	ConcurrentTicketPerSec = 40
+	ConcurrentLimit        = 600
 )
+
+type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
@@ -45,6 +51,9 @@ type Service struct {
 	dependencyResolver DependencyResolver
 	priorityResolver   PriorityResolver
 	metaSvcFactory     meta.MetaSvcFactory
+
+	Now           func() time.Time
+	assetCompiler AssetCompiler
 }
 
 // CreateJob constructs a Job and commits it to store
@@ -72,7 +81,54 @@ func (srv *Service) GetAll(proj models.ProjectSpec) ([]models.JobSpec, error) {
 	return jobSpecs, nil
 }
 
-// Dump takes a jobSpec of a project, resolves dependencies.priorities and returns the compiled Job
+// Check if job specifications are valid
+func (srv *Service) Check(projSpec models.ProjectSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
+	for i, jSpec := range jobSpecs {
+		// compile assets
+		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
+			return errors.Wrap(err, "asset compilation")
+		}
+
+		// remove manual dependencies as they needs to be resolved
+		jobSpecs[i].Dependencies = map[string]models.JobSpecDependency{}
+	}
+
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, jSpec := range jobSpecs {
+		currentSpec := jSpec
+		runner.Add(func() (interface{}, error) {
+			// check dependencies
+			if _, err := currentSpec.Task.Unit.GenerateDependencies(models.GenerateDependenciesRequest{
+				Config:  currentSpec.Task.Config,
+				Assets:  currentSpec.Assets.ToMap(),
+				Project: projSpec,
+				UnitOptions: models.UnitOptions{
+					DryRun: true,
+				},
+			}); err != nil {
+				obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
+				return nil, errors.Wrapf(err, "failed to resolve dependencies %s", currentSpec.Name)
+			}
+
+			// check compilation
+			if _, err := srv.compiler.Compile(currentSpec, projSpec); err != nil {
+				obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
+				return nil, errors.Wrapf(err, "failed to compile %s", currentSpec.Name)
+			}
+
+			obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
+			return nil, nil
+		})
+	}
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			err = multierror.Append(err, result.Err)
+		}
+	}
+	return err
+}
+
+// Dump takes a jobSpec of a project, resolves dependencies,priorities and returns the compiled Job
 func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (models.Job, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(projSpec)
 	jobSpecs, err := srv.getDependencyResolvedSpecs(projSpec, jobSpecRepo, nil)
@@ -82,6 +138,9 @@ func (srv *Service) Dump(projSpec models.ProjectSpec, jobSpec models.JobSpec) (m
 
 	// resolve priority of all jobSpecs
 	jobSpecs, err = srv.priorityResolver.Resolve(jobSpecs)
+	if err != nil {
+
+	}
 
 	// get our input job from the request
 	var resolvedJobSpec models.JobSpec
@@ -166,8 +225,15 @@ func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, jobSpecR
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
 
+	// compile assets first
+	for i, jSpec := range jobSpecs {
+		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
+			return nil, errors.Wrap(err, "asset compilation")
+		}
+	}
+
 	// resolve specs in parallel
-	runner := parallel.NewRunner()
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jobSpec := range jobSpecs {
 		currentSpec := jobSpec
 		runner.Add(func() (interface{}, error) {
@@ -194,7 +260,7 @@ func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, jobSpecR
 func (srv *Service) uploadSpecs(ctx context.Context, jobSpecs []models.JobSpec, jobRepo store.JobRepository,
 	proj models.ProjectSpec, progressObserver progress.Observer) error {
 
-	runner := parallel.NewRunner()
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, jobSpec := range jobSpecs {
 		currentSpec := jobSpec
 		runner.Add(func() (interface{}, error) {
@@ -305,7 +371,7 @@ func jobDeletionFilter(dagNames []string) []string {
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
 func NewService(jobSpecRepoFactory JobSpecRepoFactory, jobRepoFact JobRepoFactory,
-	compiler models.JobCompiler, dependencyResolver DependencyResolver,
+	compiler models.JobCompiler, assetCompiler AssetCompiler, dependencyResolver DependencyResolver,
 	priorityResolver PriorityResolver, metaSvcFactory meta.MetaSvcFactory,
 ) *Service {
 	return &Service{
@@ -315,6 +381,9 @@ func NewService(jobSpecRepoFactory JobSpecRepoFactory, jobRepoFact JobRepoFactor
 		dependencyResolver: dependencyResolver,
 		priorityResolver:   priorityResolver,
 		metaSvcFactory:     metaSvcFactory,
+
+		assetCompiler: assetCompiler,
+		Now:           time.Now,
 	}
 }
 
@@ -356,6 +425,15 @@ type (
 	// EventJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
 	EventJobPriorityWeightAssign struct{}
+
+	// job check events
+	EventJobCheckFailed struct {
+		Name   string
+		Reason string
+	}
+	EventJobCheckSuccess struct {
+		Name string
+	}
 )
 
 func (e *EventJobSpecFetch) String() string {
@@ -391,4 +469,12 @@ func (e *EventJobSpecDependencyResolve) String() string {
 
 func (e *EventJobSpecUnknownDependencyUsed) String() string {
 	return fmt.Sprintf("could not find registered destination '%s' during compiling dependencies for the provided job %s", e.Dependency, e.Job)
+}
+
+func (e *EventJobCheckFailed) String() string {
+	return fmt.Sprintf("check for job failed: %s, reason: %s", e.Name, e.Reason)
+}
+
+func (e *EventJobCheckSuccess) String() string {
+	return fmt.Sprintf("check for job passed: %s", e.Name)
 }

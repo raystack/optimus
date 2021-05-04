@@ -14,6 +14,11 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+const (
+	ConcurrentTicketPerSec = 5
+	ConcurrentLimit        = 20
+)
+
 type ResourceSpecRepoFactory interface {
 	New(spec models.ProjectSpec, storer models.Datastorer) store.ResourceSpecRepository
 }
@@ -33,7 +38,7 @@ func (srv Service) GetAll(proj models.ProjectSpec, datastoreName string) ([]mode
 
 func (srv Service) CreateResource(ctx context.Context, proj models.ProjectSpec,
 	resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	runner := parallel.NewRunner()
+	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, resourceSpec := range resourceSpecs {
 		currentSpec := resourceSpec
 		repo := srv.resourceRepoFactory.New(proj, currentSpec.Datastore)
@@ -65,7 +70,7 @@ func (srv Service) CreateResource(ctx context.Context, proj models.ProjectSpec,
 
 func (srv Service) UpdateResource(ctx context.Context, proj models.ProjectSpec,
 	resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	runner := parallel.NewRunner()
+	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, resourceSpec := range resourceSpecs {
 		currentSpec := resourceSpec
 		repo := srv.resourceRepoFactory.New(proj, currentSpec.Datastore)

@@ -22,6 +22,10 @@ func (repo *jobSpecRepository) Insert(spec models.JobSpec) error {
 	if len(resource.Name) == 0 {
 		return errors.New("name cannot be empty")
 	}
+	// if soft deleted earlier
+	if err := repo.HardDelete(spec.Name); err != nil {
+		return err
+	}
 	return repo.db.Create(&resource).Error
 }
 
@@ -65,6 +69,10 @@ func (repo *jobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 
 func (repo *jobSpecRepository) Delete(name string) error {
 	return repo.db.Where("project_id = ? AND name = ?", repo.project.ID, name).Delete(&Job{}).Error
+}
+
+func (repo *jobSpecRepository) HardDelete(name string) error {
+	return repo.db.Unscoped().Where("project_id = ? AND name = ?", repo.project.ID, name).Delete(&Job{}).Error
 }
 
 func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {

@@ -103,13 +103,12 @@ func (s datasetSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte,
 		return nil, err
 	}
 	resSpec := &v1.ResourceSpecification{
-		Version:   int32(optResource.Version),
-		Name:      optResource.Name,
-		Datastore: "bigquery",
-		Type:      optResource.Type.String(),
-		Spec:      bqResourceProtoSpec,
-		Assets:    optResource.Assets,
-		Labels:    optResource.Labels,
+		Version: int32(optResource.Version),
+		Name:    optResource.Name,
+		Type:    optResource.Type.String(),
+		Spec:    bqResourceProtoSpec,
+		Assets:  optResource.Assets,
+		Labels:  optResource.Labels,
 	}
 	return proto.Marshal(resSpec)
 }
