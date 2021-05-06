@@ -102,13 +102,14 @@ hook_{{$t.Unit.Name}} = SuperKubernetesPodOperator(
 
 
 # create upstream sensors
+{{ $baseWindow := $.Job.Task.Window }}
 {{- range $_, $dependency := $.Job.Dependencies}}
 {{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     external_dag_id = "{{$dependency.Job.Name}}",
-    window_size = {{$dependency.Job.Task.Window.Size.String | quote}},
-    window_offset = {{$dependency.Job.Task.Window.Offset.String | quote}},
-    window_truncate_to = {{$dependency.Job.Task.Window.TruncateTo | quote}},
+    window_size = {{$baseWindow.Size.String | quote}},
+    window_offset = {{$baseWindow.Offset.String | quote}},
+    window_truncate_to = {{$baseWindow.TruncateTo | quote}},
     optimus_hostname = "{{$.Hostname}}",
     task_id = "wait_{{$dependency.Job.Name | trunc 200}}-{{$dependency.Job.Task.Unit.Name}}",
     poke_interval = SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,

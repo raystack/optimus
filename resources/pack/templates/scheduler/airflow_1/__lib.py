@@ -207,8 +207,8 @@ class SuperExternalTaskSensor(BaseSensorOperator):
     def generate_window(self, execution_date, window_size, window_offset, window_truncate_to):
         format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
         execution_date_str = execution_date.strftime(format_rfc3339)
-        # ignore offset
-        task_window = JobSpecTaskWindow(window_size, 0, window_truncate_to, self._optimus_client)
+        # ignore offset & truncateto
+        task_window = JobSpecTaskWindow(window_size, 0, "h", self._optimus_client)
         return task_window.get(execution_date_str)
 
     def _get_expected_upstream_executions(self, schedule_interval, window_start, window_end):

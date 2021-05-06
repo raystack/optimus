@@ -125,6 +125,7 @@ hook_predator = SuperKubernetesPodOperator(
 
 
 # create upstream sensors
+
 wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     external_dag_id = "foo-intra-dep-job",
     window_size = "1h0m0s",
