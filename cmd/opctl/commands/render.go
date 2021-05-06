@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	renderTimeout = time.Second * 5
+	renderTimeout = time.Minute * 2
 )
 
 func renderCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository) *cli.Command {
@@ -120,6 +120,7 @@ func renderJobSpecificationBuildRequest(l logger, projectName, jobName string, c
 	dumpTimeoutCtx, dumpCancel := context.WithTimeout(context.Background(), renderTimeout)
 	defer dumpCancel()
 
+	l.Println("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	// fetch compiled JobSpec by calling the optimus API
 	jobResponse, err := runtime.DumpJobSpecification(dumpTimeoutCtx, &pb.DumpJobSpecificationRequest{

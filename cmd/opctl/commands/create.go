@@ -452,7 +452,7 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 		return local.JobTaskWindow{
 			Size:       "24h",
 			Offset:     "0",
-			TruncateTo: "d",
+			TruncateTo: "h",
 		}
 	case "weekly":
 		return local.JobTaskWindow{
@@ -472,6 +472,6 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 	return local.JobTaskWindow{
 		Size:       "24h",
 		Offset:     "0",
-		TruncateTo: "d",
+		TruncateTo: "h",
 	}
 }
