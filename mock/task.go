@@ -35,10 +35,6 @@ func (repo *Transformer) Image() string {
 	args := repo.Called()
 	return args.Get(0).(string)
 }
-func (repo *Transformer) GenerateAssets(inp models.GenerateAssetsRequest) (models.GenerateAssetsResponse, error) {
-	args := repo.Called(inp)
-	return args.Get(0).(models.GenerateAssetsResponse), args.Error(1)
-}
 func (repo *Transformer) Description() string {
 	args := repo.Called()
 	return args.Get(0).(string)
@@ -47,9 +43,17 @@ func (repo *Transformer) AskQuestions(opt models.AskQuestionRequest) (models.Ask
 	args := repo.Called(opt)
 	return args.Get(0).(models.AskQuestionResponse), args.Error(1)
 }
-func (repo *Transformer) GenerateConfig(inp models.GenerateConfigRequest) (models.GenerateConfigResponse, error) {
+func (repo *Transformer) DefaultConfig(inp models.DefaultConfigRequest) (models.DefaultConfigResponse, error) {
 	args := repo.Called(inp)
-	return args.Get(0).(models.GenerateConfigResponse), args.Error(1)
+	return args.Get(0).(models.DefaultConfigResponse), args.Error(1)
+}
+func (repo *Transformer) DefaultAssets(inp models.DefaultAssetsRequest) (models.DefaultAssetsResponse, error) {
+	args := repo.Called(inp)
+	return args.Get(0).(models.DefaultAssetsResponse), args.Error(1)
+}
+func (repo *Transformer) CompileAssets(request models.CompileAssetsRequest) (models.CompileAssetsResponse, error) {
+	args := repo.Called(request)
+	return args.Get(0).(models.CompileAssetsResponse), args.Error(1)
 }
 func (repo *Transformer) GenerateDestination(data models.GenerateDestinationRequest) (models.GenerateDestinationResponse, error) {
 	args := repo.Called(data)

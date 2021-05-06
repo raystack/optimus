@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/odpf/optimus/instance"
+
 	"github.com/mitchellh/hashstructure/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/spf13/cast"
@@ -57,6 +59,13 @@ var (
 	CacheTTL         = time.Minute * 60
 	CacheCleanUp     = time.Minute * 30
 	ErrCacheNotFound = errors.New("item not found")
+
+	LoadMethodMerge        = "MERGE"
+	LoadMethodAppend       = "APPEND"
+	LoadMethodReplace      = "REPLACE"
+	LoadMethodReplaceMerge = "REPLACE_MERGE"
+
+	QueryFileReplaceBreakMarker = "\n--*--optimus-break-marker--*--\n"
 )
 
 type ClientFactory interface {
@@ -64,9 +73,10 @@ type ClientFactory interface {
 }
 
 type BQ2BQ struct {
-	ClientFac ClientFactory
-	mu        sync.Mutex
-	C         *cache.Cache
+	ClientFac      ClientFactory
+	mu             sync.Mutex
+	C              *cache.Cache
+	TemplateEngine models.TemplateEngine
 }
 
 func (b *BQ2BQ) Name() string {
@@ -78,7 +88,7 @@ func (b *BQ2BQ) Description() string {
 }
 
 func (b *BQ2BQ) Image() string {
-	return "odpf/optimus-task-bq2bq:0.0.1"
+	return "odpf/optimus-task-bq2bq:0.0.2"
 }
 
 func (b *BQ2BQ) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestionResponse, error) {
@@ -102,12 +112,13 @@ func (b *BQ2BQ) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestionRes
 			Name: "LoadMethod",
 			Prompt: &survey.Select{
 				Message: "Load method to use on destination?",
-				Options: []string{"REPLACE", "MERGE", "APPEND"},
-				Default: "MERGE",
+				Options: []string{LoadMethodReplace, LoadMethodMerge, LoadMethodAppend, LoadMethodReplaceMerge},
+				Default: LoadMethodMerge,
 				Help: `
-REPLACE - Deletes existing partition and insert result of select query
-MERGE   - DML statements, BQ scripts
-APPEND  - Append to existing table
+REPLACE       - Deletes existing partition and insert result of select query
+MERGE         - DML statements, BQ scripts
+APPEND        - Append to existing table
+REPLACE_MERGE - [Experimental] Advanced replace using merge query
 `,
 			},
 			Validate: survey.Required,
@@ -118,7 +129,7 @@ APPEND  - Append to existing table
 		return models.AskQuestionResponse{}, err
 	}
 
-	if load, ok := inputsRaw["LoadMethod"]; ok && load.(survey.OptionAnswer).Value == "REPLACE" {
+	if load, ok := inputsRaw["LoadMethod"]; ok && load.(survey.OptionAnswer).Value == LoadMethodReplace {
 		filterExp := ""
 		if err := survey.AskOne(&survey.Input{
 			Message: "Partition filter expression",
@@ -138,10 +149,10 @@ for example: DATE(event_timestamp) >= "{{ .DSTART|Date }}" AND DATE(event_timest
 	}, nil
 }
 
-func (b *BQ2BQ) GenerateConfig(request models.GenerateConfigRequest) (models.GenerateConfigResponse, error) {
+func (b *BQ2BQ) DefaultConfig(request models.DefaultConfigRequest) (models.DefaultConfigResponse, error) {
 	stringInputs, err := utils.ConvertToStringMap(request.Inputs)
 	if err != nil {
-		return models.GenerateConfigResponse{}, nil
+		return models.DefaultConfigResponse{}, nil
 	}
 	conf := models.JobSpecConfigs{
 		{
@@ -171,13 +182,13 @@ func (b *BQ2BQ) GenerateConfig(request models.GenerateConfigRequest) (models.Gen
 			Value: stringInputs["Filter"],
 		})
 	}
-	return models.GenerateConfigResponse{
+	return models.DefaultConfigResponse{
 		Config: conf,
 	}, nil
 }
 
-func (b *BQ2BQ) GenerateAssets(_ models.GenerateAssetsRequest) (models.GenerateAssetsResponse, error) {
-	return models.GenerateAssetsResponse{
+func (b *BQ2BQ) DefaultAssets(_ models.DefaultAssetsRequest) (models.DefaultAssetsResponse, error) {
+	return models.DefaultAssetsResponse{
 		Assets: map[string]string{
 			QueryFileName: `-- SQL query goes here
 
@@ -185,6 +196,77 @@ Select * from "project.dataset.table";
 `,
 		},
 	}, nil
+}
+
+func (b *BQ2BQ) CompileAssets(req models.CompileAssetsRequest) (models.CompileAssetsResponse, error) {
+	method, ok := req.Config.Get("LOAD_METHOD")
+	if !ok || method != LoadMethodReplace {
+		return models.CompileAssetsResponse{
+			Assets: req.Assets,
+		}, nil
+	}
+
+	// TODO: making few assumptions here, should be documented
+	// assume destination table is time partitioned
+	// assume table is partitioned as DAY
+
+	// check if window size is greater than a DAY, if not do nothing
+	partitionDelta := time.Hour * 24
+	if req.TaskWindow.Size <= partitionDelta {
+		return models.CompileAssetsResponse{
+			Assets: req.Assets,
+		}, nil
+	}
+
+	// partition window in range
+	instanceFileMap := map[string]string{}
+	instanceEnvMap := map[string]string{}
+	if req.InstanceData != nil {
+		for _, jobRunData := range req.InstanceData {
+			switch jobRunData.Type {
+			case models.InstanceDataTypeFile:
+				instanceFileMap[jobRunData.Name] = jobRunData.Value
+			case models.InstanceDataTypeEnv:
+				instanceEnvMap[jobRunData.Name] = jobRunData.Value
+			}
+		}
+	}
+
+	// find destination partitions
+	var destinationsPartitions []struct {
+		start time.Time
+		end   time.Time
+	}
+	dstart := req.TaskWindow.GetStart(req.InstanceSchedule)
+	dend := req.TaskWindow.GetEnd(req.InstanceSchedule)
+	for currentPart := dstart; currentPart.Before(dend); currentPart = currentPart.Add(partitionDelta) {
+		destinationsPartitions = append(destinationsPartitions, struct {
+			start time.Time
+			end   time.Time
+		}{
+			start: currentPart,
+			end:   currentPart.Add(partitionDelta),
+		})
+	}
+
+	parsedQueries := []string{}
+	var err error
+	compiledAssets := req.Assets
+	// append job spec assets to list of files need to write
+	fileMap := instance.MergeStringMap(instanceFileMap, req.Assets)
+	for _, part := range destinationsPartitions {
+		instanceEnvMap[instance.ConfigKeyDstart] = part.start.Format(models.InstanceScheduledAtTimeLayout)
+		instanceEnvMap[instance.ConfigKeyDend] = part.end.Format(models.InstanceScheduledAtTimeLayout)
+		if compiledAssets, err = b.TemplateEngine.CompileFiles(fileMap, instance.ConvertStringToInterfaceMap(instanceEnvMap)); err != nil {
+			return models.CompileAssetsResponse{}, err
+		}
+		parsedQueries = append(parsedQueries, compiledAssets[QueryFileName])
+	}
+	compiledAssets[QueryFileName] = strings.Join(parsedQueries, QueryFileReplaceBreakMarker)
+
+	return models.CompileAssetsResponse{
+		Assets: compiledAssets,
+	}, err
 }
 
 // GenerateDestination uses config details to build target table
@@ -520,8 +602,9 @@ func (b *BQ2BQ) Cache(request models.GenerateDependenciesRequest, response model
 
 func init() {
 	if err := models.TaskRegistry.Add(&BQ2BQ{
-		ClientFac: &defaultBQClientFactory{},
-		C:         cache.New(CacheTTL, CacheCleanUp),
+		ClientFac:      &defaultBQClientFactory{},
+		C:              cache.New(CacheTTL, CacheCleanUp),
+		TemplateEngine: instance.NewGoEngine(),
 	}); err != nil {
 		panic(err)
 	}

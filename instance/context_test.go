@@ -12,7 +12,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func TestFeature(t *testing.T) {
+func TestContextManager(t *testing.T) {
 	t.Run("Generate", func(t *testing.T) {
 		t.Run("should return compiled instanceSpec config for task type transformation", func(t *testing.T) {
 
@@ -24,9 +24,7 @@ func TestFeature(t *testing.T) {
 					"bucket": "gs://some_folder",
 				},
 			}
-
 			execUnit := new(mock.Transformer)
-			execUnit.On("Name").Return("bq")
 
 			jobSpec := models.JobSpec{
 				Name:  "foo",
@@ -59,6 +57,10 @@ func TestFeature(t *testing.T) {
 						{
 							Name:  "BUCKET",
 							Value: "{{.GLOBAL__bucket}}",
+						},
+						{
+							Name:  "LOAD_METHOD",
+							Value: "MERGE",
 						},
 					},
 				},
@@ -98,6 +100,17 @@ func TestFeature(t *testing.T) {
 				},
 			}
 
+			execUnit.On("Name").Return("bq")
+			execUnit.On("CompileAssets", models.CompileAssetsRequest{
+				TaskWindow:       jobSpec.Task.Window,
+				Config:           jobSpec.Task.Config,
+				Assets:           jobSpec.Assets.ToMap(),
+				InstanceSchedule: scheduledAt,
+				InstanceData:     instanceSpec.Data,
+			}).Return(models.CompileAssetsResponse{Assets: map[string]string{
+				"query.sql": "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+			}}, nil)
+
 			envMap, fileMap, err := instance.NewContextManager(projectSpec, jobSpec,
 				instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTransformation, "bq")
 			assert.Nil(t, err)
@@ -128,7 +141,6 @@ func TestFeature(t *testing.T) {
 			}
 
 			execUnit := new(mock.Transformer)
-			execUnit.On("Name").Return("bq")
 
 			transporterHook := "transporter"
 			hookUnit := new(mock.HookUnit)
@@ -218,6 +230,16 @@ func TestFeature(t *testing.T) {
 					},
 				},
 			}
+			execUnit.On("Name").Return("bq")
+			execUnit.On("CompileAssets", models.CompileAssetsRequest{
+				TaskWindow:       jobSpec.Task.Window,
+				Config:           jobSpec.Task.Config,
+				Assets:           jobSpec.Assets.ToMap(),
+				InstanceSchedule: scheduledAt,
+				InstanceData:     instanceSpec.Data,
+			}).Return(models.CompileAssetsResponse{Assets: map[string]string{
+				"query.sql": "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+			}}, nil)
 
 			envMap, fileMap, err := instance.NewContextManager(projectSpec, jobSpec, instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeHook, transporterHook)
 			assert.Nil(t, err)

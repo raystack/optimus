@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
+
+	"github.com/odpf/optimus/instance"
 
 	"github.com/patrickmn/go-cache"
 
@@ -180,6 +183,43 @@ func TestBQ2BQ(t *testing.T) {
 				},
 			})
 			assert.NotNil(t, err)
+		})
+	})
+
+	t.Run("CompileAssets", func(t *testing.T) {
+		t.Run("should correctly break replace load method with window size greater than 24h", func(t *testing.T) {
+			schdAt := time.Date(2021, 5, 6, 2, 3, 0, 0, time.UTC)
+			b2b := &bq2bq.BQ2BQ{
+				TemplateEngine: instance.NewGoEngine(),
+			}
+			resp, err := b2b.CompileAssets(models.CompileAssetsRequest{
+				TaskWindow: models.JobSpecTaskWindow{
+					Size:       time.Hour * 48,
+					Offset:     0,
+					TruncateTo: "h",
+				},
+				Config: []models.JobSpecConfigItem{
+					{
+						Name:  "LOAD_METHOD",
+						Value: "REPLACE",
+					},
+				},
+				Assets: map[string]string{
+					bq2bq.QueryFileName: "Select * from `proj.datas.table1` WHERE ts < {{.DSTART}} and ts > {{.DEND}}",
+				},
+				InstanceSchedule: schdAt,
+				InstanceData: []models.InstanceSpecData{
+					{
+						Name:  instance.ConfigKeyExecutionTime,
+						Value: schdAt.Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+				},
+			})
+			assert.Nil(t, err)
+			assert.Equal(t, resp.Assets[bq2bq.QueryFileName], "Select * from `proj.datas.table1` WHERE ts < 2021-05-04T02:00:00Z and ts > 2021-05-05T02:00:00Z"+
+				bq2bq.QueryFileReplaceBreakMarker+
+				"Select * from `proj.datas.table1` WHERE ts < 2021-05-05T02:00:00Z and ts > 2021-05-06T02:00:00Z")
 		})
 	})
 

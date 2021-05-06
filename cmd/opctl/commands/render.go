@@ -64,7 +64,7 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 		now := time.Now()
 		l.Println("assuming execution time as current time of", now.Format(models.InstanceScheduledAtTimeLayout))
 
-		templates, err := instance.DumpAssets(jobSpec, now, templateEngine)
+		templates, err := instance.DumpAssets(jobSpec, now, templateEngine, true)
 		if err != nil {
 			errExit(l, err)
 		}

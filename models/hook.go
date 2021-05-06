@@ -41,14 +41,14 @@ type HookUnit interface {
 	// store "BROKERS": '{{.transporterKafkaBroker}}' inside the job spec; which gets compiled by taking values
 	// from project config or runtime variables provided part of a instance. i.e.
 	// DSTART, DEND, EXECUTION_TIME
-	GenerateConfig(GenerateConfigWithTaskRequest) (GenerateConfigResponse, error)
+	GenerateConfig(GenerateConfigWithTaskRequest) (DefaultConfigResponse, error)
 }
 
 type GenerateConfigWithTaskRequest struct {
 	// TaskConfig of the parent on which this task belongs to
 	TaskConfig JobSpecConfigs
 
-	GenerateConfigRequest
+	DefaultConfigRequest
 }
 
 var (

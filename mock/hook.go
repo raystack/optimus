@@ -40,9 +40,9 @@ func (repo *HookUnit) AskQuestions(opt models.AskQuestionRequest) (models.AskQue
 	args := repo.Called(opt)
 	return args.Get(0).(models.AskQuestionResponse), args.Error(1)
 }
-func (repo *HookUnit) GenerateConfig(inp models.GenerateConfigWithTaskRequest) (models.GenerateConfigResponse, error) {
+func (repo *HookUnit) GenerateConfig(inp models.GenerateConfigWithTaskRequest) (models.DefaultConfigResponse, error) {
 	args := repo.Called(inp)
-	return args.Get(0).(models.GenerateConfigResponse), args.Error(1)
+	return args.Get(0).(models.DefaultConfigResponse), args.Error(1)
 }
 func (repo *HookUnit) DependsOn() []string {
 	return repo.Called().Get(0).([]string)

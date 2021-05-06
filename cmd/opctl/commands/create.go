@@ -191,14 +191,14 @@ this effects runtime dependencies and template macros`,
 		return jobInput, err
 	}
 
-	generateConfResponse, err := executionTask.GenerateConfig(models.GenerateConfigRequest{
+	generateConfResponse, err := executionTask.DefaultConfig(models.DefaultConfigRequest{
 		Inputs: askQuesResponse.Answers,
 	})
 	if err != nil {
 		return jobInput, err
 	}
 	jobInput.Task.Config = local.JobSpecConfigToYamlSlice(generateConfResponse.Config)
-	genAssetResponse, err := executionTask.GenerateAssets(models.GenerateAssetsRequest{
+	genAssetResponse, err := executionTask.DefaultAssets(models.DefaultAssetsRequest{
 		Inputs: askQuesResponse.Answers,
 	})
 	if err != nil {
@@ -276,7 +276,7 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 	}
 	hookConfigResponse, err := executionHook.GenerateConfig(models.GenerateConfigWithTaskRequest{
 		TaskConfig: jobSpec.Task.Config,
-		GenerateConfigRequest: models.GenerateConfigRequest{
+		DefaultConfigRequest: models.DefaultConfigRequest{
 			Inputs: askQuesResponse.Answers,
 		},
 	})

@@ -51,15 +51,15 @@ func (t *Transporter) AskQuestions(_ models.AskQuestionRequest) (models.AskQuest
 	return models.AskQuestionResponse{Answers: inputsRaw}, nil
 }
 
-func (t *Transporter) GenerateConfig(request models.GenerateConfigWithTaskRequest) (models.GenerateConfigResponse, error) {
+func (t *Transporter) GenerateConfig(request models.GenerateConfigWithTaskRequest) (models.DefaultConfigResponse, error) {
 	project, ok1 := request.TaskConfig.Get("PROJECT")
 	dataset, ok2 := request.TaskConfig.Get("DATASET")
 	table, ok3 := request.TaskConfig.Get("TABLE")
 	filterExp, ok4 := request.Inputs["FilterExpression"]
 	if !ok1 || !ok2 || !ok3 || !ok4 {
-		return models.GenerateConfigResponse{}, errors.New("missing config key required to generate configuration")
+		return models.DefaultConfigResponse{}, errors.New("missing config key required to generate configuration")
 	}
-	return models.GenerateConfigResponse{
+	return models.DefaultConfigResponse{
 		Config: models.JobSpecConfigs{
 			{
 				Name:  "KAFKA_TOPIC",
