@@ -78,7 +78,7 @@ func (b *BQ2BQ) Description() string {
 }
 
 func (b *BQ2BQ) Image() string {
-	return "odpf/optimus-task-bq2bq:latest"
+	return "odpf/optimus-task-bq2bq:0.0.1"
 }
 
 func (b *BQ2BQ) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestionResponse, error) {
