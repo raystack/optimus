@@ -52,6 +52,9 @@ spec:
 							Schema:      nil,
 						},
 					},
+					Cluster: &BQClusteringInfo{
+						Using: []string{"col1"},
+					},
 				},
 			},
 			Assets: map[string]string{

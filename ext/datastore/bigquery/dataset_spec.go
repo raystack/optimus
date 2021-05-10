@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/fatih/structs"
+	"github.com/kushsharma/structs"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pkg/errors"

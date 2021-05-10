@@ -6,9 +6,7 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig/v3 v3.2.2
-	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/fatih/color v1.7.0
-	github.com/fatih/structs v1.1.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
 	github.com/gernest/wow v0.1.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -25,12 +23,10 @@ require (
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jinzhu/gorm v1.9.16
 	github.com/kushsharma/parallel v0.2.1
+	github.com/kushsharma/structs v1.1.1
 	github.com/lib/pq v1.9.0
-	github.com/mattn/go-shellwords v1.0.11 // indirect
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.1
-	github.com/opencontainers/runc v0.1.1 // indirect
-	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
@@ -42,7 +38,6 @@ require (
 	github.com/spf13/cobra v1.1.2
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
-	github.com/vbatts/tar-split v0.11.1 // indirect
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/oauth2 v0.0.0-20210201163806-010130855d6c
@@ -60,5 +55,3 @@ require (
 )
 
 go 1.16
-
-replace github.com/gernest/wow v0.1.0 => github.com/kushsharma/wow v0.1.2

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/fatih/structs"
+	"github.com/kushsharma/structs"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -91,7 +91,7 @@ type BQSchema []BQField
 
 // BQClusteringInfo describes list of column used in table clustering
 type BQClusteringInfo struct {
-	Using []string
+	Using []string `structs:"using"`
 }
 
 // BQPartitionInfo specifies the partitioning for a BQTable
