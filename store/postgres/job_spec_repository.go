@@ -72,7 +72,19 @@ func (repo *jobSpecRepository) Delete(name string) error {
 }
 
 func (repo *jobSpecRepository) HardDelete(name string) error {
-	return repo.db.Unscoped().Where("project_id = ? AND name = ?", repo.project.ID, name).Delete(&Job{}).Error
+	//find the base job
+	var r Job
+	if err := repo.db.Unscoped().Where("project_id = ? AND name = ?", repo.project.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
+		// no job exists, inserting for the first time
+		return nil
+	} else if err != nil {
+		return errors.Wrap(err, "failed to fetch soft deleted resource")
+	}
+	// cascade delete instances
+	if err := repo.db.Unscoped().Where("job_id = ?", r.ID).Delete(&Instance{}).Error; err != nil {
+		return errors.Wrap(err, "failed to cascade delete instances for the job")
+	}
+	return repo.db.Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
 }
 
 func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {

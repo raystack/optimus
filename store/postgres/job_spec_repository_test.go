@@ -158,6 +158,51 @@ func TestJobRepository(t *testing.T) {
 			cval, _ := checkModel.Hooks[0].Config.Get("FILTER_EXPRESSION")
 			assert.Equal(t, "event_timestamp > 10000", cval)
 		})
+		t.Run("insert when previously soft deleted should hard delete first along with foreign key cascade", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+
+			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			defer execUnit1.AssertExpectations(t)
+			defer execUnit2.AssertExpectations(t)
+
+			testModels := []models.JobSpec{}
+			testModels = append(testModels, testConfigs...)
+
+			repo := NewJobRepository(db, projectSpec, adapter)
+
+			// first insert
+			err := repo.Insert(testModels[0])
+			assert.Nil(t, err)
+
+			checkModel, err := repo.GetByID(testModels[0].ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "g-optimus-id", checkModel.Name)
+
+			// insert foreign relations
+			instanceRepo := NewInstanceRepository(db, testModels[0], adapter)
+			err = instanceRepo.Save(models.InstanceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Job:         testModels[0],
+				ScheduledAt: time.Date(2021, 5, 10, 2, 2, 0, 0, time.UTC),
+				State:       "exploded",
+				Data:        nil,
+			})
+			assert.Nil(t, err)
+
+			// soft delete
+			err = repo.Delete(testModels[0].Name)
+			assert.Nil(t, err)
+
+			// insert back again
+			err = repo.Insert(testModels[0])
+			assert.Nil(t, err)
+
+			checkModel, err = repo.GetByID(testModels[0].ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "g-optimus-id", checkModel.Name)
+		})
 	})
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
