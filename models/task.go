@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 )
 
@@ -14,14 +16,16 @@ type Transformation interface {
 	// name used for question will be directly mapped to GenerateConfig() parameters
 	AskQuestions(AskQuestionRequest) (AskQuestionResponse, error)
 
-	// GenerateConfig will be passed down to execution unit as env vars
+	// DefaultConfig will be passed down to execution unit as env vars
 	// they will be generated based on results of AskQuestions
 	// if DryRun is true in UnitOptions, should not throw error for missing inputs
-	GenerateConfig(GenerateConfigRequest) (GenerateConfigResponse, error)
+	DefaultConfig(DefaultConfigRequest) (DefaultConfigResponse, error)
 
-	// GenerateAssets will be passed down to execution unit as files
+	// DefaultAssets will be passed down to execution unit as files
 	// if DryRun is true in UnitOptions, should not throw error for missing inputs
-	GenerateAssets(GenerateAssetsRequest) (GenerateAssetsResponse, error)
+	DefaultAssets(DefaultAssetsRequest) (DefaultAssetsResponse, error)
+
+	CompileAssets(CompileAssetsRequest) (CompileAssetsResponse, error)
 
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(GenerateDestinationRequest) (GenerateDestinationResponse, error)
@@ -43,21 +47,41 @@ type AskQuestionResponse struct {
 	Answers map[string]interface{}
 }
 
-type GenerateConfigRequest struct {
+type DefaultConfigRequest struct {
 	Inputs map[string]interface{}
 	UnitOptions
 }
 
-type GenerateConfigResponse struct {
+type DefaultConfigResponse struct {
 	Config JobSpecConfigs
 }
 
-type GenerateAssetsRequest struct {
+type DefaultAssetsRequest struct {
 	Inputs map[string]interface{}
 	UnitOptions
 }
 
-type GenerateAssetsResponse struct {
+type DefaultAssetsResponse struct {
+	Assets map[string]string
+}
+
+type CompileAssetsRequest struct {
+	// Window
+	TaskWindow JobSpecTaskWindow
+
+	// Task configs
+	Config JobSpecConfigs
+
+	// Job assets
+	Assets map[string]string
+
+	InstanceSchedule time.Time
+	InstanceData     []InstanceSpecData
+
+	UnitOptions
+}
+
+type CompileAssetsResponse struct {
 	Assets map[string]string
 }
 
@@ -144,7 +168,7 @@ func (s *supportedTasks) Add(newUnit Transformation) error {
 	}
 
 	// check if we can add the provided task
-	nAssets, err := newUnit.GenerateAssets(GenerateAssetsRequest{
+	nAssets, err := newUnit.DefaultAssets(DefaultAssetsRequest{
 		UnitOptions: UnitOptions{
 			DryRun: true,
 		},
@@ -153,7 +177,7 @@ func (s *supportedTasks) Add(newUnit Transformation) error {
 		return err
 	}
 	for _, existingTask := range s.data {
-		response, _ := existingTask.GenerateAssets(GenerateAssetsRequest{
+		response, _ := existingTask.DefaultAssets(DefaultAssetsRequest{
 			UnitOptions: UnitOptions{
 				DryRun: true,
 			},

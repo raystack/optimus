@@ -58,21 +58,33 @@ func (fm *ContextManager) Generate(
 	instanceEnvMap, instanceFileMap := fm.getInstanceData(instanceSpec)
 
 	// merge both
-	projectInstanceContext := mergeStringMap(instanceEnvMap, projectConfig)
+	projectInstanceContext := MergeStringMap(instanceEnvMap, projectConfig)
 
 	// prepare configs
 	envMap, err = fm.generateEnvs(runName, runType, projectInstanceContext)
 
 	// transformation may need instance variables as well
-	envMap = mergeStringMap(envMap, instanceEnvMap)
+	envMap = MergeStringMap(envMap, instanceEnvMap)
 	if err != nil {
 		return
 	}
 
 	// do the same for asset files
+	// check if task needs to override the compilation behaviour
+	compiledAssetResponse, err := fm.jobSpec.Task.Unit.CompileAssets(models.CompileAssetsRequest{
+		TaskWindow:       fm.jobSpec.Task.Window,
+		Config:           fm.jobSpec.Task.Config,
+		Assets:           fm.jobSpec.Assets.ToMap(),
+		InstanceSchedule: instanceSpec.ScheduledAt,
+		InstanceData:     instanceSpec.Data,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// append job spec assets to list of files need to write
-	fileMap = mergeStringMap(instanceFileMap, fm.jobSpec.Assets.ToMap())
-	if fileMap, err = fm.engine.CompileFiles(fileMap, convertStringToInterfaceMap(projectInstanceContext)); err != nil {
+	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets)
+	if fileMap, err = fm.engine.CompileFiles(fileMap, ConvertStringToInterfaceMap(projectInstanceContext)); err != nil {
 		return
 	}
 
@@ -103,18 +115,18 @@ func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceTy
 	}
 
 	// templatize configs of hook with transformation, project and instance
-	projectInstanceTransformationConfigs := mergeStringMap(projectInstanceContext, prefixedTransformationConfigs)
+	projectInstanceTransformationConfigs := MergeStringMap(projectInstanceContext, prefixedTransformationConfigs)
 	if hookConfigs, err = fm.compileTemplates(hookConfigs, projectInstanceTransformationConfigs); err != nil {
 		return nil, err
 	}
 
 	// merge transformation and hook configs
-	return mergeStringMap(prefixedTransformationConfigs, hookConfigs), nil
+	return MergeStringMap(prefixedTransformationConfigs, hookConfigs), nil
 }
 
 func (fm *ContextManager) compileTemplates(templateValueMap, templateContext map[string]string) (map[string]string, error) {
 	for key, val := range templateValueMap {
-		compiledValue, err := fm.engine.CompileString(val, convertStringToInterfaceMap(templateContext))
+		compiledValue, err := fm.engine.CompileString(val, ConvertStringToInterfaceMap(templateContext))
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +190,7 @@ func NewContextManager(projectSpec models.ProjectSpec, jobSpec models.JobSpec,
 	}
 }
 
-func mergeStringMap(mp1, mp2 map[string]string) (mp3 map[string]string) {
+func MergeStringMap(mp1, mp2 map[string]string) (mp3 map[string]string) {
 	mp3 = make(map[string]string)
 	for k, v := range mp1 {
 		mp3[k] = v
@@ -189,7 +201,7 @@ func mergeStringMap(mp1, mp2 map[string]string) (mp3 map[string]string) {
 	return mp3
 }
 
-func convertStringToInterfaceMap(i map[string]string) map[string]interface{} {
+func ConvertStringToInterfaceMap(i map[string]string) map[string]interface{} {
 	o := map[string]interface{}{}
 	for k, v := range i {
 		o[k] = v
@@ -197,16 +209,46 @@ func convertStringToInterfaceMap(i map[string]string) map[string]interface{} {
 	return o
 }
 
-func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine) (map[string]string, error) {
+func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine, allowOverride bool) (map[string]string, error) {
 	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: jobSpec.Task.Config,
 		Assets: jobSpec.Assets.ToMap(),
+		UnitOptions: models.UnitOptions{
+			DryRun: true,
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	templates, err := engine.CompileFiles(jobSpec.Assets.ToMap(), map[string]interface{}{
+	assetsToDump := jobSpec.Assets.ToMap()
+
+	if allowOverride {
+		// check if task needs to override the compilation behaviour
+		compiledAssetResponse, err := jobSpec.Task.Unit.CompileAssets(models.CompileAssetsRequest{
+			TaskWindow:       jobSpec.Task.Window,
+			Config:           jobSpec.Task.Config,
+			Assets:           assetsToDump,
+			InstanceSchedule: scheduledAt,
+			InstanceData: []models.InstanceSpecData{
+				{
+					Name:  ConfigKeyExecutionTime,
+					Value: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+			},
+			UnitOptions: models.UnitOptions{
+				DryRun: true,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		assetsToDump = compiledAssetResponse.Assets
+	}
+
+	// compile again if needed
+	templates, err := engine.CompileFiles(assetsToDump, map[string]interface{}{
 		ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 		ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 		ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),

@@ -334,7 +334,7 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 	engine := instance.NewGoEngine()
 	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := instance.DumpAssets(jobSpec, scheduledAt, engine)
+		aMap, err := instance.DumpAssets(jobSpec, scheduledAt, engine, false)
 		if err != nil {
 			return models.JobAssets{}, err
 		}

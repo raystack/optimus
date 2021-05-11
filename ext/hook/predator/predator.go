@@ -64,18 +64,18 @@ func (t *Predator) AskQuestions(_ models.AskQuestionRequest) (models.AskQuestion
 	return models.AskQuestionResponse{Answers: inputsRaw}, nil
 }
 
-func (t *Predator) GenerateConfig(request models.GenerateConfigWithTaskRequest) (models.GenerateConfigResponse, error) {
+func (t *Predator) GenerateConfig(request models.GenerateConfigWithTaskRequest) (models.DefaultConfigResponse, error) {
 	_, ok1 := request.Inputs["FilterExpression"]
 	_, ok2 := request.Inputs["Group"]
 	_, ok3 := request.Inputs["Mode"]
 	if !ok1 || !ok2 || !ok3 {
-		return models.GenerateConfigResponse{}, errors.New("missing config key required to generate configuration")
+		return models.DefaultConfigResponse{}, errors.New("missing config key required to generate configuration")
 	}
 	stringInputs, err := utils.ConvertToStringMap(request.Inputs)
 	if err != nil {
-		return models.GenerateConfigResponse{}, errors.Wrap(err, "unidentified config in hook")
+		return models.DefaultConfigResponse{}, errors.Wrap(err, "unidentified config in hook")
 	}
-	return models.GenerateConfigResponse{
+	return models.DefaultConfigResponse{
 		Config: models.JobSpecConfigs{
 			{
 				Name:  "AUDIT_TIME",
