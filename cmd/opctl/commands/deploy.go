@@ -27,9 +27,7 @@ var (
 	errResponseParseError     = errors.New("🔥 unable to parse server response")
 	errUnhandledServerRequest = errors.New("🔥 server is unable to process this request at the moment")
 
-	// (kush.sharma): If application ever gets slower than 5 minutes, instead
-	// of increasing timeout fix where its taking that much time and optimise!
-	deploymentTimeout = time.Minute * 5
+	deploymentTimeout = time.Minute * 10
 )
 
 // deployCommand pushes current repo to optimus service

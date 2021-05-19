@@ -52,12 +52,12 @@ var (
 	// Required secret
 	SecretName = "TASK_BQ2BQ"
 
-	TimeoutDuration = time.Second * 120
+	TimeoutDuration = time.Second * 180
 	MaxBQApiRetries = 3
 	FakeSelectStmt  = "SELECT * from `%s` WHERE FALSE LIMIT 1"
 
-	CacheTTL         = time.Minute * 60
-	CacheCleanUp     = time.Minute * 30
+	CacheTTL         = time.Hour * 24
+	CacheCleanUp     = time.Hour * 1
 	ErrCacheNotFound = errors.New("item not found")
 
 	LoadMethodMerge        = "MERGE"
