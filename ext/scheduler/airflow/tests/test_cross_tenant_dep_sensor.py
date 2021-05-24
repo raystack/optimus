@@ -19,7 +19,7 @@ class TestCrossTenantDependencySensor(unittest.TestCase):
 
         sensor = CrossTenantDependencySensor(
             task_id='task',
-            optimus_host="dummy-since-we-are-mocking",
+            optimus_hostname="dummy-since-we-are-mocking",
             optimus_project="g-pilotdata-gl",
             optimus_job="pilotdata-integration.playground.characters",
         )
@@ -35,7 +35,7 @@ class TestCrossTenantDependencySensor(unittest.TestCase):
 
         sensor = CrossTenantDependencySensor(
             task_id='task',
-            optimus_host="dummy-since-we-are-mocking",
+            optimus_hostname="dummy-since-we-are-mocking",
             optimus_project="g-pilotdata-gl",
             optimus_job="pilotdata-integration.playground.characters",
         )
