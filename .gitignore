@@ -29,6 +29,7 @@ optimus.yaml
 /api/proto/v1/*.pb.gw.go
 /api/proto/google/
 /api/proto/odpf
+/api/proto
 /proton/
 
 /third_party/*

@@ -5,11 +5,11 @@ import (
 )
 
 type MetadataService interface {
-	Publish(ProjectSpec, []JobSpec, progress.Observer) error
+	Publish(NamespaceSpec, []JobSpec, progress.Observer) error
 }
 
 type JobMetadataAdapter interface {
-	FromJobSpec(ProjectSpec, JobSpec) (*JobMetadata, error)
+	FromJobSpec(NamespaceSpec, JobSpec) (*JobMetadata, error)
 	CompileMessage(*JobMetadata) ([]byte, error)
 	CompileKey(string) ([]byte, error)
 }
@@ -23,6 +23,7 @@ type JobMetadata struct {
 	Urn          string
 	Name         string
 	Tenant       string
+	Namespace    string
 	Version      int
 	Description  string
 	Labels       []JobMetadataLabelItem

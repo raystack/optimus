@@ -25,7 +25,7 @@ type Compiler struct {
 
 // Compile use golang template engine to parse and insert job
 // specific details in template file
-func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (job models.Job, err error) {
+func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (job models.Job, err error) {
 	airflowTemplate, err := com.getTemplate()
 	if err != nil {
 		return models.Job{}, err
@@ -52,7 +52,7 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 		JobSpecDependencyTypeInter string
 		JobSpecDependencyTypeExtra string
 	}{
-		Project:                    proj,
+		Project:                    namespaceSpec.ProjectSpec,
 		Job:                        jobSpec,
 		Hostname:                   com.hostname,
 		HookTypePre:                string(models.HookTypePre),
@@ -67,8 +67,9 @@ func (com *Compiler) Compile(jobSpec models.JobSpec, proj models.ProjectSpec) (j
 	}
 
 	return models.Job{
-		Name:     jobSpec.Name,
-		Contents: buf.Bytes(),
+		Name:        jobSpec.Name,
+		Contents:    buf.Bytes(),
+		NamespaceID: namespaceSpec.ID.String(),
 	}, nil
 }
 

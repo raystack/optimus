@@ -55,3 +55,5 @@ require (
 )
 
 go 1.16
+
+replace github.com/gernest/wow v0.1.0 => github.com/kushsharma/wow v0.1.2

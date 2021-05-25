@@ -22,9 +22,9 @@ func NewService(writer models.MetadataWriter, builder models.JobMetadataAdapter)
 	}
 }
 
-func (service Service) Publish(proj models.ProjectSpec, jobSpecs []models.JobSpec, po progress.Observer) error {
+func (service Service) Publish(namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, po progress.Observer) error {
 	for _, jobSpec := range jobSpecs {
-		resource, err := service.jobAdapter.FromJobSpec(proj, jobSpec)
+		resource, err := service.jobAdapter.FromJobSpec(namespaceSpec, jobSpec)
 		if err != nil {
 			return err
 		}

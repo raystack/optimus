@@ -37,6 +37,11 @@ func TestCompiler(t *testing.T) {
 		Name: "foo-project",
 	}
 
+	namespaceSpec := models.NamespaceSpec{
+		Name:        "foo-namespace",
+		ProjectSpec: projSpec,
+	}
+
 	externalProjSpec := models.ProjectSpec{
 		Name: "foo-external-project",
 	}
@@ -173,7 +178,7 @@ func TestCompiler(t *testing.T) {
 				templatePath,
 				"http://airflow.example.io",
 			)
-			job, err := com.Compile(spec, projSpec)
+			job, err := com.Compile(namespaceSpec, spec)
 			assert.Nil(t, err)
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)

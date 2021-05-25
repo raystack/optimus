@@ -2,9 +2,8 @@ package datastore_test
 
 import (
 	"context"
-	"testing"
-
 	"github.com/pkg/errors"
+	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +21,12 @@ func TestService(t *testing.T) {
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
 		},
+	}
+
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
 	}
 
 	t.Run("GetAll", func(t *testing.T) {
@@ -45,11 +50,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			res, err := service.GetAll(projectSpec, "bq")
+			res, err := service.GetAll(namespaceSpec, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, []models.ResourceSpec{resourceSpec1}, res)
 		})
@@ -90,11 +98,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.CreateResource(context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
+			err := service.CreateResource(context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should not call create in datastore if failed to save in repository", func(t *testing.T) {
@@ -127,11 +138,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.CreateResource(context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
+			err := service.CreateResource(context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.NotNil(t, err)
 		})
 	})
@@ -170,11 +184,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.UpdateResource(context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
+			err := service.UpdateResource(context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should not call update in datastore if failed to save in repository", func(t *testing.T) {
@@ -207,11 +224,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.UpdateResource(context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
+			err := service.UpdateResource(context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.NotNil(t, err)
 		})
 	})
@@ -240,11 +260,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			resp, err := service.ReadResource(context.TODO(), projectSpec, "bq", resourceSpec1.Name)
+			resp, err := service.ReadResource(context.TODO(), namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, resourceSpec1, resp)
 		})
@@ -268,11 +291,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			_, err := service.ReadResource(context.TODO(), projectSpec, "bq", resourceSpec1.Name)
+			_, err := service.ReadResource(context.TODO(), namespaceSpec, "bq", resourceSpec1.Name)
 			assert.NotNil(t, err)
 		})
 	})
@@ -302,11 +328,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.DeleteResource(context.TODO(), projectSpec, "bq", resourceSpec1.Name)
+			err := service.DeleteResource(context.TODO(), namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 		})
 		t.Run("should not call delete in datastore if failed to delete from repository", func(t *testing.T) {
@@ -333,11 +362,14 @@ func TestService(t *testing.T) {
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
-			resourceRepoFac.On("New", projectSpec, datastorer).Return(resourceRepo)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.DeleteResource(context.TODO(), projectSpec, "bq", resourceSpec1.Name)
+			err := service.DeleteResource(context.TODO(), namespaceSpec, "bq", resourceSpec1.Name)
 			assert.NotNil(t, err)
 		})
 	})

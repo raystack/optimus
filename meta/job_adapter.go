@@ -18,7 +18,7 @@ func (a JobAdapter) buildUrn(projectSpec models.ProjectSpec, jobSpec models.JobS
 	return fmt.Sprintf("%s::job/%s", projectSpec.Name, jobSpec.Name)
 }
 
-func (a JobAdapter) FromJobSpec(projectSpec models.ProjectSpec, jobSpec models.JobSpec) (*models.JobMetadata, error) {
+func (a JobAdapter) FromJobSpec(namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (*models.JobMetadata, error) {
 	taskDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
 		Config: jobSpec.Task.Config,
 		Assets: jobSpec.Assets.ToMap(),
@@ -37,9 +37,10 @@ func (a JobAdapter) FromJobSpec(projectSpec models.ProjectSpec, jobSpec models.J
 	}
 
 	resourceMetadata := models.JobMetadata{
-		Urn:          a.buildUrn(projectSpec, jobSpec),
+		Urn:          a.buildUrn(namespaceSpec.ProjectSpec, jobSpec),
 		Name:         jobSpec.Name,
-		Tenant:       projectSpec.Name,
+		Tenant:       namespaceSpec.ProjectSpec.Name,
+		Namespace:    namespaceSpec.Name,
 		Version:      jobSpec.Version,
 		Description:  jobSpec.Description,
 		Labels:       CompileSpecLabels(jobSpec),
@@ -94,6 +95,7 @@ func (a JobAdapter) CompileMessage(jobMetadata *models.JobMetadata) ([]byte, err
 		Urn:         jobMetadata.Urn,
 		Name:        jobMetadata.Name,
 		Tenant:      jobMetadata.Tenant,
+		Namespace:   jobMetadata.Namespace,
 		Version:     int32(jobMetadata.Version),
 		Description: jobMetadata.Description,
 		Labels:      a.compileProtoLabels(jobMetadata),

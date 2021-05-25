@@ -1,1 +1,3 @@
-apache-airflow[postgres,statsd,kubernetes]==1.10.12
+apache-airflow[postgres,statsd]==2.0.2
+apache-airflow-providers-cncf-kubernetes==1.1.0
+

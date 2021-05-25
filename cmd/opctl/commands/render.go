@@ -84,6 +84,7 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 
 func renderJobCommand(l logger, conf config.Opctl) *cli.Command {
 	var projectName string
+	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
 		Short:   "write the scheduler representation of the job to stdout",
@@ -92,10 +93,12 @@ func renderJobCommand(l logger, conf config.Opctl) *cli.Command {
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
 	cmd.MarkFlagRequired("project")
+	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
+	cmd.MarkFlagRequired("namespace")
 
 	cmd.Run = func(c *cli.Command, args []string) {
 		jobName := args[0]
-		if err := renderJobSpecificationBuildRequest(l, projectName, jobName, conf); err != nil {
+		if err := renderJobSpecificationBuildRequest(l, projectName, namespace, jobName, conf); err != nil {
 			l.Println(err)
 			os.Exit(1)
 		}
@@ -104,7 +107,7 @@ func renderJobCommand(l logger, conf config.Opctl) *cli.Command {
 	return cmd
 }
 
-func renderJobSpecificationBuildRequest(l logger, projectName, jobName string, conf config.Opctl) (err error) {
+func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobName string, conf config.Opctl) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -126,6 +129,7 @@ func renderJobSpecificationBuildRequest(l logger, projectName, jobName string, c
 	jobResponse, err := runtime.DumpJobSpecification(dumpTimeoutCtx, &pb.DumpJobSpecificationRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
+		Namespace:   namespace,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

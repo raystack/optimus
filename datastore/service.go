@@ -20,7 +20,11 @@ const (
 )
 
 type ResourceSpecRepoFactory interface {
-	New(spec models.ProjectSpec, storer models.Datastorer) store.ResourceSpecRepository
+	New(namespace models.NamespaceSpec, storer models.Datastorer) store.ResourceSpecRepository
+}
+
+type ProjectResourceSpecRepoFactory interface {
+	New(spec models.ProjectSpec, storer models.Datastorer) store.ProjectResourceSpecRepository
 }
 
 type Service struct {
@@ -28,20 +32,19 @@ type Service struct {
 	dsRepo              models.DatastoreRepo
 }
 
-func (srv Service) GetAll(proj models.ProjectSpec, datastoreName string) ([]models.ResourceSpec, error) {
+func (srv Service) GetAll(namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
 	ds, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return nil, err
 	}
-	return srv.resourceRepoFactory.New(proj, ds).GetAll()
+	return srv.resourceRepoFactory.New(namespace, ds).GetAll()
 }
 
-func (srv Service) CreateResource(ctx context.Context, proj models.ProjectSpec,
-	resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
+func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, resourceSpec := range resourceSpecs {
 		currentSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(proj, currentSpec.Datastore)
+		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
 			if err := repo.Save(currentSpec); err != nil {
 				return nil, err
@@ -49,7 +52,7 @@ func (srv Service) CreateResource(ctx context.Context, proj models.ProjectSpec,
 
 			err := currentSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
 				Resource: currentSpec,
-				Project:  proj,
+				Project:  namespace.ProjectSpec,
 			})
 			srv.notifyProgress(obs, &EventResourceCreated{
 				Spec: currentSpec,
@@ -68,12 +71,11 @@ func (srv Service) CreateResource(ctx context.Context, proj models.ProjectSpec,
 	return errorSet
 }
 
-func (srv Service) UpdateResource(ctx context.Context, proj models.ProjectSpec,
-	resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
+func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, resourceSpec := range resourceSpecs {
 		currentSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(proj, currentSpec.Datastore)
+		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
 			if err := repo.Save(currentSpec); err != nil {
 				return nil, err
@@ -81,7 +83,7 @@ func (srv Service) UpdateResource(ctx context.Context, proj models.ProjectSpec,
 
 			err := currentSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
 				Resource: currentSpec,
-				Project:  proj,
+				Project:  namespace.ProjectSpec,
 			})
 			srv.notifyProgress(obs, &EventResourceUpdated{
 				Spec: currentSpec,
@@ -100,12 +102,12 @@ func (srv Service) UpdateResource(ctx context.Context, proj models.ProjectSpec,
 	return errorSet
 }
 
-func (srv Service) ReadResource(ctx context.Context, proj models.ProjectSpec, datastoreName, name string) (models.ResourceSpec, error) {
+func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
 	ds, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
-	repo := srv.resourceRepoFactory.New(proj, ds)
+	repo := srv.resourceRepoFactory.New(namespace, ds)
 	dbSpec, err := repo.GetByName(name)
 	if err != nil {
 		return models.ResourceSpec{}, err
@@ -113,7 +115,7 @@ func (srv Service) ReadResource(ctx context.Context, proj models.ProjectSpec, da
 
 	infoResponse, err := dbSpec.Datastore.ReadResource(ctx, models.ReadResourceRequest{
 		Resource: dbSpec,
-		Project:  proj,
+		Project:  namespace.ProjectSpec,
 	})
 	if err != nil {
 		return models.ResourceSpec{}, err
@@ -121,12 +123,12 @@ func (srv Service) ReadResource(ctx context.Context, proj models.ProjectSpec, da
 	return infoResponse.Resource, nil
 }
 
-func (srv Service) DeleteResource(ctx context.Context, proj models.ProjectSpec, datastoreName, name string) error {
+func (srv Service) DeleteResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) error {
 	ds, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return err
 	}
-	repo := srv.resourceRepoFactory.New(proj, ds)
+	repo := srv.resourceRepoFactory.New(namespace, ds)
 	resourceSpec, err := repo.GetByName(name)
 	if err != nil {
 		return err
@@ -135,7 +137,7 @@ func (srv Service) DeleteResource(ctx context.Context, proj models.ProjectSpec, 
 	// migrate the deleted resource
 	if err := resourceSpec.Datastore.DeleteResource(ctx, models.DeleteResourceRequest{
 		Resource: resourceSpec,
-		Project:  proj,
+		Project:  namespace.ProjectSpec,
 	}); err != nil {
 		return err
 	}

@@ -16,9 +16,13 @@ import (
 )
 
 type Resource struct {
-	ID        uuid.UUID `gorm:"primary_key;type:uuid"`
+	ID uuid.UUID `gorm:"primary_key;type:uuid"`
+
 	ProjectID uuid.UUID
 	Project   Project `gorm:"foreignKey:ProjectID"`
+
+	NamespaceID uuid.UUID
+	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
 	Version   int
 	Name      string `gorm:"not null"`
@@ -34,7 +38,7 @@ type Resource struct {
 	DeletedAt *time.Time
 }
 
-func (r Resource) FromSpec(resourceSpec models.ResourceSpec, proj models.ProjectSpec) (Resource, error) {
+func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 
 	// serialize resource spec without assets to one of the datastore provided wire format
 	binaryReadySpec := resourceSpec
@@ -59,7 +63,6 @@ func (r Resource) FromSpec(resourceSpec models.ResourceSpec, proj models.Project
 
 	return Resource{
 		ID:        resourceSpec.ID,
-		ProjectID: proj.ID,
 		Version:   resourceSpec.Version,
 		Name:      resourceSpec.Name,
 		Type:      resourceSpec.Type.String(),
@@ -68,6 +71,31 @@ func (r Resource) FromSpec(resourceSpec models.ResourceSpec, proj models.Project
 		Assets:    assetBytes,
 		Labels:    labelBytes,
 	}, nil
+}
+
+func (r Resource) FromSpecWithNamespace(resourceSpec models.ResourceSpec, namespace models.NamespaceSpec) (Resource, error) {
+	adaptResource, err := r.FromSpec(resourceSpec)
+	if err != nil {
+		return Resource{}, err
+	}
+
+	// namespace
+	adaptNamespace, err := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
+	if err != nil {
+		return Resource{}, err
+	}
+	adaptResource.NamespaceID = adaptNamespace.ID
+	adaptResource.Namespace = adaptNamespace
+
+	// project
+	adaptProject, err := Project{}.FromSpec(namespace.ProjectSpec)
+	if err != nil {
+		return Resource{}, err
+	}
+	adaptResource.ProjectID = adaptProject.ID
+	adaptResource.Project = adaptProject
+
+	return adaptResource, nil
 }
 
 func (r Resource) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
@@ -104,67 +132,35 @@ func (r Resource) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
 	}, nil
 }
 
-type resourceSpecRepository struct {
+type projectResourceSpecRepository struct {
 	db        *gorm.DB
 	project   models.ProjectSpec
 	datastore models.Datastorer
 }
 
-func (repo *resourceSpecRepository) Insert(resource models.ResourceSpec) error {
-	if len(resource.Name) == 0 {
-		return errors.New("name cannot be empty")
-	}
-	p, err := Resource{}.FromSpec(resource, repo.project)
-	if err != nil {
-		return err
-	}
-	// if soft deleted earlier
-	if err := repo.HardDelete(resource.Name); err != nil {
-		return err
-	}
-	return repo.db.Create(&p).Error
-}
-
-func (repo *resourceSpecRepository) Save(spec models.ResourceSpec) error {
-	existingResource, err := repo.GetByName(spec.Name)
-	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(spec)
-	} else if err != nil {
-		return errors.Wrap(err, "unable to find resource by name")
-	}
-	resource, err := Resource{}.FromSpec(spec, repo.project)
-	if err != nil {
-		return err
-	}
-	if err == nil {
-		resource.ID = existingResource.ID
-	}
-	return repo.db.Model(resource).Updates(resource).Error
-}
-
-func (repo *resourceSpecRepository) GetByName(name string) (models.ResourceSpec, error) {
+func (repo *projectResourceSpecRepository) GetByName(name string) (models.ResourceSpec, models.NamespaceSpec, error) {
 	var r Resource
-	if err := repo.db.Where("project_id = ? AND datastore = ? AND name = ?", repo.project.ID, repo.datastore.Name(), name).Find(&r).Error; err != nil {
+	if err := repo.db.Preload("Namespace").Where("project_id = ? AND datastore = ? AND name = ?", repo.project.ID, repo.datastore.Name(), name).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ResourceSpec{}, store.ErrResourceNotFound
+			return models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
-		return models.ResourceSpec{}, err
+		return models.ResourceSpec{}, models.NamespaceSpec{}, err
 	}
-	return r.ToSpec(repo.datastore)
+
+	resourceSpec, err := r.ToSpec(repo.datastore)
+	if err != nil {
+		return models.ResourceSpec{}, models.NamespaceSpec{}, err
+	}
+
+	namespaceSpec, err := r.Namespace.ToSpec(repo.project)
+	if err != nil {
+		return models.ResourceSpec{}, models.NamespaceSpec{}, err
+	}
+
+	return resourceSpec, namespaceSpec, nil
 }
 
-func (repo *resourceSpecRepository) GetByID(id uuid.UUID) (models.ResourceSpec, error) {
-	var r Resource
-	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ResourceSpec{}, store.ErrResourceNotFound
-		}
-		return models.ResourceSpec{}, err
-	}
-	return r.ToSpec(repo.datastore)
-}
-
-func (repo *resourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
+func (repo *projectResourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
 	specs := []models.ResourceSpec{}
 	resources := []Resource{}
 	if err := repo.db.Where("project_id = ? AND datastore = ?", repo.project.ID, repo.datastore.Name()).Find(&resources).Error; err != nil {
@@ -180,18 +176,108 @@ func (repo *resourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
 	return specs, nil
 }
 
-func (repo *resourceSpecRepository) Delete(name string) error {
-	return repo.db.Where("project_id = ? AND datastore = ? AND name = ? ", repo.project.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
-}
-
-func (repo *resourceSpecRepository) HardDelete(name string) error {
-	return repo.db.Unscoped().Where("project_id = ? AND datastore = ? AND name = ? ", repo.project.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
-}
-
-func NewResourceSpecRepository(db *gorm.DB, project models.ProjectSpec, ds models.Datastorer) *resourceSpecRepository {
-	return &resourceSpecRepository{
+func NewProjectResourceSpecRepository(db *gorm.DB, project models.ProjectSpec, ds models.Datastorer) *projectResourceSpecRepository {
+	return &projectResourceSpecRepository{
 		db:        db,
 		project:   project,
 		datastore: ds,
+	}
+}
+
+type resourceSpecRepository struct {
+	db                      *gorm.DB
+	namespace               models.NamespaceSpec
+	datastore               models.Datastorer
+	projectResourceSpecRepo store.ProjectResourceSpecRepository
+}
+
+func (repo *resourceSpecRepository) Insert(resource models.ResourceSpec) error {
+	if len(resource.Name) == 0 {
+		return errors.New("name cannot be empty")
+	}
+	p, err := Resource{}.FromSpecWithNamespace(resource, repo.namespace)
+	if err != nil {
+		return err
+	}
+	// if soft deleted earlier
+	if err := repo.HardDelete(resource.Name); err != nil {
+		return err
+	}
+	return repo.db.Create(&p).Error
+}
+
+func (repo *resourceSpecRepository) Save(spec models.ResourceSpec) error {
+	existingResource, namespaceSpec, err := repo.projectResourceSpecRepo.GetByName(spec.Name)
+	if errors.Is(err, store.ErrResourceNotFound) {
+		return repo.Insert(spec)
+	} else if err != nil {
+		return errors.Wrap(err, "unable to find resource by name")
+	}
+
+	if namespaceSpec.ID != repo.namespace.ID {
+		return errors.New(fmt.Sprintf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name))
+	}
+
+	resource, err := Resource{}.FromSpec(spec)
+	if err != nil {
+		return err
+	}
+	resource.ID = existingResource.ID
+
+	return repo.db.Model(resource).Updates(resource).Error
+}
+
+func (repo *resourceSpecRepository) GetByName(name string) (models.ResourceSpec, error) {
+	var r Resource
+	if err := repo.db.Where("namespace_id = ? AND datastore = ? AND name = ?", repo.namespace.ID, repo.datastore.Name(), name).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.ResourceSpec{}, store.ErrResourceNotFound
+		}
+		return models.ResourceSpec{}, err
+	}
+	return r.ToSpec(repo.datastore)
+}
+
+func (repo *resourceSpecRepository) GetByID(id uuid.UUID) (models.ResourceSpec, error) {
+	var r Resource
+	if err := repo.db.Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.ResourceSpec{}, store.ErrResourceNotFound
+		}
+		return models.ResourceSpec{}, err
+	}
+	return r.ToSpec(repo.datastore)
+}
+
+func (repo *resourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
+	specs := []models.ResourceSpec{}
+	resources := []Resource{}
+	if err := repo.db.Where("namespace_id = ? AND datastore = ?", repo.namespace.ID, repo.datastore.Name()).Find(&resources).Error; err != nil {
+		return specs, err
+	}
+	for _, r := range resources {
+		adapted, err := r.ToSpec(repo.datastore)
+		if err != nil {
+			return specs, errors.Wrap(err, "failed to adapt resource")
+		}
+		specs = append(specs, adapted)
+	}
+	return specs, nil
+}
+
+func (repo *resourceSpecRepository) Delete(name string) error {
+	return repo.db.Where("namespace_id = ? AND datastore = ? AND name = ? ", repo.namespace.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
+}
+
+func (repo *resourceSpecRepository) HardDelete(name string) error {
+	return repo.db.Unscoped().Where("namespace_id = ? AND datastore = ? AND name = ? ", repo.namespace.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
+}
+
+func NewResourceSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, ds models.Datastorer, projectResourceSpecRepo store.ProjectResourceSpecRepository) *resourceSpecRepository {
+	return &resourceSpecRepository{
+		db:                      db,
+		namespace:               namespace,
+		datastore:               ds,
+		projectResourceSpecRepo: projectResourceSpecRepo,
 	}
 }

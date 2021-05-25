@@ -30,6 +30,9 @@ type Job struct {
 	ProjectID uuid.UUID
 	Project   Project `gorm:"foreignKey:ProjectID"`
 
+	NamespaceID uuid.UUID
+	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
+
 	TaskName         string
 	TaskConfig       datatypes.JSON
 	WindowSize       *int64 //duration in nanos
@@ -278,16 +281,27 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	}, nil
 }
 
-func (adapt JobSpecAdapter) FromSpecWithProject(spec models.JobSpec, proj models.ProjectSpec) (Job, error) {
+func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace models.NamespaceSpec) (Job, error) {
 	adaptJob, err := adapt.FromSpec(spec)
 	if err != nil {
 		return adaptJob, err
 	}
-	adaptProject, err := Project{}.FromSpec(proj)
+
+	// namespace
+	adaptNamespace, err := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
+	if err != nil {
+		return adaptJob, err
+	}
+	adaptJob.NamespaceID = adaptNamespace.ID
+	adaptJob.Namespace = adaptNamespace
+
+	// project
+	adaptProject, err := Project{}.FromSpec(namespace.ProjectSpec)
 	if err != nil {
 		return adaptJob, err
 	}
 	adaptJob.ProjectID = adaptProject.ID
 	adaptJob.Project = adaptProject
+
 	return adaptJob, nil
 }

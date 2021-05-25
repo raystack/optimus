@@ -38,8 +38,7 @@ const (
 // JobSpec represents a job
 // internal representation of the job
 type JobSpec struct {
-	ID uuid.UUID
-
+	ID           uuid.UUID
 	Version      int
 	Name         string
 	Description  string
@@ -271,29 +270,35 @@ type JobSpecDependency struct {
 // JobService provides a high-level operations on DAGs
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
-	Create(JobSpec, ProjectSpec) error
-	GetByName(string, ProjectSpec) (JobSpec, error)
-	Sync(context.Context, ProjectSpec, progress.Observer) error
+	Create(NamespaceSpec, JobSpec) error
+	// GetByName fetches a Job by name for a specific namespace
+	GetByName(string, NamespaceSpec) (JobSpec, error)
+	// Dump returns the compiled Job
+	Dump(NamespaceSpec, JobSpec) (Job, error)
+	// KeepOnly deletes all jobs except the ones provided for a namespace
+	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
+	// GetAll reads all job specifications of the given namespace
+	GetAll(NamespaceSpec) ([]JobSpec, error)
+	// Delete deletes a job spec from all repos
+	Delete(context.Context, NamespaceSpec, JobSpec) error
 
-	Dump(ProjectSpec, JobSpec) (Job, error)
-	Check(ProjectSpec, []JobSpec, progress.Observer) error
-
-	// KeepOnly deletes all jobs except the ones provided
-	KeepOnly(ProjectSpec, []JobSpec, progress.Observer) error
-
-	// GetAll reads all job specifications
-	GetAll(ProjectSpec) ([]JobSpec, error)
+	// following methods are executed at a project level, instead of a client
+	// GetByNameForProject fetches a Job by name for a specific project
+	GetByNameForProject(string, ProjectSpec) (JobSpec, NamespaceSpec, error)
+	Sync(context.Context, NamespaceSpec, progress.Observer) error
+	Check(NamespaceSpec, []JobSpec, progress.Observer) error
 }
 
 // JobCompiler takes template file of a scheduler and after applying
 // variables generates a executable input for scheduler.
 type JobCompiler interface {
-	Compile(JobSpec, ProjectSpec) (Job, error)
+	Compile(NamespaceSpec, JobSpec) (Job, error)
 }
 
 // Job represents a compiled consumable item for scheduler
 // this is generated from JobSpec
 type Job struct {
-	Name     string
-	Contents []byte
+	Name        string
+	NamespaceID string
+	Contents    []byte
 }

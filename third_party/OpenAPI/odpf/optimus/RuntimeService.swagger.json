@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "v1/RuntimeService.proto",
+    "title": "odpf/optimus/RuntimeService.proto",
     "version": "0.1"
   },
   "tags": [
@@ -21,12 +21,13 @@
   "paths": {
     "/api/v1/instance": {
       "post": {
+        "summary": "RegisterInstance is an internal admin command used during task execution",
         "operationId": "RuntimeService_RegisterInstance",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1RegisterInstanceResponse"
+              "$ref": "#/definitions/optimusRegisterInstanceResponse"
             }
           },
           "default": {
@@ -42,7 +43,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/apiv1RegisterInstanceRequest"
+              "$ref": "#/definitions/optimusRegisterInstanceRequest"
             }
           }
         ],
@@ -53,12 +54,13 @@
     },
     "/api/v1/project": {
       "get": {
+        "summary": "ListProjects returns list of registered projects and configurations",
         "operationId": "RuntimeService_ListProjects",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1ListProjectsResponse"
+              "$ref": "#/definitions/optimusListProjectsResponse"
             }
           },
           "default": {
@@ -73,12 +75,13 @@
         ]
       },
       "post": {
+        "summary": "RegisterProject creates a new project",
         "operationId": "RuntimeService_RegisterProject",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1RegisterProjectResponse"
+              "$ref": "#/definitions/optimusRegisterProjectResponse"
             }
           },
           "default": {
@@ -94,172 +97,8 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/apiv1RegisterProjectRequest"
+              "$ref": "#/definitions/optimusRegisterProjectRequest"
             }
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      }
-    },
-    "/api/v1/project/{projectName}/datastore/{datastoreName}/resource": {
-      "get": {
-        "summary": "ListResourceSpecification lists all resource specifications of a datastore in project",
-        "operationId": "RuntimeService_ListResourceSpecification",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/apiv1ListResourceSpecificationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "datastoreName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      },
-      "post": {
-        "summary": "Datastore CRUD",
-        "operationId": "RuntimeService_CreateResource",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/apiv1CreateResourceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "datastoreName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/apiv1CreateResourceRequest"
-            }
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      },
-      "put": {
-        "operationId": "RuntimeService_UpdateResource",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/apiv1UpdateResourceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "datastoreName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/apiv1UpdateResourceRequest"
-            }
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      }
-    },
-    "/api/v1/project/{projectName}/datastore/{datastoreName}/resource/{resourceName}": {
-      "get": {
-        "operationId": "RuntimeService_ReadResource",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/apiv1ReadResourceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "datastoreName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "resourceName",
-            "in": "path",
-            "required": true,
-            "type": "string"
           }
         ],
         "tags": [
@@ -269,12 +108,50 @@
     },
     "/api/v1/project/{projectName}/job": {
       "get": {
+        "summary": "ListJobSpecification returns list of jobs created in a project",
         "operationId": "RuntimeService_ListJobSpecification",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1ListJobSpecificationResponse"
+              "$ref": "#/definitions/optimusListJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/job/check": {
+      "post": {
+        "summary": "CheckJobSpecification checks if a job specification is valid",
+        "operationId": "RuntimeService_CheckJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusCheckJobSpecificationResponse"
             }
           },
           "default": {
@@ -299,12 +176,13 @@
     },
     "/api/v1/project/{projectName}/job/{jobName}/dump": {
       "get": {
+        "summary": "DumpJobSpecification returns compiled representation of the job in a scheduler\nconsumable form",
         "operationId": "RuntimeService_DumpJobSpecification",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1DumpJobSpecificationResponse"
+              "$ref": "#/definitions/optimusDumpJobSpecificationResponse"
             }
           },
           "default": {
@@ -326,6 +204,12 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -335,12 +219,13 @@
     },
     "/api/v1/project/{projectName}/job/{jobName}/status": {
       "get": {
+        "summary": "JobStatus returns the current and past run status of jobs",
         "operationId": "RuntimeService_JobStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1JobStatusResponse"
+              "$ref": "#/definitions/optimusJobStatusResponse"
             }
           },
           "default": {
@@ -353,6 +238,397 @@
         "parameters": [
           {
             "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/namespace": {
+      "get": {
+        "summary": "ListProjectNamespaces returns list of namespaces of a project",
+        "operationId": "RuntimeService_ListProjectNamespaces",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusListProjectNamespacesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
+      "post": {
+        "summary": "RegisterProjectNamespace creates a new namespace for a project",
+        "operationId": "RuntimeService_RegisterProjectNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusRegisterProjectNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusRegisterProjectNamespaceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource": {
+      "get": {
+        "summary": "ListResourceSpecification lists all resource specifications of a datastore in project",
+        "operationId": "RuntimeService_ListResourceSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusListResourceSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
+      "post": {
+        "summary": "Datastore CRUD",
+        "operationId": "RuntimeService_CreateResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusCreateResourceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusCreateResourceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
+      "put": {
+        "operationId": "RuntimeService_UpdateResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusUpdateResourceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusUpdateResourceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource/{resourceName}": {
+      "get": {
+        "operationId": "RuntimeService_ReadResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusReadResourceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/namespace/{namespace}/job": {
+      "post": {
+        "summary": "CreateJobSpecification registers a new job for a namespace which belongs to a project",
+        "operationId": "RuntimeService_CreateJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusCreateJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusCreateJobSpecificationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/api/v1/project/{projectName}/namespace/{namespace}/job/{jobName}": {
+      "get": {
+        "summary": "ReadJobSpecification reads a provided job spec of a namespace",
+        "operationId": "RuntimeService_ReadJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusReadJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
+      "delete": {
+        "summary": "DeleteJobSpecification deletes a job spec of a namespace",
+        "operationId": "RuntimeService_DeleteJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusDeleteJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
             "in": "path",
             "required": true,
             "type": "string"
@@ -371,12 +647,13 @@
     },
     "/api/v1/project/{projectName}/secret/{secretName}": {
       "post": {
+        "summary": "RegisterSecret creates a new secret of a project",
         "operationId": "RuntimeService_RegisterSecret",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1RegisterSecretResponse"
+              "$ref": "#/definitions/optimusRegisterSecretResponse"
             }
           },
           "default": {
@@ -404,7 +681,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/apiv1RegisterSecretRequest"
+              "$ref": "#/definitions/optimusRegisterSecretRequest"
             }
           }
         ],
@@ -415,12 +692,13 @@
     },
     "/api/v1/version": {
       "post": {
+        "summary": "server ping with version",
         "operationId": "RuntimeService_Version",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1VersionResponse"
+              "$ref": "#/definitions/optimusVersionResponse"
             }
           },
           "default": {
@@ -436,7 +714,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/apiv1VersionRequest"
+              "$ref": "#/definitions/optimusVersionRequest"
             }
           }
         ],
@@ -447,12 +725,13 @@
     },
     "/api/v1/window": {
       "get": {
+        "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
         "operationId": "RuntimeService_GetWindow",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiv1GetWindowResponse"
+              "$ref": "#/definitions/optimusGetWindowResponse"
             }
           },
           "default": {
@@ -496,32 +775,15 @@
     }
   },
   "definitions": {
-    "apiv1CreateResourceRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "datastoreName": {
-          "type": "string"
-        },
-        "resource": {
-          "$ref": "#/definitions/apiv1ResourceSpecification"
-        }
-      }
-    },
-    "apiv1CreateResourceResponse": {
+    "optimusCheckJobSpecificationResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
-        },
-        "message": {
-          "type": "string"
         }
       }
     },
-    "apiv1DeployJobSpecificationResponse": {
+    "optimusCheckJobSpecificationsResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -529,7 +791,7 @@
         },
         "ack": {
           "type": "boolean",
-          "title": "non ack responses are more of a progress/info response and\nand not success or failure status"
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
         },
         "message": {
           "type": "string"
@@ -539,7 +801,71 @@
         }
       }
     },
-    "apiv1DeployResourceSpecificationResponse": {
+    "optimusCreateJobSpecificationRequest": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "spec": {
+          "$ref": "#/definitions/optimusJobSpecification"
+        }
+      }
+    },
+    "optimusCreateJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusCreateResourceRequest": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "datastoreName": {
+          "type": "string"
+        },
+        "resource": {
+          "$ref": "#/definitions/optimusResourceSpecification"
+        },
+        "namespace": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusCreateResourceResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusDeleteJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusDeployJobSpecificationResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -547,7 +873,25 @@
         },
         "ack": {
           "type": "boolean",
-          "title": "non ack responses are more of a progress/info response and\nand not success or failure status"
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+        },
+        "message": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusDeployResourceSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "ack": {
+          "type": "boolean",
+          "title": "non ack responses are more of a progress/info response\nand not success or failure statuses"
         },
         "message": {
           "type": "string"
@@ -557,7 +901,7 @@
         }
       }
     },
-    "apiv1DumpJobSpecificationResponse": {
+    "optimusDumpJobSpecificationResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -568,7 +912,7 @@
         }
       }
     },
-    "apiv1GetWindowResponse": {
+    "optimusGetWindowResponse": {
       "type": "object",
       "properties": {
         "start": {
@@ -581,7 +925,7 @@
         }
       }
     },
-    "apiv1InstanceSpec": {
+    "optimusInstanceSpec": {
       "type": "object",
       "properties": {
         "state": {
@@ -594,7 +938,7 @@
         "data": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1InstanceSpecData"
+            "$ref": "#/definitions/optimusInstanceSpecData"
           }
         },
         "jobName": {
@@ -602,7 +946,7 @@
         }
       }
     },
-    "apiv1InstanceSpecData": {
+    "optimusInstanceSpecData": {
       "type": "object",
       "properties": {
         "name": {
@@ -619,7 +963,7 @@
         }
       }
     },
-    "apiv1JobConfigItem": {
+    "optimusJobConfigItem": {
       "type": "object",
       "properties": {
         "name": {
@@ -630,7 +974,7 @@
         }
       }
     },
-    "apiv1JobDependency": {
+    "optimusJobDependency": {
       "type": "object",
       "properties": {
         "name": {
@@ -641,18 +985,7 @@
         }
       }
     },
-    "apiv1JobLabelItem": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "apiv1JobSpecHook": {
+    "optimusJobSpecHook": {
       "type": "object",
       "properties": {
         "name": {
@@ -661,12 +994,12 @@
         "config": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1JobConfigItem"
+            "$ref": "#/definitions/optimusJobConfigItem"
           }
         }
       }
     },
-    "apiv1JobSpecification": {
+    "optimusJobSpecification": {
       "type": "object",
       "properties": {
         "version": {
@@ -700,7 +1033,7 @@
         "config": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1JobConfigItem"
+            "$ref": "#/definitions/optimusJobConfigItem"
           }
         },
         "windowSize": {
@@ -715,7 +1048,7 @@
         "dependencies": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1JobDependency"
+            "$ref": "#/definitions/optimusJobDependency"
           }
         },
         "assets": {
@@ -727,21 +1060,21 @@
         "hooks": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1JobSpecHook"
+            "$ref": "#/definitions/optimusJobSpecHook"
           }
         },
         "description": {
           "type": "string"
         },
         "labels": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/apiv1JobLabelItem"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
           }
         }
       }
     },
-    "apiv1JobStatus": {
+    "optimusJobStatus": {
       "type": "object",
       "properties": {
         "state": {
@@ -753,51 +1086,62 @@
         }
       }
     },
-    "apiv1JobStatusResponse": {
+    "optimusJobStatusResponse": {
       "type": "object",
       "properties": {
         "statuses": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1JobStatus"
+            "$ref": "#/definitions/optimusJobStatus"
           }
         }
       }
     },
-    "apiv1ListJobSpecificationResponse": {
+    "optimusListJobSpecificationResponse": {
       "type": "object",
       "properties": {
         "jobs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1JobSpecification"
+            "$ref": "#/definitions/optimusJobSpecification"
           }
         }
       }
     },
-    "apiv1ListProjectsResponse": {
+    "optimusListProjectNamespacesResponse": {
+      "type": "object",
+      "properties": {
+        "namespaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusNamespaceSpecification"
+          }
+        }
+      }
+    },
+    "optimusListProjectsResponse": {
       "type": "object",
       "properties": {
         "projects": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1ProjectSpecification"
+            "$ref": "#/definitions/optimusProjectSpecification"
           }
         }
       }
     },
-    "apiv1ListResourceSpecificationResponse": {
+    "optimusListResourceSpecificationResponse": {
       "type": "object",
       "properties": {
         "resources": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1ResourceSpecification"
+            "$ref": "#/definitions/optimusResourceSpecification"
           }
         }
       }
     },
-    "apiv1ProjectSpecification": {
+    "optimusNamespaceSpecification": {
       "type": "object",
       "properties": {
         "name": {
@@ -811,7 +1155,29 @@
         }
       }
     },
-    "apiv1ReadResourceResponse": {
+    "optimusProjectSpecification": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "optimusReadJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "$ref": "#/definitions/optimusJobSpecification"
+        }
+      }
+    },
+    "optimusReadResourceResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -821,11 +1187,11 @@
           "type": "string"
         },
         "resource": {
-          "$ref": "#/definitions/apiv1ResourceSpecification"
+          "$ref": "#/definitions/optimusResourceSpecification"
         }
       }
     },
-    "apiv1RegisterInstanceRequest": {
+    "optimusRegisterInstanceRequest": {
       "type": "object",
       "properties": {
         "projectName": {
@@ -843,29 +1209,35 @@
         }
       }
     },
-    "apiv1RegisterInstanceResponse": {
+    "optimusRegisterInstanceResponse": {
       "type": "object",
       "properties": {
         "project": {
-          "$ref": "#/definitions/apiv1ProjectSpecification"
+          "$ref": "#/definitions/optimusProjectSpecification"
         },
         "job": {
-          "$ref": "#/definitions/apiv1JobSpecification"
+          "$ref": "#/definitions/optimusJobSpecification"
         },
         "instance": {
-          "$ref": "#/definitions/apiv1InstanceSpec"
+          "$ref": "#/definitions/optimusInstanceSpec"
+        },
+        "namespace": {
+          "$ref": "#/definitions/optimusNamespaceSpecification"
         }
       }
     },
-    "apiv1RegisterProjectRequest": {
+    "optimusRegisterProjectNamespaceRequest": {
       "type": "object",
       "properties": {
-        "project": {
-          "$ref": "#/definitions/apiv1ProjectSpecification"
+        "projectName": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/optimusNamespaceSpecification"
         }
       }
     },
-    "apiv1RegisterProjectResponse": {
+    "optimusRegisterProjectNamespaceResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -876,7 +1248,29 @@
         }
       }
     },
-    "apiv1RegisterSecretRequest": {
+    "optimusRegisterProjectRequest": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "$ref": "#/definitions/optimusProjectSpecification"
+        },
+        "namespace": {
+          "$ref": "#/definitions/optimusNamespaceSpecification"
+        }
+      }
+    },
+    "optimusRegisterProjectResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusRegisterSecretRequest": {
       "type": "object",
       "properties": {
         "projectName": {
@@ -890,7 +1284,7 @@
         }
       }
     },
-    "apiv1RegisterSecretResponse": {
+    "optimusRegisterSecretResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -901,7 +1295,7 @@
         }
       }
     },
-    "apiv1ResourceSpecification": {
+    "optimusResourceSpecification": {
       "type": "object",
       "properties": {
         "version": {
@@ -909,9 +1303,6 @@
           "format": "int32"
         },
         "name": {
-          "type": "string"
-        },
-        "datastore": {
           "type": "string"
         },
         "type": {
@@ -931,17 +1322,11 @@
           "additionalProperties": {
             "type": "string"
           }
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
         }
       },
       "title": "ResourceSpecification are datastore specification representation of a resource"
     },
-    "apiv1UpdateResourceRequest": {
+    "optimusUpdateResourceRequest": {
       "type": "object",
       "properties": {
         "projectName": {
@@ -951,26 +1336,14 @@
           "type": "string"
         },
         "resource": {
-          "$ref": "#/definitions/apiv1ResourceSpecification"
-        }
-      },
-      "title": "ResourceSpecification are datastore specification representation of a resource"
-    },
-    "apiv1UpdateResourceRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
+          "$ref": "#/definitions/optimusResourceSpecification"
         },
-        "datastoreName": {
+        "namespace": {
           "type": "string"
-        },
-        "resource": {
-          "$ref": "#/definitions/apiv1ResourceSpecification"
         }
       }
     },
-    "apiv1UpdateResourceResponse": {
+    "optimusUpdateResourceResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -981,7 +1354,7 @@
         }
       }
     },
-    "apiv1VersionRequest": {
+    "optimusVersionRequest": {
       "type": "object",
       "properties": {
         "client": {
@@ -989,7 +1362,7 @@
         }
       }
     },
-    "apiv1VersionResponse": {
+    "optimusVersionResponse": {
       "type": "object",
       "properties": {
         "server": {
@@ -1001,16 +1374,13 @@
       "type": "object",
       "properties": {
         "typeUrl": {
-          "type": "string",
-          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+          "type": "string"
         },
         "value": {
           "type": "string",
-          "format": "byte",
-          "description": "Must be a valid serialized protocol buffer of the above specified type."
+          "format": "byte"
         }
-      },
-      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := ptypes.MarshalAny(foo)\n     ...\n     foo := \u0026pb.Foo{}\n     if err := ptypes.UnmarshalAny(any, foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+      }
     },
     "protobufNullValue": {
       "type": "string",

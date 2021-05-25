@@ -18,6 +18,14 @@ func TestJobAdapter(t *testing.T) {
 		},
 	}
 
+	namespaceSpec := models.NamespaceSpec{
+		Name: "humara-namespaceSpec",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+		ProjectSpec: projectSpec,
+	}
+
 	execUnit := new(mock.Transformer)
 	hookUnit := new(mock.HookUnit)
 
@@ -103,6 +111,7 @@ func TestJobAdapter(t *testing.T) {
 		expectedResourceMetadata := &models.JobMetadata{
 			Urn:         "humara-projectSpec::job/job-1",
 			Name:        "job-1",
+			Namespace:   namespaceSpec.Name,
 			Tenant:      "humara-projectSpec",
 			Version:     100,
 			Description: "",
@@ -143,7 +152,7 @@ func TestJobAdapter(t *testing.T) {
 				DependsOn: []string{"some_value"},
 			}},
 		}
-		resourceMetadata, err := meta.JobAdapter{}.FromJobSpec(projectSpec, jobSpec1)
+		resourceMetadata, err := meta.JobAdapter{}.FromJobSpec(namespaceSpec, jobSpec1)
 		assert.Nil(t, err)
 		assert.Equal(t, expectedResourceMetadata, resourceMetadata)
 

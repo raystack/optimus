@@ -3,10 +3,9 @@ package v1_test
 import (
 	"context"
 	"encoding/base64"
+
 	"testing"
 	"time"
-
-	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/instance"
 
@@ -18,15 +17,13 @@ import (
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
+
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
 	logger.Init("INFO")
-	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		return jobSpec.Assets, nil
-	}
 
 	t.Run("Version", func(t *testing.T) {
 		t.Run("should save specs and return with data", func(t *testing.T) {
@@ -35,6 +32,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				nil, nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -65,6 +63,14 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
 				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "namespace-124",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
 				},
@@ -127,7 +133,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
-			jobService.On("GetByName", jobName, projectSpec).Return(jobSpec, nil)
+			//jobService.On("GetByName", jobName, projectSpec).Return(jobSpec, nil)
+			jobService.On("GetByNameForProject", jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
 			instanceService := new(mock.InstanceService)
@@ -139,7 +146,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				projectRepoFactory,
-
+				nil,
 				nil,
 				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
@@ -156,54 +163,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
 			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
 			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
-			expectedResponse := &pb.RegisterInstanceResponse{Job: jobSpecProto, Instance: instanceSpecProto, Project: projectSpecProto}
+			namespaceProto := adapter.ToNamespaceProto(namespaceSpec)
+			expectedResponse := &pb.RegisterInstanceResponse{Job: jobSpecProto, Instance: instanceSpecProto,
+				Project: projectSpecProto, Namespace: namespaceProto}
 
 			assert.Equal(t, expectedResponse, resp)
 		})
 	})
 
 	t.Run("RegisterProject", func(t *testing.T) {
-		t.Run("should register a project", func(t *testing.T) {
-			projectName := "a-data-project"
-
-			projectSpec := models.ProjectSpec{
-				Name: projectName,
-				Config: map[string]string{
-					"BUCKET": "gs://some_folder",
-				},
-			}
-			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
-
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("Save", projectSpec).Return(nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				"someVersion1.0",
-				jobService, nil,
-				projectRepoFactory,
-				nil,
-				v1.NewAdapter(models.TaskRegistry, nil, nil),
-				nil,
-				nil,
-				nil,
-			)
-
-			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
-			assert.Nil(t, err)
-			assert.Equal(t, &pb.RegisterProjectResponse{
-				Success: true,
-				Message: "saved successfully",
-			}, resp)
-		})
 		t.Run("should return error if saving to repository fails", func(t *testing.T) {
 			projectName := "a-data-project"
 
@@ -230,6 +198,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"someVersion1.0",
 				jobService, nil,
 				projectRepoFactory,
+
+				nil,
 				nil,
 				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
@@ -241,6 +211,330 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
 			assert.Equal(t, "rpc error: code = Internal desc = a random error: failed to save project a-data-project", err.Error())
 			assert.Nil(t, resp)
+		})
+		t.Run("should register a project without a namespace", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("Save", projectSpec).Return(nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				jobService, nil,
+				projectRepoFactory,
+
+				nil,
+				nil,
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
+				nil,
+				nil,
+				nil,
+			)
+
+			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
+			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.RegisterProjectResponse{
+				Success: true,
+				Message: "saved successfully",
+			}, resp)
+		})
+		t.Run("should register a project with a namespace", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				Name:   "dev-test-namespace-1",
+				Config: map[string]string{},
+			}
+
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("Save", projectSpec).Return(nil)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobSvc := new(mock.JobService)
+			defer jobSvc.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("Save", namespaceSpec).Return(nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				jobSvc,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
+				nil,
+				nil,
+				nil,
+			)
+
+			projectRequest := pb.RegisterProjectRequest{
+				Project:   adapter.ToProjectProto(projectSpec),
+				Namespace: adapter.ToNamespaceProto(namespaceSpec),
+			}
+			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.RegisterProjectResponse{
+				Success: true,
+				Message: "saved successfully",
+			}, resp)
+		})
+	})
+
+	t.Run("RegisterProjectNamespace", func(t *testing.T) {
+		t.Run("should save a new namespace", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				Name:   "dev-test-namespace-1",
+				Config: map[string]string{},
+			}
+
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobSvc := new(mock.JobService)
+			defer jobSvc.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("Save", namespaceSpec).Return(nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				jobSvc,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
+				nil,
+				nil,
+				nil,
+			)
+
+			namespaceRequest := pb.RegisterProjectNamespaceRequest{
+				ProjectName: projectName,
+				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
+			}
+			resp, err := runtimeServiceServer.RegisterProjectNamespace(context.TODO(), &namespaceRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.RegisterProjectNamespaceResponse{
+				Success: true,
+				Message: "saved successfully",
+			}, resp)
+		})
+		t.Run("should throw error if project does not exist while saving a namespace", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				Name: "dev-test-namespace-1",
+			}
+
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, errors.New("project does not exist"))
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobSvc := new(mock.JobService)
+			defer jobSvc.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				jobSvc,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
+				nil,
+				nil,
+				nil,
+			)
+
+			namespaceRequest := pb.RegisterProjectNamespaceRequest{
+				ProjectName: projectName,
+				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
+			}
+			_, err := runtimeServiceServer.RegisterProjectNamespace(context.TODO(), &namespaceRequest)
+			assert.NotNil(t, err)
+			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: project a-data-project not found", err.Error())
+		})
+	})
+
+	t.Run("RegisterJobSpecification", func(t *testing.T) {
+		t.Run("should save a job specification", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				Name:        "dev-test-namespace-1",
+				ProjectSpec: projectSpec,
+			}
+
+			jobName := "my-job"
+			taskName := "bq2bq"
+			execUnit1 := new(mock.Transformer)
+			execUnit1.On("Name").Return(taskName)
+			execUnit1.On("Image").Return("dsfsd")
+			execUnit1.On("DefaultAssets", mock2.Anything).Return(models.DefaultAssetsResponse{}, nil)
+			defer execUnit1.AssertExpectations(t)
+			models.TaskRegistry.Add(execUnit1)
+
+			jobSpec := models.JobSpec{
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Unit: execUnit1,
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "DO",
+							Value: "THIS",
+						},
+					},
+					Window: models.JobSpecTaskWindow{
+						Size:       time.Hour,
+						Offset:     0,
+						TruncateTo: "d",
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+				Dependencies: map[string]models.JobSpecDependency{},
+			}
+
+			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobSvc := new(mock.JobService)
+			jobSvc.On("Create", jobSpec, namespaceSpec).Return(nil)
+			jobSvc.On("Check", namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
+			jobSvc.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
+			defer jobSvc.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"someVersion1.0",
+				jobSvc,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				v1.NewAdapter(models.TaskRegistry, nil, nil),
+				nil,
+				nil,
+				nil,
+			)
+
+			jobProto, _ := adapter.ToJobProto(jobSpec)
+			request := pb.CreateJobSpecificationRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				Spec:        jobProto,
+			}
+			resp, err := runtimeServiceServer.CreateJobSpecification(context.TODO(), &request)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.CreateJobSpecificationResponse{
+				Success: true,
+				Message: "job my-job is created and deployed successfully on project a-data-project",
+			}, resp)
 		})
 	})
 
@@ -284,6 +578,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"someVersion1.0",
 				jobService, nil,
 				projectRepoFactory,
+				nil,
 				projectSecretRepoFactory,
 				adapter,
 				nil,
@@ -341,6 +636,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"someVersion1.0",
 				jobService, nil,
 				projectRepoFactory,
+				nil,
 				projectSecretRepoFactory,
 				adapter,
 				nil,
@@ -360,7 +656,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 	})
 
 	t.Run("DeployJobSpecification", func(t *testing.T) {
-		t.Run("should return error if fails to save Job", func(t *testing.T) {
+		t.Run("should deploy the job", func(t *testing.T) {
 			Version := "1.0.1"
 
 			projectName := "a-data-project"
@@ -373,6 +669,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
 				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
 			}
 
 			execUnit1 := new(mock.Transformer)
@@ -411,29 +716,45 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("Save", mock2.Anything).Return(errors.New("a random error"))
 			defer jobSpecRepository.AssertExpectations(t)
 
 			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
-			jobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			allTasksRepo := new(mock.SupportedTransformationRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
 
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("Create", mock2.Anything, namespaceSpec).Return(nil)
+			jobService.On("KeepOnly", namespaceSpec, mock2.Anything, mock2.Anything).Return(nil)
+			jobService.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
+			defer jobService.AssertExpectations(t)
+
+			grpcRespStream := new(mock.RuntimeService_DeployJobSpecificationServer)
+			grpcRespStream.On("Context").Return(context.TODO())
+			defer grpcRespStream.AssertExpectations(t)
+
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				job.NewService(
-					jobSpecRepoFactory,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
-				), nil,
+				jobService,
+				nil,
 				projectRepoFactory,
+				namespaceRepoFact,
 				nil,
 				adapter,
 				nil,
@@ -446,9 +767,269 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
 				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
 			}
-			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted}
-			err := runtimeServiceServer.DeployJobSpecification(&deployRequest, nil)
-			assert.Equal(t, "rpc error: code = Internal desc = failed to save job: a-data-job: a random error: failed to save a-data-job", err.Error())
+			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, Namespace: namespaceSpec.Name}
+			err := runtimeServiceServer.DeployJobSpecification(&deployRequest, grpcRespStream)
+			assert.Nil(t, err)
+		})
+	})
+
+	t.Run("ReadJobSpecification", func(t *testing.T) {
+		t.Run("should read a job spec", func(t *testing.T) {
+			Version := "1.0.1"
+
+			projectName := "a-data-project"
+			jobName1 := "a-data-job"
+			taskName := "a-data-task"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+
+			execUnit1 := new(mock.Transformer)
+			execUnit1.On("Name").Return(taskName)
+
+			defer execUnit1.AssertExpectations(t)
+
+			jobSpecs := []models.JobSpec{
+				{
+					Name: jobName1,
+					Task: models.JobSpecTask{
+						Unit: execUnit1,
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+					Assets: *models.JobAssets{}.New(
+						[]models.JobSpecAsset{
+							{
+								Name:  "query.sql",
+								Value: "select * from 1",
+							},
+						}),
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			allTasksRepo := new(mock.SupportedTransformationRepo)
+			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				jobService,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
+			deployRequest := pb.ReadJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
+			jobSpecResp, err := runtimeServiceServer.ReadJobSpecification(context.TODO(), &deployRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
+		})
+	})
+
+	t.Run("ListProjectNamespaces", func(t *testing.T) {
+		t.Run("should read namespaces of a project", func(t *testing.T) {
+			Version := "1.0.1"
+
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			allTasksRepo := new(mock.SupportedTransformationRepo)
+			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetAll").Return([]models.NamespaceSpec{namespaceSpec}, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				jobService,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			namespaceAdapted := adapter.ToNamespaceProto(namespaceSpec)
+			request := pb.ListProjectNamespacesRequest{ProjectName: projectName}
+			resp, err := runtimeServiceServer.ListProjectNamespaces(context.TODO(), &request)
+			assert.Nil(t, err)
+			assert.Equal(t, []*pb.NamespaceSpecification{namespaceAdapted}, resp.GetNamespaces())
+		})
+	})
+
+	t.Run("DeleteJobSpecification", func(t *testing.T) {
+		t.Run("should delete the job", func(t *testing.T) {
+			Version := "1.0.1"
+
+			projectName := "a-data-project"
+			jobName1 := "a-data-job"
+			taskName := "a-data-task"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+
+			execUnit1 := new(mock.Transformer)
+			defer execUnit1.AssertExpectations(t)
+
+			jobSpecs := []models.JobSpec{
+				{
+					Name: jobName1,
+					Task: models.JobSpecTask{
+						Unit: execUnit1,
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+					Assets: *models.JobAssets{}.New(
+						[]models.JobSpecAsset{
+							{
+								Name:  "query.sql",
+								Value: "select * from 1",
+							},
+						}),
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			allTasksRepo := new(mock.SupportedTransformationRepo)
+			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobSpec := jobSpecs[0]
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			jobService.On("Delete", mock2.Anything, namespaceSpec, jobSpec).Return(nil)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				jobService,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, Namespace: namespaceSpec.Name}
+			resp, err := runtimeServiceServer.DeleteJobSpecification(context.TODO(), &deployRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, "job a-data-job has been deleted", resp.GetMessage())
 		})
 	})
 
@@ -459,6 +1040,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				nil, nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -486,6 +1068,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				nil, nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -521,6 +1104,21 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+
+			compiledJob := models.Job{
+				Name:        jobName,
+				NamespaceID: namespaceSpec.ID.String(),
+				Contents:    []byte("content-of-dag"),
+			}
+
 			execUnit1 := new(mock.Transformer)
 			defer execUnit1.AssertExpectations(t)
 
@@ -553,42 +1151,46 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("Dump", namespaceSpec, jobSpec).Return(compiledJob, nil)
+			defer jobService.AssertExpectations(t)
+
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByName", jobName).Return(jobSpec, nil)
-			jobSpecRepository.On("GetAll").Return([]models.JobSpec{jobSpec}, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
 			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
-			jobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			compiler := new(mock.Compiler)
-			compiler.On("Compile", jobSpec, projectSpec).Return(models.Job{
-				Name:     "name-of-dag",
-				Contents: []byte("content-of-dag"),
-			}, nil)
 			defer compiler.AssertExpectations(t)
 
 			dependencyResolver := new(mock.DependencyResolver)
-			dependencyResolver.On("Resolve", projectSpec, jobSpecRepository, jobSpec, nil).Return(jobSpec, nil)
 			defer dependencyResolver.AssertExpectations(t)
 
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", []models.JobSpec{jobSpec}).Return([]models.JobSpec{jobSpec}, nil)
 			defer priorityResolver.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				job.NewService(
-					jobSpecRepoFactory,
-					nil,
-					compiler,
-					dumpAssets,
-					dependencyResolver,
-					priorityResolver,
-					nil,
-				), nil,
+				jobService,
+				nil,
 				projectRepoFactory,
+				namespaceRepoFact,
 				nil,
 				v1.NewAdapter(models.TaskRegistry, nil, nil),
 				nil,
@@ -599,6 +1201,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := pb.DumpJobSpecificationRequest{
 				ProjectName: projectName,
 				JobName:     jobName,
+				Namespace:   namespaceSpec.Name,
 			}
 			resp, err := runtimeServiceServer.DumpJobSpecification(context.TODO(), &req)
 			assert.Nil(t, err)
@@ -616,6 +1219,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
 				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
 			}
 
 			// prepare mocked datastore
@@ -654,6 +1266,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Name:    "proj.datas",
 					Type:    models.ResourceTypeDataset.String(),
 				},
+				Namespace: namespaceSpec.Name,
 			}
 
 			projectRepository := new(mock.ProjectRepository)
@@ -665,13 +1278,23 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("CreateResource", context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("CreateResource", context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
-				nil, resourceSvc,
+				nil,
+				resourceSvc,
 				projectRepoFactory,
+				namespaceRepoFact,
 				nil,
 				v1.NewAdapter(nil, nil, dsRepo),
 				nil,
@@ -694,6 +1317,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
 				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
 			}
 
 			// prepare mocked datastore
@@ -732,6 +1364,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Name:    "proj.datas",
 					Type:    models.ResourceTypeDataset.String(),
 				},
+				Namespace: namespaceSpec.Name,
 			}
 
 			projectRepository := new(mock.ProjectRepository)
@@ -743,13 +1376,23 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("UpdateResource", context.TODO(), projectSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("UpdateResource", context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
-				nil, resourceSvc,
+				nil,
+				resourceSvc,
 				projectRepoFactory,
+				namespaceRepoFact,
 				nil,
 				v1.NewAdapter(nil, nil, dsRepo),
 				nil,

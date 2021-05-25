@@ -23,8 +23,7 @@ func (r ResourceType) String() string {
 }
 
 type ResourceSpec struct {
-	ID uuid.UUID
-
+	ID        uuid.UUID
 	Version   int
 	Name      string
 	Type      ResourceType
@@ -164,10 +163,10 @@ func (s *supportedDatastore) Add(newUnit Datastorer) error {
 
 type DatastoreService interface {
 	// does not really fetch resource metadata, just the user provided spec
-	GetAll(spec ProjectSpec, datastoreName string) ([]ResourceSpec, error)
+	GetAll(namespace NamespaceSpec, datastoreName string) ([]ResourceSpec, error)
 
-	CreateResource(ctx context.Context, spec ProjectSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
-	UpdateResource(ctx context.Context, spec ProjectSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
-	ReadResource(ctx context.Context, spec ProjectSpec, datastoreName, name string) (ResourceSpec, error)
-	DeleteResource(ctx context.Context, spec ProjectSpec, datastoreName, name string) error
+	CreateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
+	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
+	ReadResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) (ResourceSpec, error)
+	DeleteResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) error
 }
