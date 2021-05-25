@@ -5,7 +5,7 @@ type Opctl struct {
 	Host      string
 	Job       Job
 	Datastore []Datastore `yaml:"datastore"`
-	Global    map[string]string
+	Config    ConfigSpec  `yaml:"config"`
 
 	// TODO: Add a name field once we have auth
 	// Name string
@@ -18,4 +18,9 @@ type Datastore struct {
 
 type Job struct {
 	Path string
+}
+
+type ConfigSpec struct {
+	Global map[string]string
+	Local  map[string]string
 }

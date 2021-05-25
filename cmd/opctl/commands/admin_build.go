@@ -125,20 +125,19 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectNam
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse job %s", jobName)
 	}
+	namespaceSpec := adapt.FromNamespaceProto(jobResponse.GetNamespace())
 
 	// make sure output dir exists
 	if err := os.MkdirAll(inputDirectory, 0777); err != nil {
 		return errors.Wrapf(err, "failed to create directory at %s", inputDirectory)
 	}
 
-	project := adapt.FromProjectProto(jobResponse.GetProject())
 	instanceSpec, err := adapt.FromInstanceProto(jobResponse.GetInstance())
 	if err != nil {
 		return err
 	}
 
-	envMap, fileMap, err := instance.NewContextManager(
-		project, jobSpec, templateEngine).Generate(
+	envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, templateEngine).Generate(
 		instanceSpec, instanceType, runName,
 	)
 	if err != nil {

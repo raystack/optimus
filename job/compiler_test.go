@@ -19,6 +19,10 @@ func TestCompiler(t *testing.T) {
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
 	}
+	namespaceSpec := models.NamespaceSpec{
+		Name:        "foo-namespace",
+		ProjectSpec: projSpec,
+	}
 
 	spec := models.JobSpec{
 		Name:  "foo",
@@ -61,7 +65,7 @@ func TestCompiler(t *testing.T) {
 				templatePath,
 				"",
 			)
-			dag, err := com.Compile(spec, projSpec)
+			dag, err := com.Compile(namespaceSpec, spec)
 
 			assert.Equal(t, dag.Contents, []byte("sometemplate file"))
 			assert.Nil(t, err)
@@ -81,7 +85,7 @@ func TestCompiler(t *testing.T) {
 				templatePath,
 				"",
 			)
-			_, err := com.Compile(spec, projSpec)
+			_, err := com.Compile(namespaceSpec, spec)
 			assert.Equal(t, err, job.ErrEmptyTemplateFile)
 		})
 	})

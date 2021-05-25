@@ -123,6 +123,18 @@ func TestJobRepository(t *testing.T) {
 		},
 	}
 
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
+	}
+
+	namespaceSpec2 := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-2",
+		ProjectSpec: projectSpec,
+	}
+
 	t.Run("Insert", func(t *testing.T) {
 		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
 			db := DBSetup()
@@ -136,7 +148,10 @@ func TestJobRepository(t *testing.T) {
 			testModels := []models.JobSpec{}
 			testModels = append(testModels, testConfigs...)
 
-			repo := NewJobRepository(db, projectSpec, adapter)
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err := repo.Insert(testModels[0])
 			assert.Nil(t, err)
@@ -170,7 +185,10 @@ func TestJobRepository(t *testing.T) {
 			testModels := []models.JobSpec{}
 			testModels = append(testModels, testConfigs...)
 
-			repo := NewJobRepository(db, projectSpec, adapter)
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// first insert
 			err := repo.Insert(testModels[0])
@@ -220,7 +238,8 @@ func TestJobRepository(t *testing.T) {
 			execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
 			defer execUnit2.AssertExpectations(t)
 
-			repo := NewJobRepository(db, projectSpec, adapter)
+			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -255,7 +274,8 @@ func TestJobRepository(t *testing.T) {
 			execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
 			defer execUnit2.AssertExpectations(t)
 
-			repo := NewJobRepository(db, projectSpec, adapter)
+			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			testModelA.Task.Unit = execUnit1
@@ -287,7 +307,8 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
-			repo := NewJobRepository(db, projectSpec, adapter)
+			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -301,7 +322,9 @@ func TestJobRepository(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			testModel := testConfigs[2]
-			repo := NewJobRepository(db, projectSpec, adapter)
+
+			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err := repo.Insert(testModel)
 			assert.Nil(t, err)
@@ -376,6 +399,35 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, "event_timestamp > 10000", val1)
 			assert.Equal(t, "my_topic.name.kafka", val2)
 		})
+		t.Run("should fail if job is already registered for a project with different namespace", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			testModelA := testConfigs[0]
+
+			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			defer execUnit1.AssertExpectations(t)
+
+			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+			jobRepoNamespace1 := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepoNamespace2 := NewJobRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
+
+			// try to create with first namespace
+			err := jobRepoNamespace1.Save(testModelA)
+			assert.Nil(t, err)
+
+			checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(testModelA.Name)
+			assert.Nil(t, err)
+			assert.Equal(t, "g-optimus-id", checkJob.Name)
+			assert.Equal(t, gTask, checkJob.Task.Unit.Name())
+			assert.Equal(t, namespaceSpec.ID, checkNamespace.ID)
+			assert.Equal(t, namespaceSpec.ProjectSpec.ID, checkNamespace.ProjectSpec.ID)
+
+			// try to create same job with second namespace and it should fail.
+			err = jobRepoNamespace2.Save(testModelA)
+			assert.NotNil(t, err)
+			assert.Equal(t, "job g-optimus-id already exists for the project t-optimus-id", err.Error())
+		})
 	})
 
 	t.Run("GetByName", func(t *testing.T) {
@@ -384,7 +436,8 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec, adapter)
+		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -401,7 +454,8 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec, adapter)
+		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -412,19 +466,194 @@ func TestJobRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModels))
 	})
+}
 
-	t.Run("GetByDestination", func(t *testing.T) {
+func TestProjectJobRepository(t *testing.T) {
+	DBSetup := func() *gorm.DB {
+		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
+		if !ok {
+			panic("unable to find TEST_OPTIMUS_DB_URL env var")
+		}
+		dbConn, err := Connect(dbURL, 1, 1)
+		if err != nil {
+			panic(err)
+		}
+		m, err := NewHTTPFSMigrator(dbURL)
+		if err != nil {
+			panic(err)
+		}
+		if err := m.Drop(); err != nil {
+			panic(err)
+		}
+		if err := Migrate(dbURL); err != nil {
+			panic(err)
+		}
+		return dbConn
+	}
+
+	projectSpec := models.ProjectSpec{
+		ID:   uuid.Must(uuid.NewRandom()),
+		Name: "t-optimus-id",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
+
+	gTask := "g-task"
+	tTask := "t-task"
+	destination := "p.d.t"
+	execUnit1 := new(mock.Transformer)
+	execUnit1.On("Name").Return(gTask)
+	execUnit2 := new(mock.Transformer)
+
+	gHook := "g-hook"
+	hookUnit1 := new(mock.HookUnit)
+	hookUnit1.On("Name").Return(gHook)
+	hookUnit1.On("Type").Return(models.HookTypePre)
+	tHook := "g-hook"
+	hookUnit2 := new(mock.HookUnit)
+	hookUnit2.On("Name").Return(tHook)
+	hookUnit2.On("Type").Return(models.HookTypePre)
+
+	allTasksRepo := new(mock.SupportedTransformationRepo)
+	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
+	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
+	allHooksRepo := new(mock.SupportedHookRepo)
+	allHooksRepo.On("GetByName", gHook).Return(hookUnit1, nil)
+	allHooksRepo.On("GetByName", tHook).Return(hookUnit2, nil)
+	adapter := NewAdapter(allTasksRepo, allHooksRepo)
+
+	testConfigs := []models.JobSpec{
+		{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "g-optimus-id",
+			Task: models.JobSpecTask{
+				Unit: execUnit1,
+				Config: []models.JobSpecConfigItem{
+					{
+						Name:  "do",
+						Value: "this",
+					},
+				},
+				Window: models.JobSpecTaskWindow{
+					Size:       time.Hour * 24,
+					Offset:     0,
+					TruncateTo: "h",
+				},
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				},
+			),
+			Hooks: []models.JobSpecHook{
+				{
+					Config: []models.JobSpecConfigItem{
+						{
+							Name:  "FILTER_EXPRESSION",
+							Value: "event_timestamp > 10000",
+						},
+					},
+					Unit: hookUnit1,
+				},
+			},
+		},
+		{
+			Name: "",
+		},
+		{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "t-optimus-id",
+			Task: models.JobSpecTask{
+				Unit: execUnit2,
+				Config: []models.JobSpecConfigItem{
+					{
+						Name:  "do",
+						Value: "this",
+					},
+				},
+			},
+		},
+	}
+
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
+	}
+
+	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewJobRepository(db, projectSpec, adapter)
+		unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+		execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
-		j, p, err := repo.GetByDestination(destination)
+		checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(testModels[0].Name)
+		assert.Nil(t, err)
+		assert.Equal(t, "g-optimus-id", checkJob.Name)
+		assert.Equal(t, "this", checkJob.Task.Config[0].Value)
+		assert.Equal(t, namespaceSpec.Name, checkNamespace.Name)
+	})
+
+	t.Run("GetAll", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		execUnit2.On("Name").Return(tTask)
+		unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+		execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		unitData2 := models.GenerateDestinationRequest{Config: testConfigs[2].Task.Config, Assets: testConfigs[2].Assets.ToMap()}
+		execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
+		err := repo.Insert(testModels[0])
+		assert.Nil(t, err)
+		err = repo.Insert(testModels[2])
+		assert.Nil(t, err)
+
+		checkModels, err := projectJobSpecRepo.GetAll()
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(checkModels))
+	})
+
+	t.Run("GetByDestination", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+
+		unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
+		execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+		jobRepo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		err := jobRepo.Insert(testModels[0])
+		assert.Nil(t, err)
+
+		j, p, err := projectJobSpecRepo.GetByDestination(destination)
 		assert.Nil(t, err)
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)

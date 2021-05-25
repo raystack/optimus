@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"testing"
 
 	"cloud.google.com/go/storage"
@@ -123,6 +124,11 @@ func TestJobRepository(t *testing.T) {
 		bucket := "scheduled-bucket"
 
 		t.Run("remove DAG object from repository", func(t *testing.T) {
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-team-1",
+			}
+
 			client := new(storageClientMock)
 			defer client.AssertExpectations(t)
 
@@ -135,7 +141,7 @@ func TestJobRepository(t *testing.T) {
 			objectHandle.On("Attrs", context.Background()).Return(&storage.ObjectAttrs{}, nil)
 			objectHandle.On("Delete", context.Background()).Return(nil)
 
-			filePath := fmt.Sprintf("%s/%s", prefix, jobName)
+			filePath := fmt.Sprintf("%s/%s/%s", prefix, namespaceSpec.ID, jobName)
 			bucketHandle.On("Object", filePath).Return(objectHandle)
 			client.On("Bucket", bucket).Return(bucketHandle)
 
@@ -144,11 +150,16 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(ctx, jobName)
+			err := repo.Delete(ctx, namespaceSpec, jobName)
 
 			assert.Nil(t, err)
 		})
 		t.Run("should return error when jobName is empty", func(t *testing.T) {
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-team-1",
+			}
+
 			client := new(storageClientMock)
 			defer client.AssertExpectations(t)
 
@@ -157,10 +168,15 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(ctx, "")
+			err := repo.Delete(ctx, namespaceSpec, "")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return ErrNoSuchDAG when job is not exist", func(t *testing.T) {
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-team-1",
+			}
+
 			client := new(storageClientMock)
 			defer client.AssertExpectations(t)
 
@@ -172,7 +188,7 @@ func TestJobRepository(t *testing.T) {
 			defer objectHandle.AssertExpectations(t)
 			objectHandle.On("Attrs", context.Background()).Return(&storage.ObjectAttrs{}, storage.ErrObjectNotExist)
 
-			filePath := fmt.Sprintf("%s/%s", prefix, jobName)
+			filePath := fmt.Sprintf("%s/%s/%s", prefix, namespaceSpec.ID, jobName)
 			bucketHandle.On("Object", filePath).Return(objectHandle)
 			client.On("Bucket", bucket).Return(bucketHandle)
 
@@ -181,11 +197,16 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(ctx, jobName)
+			err := repo.Delete(ctx, namespaceSpec, jobName)
 
 			assert.Error(t, models.ErrNoSuchJob, err)
 		})
 		t.Run("should return err when unable to get the object info", func(t *testing.T) {
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-team-1",
+			}
+
 			anotherError := errors.New("another error")
 			client := new(storageClientMock)
 			defer client.AssertExpectations(t)
@@ -198,7 +219,7 @@ func TestJobRepository(t *testing.T) {
 			defer objectHandle.AssertExpectations(t)
 			objectHandle.On("Attrs", context.Background()).Return(&storage.ObjectAttrs{}, anotherError)
 
-			filePath := fmt.Sprintf("%s/%s", prefix, jobName)
+			filePath := fmt.Sprintf("%s/%s/%s", prefix, namespaceSpec.ID, jobName)
 			bucketHandle.On("Object", filePath).Return(objectHandle)
 			client.On("Bucket", bucket).Return(bucketHandle)
 
@@ -207,11 +228,16 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(ctx, jobName)
+			err := repo.Delete(ctx, namespaceSpec, jobName)
 
 			assert.Equal(t, anotherError, err)
 		})
 		t.Run("should return error when deletion the object failed", func(t *testing.T) {
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-team-1",
+			}
+
 			anError := errors.New("failed to delete object")
 			client := new(storageClientMock)
 			defer client.AssertExpectations(t)
@@ -225,7 +251,7 @@ func TestJobRepository(t *testing.T) {
 			objectHandle.On("Attrs", context.Background()).Return(&storage.ObjectAttrs{}, nil)
 			objectHandle.On("Delete", context.Background()).Return(anError)
 
-			filePath := fmt.Sprintf("%s/%s", prefix, jobName)
+			filePath := fmt.Sprintf("%s/%s/%s", prefix, namespaceSpec.ID, jobName)
 			bucketHandle.On("Object", filePath).Return(objectHandle)
 			client.On("Bucket", bucket).Return(bucketHandle)
 
@@ -234,11 +260,16 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(ctx, jobName)
+			err := repo.Delete(ctx, namespaceSpec, jobName)
 
 			assert.Equal(t, anError, err)
 		})
 		t.Run("should return error failed to get bucket", func(t *testing.T) {
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-team-1",
+			}
+
 			client := new(storageClientMock)
 			defer client.AssertExpectations(t)
 
@@ -253,7 +284,7 @@ func TestJobRepository(t *testing.T) {
 				Bucket: bucket,
 				Prefix: prefix,
 			}
-			err := repo.Delete(ctx, jobName)
+			err := repo.Delete(ctx, namespaceSpec, jobName)
 
 			assert.NotNil(t, err)
 		})

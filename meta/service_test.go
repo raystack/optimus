@@ -17,6 +17,14 @@ func TestService(t *testing.T) {
 		},
 	}
 
+	namespaceSpec := models.NamespaceSpec{
+		Name: "humara-namespaceSpec",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+		ProjectSpec: projectSpec,
+	}
+
 	jobSpecs := []models.JobSpec{
 		{
 			Name: "job-1",
@@ -45,7 +53,7 @@ func TestService(t *testing.T) {
 		protoMsg := []byte("message")
 
 		builder := new(mock.MetaBuilder)
-		builder.On("FromJobSpec", projectSpec, jobSpecs[0]).Return(resource, nil)
+		builder.On("FromJobSpec", namespaceSpec, jobSpecs[0]).Return(resource, nil)
 		builder.On("CompileKey", jobSpecs[0].Name).Return(protoKey, nil)
 		builder.On("CompileMessage", resource).Return(protoMsg, nil)
 		defer builder.AssertExpectations(t)
@@ -56,7 +64,7 @@ func TestService(t *testing.T) {
 
 		po := new(mock.PipelineLogObserver)
 		service := meta.NewService(writer, builder)
-		err := service.Publish(projectSpec, jobSpecs, po)
+		err := service.Publish(namespaceSpec, jobSpecs, po)
 
 		assert.Nil(t, err)
 	})
@@ -67,7 +75,7 @@ func TestService(t *testing.T) {
 		protoMsg := []byte("message")
 
 		builder := new(mock.MetaBuilder)
-		builder.On("FromJobSpec", projectSpec, jobSpecs[0]).Return(resource, nil)
+		builder.On("FromJobSpec", namespaceSpec, jobSpecs[0]).Return(resource, nil)
 		builder.On("CompileKey", jobSpecs[0].Name).Return(protoKey, nil)
 		builder.On("CompileMessage", resource).Return(protoMsg, nil)
 		defer builder.AssertExpectations(t)
@@ -79,7 +87,7 @@ func TestService(t *testing.T) {
 
 		po := new(mock.PipelineLogObserver)
 		service := meta.NewService(writer, builder)
-		err := service.Publish(projectSpec, jobSpecs, po)
+		err := service.Publish(namespaceSpec, jobSpecs, po)
 
 		assert.NotNil(t, err)
 		assert.Equal(t, "failed to write metadata message: job-1: kafka is down", err.Error())

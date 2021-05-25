@@ -34,6 +34,7 @@ var (
 func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Opctl,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem) *cli.Command {
 	var projectName string
+	var namespace string
 	var ignoreJobs bool
 	var ignoreResources bool
 
@@ -43,14 +44,16 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "project name of deployee")
 	cmd.MarkFlagRequired("project")
+	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace of deployee")
+	cmd.MarkFlagRequired("namespace")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "ignore deployment of resources")
 
 	cmd.Run = func(c *cli.Command, args []string) {
-		l.Printf("deploying project %s at %s\nplease wait...\n", projectName, conf.Host)
+		l.Printf("deploying project %s for namespace %s at %s\nplease wait...\n", projectName, namespace, conf.Host)
 		start := time.Now()
 
-		if err := postDeploymentRequest(l, projectName, jobSpecRepo, conf, datastoreRepo,
+		if err := postDeploymentRequest(l, projectName, namespace, jobSpecRepo, conf, datastoreRepo,
 			datastoreSpecFs, ignoreJobs, ignoreResources); err != nil {
 			l.Println(err)
 			l.Println(errRequestFail)
@@ -64,7 +67,7 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSpecRepository,
+func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo store.JobSpecRepository,
 	conf config.Opctl, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -89,7 +92,11 @@ func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSp
 	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
 		Project: &pb.ProjectSpecification{
 			Name:   projectName,
-			Config: conf.Global,
+			Config: conf.Config.Global,
+		},
+		Namespace: &pb.NamespaceSpecification{
+			Name:   namespace,
+			Config: conf.Config.Local,
 		},
 	})
 	if err != nil {
@@ -127,6 +134,7 @@ func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSp
 				Resources:     adaptedSpecs,
 				ProjectName:   projectName,
 				DatastoreName: storeName,
+				Namespace:     namespace,
 			})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
@@ -183,6 +191,7 @@ func postDeploymentRequest(l logger, projectName string, jobSpecRepo store.JobSp
 		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
 			Jobs:        adaptedJobSpecs,
 			ProjectName: projectName,
+			Namespace:   namespace,
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

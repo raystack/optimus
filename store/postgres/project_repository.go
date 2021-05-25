@@ -94,14 +94,12 @@ func (repo *projectRepository) Save(spec models.ProjectSpec) error {
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find project by name")
 	}
-	resource, err := Project{}.FromSpec(spec)
+	project, err := Project{}.FromSpec(spec)
 	if err != nil {
 		return err
 	}
-	if err == nil {
-		resource.ID = existingResource.ID
-	}
-	return repo.db.Model(resource).Updates(resource).Error
+	project.ID = existingResource.ID
+	return repo.db.Model(project).Updates(project).Error
 }
 
 func (repo *projectRepository) GetByName(name string) (models.ProjectSpec, error) {

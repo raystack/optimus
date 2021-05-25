@@ -35,6 +35,7 @@ func validateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepos
 
 func validateJobCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	var projectName string
+	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
 		Short:   "run basic checks on job",
@@ -42,6 +43,8 @@ func validateJobCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRe
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
 	cmd.MarkFlagRequired("project")
+	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
+	cmd.MarkFlagRequired("namespace")
 
 	cmd.Run = func(c *cli.Command, args []string) {
 		start := time.Now()
@@ -49,7 +52,7 @@ func validateJobCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRe
 		if err != nil {
 			errExit(l, err)
 		}
-		if err := validateJobSpecificationRequest(l, projectName, jobSpecs, conf); err != nil {
+		if err := validateJobSpecificationRequest(l, projectName, namespace, jobSpecs, conf); err != nil {
 			l.Println(err)
 			os.Exit(1)
 		}
@@ -60,7 +63,7 @@ func validateJobCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRe
 	return cmd
 }
 
-func validateJobSpecificationRequest(l logger, projectName string, jobSpecs []models.JobSpec, conf config.Opctl) (err error) {
+func validateJobSpecificationRequest(l logger, projectName string, namespace string, jobSpecs []models.JobSpec, conf config.Opctl) (err error) {
 	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry)
 
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -93,6 +96,7 @@ func validateJobSpecificationRequest(l logger, projectName string, jobSpecs []mo
 	respStream, err := runtime.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
 		ProjectName: projectName,
 		Jobs:        adaptedJobSpecs,
+		Namespace:   namespace,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

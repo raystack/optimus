@@ -18,17 +18,17 @@ var (
 type dependencyResolver struct{}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
-func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository,
+func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error) {
 
 	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, jobSpecRepo, observer)
+	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, projectJobSpecRepo, observer)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
 
 	// resolve statically defined dependencies
-	jobSpec, err = r.resolveStaticDependencies(jobSpec, projectSpec, jobSpecRepo)
+	jobSpec, err = r.resolveStaticDependencies(jobSpec, projectSpec, projectJobSpecRepo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -43,7 +43,7 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, jobSpecRepo
 }
 
 func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
-	jobSpecRepo store.JobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
+	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 
 	// get destinations of dependencies, assets should be
 	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(
@@ -59,7 +59,7 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependenciesDestination.Dependencies {
-		depSpec, depProj, err := jobSpecRepo.GetByDestination(depDestination)
+		depSpec, depProj, err := projectJobSpecRepo.GetByDestination(depDestination)
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				// should not fail for unknown dependency
@@ -87,11 +87,11 @@ func (r *dependencyResolver) getJobSpecDependencyType(dependency models.JobSpecD
 
 // update named (explicit/static) dependencies if unresolved with its spec model
 // this can normally happen when reading specs from a store[local/postgres]
-func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, jobSpecRepo store.JobSpecRepository) (models.JobSpec, error) {
+func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model
 	for depName, depSpec := range jobSpec.Dependencies {
 		if depSpec.Job == nil {
-			job, err := jobSpecRepo.GetByName(depName)
+			job, _, err := projectJobSpecRepo.GetByName(depName)
 			if err != nil {
 				return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownDependency, depName)
 			}

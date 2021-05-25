@@ -26,8 +26,8 @@ class TestCompiledAirflowTemplate(unittest.TestCase):
         self.assertEqual("bq", dag.tasks[0].task_id)
         self.assertEqual("hook_transporter", dag.tasks[1].task_id)
         self.assertEqual("hook_predator", dag.tasks[2].task_id)
-        self.assertEqual("wait-foo-intra-dep-job-bq", dag.tasks[3].task_id)
-        self.assertEqual("wait-foo-inter-dep-job-bq", dag.tasks[4].task_id)
+        self.assertEqual("wait_foo-intra-dep-job-bq", dag.tasks[3].task_id)
+        self.assertEqual("wait_foo-inter-dep-job-bq", dag.tasks[4].task_id)
 
         self.assertEqual("SuperKubernetesPodOperator", dag.tasks[0].__class__.__name__)
         self.assertEqual("SuperKubernetesPodOperator", dag.tasks[1].__class__.__name__)

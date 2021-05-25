@@ -22,6 +22,11 @@ func TestInstanceRepository(t *testing.T) {
 			"bucket": "gs://some_folder",
 		},
 	}
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
+	}
 
 	gTask := "g-task"
 	tTask := "t-task"
@@ -37,8 +42,8 @@ func TestInstanceRepository(t *testing.T) {
 
 	jobConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "g-optimus-id",
+			ID:     uuid.Must(uuid.NewRandom()),
+			Name:   "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit1,
 				Config: []models.JobSpecConfigItem{
@@ -56,8 +61,11 @@ func TestInstanceRepository(t *testing.T) {
 				}),
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "t-optimus-id",
+			Name:   "",
+		},
+		{
+			ID:     uuid.Must(uuid.NewRandom()),
+			Name:   "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit2,
 				Config: []models.JobSpecConfigItem{
@@ -98,9 +106,10 @@ func TestInstanceRepository(t *testing.T) {
 		prepo := NewProjectRepository(dbConn, hash)
 		assert.Nil(t, prepo.Save(projectSpec))
 
-		jrepo := NewJobRepository(dbConn, projectSpec, adapter)
+		projectJobSpecRepo := NewProjectJobRepository(dbConn, projectSpec, adapter)
+		jrepo := NewJobRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
 		assert.Nil(t, jrepo.Save(jobConfigs[0]))
-		assert.Nil(t, jrepo.Save(jobConfigs[1]))
+		assert.Equal(t, "task unit cannot be empty", jrepo.Save(jobConfigs[1]).Error())
 		return dbConn
 	}
 
@@ -127,8 +136,12 @@ func TestInstanceRepository(t *testing.T) {
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
 
+		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+		jobRepo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		err := jobRepo.Insert(testModels[0].Job)
+
 		iRepo1 := NewInstanceRepository(db, testModels[0].Job, adapter)
-		err := iRepo1.Insert(testModels[0])
+		err = iRepo1.Insert(testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err := iRepo1.GetByScheduledAt(testModels[0].ScheduledAt)

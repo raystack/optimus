@@ -214,13 +214,28 @@ func validateConfig() error {
 	return nil
 }
 
-// jobSpecRepoFactory stores raw specifications
-type jobSpecRepoFactory struct {
+// projectJobSpecRepoFactory stores raw specifications
+type projectJobSpecRepoFactory struct {
 	db *gorm.DB
 }
 
-func (fac *jobSpecRepoFactory) New(proj models.ProjectSpec) store.JobSpecRepository {
-	return postgres.NewJobRepository(fac.db, proj, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
+	return postgres.NewProjectJobRepository(fac.db, project, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+}
+
+// jobSpecRepoFactory stores raw specifications
+type jobSpecRepoFactory struct {
+	db                    *gorm.DB
+	projectJobSpecRepoFac projectJobSpecRepoFactory
+}
+
+func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) store.JobSpecRepository {
+	return postgres.NewJobRepository(
+		fac.db,
+		namespace,
+		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
+		postgres.NewAdapter(models.TaskRegistry, models.HookRegistry),
+	)
 }
 
 // jobRepoFactory stores compiled specifications that will be consumed by a
@@ -264,6 +279,15 @@ func (fac *projectRepoFactory) New() store.ProjectRepository {
 	return postgres.NewProjectRepository(fac.db, fac.hash)
 }
 
+type namespaceRepoFactory struct {
+	db   *gorm.DB
+	hash models.ApplicationKey
+}
+
+func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
+	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
+}
+
 type projectSecretRepoFactory struct {
 	db   *gorm.DB
 	hash models.ApplicationKey
@@ -281,13 +305,23 @@ func (fac *instanceRepoFactory) New(spec models.JobSpec) store.InstanceSpecRepos
 	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
 }
 
-// resourceSpecRepoFactory stores raw resource specifications
-type resourceSpecRepoFactory struct {
+// projectResourceSpecRepoFactory stores raw resource specifications at a project level
+type projectResourceSpecRepoFactory struct {
 	db *gorm.DB
 }
 
-func (fac *resourceSpecRepoFactory) New(proj models.ProjectSpec, ds models.Datastorer) store.ResourceSpecRepository {
-	return postgres.NewResourceSpecRepository(fac.db, proj, ds)
+func (fac *projectResourceSpecRepoFactory) New(proj models.ProjectSpec, ds models.Datastorer) store.ProjectResourceSpecRepository {
+	return postgres.NewProjectResourceSpecRepository(fac.db, proj, ds)
+}
+
+// resourceSpecRepoFactory stores raw resource specifications
+type resourceSpecRepoFactory struct {
+	db                         *gorm.DB
+	projectResourceSpecRepoFac projectResourceSpecRepoFactory
+}
+
+func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds models.Datastorer) store.ResourceSpecRepository {
+	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
 }
 
 type objectWriterFactory struct {
@@ -422,9 +456,19 @@ func main() {
 		hash: appHash,
 	}
 
-	// registered job store repository factory
-	jobSpecRepoFac := &jobSpecRepoFactory{
+	namespaceSpecRepoFac := &namespaceRepoFactory{
+		db:   dbConn,
+		hash: appHash,
+	}
+
+	projectJobSpecRepoFac := projectJobSpecRepoFactory{
 		db: dbConn,
+	}
+
+	// registered job store repository factory
+	jobSpecRepoFac := jobSpecRepoFactory{
+		db:                    dbConn,
+		projectJobSpecRepoFac: projectJobSpecRepoFac,
 	}
 	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost)
 	dependencyResolver := job.NewDependencyResolver()
@@ -476,11 +520,19 @@ func main() {
 		mainLog.Info("job metadata publishing is disabled")
 	}
 
+	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
+		db: dbConn,
+	}
+	resourceSpecRepoFac := resourceSpecRepoFactory{
+		db:                         dbConn,
+		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
+	}
+
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		Version,
 		job.NewService(
-			jobSpecRepoFac,
+			&jobSpecRepoFac,
 			&jobRepoFactory{
 				schd: models.Scheduler,
 			},
@@ -489,11 +541,11 @@ func main() {
 			dependencyResolver,
 			priorityResolver,
 			metaSvcFactory,
+			&projectJobSpecRepoFac,
 		),
-		datastore.NewService(&resourceSpecRepoFactory{
-			db: dbConn,
-		}, models.DatastoreRegistry),
+		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry),
 		projectRepoFac,
+		namespaceSpecRepoFac,
 		projectSecretRepoFac,
 		v1.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry),
 		progressObs,

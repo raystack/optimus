@@ -50,7 +50,7 @@ func (repo *JobRepository) Save(ctx context.Context, j models.Job) (err error) {
 	return err
 }
 
-func (repo *JobRepository) Delete(ctx context.Context, jobName string) error {
+func (repo *JobRepository) Delete(ctx context.Context, namespace models.NamespaceSpec, jobName string) error {
 	if strings.TrimSpace(jobName) == "" {
 		return errEmptyJobName
 	}
@@ -61,7 +61,7 @@ func (repo *JobRepository) Delete(ctx context.Context, jobName string) error {
 		return err
 	}
 
-	filePath := fmt.Sprintf("%s%s", path.Join(repo.Prefix, jobName), repo.Suffix)
+	filePath := fmt.Sprintf("%s%s", path.Join(repo.Prefix, namespace.ID.String(), jobName), repo.Suffix)
 	objectHandle := bucket.Object(filePath)
 	_, err = objectHandle.Attrs(ctx)
 	if err != nil {
@@ -129,7 +129,7 @@ func (repo *JobRepository) GetAll(ctx context.Context) ([]models.Job, error) {
 	return jobs, nil
 }
 
-func (repo *JobRepository) ListNames(ctx context.Context) ([]string, error) {
+func (repo *JobRepository) ListNames(ctx context.Context, namespace models.NamespaceSpec) ([]string, error) {
 	bucket := repo.Client.Bucket(repo.Bucket)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {
@@ -137,7 +137,7 @@ func (repo *JobRepository) ListNames(ctx context.Context) ([]string, error) {
 	}
 
 	query := storage.Query{
-		Prefix: repo.Prefix,
+		Prefix: path.Join(repo.Prefix, namespace.ID.String()),
 	}
 	it := bucket.Objects(ctx, &query)
 
@@ -202,7 +202,7 @@ func (repo *JobRepository) pathFor(j models.Job) string {
 	if len(repo.Prefix) > 0 && repo.Prefix[0] == '/' {
 		repo.Prefix = repo.Prefix[1:]
 	}
-	return fmt.Sprintf("%s%s", path.Join(repo.Prefix, j.Name), repo.Suffix)
+	return fmt.Sprintf("%s%s", path.Join(repo.Prefix, j.NamespaceID, j.Name), repo.Suffix)
 }
 
 func (repo *JobRepository) jobNameFromPath(filePath string) string {

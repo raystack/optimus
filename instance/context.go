@@ -31,9 +31,9 @@ var (
 // transformed before they can work as inputs. Input could be through
 // environment variables or as a file.
 type ContextManager struct {
-	projectSpec models.ProjectSpec
-	jobSpec     models.JobSpec
-	engine      models.TemplateEngine
+	namespace models.NamespaceSpec
+	jobSpec   models.JobSpec
+	engine    models.TemplateEngine
 }
 
 // Generate fetches and compiles all config data related to an instance and
@@ -51,6 +51,12 @@ func (fm *ContextManager) Generate(
 	// prefix project configs to avoid conflicts with project/instance configs
 	projectConfig := map[string]string{}
 	for key, val := range fm.getProjectConfigMap() {
+		projectConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
+	}
+
+	// use namespace configs for templating. also, override project config with
+	// namespace's configs when present
+	for key, val := range fm.getNamespaceConfigMap() {
 		projectConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
 	}
 
@@ -137,7 +143,15 @@ func (fm *ContextManager) compileTemplates(templateValueMap, templateContext map
 
 func (fm *ContextManager) getProjectConfigMap() map[string]string {
 	configMap := map[string]string{}
-	for key, val := range fm.projectSpec.Config {
+	for key, val := range fm.namespace.ProjectSpec.Config {
+		configMap[key] = val
+	}
+	return configMap
+}
+
+func (fm *ContextManager) getNamespaceConfigMap() map[string]string {
+	configMap := map[string]string{}
+	for key, val := range fm.namespace.Config {
 		configMap[key] = val
 	}
 	return configMap
@@ -181,12 +195,11 @@ func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 	return transformationMap, hookMap, nil
 }
 
-func NewContextManager(projectSpec models.ProjectSpec, jobSpec models.JobSpec,
-	engine models.TemplateEngine) *ContextManager {
+func NewContextManager(namespace models.NamespaceSpec, jobSpec models.JobSpec, engine models.TemplateEngine) *ContextManager {
 	return &ContextManager{
-		projectSpec: projectSpec,
-		jobSpec:     jobSpec,
-		engine:      engine,
+		namespace: namespace,
+		jobSpec:   jobSpec,
+		engine:    engine,
 	}
 }
 

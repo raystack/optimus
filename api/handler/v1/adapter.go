@@ -181,6 +181,25 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
+func (adapt *Adapter) ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
+	return &pb.NamespaceSpecification{
+		Name:   spec.Name,
+		Config: spec.Config,
+	}
+}
+
+func (adapt *Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models.NamespaceSpec {
+	namespaceConf := map[string]string{}
+	for key, val := range conf.GetConfig() {
+		namespaceConf[strings.ToUpper(key)] = val
+	}
+
+	return models.NamespaceSpec{
+		Name:   conf.GetName(),
+		Config: namespaceConf,
+	}
+}
+
 func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpec, error) {
 	data := []*pb.InstanceSpecData{}
 	for _, asset := range spec.Data {

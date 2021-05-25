@@ -397,6 +397,8 @@ github.com/kushsharma/parallel v0.2.1 h1:y9LgTLrtKBWt/YyKE8DYrUxKupiZTriWYKXB+hy
 github.com/kushsharma/parallel v0.2.1/go.mod h1:6JCy2+DRCUfZ0VFBUg6HG8IdDTDKuVL02dhvjUc+xt8=
 github.com/kushsharma/structs v1.1.1 h1:00kt0xFYhb9h30q44d+0Vq2/hHnXrJiz9CRFLMLfHXk=
 github.com/kushsharma/structs v1.1.1/go.mod h1:6lduMSmw0kopJPwi+4a1WYumB0XFG4Y57nf9c0jdmoY=
+github.com/kushsharma/wow v0.1.2 h1:gRHkdqlWk+pHll3ApdN7Dj/4CcPpLY0T2sT9pBP6HRc=
+github.com/kushsharma/wow v0.1.2/go.mod h1:GYx8ZxxaH4ulBnjb+tu/lhYdYiTzHDOVccP5PkSPhKk=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.1.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.1.1/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
