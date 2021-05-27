@@ -182,4 +182,3 @@ func TestCompiler(t *testing.T) {
 		})
 	})
 }
-v
