@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	baseTemplateFilePath = "./templates/scheduler/airflow_1/base_dag.py"
-	baseLibFilePath      = "./templates/scheduler/airflow_1/__lib.py"
+	baseTemplateFilePath = "./templates/scheduler/airflow_2/base_dag.py"
+	baseLibFilePath      = "./templates/scheduler/airflow_2/__lib.py"
 
 	dagStatusUrl = "api/experimental/dags/%s/dag_runs"
 )
