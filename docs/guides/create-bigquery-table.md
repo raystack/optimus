@@ -74,9 +74,9 @@ For example following is a valid directory structure
 
 Optimus exposes Create/Update rest APIS
 ```
-Create: POST /api/v1/project/{project_name}/datastore/{datastore_name}/resource
-Update: PUT /api/v1/project/{project_name}/datastore/{datastore_name}/resource
-Read: GET /api/v1/project/{project_name}/datastore/{datastore_name}/resource/{resource_name}
+Create: POST /api/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource
+Update: PUT /api/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource
+Read: GET /api/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource/{resource_name}
 ```
 
 ```json
@@ -135,6 +135,7 @@ message CreateResourceRequest {
     string project_name = 1;
     string datastore_name = 2;
     ResourceSpecification resource = 3;
+    string namespace = 4;
 }
 ```
 Function payload should be self-explanatory other than the struct `spec` part which

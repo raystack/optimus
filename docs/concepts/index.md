@@ -1,5 +1,26 @@
 # Concepts
 
+## Project
+
+A Project/Tenant represents a group of Jobs, Resources, Scheduler with the specified 
+configurations and infrastructure. A Project contains multiple user created Namespaces, 
+and each Namespace contains multiple Jobs/Hooks and configurations.
+
+## Namespace
+
+A Namespace represents a grouping of specified Jobs and Resources which can be accessible
+only through the namespace owners. User may override the Project configuration or define
+configuration locally at the namespace level. A namespace always belongs to a Project. 
+All Namespaces of a Project share same infrastructure and the Scheduler. They share all
+the accesses and secrets provided by the Project, however, they cannot access or modify 
+the Jobs and Datastore Resources of other namespaces.
+
+A use case for Namespace could be when multiple teams want to re-use the existing 
+infrastructure but want to maintain their specifications like Jobs, Resources etc 
+independently. The namespace's name can be chosen by user or can be provided by the
+authentication service.
+
+
 ## Opctl
 
 Optimus provides a cli used to interact with Optimus service. Although 
