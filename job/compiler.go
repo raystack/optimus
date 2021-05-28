@@ -2,6 +2,7 @@ package job
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"text/template"
@@ -43,10 +44,13 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 	if err = tmpl.Execute(&buf, struct {
 		Project                    models.ProjectSpec
 		Job                        models.JobSpec
+		TaskSchemaRequest          models.GetTaskSchemaRequest
+		HookSchemaRequest          models.GetHookSchemaRequest
+		Context                    context.Context
 		Hostname                   string
 		HookTypePre                string
 		HookTypePost               string
-		InstanceTypeTransformation string
+		InstanceTypeTask           string
 		InstanceTypeHook           string
 		JobSpecDependencyTypeIntra string
 		JobSpecDependencyTypeInter string
@@ -55,9 +59,12 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 		Project:                    namespaceSpec.ProjectSpec,
 		Job:                        jobSpec,
 		Hostname:                   com.hostname,
+		TaskSchemaRequest:          models.GetTaskSchemaRequest{},
+		HookSchemaRequest:          models.GetHookSchemaRequest{},
+		Context:                    context.Background(),
 		HookTypePre:                string(models.HookTypePre),
 		HookTypePost:               string(models.HookTypePost),
-		InstanceTypeTransformation: string(models.InstanceTypeTransformation),
+		InstanceTypeTask:           string(models.InstanceTypeTask),
 		InstanceTypeHook:           string(models.InstanceTypeHook),
 		JobSpecDependencyTypeIntra: string(models.JobSpecDependencyTypeIntra),
 		JobSpecDependencyTypeInter: string(models.JobSpecDependencyTypeInter),

@@ -32,7 +32,7 @@ pack-files: ./resources/pack ./resources/resource_fs_gen.go
 generate-proto:
 	@echo " > cloning protos from odpf/proton"
 	@rm -rf proton/
-	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
+	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch optimus-plugins
 	@echo " > generating protos"
 	@buf generate
 
@@ -55,7 +55,7 @@ dist: generate
 	@bash ./scripts/build-distributables.sh
 
 clean:
-	rm -rf ./optimus ./opctl ./dist ./proton
+	rm -rf ./optimus ./opctl ./dist ./proton ./api/proto/*
 
 install:
 	@echo "> installing dependencies"

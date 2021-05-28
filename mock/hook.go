@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/models"
 )
@@ -9,44 +11,45 @@ type SupportedHookRepo struct {
 	mock.Mock
 }
 
-func (repo *SupportedHookRepo) GetByName(name string) (models.HookUnit, error) {
+func (repo *SupportedHookRepo) GetByName(name string) (models.HookPlugin, error) {
 	args := repo.Called(name)
-	return args.Get(0).(models.HookUnit), args.Error(1)
+	return args.Get(0).(models.HookPlugin), args.Error(1)
 }
 
-func (repo *SupportedHookRepo) GetAll() []models.HookUnit {
+func (repo *SupportedHookRepo) GetAll() []models.HookPlugin {
 	args := repo.Called()
-	return args.Get(0).([]models.HookUnit)
+	return args.Get(0).([]models.HookPlugin)
 }
 
-func (repo *SupportedHookRepo) Add(t models.HookUnit) error {
+func (repo *SupportedHookRepo) Add(t models.HookPlugin) error {
 	return repo.Called(t).Error(0)
 }
 
-type HookUnit struct {
+type HookPlugin struct {
 	mock.Mock `hash:"-"`
 }
 
-func (repo *HookUnit) Name() string {
-	return repo.Called().Get(0).(string)
+func (repo *HookPlugin) GetHookSchema(ctx context.Context, request models.GetHookSchemaRequest) (models.GetHookSchemaResponse, error) {
+	args := repo.Called(ctx, request)
+	return args.Get(0).(models.GetHookSchemaResponse), args.Error(1)
 }
-func (repo *HookUnit) Image() string {
-	return repo.Called().Get(0).(string)
+
+func (repo *HookPlugin) GetHookQuestions(ctx context.Context, request models.GetHookQuestionsRequest) (models.GetHookQuestionsResponse, error) {
+	args := repo.Called(ctx, request)
+	return args.Get(0).(models.GetHookQuestionsResponse), args.Error(1)
 }
-func (repo *HookUnit) Description() string {
-	return repo.Called().Get(0).(string)
+
+func (repo *HookPlugin) ValidateHookQuestion(ctx context.Context, request models.ValidateHookQuestionRequest) (models.ValidateHookQuestionResponse, error) {
+	args := repo.Called(ctx, request)
+	return args.Get(0).(models.ValidateHookQuestionResponse), args.Error(1)
 }
-func (repo *HookUnit) AskQuestions(opt models.AskQuestionRequest) (models.AskQuestionResponse, error) {
-	args := repo.Called(opt)
-	return args.Get(0).(models.AskQuestionResponse), args.Error(1)
+
+func (repo *HookPlugin) DefaultHookConfig(ctx context.Context, request models.DefaultHookConfigRequest) (models.DefaultHookConfigResponse, error) {
+	args := repo.Called(ctx, request)
+	return args.Get(0).(models.DefaultHookConfigResponse), args.Error(1)
 }
-func (repo *HookUnit) GenerateConfig(inp models.GenerateConfigWithTaskRequest) (models.DefaultConfigResponse, error) {
-	args := repo.Called(inp)
-	return args.Get(0).(models.DefaultConfigResponse), args.Error(1)
-}
-func (repo *HookUnit) DependsOn() []string {
-	return repo.Called().Get(0).([]string)
-}
-func (repo *HookUnit) Type() models.HookType {
-	return repo.Called().Get(0).(models.HookType)
+
+func (repo *HookPlugin) DefaultHookAssets(ctx context.Context, request models.DefaultHookAssetsRequest) (models.DefaultHookAssetsResponse, error) {
+	args := repo.Called(ctx, request)
+	return args.Get(0).(models.DefaultHookAssetsResponse), args.Error(1)
 }

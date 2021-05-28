@@ -1,6 +1,7 @@
 package meta_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -26,8 +27,8 @@ func TestJobAdapter(t *testing.T) {
 		ProjectSpec: projectSpec,
 	}
 
-	execUnit := new(mock.Transformer)
-	hookUnit := new(mock.HookUnit)
+	execUnit := new(mock.TaskPlugin)
+	hookUnit := new(mock.HookPlugin)
 
 	jobSpecs := []models.JobSpec{
 		{
@@ -92,19 +93,23 @@ func TestJobAdapter(t *testing.T) {
 		},
 	}
 
-	execUnit.On("Name").Return("bq2bq")
-	execUnit.On("Image").Return("image")
-	execUnit.On("Description").Return("description")
-	execUnit.On("GenerateDestination", models.GenerateDestinationRequest{
-		Config: jobSpecs[0].Task.Config,
-		Assets: jobSpecs[0].Assets.ToMap(),
-	}).Return(models.GenerateDestinationResponse{Destination: "destination_table"}, nil)
+	execUnit.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name:        "bq2bq",
+		Image:       "image",
+		Description: "description",
+	}, nil)
+	execUnit.On("GenerateTaskDestination", context.TODO(), models.GenerateTaskDestinationRequest{
+		Config: models.TaskPluginConfigs{}.FromJobSpec(jobSpecs[0].Task.Config),
+		Assets: models.TaskPluginAssets{}.FromJobSpec(jobSpecs[0].Assets),
+	}).Return(models.GenerateTaskDestinationResponse{Destination: "destination_table"}, nil)
 
-	hookUnit.On("Name").Return("transporter")
-	hookUnit.On("Image").Return("h_image")
-	hookUnit.On("Description").Return("h_description")
-	hookUnit.On("Type").Return(models.HookTypePost)
-	hookUnit.On("DependsOn").Return([]string{"some_value"})
+	hookUnit.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name:        "transporter",
+		Description: "h_description",
+		Image:       "h_image",
+		DependsOn:   []string{"some_value"},
+		Type:        models.HookTypePost,
+	}, nil)
 
 	t.Run("should build JobMetadata from JobSpec without any error", func(t *testing.T) {
 		jobSpec1 := jobSpecs[0]

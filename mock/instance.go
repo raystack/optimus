@@ -42,6 +42,11 @@ type InstanceService struct {
 	mock.Mock
 }
 
+func (s *InstanceService) Compile(nsSpec models.NamespaceSpec, jobSpec models.JobSpec, instanceSpec models.InstanceSpec, runType models.InstanceType, runName string) (envMap map[string]string, fileMap map[string]string, err error) {
+	args := s.Called(nsSpec, jobSpec, instanceSpec, runType, runName)
+	return args.Get(0).(map[string]string), args.Get(1).(map[string]string), args.Error(2)
+}
+
 func (s *InstanceService) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	taskType models.InstanceType) (models.InstanceSpec, error) {
 	args := s.Called(jobSpec, scheduledAt, taskType)

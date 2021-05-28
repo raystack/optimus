@@ -30,7 +30,7 @@ func InitWithWriter(mode string, writer io.Writer) {
 	}
 	log = logrus.New()
 	log.Out = writer
-	log.Formatter = new(logrus.JSONFormatter)
+	//log.Formatter = new(logrus.JSONFormatter)
 
 	switch mode {
 	case DEBUG:
@@ -67,6 +67,11 @@ func I(args ...interface{}) {
 	entry.WithFields(fieldMap).Info(args...)
 }
 
+func If(format string, args ...interface{}) {
+	fieldMap, args := filterFieldsMap(args...)
+	entry.WithFields(fieldMap).Infof(format, args...)
+}
+
 func Df(format string, args ...interface{}) {
 	fieldMap, args := filterFieldsMap(args...)
 	entry.WithFields(fieldMap).Debugf(format, args...)
@@ -90,4 +95,12 @@ func E(args ...interface{}) {
 func F(args ...interface{}) {
 	fieldMap, args := filterFieldsMap(args...)
 	entry.WithFields(fieldMap).Fatal(args...)
+}
+
+func Logger(k, v string) *logrus.Entry {
+	return log.WithField(k, v)
+}
+
+func Level() logrus.Level {
+	return log.Level
 }

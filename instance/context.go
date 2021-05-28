@@ -1,6 +1,7 @@
 package instance
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -77,10 +78,10 @@ func (fm *ContextManager) Generate(
 
 	// do the same for asset files
 	// check if task needs to override the compilation behaviour
-	compiledAssetResponse, err := fm.jobSpec.Task.Unit.CompileAssets(models.CompileAssetsRequest{
+	compiledAssetResponse, err := fm.jobSpec.Task.Unit.CompileTaskAssets(context.TODO(), models.CompileTaskAssetsRequest{
 		TaskWindow:       fm.jobSpec.Task.Window,
-		Config:           fm.jobSpec.Task.Config,
-		Assets:           fm.jobSpec.Assets.ToMap(),
+		Config:           models.TaskPluginConfigs{}.FromJobSpec(fm.jobSpec.Task.Config),
+		Assets:           models.TaskPluginAssets{}.FromJobSpec(fm.jobSpec.Assets),
 		InstanceSchedule: instanceSpec.ScheduledAt,
 		InstanceData:     instanceSpec.Data,
 	})
@@ -89,11 +90,10 @@ func (fm *ContextManager) Generate(
 	}
 
 	// append job spec assets to list of files need to write
-	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets)
+	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
 	if fileMap, err = fm.engine.CompileFiles(fileMap, ConvertStringToInterfaceMap(projectInstanceContext)); err != nil {
 		return
 	}
-
 	return envMap, fileMap, nil
 }
 
@@ -110,7 +110,7 @@ func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceTy
 	}
 
 	// if this is requested for transformation, just return from here
-	if runType == models.InstanceTypeTransformation {
+	if runType == models.InstanceTypeTask {
 		return transformationConfigs, nil
 	}
 
@@ -222,11 +222,12 @@ func ConvertStringToInterfaceMap(i map[string]string) map[string]interface{} {
 	return o
 }
 
+// DumpAssets used for dry run and does not effect actual execution of a job
 func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine, allowOverride bool) (map[string]string, error) {
-	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
-		Config: jobSpec.Task.Config,
-		Assets: jobSpec.Assets.ToMap(),
-		UnitOptions: models.UnitOptions{
+	jobDestination, err := jobSpec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
+		Config: models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+		Assets: models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
+		PluginOptions: models.PluginOptions{
 			DryRun: true,
 		},
 	})
@@ -238,10 +239,10 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := jobSpec.Task.Unit.CompileAssets(models.CompileAssetsRequest{
+		compiledAssetResponse, err := jobSpec.Task.Unit.CompileTaskAssets(context.TODO(), models.CompileTaskAssetsRequest{
 			TaskWindow:       jobSpec.Task.Window,
-			Config:           jobSpec.Task.Config,
-			Assets:           assetsToDump,
+			Config:           models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:           models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
 			InstanceSchedule: scheduledAt,
 			InstanceData: []models.InstanceSpecData{
 				{
@@ -250,14 +251,14 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 					Type:  models.InstanceDataTypeEnv,
 				},
 			},
-			UnitOptions: models.UnitOptions{
+			PluginOptions: models.PluginOptions{
 				DryRun: true,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
-		assetsToDump = compiledAssetResponse.Assets
+		assetsToDump = compiledAssetResponse.Assets.ToJobSpec().ToMap()
 	}
 
 	// compile again if needed

@@ -1,6 +1,7 @@
 package instance_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -17,10 +18,10 @@ import (
 )
 
 func TestService(t *testing.T) {
-	execUnit := new(mock.Transformer)
+	execUnit := new(mock.TaskPlugin)
 	execUnit.On("Name").Return("bq")
-	execUnit.On("GenerateDestination", mock2.AnythingOfType("models.GenerateDestinationRequest")).Return(
-		models.GenerateDestinationResponse{Destination: "proj.data.tab"}, nil)
+	execUnit.On("GenerateTaskDestination", context.TODO(), mock2.AnythingOfType("models.GenerateTaskDestinationRequest")).Return(
+		models.GenerateTaskDestinationResponse{Destination: "proj.data.tab"}, nil)
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -87,9 +88,9 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New", jobSpec).Return(instanceSpecRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc)
+			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc, nil)
 
-			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt, models.InstanceTypeTransformation)
+			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt, models.InstanceTypeTask)
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
@@ -133,7 +134,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New", jobSpec).Return(instanceSpecRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc)
+			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc, nil)
 
 			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt, models.InstanceTypeHook)
 			assert.Nil(t, err)
@@ -178,7 +179,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New", jobSpec).Return(instanceSpecRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc)
+			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc, nil)
 
 			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt, models.InstanceTypeHook)
 			assert.Nil(t, err)
@@ -223,9 +224,9 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New", jobSpec).Return(instanceSpecRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc)
+			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc, nil)
 
-			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt, models.InstanceTypeTransformation)
+			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt, models.InstanceTypeTask)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.InstanceSpec{}, returnedInstanceSpec)
 		})
@@ -240,7 +241,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New", jobSpec).Return(instanceSpecRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc)
+			instanceService := instance.NewService(jobRunSpecRep, mockedTimeFunc, nil)
 
 			returnedInstanceSpec, err := instanceService.Register(jobSpec, scheduledAt,
 				models.InstanceTypeHook)
@@ -254,7 +255,7 @@ func TestService(t *testing.T) {
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 			srv := instance.NewService(nil, func() time.Time {
 				return time.Now().UTC()
-			})
+			}, nil)
 			prep1, err := srv.PrepInstance(jobSpec, scheduledAt)
 			assert.Nil(t, err)
 			time.Sleep(time.Second)

@@ -1,6 +1,7 @@
 package instance
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,8 +23,17 @@ type InstanceSpecRepoFactory interface {
 }
 
 type Service struct {
-	repoFac InstanceSpecRepoFactory
-	Now     func() time.Time
+	repoFac        InstanceSpecRepoFactory
+	Now            func() time.Time
+	templateEngine models.TemplateEngine
+}
+
+func (s *Service) Compile(namespace models.NamespaceSpec, jobSpec models.JobSpec, instanceSpec models.InstanceSpec,
+	runType models.InstanceType, runName string) (envMap map[string]string, fileMap map[string]string, err error) {
+	return NewContextManager(
+		namespace, jobSpec, s.templateEngine).Generate(
+		instanceSpec, runType, runName,
+	)
 }
 
 func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
@@ -35,7 +45,7 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 	}
 
 	switch instanceType {
-	case models.InstanceTypeTransformation:
+	case models.InstanceTypeTask:
 		// clear and save fresh
 		if err := jobRunRepo.Clear(scheduledAt); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 			return models.InstanceSpec{}, errors.Wrapf(err, "failed to clear instance of job %s",
@@ -68,9 +78,9 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 }
 
 func (s *Service) PrepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
-	jobDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
-		Config: jobSpec.Task.Config,
-		Assets: jobSpec.Assets.ToMap(),
+	jobDestination, err := jobSpec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
+		Config: models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+		Assets: models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
 	})
 	if err != nil {
 		return models.InstanceSpec{}, errors.Wrapf(err, "failed to generate destination for job %s", jobSpec.Name)
@@ -107,9 +117,10 @@ func (s *Service) PrepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (m
 	}, nil
 }
 
-func NewService(repoFac InstanceSpecRepoFactory, timeFunc func() time.Time) *Service {
+func NewService(repoFac InstanceSpecRepoFactory, timeFunc func() time.Time, te models.TemplateEngine) *Service {
 	return &Service{
-		repoFac: repoFac,
-		Now:     timeFunc,
+		repoFac:        repoFac,
+		Now:            timeFunc,
+		templateEngine: te,
 	}
 }

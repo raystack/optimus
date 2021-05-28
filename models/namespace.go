@@ -3,8 +3,7 @@ package models
 import "github.com/google/uuid"
 
 // NamespaceSpec represents a namespace which is an individual or a team with an unique name.
-// A Project can have any number of namespaces (with unique names). A Namespace can be part
-// of multiple projects at the same time with the same name.
+// A Project can have any number of namespaces (with unique names).
 type NamespaceSpec struct {
 	ID uuid.UUID
 

@@ -1,6 +1,7 @@
 package instance_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -32,7 +33,10 @@ func TestContextManager(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit := new(mock.Transformer)
+			execUnit := new(mock.TaskPlugin)
+			execUnit.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: "bq",
+			}, nil)
 
 			jobSpec := models.JobSpec{
 				Name:  "foo",
@@ -108,18 +112,21 @@ func TestContextManager(t *testing.T) {
 				},
 			}
 
-			execUnit.On("Name").Return("bq")
-			execUnit.On("CompileAssets", models.CompileAssetsRequest{
+			execUnit.On("CompileTaskAssets", context.TODO(), models.CompileTaskAssetsRequest{
 				TaskWindow:       jobSpec.Task.Window,
-				Config:           jobSpec.Task.Config,
-				Assets:           jobSpec.Assets.ToMap(),
+				Config:           models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:           models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceSchedule: scheduledAt,
 				InstanceData:     instanceSpec.Data,
-			}).Return(models.CompileAssetsResponse{Assets: map[string]string{
-				"query.sql": "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+			}).Return(models.CompileTaskAssetsResponse{Assets: models.TaskPluginAssets{
+				models.TaskPluginAsset{
+					Name:  "query.sql",
+					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+				},
 			}}, nil)
 
-			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTransformation, "bq")
+			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec,
+				instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
@@ -154,11 +161,16 @@ func TestContextManager(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit := new(mock.Transformer)
+			execUnit := new(mock.TaskPlugin)
+			execUnit.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: "bq",
+			}, nil)
 
 			transporterHook := "transporter"
-			hookUnit := new(mock.HookUnit)
-			hookUnit.On("Name").Return(transporterHook)
+			hookUnit := new(mock.HookPlugin)
+			hookUnit.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+				Name: transporterHook,
+			}, nil)
 
 			jobSpec := models.JobSpec{
 				Name:  "foo",
@@ -244,15 +256,17 @@ func TestContextManager(t *testing.T) {
 					},
 				},
 			}
-			execUnit.On("Name").Return("bq")
-			execUnit.On("CompileAssets", models.CompileAssetsRequest{
+			execUnit.On("CompileTaskAssets", context.TODO(), models.CompileTaskAssetsRequest{
 				TaskWindow:       jobSpec.Task.Window,
-				Config:           jobSpec.Task.Config,
-				Assets:           jobSpec.Assets.ToMap(),
+				Config:           models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:           models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceSchedule: scheduledAt,
 				InstanceData:     instanceSpec.Data,
-			}).Return(models.CompileAssetsResponse{Assets: map[string]string{
-				"query.sql": "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+			}).Return(models.CompileTaskAssetsResponse{Assets: models.TaskPluginAssets{
+				models.TaskPluginAsset{
+					Name:  "query.sql",
+					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+				},
 			}}, nil)
 
 			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, instance.NewGoEngine()).Generate(
@@ -294,7 +308,7 @@ func TestContextManager(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit := new(mock.Transformer)
+			execUnit := new(mock.TaskPlugin)
 
 			jobSpec := models.JobSpec{
 				Name:  "foo",
@@ -374,18 +388,20 @@ func TestContextManager(t *testing.T) {
 				},
 			}
 
-			execUnit.On("Name").Return("bq")
-			execUnit.On("CompileAssets", models.CompileAssetsRequest{
+			execUnit.On("CompileTaskAssets", context.TODO(), models.CompileTaskAssetsRequest{
 				TaskWindow:       jobSpec.Task.Window,
-				Config:           jobSpec.Task.Config,
-				Assets:           jobSpec.Assets.ToMap(),
+				Config:           models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:           models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceSchedule: scheduledAt,
 				InstanceData:     instanceSpec.Data,
-			}).Return(models.CompileAssetsResponse{Assets: map[string]string{
-				"query.sql": "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+			}).Return(models.CompileTaskAssetsResponse{Assets: models.TaskPluginAssets{
+				models.TaskPluginAsset{
+					Name:  "query.sql",
+					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+				},
 			}}, nil)
 
-			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTransformation, "bq")
+			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])

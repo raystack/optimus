@@ -150,30 +150,31 @@ func (srv *Service) Check(namespace models.NamespaceSpec, jobSpecs []models.JobS
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jSpec := range jobSpecs {
-		currentSpec := jSpec
-		runner.Add(func() (interface{}, error) {
-			// check dependencies
-			if _, err := currentSpec.Task.Unit.GenerateDependencies(models.GenerateDependenciesRequest{
-				Config:  currentSpec.Task.Config,
-				Assets:  currentSpec.Assets.ToMap(),
-				Project: namespace.ProjectSpec,
-				UnitOptions: models.UnitOptions{
-					DryRun: true,
-				},
-			}); err != nil {
-				obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
-				return nil, errors.Wrapf(err, "failed to resolve dependencies %s", currentSpec.Name)
-			}
+		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				// check dependencies
+				if _, err := currentSpec.Task.Unit.GenerateTaskDependencies(context.TODO(), models.GenerateTaskDependenciesRequest{
+					Config:  models.TaskPluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
+					Assets:  models.TaskPluginAssets{}.FromJobSpec(currentSpec.Assets),
+					Project: namespace.ProjectSpec,
+					PluginOptions: models.PluginOptions{
+						DryRun: true,
+					},
+				}); err != nil {
+					obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
+					return nil, errors.Wrapf(err, "failed to resolve dependencies %s", currentSpec.Name)
+				}
 
-			// check compilation
-			if _, err := srv.compiler.Compile(namespace, currentSpec); err != nil {
-				obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
-				return nil, errors.Wrapf(err, "failed to compile %s", currentSpec.Name)
-			}
+				// check compilation
+				if _, err := srv.compiler.Compile(namespace, currentSpec); err != nil {
+					obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
+					return nil, errors.Wrapf(err, "failed to compile %s", currentSpec.Name)
+				}
 
-			obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
-			return nil, nil
-		})
+				obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
+				return nil, nil
+			}
+		}(jSpec))
 	}
 	for _, result := range runner.Run() {
 		if result.Err != nil {
@@ -331,14 +332,15 @@ func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, projectJ
 	// resolve specs in parallel
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jobSpec := range jobSpecs {
-		currentSpec := jobSpec
-		runner.Add(func() (interface{}, error) {
-			resolvedSpec, err := srv.dependencyResolver.Resolve(proj, projectJobSpecRepo, currentSpec, progressObserver)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to resolve dependency for %s", currentSpec.Name)
+		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				resolvedSpec, err := srv.dependencyResolver.Resolve(proj, projectJobSpecRepo, currentSpec, progressObserver)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to resolve dependency for %s", currentSpec.Name)
+				}
+				return resolvedSpec, nil
 			}
-			return resolvedSpec, nil
-		})
+		}(jobSpec))
 	}
 
 	for _, state := range runner.Run() {
@@ -358,21 +360,22 @@ func (srv *Service) uploadSpecs(ctx context.Context, jobSpecs []models.JobSpec, 
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, jobSpec := range jobSpecs {
-		currentSpec := jobSpec
-		runner.Add(func() (interface{}, error) {
-			compiledJob, err := srv.compiler.Compile(namespace, currentSpec)
-			if err != nil {
-				return nil, err
-			}
-			srv.notifyProgress(progressObserver, &EventJobSpecCompile{
-				Name: currentSpec.Name,
-			})
+		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				compiledJob, err := srv.compiler.Compile(namespace, currentSpec)
+				if err != nil {
+					return nil, err
+				}
+				srv.notifyProgress(progressObserver, &EventJobSpecCompile{
+					Name: currentSpec.Name,
+				})
 
-			if err = jobRepo.Save(ctx, compiledJob); err != nil {
-				return nil, err
+				if err = jobRepo.Save(ctx, compiledJob); err != nil {
+					return nil, err
+				}
+				return nil, nil
 			}
-			return nil, nil
-		})
+		}(jobSpec))
 	}
 
 	for runIdx, state := range runner.Run() {

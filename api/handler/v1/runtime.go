@@ -451,20 +451,32 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: cannot adapt job %s", err.Error(), jobSpec.Name))
 	}
 
-	instance, err := sv.instSvc.Register(jobSpec, jobScheduledTime, models.InstanceType(req.Type))
+	instanceType, err := models.InstanceType("").New(req.InstanceType.String())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%s: instance type %s not found", err.Error(), req.InstanceType.String()))
+	}
+	instance, err := sv.instSvc.Register(jobSpec, jobScheduledTime, instanceType)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to register instance of job %s", err.Error(), req.GetJobName()))
 	}
+	envMap, fileMap, err := sv.instSvc.Compile(namespaceSpec, jobSpec, instance, instanceType, req.InstanceName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to compile instance of job %s", err.Error(), req.GetJobName()))
+	}
+
 	instanceProto, err := sv.adapter.ToInstanceProto(instance)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: cannot adapt instance for job %s", err.Error(), jobSpec.Name))
 	}
-
 	return &pb.RegisterInstanceResponse{
 		Project:   sv.adapter.ToProjectProto(projSpec),
 		Job:       jobProto,
 		Instance:  instanceProto,
 		Namespace: sv.adapter.ToNamespaceProto(namespaceSpec),
+		Context: &pb.InstanceContext{
+			Envs:  envMap,
+			Files: fileMap,
+		},
 	}, nil
 }
 
@@ -624,7 +636,7 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 
 	response, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to create resource %s", err.Error(), req.ResourceName))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to read resource %s", err.Error(), req.ResourceName))
 	}
 
 	protoResource, err := sv.adapter.ToResourceProto(response)

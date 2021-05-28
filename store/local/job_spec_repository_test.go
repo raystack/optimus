@@ -2,6 +2,7 @@ package local_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"path/filepath"
 	"sort"
@@ -49,9 +50,11 @@ hooks: []
 
 func TestJobSpecRepository(t *testing.T) {
 	// prepare adapter
-	execUnit := new(mock.Transformer)
-	execUnit.On("Name").Return("foo")
-	allTasksRepo := new(mock.SupportedTransformationRepo)
+	execUnit := new(mock.TaskPlugin)
+	execUnit.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name: "foo",
+	}, nil)
+	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", "foo").Return(execUnit, nil)
 	adapter := local.NewJobSpecAdapter(allTasksRepo, nil)
 
@@ -237,8 +240,10 @@ func TestJobSpecRepository(t *testing.T) {
 
 			// update the spec.
 			hookName := "g-hook"
-			hookUnit1 := new(mock.HookUnit)
-			hookUnit1.On("Name").Return(hookName)
+			hookUnit1 := new(mock.HookPlugin)
+			hookUnit1.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+				Name: hookName,
+			}, nil)
 			allHooksRepo := new(mock.SupportedHookRepo)
 			allHooksRepo.On("GetByName", hookName).Return(hookUnit1, nil)
 			adapterNew := local.NewJobSpecAdapter(allTasksRepo, allHooksRepo)

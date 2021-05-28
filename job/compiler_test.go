@@ -13,8 +13,7 @@ import (
 )
 
 func TestCompiler(t *testing.T) {
-	execUnit := new(mock.Transformer)
-	execUnit.On("Name").Return("bq")
+	execUnit := new(mock.TaskPlugin)
 
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",

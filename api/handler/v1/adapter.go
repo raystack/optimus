@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ import (
 
 // Note: all config keys will be converted to upper case automatically
 type Adapter struct {
-	supportedTaskRepo      models.TransformationRepo
+	supportedTaskRepo      models.TaskPluginRepository
 	supportedHookRepo      models.HookRepo
 	supportedDatastoreRepo models.DatastoreRepo
 }
@@ -122,6 +123,15 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	if spec.Task.Unit == nil {
 		return nil, errors.New("task unit cannot be nil")
 	}
+	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	adaptedHook, err := adapt.ToHookProto(spec.Hooks)
+	if err != nil {
+		return nil, err
+	}
 
 	conf := &pb.JobSpecification{
 		Version:          int32(spec.Version),
@@ -131,13 +141,13 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		StartDate:        spec.Schedule.StartDate.Format(models.JobDatetimeLayout),
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
-		TaskName:         spec.Task.Unit.Name(),
+		TaskName:         taskSchema.Name,
 		WindowSize:       spec.Task.Window.SizeString(),
 		WindowOffset:     spec.Task.Window.OffsetString(),
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []*pb.JobDependency{},
-		Hooks:            adapt.ToHookProto(spec.Hooks),
+		Hooks:            adaptedHook,
 		Description:      spec.Description,
 		Labels:           spec.Labels,
 	}
@@ -181,6 +191,40 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
+func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec) *pb.ProjectSpecification {
+	secrets := []*pb.ProjectSpecification_ProjectSecret{}
+	for _, s := range spec.Secret {
+		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{
+			Name:  s.Name,
+			Value: s.Value,
+		})
+	}
+	return &pb.ProjectSpecification{
+		Name:    spec.Name,
+		Config:  spec.Config,
+		Secrets: secrets,
+	}
+}
+
+func (adapt *Adapter) FromProjectProtoWithSecret(conf *pb.ProjectSpecification) models.ProjectSpec {
+	pConf := map[string]string{}
+	for key, val := range conf.GetConfig() {
+		pConf[strings.ToUpper(key)] = val
+	}
+	pSec := models.ProjectSecrets{}
+	for _, s := range conf.GetSecrets() {
+		pSec = append(pSec, models.ProjectSecretItem{
+			Name:  s.Name,
+			Value: s.Value,
+		})
+	}
+	return models.ProjectSpec{
+		Name:   conf.GetName(),
+		Config: pConf,
+		Secret: pSec,
+	}
+}
+
 func (adapt *Adapter) ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
 	return &pb.NamespaceSpecification{
 		Name:   spec.Name,
@@ -206,7 +250,7 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 		data = append(data, &pb.InstanceSpecData{
 			Name:  asset.Name,
 			Value: asset.Value,
-			Type:  asset.Type,
+			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[strings.ToUpper(asset.Type)]),
 		})
 	}
 	schdAt, err := ptypes.TimestampProto(spec.ScheduledAt)
@@ -224,10 +268,15 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
 	data := []models.InstanceSpecData{}
 	for _, asset := range conf.GetData() {
+		assetType := models.InstanceDataTypeEnv
+		switch asset.Type {
+		case pb.InstanceSpecData_FILE:
+			assetType = models.InstanceDataTypeFile
+		}
 		data = append(data, models.InstanceSpecData{
 			Name:  asset.Name,
 			Value: asset.Value,
-			Type:  asset.Type,
+			Type:  assetType,
 		})
 	}
 	schdAt, err := ptypes.Timestamp(conf.ScheduledAt)
@@ -268,7 +317,7 @@ func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 	return hooks, nil
 }
 
-func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
+func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook, err error) {
 	for _, hook := range hooks {
 		hookConfigs := []*pb.JobConfigItem{}
 		for _, c := range hook.Config {
@@ -278,8 +327,12 @@ func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 			})
 		}
 
+		schema, err := hook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+		if err != nil {
+			return nil, err
+		}
 		protoHooks = append(protoHooks, &pb.JobSpecHook{
-			Name:   hook.Unit.Name(),
+			Name:   schema.Name,
 			Config: hookConfigs,
 		})
 	}
@@ -320,7 +373,7 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 	return typeController.Adapter().FromProtobuf(buf)
 }
 
-func NewAdapter(supportedTaskRepo models.TransformationRepo,
+func NewAdapter(supportedTaskRepo models.TaskPluginRepository,
 	supportedHookRepo models.HookRepo, datastoreRepo models.DatastoreRepo) *Adapter {
 	return &Adapter{
 		supportedTaskRepo:      supportedTaskRepo,

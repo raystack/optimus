@@ -1,4 +1,4 @@
-## Create Bigquery table
+## Create Bigquery view
 
 A view is a virtual table defined by a SQL query. When you create a view, 
 you query it in the same way you query a table. When a user queries the view, 

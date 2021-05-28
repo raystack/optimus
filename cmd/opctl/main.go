@@ -6,6 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/go-hclog"
+
+	"github.com/odpf/optimus/plugin"
+
+	hPlugin "github.com/hashicorp/go-plugin"
+
 	"github.com/spf13/viper"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -15,10 +21,10 @@ import (
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
 
+	lg "github.com/odpf/optimus/core/logger"
 	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/ext/hook"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
-	_ "github.com/odpf/optimus/ext/task"
+	_ "github.com/odpf/optimus/plugin"
 )
 
 var (
@@ -30,11 +36,20 @@ var (
 	Config config.Opctl
 
 	ConfigMessageErr = "unable to read optimus config file %v (%s)"
+	EnvLogLevel      = "LOG_LEVEL"
 )
 
 func main() {
-	logger := log.New(os.Stderr, "", 0)
 	initConfig()
+	pluginLogLevel := hclog.Info
+	if level := viper.GetString(EnvLogLevel); level != "" {
+		lg.Init(level)
+		if level == "DEBUG" {
+			pluginLogLevel = hclog.Debug
+		}
+	} else {
+		lg.Init(lg.INFO)
+	}
 
 	// this is just default scheduler
 	// should be configurable by user if needed
@@ -52,8 +67,18 @@ func main() {
 		}
 	}
 
+	// Create an hclog.Logger
+	pluginLogger := hclog.New(&hclog.LoggerOptions{
+		Name:   "optimus",
+		Output: os.Stdout,
+		Level:  pluginLogLevel,
+	})
+	plugin.Initialize(pluginLogger)
+	// Make sure we clean up any managed plugins at the end of this
+	defer hPlugin.CleanupClients()
+
 	cmd := commands.New(
-		logger,
+		log.New(os.Stderr, "", 0),
 		jobSpecRepo,
 		Version,
 		Config,

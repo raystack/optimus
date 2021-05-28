@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -23,59 +24,47 @@ import (
 )
 
 var (
-	validateEmail   = validatorFactory.NewFromRegex(`^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$`, "invalid email address")
-	validateDate    = validatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
-	validateNoSlash = validatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
-	validateName    = survey.ComposeValidators(
-		validatorFactory.NewFromRegex(`^[a-zA-Z0-9_\-]+$`, `can only contain characters A-Z (in either case), 0-9, "-" or "_"`),
-		survey.MinLength(3),
-	)
-	validateGreaterThanZero = func(val interface{}) error {
-		v, err := strconv.Atoi(val.(string))
-		if err != nil {
-			return fmt.Errorf("value should be integer")
-		}
-		if v <= 0 {
-			return fmt.Errorf("value needs to be greater than zero")
-		}
-		return nil
-	}
-
-	validateResourceName = validatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`, `invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
-
+	validateEmail        = utils.ValidatorFactory.NewFromRegex(`^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$`, "invalid email address")
+	validateDate         = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
+	validateNoSlash      = utils.ValidatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
+	validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
+		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3),
 		survey.MaxLength(1024))
 )
 
 func errExit(l logger, err error) {
+	if err == nil {
+		return
+	}
 	l.Println("ERROR: ", err)
 	os.Exit(1)
 }
 
 func createCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository,
-	transformationRepo models.TransformationRepo, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo,
+	taskRepo models.TaskPluginRepository, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo,
 	datastoreSpecsFs map[string]fs.FileSystem) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new job/resource",
 	}
-	cmd.AddCommand(createJobSubCommand(l, jobSpecRepo, transformationRepo, hookRepo))
+	cmd.AddCommand(createJobSubCommand(l, jobSpecRepo, taskRepo, hookRepo))
 	cmd.AddCommand(createHookSubCommand(l, jobSpecRepo, hookRepo))
 	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository, transformationRepo models.TransformationRepo,
+func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository, taskRepo models.TaskPluginRepository,
 	hookRepo models.HookRepo) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
 		Run: func(cmd *cli.Command, args []string) {
-			jobInput, err := createJobSurvey(jobSpecRepo, transformationRepo)
+			jobInput, err := createJobSurvey(jobSpecRepo, taskRepo)
 			if err != nil {
 				errExit(l, err)
 			}
-			spec, err := local.NewJobSpecAdapter(transformationRepo, hookRepo).ToSpec(jobInput)
+			spec, err := local.NewJobSpecAdapter(taskRepo, hookRepo).ToSpec(jobInput)
 			if err != nil {
 				errExit(l, err)
 			}
@@ -87,11 +76,15 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository, transfor
 	}
 }
 
-func createJobSurvey(jobSpecRepo store.JobSpecRepository, transformationRepo models.TransformationRepo) (local.Job, error) {
+func createJobSurvey(jobSpecRepo store.JobSpecRepository, taskRepo models.TaskPluginRepository) (local.Job, error) {
 	// TODO: take an additional input "--spec-dir" with default as "." in order to save job specs to a specific directory
 	availableTasks := []string{}
-	for _, task := range transformationRepo.GetAll() {
-		availableTasks = append(availableTasks, task.Name())
+	for _, task := range taskRepo.GetAll() {
+		schema, err := task.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+		if err != nil {
+			return local.Job{}, err
+		}
+		availableTasks = append(availableTasks, schema.Name)
 	}
 
 	var qs = []*survey.Question{
@@ -134,7 +127,7 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository, transformationRepo mod
 				Default: "0 2 * * *",
 				Help:    "0 2 * * * / @daily / @hourly",
 			},
-			Validate: ValidateCronInterval,
+			Validate: utils.ValidateCronInterval,
 		},
 		{
 			Name: "window",
@@ -181,30 +174,40 @@ this effects runtime dependencies and template macros`,
 		},
 	}
 
-	executionTask, err := transformationRepo.GetByName(jobInput.Task.Name)
+	executionTask, err := taskRepo.GetByName(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
 
-	askQuesResponse, err := executionTask.AskQuestions(models.AskQuestionRequest{})
+	taskQuesResponse, err := executionTask.GetTaskQuestions(context.TODO(), models.GetTaskQuestionsRequest{})
 	if err != nil {
 		return jobInput, err
 	}
 
-	generateConfResponse, err := executionTask.DefaultConfig(models.DefaultConfigRequest{
-		Inputs: askQuesResponse.Answers,
+	userInputs := models.PluginAnswers{}
+	for _, ques := range taskQuesResponse.Questions {
+		responseAnswer, err := AskTaskSurveyQuestion(ques, executionTask)
+		if err != nil {
+			return local.Job{}, err
+		}
+		userInputs = append(userInputs, responseAnswer...)
+	}
+
+	generateConfResponse, err := executionTask.DefaultTaskConfig(context.TODO(), models.DefaultTaskConfigRequest{
+		Answers: userInputs,
 	})
 	if err != nil {
 		return jobInput, err
 	}
-	jobInput.Task.Config = local.JobSpecConfigToYamlSlice(generateConfResponse.Config)
-	genAssetResponse, err := executionTask.DefaultAssets(models.DefaultAssetsRequest{
-		Inputs: askQuesResponse.Answers,
+	jobInput.Task.Config = local.JobSpecConfigToYamlSlice(generateConfResponse.Config.ToJobSpec())
+
+	genAssetResponse, err := executionTask.DefaultTaskAssets(context.TODO(), models.DefaultTaskAssetsRequest{
+		Answers: userInputs,
 	})
 	if err != nil {
 		return jobInput, err
 	}
-	jobInput.Asset = genAssetResponse.Assets
+	jobInput.Asset = genAssetResponse.Assets.ToJobSpec().ToMap()
 
 	return jobInput, nil
 }
@@ -236,9 +239,14 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 	emptyJobSpec := models.JobSpec{}
 	var availableHooks []string
 	for _, hook := range hookRepo.GetAll() {
+		schema, err := hook.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+
 		// TODO: this should be generated at runtime based on what base task is
 		// selected, support it when we add more than one type of task
-		availableHooks = append(availableHooks, hook.Name())
+		availableHooks = append(availableHooks, schema.Name)
 	}
 
 	var qs = []*survey.Question{
@@ -270,15 +278,23 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 		return emptyJobSpec, err
 	}
 
-	askQuesResponse, err := executionHook.AskQuestions(models.AskQuestionRequest{})
+	taskQuesResponse, err := executionHook.GetHookQuestions(context.TODO(), models.GetHookQuestionsRequest{})
 	if err != nil {
 		return emptyJobSpec, err
 	}
-	hookConfigResponse, err := executionHook.GenerateConfig(models.GenerateConfigWithTaskRequest{
-		TaskConfig: jobSpec.Task.Config,
-		DefaultConfigRequest: models.DefaultConfigRequest{
-			Inputs: askQuesResponse.Answers,
-		},
+
+	userInputs := models.PluginAnswers{}
+	for _, ques := range taskQuesResponse.Questions {
+		responseAnswer, err := AskHookSurveyQuestion(ques, executionHook)
+		if err != nil {
+			return emptyJobSpec, err
+		}
+		userInputs = append(userInputs, responseAnswer...)
+	}
+
+	generateConfResponse, err := executionHook.DefaultHookConfig(context.TODO(), models.DefaultHookConfigRequest{
+		Answers:    userInputs,
+		TaskConfig: models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 	})
 	if err != nil {
 		return emptyJobSpec, err
@@ -286,7 +302,7 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 
 	jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
 		Unit:   executionHook,
-		Config: hookConfigResponse.Config,
+		Config: generateConfResponse.Config.ToJobSpec(),
 	})
 	return jobSpec, nil
 }
@@ -313,7 +329,11 @@ func selectJobSurvey(jobSpecRepo store.JobSpecRepository) (string, error) {
 
 func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool {
 	for _, hook := range jobSpec.Hooks {
-		if hook.Unit.Name() == newHookName {
+		schema, err := hook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+		if err != nil {
+			return false
+		}
+		if schema.Name == newHookName {
 			return true
 		}
 	}
@@ -474,4 +494,151 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 		Offset:     "0",
 		TruncateTo: "h",
 	}
+}
+
+func AskTaskSurveyQuestion(ques models.PluginQuestion, execUnit models.TaskPlugin) (models.PluginAnswers, error) {
+	var surveyPrompt survey.Prompt
+	if len(ques.Multiselect) > 0 {
+		sel := &survey.Select{
+			Message: ques.Prompt,
+			Help:    ques.Help,
+			Options: ques.Multiselect,
+		}
+		if len(ques.Default) > 0 {
+			sel.Default = ques.Default
+		}
+		surveyPrompt = sel
+	} else {
+		sel := &survey.Input{
+			Message: ques.Prompt,
+			Help:    ques.Help,
+		}
+		if len(ques.Default) > 0 {
+			sel.Default = ques.Default
+		}
+		surveyPrompt = sel
+	}
+	var responseStr string
+	if err := survey.AskOne(surveyPrompt, &responseStr, survey.WithValidator(func(val interface{}) error {
+		str, err := ConvertUserInputToString(val)
+		if err != nil {
+			return err
+		}
+		resp, err := execUnit.ValidateTaskQuestion(context.TODO(), models.ValidateTaskQuestionRequest{
+			Answer: models.PluginAnswer{
+				Question: ques,
+				Value:    str,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if !resp.Success {
+			return errors.New(resp.Error)
+		}
+		return nil
+	})); err != nil {
+		return nil, errors.Wrap(err, "AskSurveyQuestion")
+	}
+
+	answers := models.PluginAnswers{
+		models.PluginAnswer{
+			Question: ques,
+			Value:    responseStr,
+		},
+	}
+
+	// check if sub questions are attached on this question
+	if len(ques.SubQuestions) > 0 && responseStr == ques.SubQuestionsIfValue {
+		for _, subQues := range ques.SubQuestions {
+			subQuesAnswer, err := AskTaskSurveyQuestion(subQues, execUnit)
+			if err != nil {
+				return nil, err
+			}
+			answers = append(answers, subQuesAnswer...)
+		}
+	}
+
+	return answers, nil
+}
+
+func AskHookSurveyQuestion(ques models.PluginQuestion, execUnit models.HookPlugin) (models.PluginAnswers, error) {
+	var surveyPrompt survey.Prompt
+	if len(ques.Multiselect) > 0 {
+		sel := &survey.Select{
+			Message: ques.Prompt,
+			Help:    ques.Help,
+			Options: ques.Multiselect,
+		}
+		if len(ques.Default) > 0 {
+			sel.Default = ques.Default
+		}
+		surveyPrompt = sel
+	} else {
+		sel := &survey.Input{
+			Message: ques.Prompt,
+			Help:    ques.Help,
+		}
+		if len(ques.Default) > 0 {
+			sel.Default = ques.Default
+		}
+		surveyPrompt = sel
+	}
+	var responseStr string
+	if err := survey.AskOne(surveyPrompt, &responseStr, survey.WithValidator(func(val interface{}) error {
+		str, err := ConvertUserInputToString(val)
+		if err != nil {
+			return err
+		}
+		resp, err := execUnit.ValidateHookQuestion(context.TODO(), models.ValidateHookQuestionRequest{
+			Answer: models.PluginAnswer{
+				Question: ques,
+				Value:    str,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if !resp.Success {
+			return errors.New(resp.Error)
+		}
+		return nil
+	})); err != nil {
+		return nil, errors.Wrap(err, "AskHookSurveyQuestion")
+	}
+
+	answers := models.PluginAnswers{
+		models.PluginAnswer{
+			Question: ques,
+			Value:    responseStr,
+		},
+	}
+
+	// check if sub questions are attached on this question
+	if len(ques.SubQuestions) > 0 && responseStr == ques.SubQuestionsIfValue {
+		for _, subQues := range ques.SubQuestions {
+			subQuesAnswer, err := AskHookSurveyQuestion(subQues, execUnit)
+			if err != nil {
+				return nil, err
+			}
+			answers = append(answers, subQuesAnswer...)
+		}
+	}
+
+	return answers, nil
+}
+
+func ConvertUserInputToString(val interface{}) (string, error) {
+	var responseStr string
+	switch reflect.TypeOf(val).Name() {
+	case "int":
+		responseStr = strconv.Itoa(val.(int))
+	case "string":
+		responseStr = val.(string)
+	case "OptionAnswer":
+		responseStr = val.(survey.OptionAnswer).Value
+	default:
+		return "", errors.Errorf("unknown type found while parsing input: %v", val)
+	}
+	return responseStr, nil
 }

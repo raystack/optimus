@@ -1,6 +1,7 @@
 package local
 
 import (
+	"context"
 	"regexp"
 	"strconv"
 	"strings"
@@ -85,11 +86,15 @@ func (a JobHook) ToSpec(supportedHookRepo models.HookRepo) (models.JobSpecHook, 
 }
 
 // FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
-func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
-	return JobHook{
-		Name:   spec.Unit.Name(),
-		Config: JobSpecConfigToYamlSlice(spec.Config),
+func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
+	schema, err := spec.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+	if err != nil {
+		return JobHook{}, err
 	}
+	return JobHook{
+		Name:   schema.Name,
+		Config: JobSpecConfigToYamlSlice(spec.Config),
+	}, nil
 }
 
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
@@ -136,7 +141,7 @@ type JobDependency struct {
 }
 
 type JobSpecAdapter struct {
-	supportedTaskRepo models.TransformationRepo
+	supportedTaskRepo models.TaskPluginRepository
 	supportedHookRepo models.HookRepo
 }
 
@@ -253,6 +258,11 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		})
 	}
 
+	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+	if err != nil {
+		return Job{}, err
+	}
+
 	parsed := Job{
 		Version:     spec.Version,
 		Name:        spec.Name,
@@ -268,7 +278,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Catchup:       spec.Behavior.CatchUp,
 		},
 		Task: JobTask{
-			Name:   spec.Task.Unit.Name(),
+			Name:   taskSchema.Name,
 			Config: taskConf,
 			Window: JobTaskWindow{
 				Size:       spec.Task.Window.SizeString(),
@@ -293,13 +303,17 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 
 	// prep hooks
 	for _, hook := range spec.Hooks {
-		parsed.Hooks = append(parsed.Hooks, JobHook{}.FromSpec(hook))
+		h, err := JobHook{}.FromSpec(hook)
+		if err != nil {
+			return parsed, err
+		}
+		parsed.Hooks = append(parsed.Hooks, h)
 	}
 
 	return parsed, nil
 }
 
-func NewJobSpecAdapter(supportedTaskRepo models.TransformationRepo, supportedHookRepo models.HookRepo) *JobSpecAdapter {
+func NewJobSpecAdapter(supportedTaskRepo models.TaskPluginRepository, supportedHookRepo models.HookRepo) *JobSpecAdapter {
 	return &JobSpecAdapter{
 		supportedTaskRepo: supportedTaskRepo,
 		supportedHookRepo: supportedHookRepo,
