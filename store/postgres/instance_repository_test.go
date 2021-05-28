@@ -47,8 +47,8 @@ func TestInstanceRepository(t *testing.T) {
 
 	jobConfigs := []models.JobSpec{
 		{
-			ID:     uuid.Must(uuid.NewRandom()),
-			Name:   "g-optimus-id",
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit1,
 				Config: []models.JobSpecConfigItem{
@@ -66,11 +66,11 @@ func TestInstanceRepository(t *testing.T) {
 				}),
 		},
 		{
-			Name:   "",
+			Name: "",
 		},
 		{
-			ID:     uuid.Must(uuid.NewRandom()),
-			Name:   "t-optimus-id",
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: execUnit2,
 				Config: []models.JobSpecConfigItem{
@@ -86,12 +86,12 @@ func TestInstanceRepository(t *testing.T) {
 		Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 		Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 	}
-	execUnit1.On("GenerateTaskDestination", unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
+	execUnit1.On("GenerateTaskDestination", context.TODO(), unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
 	unitData2 := models.GenerateTaskDestinationRequest{
 		Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[1].Task.Config),
 		Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[1].Assets),
 	}
-	execUnit2.On("GenerateTaskDestination", unitData2).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
+	execUnit2.On("GenerateTaskDestination", context.TODO(), unitData2).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
