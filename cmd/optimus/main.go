@@ -137,27 +137,27 @@ var cfgRules = map[*string]cfg{
 	&Config.DBHost: {
 		Env:  "DB_HOST",
 		Cmd:  "db-host",
-		Desc: "database host to connect to database used by jazz",
+		Desc: "database host to connect to database",
 	},
 	&Config.DBUser: {
 		Env:  "DB_USER",
 		Cmd:  "db-user",
-		Desc: "database user to connect to database used by jazz",
+		Desc: "database user to connect to database",
 	},
 	&Config.DBPassword: {
 		Env:  "DB_PASSWORD",
 		Cmd:  "db-password",
-		Desc: "database password to connect to database used by jazz",
+		Desc: "database password to connect to database",
 	},
 	&Config.DBName: {
 		Env:  "DB_NAME",
 		Cmd:  "db-name",
-		Desc: "database name to connect to database used by jazz",
+		Desc: "database name to connect to database",
 	},
 	&Config.DBSSLMode: {
 		Env:  "DB_SSL_MODE",
 		Cmd:  "db-ssl-mode",
-		Desc: "database sslmode to connect to database used by jazz (require, disable)",
+		Desc: "database sslmode to connect to database (require, disable)",
 	},
 	&Config.MaxIdleDBConn: {
 		Env:  "MAX_IDLE_DB_CONN",

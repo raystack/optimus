@@ -1,6 +1,3 @@
-[![pipeline status](https://github.com/odpf/optimus/badges/master/pipeline.svg)](https://github.com/odpf/optimus/commits/master)
-[![coverage report](https://github.com/odpf/optimus/badges/master/coverage.svg)](https://github.com/odpf/optimus/commits/master)
-
 # Optimus
 
 Optimus helps your organization to build & manage data pipelines with ease.
@@ -24,12 +21,11 @@ Optimus helps your organization to build & manage data pipelines with ease.
       deployment query will be dry-run to make sure it passes basic sanity
       checks
 - Extensibility to support Python transformation **[in roadmap]**
-- Extensibility to support Spark transformations **[in roadmap]**
 - Task versioning: If there is a scheduled job *A* and this gets modified as
   *A1* then it is possible to schedule same job for a date range as *A* and
   thereafter as *A1*. **[in roadmap]**
 - Git based specification management
-- HTTP/GRPC based specification management **[in roadmap]**
+- HTTP/GRPC based specification management
 
 ### Compiling from source
 Optimus requires the following dependencies:
@@ -38,10 +34,10 @@ Optimus requires the following dependencies:
 We won't cover how to install these, you can go to their respective websites to figure out how to install them for your OS.
 Run the following commands to compile from source
 ```bash
-$ git clone git@github.com/odpf/optimus.git
+$ git clone git@github.com:odpf/optimus.git
 $ cd optimus
 $ make
-$ cp opctl /usr/bin && cp optimus /usr/bin # copy the executables to a location in $PATH
+$ cp opctl /usr/bin # copy the executables to a location in $PATH
 ```
 The last step isn't necessarily required. Feel free to put the compiled executable anywhere you want.
 If during compilation, golang is unable to find odpf.github.io dependencies, try using
@@ -57,7 +53,7 @@ export PATH=$PATH:$GOPATH/bin
 
 Follow same steps as optimus cli to compile from source
 ```bash
-$ git clone git@github.com/odpf/optimus.git
+$ git clone git@github.com:odpf/optimus.git
 $ cd optimus
 $ make
 ```
@@ -81,8 +77,6 @@ Configuration inputs can either be passed as command arguments or set as environ
 | db-user                | DB_USER                | Y        |                                                                   |
 | db-password            | DB_PASSWORD            | Y        |                                                                   |
 
-You need to export GOOGLE_APPLICATION_CREDENTIALS with path to your service key, without this jazz cannot access GCS and GCR for deployment
-
 ### To register a project as an entity
 ```
 curl -X POST "optimus.example.io/api/v1/project" -H "accept: application/json" -H "Content-Type: 
@@ -97,16 +91,3 @@ Execution unit configs which will be exposed as globals
 - TRANSPORTER_KAFKA_BROKERS
 - TRANSPORTER_STENCIL_HOST
 - PREDATOR_HOST
-
-## Built With
-* [Golang](https://golang.org/) - The Programming Language
-* [Docker](https://www.docker.com/) - Tool for creating and running container images
-* [Kubernetes](https://airflow.apache.org/kubernetes.html) - Docker container orchestration
-* [Survey](https://github.com/AlecAivazis/survey) - A golang library for building interactive prompts
-* [Cobra](https://github.com/spf13/cobra)- A Commander for modern Go CLI interactions
-* [Airflow](https://github.com/apache/airflow) - Scheduler, workflow manager
-
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning.

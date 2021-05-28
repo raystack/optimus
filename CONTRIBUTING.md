@@ -31,5 +31,4 @@ include:
 Things to keep in mind before creating a new commit:
 
 * Go through the project code conventions.
-* Commit format: `[Driver, {Navigator}] Short and concise commit message.`
 * Follow these [guidelines](https://chris.beams.io/posts/git-commit/) for your commit messages.
