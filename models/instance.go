@@ -29,18 +29,22 @@ const (
 	InstanceStateSuccess = "success"
 
 	// InstanceType is the kind of execution happening at the time
-	InstanceTypeTransformation InstanceType = "transformation"
-	InstanceTypeHook           InstanceType = "hook"
+	InstanceTypeTask InstanceType = "task"
+	InstanceTypeHook InstanceType = "hook"
 )
 
 type InstanceType string
 
 func (I InstanceType) New(val string) (InstanceType, error) {
 	switch val {
-	case "transformation":
+	case "TASK":
+		fallthrough
+	case "task":
+		return InstanceTypeTask, nil
+	case "HOOK":
 		fallthrough
 	case "hook":
-		return InstanceType(val), nil
+		return InstanceTypeHook, nil
 	}
 	return InstanceType(""), errors.Errorf("failed to convert to instance type, invalid val: %s", val)
 }
@@ -68,6 +72,8 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 
 type InstanceService interface {
 	Register(jobSpec JobSpec, scheduledAt time.Time, taskType InstanceType) (InstanceSpec, error)
+	Compile(namespaceSpec NamespaceSpec, jobSpec JobSpec, instanceSpec InstanceSpec,
+		runType InstanceType, runName string) (envMap map[string]string, fileMap map[string]string, err error)
 }
 
 // TemplateEngine compiles raw text templates using provided values

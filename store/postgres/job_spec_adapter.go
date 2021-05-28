@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -94,18 +95,22 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	if err != nil {
 		return JobHook{}, err
 	}
+	schema, err := spec.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+	if err != nil {
+		return JobHook{}, err
+	}
 	return JobHook{
-		Name:   spec.Unit.Name(),
+		Name:   schema.Name,
 		Config: configJSON,
 	}, nil
 }
 
 type JobSpecAdapter struct {
-	supportedTaskRepo models.TransformationRepo
+	supportedTaskRepo models.TaskPluginRepository
 	supportedHookRepo models.HookRepo
 }
 
-func NewAdapter(supportedTaskRepo models.TransformationRepo, supportedHookRepo models.HookRepo) *JobSpecAdapter {
+func NewAdapter(supportedTaskRepo models.TaskPluginRepository, supportedHookRepo models.HookRepo) *JobSpecAdapter {
 	return &JobSpecAdapter{
 		supportedTaskRepo: supportedTaskRepo,
 		supportedHookRepo: supportedHookRepo,
@@ -249,9 +254,14 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	wsize := spec.Task.Window.Size.Nanoseconds()
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
-	jobDestination, err := spec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
-		Config: spec.Task.Config,
-		Assets: spec.Assets.ToMap(),
+	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+	if err != nil {
+		return Job{}, err
+	}
+
+	jobDestination, err := spec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
+		Config: models.TaskPluginConfigs{}.FromJobSpec(spec.Task.Config),
+		Assets: models.TaskPluginAssets{}.FromJobSpec(spec.Assets),
 	})
 	if err != nil {
 		return Job{}, err
@@ -271,7 +281,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		CatchUp:          &spec.Behavior.CatchUp,
 		Destination:      jobDestination.Destination,
 		Dependencies:     dependenciesJSON,
-		TaskName:         spec.Task.Unit.Name(),
+		TaskName:         taskSchema.Name,
 		TaskConfig:       taskConfigJSON,
 		WindowSize:       &wsize,
 		WindowOffset:     &woffset,

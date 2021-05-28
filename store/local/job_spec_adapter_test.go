@@ -1,7 +1,10 @@
 package local_test
 
 import (
+	"context"
 	"testing"
+
+	"github.com/odpf/optimus/models"
 
 	"github.com/odpf/optimus/mock"
 
@@ -43,10 +46,12 @@ hooks: []
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
-		bq2bqTrasnformer := new(mock.Transformer)
-		bq2bqTrasnformer.On("Name").Return("bq2bq")
+		bq2bqTrasnformer := new(mock.TaskPlugin)
+		bq2bqTrasnformer.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+			Name: "bq2bq",
+		}, nil)
 
-		allTasksRepo := new(mock.SupportedTransformationRepo)
+		allTasksRepo := new(mock.SupportedTaskRepo)
 		allTasksRepo.On("GetByName", "bq2bq").Return(bq2bqTrasnformer, nil)
 
 		adapter := local.NewJobSpecAdapter(allTasksRepo, nil)

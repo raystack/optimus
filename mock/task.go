@@ -1,65 +1,70 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/models"
 )
 
-type SupportedTransformationRepo struct {
+type SupportedTaskRepo struct {
 	mock.Mock
 }
 
-func (repo *SupportedTransformationRepo) GetByName(name string) (models.Transformation, error) {
+func (repo *SupportedTaskRepo) GetByName(name string) (models.TaskPlugin, error) {
 	args := repo.Called(name)
-	return args.Get(0).(models.Transformation), args.Error(1)
+	return args.Get(0).(models.TaskPlugin), args.Error(1)
 }
 
-func (repo *SupportedTransformationRepo) GetAll() []models.Transformation {
+func (repo *SupportedTaskRepo) GetAll() []models.TaskPlugin {
 	args := repo.Called()
-	return args.Get(0).([]models.Transformation)
+	return args.Get(0).([]models.TaskPlugin)
 }
 
-func (repo *SupportedTransformationRepo) Add(t models.Transformation) error {
+func (repo *SupportedTaskRepo) Add(t models.TaskPlugin) error {
 	return repo.Called(t).Error(0)
 }
 
-type Transformer struct {
+type TaskPlugin struct {
 	mock.Mock `hash:"-"`
 }
 
-func (repo *Transformer) Name() string {
-	args := repo.Called()
-	return args.Get(0).(string)
+func (repo *TaskPlugin) GetTaskSchema(ctx context.Context, inp models.GetTaskSchemaRequest) (models.GetTaskSchemaResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.GetTaskSchemaResponse), args.Error(1)
 }
-func (repo *Transformer) Image() string {
-	args := repo.Called()
-	return args.Get(0).(string)
+
+func (repo *TaskPlugin) DefaultTaskConfig(ctx context.Context, inp models.DefaultTaskConfigRequest) (models.DefaultTaskConfigResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.DefaultTaskConfigResponse), args.Error(1)
 }
-func (repo *Transformer) Description() string {
-	args := repo.Called()
-	return args.Get(0).(string)
+
+func (repo *TaskPlugin) DefaultTaskAssets(ctx context.Context, inp models.DefaultTaskAssetsRequest) (models.DefaultTaskAssetsResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.DefaultTaskAssetsResponse), args.Error(1)
 }
-func (repo *Transformer) AskQuestions(opt models.AskQuestionRequest) (models.AskQuestionResponse, error) {
-	args := repo.Called(opt)
-	return args.Get(0).(models.AskQuestionResponse), args.Error(1)
+
+func (repo *TaskPlugin) CompileTaskAssets(ctx context.Context, inp models.CompileTaskAssetsRequest) (models.CompileTaskAssetsResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.CompileTaskAssetsResponse), args.Error(1)
 }
-func (repo *Transformer) DefaultConfig(inp models.DefaultConfigRequest) (models.DefaultConfigResponse, error) {
-	args := repo.Called(inp)
-	return args.Get(0).(models.DefaultConfigResponse), args.Error(1)
+
+func (repo *TaskPlugin) GetTaskQuestions(ctx context.Context, inp models.GetTaskQuestionsRequest) (models.GetTaskQuestionsResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.GetTaskQuestionsResponse), args.Error(1)
 }
-func (repo *Transformer) DefaultAssets(inp models.DefaultAssetsRequest) (models.DefaultAssetsResponse, error) {
-	args := repo.Called(inp)
-	return args.Get(0).(models.DefaultAssetsResponse), args.Error(1)
+
+func (repo *TaskPlugin) ValidateTaskQuestion(ctx context.Context, inp models.ValidateTaskQuestionRequest) (models.ValidateTaskQuestionResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.ValidateTaskQuestionResponse), args.Error(1)
 }
-func (repo *Transformer) CompileAssets(request models.CompileAssetsRequest) (models.CompileAssetsResponse, error) {
-	args := repo.Called(request)
-	return args.Get(0).(models.CompileAssetsResponse), args.Error(1)
+
+func (repo *TaskPlugin) GenerateTaskDestination(ctx context.Context, inp models.GenerateTaskDestinationRequest) (models.GenerateTaskDestinationResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.GenerateTaskDestinationResponse), args.Error(1)
 }
-func (repo *Transformer) GenerateDestination(data models.GenerateDestinationRequest) (models.GenerateDestinationResponse, error) {
-	args := repo.Called(data)
-	return args.Get(0).(models.GenerateDestinationResponse), args.Error(1)
-}
-func (repo *Transformer) GenerateDependencies(data models.GenerateDependenciesRequest) (models.GenerateDependenciesResponse, error) {
-	args := repo.Called(data)
-	return args.Get(0).(models.GenerateDependenciesResponse), args.Error(1)
+
+func (repo *TaskPlugin) GenerateTaskDependencies(ctx context.Context, inp models.GenerateTaskDependenciesRequest) (models.GenerateTaskDependenciesResponse, error) {
+	args := repo.Called(ctx, inp)
+	return args.Get(0).(models.GenerateTaskDependenciesResponse), args.Error(1)
 }

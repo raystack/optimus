@@ -3,6 +3,7 @@
 package postgres
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -30,12 +31,16 @@ func TestInstanceRepository(t *testing.T) {
 
 	gTask := "g-task"
 	tTask := "t-task"
-	execUnit1 := new(mock.Transformer)
-	execUnit1.On("Name").Return(gTask)
-	execUnit2 := new(mock.Transformer)
-	execUnit2.On("Name").Return(tTask)
+	execUnit1 := new(mock.TaskPlugin)
+	execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name: gTask,
+	}, nil)
+	execUnit2 := new(mock.TaskPlugin)
+	execUnit2.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name: tTask,
+	}, nil)
 
-	allTasksRepo := new(mock.SupportedTransformationRepo)
+	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
 	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
 	adapter := NewAdapter(allTasksRepo, nil)
@@ -77,10 +82,16 @@ func TestInstanceRepository(t *testing.T) {
 		},
 	}
 
-	unitData := models.GenerateDestinationRequest{Config: jobConfigs[0].Task.Config, Assets: jobConfigs[0].Assets.ToMap()}
-	execUnit1.On("GenerateDestination", unitData).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
-	unitData2 := models.GenerateDestinationRequest{Config: jobConfigs[1].Task.Config, Assets: jobConfigs[1].Assets.ToMap()}
-	execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+	unitData := models.GenerateTaskDestinationRequest{
+		Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+		Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+	}
+	execUnit1.On("GenerateTaskDestination", unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
+	unitData2 := models.GenerateTaskDestinationRequest{
+		Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[1].Task.Config),
+		Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[1].Assets),
+	}
+	execUnit2.On("GenerateTaskDestination", unitData2).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")

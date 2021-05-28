@@ -12,21 +12,10 @@ from airflow.utils.weight_rule import WeightRule
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
     SlackWebhookOperator, CrossTenantDependencySensor
 
-
-SECRET_NAME = Variable.get("secret_name", "optimus-google-credentials")
-SECRET_KEY = Variable.get("secret_key", "auth.json")
-SECRET_VOLUME_PATH = '/opt/optimus/secrets/'
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
 DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
-
-gcloud_credentials_path = '{}{}'.format(SECRET_VOLUME_PATH, SECRET_KEY)
-gcloud_secret = Secret(
-    'volume',
-    SECRET_VOLUME_PATH,
-    SECRET_NAME,
-    SECRET_KEY)
 
 default_args = {
     "owner": "mee@mee",
@@ -47,10 +36,16 @@ dag = DAG(
     catchup = True
 )
 
+transformation_secret = Secret(
+    "volume",
+    "/opt/optimus/secrets",
+    "optimus-task-bq",
+    "auth.json"
+)
 transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{}".format("example.io/namespace/image:latest"),
+    image = "example.io/namespace/image:latest",
     cmds=[],
     name="bq",
     task_id="bq",
@@ -59,13 +54,13 @@ transformation_bq = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[gcloud_secret],
+    secrets=[transformation_secret],
     env_vars={
-        "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
+        "GOOGLE_APPLICATION_CREDENTIALS": '/opt/optimus/secrets/auth.json',
         "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
-        "TASK_TYPE":'transformation', "TASK_NAME":'bq',
+        "TASK_TYPE":'task', "TASK_NAME":'bq',
         "SCHEDULED_AT":'{{ next_execution_date }}',
     },
     reattach_on_restart=True,
@@ -85,9 +80,9 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[gcloud_secret],
+    secrets=[],
     env_vars={
-        "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
+        "GOOGLE_APPLICATION_CREDENTIALS": '',
         "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
@@ -109,9 +104,9 @@ hook_predator = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[gcloud_secret],
+    secrets=[],
     env_vars={
-        "GOOGLE_APPLICATION_CREDENTIALS": gcloud_credentials_path,
+        "GOOGLE_APPLICATION_CREDENTIALS": '',
         "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',

@@ -3,6 +3,7 @@
 package postgres
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -48,20 +49,26 @@ func TestJobRepository(t *testing.T) {
 	gTask := "g-task"
 	tTask := "t-task"
 	destination := "p.d.t"
-	execUnit1 := new(mock.Transformer)
-	execUnit1.On("Name").Return(gTask)
-	execUnit2 := new(mock.Transformer)
+	execUnit1 := new(mock.TaskPlugin)
+	execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name: gTask,
+	}, nil)
+	execUnit2 := new(mock.TaskPlugin)
 
 	gHook := "g-hook"
-	hookUnit1 := new(mock.HookUnit)
-	hookUnit1.On("Name").Return(gHook)
-	hookUnit1.On("Type").Return(models.HookTypePre)
+	hookUnit1 := new(mock.HookPlugin)
+	hookUnit1.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name: gHook,
+		Type: models.HookTypePre,
+	}, nil)
 	tHook := "g-hook"
-	hookUnit2 := new(mock.HookUnit)
-	hookUnit2.On("Name").Return(tHook)
-	hookUnit2.On("Type").Return(models.HookTypePre)
+	hookUnit2 := new(mock.HookPlugin)
+	hookUnit2.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name: tHook,
+		Type: models.HookTypePre,
+	}, nil)
 
-	allTasksRepo := new(mock.SupportedTransformationRepo)
+	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
 	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
 	allHooksRepo := new(mock.SupportedHookRepo)
@@ -140,8 +147,8 @@ func TestJobRepository(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 
-			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer execUnit2.AssertExpectations(t)
 
@@ -162,11 +169,13 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err := repo.GetByID(testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
-			assert.Equal(t, gTask, checkModel.Task.Unit.Name())
+			taskSchema, _ := checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, gTask, taskSchema.Name)
 			assert.Equal(t, "query.sql", checkModel.Assets.GetAll()[0].Name)
 
-			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.Name())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.Type())
+			schema, _ := checkModel.Hooks[0].Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+			assert.Equal(t, gHook, schema.Name)
+			assert.Equal(t, models.HookTypePre, schema.Type)
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
 			assert.Equal(t, 1, len(checkModel.Hooks))
 
@@ -177,8 +186,12 @@ func TestJobRepository(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 
-			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			unitData1 := models.GenerateTaskDestinationRequest{
+				Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
+				Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets),
+			}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(
+				models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer execUnit2.AssertExpectations(t)
 
@@ -229,13 +242,15 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			unitData2 := models.GenerateDestinationRequest{Config: testConfigs[2].Task.Config, Assets: testConfigs[2].Assets.ToMap()}
-			execUnit2.On("Name").Return(tTask)
-			execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			unitData2 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
+			execUnit2.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: tTask,
+			}, nil)
+			execUnit2.On("GenerateTaskDestination", context.TODO(), unitData2).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit2.AssertExpectations(t)
 
 			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
@@ -248,7 +263,8 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err := repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
-			assert.Equal(t, gTask, checkModel.Task.Unit.Name())
+			taskSchema, _ := checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, gTask, taskSchema.Name)
 
 			//try for update
 			err = repo.Save(testModelB)
@@ -257,21 +273,21 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
-			assert.Equal(t, tTask, checkModel.Task.Unit.Name())
+			taskSchema, _ = checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, tTask, taskSchema.Name)
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			testModelA := testConfigs[0]
 
-			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
-			execUnit1.On("Name").Return(tTask)
+			unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			unitData2 := models.GenerateDestinationRequest{Config: testConfigs[2].Task.Config, Assets: testConfigs[2].Assets.ToMap()}
-			execUnit2.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
-			execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			unitData2 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
+			execUnit2.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
+			execUnit2.On("GenerateTaskDestination", context.TODO(), unitData2).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit2.AssertExpectations(t)
 
 			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
@@ -285,7 +301,8 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err := repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
-			assert.Equal(t, gTask, checkModel.Task.Unit.Name())
+			taskSchema, _ := checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, gTask, taskSchema.Name)
 
 			testModelA.Task.Window.Offset = time.Hour * 2
 			testModelA.Task.Window.Size = 0
@@ -297,7 +314,8 @@ func TestJobRepository(t *testing.T) {
 
 			checkModel, err = repo.GetByID(testModelA.ID)
 			assert.Nil(t, err)
-			assert.Equal(t, tTask, checkModel.Task.Unit.Name())
+			taskSchema, _ = checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, tTask, taskSchema.Name)
 			assert.Equal(t, time.Hour*2, checkModel.Task.Window.Offset)
 			assert.Equal(t, time.Duration(0), checkModel.Task.Window.Size)
 		})
@@ -331,7 +349,8 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err := repo.GetByID(testModel.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
-			assert.Equal(t, tTask, checkModel.Task.Unit.Name())
+			taskSchema, _ := checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, tTask, taskSchema.Name)
 			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
 			assert.Equal(t, 0, len(checkModel.Hooks))
 
@@ -352,11 +371,14 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModel.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
-			assert.Equal(t, tTask, checkModel.Task.Unit.Name())
+			taskSchema, _ = checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, tTask, taskSchema.Name)
 			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
 			assert.Equal(t, 1, len(checkModel.Hooks))
-			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.Name())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.Type())
+
+			schema, _ := checkModel.Hooks[0].Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+			assert.Equal(t, gHook, schema.Name)
+			assert.Equal(t, models.HookTypePre, schema.Type)
 
 			val1a, _ := checkModel.Hooks[0].Config.Get("FILTER_EXPRESSION")
 			assert.Equal(t, "event_timestamp > 10000", val1a)
@@ -381,17 +403,21 @@ func TestJobRepository(t *testing.T) {
 			checkModel, err = repo.GetByID(testModel.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
-			assert.Equal(t, tTask, checkModel.Task.Unit.Name())
+			taskSchema, _ = checkModel.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, tTask, taskSchema.Name)
 			assert.Equal(t, 0, len(checkModel.Assets.GetAll()))
 			assert.Equal(t, 2, len(checkModel.Hooks))
-			assert.Equal(t, gHook, checkModel.Hooks[0].Unit.Name())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[0].Unit.Type())
+			schema, _ = checkModel.Hooks[0].Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+			assert.Equal(t, gHook, schema.Name)
+			assert.Equal(t, models.HookTypePre, schema.Type)
 
 			val1b, _ := checkModel.Hooks[0].Config.Get("FILTER_EXPRESSION")
 			assert.Equal(t, "event_timestamp > 10000", val1b)
 			assert.Equal(t, hookUnit1, checkModel.Hooks[0].Unit)
-			assert.Equal(t, tHook, checkModel.Hooks[1].Unit.Name())
-			assert.Equal(t, models.HookTypePre, checkModel.Hooks[1].Unit.Type())
+
+			schema, _ = checkModel.Hooks[1].Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+			assert.Equal(t, tHook, schema.Name)
+			assert.Equal(t, models.HookTypePre, schema.Type)
 			assert.Equal(t, hookUnit1, checkModel.Hooks[1].Unit)
 
 			val1, _ := checkModel.Hooks[1].Config.Get("FILTER_EXPRESSION")
@@ -404,8 +430,8 @@ func TestJobRepository(t *testing.T) {
 			defer db.Close()
 			testModelA := testConfigs[0]
 
-			unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-			execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+			unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 
 			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
@@ -419,7 +445,8 @@ func TestJobRepository(t *testing.T) {
 			checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkJob.Name)
-			assert.Equal(t, gTask, checkJob.Task.Unit.Name())
+			schema, _ := checkJob.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+			assert.Equal(t, gTask, schema.Name)
 			assert.Equal(t, namespaceSpec.ID, checkNamespace.ID)
 			assert.Equal(t, namespaceSpec.ProjectSpec.ID, checkNamespace.ProjectSpec.ID)
 
@@ -502,20 +529,26 @@ func TestProjectJobRepository(t *testing.T) {
 	gTask := "g-task"
 	tTask := "t-task"
 	destination := "p.d.t"
-	execUnit1 := new(mock.Transformer)
-	execUnit1.On("Name").Return(gTask)
-	execUnit2 := new(mock.Transformer)
+	execUnit1 := new(mock.TaskPlugin)
+	execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name: gTask,
+	}, nil)
+	execUnit2 := new(mock.TaskPlugin)
 
 	gHook := "g-hook"
-	hookUnit1 := new(mock.HookUnit)
-	hookUnit1.On("Name").Return(gHook)
-	hookUnit1.On("Type").Return(models.HookTypePre)
+	hookUnit1 := new(mock.HookPlugin)
+	hookUnit1.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name: gHook,
+		Type: models.HookTypePre,
+	}, nil)
 	tHook := "g-hook"
-	hookUnit2 := new(mock.HookUnit)
-	hookUnit2.On("Name").Return(tHook)
-	hookUnit2.On("Type").Return(models.HookTypePre)
+	hookUnit2 := new(mock.HookPlugin)
+	hookUnit2.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name: tHook,
+		Type: models.HookTypePre,
+	}, nil)
 
-	allTasksRepo := new(mock.SupportedTransformationRepo)
+	allTasksRepo := new(mock.SupportedTaskRepo)
 	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
 	allTasksRepo.On("GetByName", tTask).Return(execUnit2, nil)
 	allHooksRepo := new(mock.SupportedHookRepo)
@@ -591,8 +624,9 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-		execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+		execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
+
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
@@ -615,11 +649,14 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		execUnit2.On("Name").Return(tTask)
-		unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-		execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
-		unitData2 := models.GenerateDestinationRequest{Config: testConfigs[2].Task.Config, Assets: testConfigs[2].Assets.ToMap()}
-		execUnit2.On("GenerateDestination", unitData2).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+		execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
+		execUnit2.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+			Name: tTask,
+		}, nil)
+		unitData2 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
+		execUnit2.On("GenerateTaskDestination", context.TODO(), unitData2).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
+
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
@@ -640,8 +677,12 @@ func TestProjectJobRepository(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
 
-		unitData1 := models.GenerateDestinationRequest{Config: testConfigs[0].Task.Config, Assets: testConfigs[0].Assets.ToMap()}
-		execUnit1.On("GenerateDestination", unitData1).Return(models.GenerateDestinationResponse{Destination: destination}, nil)
+		unitData1 := models.GenerateTaskDestinationRequest{
+			Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
+			Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets),
+		}
+		execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(
+			models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 

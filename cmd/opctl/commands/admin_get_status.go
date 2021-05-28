@@ -20,6 +20,7 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	var (
 		optimusHost string
 		projectName string
+		scheduledAt string
 	)
 	cmd := &cli.Command{
 		Use:     "status",

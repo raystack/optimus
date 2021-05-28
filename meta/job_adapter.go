@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -19,17 +20,40 @@ func (a JobAdapter) buildUrn(projectSpec models.ProjectSpec, jobSpec models.JobS
 }
 
 func (a JobAdapter) FromJobSpec(namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (*models.JobMetadata, error) {
-	taskDestination, err := jobSpec.Task.Unit.GenerateDestination(models.GenerateDestinationRequest{
-		Config: jobSpec.Task.Config,
-		Assets: jobSpec.Assets.ToMap(),
+	taskSchema, err := jobSpec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	taskPluginConfigs := models.TaskPluginConfigs{}
+	for _, c := range jobSpec.Task.Config {
+		taskPluginConfigs = append(taskPluginConfigs, models.TaskPluginConfig{
+			Name:  c.Name,
+			Value: c.Value,
+		})
+	}
+	taskPluginAssets := models.TaskPluginAssets{}
+	for _, c := range jobSpec.Assets.GetAll() {
+		taskPluginAssets = append(taskPluginAssets, models.TaskPluginAsset{
+			Name:  c.Name,
+			Value: c.Value,
+		})
+	}
+	taskDestination, err := jobSpec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
+		Config: taskPluginConfigs,
+		Assets: taskPluginAssets,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	if err != nil {
+		return nil, err
+	}
 	taskMetadata := models.JobTaskMetadata{
-		Name:        jobSpec.Task.Unit.Name(),
-		Image:       jobSpec.Task.Unit.Image(),
-		Description: jobSpec.Task.Unit.Description(),
+		Name:        taskSchema.Name,
+		Image:       taskSchema.Image,
+		Description: taskSchema.Description,
 		Destination: taskDestination.Destination,
 		Config:      jobSpec.Task.Config,
 		Window:      jobSpec.Task.Window,
@@ -61,13 +85,17 @@ func (a JobAdapter) FromJobSpec(namespaceSpec models.NamespaceSpec, jobSpec mode
 	}
 
 	for _, hook := range jobSpec.Hooks {
+		schema, err := hook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+		if err != nil {
+			return &resourceMetadata, err
+		}
 		resourceMetadata.Hooks = append(resourceMetadata.Hooks, models.JobHookMetadata{
-			Name:        hook.Unit.Name(),
-			Image:       hook.Unit.Image(),
-			Description: hook.Unit.Description(),
+			Name:        schema.Name,
+			Image:       schema.Image,
+			Description: schema.Description,
 			Config:      hook.Config,
-			Type:        hook.Unit.Type(),
-			DependsOn:   hook.Unit.DependsOn(),
+			Type:        schema.Type,
+			DependsOn:   schema.DependsOn,
 		})
 	}
 

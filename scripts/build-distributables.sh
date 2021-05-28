@@ -5,7 +5,7 @@ CTL_VERSION="$(git rev-parse --short HEAD)"
 OPMS_VERSION="$(git rev-parse --short HEAD)"
 
 SYS=("linux" "darwin")
-ARCH=("amd64")
+ARCH=("amd64" "arm64")
 BUILD_DIR="dist"
 
 build_executable() {
@@ -21,7 +21,7 @@ build_executable() {
             # place the executable within that folder
             executable="${TARGET}/$EXECUTABLE_NAME"
             echo $executable
-            GOOS=$os GOARCH=$arch go build -ldflags "$LD_FLAGS" -o $executable $NAME/cmd/$EXECUTABLE_NAME
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -ldflags "$LD_FLAGS" -o $executable $NAME/cmd/$EXECUTABLE_NAME
         done
     done
 }

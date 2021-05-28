@@ -52,7 +52,7 @@ func New(
 	scheduler models.SchedulerUnit,
 
 	datastoreSpecsFs map[string]fs.FileSystem,
-	tfRepo models.TransformationRepo,
+	tfRepo models.TaskPluginRepository,
 	hookRepo models.HookRepo,
 	dsRepo models.DatastoreRepo,
 ) *cli.Command {
@@ -87,7 +87,7 @@ func New(
 	case "on":
 		fallthrough
 	case "1":
-		cmd.AddCommand(adminCommand(l))
+		cmd.AddCommand(adminCommand(l, tfRepo, hookRepo))
 	}
 
 	return cmd

@@ -7,6 +7,10 @@ Basic building blocks of Optimus are
 - Optimus Adapters
 - Scheduler
 
+### Overview
+
+![Overview](./OptimusArchitecture_dark_20May2021.png?raw=true "OptimusArchitecture")
+
 ### Opctl
 
 `Opctl` is a command line tool used to interact with the main optimus service and basic scaffolding job

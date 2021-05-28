@@ -3,7 +3,7 @@ package v1_test
 import (
 	"context"
 	"encoding/base64"
-
+	"strings"
 	"testing"
 	"time"
 
@@ -76,8 +76,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			execUnit1 := new(mock.Transformer)
-			execUnit1.On("Name").Return(taskName)
+			execUnit1 := new(mock.TaskPlugin)
+			execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: taskName,
+			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
@@ -138,7 +140,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			instanceService := new(mock.InstanceService)
-			instanceService.On("Register", jobSpec, scheduledAt, models.InstanceTypeTransformation).Return(instanceSpec, nil)
+			instanceService.On("Register", jobSpec, scheduledAt, models.InstanceTypeTask).Return(instanceSpec, nil)
+			instanceService.On("Compile", namespaceSpec, jobSpec, instanceSpec, models.InstanceTypeTask, "test").Return(
+				map[string]string{
+					instance.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+					instance.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					instance.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				},
+				map[string]string{
+					"query.sql": "select * from 1",
+				}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -155,7 +166,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName,
-				Type: string(models.InstanceTypeTransformation), ScheduledAt: scheduledAtTimestamp}
+				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(string(models.InstanceTypeTask))]),
+				ScheduledAt:  scheduledAtTimestamp,
+				InstanceName: "test",
+			}
 			resp, err := runtimeServiceServer.RegisterInstance(context.TODO(), &versionRequest)
 			assert.Nil(t, err)
 
@@ -163,9 +177,21 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
 			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
 			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
-			namespaceProto := adapter.ToNamespaceProto(namespaceSpec)
-			expectedResponse := &pb.RegisterInstanceResponse{Job: jobSpecProto, Instance: instanceSpecProto,
-				Project: projectSpecProto, Namespace: namespaceProto}
+			expectedResponse := &pb.RegisterInstanceResponse{
+				Job: jobSpecProto, Instance: instanceSpecProto,
+				Project: projectSpecProto,
+				Context: &pb.InstanceContext{
+					Envs: map[string]string{
+						instance.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						instance.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						instance.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					},
+					Files: map[string]string{
+						"query.sql": "select * from 1",
+					},
+				},
+				Namespace: adapter.ToNamespaceProto(namespaceSpec),
+			}
 
 			assert.Equal(t, expectedResponse, resp)
 		})
@@ -453,10 +479,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobName := "my-job"
 			taskName := "bq2bq"
-			execUnit1 := new(mock.Transformer)
-			execUnit1.On("Name").Return(taskName)
-			execUnit1.On("Image").Return("dsfsd")
-			execUnit1.On("DefaultAssets", mock2.Anything).Return(models.DefaultAssetsResponse{}, nil)
+			execUnit1 := new(mock.TaskPlugin)
+			execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name:  taskName,
+				Image: "random-image",
+			}, nil)
+			execUnit1.On("DefaultTaskAssets", context.Background(), mock2.Anything).Return(models.DefaultTaskAssetsResponse{}, nil)
 			defer execUnit1.AssertExpectations(t)
 			models.TaskRegistry.Add(execUnit1)
 
@@ -680,9 +708,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit1 := new(mock.Transformer)
-			execUnit1.On("Name").Return(taskName)
-
+			execUnit1 := new(mock.TaskPlugin)
+			execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: taskName,
+			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpecs := []models.JobSpec{
@@ -721,7 +750,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
-			allTasksRepo := new(mock.SupportedTransformationRepo)
+			allTasksRepo := new(mock.SupportedTaskRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
 
@@ -798,9 +827,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit1 := new(mock.Transformer)
-			execUnit1.On("Name").Return(taskName)
-
+			execUnit1 := new(mock.TaskPlugin)
+			execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: taskName,
+			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpecs := []models.JobSpec{
@@ -833,7 +863,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
-			allTasksRepo := new(mock.SupportedTransformationRepo)
+			allTasksRepo := new(mock.SupportedTaskRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
 
@@ -901,7 +931,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
-			allTasksRepo := new(mock.SupportedTransformationRepo)
+			allTasksRepo := new(mock.SupportedTaskRepo)
 			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -961,7 +991,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit1 := new(mock.Transformer)
+			execUnit1 := new(mock.TaskPlugin)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpecs := []models.JobSpec{
@@ -994,7 +1024,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			defer projectRepoFactory.AssertExpectations(t)
 
-			allTasksRepo := new(mock.SupportedTransformationRepo)
+			allTasksRepo := new(mock.SupportedTaskRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil, nil)
 
@@ -1119,7 +1149,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Contents:    []byte("content-of-dag"),
 			}
 
-			execUnit1 := new(mock.Transformer)
+			execUnit1 := new(mock.TaskPlugin)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{

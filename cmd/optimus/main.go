@@ -14,6 +14,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
+
+	"github.com/odpf/optimus/plugin"
+
+	hplugin "github.com/hashicorp/go-plugin"
+
 	"github.com/segmentio/kafka-go"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/meta"
@@ -39,12 +45,11 @@ import (
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
 	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/ext/hook"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
-	_ "github.com/odpf/optimus/ext/task"
 	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	_ "github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/resources"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/gcs"
@@ -384,7 +389,6 @@ func init() {
 }
 
 func main() {
-
 	log := logrus.New()
 	log.SetOutput(os.Stdout)
 	logger.Init(Config.LogLevel)
@@ -396,6 +400,20 @@ func main() {
 	if err != nil {
 		mainLog.Fatalf("configuration error:\n%v", err)
 	}
+
+	// Create an hclog.Logger
+	pluginLogLevel := hclog.Info
+	if Config.LogLevel == "DEBUG" {
+		pluginLogLevel = hclog.Debug
+	}
+	pluginLogger := hclog.New(&hclog.LoggerOptions{
+		Name:   "optimus",
+		Output: os.Stdout,
+		Level:  pluginLogLevel,
+	})
+	plugin.Initialize(pluginLogger)
+	// Make sure we clean up any managed plugins at the end of this
+	defer hplugin.CleanupClients()
 
 	progressObs := &pipelineLogObserver{
 		log: log.WithField("reporter", "pipeline"),
@@ -556,6 +574,7 @@ func main() {
 			func() time.Time {
 				return time.Now().UTC()
 			},
+			instance.NewGoEngine(),
 		),
 		models.Scheduler,
 	))

@@ -24,13 +24,25 @@ __pycache__
 optimus.yaml
 
 # git ignore generate files related to gRPC and proto
-/api/proto/protoc-gen-openapiv2/
-/api/proto/v1/*.pb.go
-/api/proto/v1/*.pb.gw.go
-/api/proto/google/
-/api/proto/odpf
-/api/proto
 /proton/
+/api/proto/odpf/**/*
+
+!/api/proto/odpf/optimus/
+!/api/proto/odpf/optimus/*
+!/api/proto/odpf/optimus/**/*
+
+!/api/proto/odpf/metadata/
+!/api/proto/odpf/metadata/optimus/
+!/api/proto/odpf/metadata/optimus/*
+!/api/proto/odpf/metadata/optimus/**/*
+
+!/api/proto/odpf/third_party/
+!/api/proto/odpf/third_party/googleapis/
+!/api/proto/odpf/third_party/googleapis/*
+!/api/proto/odpf/third_party/googleapis/**/*
+!/api/proto/odpf/third_party/grpc-gateway/
+!/api/proto/odpf/third_party/grpc-gateway/*
+!/api/proto/odpf/third_party/grpc-gateway/**/*
 
 /third_party/*
 !/third_party/OpenAPI/odpf/optimus/RuntimeService.swagger.json

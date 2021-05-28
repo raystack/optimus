@@ -1,6 +1,8 @@
 package job
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -46,10 +48,10 @@ func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 
 	// get destinations of dependencies, assets should be
-	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateDependencies(
-		models.GenerateDependenciesRequest{
-			Config:  jobSpec.Task.Config,
-			Assets:  jobSpec.Assets.ToMap(),
+	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateTaskDependencies(context.TODO(),
+		models.GenerateTaskDependenciesRequest{
+			Config:  models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:  models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
 			Project: projectSpec,
 		},
 	)
@@ -109,7 +111,11 @@ func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, p
 func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (models.JobSpec, error) {
 	for hookIdx, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
-		for _, depends := range jobHook.Unit.DependsOn() {
+		schema, err := jobHook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+		for _, depends := range schema.DependsOn {
 			dependentHook, err := jobSpec.GetHookByName(depends)
 			if err == nil {
 				jobHook.DependsOn = append(jobHook.DependsOn, &dependentHook)
