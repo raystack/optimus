@@ -11,7 +11,7 @@ from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
-    SlackWebhookOperator, CrossTenantDependencySensor
+    CrossTenantDependencySensor
 
 
 SECRET_NAME = Variable.get("secret_name", "optimus-google-credentials")

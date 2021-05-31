@@ -1,27 +1,20 @@
-import calendar
 import json
 import logging
 import os
-import re
-from datetime import datetime, timedelta, timezone
-from string import Template
-from typing import Any, Callable, Dict, List, Optional
+from datetime import datetime
+from typing import List
 import pendulum
 
 import requests
-from airflow.configuration import conf
 from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
 from airflow.providers.cncf.kubernetes.utils import pod_launcher
+from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 from airflow.exceptions import AirflowException
-from airflow.hooks.base_hook import BaseHook
-from airflow.hooks.http_hook import HttpHook
+from airflow.hooks.base import BaseHook
 from airflow.kubernetes import kube_client
-from airflow.kubernetes.secret import Secret
-from airflow.models import (DAG, XCOM_RETURN_KEY, BaseOperator, DagModel,
-                            DagRun, TaskInstance, Variable, XCom)
-from airflow.operators.python_operator import PythonOperator
+from airflow.models import (XCOM_RETURN_KEY, DagModel,
+                            DagRun, Variable, XCom)
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
-from airflow.sensors.external_task_sensor import ExternalTaskSensor
 from airflow.utils.db import provide_session
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.state import State
@@ -227,95 +220,10 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         return expected_upstream_executions
 
 
-class SlackWebhookOperator(BaseOperator):
-    """
-    This operator allows you to post messages to Slack using incoming webhooks.
-    Takes both Slack webhook token directly and connection that has Slack webhook token.
-    If both supplied, http_conn_id will be used as base_url,
-    and webhook_token will be taken as endpoint, the relative path of the url.
-    Each Slack webhook token can be pre-configured to use a specific channel, username and
-    icon. You can override these defaults in this hook.
-    :param http_conn_id: connection that has Slack webhook token in the extra field
-    :type http_conn_id: str
-    :param webhook_token: Slack webhook token
-    :type webhook_token: str
-    :param message: The message you want to send on Slack
-    :type message: str
-    :param blocks: The blocks to send on Slack. Should be a list of
-        dictionaries representing Slack blocks.
-    :type blocks: list
-    """
-
-    template_fields = ['webhook_token', 'message', 'blocks']
-
-    @apply_defaults
-    def __init__(self,
-                 http_conn_id=None,
-                 webhook_token=None,
-                 message="",
-                 blocks=None,
-                 *args,
-                 **kwargs):
-        super(SlackWebhookOperator, self).__init__(*args, **kwargs)
-
-        self.http_conn_id = http_conn_id
-        self.webhook_token = self._get_token(webhook_token, http_conn_id)
-        self.message = message
-        self.blocks = blocks
-        self.hook = None
-
-    def _get_token(self, token, http_conn_id):
-        """
-        Given either a manually set token or a conn_id, return the webhook_token to use.
-        :param token: The manually provided token
-        :type token: str
-        :param http_conn_id: The conn_id provided
-        :type http_conn_id: str
-        :return: webhook_token to use
-        :rtype: str
-        """
-        if token:
-            return token
-        elif http_conn_id:
-            conn = self.get_connection(http_conn_id)
-            extra = conn.extra_dejson
-            return extra.get('webhook_token', '')
-        else:
-            raise AirflowException('Cannot get token: No valid Slack connection')
-
-    def _build_slack_message(self):
-        """
-        Construct the Slack message. All relevant parameters are combined here to a valid
-        Slack json message.
-        :return: Slack message to send
-        :rtype: str
-        """
-        cmd={}
-        if self.blocks:
-            cmd['blocks']=self.blocks
-        cmd['text']=self.message
-        return json.dumps(cmd)
-
-    def execute(self, context):
-        slack_message=self._build_slack_message()
-        self.log.info("sending alert to slack")
-        self.log.info(slack_message)
-
-        self.hook=HttpHook(http_conn_id=self.http_conn_id)
-        response=self.hook.run(
-            self.webhook_token,
-            data=slack_message,
-            headers={'Content-type': 'application/json'}
-        )
-
-        if response.status_code == 200:
-            return response.text
-        raise AirflowException("failed to send slack alert: {}".format(response.text))
-
-
 def alert_failed_to_slack(context):
     SLACK_CONN_ID = "slack_alert"
     TASKFAIL_ALERT = int(Variable.get("taskfail_alert", default_var=1))
+    SLACK_CHANNEL = Variable.get("slack_channel")
 
     def _xcom_value_has_error(_xcom) -> bool:
         return _xcom.key == XCOM_RETURN_KEY and isinstance(_xcom.value, dict) and 'error' in _xcom.value and _xcom.value['error'] != None
@@ -330,6 +238,9 @@ def alert_failed_to_slack(context):
         print("no slack connection variable set")
         return "{connection} connection variable not defined, unable to send alerts".format(connection=SLACK_CONN_ID)
     
+    if not SLACK_CHANNEL:
+        return "no slack channel variable set"
+
     current_dag_id = context.get('task_instance').dag_id
     current_task_id = context.get('task_instance').task_id
     current_execution_date = context.get('execution_date')
@@ -406,14 +317,14 @@ def alert_failed_to_slack(context):
             ]
         },
     ]
-    failed_alert = SlackWebhookOperator(
-        task_id='slack_failed_alert',
-        http_conn_id=SLACK_CONN_ID,
-        webhook_token=slack_token,
+    failed_alert = SlackAPIPostOperator(
+        slack_conn_id=SLACK_CONN_ID,
+        token=slack_token,
         blocks=blocks,
+        task_id='slack_failed_alert',
+        channel=SLACK_CHANNEL
     )
     return failed_alert.execute(context=context)
-
 
 class OptimusAPIClient:
     def __init__(self, optimus_host):
