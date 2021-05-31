@@ -155,14 +155,16 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	//	"start_date": "2020-06-01T16:32:58.489042+00:00",
 	//	"state": "success"
 	//},
-	responseJSON := []map[string]interface{}{}
-	err = json.Unmarshal(body, &responseJSON)
+	var responseJson struct {
+		DagRuns []map[string]interface{} `json:"dag_runs"`
+	}
+	err = json.Unmarshal(body, &responseJson)
 	if err != nil {
 		return nil, errors.Wrapf(err, "json error: %s", string(body))
 	}
 
 	jobStatus := []models.JobStatus{}
-	for _, status := range responseJSON {
+	for _, status := range responseJson.DagRuns {
 		_, ok1 := status["execution_date"]
 		_, ok2 := status["state"]
 		if !ok1 || !ok2 {

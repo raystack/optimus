@@ -99,6 +99,8 @@ func TestAirflow(t *testing.T) {
 
 		t.Run("should return job status with valid args", func(t *testing.T) {
 			respString := `
+{
+"dag_runs": 
 [
 {
 "dag_id": "sample_select",
@@ -118,7 +120,9 @@ func TestAirflow(t *testing.T) {
 "start_date": "2020-06-01T16:33:01.020645+00:00",
 "state": "success"
 }
-]`
+],
+"total_entries": 0
+}`
 			// create a new reader with JSON
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHttpClient{
