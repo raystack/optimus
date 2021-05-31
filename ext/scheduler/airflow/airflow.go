@@ -13,16 +13,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
 )
 
 const (
-	baseTemplateFilePath = "./templates/scheduler/airflow_1/base_dag.py"
-	baseLibFilePath      = "./templates/scheduler/airflow_1/__lib.py"
+	baseTemplateFilePath = "./templates/scheduler/airflow_2/base_dag.py"
+	baseLibFilePath      = "./templates/scheduler/airflow_2/__lib.py"
 
-	dagStatusUrl = "api/experimental/dags/%s/dag_runs"
+	dagStatusUrl = "api/v1/dags/%s/dagRuns"
 )
 
 type HttpClient interface {
