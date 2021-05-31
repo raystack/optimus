@@ -4,6 +4,7 @@ package integration_tests
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -17,24 +18,37 @@ import (
 )
 
 func TestCompiler(t *testing.T) {
-	execUnit := new(mock.Transformer)
-	execUnit.On("Name").Return("bq")
-	execUnit.On("Image").Return("example.io/namespace/image:latest")
+	ctx := context.Background()
+	execUnit := new(mock.TaskPlugin)
+	execUnit.On("GetTaskSchema", ctx, models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		Name:       "bq",
+		Image:      "example.io/namespace/image:latest",
+		SecretPath: "/opt/optimus/secrets/auth.json",
+	}, nil)
 
 	transporterHook := "transporter"
-	hookUnit := new(mock.HookUnit)
-	hookUnit.On("Name").Return(transporterHook)
-	hookUnit.On("Image").Return("example.io/namespace/hook-image:latest")
-	hookUnit.On("Type").Return(models.HookTypePre)
+	hookUnit := new(mock.HookPlugin)
+	hookUnit.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name:  transporterHook,
+		Type:  models.HookTypePre,
+		Image: "example.io/namespace/hook-image:latest",
+	}, nil)
 
 	predatorHook := "predator"
-	hookUnit2 := new(mock.HookUnit)
-	hookUnit2.On("Name").Return(predatorHook)
-	hookUnit2.On("Image").Return("example.io/namespace/predator-image:latest")
-	hookUnit2.On("Type").Return(models.HookTypePost)
+	hookUnit2 := new(mock.HookPlugin)
+	hookUnit2.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name:  predatorHook,
+		Type:  models.HookTypePost,
+		Image: "example.io/namespace/predator-image:latest",
+	}, nil)
 
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
+	}
+
+	namespaceSpec := models.NamespaceSpec{
+		Name:        "foo-namespace",
+		ProjectSpec: projSpec,
 	}
 
 	externalProjSpec := models.ProjectSpec{
@@ -173,7 +187,7 @@ func TestCompiler(t *testing.T) {
 				templatePath,
 				"http://airflow.example.io",
 			)
-			job, err := com.Compile(spec, projSpec)
+			job, err := com.Compile(namespaceSpec, spec)
 			assert.Nil(t, err)
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
