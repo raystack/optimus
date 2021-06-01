@@ -1,16 +1,15 @@
 # Optimus
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](LICENSE)
+![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)
 
 Optimus helps your organization to build & manage data pipelines with ease.
 
 ## Features
 - BigQuery
-    - Schedule BigQuery transformation
+    - Schedule SQL transformation
     - Query compile time templating (variables, loop, if statements, macros, etc)
     - Table creation
     - BigQuery View creation
-    - BigQuery UDF creation **[in roadmap]**
-    - Audit/Profile BigQuery tables
-    - Sink BigQuery tables to Kafka
     - Automatic dependency resolution: In BigQuery if a query references
       tables/views as source, jobs required to create these tables will be added
       as dependencies automatically and optimus will wait for them to finish first.
@@ -20,50 +19,58 @@ Optimus helps your organization to build & manage data pipelines with ease.
     - Dry run query: Before SQL query is scheduled for transformation, during
       deployment query will be dry-run to make sure it passes basic sanity
       checks
-- Extensibility to support Python transformation **[in roadmap]**
-- Task versioning: If there is a scheduled job *A* and this gets modified as
-  *A1* then it is possible to schedule same job for a date range as *A* and
-  thereafter as *A1*. **[in roadmap]**
+    - Sink BigQuery tables to Kafka [using additional hook]
+- Extensibility to support Python transformation
 - Git based specification management
-- HTTP/GRPC based specification management
+- REST/GRPC based specification management
+- Multi-tenancy
+- Pluggable transformation
+
+## Getting Started
+
+Optimus has two components, Optimus service that is the core orchestrator installed
+on server side, and a CLI binary(`opctl`) used to interact with this service.
 
 ### Compiling from source
-Optimus requires the following dependencies:
-* Golang (version 1.12 or above)
 
-We won't cover how to install these, you can go to their respective websites to figure out how to install them for your OS.
-Run the following commands to compile from source
-```bash
-$ git clone git@github.com:odpf/optimus.git
-$ cd optimus
-$ make
-$ cp opctl /usr/bin # copy the executables to a location in $PATH
+#### Prerequisites
+
+Optimus requires the following dependencies:
+* Golang (version 1.16 or above)
+* Git
+
+#### Opctl
+
+Run the following commands to compile `opctl` from source
+```shell
+git clone git@github.com:odpf/optimus.git
+cd optimus
+make build-ctl
+cp ./opctl /usr/bin # optional - copy the executables to a location in $PATH
 ```
 The last step isn't necessarily required. Feel free to put the compiled executable anywhere you want.
-If during compilation, golang is unable to find odpf.github.io dependencies, try using
 
-Note: building from source requires `buf` and `protoc-gen-go` binaries to be available in your shell path. If not found, you
-can add following lines to your ~/.bashrc or ~/.zshrc.
-```bash
-export GOPATH=$(go env GOPATH)
-export PATH=$PATH:$GOPATH/bin
+Test if `opctl` is working as expected
+```shell
+./opctl version
 ```
 
-## How to run web service
+#### Optimus
 
-Follow same steps as optimus cli to compile from source
-```bash
-$ git clone git@github.com:odpf/optimus.git
-$ cd optimus
-$ make
+Run the following commands to compile `optimus` from source
+```shell
+git clone git@github.com:odpf/optimus.git
+cd optimus
+make build-optimus
 ```
-
-Use the following command as an example
-```bash
+Use the following command to run
+```shell
 ./optimus
 ```
+Note: without required arguments, optimus won't be able to start.
 
-### Service configuration
+
+**Optimus Service configuration**
 
 Configuration inputs can either be passed as command arguments or set as environment variable
 
@@ -71,23 +78,17 @@ Configuration inputs can either be passed as command arguments or set as environ
 | ---------------------- | ---------------------- | -------- | ----------------------------------------------------------------- |
 | server-port            | SERVER_PORT            | N        | port on which service will listen for http calls, default. `8080` |
 | log-level              | LOG_LEVEL              | N        | log level - DEBUG, INFO, WARNING, ERROR, FATAL                    |
-| ingress-host           | INGRESS_HOST           | Y        |                                                                   |
+| ingress-host           | INGRESS_HOST           | Y        | e.g. optimus.example.io:80                                        |
 | db-host                | DB_HOST                | Y        |                                                                   |
 | db-name                | DB_NAME                | Y        |                                                                   |
 | db-user                | DB_USER                | Y        |                                                                   |
 | db-password            | DB_PASSWORD            | Y        |                                                                   |
+| app-key                | APP_KEY                | Y        | 32 character random hash used to encrypt secrets                  |
 
-### To register a project as an entity
-```
-curl -X POST "optimus.example.io/api/v1/project" -H "accept: application/json" -H "Content-Type: 
-application/json" -d "{ \"project\": { \"name\": \"project-name\", \"config\": { \"ENVIRONMENT\": \"integration\", 
-\"STORAGE_PATH\": \"gs://bucket-path\" } }}"
-```
-Minimum basic configs required for optimus to work
-- STORAGE_PATH: path of an object store to keep compiled jobs
-- SCHEDULER_HOST: hostname of the scheduler for interacting with APIs
 
-Execution unit configs which will be exposed as globals
-- TRANSPORTER_KAFKA_BROKERS
-- TRANSPORTER_STENCIL_HOST
-- PREDATOR_HOST
+## Credits
+
+This project exists thanks to all the [contributors](https://github.com/odpf/optimus/graphs/contributors).
+
+## License
+Optimus is [Apache 2.0](LICENSE) licensed.
