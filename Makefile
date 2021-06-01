@@ -2,7 +2,6 @@
 .DELETE_ON_ERROR:
 MAKEFLAGS += --no-builtin-rules
 NAME = "github.com/odpf/optimus"
-#CTL_VERSION := `git describe --tags $(shell git rev-list --tags --max-count=1)`
 CTL_VERSION := "$(shell git rev-parse --short HEAD)"
 OPMS_VERSION := "$(shell git rev-parse --short HEAD)"
 

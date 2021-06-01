@@ -1,0 +1,59 @@
+project_name: optimus
+
+before:
+  hooks:
+    - go get github.com/shurcooL/vfsgen
+    - go get github.com/shurcooL/httpfs
+    - make install
+    - make generate
+builds:
+  - main: ./cmd/opctl/main.go
+    id: "opctl"
+    binary: opctl
+    goos:
+      - linux
+      - darwin
+      - windows
+    ignore:
+      - goos: darwin
+        goarch: arm64
+    env:
+      - CGO_ENABLED=0
+  - main: ./cmd/optimus/main.go
+    id: "optimus"
+    binary: optimus
+    goos:
+      - linux
+      - darwin
+      - windows
+    ignore:
+      - goos: darwin
+        goarch: arm64
+    env:
+      - CGO_ENABLED=0
+archives:
+  - replacements:
+      darwin: macos
+      linux: linux
+      windows: windows
+      386: i386
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+dockers:
+  -
+    goos: linux
+    goarch: amd64
+    binaries:
+      - optimus
+    dockerfile: Dockerfile
+    image_templates:
+      - 'docker.io/odpf/{{.ProjectName}}:{{ .Tag }}-amd64'
