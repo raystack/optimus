@@ -1,6 +1,7 @@
 # Optimus
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](LICENSE)
-![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)
+[![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)](test)
+[![build workflow](https://github.com/odpf/optimus/actions/workflows/build.yml/badge.svg)](build)
 
 Optimus helps your organization to build & manage data pipelines with ease.
 

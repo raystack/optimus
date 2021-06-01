@@ -60,8 +60,9 @@ dockers:
   -
     goos: linux
     goarch: amd64
-    binaries:
+    ids:
       - optimus
     dockerfile: Dockerfile
     image_templates:
+      - 'docker.io/odpf/{{.ProjectName}}:latest'
       - 'docker.io/odpf/{{.ProjectName}}:{{ .Tag }}-amd64'
