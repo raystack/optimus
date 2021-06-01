@@ -10,10 +10,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 var (

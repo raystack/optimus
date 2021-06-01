@@ -16,15 +16,14 @@ import (
 	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/pkg/errors"
-	cli "github.com/spf13/cobra"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
+	"github.com/pkg/errors"
+	cli "github.com/spf13/cobra"
 )
 
 var (
-	validateEmail        = utils.ValidatorFactory.NewFromRegex(`^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$`, "invalid email address")
 	validateDate         = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
 	validateNoSlash      = utils.ValidatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
 	validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
@@ -379,7 +378,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem
 
 			availableTypes := []string{}
 			datastore, _ := datastoreRepo.GetByName(storerName)
-			for dsType, _ := range datastore.Types() {
+			for dsType := range datastore.Types() {
 				availableTypes = append(availableTypes, dsType.String())
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, datastore)

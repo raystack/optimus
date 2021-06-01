@@ -6,10 +6,10 @@ import (
 
 	"github.com/odpf/optimus/config"
 
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 )
 
 const (
@@ -22,7 +22,7 @@ func versionCommand(l logger, clientVer string, conf config.Opctl) *cli.Command 
 		Use:   "version",
 		Short: "Print the client version information",
 		Run: func(c *cli.Command, args []string) {
-			l.Printf("client: %s", clientVer)
+			l.Printf("client: %s", coloredNotice(clientVer))
 			if conf.Host != "" {
 				srvVer, err := getVersionRequest(clientVer, conf.Host)
 				if err != nil {
@@ -31,7 +31,7 @@ func versionCommand(l logger, clientVer string, conf config.Opctl) *cli.Command 
 					}
 					panic(err)
 				}
-				l.Printf("server: %s", srvVer)
+				l.Printf("server: %s", coloredNotice(srvVer))
 			}
 		},
 	}
@@ -49,7 +49,7 @@ func getVersionRequest(clientVer string, host string) (ver string, err error) {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), versionTimeout)
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)

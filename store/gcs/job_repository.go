@@ -10,10 +10,10 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
-	"github.com/pkg/errors"
-	"google.golang.org/api/iterator"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
+	"google.golang.org/api/iterator"
 )
 
 var (
@@ -27,8 +27,6 @@ type JobRepository struct {
 	Bucket       string
 	Prefix       string
 	Suffix       string
-
-	fileExtension string
 }
 
 func (repo *JobRepository) Save(ctx context.Context, j models.Job) (err error) {
@@ -212,7 +210,7 @@ func (repo *JobRepository) jobNameFromPath(filePath string) string {
 
 func cleanPrefix(prefix string) string {
 	prefix = strings.TrimPrefix(prefix, "/")
-	if strings.HasSuffix(prefix, "/") == false {
+	if !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
 	return prefix

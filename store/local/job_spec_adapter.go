@@ -9,10 +9,10 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/pkg/errors"
-	"gopkg.in/validator.v2"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
+	"github.com/pkg/errors"
+	"gopkg.in/validator.v2"
 )
 
 const (
@@ -26,7 +26,7 @@ var (
 )
 
 func init() {
-	validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
+	_ = validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
 }
 
 // Job are inputs from user to create a job
@@ -153,7 +153,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	if err != nil {
 		return models.JobSpec{}, err
 	}
-	var endDate *time.Time = nil
+	var endDate *time.Time
 	if conf.Schedule.EndDate != "" {
 		end, err := time.Parse(models.JobDatetimeLayout, conf.Schedule.EndDate)
 		if err != nil {

@@ -39,7 +39,7 @@ func (w *Writer) Write(protobufkey []byte, protobuf []byte) error {
 	}
 	w.bufferedMessages = append(w.bufferedMessages, msg)
 
-	var err error = nil
+	var err error
 	if len(w.bufferedMessages) >= w.bufferSize {
 		err = w.Flush()
 	}
@@ -48,7 +48,7 @@ func (w *Writer) Write(protobufkey []byte, protobuf []byte) error {
 
 // Flush will push all the queued up messages to kafka
 func (w *Writer) Flush() error {
-	var err error = nil
+	var err error
 
 	if len(w.bufferedMessages) > 0 {
 		err = w.client.WriteMessages(context.Background(), w.bufferedMessages...)

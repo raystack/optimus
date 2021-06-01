@@ -10,9 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInstanceRepository(t *testing.T) {
@@ -150,6 +150,7 @@ func TestInstanceRepository(t *testing.T) {
 		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
 		jobRepo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 		err := jobRepo.Insert(testModels[0].Job)
+		assert.Nil(t, err)
 
 		iRepo1 := NewInstanceRepository(db, testModels[0].Job, adapter)
 		err = iRepo1.Insert(testModels[0])

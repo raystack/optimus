@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -45,9 +45,6 @@ func (fm *ContextManager) Generate(
 	runType models.InstanceType,
 	runName string,
 ) (envMap map[string]string, fileMap map[string]string, err error) {
-	envMap = make(map[string]string)
-	fileMap = make(map[string]string)
-
 	// project configs will be used for templating
 	// prefix project configs to avoid conflicts with project/instance configs
 	projectConfig := map[string]string{}

@@ -9,9 +9,9 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/pkg/errors"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 // Note: all config keys will be converted to upper case automatically

@@ -11,12 +11,12 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	mock2 "github.com/stretchr/testify/mock"
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -486,7 +486,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}, nil)
 			execUnit1.On("DefaultTaskAssets", context.Background(), mock2.Anything).Return(models.DefaultTaskAssetsResponse{}, nil)
 			defer execUnit1.AssertExpectations(t)
-			models.TaskRegistry.Add(execUnit1)
+			_ = models.TaskRegistry.Add(execUnit1)
 
 			jobSpec := models.JobSpec{
 				Name: jobName,

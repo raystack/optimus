@@ -2,11 +2,12 @@ package postgres
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
 )
 
 type projectJobSpecRepository struct {

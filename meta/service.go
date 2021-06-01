@@ -1,9 +1,9 @@
 package meta
 
 import (
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 type MetaSvcFactory interface {

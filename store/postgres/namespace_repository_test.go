@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNamespaceRepository(t *testing.T) {

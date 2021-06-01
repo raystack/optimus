@@ -6,8 +6,8 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/instance"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJinjaCompiler(t *testing.T) {

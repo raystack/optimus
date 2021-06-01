@@ -7,16 +7,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestContextManager(t *testing.T) {
 	t.Run("Generate", func(t *testing.T) {
 		t.Run("should return compiled instanceSpec config for task type transformation", func(t *testing.T) {
-
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
@@ -143,7 +142,6 @@ func TestContextManager(t *testing.T) {
 			)
 		})
 		t.Run("should return valid compiled instanceSpec config for task type hook", func(t *testing.T) {
-
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),

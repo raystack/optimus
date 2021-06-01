@@ -5,8 +5,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/mock"
 )
 
 type BqClientMock struct {

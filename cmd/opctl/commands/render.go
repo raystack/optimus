@@ -13,11 +13,11 @@ import (
 
 	"github.com/odpf/optimus/store"
 
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/optimus/config"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/config"
 )
 
 const (
@@ -43,7 +43,7 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 
 	cmd.Run = func(c *cli.Command, args []string) {
 		var err error
-		jobName := ""
+		var jobName string
 		if len(args) == 0 {
 			// doing it locally for now, ideally using optimus service will give
 			// more accurate results
@@ -58,7 +58,7 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 
 		// create temporary directory
 		renderedPath := filepath.Join(".", "render", jobSpec.Name)
-		os.MkdirAll(renderedPath, 0770)
+		_ = os.MkdirAll(renderedPath, 0770)
 		l.Println("rendering assets in", renderedPath)
 
 		now := time.Now()
@@ -76,7 +76,7 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 			}
 		}
 
-		l.Println("render complete.")
+		l.Println(coloredSuccess("render complete"))
 	}
 
 	return cmd
@@ -114,7 +114,7 @@ func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobNam
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service")
+			l.Println(coloredError("can't reach optimus service"))
 		}
 		return err
 	}

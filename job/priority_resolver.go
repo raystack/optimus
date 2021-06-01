@@ -1,8 +1,8 @@
 package job
 
 import (
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -118,13 +118,13 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
 					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
-				} else {
-					// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
-					// be available in jobSpecs []models.JobSpec object (which is tenant specific)
-					// so we'll add a dummy JobSpec for that cross tenant/external dependency.
-					parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
-					isExternal = true
 				}
+
+				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
+				// be available in jobSpecs []models.JobSpec object (which is tenant specific)
+				// so we'll add a dummy JobSpec for that cross tenant/external dependency.
+				parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
+				isExternal = true
 			}
 			parentNode := a.findOrCreateDAGNode(tree, parentSpec)
 			parentNode.AddDependent(childNode)

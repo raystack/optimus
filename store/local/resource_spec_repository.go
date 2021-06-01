@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 	"github.com/odpf/optimus/core/fs"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 const (

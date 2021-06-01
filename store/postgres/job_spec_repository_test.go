@@ -10,9 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJobRepository(t *testing.T) {

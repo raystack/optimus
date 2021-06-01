@@ -20,9 +20,9 @@ import (
 
 	hplugin "github.com/hashicorp/go-plugin"
 
-	"github.com/segmentio/kafka-go"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/meta"
+	"github.com/segmentio/kafka-go"
 
 	"google.golang.org/api/option"
 
@@ -58,8 +58,10 @@ import (
 
 var (
 	// Version of the service
-	// overridden by the build system. see "Makefile"
-	Version = "dev"
+	// overridden by the build system
+	Version     = "dev"
+	BuildCommit = ""
+	BuildDate   = ""
 
 	// AppName is used to prefix Version
 	AppName = "optimus"
@@ -246,8 +248,7 @@ func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) store.JobSpec
 // jobRepoFactory stores compiled specifications that will be consumed by a
 // scheduler
 type jobRepoFactory struct {
-	objWriterFac objectWriterFactory
-	schd         models.SchedulerUnit
+	schd models.SchedulerUnit
 }
 
 func (fac *jobRepoFactory) New(ctx context.Context, proj models.ProjectSpec) (store.JobRepository, error) {

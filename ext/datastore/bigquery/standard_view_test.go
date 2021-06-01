@@ -6,10 +6,10 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
-	"github.com/odpf/optimus/models"
 )
 
 func TestStandardView(t *testing.T) {

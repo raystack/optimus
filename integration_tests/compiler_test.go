@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/resources"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCompiler(t *testing.T) {
@@ -192,7 +192,6 @@ func TestCompiler(t *testing.T) {
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
 			assert.Equal(t, string(expectedCompiledOutput), string(job.Contents))
-
 		})
 	})
 }

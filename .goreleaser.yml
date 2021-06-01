@@ -10,6 +10,10 @@ builds:
   - main: ./cmd/opctl/main.go
     id: "opctl"
     binary: opctl
+    flags:
+      - -a
+    ldflags:
+      - -s -w -X github.com/odpf/optimus/cmd/opctl/main.Version={{.Tag}} -X github.com/odpf/optimus/cmd/opctl/main.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/cmd/opctl/main.BuildDate={{.Date}}
     goos:
       - linux
       - darwin
@@ -22,6 +26,10 @@ builds:
   - main: ./cmd/optimus/main.go
     id: "optimus"
     binary: optimus
+    flags:
+      - -a
+    ldflags:
+      - -s -w -X github.com/odpf/optimus/cmd/optimus/main.Version={{.Tag}} -X github.com/odpf/optimus/cmd/optimus/main.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/cmd/optimus/main.BuildDate={{.Date}}
     goos:
       - linux
       - darwin

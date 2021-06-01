@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	suffixRegex         = regexp.MustCompile(`\.yaml$`)
 	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
 )
 

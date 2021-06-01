@@ -7,11 +7,11 @@ import (
 	"github.com/kushsharma/structs"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
-	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/models"
 )
 
 var (

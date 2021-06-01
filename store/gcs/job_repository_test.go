@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"cloud.google.com/go/storage"
-	"github.com/stretchr/testify/assert"
 	mocked "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	gcsStore "github.com/odpf/optimus/store/gcs"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJobRepository(t *testing.T) {
@@ -24,7 +25,6 @@ func TestJobRepository(t *testing.T) {
 		}
 		ctx := context.Background()
 		t.Run("should write job contents to destination bucket", func(t *testing.T) {
-
 			bucket := "scheduled-tasks"
 			prefix := "resources/jobs"
 
@@ -51,7 +51,6 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, string(testJob.Contents), out.String())
 		})
 		t.Run("should write job contents to destination bucket with suffix", func(t *testing.T) {
-
 			bucket := "scheduled-tasks"
 			prefix := "resources/jobs"
 

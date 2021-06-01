@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/odpf/optimus/core/fs"
+	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gopkg.in/validator.v2"
 	"gopkg.in/yaml.v2"
-	"github.com/odpf/optimus/core/fs"
-	"github.com/odpf/optimus/models"
 )
 
 const (

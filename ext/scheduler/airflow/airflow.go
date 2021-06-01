@@ -13,19 +13,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
 )
 
 const (
 	baseTemplateFilePath = "./templates/scheduler/airflow_1/base_dag.py"
 	baseLibFilePath      = "./templates/scheduler/airflow_1/__lib.py"
 
-	dagStatusUrl = "api/experimental/dags/%s/dag_runs"
+	dagStatusURL = "api/experimental/dags/%s/dag_runs"
 )
 
-type HttpClient interface {
+type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -37,10 +37,10 @@ type scheduler struct {
 	objWriterFac ObjectWriterFactory
 	templateFS   http.FileSystem
 
-	httpClient HttpClient
+	httpClient HTTPClient
 }
 
-func NewScheduler(lfs http.FileSystem, ow ObjectWriterFactory, httpClient HttpClient) *scheduler {
+func NewScheduler(lfs http.FileSystem, ow ObjectWriterFactory, httpClient HTTPClient) *scheduler {
 	return &scheduler{
 		templateFS:   lfs,
 		objWriterFac: ow,
@@ -86,7 +86,6 @@ func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 }
 
 func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objDir string) (err error) {
-
 	// copy lib file
 	baseLibFile, err := a.templateFS.Open(baseLibFilePath)
 	if err != nil {
@@ -127,18 +126,18 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	}
 	schdHost = strings.Trim(schdHost, "/")
 
-	fetchUrl := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
-	request, err := http.NewRequest(http.MethodGet, fetchUrl, nil)
+	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusURL), jobName)
+	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchUrl)
+		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchURL)
 	}
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchUrl)
+		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch airflow dag runs from %s", fetchUrl)
+		return nil, errors.Errorf("failed to fetch airflow dag runs from %s", fetchURL)
 	}
 	defer resp.Body.Close()
 
@@ -156,14 +155,14 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	//	"start_date": "2020-06-01T16:32:58.489042+00:00",
 	//	"state": "success"
 	//},
-	responseJson := []map[string]interface{}{}
-	err = json.Unmarshal(body, &responseJson)
+	responseJSON := []map[string]interface{}{}
+	err = json.Unmarshal(body, &responseJSON)
 	if err != nil {
 		return nil, errors.Wrapf(err, "json error: %s", string(body))
 	}
 
 	jobStatus := []models.JobStatus{}
-	for _, status := range responseJson {
+	for _, status := range responseJSON {
 		_, ok1 := status["execution_date"]
 		_, ok2 := status["state"]
 		if !ok1 || !ok2 {

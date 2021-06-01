@@ -8,14 +8,14 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/store"
+	"github.com/stretchr/testify/mock"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	mocked "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/resources"
+	"github.com/stretchr/testify/assert"
 )
 
 type MockHttpClient struct {

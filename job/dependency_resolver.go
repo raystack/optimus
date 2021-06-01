@@ -3,10 +3,10 @@ package job
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -22,7 +22,6 @@ type dependencyResolver struct{}
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
 func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error) {
-
 	// resolve inter/intra dependencies inferred by optimus
 	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, projectJobSpecRepo, observer)
 	if err != nil {
@@ -46,7 +45,6 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobS
 
 func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
-
 	// get destinations of dependencies, assets should be
 	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateTaskDependencies(context.TODO(),
 		models.GenerateTaskDependenciesRequest{

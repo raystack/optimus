@@ -73,7 +73,7 @@ func TestAdapter(t *testing.T) {
 		partitionInfo := BQPartitionInfo{
 			Field:      partitionField,
 			Type:       "DAY",
-			Expiration: int64(partitionExpiryInHours),
+			Expiration: partitionExpiryInHours,
 		}
 		expectedBQTimePartitioning := &bigquery.TimePartitioning{
 			Type:       bigquery.DayPartitioningType,

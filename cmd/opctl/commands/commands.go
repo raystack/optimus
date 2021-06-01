@@ -11,10 +11,10 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/fatih/color"
-	cli "github.com/spf13/cobra"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	cli "github.com/spf13/cobra"
 )
 
 var prologueContents = `opctl %s
@@ -56,7 +56,6 @@ func New(
 	hookRepo models.HookRepo,
 	dsRepo models.DatastoreRepo,
 ) *cli.Command {
-
 	var programName = "opctl"
 	var cmd = &cli.Command{
 		Use:  programName,

@@ -6,10 +6,10 @@ import (
 	"sort"
 	"time"
 
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 )
 
 const (
@@ -20,12 +20,11 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	var (
 		optimusHost string
 		projectName string
-		scheduledAt string
 	)
 	cmd := &cli.Command{
 		Use:     "status",
 		Short:   "Get current job status",
-		Example: `opctl admin get status sample_replace --project \"project-id\" --scheduled-at \"2020-01-02T15:04:05"\" `,
+		Example: `opctl admin get status sample_replace --project \"project-id\"`,
 		Args:    cli.MinimumNArgs(1),
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the tenant")
@@ -36,9 +35,9 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	cmd.Run = func(c *cli.Command, args []string) {
 		jobName := args[0]
 		l.Printf("requesting status for project %s, job %s[%s] at %s\nplease wait...\n",
-			projectName, jobName, scheduledAt, optimusHost)
+			projectName, jobName, optimusHost)
 
-		if err := getJobStatusRequest(l, jobName, scheduledAt, optimusHost, projectName); err != nil {
+		if err := getJobStatusRequest(l, jobName, optimusHost, projectName); err != nil {
 			l.Print(err)
 			l.Print(errRequestFail)
 			os.Exit(1)
@@ -47,7 +46,7 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	return cmd
 }
 
-func getJobStatusRequest(l logger, jobName, scheduledAt, host, projectName string) error {
+func getJobStatusRequest(l logger, jobName, host, projectName string) error {
 	var err error
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()

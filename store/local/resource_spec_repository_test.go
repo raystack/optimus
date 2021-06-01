@@ -7,9 +7,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/fs"
 	"github.com/odpf/optimus/mock"
@@ -29,7 +29,6 @@ spec:
 `
 
 func TestResourceSpecRepository(t *testing.T) {
-
 	// prepare mocked datastore
 	dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
 

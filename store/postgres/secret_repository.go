@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gtank/cryptopasta"
 	"github.com/jinzhu/gorm"
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 type Secret struct {

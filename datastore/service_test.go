@@ -2,8 +2,9 @@ package datastore_test
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

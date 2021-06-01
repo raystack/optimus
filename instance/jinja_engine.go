@@ -74,7 +74,7 @@ func (loader inMemoryTemplateLoader) Get(path string) (io.Reader, error) {
 }
 
 func init() {
-	pongo2.RegisterFilter("ToDate", func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	_ = pongo2.RegisterFilter("ToDate", func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		t, err := time.Parse(models.InstanceScheduledAtTimeLayout, in.String())
 		if err != nil {
 			return nil, &pongo2.Error{
@@ -84,7 +84,7 @@ func init() {
 		}
 		return pongo2.AsValue(t.Format(models.JobDatetimeLayout)), nil
 	})
-	pongo2.RegisterTag("list", tagListParser)
+	_ = pongo2.RegisterTag("list", tagListParser)
 }
 
 type tagListNode struct {

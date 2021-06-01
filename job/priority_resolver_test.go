@@ -3,9 +3,9 @@ package job_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
 )
 
 // getDependencyObject - returns the dependency object by providing the specs and the dependency
@@ -420,7 +420,7 @@ func TestDAGNode(t *testing.T) {
 		node3 := job.NewDAGNode(dagSpec3)
 
 		assert.Equal(t, "testdag", node.GetName())
-		assert.Equal(t, []*job.DAGNode([]*job.DAGNode{}), node.Dependents)
+		assert.Equal(t, []*job.DAGNode{}, node.Dependents)
 
 		node.AddDependent(node2)
 		assert.Equal(t, 1, len(node.Dependents))
@@ -432,7 +432,6 @@ func TestDAGNode(t *testing.T) {
 		assert.Equal(t, 1, len(node2.Dependents))
 		assert.Equal(t, 0, len(node3.Dependents))
 	})
-
 }
 
 func TestMultiRootDAGTree(t *testing.T) {
@@ -471,24 +470,24 @@ func TestMultiRootDAGTree(t *testing.T) {
 		tree.AddNode(node2)
 		tree.AddNodeIfNotExist(node3)
 
-		n, ok = tree.GetNodeByName(node1.GetName())
+		n, _ = tree.GetNodeByName(node1.GetName())
 		assert.Equal(t, 1, len(n.Dependents))
 
-		n, ok = tree.GetNodeByName(node2.GetName())
+		n, _ = tree.GetNodeByName(node2.GetName())
 		assert.Equal(t, 1, len(n.Dependents))
 
-		n, ok = tree.GetNodeByName(node3.GetName())
+		n, _ = tree.GetNodeByName(node3.GetName())
 		assert.Equal(t, 0, len(n.Dependents))
 
 		// AddNodeIfNotExist should not break the tree
 		tree.AddNodeIfNotExist(node3)
-		n, ok = tree.GetNodeByName(node3.GetName())
+		n, _ = tree.GetNodeByName(node3.GetName())
 		assert.Equal(t, 0, len(n.Dependents))
 
 		// AddNodeIfNotExist should not break the tree even when a new node
 		// with same name is added
 		tree.AddNodeIfNotExist(node4)
-		n, ok = tree.GetNodeByName(node1.GetName())
+		n, _ = tree.GetNodeByName(node1.GetName())
 		assert.Equal(t, 1, len(n.Dependents))
 
 		// AddNode should break the tree if a node with same name is added
@@ -497,6 +496,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		tree.AddNode(node4)
 		n, ok = tree.GetNodeByName(node2.GetName())
 		assert.Equal(t, 0, len(n.Dependents))
+		assert.Equal(t, true, ok)
 	})
 
 	t.Run("should detect any cycle in the tree", func(t *testing.T) {

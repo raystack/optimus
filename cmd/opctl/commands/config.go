@@ -7,9 +7,9 @@ import (
 	"github.com/odpf/optimus/models"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/optimus/config"
 	cli "github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"github.com/odpf/optimus/config"
 )
 
 const (

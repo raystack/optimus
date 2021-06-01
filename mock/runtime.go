@@ -2,9 +2,10 @@ package mock
 
 import (
 	"context"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/metadata"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 )
 
 type RuntimeService_DeployJobSpecificationServer struct {

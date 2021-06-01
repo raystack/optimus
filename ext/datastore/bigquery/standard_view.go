@@ -11,8 +11,8 @@ import (
 	"google.golang.org/api/googleapi"
 
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 func createStandardView(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
@@ -24,7 +24,7 @@ func createStandardView(ctx context.Context, spec models.ResourceSpec, client bq
 	// view query could be in an external asset
 	if query, ok := spec.Assets.GetByName(ViewQueryFile); ok &&
 		len(strings.TrimSpace(bqResource.Metadata.ViewQuery)) == 0 {
-		bqResource.Metadata.ViewQuery = string(query)
+		bqResource.Metadata.ViewQuery = query
 	}
 
 	// inherit from base

@@ -12,8 +12,8 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	"gopkg.in/yaml.v2"
 	"github.com/odpf/optimus/core/logger"
+	"gopkg.in/yaml.v2"
 )
 
 type PluginConfig struct {

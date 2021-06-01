@@ -2,11 +2,12 @@ package meta_test
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
+	"testing"
+
 	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestService(t *testing.T) {

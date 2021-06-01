@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 

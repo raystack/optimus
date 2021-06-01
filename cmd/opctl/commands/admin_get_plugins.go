@@ -3,8 +3,8 @@ package commands
 import (
 	"context"
 
-	cli "github.com/spf13/cobra"
 	"github.com/odpf/optimus/models"
+	cli "github.com/spf13/cobra"
 )
 
 func adminGetPluginsCommand(l logger, taskRepo models.TaskPluginRepository, hookRepo models.HookRepo) *cli.Command {
@@ -16,7 +16,6 @@ func adminGetPluginsCommand(l logger, taskRepo models.TaskPluginRepository, hook
 
 	//TODO: add an option to list all server supported plugins
 	cmd.Run = func(c *cli.Command, args []string) {
-
 		l.Println("Discovered tasks:")
 		for taskIdx, tasks := range taskRepo.GetAll() {
 			schema, err := tasks.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})

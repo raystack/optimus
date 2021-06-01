@@ -1,8 +1,8 @@
 package commands
 
 import (
-	cli "github.com/spf13/cobra"
 	"github.com/odpf/optimus/models"
+	cli "github.com/spf13/cobra"
 )
 
 // adminCommand requests a resource from optimus

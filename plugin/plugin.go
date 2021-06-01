@@ -203,7 +203,6 @@ func DiscoverPlugins() (map[string][]string, error) {
 			default:
 				// skip
 			}
-
 		}
 	}
 

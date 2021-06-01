@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
+	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
-	"github.com/odpf/optimus/models"
 )
 
 type Project struct {

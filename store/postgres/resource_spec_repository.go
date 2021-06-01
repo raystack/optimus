@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 type Resource struct {
@@ -39,7 +39,6 @@ type Resource struct {
 }
 
 func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
-
 	// serialize resource spec without assets to one of the datastore provided wire format
 	binaryReadySpec := resourceSpec
 	binaryReadySpec.Assets = nil

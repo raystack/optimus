@@ -9,17 +9,16 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/pkg/errors"
-	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
+	"github.com/pkg/errors"
+	cli "github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 var (
-	taskInputDirectory  = "in"
-	taskOutputDirectory = "out"
+	taskInputDirectory = "in"
 
 	adminBuildInstanceTimeout = time.Minute * 1
 )
@@ -74,7 +73,6 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 // Based on the response, it builds assets like query, env and config
 // for the Job Run which is saved into output files.
 func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectName, scheduledAt, runType, runName string) (err error) {
-
 	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, scheduledAt)
 	if err != nil {
 		return errors.Wrapf(err, "invalid time format, please use %s", models.InstanceScheduledAtTimeLayout)

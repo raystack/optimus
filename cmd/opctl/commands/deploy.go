@@ -12,20 +12,17 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/fs"
 
-	"github.com/pkg/errors"
-	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
+	cli "github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 var (
-	errRequestFail            = errors.New("🔥 unable to complete request successfully")
-	errRequestTimedOut        = errors.New("🔥 request timed out while checking the status")
-	errResponseParseError     = errors.New("🔥 unable to parse server response")
-	errUnhandledServerRequest = errors.New("🔥 server is unable to process this request at the moment")
+	errRequestFail = errors.New("🔥 unable to complete request successfully")
 
 	deploymentTimeout = time.Minute * 10
 )

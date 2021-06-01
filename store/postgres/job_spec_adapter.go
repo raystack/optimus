@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
-	"github.com/odpf/optimus/models"
 )
 
 // Job are inputs from user to create a job
@@ -119,7 +119,6 @@ func NewAdapter(supportedTaskRepo models.TaskPluginRepository, supportedHookRepo
 
 // ToSpec converts the postgres' Job representation to the optimus' JobSpec
 func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
-
 	labels := map[string]string{}
 	if conf.Labels != nil {
 		if err := json.Unmarshal(conf.Labels, &labels); err != nil {

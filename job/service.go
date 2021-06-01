@@ -9,11 +9,11 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/kushsharma/parallel"
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -314,7 +314,6 @@ func (srv *Service) filterJobSpecForNamespace(jobSpecs []models.JobSpec, namespa
 
 func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
-
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
 	jobSpecs, err := projectJobSpecRepo.GetAll()
 	if err != nil {
@@ -357,7 +356,6 @@ func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, projectJ
 // uploadSpecs compiles a Job and uploads it to the destination store
 func (srv *Service) uploadSpecs(ctx context.Context, jobSpecs []models.JobSpec, jobRepo store.JobRepository,
 	namespace models.NamespaceSpec, progressObserver progress.Observer) error {
-
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
@@ -389,7 +387,6 @@ func (srv *Service) uploadSpecs(ctx context.Context, jobSpecs []models.JobSpec, 
 
 func (srv *Service) publishMetadata(namespace models.NamespaceSpec, jobSpecs []models.JobSpec,
 	progressObserver progress.Observer) error {
-
 	if srv.metaSvcFactory == nil {
 		return nil
 	}

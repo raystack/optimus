@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProjectRepository(t *testing.T) {
@@ -175,7 +175,6 @@ func TestProjectRepository(t *testing.T) {
 
 		sec, _ := checkModel.Secret.GetByName("t1")
 		assert.Equal(t, "v1", sec)
-
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()

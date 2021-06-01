@@ -60,7 +60,7 @@ func (fs *LocalFileSystem) Create(filePath string) (File, error) {
 	_, err := os.Stat(filePath)
 	if err != nil || os.IsNotExist(err) {
 		dirName := path.Dir(filePath)
-		os.MkdirAll(dirName, os.ModeDir|os.ModePerm)
+		_ = os.MkdirAll(dirName, os.ModeDir|os.ModePerm)
 		f, err := os.Create(filePath)
 		return file{File: f}, err
 	}
@@ -91,7 +91,7 @@ func (fs *LocalFileSystem) OpenForWrite(filePath string) (File, error) {
 	}
 	filePath = path.Join(fs.BasePath, filePath)
 	dirName := path.Dir(filePath)
-	os.MkdirAll(dirName, os.ModeDir|os.ModePerm)
+	_ = os.MkdirAll(dirName, os.ModeDir|os.ModePerm)
 	f, err := os.Create(filePath)
 	return file{File: f}, err
 }

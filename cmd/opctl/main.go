@@ -12,11 +12,11 @@ import (
 
 	hPlugin "github.com/hashicorp/go-plugin"
 
-	"github.com/spf13/viper"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/resources"
 	"github.com/odpf/optimus/store/local"
+	"github.com/spf13/viper"
 
 	"github.com/odpf/optimus/cmd/opctl/commands"
 	"github.com/odpf/optimus/core/fs"
@@ -29,8 +29,10 @@ import (
 
 var (
 	// Version of the cli
-	// overridden by the build system. see "Makefile"
-	Version string
+	// overridden by the build system.
+	Version     = "dev"
+	BuildCommit = ""
+	BuildDate   = ""
 
 	//Config for optimus cli
 	Config config.Opctl

@@ -2,11 +2,12 @@ package meta_test
 
 import (
 	"context"
-	"github.com/segmentio/kafka-go"
-	"github.com/stretchr/testify/assert"
+	"testing"
+
 	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/mock"
-	"testing"
+	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWriter(t *testing.T) {
@@ -42,7 +43,7 @@ func TestWriter(t *testing.T) {
 	t.Run("should be able to write messages with 0 size buffer", func(t *testing.T) {
 		key, msg := []byte("somekey"), []byte("somemessage")
 		messages := []kafka.Message{
-			kafka.Message{
+			{
 				Key:   key,
 				Value: msg,
 			},

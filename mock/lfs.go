@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/core/fs"
+	"github.com/stretchr/testify/mock"
 )
 
 type File struct {

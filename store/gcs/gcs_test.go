@@ -36,10 +36,6 @@ func (s *storageClientMock) Close() error {
 	panic("not implemented")
 }
 
-func (s *storageClientMock) embedToIncludeNewMethods() {
-	panic("not implemented")
-}
-
 type storageBucketMock struct {
 	stiface.BucketHandle
 	mock.Mock
@@ -96,10 +92,6 @@ func (b *storageBucketMock) LockRetentionPolicy(context.Context) error {
 	panic("not implemented")
 }
 
-func (b *storageBucketMock) embedToIncludeNewMethods() {
-	panic("not implemented")
-}
-
 type objectHandleMock struct {
 	stiface.ObjectHandle
 	mock.Mock
@@ -146,10 +138,6 @@ func (objHandle *objectHandleMock) ComposerFrom(...stiface.ObjectHandle) stiface
 	panic("not implemented")
 }
 
-func (objHandle *objectHandleMock) embedToIncludeNewMethods() {
-	panic("not implemented")
-}
-
 type objectIteratorMock struct {
 	stiface.ObjectIterator
 	mock.Mock
@@ -172,10 +160,6 @@ func (objIt *objectIteratorMock) Next() (*storage.ObjectAttrs, error) {
 }
 
 func (objIt *objectIteratorMock) PageInfo() *iterator.PageInfo {
-	panic("not implemented")
-}
-
-func (objIt *objectIteratorMock) embedToIncludeNewMethods() {
 	panic("not implemented")
 }
 

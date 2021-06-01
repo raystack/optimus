@@ -8,8 +8,8 @@ import (
 	v1 "github.com/odpf/optimus/api/handler/v1"
 
 	"github.com/hashicorp/go-plugin"
-	"google.golang.org/grpc"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"google.golang.org/grpc"
 )
 
 var _ plugin.GRPCPlugin = &Plugin{}

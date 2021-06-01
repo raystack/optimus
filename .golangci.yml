@@ -1,0 +1,20 @@
+linters:
+  enable-all: false
+  disable-all: true
+  enable:
+    - vet
+    - goimports
+    - thelper
+    - tparallel
+    - unconvert
+    - wastedassign
+    - revive
+    - unused
+    - gofmt
+    - whitespace
+linters-settings:
+  revive:
+    ignore-generated-header: true
+    severity: warning
+severity:
+  default-severity: error

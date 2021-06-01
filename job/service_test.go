@@ -9,22 +9,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	"github.com/stretchr/testify/assert"
-	testMock "github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
+	testMock "github.com/stretchr/testify/mock"
 )
 
 func TestService(t *testing.T) {
 	ctx := context.Background()
 
-	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+	dumpAssets := func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 
 	t.Run("Create", func(t *testing.T) {
-
 		t.Run("should create a new JobSpec and store in repository", func(t *testing.T) {
 			jobSpec := models.JobSpec{
 				Version: 1,
@@ -91,7 +90,6 @@ func TestService(t *testing.T) {
 			err := svc.Create(namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})
-
 	})
 
 	t.Run("Sync", func(t *testing.T) {

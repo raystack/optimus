@@ -12,9 +12,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/fs"
 	"github.com/odpf/optimus/mock"

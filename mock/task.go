@@ -3,8 +3,8 @@ package mock
 import (
 	"context"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/mock"
 )
 
 type SupportedTaskRepo struct {

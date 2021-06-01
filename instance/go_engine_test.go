@@ -3,8 +3,8 @@ package instance_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/instance"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGoEngine(t *testing.T) {

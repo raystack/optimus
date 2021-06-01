@@ -9,10 +9,6 @@ import (
 	"github.com/odpf/optimus/datastore"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/logger"
 	log "github.com/odpf/optimus/core/logger"
@@ -20,6 +16,10 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type ProjectRepoFactory interface {
@@ -587,6 +587,9 @@ func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.Crea
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: namespace %s not found", err.Error(), req.GetNamespace()))
+	}
 
 	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
 	if err != nil {
@@ -610,6 +613,9 @@ func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.Upda
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: namespace %s not found", err.Error(), req.GetNamespace()))
+	}
 
 	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
 	if err != nil {
@@ -633,6 +639,9 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: namespace %s not found", err.Error(), req.GetNamespace()))
+	}
 
 	response, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
 	if err != nil {
@@ -697,6 +706,9 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: namespace %s not found", err.Error(), req.GetNamespace()))
+	}
 
 	resourceSpecs, err := sv.resourceSvc.GetAll(namespaceSpec, req.DatastoreName)
 	if err != nil {

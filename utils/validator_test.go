@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/odpf/optimus/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidator(t *testing.T) {

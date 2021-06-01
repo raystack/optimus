@@ -6,8 +6,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/jinzhu/gorm"
-	"github.com/pkg/errors"
 	"github.com/odpf/optimus/resources"
+	"github.com/pkg/errors"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for postgres migrate driver
 	_ "github.com/lib/pq"
