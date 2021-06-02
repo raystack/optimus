@@ -29,9 +29,10 @@ func TestCompiler(t *testing.T) {
 	transporterHook := "transporter"
 	hookUnit := new(mock.HookPlugin)
 	hookUnit.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
-		Name:  transporterHook,
-		Type:  models.HookTypePre,
-		Image: "example.io/namespace/hook-image:latest",
+		Name:       transporterHook,
+		Type:       models.HookTypePre,
+		Image:      "example.io/namespace/hook-image:latest",
+		SecretPath: "tmp/auth.json",
 	}, nil)
 
 	predatorHook := "predator"

@@ -42,7 +42,6 @@ const (
 	DockerTemplate = `{{.Header}}
 
 RUN mkdir -p /opt
-WORKDIR /opt
 ADD "{{.OpctlDownloadUrl}}" /opt/opctl
 RUN chmod +x /opt/opctl
 
@@ -127,7 +126,11 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 				for _, binOS := range taskPlugin.Binary.OS {
 					for _, binArch := range taskPlugin.Binary.Arch {
 						binName := strings.ToLower(fmt.Sprintf(BinaryNameFormat, TaskPluginName, pluginName, taskPlugin.Version, binOS, binArch))
-						args := []string{"build", "-o", filepath.Join(binAbsBuildPath, binName)}
+						args := []string{
+							"build",
+							"-ldflags", fmt.Sprintf("-X '%s=%s'", "main.Version", taskPlugin.Version),
+							"-o", filepath.Join(binAbsBuildPath, binName),
+						}
 
 						envs := append(taskPlugin.Binary.Env, os.Environ()...)
 						envs = append(envs, []string{fmt.Sprintf("GOOS=%s", binOS), fmt.Sprintf("GOARCH=%s", binArch)}...)
@@ -196,7 +199,11 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 				for _, binOS := range hookPlugin.Binary.OS {
 					for _, binArch := range hookPlugin.Binary.Arch {
 						binName := strings.ToLower(fmt.Sprintf(BinaryNameFormat, HookPluginName, pluginName, hookPlugin.Version, binOS, binArch))
-						args := []string{"build", "-o", filepath.Join(binAbsBuildPath, binName)}
+						args := []string{
+							"build",
+							"-ldflags", fmt.Sprintf("-X '%s=%s'", "main.Version", hookPlugin.Version),
+							"-o", filepath.Join(binAbsBuildPath, binName),
+						}
 
 						envs := append(hookPlugin.Binary.Env, os.Environ()...)
 						envs = append(envs, []string{fmt.Sprintf("GOOS=%s", binOS), fmt.Sprintf("GOARCH=%s", binArch)}...)

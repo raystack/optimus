@@ -73,15 +73,14 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
 {{ range $_, $t := .Job.Hooks }}
 {{ $hookSchema := $t.Unit.GetHookSchema $.Context $.HookSchemaRequest -}}
 
-{{ if ne $hookSchema.SecretPath "" -}}
+{{- if ne $hookSchema.SecretPath "" -}}
 hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
     "volume",
     {{ dir $hookSchema.SecretPath | quote }},
     "optimus-hook-{{ $hookSchema.Name }}",
     {{ base $hookSchema.SecretPath | quote }}
 )
-{{- end -}}
-
+{{- end}}
 hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),

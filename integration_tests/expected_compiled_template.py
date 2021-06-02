@@ -68,6 +68,12 @@ transformation_bq = SuperKubernetesPodOperator(
 
 # hooks loop start
 
+hook_transporter_secret = Secret(
+    "volume",
+    "tmp",
+    "optimus-hook-transporter",
+    "auth.json"
+)
 hook_transporter = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -80,9 +86,9 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[],
+    secrets=[hook_transporter_secret],
     env_vars={
-        "GOOGLE_APPLICATION_CREDENTIALS": '',
+        "GOOGLE_APPLICATION_CREDENTIALS": 'tmp/auth.json',
         "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
@@ -92,6 +98,7 @@ hook_transporter = SuperKubernetesPodOperator(
    },
    reattach_on_restart=True,
 )
+
 hook_predator = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
