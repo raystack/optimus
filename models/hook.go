@@ -51,6 +51,10 @@ type GetHookSchemaResponse struct {
 	// after the transformation, etc
 	Type HookType
 
+	// SecretPath will be mounted inside the container as volume
+	// e.g. /opt/secret/auth.json
+	// here auth.json should be a key in kube secret which gets
+	// translated to a file mounted in provided path
 	SecretPath string
 }
 

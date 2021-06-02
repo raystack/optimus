@@ -54,6 +54,8 @@ type GetTaskSchemaResponse struct {
 
 	// SecretPath will be mounted inside the container as volume
 	// e.g. /opt/secret/auth.json
+	// here auth.json should be a key in kube secret which gets
+	// translated to a file mounted in provided path
 	SecretPath string
 }
 
