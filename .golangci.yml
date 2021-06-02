@@ -12,6 +12,7 @@ linters:
     - unused
     - gofmt
     - whitespace
+    - misspell
 linters-settings:
   revive:
     ignore-generated-header: true

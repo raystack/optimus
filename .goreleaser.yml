@@ -50,6 +50,9 @@ archives:
       windows: windows
       386: i386
       amd64: x86_64
+release:
+  draft: true
+  prerelease: auto
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -75,7 +78,7 @@ brews:
   - name: optimus
     tap:
       owner: odpf
-      name: taps
+      name: homebrew-taps
     license: "Apache 2.0"
     description: "Optimus helps your organization to build & manage data pipelines with ease."
     homepage: https://odpf.github.io/optimus
@@ -84,3 +87,6 @@ brews:
       - name: git
     install: |-
       bin.install "opctl"
+    commit_author:
+      name: Kush Sharma
+      email: 3647166+kushsharma@users.noreply.github.com
