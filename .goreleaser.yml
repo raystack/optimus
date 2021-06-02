@@ -18,9 +18,11 @@ builds:
       - linux
       - darwin
       - windows
-    ignore:
-      - goos: darwin
-        goarch: arm64
+    goarch:
+      - amd64
+      - 386
+      - arm
+      - arm64
     env:
       - CGO_ENABLED=0
   - main: ./cmd/optimus/main.go
@@ -34,9 +36,11 @@ builds:
       - linux
       - darwin
       - windows
-    ignore:
-      - goos: darwin
-        goarch: arm64
+    goarch:
+      - amd64
+      - 386
+      - arm
+      - arm64
     env:
       - CGO_ENABLED=0
 archives:
@@ -56,6 +60,7 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+      - '^build:'
 dockers:
   -
     goos: linux
@@ -66,3 +71,16 @@ dockers:
     image_templates:
       - 'docker.io/odpf/{{.ProjectName}}:latest'
       - 'docker.io/odpf/{{.ProjectName}}:{{ .Tag }}-amd64'
+brews:
+  - name: optimus
+    tap:
+      owner: odpf
+      name: taps
+    license: "Apache 2.0"
+    description: "Optimus helps your organization to build & manage data pipelines with ease."
+    homepage: https://odpf.github.io/optimus
+    folder: Formula
+    dependencies:
+      - name: git
+    install: |-
+      bin.install "opctl"
