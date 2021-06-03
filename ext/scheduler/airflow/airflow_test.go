@@ -99,30 +99,26 @@ func TestAirflow(t *testing.T) {
 
 		t.Run("should return job status with valid args", func(t *testing.T) {
 			respString := `
-{
-"dag_runs": 
 [
 {
-"dag_id": "sample_select",
-"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-25+02%3A00%3A00%2B00%3A00",
-"execution_date": "2020-03-25T02:00:00+00:00",
-"id": 1997,
-"run_id": "scheduled__2020-03-25T02:00:00+00:00",
-"start_date": "2020-06-01T16:32:58.489042+00:00",
-"state": "success"
+		"dag_id": "sample_select",
+		"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-25+02%3A00%3A00%2B00%3A00",
+		"execution_date": "2020-03-25T02:00:00+00:00",
+		"id": 1997,
+		"run_id": "scheduled__2020-03-25T02:00:00+00:00",
+		"start_date": "2020-06-01T16:32:58.489042+00:00",
+		"state": "success"
 },
 {
-"dag_id": "sample_select",
-"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-26+02%3A00%3A00%2B00%3A00",
-"execution_date": "2020-03-26T02:00:00+00:00",
-"id": 1998,
-"run_id": "scheduled__2020-03-26T02:00:00+00:00",
-"start_date": "2020-06-01T16:33:01.020645+00:00",
-"state": "success"
+		"dag_id": "sample_select",
+		"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-26+02%3A00%3A00%2B00%3A00",
+		"execution_date": "2020-03-26T02:00:00+00:00",
+		"id": 1998,
+		"run_id": "scheduled__2020-03-26T02:00:00+00:00",
+		"start_date": "2020-06-01T16:33:01.020645+00:00",
+		"state": "success"
 }
-],
-"total_entries": 0
-}`
+]`
 			// create a new reader with JSON
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHttpClient{

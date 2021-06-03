@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	baseTemplateFilePath = "./templates/scheduler/airflow_2/base_dag.py"
-	baseLibFilePath      = "./templates/scheduler/airflow_2/__lib.py"
+	baseTemplateFilePath = "./templates/scheduler/airflow_1/base_dag.py"
+	baseLibFilePath      = "./templates/scheduler/airflow_1/__lib.py"
 
 	dagStatusURL = "api/experimental/dags/%s/dag_runs"
 )
@@ -155,16 +155,14 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	//	"start_date": "2020-06-01T16:32:58.489042+00:00",
 	//	"state": "success"
 	//},
-	var responseJson struct {
-		DagRuns []map[string]interface{} `json:"dag_runs"`
-	}
+	responseJson := []map[string]interface{}{}
 	err = json.Unmarshal(body, &responseJson)
 	if err != nil {
 		return nil, errors.Wrapf(err, "json error: %s", string(body))
 	}
 
 	jobStatus := []models.JobStatus{}
-	for _, status := range responseJson.DagRuns {
+	for _, status := range responseJson {
 		_, ok1 := status["execution_date"]
 		_, ok2 := status["state"]
 		if !ok1 || !ok2 {
