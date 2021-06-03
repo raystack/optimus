@@ -84,7 +84,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
     "optimus-hook-{{ $hookSchema.Name }}",
     {{ base $hookSchema.SecretPath | quote }}
 )
-{{- end -}}
+{{- end }}
 
 hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",

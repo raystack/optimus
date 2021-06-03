@@ -81,6 +81,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
     {{ base $hookSchema.SecretPath | quote }}
 )
 {{- end}}
+
 hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
