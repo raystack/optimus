@@ -47,7 +47,7 @@ import (
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
 	_ "github.com/odpf/optimus/ext/datastore"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
+	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
@@ -426,7 +426,7 @@ func main() {
 	}
 
 	// init default scheduler, should be configurable by user configs later
-	models.Scheduler = airflow.NewScheduler(
+	models.Scheduler = airflow2.NewScheduler(
 		resources.FileSystem,
 		&objectWriterFactory{},
 		&http.Client{},
