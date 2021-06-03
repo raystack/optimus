@@ -317,7 +317,7 @@ func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, projectJ
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
 	jobSpecs, err := projectJobSpecRepo.GetAll()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrive jobs")
+		return nil, errors.Wrapf(err, "failed to retrieve jobs")
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
 

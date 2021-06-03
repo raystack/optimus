@@ -146,7 +146,7 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 
 	jobSpecs, err := sv.jobSvc.GetAll(namespaceSpec)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to retrive jobs for project %s", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to retrieve jobs for project %s", err.Error(), req.GetProjectName()))
 	}
 
 	jobProtos := []*pb.JobSpecification{}
@@ -394,7 +394,7 @@ func (sv *RuntimeServiceServer) ListProjects(ctx context.Context, req *pb.ListPr
 	projectRepo := sv.projectRepoFactory.New()
 	projects, err := projectRepo.GetAll()
 	if err != nil {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: failed to retrive saved projects", err.Error()))
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: failed to retrieve saved projects", err.Error()))
 	}
 
 	projSpecsProto := []*pb.ProjectSpecification{}
@@ -712,7 +712,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 
 	resourceSpecs, err := sv.resourceSvc.GetAll(namespaceSpec, req.DatastoreName)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to retrive jobs for project %s", err.Error(), req.GetProjectName()))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("%s: failed to retrieve jobs for project %s", err.Error(), req.GetProjectName()))
 	}
 
 	resourceProtos := []*pb.ResourceSpecification{}
