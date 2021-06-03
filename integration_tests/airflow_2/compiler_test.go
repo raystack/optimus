@@ -32,6 +32,7 @@ func TestCompiler2(t *testing.T) {
 		Name:  transporterHook,
 		Type:  models.HookTypePre,
 		Image: "example.io/namespace/hook-image:latest",
+		SecretPath: "/opt/optimus/secrets/auth.json",
 	}, nil)
 
 	predatorHook := "predator"
