@@ -23,7 +23,7 @@ import (
 
 	lg "github.com/odpf/optimus/core/logger"
 	_ "github.com/odpf/optimus/ext/datastore"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
+	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	_ "github.com/odpf/optimus/plugin"
 )
 
@@ -49,7 +49,7 @@ func main() {
 
 	// this is just default scheduler
 	// should be configurable by user if needed
-	models.Scheduler = airflow.NewScheduler(resources.FileSystem, nil, nil)
+	models.Scheduler = airflow2.NewScheduler(resources.FileSystem, nil, nil)
 
 	//init specs
 	jobSpecRepo := local.NewJobSpecRepository(
