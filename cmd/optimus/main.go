@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/odpf/optimus/config"
+
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/odpf/optimus/plugin"
@@ -57,15 +59,6 @@ import (
 )
 
 var (
-	// Version of the service
-	// overridden by the build system
-	Version     = "dev"
-	BuildCommit = ""
-	BuildDate   = ""
-
-	// AppName is used to prefix Version
-	AppName = "optimus"
-
 	//listen for sigterm
 	termChan = make(chan os.Signal, 1)
 
@@ -395,7 +388,7 @@ func main() {
 	logger.Init(Config.LogLevel)
 
 	mainLog := log.WithField("reporter", "main")
-	mainLog.Infof("starting optimus %s", Version)
+	mainLog.Infof("starting optimus %s", config.Version)
 
 	err := validateConfig()
 	if err != nil {
@@ -549,7 +542,7 @@ func main() {
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
-		Version,
+		config.Version,
 		job.NewService(
 			&jobSpecRepoFac,
 			&jobRepoFactory{

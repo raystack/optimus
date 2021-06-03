@@ -13,7 +13,7 @@ builds:
     flags:
       - -a
     ldflags:
-      - -s -w -X github.com/odpf/optimus/cmd/opctl/main.Version={{.Tag}} -X github.com/odpf/optimus/cmd/opctl/main.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/cmd/opctl/main.BuildDate={{.Date}}
+      - -s -w -X github.com/odpf/optimus/config.Version={{.Tag}} -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
     goos:
       - linux
       - darwin
@@ -31,7 +31,7 @@ builds:
     flags:
       - -a
     ldflags:
-      - -s -w -X github.com/odpf/optimus/cmd/optimus/main.Version={{.Tag}} -X github.com/odpf/optimus/cmd/optimus/main.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/cmd/optimus/main.BuildDate={{.Date}}
+      - -s -w -X github.com/odpf/optimus/config.Version={{.Tag}} -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
     goos:
       - linux
       - darwin

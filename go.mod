@@ -9,7 +9,6 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/fatih/color v1.7.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
-	github.com/gernest/wow v0.1.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-migrate/migrate/v4 v4.14.1
@@ -23,7 +22,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.4.1
 	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/jhump/protoreflect v1.8.1 // indirect
 	github.com/jinzhu/gorm v1.9.16
+	github.com/klauspost/compress v1.11.7 // indirect
 	github.com/kushsharma/parallel v0.2.1
 	github.com/kushsharma/structs v1.1.1
 	github.com/lib/pq v1.9.0

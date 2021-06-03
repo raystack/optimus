@@ -28,12 +28,6 @@ import (
 )
 
 var (
-	// Version of the cli
-	// overridden by the build system.
-	Version     = "dev"
-	BuildCommit = ""
-	BuildDate   = ""
-
 	//Config for optimus cli
 	Config config.Opctl
 
@@ -82,7 +76,7 @@ func main() {
 	cmd := commands.New(
 		log.New(os.Stderr, "", 0),
 		jobSpecRepo,
-		Version,
+		config.Version,
 		Config,
 		models.Scheduler,
 		datastoreSpecsFs,
