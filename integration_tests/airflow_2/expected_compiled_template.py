@@ -13,21 +13,10 @@ from kubernetes.client import models as k8s
 from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
     CrossTenantDependencySensor
 
-
-SECRET_NAME = Variable.get("secret_name", "optimus-google-credentials")
-SECRET_KEY = Variable.get("secret_key", "auth.json")
-SECRET_VOLUME_PATH = '/opt/optimus/secrets/'
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
 DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
-
-gcloud_credentials_path = '{}{}'.format(SECRET_VOLUME_PATH, SECRET_KEY)
-gcloud_secret = Secret(
-    'volume',
-    SECRET_VOLUME_PATH,
-    SECRET_NAME,
-    SECRET_KEY)
 
 default_args = {
     "owner": "mee@mee",
@@ -48,10 +37,16 @@ dag = DAG(
     catchup = True
 )
 
+transformation_secret = Secret(
+    "volume",
+    "/opt/optimus/secrets",
+    "optimus-task-bq",
+    "auth.json"
+)
 transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
-    image = "{}".format("example.io/namespace/image:latest"),
+    image = "example.io/namespace/image:latest",
     cmds=[],
     name="bq",
     task_id="bq",
@@ -60,18 +55,18 @@ transformation_bq = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[gcloud_secret],
-    env_vars=[
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value=gcloud_credentials_path),
+    secrets=[transformation_secret],
+    env_vars = [
+        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value='/opt/optimus/secrets/auth.json'),
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'), 
+        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='transformation'), 
+        k8s.V1EnvVar(name="TASK_TYPE",value='task'),
         k8s.V1EnvVar(name="TASK_NAME",value='bq'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-    ],
+  	],
     reattach_on_restart=True,
 )
 
@@ -89,19 +84,19 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[gcloud_secret],
-    env_vars=[
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value=gcloud_credentials_path),
+    secrets=[],
+    env_vars = [
+        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value=''),
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'), 
+        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='hook'), 
+        k8s.V1EnvVar(name="TASK_TYPE",value='hook'),
         k8s.V1EnvVar(name="TASK_NAME",value='transporter'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}')
+        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+  	],
    reattach_on_restart=True,
 )
 hook_predator = SuperKubernetesPodOperator(
@@ -116,19 +111,19 @@ hook_predator = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[gcloud_secret],
-    env_vars=[
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value=gcloud_credentials_path),
+    secrets=[],
+    env_vars = [
+        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value=''),
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'), 
+        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='hook'), 
+        k8s.V1EnvVar(name="TASK_TYPE",value='hook'),
         k8s.V1EnvVar(name="TASK_NAME",value='predator'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}')
+        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+  	],
    reattach_on_restart=True,
 )
 # hooks loop ends
