@@ -35,6 +35,10 @@ const (
 
 type InstanceType string
 
+func (I InstanceType) String() string {
+	return string(I)
+}
+
 func (I InstanceType) New(val string) (InstanceType, error) {
 	switch val {
 	case "TASK":

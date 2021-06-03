@@ -191,7 +191,7 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
-func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec) *pb.ProjectSpecification {
+func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
 		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{
@@ -206,7 +206,7 @@ func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec) *pb.Proj
 	}
 }
 
-func (adapt *Adapter) FromProjectProtoWithSecret(conf *pb.ProjectSpecification) models.ProjectSpec {
+func (adapt *Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
 	pConf := map[string]string{}
 	for key, val := range conf.GetConfig() {
 		pConf[strings.ToUpper(key)] = val
@@ -222,6 +222,25 @@ func (adapt *Adapter) FromProjectProtoWithSecret(conf *pb.ProjectSpecification) 
 		Name:   conf.GetName(),
 		Config: pConf,
 		Secret: pSec,
+	}
+}
+
+func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType models.InstanceType, pluginName string) *pb.ProjectSpecification {
+	pluginSecretName := models.PluginSecretString(pluginType, pluginName)
+	secrets := []*pb.ProjectSpecification_ProjectSecret{}
+	for _, s := range spec.Secret {
+		if strings.ToUpper(s.Name) != pluginSecretName {
+			continue
+		}
+		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{
+			Name:  s.Name,
+			Value: s.Value,
+		})
+	}
+	return &pb.ProjectSpecification{
+		Name:    spec.Name,
+		Config:  spec.Config,
+		Secrets: secrets,
 	}
 }
 

@@ -13,15 +13,13 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type ProjectSpecAdapter interface {
-	FromProjectProtoWithSecret(*pb.ProjectSpecification) models.ProjectSpec
-	ToProjectProtoWithSecret(models.ProjectSpec) *pb.ProjectSpecification
-}
-
 // GRPCClient will be used by core to talk over grpc with plugins
 type GRPCClient struct {
 	client             pb.TaskPluginClient
 	projectSpecAdapter ProjectSpecAdapter
+
+	// Plugin name, used in filtering project secrets
+	Name string
 }
 
 func (m *GRPCClient) GetTaskSchema(ctx context.Context, _ models.GetTaskSchemaRequest) (models.GetTaskSchemaResponse, error) {
@@ -149,7 +147,7 @@ func (m *GRPCClient) GenerateTaskDestination(ctx context.Context, request models
 	resp, err := m.client.GenerateTaskDestination(ctx, &pb.GenerateTaskDestination_Request{
 		JobConfig: AdaptConfigsToProto(request.Config),
 		JobAssets: adaptAssetsToProto(request.Assets),
-		Project:   m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project),
+		Project:   m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.Name),
 		Options:   &pb.PluginOptions{DryRun: request.DryRun},
 	})
 	if err != nil {
@@ -164,7 +162,7 @@ func (m *GRPCClient) GenerateTaskDependencies(ctx context.Context, request model
 	resp, err := m.client.GenerateTaskDependencies(ctx, &pb.GenerateTaskDependencies_Request{
 		JobConfig: AdaptConfigsToProto(request.Config),
 		JobAssets: adaptAssetsToProto(request.Assets),
-		Project:   m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project),
+		Project:   m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.Name),
 		Options:   &pb.PluginOptions{DryRun: request.DryRun},
 	})
 	if err != nil {

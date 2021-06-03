@@ -31,7 +31,7 @@ pack-files: ./resources/pack ./resources/resource_fs_gen.go
 generate-proto:
 	@echo " > cloning protos from odpf/proton"
 	@rm -rf proton/
-	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch optimus-plugins
+	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
 	@echo " > generating protos"
 	@buf generate
 
@@ -58,6 +58,7 @@ clean:
 
 install:
 	@echo "> installing dependencies"
+	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.25.0
 	go get github.com/golang/protobuf/proto@v1.4.3
 	go get github.com/golang/protobuf/protoc-gen-go@v1.4.3
 	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
