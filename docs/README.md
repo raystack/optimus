@@ -63,5 +63,6 @@ We are taking feedback and making breaking changes based on user requirements.
 * [Contributing](contribute/contributing.md)
 
 ### References
-- [API](https://github.com/odpf/proton/blob/8fd40739a2de5328ab8c2fc4fa4c78dca78523c7/odpf/optimus/RuntimeService.proto)
+- [REST API](https://github.com/odpf/optimus/blob/423da2b52f454d8ef8a4297873a3cf3d1fc9067a/third_party/OpenAPI/odpf/optimus/RuntimeService.swagger.json)
+- [GRPC](https://github.com/odpf/proton/blob/c13453f190124e2d94a485343768b3f59b4da061/odpf/optimus/runtime_service.proto)
 - [Functional Data Warehouse](https://medium.com/@maximebeauchemin/functional-data-engineering-a-modern-paradigm-for-batch-data-processing-2327ec32c42a)

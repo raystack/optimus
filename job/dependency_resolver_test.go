@@ -619,7 +619,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateTaskDependencies", context.TODO(), unitData).Return(models.GenerateTaskDependenciesResponse{
 				Dependencies: []string{
 					"project.dataset.table2_destination",
-					"project.dataset.table2_external_destination", // inter optimus depedency
+					"project.dataset.table2_external_destination", // inter optimus dependency
 				},
 			}, nil)
 			execUnit.On("GenerateTaskDependencies", context.TODO(), unitData2).Return(models.GenerateTaskDependenciesResponse{}, nil)

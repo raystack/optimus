@@ -81,7 +81,7 @@ func (srv *Service) Create(namespace models.NamespaceSpec, spec models.JobSpec) 
 func (srv *Service) GetByName(name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
 	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(name)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrapf(err, "failed to retrive job")
+		return models.JobSpec{}, errors.Wrapf(err, "failed to retrieve job")
 	}
 	return jobSpec, nil
 }
@@ -90,7 +90,7 @@ func (srv *Service) GetByName(name string, namespace models.NamespaceSpec) (mode
 func (srv *Service) GetByNameForProject(name string, proj models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
 	jobSpec, namespace, err := srv.projectJobSpecRepoFactory.New(proj).GetByName(name)
 	if err != nil {
-		return models.JobSpec{}, models.NamespaceSpec{}, errors.Wrapf(err, "failed to retrive job")
+		return models.JobSpec{}, models.NamespaceSpec{}, errors.Wrapf(err, "failed to retrieve job")
 	}
 	return jobSpec, namespace, nil
 }
@@ -98,7 +98,7 @@ func (srv *Service) GetByNameForProject(name string, proj models.ProjectSpec) (m
 func (srv *Service) GetAll(namespace models.NamespaceSpec) ([]models.JobSpec, error) {
 	jobSpecs, err := srv.jobSpecRepoFactory.New(namespace).GetAll()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrive jobs")
+		return nil, errors.Wrapf(err, "failed to retrieve jobs")
 	}
 	return jobSpecs, nil
 }

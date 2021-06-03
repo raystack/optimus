@@ -54,7 +54,7 @@ func InitWithWriter(mode string, writer io.Writer) {
 
 func filterFieldsMap(args ...interface{}) (logrus.Fields, []interface{}) {
 	if log == nil {
-		goLog.Panicf("logger is not initalized, use logger.Init(logger.INFO)")
+		goLog.Panicf("logger is not initialized, use logger.Init(logger.INFO)")
 	}
 	if fieldsMap, ok := args[len(args)-1].(map[string]interface{}); ok {
 		return logrus.Fields{"payload": fieldsMap}, args[:(len(args) - 1)]

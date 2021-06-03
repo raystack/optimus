@@ -184,7 +184,7 @@ var cfgRules = map[*string]cfg{
 	&Config.KafkaBrokers: {
 		Env:  "KAFKA_BROKERS",
 		Cmd:  "kafka-brokers",
-		Desc: "comma seperated kafka brokers to use for publishing metadata, leave empty to disable metadata publisher",
+		Desc: "comma separated kafka brokers to use for publishing metadata, leave empty to disable metadata publisher",
 	},
 	&Config.KafkaBatchSize: {
 		Env:  "KAFKA_BATCH_SIZE",
