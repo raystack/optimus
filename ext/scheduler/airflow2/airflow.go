@@ -86,7 +86,6 @@ func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 }
 
 func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objDir string) (err error) {
-
 	// copy lib file
 	baseLibFile, err := a.templateFS.Open(baseLibFilePath)
 	if err != nil {

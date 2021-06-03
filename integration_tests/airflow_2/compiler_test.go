@@ -192,7 +192,6 @@ func TestCompiler2(t *testing.T) {
 			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
 			assert.Nil(t, err)
 			assert.Equal(t, string(expectedCompiledOutput), string(job.Contents))
-
 		})
 	})
 }
