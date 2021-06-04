@@ -44,6 +44,7 @@ type ProtoAdapter interface {
 
 	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
 	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
+	ToProjectProtoWithSecret(proj models.ProjectSpec, pType models.InstanceType, pName string) *pb.ProjectSpecification
 
 	FromNamespaceProto(specification *pb.NamespaceSpecification) models.NamespaceSpec
 	ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification

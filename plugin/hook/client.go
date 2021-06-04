@@ -9,11 +9,6 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type ProjectSpecAdapter interface {
-	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
-	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
-}
-
 // GRPCClient will be used by core to talk over grpc with plugins
 type GRPCClient struct {
 	client             pb.HookPluginClient

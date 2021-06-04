@@ -194,9 +194,9 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 			assets[fileName] = string(raw)
 			assetFd.Close()
 		}
+		defer assetFolderFd.Close()
 	}
 	jobSpec.Assets = models.JobAssets{}.FromMap(assets)
-	defer assetFolderFd.Close()
 
 	if _, ok := repo.cache.data[jobSpec.Name]; ok {
 		return jobSpec, errors.Errorf("job name should be unique across directories: %s", jobSpec.Name)

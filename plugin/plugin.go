@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 
+	v1 "github.com/odpf/optimus/api/handler/v1"
+
 	"github.com/odpf/optimus/plugin/hook"
 
 	"github.com/odpf/optimus/models"
@@ -28,14 +30,16 @@ const (
 	// This could be adding a new interface value, methods, etc.
 	ProtocolVersion = 1
 
-	// Supported plugin types
-	TaskPluginName = "task"
-	HookPluginName = "hook"
-
 	// Magic values
 	// should always remain constant
 	MagicCookieKey   = "OP_PLUGIN_MAGIC_COOKIE"
 	MagicCookieValue = "ksxR4BqCT81whVF2dVEUpYZXwM3pazSkP4IbVc6f2Kns57ypp2c0z0GzQNMdHSUk"
+)
+
+var (
+	// Supported plugin types
+	TaskPluginName = models.InstanceTypeTask.String()
+	HookPluginName = models.InstanceTypeHook.String()
 )
 
 func Initialize(pluginLogger hclog.Logger) {
@@ -58,8 +62,12 @@ func Initialize(pluginLogger hclog.Logger) {
 
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		TaskPluginName: &task.Plugin{},
-		HookPluginName: &hook.Plugin{},
+		TaskPluginName: &task.Plugin{
+			ProjectSpecAdapter: v1.NewAdapter(nil, nil, nil),
+		},
+		HookPluginName: &hook.Plugin{
+			ProjectSpecAdapter: v1.NewAdapter(nil, nil, nil),
+		},
 	}
 
 	for pluginType, pluginPaths := range discoveredPlugins {
@@ -98,6 +106,12 @@ func Initialize(pluginLogger hclog.Logger) {
 				}
 				pluginLogger.Debug("tested plugin communication for task", taskSchema.Name)
 
+				{
+					// update name, will be later used for filtering secrets
+					taskGRPCClient := raw.(*task.GRPCClient)
+					taskGRPCClient.Name = taskSchema.Name
+				}
+
 				if err := models.TaskRegistry.Add(taskClient); err != nil {
 					pluginLogger.Error("Error:", err.Error())
 					os.Exit(1)
@@ -123,11 +137,14 @@ func Initialize(pluginLogger hclog.Logger) {
 	}
 }
 
-// DiscoverPlugins
-// following folders will be used
+// DiscoverPlugins look for plugin binaries
+// following folders will be used in order
 // ./
+// /usr/bin
+// /usr/local/bin
 // exec/.optimus/plugins
 // $HOME/.optimus/plugins
+//
 // sample plugin name: optimus-task-myplugin_0.1_linux_amd64
 func DiscoverPlugins() (map[string][]string, error) {
 	var (
@@ -136,11 +153,13 @@ func DiscoverPlugins() (map[string][]string, error) {
 		discoveredPlugins = map[string]mapset.Set{}
 	)
 
-	dirs := []string{"."}
-	if currentHomeDir, err := os.UserHomeDir(); err == nil {
-		dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
+	dirs := []string{".", "/usr/bin", "/usr/local/bin"}
+	{
+		// add user home directory
+		if currentHomeDir, err := os.UserHomeDir(); err == nil {
+			dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
+		}
 	}
-
 	{
 		// look in the same directory as the executable
 		exePath, err := os.Executable()
@@ -150,7 +169,6 @@ func DiscoverPlugins() (map[string][]string, error) {
 			dirs = append(dirs, filepath.Dir(exePath))
 		}
 		dirs = append(dirs, exePath)
-		dirs = append(dirs, filepath.Join(exePath, "dist"))
 	}
 
 	for _, dirPath := range dirs {

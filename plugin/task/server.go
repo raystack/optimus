@@ -135,7 +135,7 @@ func (s *GRPCServer) GenerateTaskDestination(ctx context.Context, req *pb.Genera
 	resp, err := s.Impl.GenerateTaskDestination(ctx, models.GenerateTaskDestinationRequest{
 		Config:        AdaptConfigsFromProto(req.JobConfig),
 		Assets:        adaptAssetsFromProto(req.JobAssets),
-		Project:       s.projectSpecAdapter.FromProjectProtoWithSecret(req.Project),
+		Project:       s.projectSpecAdapter.FromProjectProtoWithSecrets(req.Project),
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {
@@ -148,7 +148,7 @@ func (s *GRPCServer) GenerateTaskDependencies(ctx context.Context, req *pb.Gener
 	resp, err := s.Impl.GenerateTaskDependencies(ctx, models.GenerateTaskDependenciesRequest{
 		Config:        AdaptConfigsFromProto(req.JobConfig),
 		Assets:        adaptAssetsFromProto(req.JobAssets),
-		Project:       s.projectSpecAdapter.FromProjectProtoWithSecret(req.Project),
+		Project:       s.projectSpecAdapter.FromProjectProtoWithSecrets(req.Project),
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {

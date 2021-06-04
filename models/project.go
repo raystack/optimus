@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -15,6 +16,14 @@ const (
 	ProjectSchedulerHost  = "SCHEDULER_HOST"
 
 	ProjectSecretStorageKey = "STORAGE"
+)
+
+var (
+	// PluginSecretString generates plugin secret identifier using its type
+	// and name, e.g. task, bq2bq
+	PluginSecretString = func(pluginType InstanceType, pluginName string) string {
+		return strings.ToUpper(fmt.Sprintf("%s_%s", pluginType, pluginName))
+	}
 )
 
 type ProjectSpec struct {
@@ -29,6 +38,13 @@ type ProjectSpec struct {
 	// the tenant
 	Config map[string]string
 
+	// Secret contains key value pair for project level credentials and gets
+	// shared with plugins(task/hook) for execution.
+	// Few credentials are mandatory to be defined like ProjectSecretStorageKey
+	// and few are optional as needed.
+	// Plugin level secrets should be created with a convention of
+	// Name: <plugintype>_<plugin_name>, Value: <base64encodedstring>
+	// For example: TASK_BQ2BQ: secret_as_base64
 	Secret ProjectSecrets
 }
 
