@@ -9,26 +9,27 @@ all: build
 
 .PHONY: build build-optimus smoke-test unit-test test clean generate dist init vet
 
-build-ctl: generate
+build-ctl: generate ## generate opctl
 	@echo " > building opctl version ${CTL_VERSION}"
-	@go build -ldflags "-X main.Version=${CTL_VERSION}" ${NAME}/cmd/opctl
+	@go build -ldflags "-X config.Version=${CTL_VERSION}" ${NAME}/cmd/opctl
 
-build-optimus: generate
+build-optimus: generate ## generate optimus server
 	@echo " > building optimus version ${OPMS_VERSION}"
-	@go build -ldflags "-X 'main.Version=${OPMS_VERSION}'" ${NAME}/cmd/optimus
+	@go build -ldflags "-X 'config.Version=${OPMS_VERSION}'" ${NAME}/cmd/optimus
 
 build: build-optimus build-ctl
 	@echo " - build complete"
 	
-test: smoke-test unit-test vet
+test: smoke-test unit-test vet ## run tests
 
-generate: pack-files generate-proto
+generate: pack-files
+	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
 	
 pack-files: ./resources/pack ./resources/resource_fs_gen.go
 	@echo " > packing resources"
 	@go generate ./resources
 
-generate-proto:
+generate-proto: ## regenerate protos
 	@echo " > cloning protos from odpf/proton"
 	@rm -rf proton/
 	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
@@ -44,11 +45,11 @@ smoke-test: build-ctl
 integration-test: build
 	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m
 
-vet:
+vet: ## run go vet
 	go vet ./...
 
-coverage:
-	go test -coverprofile test_coverage.html ./... -tags=unit_test && go tool cover -html=test_coverage.html
+coverage: ## print code coverage
+	go test -race -coverprofile coverage.txt -covermode=atomic ./... -tags=unit_test && go tool cover -html=coverage.txt
 
 dist: generate
 	@bash ./scripts/build-distributables.sh
@@ -56,7 +57,7 @@ dist: generate
 clean:
 	rm -rf ./optimus ./opctl ./dist ./proton ./api/proto/*
 
-install:
+install: ## install required dependencies
 	@echo "> installing dependencies"
 	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.25.0
 	go get github.com/golang/protobuf/proto@v1.4.3

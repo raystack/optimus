@@ -12,7 +12,7 @@ vendor
 TODO
 version
 temp
-test_coverage.html
+coverage.out
 /opctl
 jobs
 /resources/resource_fs.go
@@ -45,4 +45,4 @@ optimus.yaml
 !/api/proto/odpf/third_party/grpc-gateway/**/*
 
 /third_party/*
-!/third_party/OpenAPI/odpf/optimus/RuntimeService.swagger.json
+!/third_party/OpenAPI/odpf/optimus/runtime_service.swagger.json
