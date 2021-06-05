@@ -24,11 +24,16 @@ type HookPluginClient interface {
 	// name used for question will be directly mapped to DefaultHookConfig() parameters
 	GetHookQuestions(ctx context.Context, in *GetHookQuestions_Request, opts ...grpc.CallOption) (*GetHookQuestions_Response, error)
 	ValidateHookQuestion(ctx context.Context, in *ValidateHookQuestion_Request, opts ...grpc.CallOption) (*ValidateHookQuestion_Response, error)
-	// DefaultHookConfig will be passed down to execution unit as env vars
-	// they will be generated based on results of AskQuestions
+	// DefaultHookConfig are a set of configuration which will be embedded in job
+	// specification. These configs can be requested by the docker container before
+	// execution
+	// It will be generated based on results of GetHookQuestions, it also inherit
+	// its parent task config
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultHookConfig(ctx context.Context, in *DefaultHookConfig_Request, opts ...grpc.CallOption) (*DefaultHookConfig_Response, error)
-	// DefaultHookAssets will be passed down to execution unit as files
+	// DefaultHookAssets are a set of files which will be embedded in job
+	// specification in assets folder. These configs can be requested by the
+	// docker container before execution.
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultHookAssets(ctx context.Context, in *DefaultHookAssets_Request, opts ...grpc.CallOption) (*DefaultHookAssets_Response, error)
 }
@@ -96,11 +101,16 @@ type HookPluginServer interface {
 	// name used for question will be directly mapped to DefaultHookConfig() parameters
 	GetHookQuestions(context.Context, *GetHookQuestions_Request) (*GetHookQuestions_Response, error)
 	ValidateHookQuestion(context.Context, *ValidateHookQuestion_Request) (*ValidateHookQuestion_Response, error)
-	// DefaultHookConfig will be passed down to execution unit as env vars
-	// they will be generated based on results of AskQuestions
+	// DefaultHookConfig are a set of configuration which will be embedded in job
+	// specification. These configs can be requested by the docker container before
+	// execution
+	// It will be generated based on results of GetHookQuestions, it also inherit
+	// its parent task config
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultHookConfig(context.Context, *DefaultHookConfig_Request) (*DefaultHookConfig_Response, error)
-	// DefaultHookAssets will be passed down to execution unit as files
+	// DefaultHookAssets are a set of files which will be embedded in job
+	// specification in assets folder. These configs can be requested by the
+	// docker container before execution.
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultHookAssets(context.Context, *DefaultHookAssets_Request) (*DefaultHookAssets_Response, error)
 	mustEmbedUnimplementedHookPluginServer()

@@ -24,11 +24,15 @@ type TaskPluginClient interface {
 	// name used for question will be directly mapped to DefaultTaskConfig() parameters
 	GetTaskQuestions(ctx context.Context, in *GetTaskQuestions_Request, opts ...grpc.CallOption) (*GetTaskQuestions_Response, error)
 	ValidateTaskQuestion(ctx context.Context, in *ValidateTaskQuestion_Request, opts ...grpc.CallOption) (*ValidateTaskQuestion_Response, error)
-	// DefaultTaskConfig will be passed down to execution unit as env vars
-	// they will be generated based on results of AskQuestions
-	// if DryRun is true in UnitOptions, should not throw error for missing inputs
+	// DefaultTaskConfig are a set of configuration which will be embedded in job
+	// specification. These configs can be requested by the docker container before
+	// execution
+	// they will be generated based on results of GetTaskQuestions
+	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultTaskConfig(ctx context.Context, in *DefaultTaskConfig_Request, opts ...grpc.CallOption) (*DefaultTaskConfig_Response, error)
-	// DefaultTaskAssets will be passed down to execution unit as files
+	// DefaultTaskAssets are a set of files which will be embedded in job
+	// specification in assets folder. These configs can be requested by the
+	// docker container before execution.
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultTaskAssets(ctx context.Context, in *DefaultTaskAssets_Request, opts ...grpc.CallOption) (*DefaultTaskAssets_Response, error)
 	// CompileTaskAssets overrides the default asset compilation behaviour
@@ -130,11 +134,15 @@ type TaskPluginServer interface {
 	// name used for question will be directly mapped to DefaultTaskConfig() parameters
 	GetTaskQuestions(context.Context, *GetTaskQuestions_Request) (*GetTaskQuestions_Response, error)
 	ValidateTaskQuestion(context.Context, *ValidateTaskQuestion_Request) (*ValidateTaskQuestion_Response, error)
-	// DefaultTaskConfig will be passed down to execution unit as env vars
-	// they will be generated based on results of AskQuestions
-	// if DryRun is true in UnitOptions, should not throw error for missing inputs
+	// DefaultTaskConfig are a set of configuration which will be embedded in job
+	// specification. These configs can be requested by the docker container before
+	// execution
+	// they will be generated based on results of GetTaskQuestions
+	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultTaskConfig(context.Context, *DefaultTaskConfig_Request) (*DefaultTaskConfig_Response, error)
-	// DefaultTaskAssets will be passed down to execution unit as files
+	// DefaultTaskAssets are a set of files which will be embedded in job
+	// specification in assets folder. These configs can be requested by the
+	// docker container before execution.
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultTaskAssets(context.Context, *DefaultTaskAssets_Request) (*DefaultTaskAssets_Response, error)
 	// CompileTaskAssets overrides the default asset compilation behaviour
