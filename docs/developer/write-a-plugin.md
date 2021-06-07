@@ -2,7 +2,7 @@
 
 Optimus's responsibilities are currently divided in two parts, scheduling a transformation [task](../concepts/index.md#Job) and running one time action to create or modify a [datastore](../concepts/index.md#Datastore) resource. Defining how a datastore is managed can be easy and doesn't leave many options for configuration or ambiguity although the way datastores are implemented gives developers flexibility to contribute additional type of datastore, but it is not something we do every day.
 
-Whereas tasks used in jobs that define how the transformation will execute, what configuration does it need as input from user, how does this task resolves dependencies between each other, what kind of assets it might need. These questions are very open and answers to them could be different in  different organization and users. To allow flexibility of answering these questions by developers themselves, we have chosen to make it easy to  contribute a new kind of task or even a hook. This modularity in Optimus is achieved using plugins.
+Whereas tasks used in jobs that define how the transformation will execute, what configuration does it need as input from user, how does this task resolves dependencies between each other, what kind of assets it might need. These questions are very open and answers to them could be different in  different organisation and users. To allow flexibility of answering these questions by developers themselves, we have chosen to make it easy to  contribute a new kind of task or even a hook. This modularity in Optimus is achieved using plugins.
 
 > Plugins are self-contained binaries which implements predefined protobuf interfaces to extend Optimus functionalities.
 
@@ -584,7 +584,7 @@ A task is like a pipeline, it takes some input, it runs a procedure on the input
 
 ##### Task Configuration
 
-Task configurations are key value pair provided as part of job specification in `job.yaml` file. These are based on plugin implementation of `TaskPlugin` interface. These configurations accept simple strings as well as Optimus macros.
+Task configurations are key value pair provided as part of job specification in `job.yaml` file. These are based on plugin implementation of `TaskPlugin` interface. These configurations accept simple strings as well as Optimus [macros](../concepts#Macros-&-Templates).
 
 ##### File Assets
 

@@ -45,7 +45,7 @@ Specifications once requested for deployment needs to be stored somewhere as a s
 of truth. Optimus uses postgres as a storage engine to store raw specifications, job
 assets, run details, project configurations, etc.
 
-### Optimus Adapters
+### Optimus Plugins
 
 Optimus itself doesn't govern how a job is supposed to execute the transformation. It
 only provides the building blocks which needs to be implemented by a task. This task

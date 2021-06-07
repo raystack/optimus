@@ -28,8 +28,7 @@ transformers can be done easily.
   - Dry run query: Before SQL query is scheduled for transformation, during 
     deployment query will be dry-run to make sure it passes basic sanity 
     checks
-- Extensibility to support Python transformation **[in roadmap]**
-- Extensibility to support Spark transformations **[in roadmap]**
+- Extensibility to support Python transformation
 - Task versioning: If there is a scheduled job *A* and this gets modified as
   *A1* then it is possible to schedule same job for a date range as *A* and 
   thereafter as *A1*. **[in roadmap]**

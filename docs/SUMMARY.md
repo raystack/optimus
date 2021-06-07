@@ -18,12 +18,13 @@
 * [Architecture](concepts/architecture.md)
 * [Intervals and windows](concepts/intervals-and-windows.md)
 
+## Contribute
+
+* [Write a Plugin](developer/write-a-plugin.md)
+* [Contribution Process](contribute/contributing.md)
+
 ## Reference
 
 * [Configurations](reference/configuration.md)
 * [API](reference/API.md)
 * [FAQ](reference/faq.md)
-
-## Contribute
-
-* [Contribution Process](contribute/contributing.md)

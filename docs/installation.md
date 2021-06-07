@@ -1,10 +1,9 @@
 # Installation
 
-Installing Optimus on any system is straight forward. 
-We provide pre-built [binaries](https://github.com/odpf/optimus/releases), 
+Installing Optimus on any system is straight forward. We provide pre-built [binaries](https://github.com/odpf/optimus/releases), 
 Docker Images and support package managers.
 
-## macOS
+## MacOS
 You can install Optimus using homebrew on macOS:
 
 ```shell
