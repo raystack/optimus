@@ -293,23 +293,26 @@ sensors and tasks.
 
 This will help fully utilize the Scheduler capabilities.
 
-## Optimus Adapters
+## Optimus Plugins
 
-Optimus uses adapters to supports extensible tasks and hooks which needs to be 
-registered in a central repository.
+Optimus's responsibilities are currently divided in two parts, scheduling a transformation [task](#Job) and running one time action to create or modify a [datastore](#Datastore) resource. Defining how a datastore is managed can be easy and doesn't leave many options for configuration or ambiguity although the way datastores are implemented gives developers flexibility to contribute additional type of datastore, but it is not something we do every day.
 
-TODO
+Whereas tasks used in jobs that define how the transformation will execute, what configuration does it need as input from user, how does this task resolves dependencies between each other, what kind of assets it might need. These questions are very open and answers to them could be different in  different organisation and users. To allow flexibility of answering these questions by developers themselves, we have chosen to make it easy to  contribute a new kind of task or even a hook. This modularity in Optimus is achieved using plugins.
+
+> Plugins are self-contained binaries which implements predefined protobuf interfaces to extend Optimus functionalities.
+
+Optimus can be divided in two logical parts when we are thinking of a pluggable model, one is the **core** where everything happens which is common for all job/datastore, and the other part which could be variable and needs user specific definitions of how things should work which is a **plugin**.
 
 ## Datastore
 
-Optimus datastores are managed warehouses that provides CRUD on resources 
-attached to it. Each warehouse supports fixed set of resource types, each type
-has its own specification schema.
+Optimus datastores are managed warehouses that provides CRUD on resources attached to it. Each warehouse supports fixed set of resource types, each type has its own specification schema.
 
 At the moment, Optimus supports BigQuery datastore for 3 types of resources:
 - [Dataset](https://cloud.google.com/bigquery/docs/datasets-intro)
 - [Table](https://cloud.google.com/bigquery/docs/tables-intro)
 - [Standard View](https://cloud.google.com/bigquery/docs/views-intro)
+
+
 
 
 ## Secret Management
