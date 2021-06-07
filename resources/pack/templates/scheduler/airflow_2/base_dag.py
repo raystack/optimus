@@ -3,10 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
 from airflow.kubernetes.secret import Secret
-from airflow.utils.decorators import apply_defaults
-from airflow.utils.db import provide_session
 from airflow.configuration import conf
-from airflow.utils.state import State
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
@@ -60,14 +57,13 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     do_xcom_push=False,
     secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
     env_vars = [
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value='{{ $baseTaskSchema.SecretPath }}'),
         k8s.V1EnvVar(name="JOB_NAME",value='{{.Job.Name}}'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='{{.Hostname}}'),
         k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='{{.Project.Name}}'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='{{$.InstanceTypeTask}}'),
-        k8s.V1EnvVar(name="TASK_NAME",value='{{$baseTaskSchema.Name}}'),
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
   	],
     reattach_on_restart=True,
@@ -100,14 +96,13 @@ hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
     env_vars = [
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value='{{ $hookSchema.SecretPath }}'),
         k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='{{$.Hostname}}'),
         k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='{{$.Project.Name}}'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='{{$.InstanceTypeHook}}'),
-        k8s.V1EnvVar(name="TASK_NAME",value='{{$hookSchema.Name}}'),
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
   	],

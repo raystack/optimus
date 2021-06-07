@@ -51,7 +51,8 @@ type RuntimeServiceClient interface {
 	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
 	ListProjectNamespaces(ctx context.Context, in *ListProjectNamespacesRequest, opts ...grpc.CallOption) (*ListProjectNamespacesResponse, error)
-	// RegisterInstance is an internal admin command used during task execution
+	// RegisterInstance is an internal admin command used during task/hook execution
+	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
@@ -380,7 +381,8 @@ type RuntimeServiceServer interface {
 	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
 	ListProjectNamespaces(context.Context, *ListProjectNamespacesRequest) (*ListProjectNamespacesResponse, error)
-	// RegisterInstance is an internal admin command used during task execution
+	// RegisterInstance is an internal admin command used during task/hook execution
+	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)

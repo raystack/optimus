@@ -70,7 +70,7 @@ echo "-- current envs"
 printenv
 
 echo "-- running unit"
-exec "$@"
+exec $(eval echo "$@")
 `
 
 	BinaryNameFormat = "optimus-%s-%s_%s_%s_%s"
