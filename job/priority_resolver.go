@@ -1,6 +1,7 @@
 package job
 
 import (
+	"github.com/odpf/optimus/core/multi_root_tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 )
@@ -24,9 +25,6 @@ var (
 
 	// ErrPriorityNotFound is thrown when priority of a given spec is not found
 	ErrPriorityNotFound = errors.New("priority weight not found")
-
-	// ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
-	ErrCyclicDependencyEncountered = errors.New("a cycle dependency encountered in the tree")
 )
 
 // PriorityResolver defines an interface that represents getting
@@ -87,8 +85,8 @@ func (a *priorityResolver) resolvePriorities(jobSpecs []models.JobSpec) error {
 	return nil
 }
 
-func (a *priorityResolver) assignWeight(rootNodes []*DAGNode, weight int, taskPriorityMap map[string]int) {
-	subChildren := []*DAGNode{}
+func (a *priorityResolver) assignWeight(rootNodes []*multi_root_tree.TreeNode, weight int, taskPriorityMap map[string]int) {
+	subChildren := []*multi_root_tree.TreeNode{}
 	for _, rootNode := range rootNodes {
 		taskPriorityMap[rootNode.GetName()] = weight
 		subChildren = append(subChildren, rootNode.Dependents...)
@@ -100,7 +98,7 @@ func (a *priorityResolver) assignWeight(rootNodes []*DAGNode, weight int, taskPr
 
 // buildMultiRootDependencyTree - converts []JobSpec into a MultiRootTree
 // based on the dependencies of each DAG.
-func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec) (*MultiRootDAGTree, error) {
+func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec) (*multi_root_tree.MultiRootDAGTree, error) {
 	// creates map[jobName]jobSpec for faster retrieval
 	dagSpecMap := make(map[string]models.JobSpec)
 	for _, dagSpec := range jobSpecs {
@@ -109,7 +107,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 
 	// build a multi root tree and assign dependencies
 	// ignore any other dependency apart from intra-tenant
-	tree := NewMultiRootDAGTree()
+	tree := multi_root_tree.NewMultiRootDAGTree()
 	for _, childSpec := range dagSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
@@ -148,106 +146,11 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	return tree, nil
 }
 
-func (a *priorityResolver) findOrCreateDAGNode(tree *MultiRootDAGTree, dagSpec models.JobSpec) *DAGNode {
+func (a *priorityResolver) findOrCreateDAGNode(tree *multi_root_tree.MultiRootDAGTree, dagSpec models.JobSpec) *multi_root_tree.TreeNode {
 	node, ok := tree.GetNodeByName(dagSpec.Name)
 	if !ok {
-		node = NewDAGNode(dagSpec)
+		node = multi_root_tree.NewTreeNode(dagSpec)
 		tree.AddNode(node)
 	}
 	return node
-}
-
-// DAGNode represents a custom data type that contains a DAGSpec along with it's dependent DAGNodes
-type DAGNode struct {
-	DAG        models.JobSpec
-	Dependents []*DAGNode
-}
-
-func (t *DAGNode) GetName() string {
-	return t.DAG.Name
-}
-
-func (t *DAGNode) AddDependent(depNode *DAGNode) *DAGNode {
-	t.Dependents = append(t.Dependents, depNode)
-	return t
-}
-
-// NewDAGNode creates an instance of DAGNode
-func NewDAGNode(dag models.JobSpec) *DAGNode {
-	return &DAGNode{
-		DAG:        dag,
-		Dependents: []*DAGNode{},
-	}
-}
-
-// MultiRootDAGTree - represents a data type which has multiple independent root nodes
-// all root nodes have their independent tree based on depdencies of DAGNode.
-// it also maintains a map of nodes for faster lookups and managing node data.
-type MultiRootDAGTree struct {
-	rootNodes []string
-	dataMap   map[string]*DAGNode
-}
-
-func (t *MultiRootDAGTree) GetRootNodes() []*DAGNode {
-	nodes := []*DAGNode{}
-	for _, name := range t.rootNodes {
-		node, _ := t.GetNodeByName(name)
-		nodes = append(nodes, node)
-	}
-	return nodes
-}
-
-// MarkRoot marks a node as root
-func (t *MultiRootDAGTree) MarkRoot(node *DAGNode) {
-	t.rootNodes = append(t.rootNodes, node.GetName())
-}
-
-func (t *MultiRootDAGTree) AddNode(node *DAGNode) {
-	t.dataMap[node.GetName()] = node
-}
-
-func (t *MultiRootDAGTree) AddNodeIfNotExist(node *DAGNode) {
-	_, ok := t.GetNodeByName(node.GetName())
-	if !ok {
-		t.AddNode(node)
-	}
-}
-
-func (t *MultiRootDAGTree) GetNodeByName(dagName string) (*DAGNode, bool) {
-	value, ok := t.dataMap[dagName]
-	return value, ok
-}
-
-// IsCyclic - detects if there are any cycles in the tree
-func (t *MultiRootDAGTree) IsCyclic() error {
-	for _, rootNode := range t.GetRootNodes() {
-		err := t.hasCycle(rootNode, map[string]bool{})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// runs a DFS on a given tree using visitor pattern
-func (t *MultiRootDAGTree) hasCycle(root *DAGNode, visited map[string]bool) error {
-	for _, child := range root.Dependents {
-		_, ok := visited[root.GetName()]
-		if !ok {
-			visited[root.GetName()] = true
-		} else {
-			return errors.Wrap(ErrCyclicDependencyEncountered, root.GetName())
-		}
-		n, _ := t.GetNodeByName(child.GetName())
-		return t.hasCycle(n, visited)
-	}
-	return nil
-}
-
-// NewMultiRootDAGTree returns an instance of multi root dag tree
-func NewMultiRootDAGTree() *MultiRootDAGTree {
-	return &MultiRootDAGTree{
-		dataMap:   map[string]*DAGNode{},
-		rootNodes: []string{},
-	}
 }

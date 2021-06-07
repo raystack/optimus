@@ -88,6 +88,7 @@ func New(
 	cmd.AddCommand(renderCommand(l, conf.Host, jobSpecRepo))
 	cmd.AddCommand(validateCommand(l, conf.Host, jobSpecRepo))
 	cmd.AddCommand(optimusServeCommand(l, conf))
+	cmd.AddCommand(replayCommand(l, conf))
 
 	// admin specific commands
 	if conf.Admin.Enabled {

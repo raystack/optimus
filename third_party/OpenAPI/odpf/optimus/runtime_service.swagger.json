@@ -229,6 +229,67 @@
         ]
       }
     },
+    "/api/v1/project/{projectName}/job/{jobName}/replay": {
+      "get": {
+        "summary": "Replay replays the given job between start_date and end_date",
+        "operationId": "RuntimeService_Replay",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusReplayResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/api/v1/project/{projectName}/job/{jobName}/status": {
       "get": {
         "summary": "JobStatus returns the current and past run status of jobs",
@@ -1360,6 +1421,38 @@
         },
         "message": {
           "type": "string"
+        }
+      }
+    },
+    "optimusReplayResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "response": {
+          "$ref": "#/definitions/optimusReplayResponseNode"
+        }
+      }
+    },
+    "optimusReplayResponseNode": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "dependents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusReplayResponseNode"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       }
     },

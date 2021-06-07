@@ -1,7 +1,10 @@
 package job_test
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/odpf/optimus/core/multi_root_tree"
 
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
@@ -9,12 +12,16 @@ import (
 )
 
 // getDependencyObject - returns the dependency object by providing the specs and the dependency
-func getDependencyObject(specs map[string]models.JobSpec, dependencySpec string) map[string]models.JobSpecDependency {
-	depSpec, ok := specs[dependencySpec]
-	if !ok {
-		return map[string]models.JobSpecDependency{dependencySpec: {Job: nil}}
+func getDependencyObject(specs map[string]models.JobSpec, dependencySpecs ...string) map[string]models.JobSpecDependency {
+	dependenciesMap := make(map[string]models.JobSpecDependency)
+	for _, dependencySpec := range dependencySpecs {
+		depSpec, ok := specs[dependencySpec]
+		if !ok {
+			dependenciesMap[dependencySpec] = models.JobSpecDependency{Job: nil}
+		}
+		dependenciesMap[dependencySpec] = models.JobSpecDependency{Job: &depSpec}
 	}
-	return map[string]models.JobSpecDependency{dependencySpec: {Job: &depSpec}}
+	return dependenciesMap
 }
 
 func getMultiDependencyObject(specs map[string]models.JobSpec, dependencySpec1 string, dependencySpec2 string) map[string]models.JobSpecDependency {
@@ -300,7 +307,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assginer := job.NewPriorityResolver()
 		_, err := assginer.Resolve(dagSpec)
 		assert.Contains(t, err.Error(), "error occurred while resolving priority:")
-		assert.Contains(t, err.Error(), job.ErrCyclicDependencyEncountered.Error())
+		assert.Contains(t, err.Error(), multi_root_tree.ErrCyclicDependencyEncountered.Error())
 	})
 
 	t.Run("Resolve should give minWeight when all DAGs are dependent on each other", func(t *testing.T) {
@@ -323,16 +330,13 @@ func TestPriorityWeightResolver(t *testing.T) {
 		s2.Dependencies = getDependencyObject(specs, spec3)
 		specs[spec2] = s2
 
-		s3 = specs[spec3]
-		s3.Dependencies = getDependencyObject(specs, spec2)
-		specs[spec3] = s3
-
 		dagSpec = append(dagSpec, specs[spec2])
 		dagSpec = append(dagSpec, specs[spec3])
 
 		assginer := job.NewPriorityResolver()
 		_, err := assginer.Resolve(dagSpec)
-		assert.Equal(t, "error occurred while resolving priority: dag2-deps-on-dag1: "+job.ErrPriorityNotFound.Error(), err.Error())
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(err.Error(), multi_root_tree.ErrCyclicDependencyEncountered.Error()))
 	})
 
 	t.Run("Resolve should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
@@ -410,17 +414,17 @@ func TestPriorityWeightResolver(t *testing.T) {
 }
 
 func TestDAGNode(t *testing.T) {
-	t.Run("DAGNode should handle all DAGNode operations", func(t *testing.T) {
+	t.Run("TreeNode should handle all TreeNode operations", func(t *testing.T) {
 		dagSpec := models.JobSpec{Name: "testdag"}
 		dagSpec2 := models.JobSpec{Name: "testdag"}
 		dagSpec3 := models.JobSpec{Name: "testdag"}
 
-		node := job.NewDAGNode(dagSpec)
-		node2 := job.NewDAGNode(dagSpec2)
-		node3 := job.NewDAGNode(dagSpec3)
+		node := multi_root_tree.NewTreeNode(dagSpec)
+		node2 := multi_root_tree.NewTreeNode(dagSpec2)
+		node3 := multi_root_tree.NewTreeNode(dagSpec3)
 
 		assert.Equal(t, "testdag", node.GetName())
-		assert.Equal(t, []*job.DAGNode{}, node.Dependents)
+		assert.Equal(t, []*multi_root_tree.TreeNode{}, node.Dependents)
 
 		node.AddDependent(node2)
 		assert.Equal(t, 1, len(node.Dependents))
@@ -440,15 +444,15 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagSpec2 := models.JobSpec{Name: "testdag2"}
 		dagSpec3 := models.JobSpec{Name: "testdag3"}
 
-		node1 := job.NewDAGNode(dagSpec1)
-		node2 := job.NewDAGNode(dagSpec2)
-		node3 := job.NewDAGNode(dagSpec3)
-		node4 := job.NewDAGNode(dagSpec2)
+		node1 := multi_root_tree.NewTreeNode(dagSpec1)
+		node2 := multi_root_tree.NewTreeNode(dagSpec2)
+		node3 := multi_root_tree.NewTreeNode(dagSpec3)
+		node4 := multi_root_tree.NewTreeNode(dagSpec2)
 
 		node2.AddDependent(node3)
 		node1.AddDependent(node1)
 
-		tree := job.NewMultiRootDAGTree()
+		tree := multi_root_tree.NewMultiRootDAGTree()
 
 		// non-existing node should return nil, and ok=false
 		n, ok := tree.GetNodeByName("non-existing")
@@ -460,11 +464,11 @@ func TestMultiRootDAGTree(t *testing.T) {
 		n, ok = tree.GetNodeByName(node1.GetName())
 		assert.True(t, ok)
 		assert.Equal(t, dagSpec1.Name, n.GetName())
-		assert.Equal(t, []*job.DAGNode{}, tree.GetRootNodes())
+		assert.Equal(t, []*multi_root_tree.TreeNode{}, tree.GetRootNodes())
 
 		// should return root nodes, when added as root
 		tree.MarkRoot(node1)
-		assert.Equal(t, []*job.DAGNode{node1}, tree.GetRootNodes())
+		assert.Equal(t, []*multi_root_tree.TreeNode{node1}, tree.GetRootNodes())
 
 		// adding nodes should maintain the dependency relationship
 		tree.AddNode(node2)
@@ -504,22 +508,23 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagSpec2 := models.JobSpec{Name: "testdag2"}
 		dagSpec3 := models.JobSpec{Name: "testdag3"}
 
-		node1 := job.NewDAGNode(dagSpec1)
-		node2 := job.NewDAGNode(dagSpec2)
-		node3 := job.NewDAGNode(dagSpec3)
+		node1 := multi_root_tree.NewTreeNode(dagSpec1)
+		node2 := multi_root_tree.NewTreeNode(dagSpec2)
+		node3 := multi_root_tree.NewTreeNode(dagSpec3)
 
 		node1.AddDependent(node2)
 		node2.AddDependent(node3)
 		node3.AddDependent(node2)
 
-		tree := job.NewMultiRootDAGTree()
+		tree := multi_root_tree.NewMultiRootDAGTree()
 		tree.AddNode(node1)
 		tree.MarkRoot(node1)
 		tree.AddNode(node2)
 		tree.AddNode(node3)
 
 		err := tree.IsCyclic()
-		assert.Equal(t, "testdag2: "+job.ErrCyclicDependencyEncountered.Error(), err.Error())
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(err.Error(), multi_root_tree.ErrCyclicDependencyEncountered.Error()))
 	})
 
 	t.Run("should create tree with multi level dependencies", func(t *testing.T) {
@@ -535,23 +540,23 @@ func TestMultiRootDAGTree(t *testing.T) {
 		d1211 := models.JobSpec{Name: "d1211"}
 		d1212 := models.JobSpec{Name: "d1212"}
 
-		tree := job.NewMultiRootDAGTree()
+		tree := multi_root_tree.NewMultiRootDAGTree()
 
-		tree.AddNodeIfNotExist(job.NewDAGNode(d1211))
-		tree.AddNodeIfNotExist(job.NewDAGNode(d1212))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d1211))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d1212))
 
-		tree.AddNodeIfNotExist(job.NewDAGNode(d11))
-		tree.AddNodeIfNotExist(job.NewDAGNode(d12))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d11))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d12))
 
-		tree.AddNodeIfNotExist(job.NewDAGNode(d111))
-		tree.AddNodeIfNotExist(job.NewDAGNode(d121))
-		tree.AddNodeIfNotExist(job.NewDAGNode(d122))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d111))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d121))
+		tree.AddNodeIfNotExist(multi_root_tree.NewTreeNode(d122))
 
 		node111, _ := tree.GetNodeByName(d111.Name)
 		node112, _ := tree.GetNodeByName(d112.Name)
 		if node112 == nil {
-			node112 = job.NewDAGNode(d112)
-			tree.AddNode(job.NewDAGNode(d112))
+			node112 = multi_root_tree.NewTreeNode(d112)
+			tree.AddNode(multi_root_tree.NewTreeNode(d112))
 		}
 		node121, _ := tree.GetNodeByName(d121.Name)
 		node122, _ := tree.GetNodeByName(d122.Name)
@@ -559,7 +564,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		node11, _ := tree.GetNodeByName(d11.Name)
 		node12, _ := tree.GetNodeByName(d12.Name)
 
-		node1 := job.NewDAGNode(d1)
+		node1 := multi_root_tree.NewTreeNode(d1)
 		node1.AddDependent(node11).AddDependent(node12)
 		tree.AddNode(node1)
 		tree.MarkRoot(node1)
@@ -580,7 +585,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		err := tree.IsCyclic()
 		assert.Nil(t, err)
 
-		depsMap := map[*job.DAGNode]int{
+		depsMap := map[*multi_root_tree.TreeNode]int{
 			node1:  2,
 			node11: 2, node12: 2,
 			node111: 0, node112: 0, node121: 2, node122: 0,
@@ -596,9 +601,9 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 	t.Run("should not have cycles if only one node with no dependency is in the tree", func(t *testing.T) {
 		dagSpec2 := models.JobSpec{Name: "testdag2"}
-		node2 := job.NewDAGNode(dagSpec2)
+		node2 := multi_root_tree.NewTreeNode(dagSpec2)
 
-		tree := job.NewMultiRootDAGTree()
+		tree := multi_root_tree.NewMultiRootDAGTree()
 		tree.AddNode(node2)
 		tree.MarkRoot(node2)
 
@@ -608,9 +613,9 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 	t.Run("should not have cycles in a tree with no root", func(t *testing.T) {
 		dagSpec2 := models.JobSpec{Name: "testdag2"}
-		node2 := job.NewDAGNode(dagSpec2)
+		node2 := multi_root_tree.NewTreeNode(dagSpec2)
 
-		tree := job.NewMultiRootDAGTree()
+		tree := multi_root_tree.NewMultiRootDAGTree()
 		tree.AddNode(node2)
 
 		err := tree.IsCyclic()
@@ -618,23 +623,23 @@ func TestMultiRootDAGTree(t *testing.T) {
 	})
 
 	t.Run("should detect any cycle in the tree with multiple sub trees", func(t *testing.T) {
-		node1 := job.NewDAGNode(models.JobSpec{Name: "testdag1"})
-		node2 := job.NewDAGNode(models.JobSpec{Name: "testdag2"})
-		node3 := job.NewDAGNode(models.JobSpec{Name: "testdag3"})
+		node1 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag1"})
+		node2 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag2"})
+		node3 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag3"})
 		node1.AddDependent(node2)
 		node2.AddDependent(node3)
 
-		node11 := job.NewDAGNode(models.JobSpec{Name: "testdag11"})
-		node21 := job.NewDAGNode(models.JobSpec{Name: "testdag21"})
-		node31 := job.NewDAGNode(models.JobSpec{Name: "testdag31"})
-		node41 := job.NewDAGNode(models.JobSpec{Name: "testdag41"})
+		node11 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag11"})
+		node21 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag21"})
+		node31 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag31"})
+		node41 := multi_root_tree.NewTreeNode(models.JobSpec{Name: "testdag41"})
 		node11.AddDependent(node21)
 		node21.AddDependent(node31)
 		node31.AddDependent(node11) // causing cyclic dep
 		node31.AddDependent(node41)
 		node41.AddDependent(node21)
 
-		tree := job.NewMultiRootDAGTree()
+		tree := multi_root_tree.NewMultiRootDAGTree()
 		tree.AddNode(node1)
 		tree.MarkRoot(node1)
 		tree.AddNode(node2)
@@ -647,6 +652,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		tree.AddNode(node41)
 
 		err := tree.IsCyclic()
-		assert.Equal(t, "testdag21: "+job.ErrCyclicDependencyEncountered.Error(), err.Error())
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(err.Error(), multi_root_tree.ErrCyclicDependencyEncountered.Error()))
 	})
 }

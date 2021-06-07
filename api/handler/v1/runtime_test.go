@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/core/multi_root_tree"
+
 	"github.com/odpf/optimus/instance"
 
 	"github.com/golang/protobuf/ptypes"
@@ -1433,6 +1435,101 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resp, err := runtimeServiceServer.UpdateResource(context.TODO(), &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
+		})
+	})
+
+	t.Run("Replay", func(t *testing.T) {
+		t.Run("should update datastore resource successfully", func(t *testing.T) {
+			projectName := "a-data-project"
+			jobName := "a-data-job"
+			timeLayout := "2006-01-02"
+			startDate, _ := time.Parse(timeLayout, "2020-11-25")
+			endDate, _ := time.Parse(timeLayout, "2020-11-28")
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+			}
+			dagNode := multi_root_tree.NewTreeNode(jobSpec)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("Replay", namespaceSpec, jobSpec, true, startDate, endDate).Return(dagNode, nil)
+			defer jobService.AssertExpectations(t)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				DryRun:      true,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, true, replayResponse.Success)
+			expectedReplayResponse, err := adapter.ToReplayResponseNode(dagNode)
+			assert.Nil(t, err)
+			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.Response.JobName)
+			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.Response.Dependents)
+			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.Response.Runs)
 		})
 	})
 }

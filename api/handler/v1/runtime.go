@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/core/multi_root_tree"
+
 	"github.com/odpf/optimus/datastore"
 
 	"github.com/golang/protobuf/ptypes"
@@ -54,6 +56,8 @@ type ProtoAdapter interface {
 
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
+
+	ToReplayResponseNode(res *multi_root_tree.TreeNode) (*pb.ReplayResponseNode, error)
 }
 
 type RuntimeServiceServer struct {
@@ -726,6 +730,55 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	}
 	return &pb.ListResourceSpecificationResponse{
 		Resources: resourceProtos,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
+	}
+
+	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
+	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: namespace %s not found", err.Error(), req.GetNamespace()))
+	}
+
+	jobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), namespaceSpec)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: failed to find the job %s for namespace %s", err.Error(),
+			req.GetJobName(), req.GetNamespace()))
+	}
+
+	startDate, err := time.Parse(job.ReplayDateFormat, req.StartDate)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("unable to parse replay start date(e.g. %s): %v", job.ReplayDateFormat, err))
+	}
+
+	endDate := startDate
+	if req.EndDate != "" {
+		if endDate, err = time.Parse(job.ReplayDateFormat, req.EndDate); err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("unable to parse replay end date(e.g. %s): %v", job.ReplayDateFormat, err))
+		}
+	}
+	if endDate.Before(startDate) {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("replay end date cannot be before start date"))
+	}
+
+	rootNode, err := sv.jobSvc.Replay(namespaceSpec, jobSpec, req.DryRun, startDate, endDate)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+	}
+
+	node, err := sv.adapter.ToReplayResponseNode(rootNode)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+	}
+	return &pb.ReplayResponse{
+		Success:  true,
+		Response: node,
 	}, nil
 }
 

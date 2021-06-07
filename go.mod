@@ -6,8 +6,14 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
+	github.com/bufbuild/buf v0.20.1 // indirect
+	github.com/coreos/go-etcd v2.0.0+incompatible // indirect
+	github.com/cpuguy83/go-md2man v1.0.10 // indirect
+	github.com/emirpasic/gods v1.12.0
 	github.com/fatih/color v1.7.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
+	github.com/gofrs/flock v0.8.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-migrate/migrate/v4 v4.14.1
@@ -22,14 +28,16 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.4.1
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/jhump/protoreflect v1.8.1 // indirect
+	github.com/jhump/protoreflect v1.7.1 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.11.7 // indirect
+	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/knadh/koanf v1.1.0
 	github.com/kushsharma/parallel v0.2.1
 	github.com/kushsharma/structs v1.1.1
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.12
@@ -39,7 +47,13 @@ require (
 	github.com/spf13/afero v1.1.2
 	github.com/spf13/cobra v1.1.2
 	github.com/stretchr/testify v1.7.0
+	github.com/twitchtv/twirp v7.1.0+incompatible // indirect
+	github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8 // indirect
+	github.com/xlab/treeprint v1.1.0
+	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
 	go.opencensus.io v0.22.6 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.16.0 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/oauth2 v0.0.0-20210201163806-010130855d6c
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
@@ -47,7 +61,9 @@ require (
 	google.golang.org/api v0.33.0
 	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea
 	google.golang.org/grpc v1.35.0
-	google.golang.org/protobuf v1.25.1-0.20201208041424-160c7477e0e8
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
+	google.golang.org/protobuf v1.25.0
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
