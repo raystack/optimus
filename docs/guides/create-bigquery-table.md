@@ -8,17 +8,17 @@ At the moment only native table is supported.
 
 There are 3 ways to create a table:
 
-### Creating table with Opctl
+### Creating table with Optimus
 
 Supported datastore can be selected by calling
 ```bash
-opctl create resource
+optimus create resource
 ```
-Opctl will request a resource name which should be unique across whole datastore.
+Optimus will request a resource name which should be unique across whole datastore.
 All resource specification contains a name field which conforms to a fixed format.
 In case of bigquery table, format should be
 `projectname.datasetname.tablename`.
-After the name is provided, `Opctl` will create a file in configured datastore 
+After the name is provided, `optimus` will create a file in configured datastore 
 directory. Open the created specification file and add additional spec details
 as follows:
 ```yaml
@@ -58,7 +58,7 @@ spec:
 This will add labels, description, schema, clustering, partition over colume2 by day
 on the table once the `deploy` command is invoked.
 
-Opctl generates specification on the root directory inside datastore with directory
+Optimus generates specification on the root directory inside datastore with directory
 name same as resource name, although you can change directory name to whatever you 
 find fit to organize resources. Directory structures inside datastore doesn't 
 matter as long as `resource.yaml` is in a unique directory. 

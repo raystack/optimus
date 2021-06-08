@@ -30,7 +30,7 @@ Optimus helps your organization to build & manage data pipelines with ease.
 ## Getting Started
 
 Optimus has two components, Optimus service that is the core orchestrator installed
-on server side, and a CLI binary(`opctl`) used to interact with this service.
+on server side, and a CLI binary used to interact with this service.
 
 ### Compiling from source
 
@@ -40,52 +40,33 @@ Optimus requires the following dependencies:
 * Golang (version 1.16 or above)
 * Git
 
-#### Opctl
-
-Run the following commands to compile `opctl` from source
-```shell
-git clone git@github.com:odpf/optimus.git
-cd optimus
-make build-ctl
-cp ./opctl /usr/bin # optional - copy the executables to a location in $PATH
-```
-The last step isn't necessarily required. Feel free to put the compiled executable anywhere you want.
-
-Test if `opctl` is working as expected
-```shell
-./opctl version
-```
-
-#### Optimus
-
 Run the following commands to compile `optimus` from source
 ```shell
 git clone git@github.com:odpf/optimus.git
 cd optimus
-make build-optimus
+make build
 ```
 Use the following command to run
 ```shell
-./optimus
+./optimus version
 ```
-Note: without required arguments, optimus won't be able to start.
 
+Optimus service can be started with
+```shell
+./optimus serve
+```
 
-**Optimus Service configuration**
+`serve` command has few required configurations that needs to be set for it to start. Configuration can either be stored
+in `.optimus.yaml` file or set as environment variable. Read more about it in [references](./docs/reference/configuration.md).
 
-Configuration inputs can either be passed as command arguments or set as environment variable
+### Installing via brew
 
-| command                | env name               | required | description                                                       |
-| ---------------------- | ---------------------- | -------- | ----------------------------------------------------------------- |
-| server-port            | SERVER_PORT            | N        | port on which service will listen for http calls, default. `8080` |
-| log-level              | LOG_LEVEL              | N        | log level - DEBUG, INFO, WARNING, ERROR, FATAL                    |
-| ingress-host           | INGRESS_HOST           | Y        | e.g. optimus.example.io:80                                        |
-| db-host                | DB_HOST                | Y        |                                                                   |
-| db-name                | DB_NAME                | Y        |                                                                   |
-| db-user                | DB_USER                | Y        |                                                                   |
-| db-password            | DB_PASSWORD            | Y        |                                                                   |
-| app-key                | APP_KEY                | Y        | 32 character random hash used to encrypt secrets                  |
+You can install Optimus using homebrew on macOS:
 
+```shell
+brew install odpf/taps/optimus
+optimus version
+```
 
 ## Credits
 

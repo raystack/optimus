@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"github.com/odpf/optimus/models"
@@ -23,7 +23,6 @@ func adminBuildCommand(l logger) *cli.Command {
 		Short: "Register a job run and get required assets",
 	}
 	cmd.AddCommand(adminBuildInstanceCommand(l))
-	cmd.AddCommand(adminBuildPluginCommand(l))
 	return cmd
 }
 

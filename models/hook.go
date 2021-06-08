@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -86,7 +87,7 @@ type HookPluginConfigs []HookPluginConfig
 
 func (c HookPluginConfigs) Get(name string) (HookPluginConfig, bool) {
 	for _, con := range c {
-		if con.Name == name {
+		if strings.ToLower(con.Name) == strings.ToLower(name) {
 			return con, true
 		}
 	}
@@ -137,7 +138,7 @@ type HookPluginAssets []HookPluginAsset
 
 func (c HookPluginAssets) Get(name string) (HookPluginAsset, bool) {
 	for _, con := range c {
-		if con.Name == name {
+		if strings.ToLower(con.Name) == strings.ToLower(name) {
 			return con, true
 		}
 	}

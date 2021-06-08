@@ -1,26 +1,20 @@
-package main
+package server
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/odpf/optimus/ext/scheduler/airflow"
+
 	"github.com/odpf/optimus/config"
-
-	"github.com/hashicorp/go-hclog"
-
-	"github.com/odpf/optimus/plugin"
-
-	hplugin "github.com/hashicorp/go-plugin"
 
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/meta"
@@ -66,153 +60,6 @@ var (
 
 	GRPCMaxRecvMsgSize = 25 << 20 // 25MB
 )
-
-// Config for the service
-var Config = struct {
-	ServerPort          string
-	ServerHost          string
-	LogLevel            string
-	DBHost              string
-	DBUser              string
-	DBPassword          string
-	DBName              string
-	DBSSLMode           string
-	MaxIdleDBConn       string
-	MaxOpenDBConn       string
-	IngressHost         string
-	AppKey              string
-	KafkaJobTopic       string
-	KafkaBrokers        string
-	KafkaBatchSize      string
-	MetaWriterBatchSize string
-}{
-	ServerPort:          "9100",
-	ServerHost:          "0.0.0.0",
-	LogLevel:            "DEBUG",
-	MaxIdleDBConn:       "5",
-	MaxOpenDBConn:       "10",
-	DBSSLMode:           "disable",
-	DBPassword:          "-",
-	KafkaJobTopic:       "resource_optimus_job_log",
-	KafkaBatchSize:      "50",
-	MetaWriterBatchSize: "50",
-	KafkaBrokers:        "-",
-}
-
-func lookupEnvOrString(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-// cfg defines an input parameter to the service
-type cfg struct {
-	Env, Cmd, Desc string
-}
-
-// cfgRules define how input parameters map to local
-// configuration variables
-var cfgRules = map[*string]cfg{
-	&Config.ServerPort: {
-		Env:  "SERVER_PORT",
-		Cmd:  "server-port",
-		Desc: "port to listen on",
-	},
-	&Config.ServerHost: {
-		Env:  "SERVER_HOST",
-		Cmd:  "server-host",
-		Desc: "the network interface to listen on",
-	},
-	&Config.LogLevel: {
-		Env:  "LOG_LEVEL",
-		Cmd:  "log-level",
-		Desc: "log level - DEBUG, INFO, WARNING, ERROR, FATAL",
-	},
-	&Config.DBHost: {
-		Env:  "DB_HOST",
-		Cmd:  "db-host",
-		Desc: "database host to connect to database",
-	},
-	&Config.DBUser: {
-		Env:  "DB_USER",
-		Cmd:  "db-user",
-		Desc: "database user to connect to database",
-	},
-	&Config.DBPassword: {
-		Env:  "DB_PASSWORD",
-		Cmd:  "db-password",
-		Desc: "database password to connect to database",
-	},
-	&Config.DBName: {
-		Env:  "DB_NAME",
-		Cmd:  "db-name",
-		Desc: "database name to connect to database",
-	},
-	&Config.DBSSLMode: {
-		Env:  "DB_SSL_MODE",
-		Cmd:  "db-ssl-mode",
-		Desc: "database sslmode to connect to database (require, disable)",
-	},
-	&Config.MaxIdleDBConn: {
-		Env:  "MAX_IDLE_DB_CONN",
-		Cmd:  "max-idle-db-conn",
-		Desc: "maximum allowed idle DB connections",
-	},
-	&Config.IngressHost: {
-		Env:  "INGRESS_HOST",
-		Cmd:  "ingress-host",
-		Desc: "service ingress host for jobs to communicate back to optimus",
-	},
-	&Config.AppKey: {
-		Env:  "APP_KEY",
-		Cmd:  "app-key",
-		Desc: "random 32 character hash used for encrypting secrets",
-	},
-	&Config.KafkaJobTopic: {
-		Env:  "KAFKA_JOB_TOPIC",
-		Cmd:  "kafka-job-topic",
-		Desc: "kafka topic where metadata of optimus Job needs to be published",
-	},
-	&Config.KafkaBrokers: {
-		Env:  "KAFKA_BROKERS",
-		Cmd:  "kafka-brokers",
-		Desc: "comma separated kafka brokers to use for publishing metadata, leave empty to disable metadata publisher",
-	},
-	&Config.KafkaBatchSize: {
-		Env:  "KAFKA_BATCH_SIZE",
-		Cmd:  "kafka-batch-size",
-		Desc: "limit on how many messages will be buffered before being sent to a kafka partition.",
-	},
-	&Config.MetaWriterBatchSize: {
-		Env:  "META_WRITER_BATCH_SIZE",
-		Cmd:  "meta-writer-batch-size",
-		Desc: "limit on how many messages will be buffered before being sent to a writer.",
-	},
-}
-
-func validateConfig() error {
-	var errs []string
-	for v, cfg := range cfgRules {
-		if strings.TrimSpace(*v) == "" {
-			errs = append(
-				errs,
-				fmt.Sprintf(
-					"missing required parameter: -%s (can also be set using %s environment variable)",
-					cfg.Cmd,
-					cfg.Env,
-				),
-			)
-		}
-		if *v == "-" { // "- is used for empty arguments"
-			*v = ""
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%s", strings.Join(errs, "\n"))
-	}
-	return nil
-}
 
 // projectJobSpecRepoFactory stores raw specifications
 type projectJobSpecRepoFactory struct {
@@ -375,66 +222,76 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 	}
 }
 
-func init() {
-	for v, cfg := range cfgRules {
-		flag.StringVar(v, cfg.Cmd, lookupEnvOrString(cfg.Env, *v), cfg.Desc)
+func checkRequiredConfigs(conf *config.Optimus) error {
+	errRequiredMissing := errors.New("required config missing")
+	if conf.Serve.IngressHost == "" {
+		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
-	flag.Parse()
+
+	if conf.Serve.DB.DSN == "" {
+		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
+	}
+	if parsed, err := url.Parse(conf.Serve.DB.DSN); err != nil {
+		return errors.Wrap(err, "failed to parse serve.db.dsn")
+	} else {
+		if parsed.Scheme != "postgres" {
+			return errors.New("unsupported database scheme, use 'postgres'")
+		}
+	}
+	return nil
 }
 
-func main() {
+func Initialize(conf *config.Optimus) error {
+	if err := checkRequiredConfigs(conf); err != nil {
+		return err
+	}
+
 	log := logrus.New()
 	log.SetOutput(os.Stdout)
-	logger.Init(Config.LogLevel)
+	logger.Init(conf.Log.Level)
 
 	mainLog := log.WithField("reporter", "main")
 	mainLog.Infof("starting optimus %s", config.Version)
-
-	err := validateConfig()
-	if err != nil {
-		mainLog.Fatalf("configuration error:\n%v", err)
-	}
-
-	// Create an hclog.Logger
-	pluginLogLevel := hclog.Info
-	if Config.LogLevel == "DEBUG" {
-		pluginLogLevel = hclog.Debug
-	}
-	pluginLogger := hclog.New(&hclog.LoggerOptions{
-		Name:   "optimus",
-		Output: os.Stdout,
-		Level:  pluginLogLevel,
-	})
-	plugin.Initialize(pluginLogger)
-	// Make sure we clean up any managed plugins at the end of this
-	defer hplugin.CleanupClients()
 
 	progressObs := &pipelineLogObserver{
 		log: log.WithField("reporter", "pipeline"),
 	}
 
 	// setup db
-	maxIdleConnection, _ := strconv.Atoi(Config.MaxIdleDBConn)
-	maxOpenConnection, _ := strconv.Atoi(Config.MaxOpenDBConn)
-	databaseURL := fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=%s", Config.DBUser, url.QueryEscape(Config.DBPassword), Config.DBHost, Config.DBName, Config.DBSSLMode)
-	if err := postgres.Migrate(databaseURL); err != nil {
-		panic(err)
+	if err := postgres.Migrate(conf.Serve.DB.DSN); err != nil {
+		return errors.Wrap(err, "postgres.Migrate")
 	}
-	dbConn, err := postgres.Connect(databaseURL, maxIdleConnection, maxOpenConnection)
+	dbConn, err := postgres.Connect(conf.Serve.DB.DSN, conf.Serve.DB.MaxIdleConnection, conf.Serve.DB.MaxOpenConnection)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "postgres.Connect")
 	}
 
-	// init default scheduler, should be configurable by user configs later
-	models.Scheduler = airflow2.NewScheduler(
-		resources.FileSystem,
-		&objectWriterFactory{},
-		&http.Client{},
-	)
+	// init default scheduler
+	switch conf.Scheduler.Name {
+	case "airflow":
+		models.Scheduler = airflow.NewScheduler(
+			resources.FileSystem,
+			&objectWriterFactory{},
+			&http.Client{},
+		)
+	case "airflow2":
+		models.Scheduler = airflow2.NewScheduler(
+			resources.FileSystem,
+			&objectWriterFactory{},
+			&http.Client{},
+		)
+	default:
+		models.Scheduler = airflow2.NewScheduler(
+			resources.FileSystem,
+			&objectWriterFactory{},
+			&http.Client{},
+		)
+	}
 
-	appHash, err := models.NewApplicationSecret(Config.AppKey)
+	// used to encrypt secrets
+	appHash, err := models.NewApplicationSecret(conf.Serve.AppKey)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "NewApplicationSecret")
 	}
 
 	// registered project store repository factory, its a wrapper over a storage
@@ -445,7 +302,7 @@ func main() {
 	}
 	registeredProjects, err := projectRepoFac.New().GetAll()
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "projectRepoFactory.GetAll()")
 	}
 	// bootstrap scheduler for registered projects
 	for _, proj := range registeredProjects {
@@ -467,12 +324,10 @@ func main() {
 		db:   dbConn,
 		hash: appHash,
 	}
-
 	namespaceSpecRepoFac := &namespaceRepoFactory{
 		db:   dbConn,
 		hash: appHash,
 	}
-
 	projectJobSpecRepoFac := projectJobSpecRepoFactory{
 		db: dbConn,
 	}
@@ -482,7 +337,7 @@ func main() {
 		db:                    dbConn,
 		projectJobSpecRepoFac: projectJobSpecRepoFac,
 	}
-	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), Config.IngressHost)
+	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), conf.Serve.IngressHost)
 	dependencyResolver := job.NewDependencyResolver()
 	priorityResolver := job.NewPriorityResolver()
 
@@ -495,11 +350,7 @@ func main() {
 	// Make sure that log statements internal to gRPC library are logged using the logrus Logger as well.
 	grpc_logrus.ReplaceGrpcLogger(logrusEntry)
 
-	serverPort, err := strconv.Atoi(Config.ServerPort)
-	if err != nil {
-		panic("invalid server port")
-	}
-	grpcAddr := fmt.Sprintf("%s:%d", Config.ServerHost, serverPort)
+	grpcAddr := fmt.Sprintf("%s:%d", conf.Serve.Host, conf.Serve.Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -512,18 +363,10 @@ func main() {
 
 	// prepare factory writer for metadata
 	var metaSvcFactory meta.MetaSvcFactory
-	kafkaBatchSize, err := strconv.Atoi(Config.KafkaBatchSize)
-	if err != nil {
-		mainLog.Fatalf("error reading kafka batch size: %v", err)
-	}
-	writerBatchSize, err := strconv.Atoi(Config.MetaWriterBatchSize)
-	if err != nil {
-		mainLog.Fatalf("error reading writer batch size: %v", err)
-	}
-	kafkaWriter := NewKafkaWriter(Config.KafkaJobTopic, strings.Split(Config.KafkaBrokers, ","), kafkaBatchSize)
+	kafkaWriter := NewKafkaWriter(conf.Serve.Metadata.KafkaJobTopic, strings.Split(conf.Serve.Metadata.KafkaBrokers, ","), conf.Serve.Metadata.KafkaBatchSize)
 	if kafkaWriter != nil {
-		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", Config.KafkaBrokers, Config.KafkaJobTopic)
-		metaWriter := meta.NewWriter(kafkaWriter, writerBatchSize)
+		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", conf.Serve.Metadata.KafkaBrokers, conf.Serve.Metadata.KafkaJobTopic)
+		metaWriter := meta.NewWriter(kafkaWriter, conf.Serve.Metadata.WriterBatchSize)
 		defer kafkaWriter.Close()
 		metaSvcFactory = &metadataServiceFactory{
 			writer: metaWriter,
@@ -585,12 +428,12 @@ func main() {
 		grpc.WithInsecure(),
 	}...)
 	if err != nil {
-		panic(fmt.Errorf("Fail to dial: %v", err))
+		return errors.Wrap(err, "grpc.DialContext")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if err := pb.RegisterRuntimeServiceHandler(ctx, gwmux, grpcConn); err != nil {
-		panic(err)
+		return errors.Wrap(err, "RegisterRuntimeServiceHandler")
 	}
 
 	// base router
@@ -634,11 +477,13 @@ func main() {
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
 	if err := srv.Shutdown(ctxProxy); err != nil {
-		mainLog.Warn(err)
+		return errors.Wrap(err, "srv.Shutdown")
 	}
 	grpcServer.GracefulStop()
 
 	mainLog.Info("bye")
+
+	return nil
 }
 
 // grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.

@@ -6,6 +6,7 @@ import (
 	goLog "log"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,22 +31,13 @@ func InitWithWriter(mode string, writer io.Writer) {
 	}
 	log = logrus.New()
 	log.Out = writer
-	//log.Formatter = new(logrus.JSONFormatter)
+	log.Formatter = new(logrus.JSONFormatter)
+	log.Level = logrus.InfoLevel
 
-	switch mode {
-	case DEBUG:
-		log.Level = logrus.DebugLevel
-	case INFO:
-		log.Level = logrus.InfoLevel
-	case WARNING:
-		log.Level = logrus.WarnLevel
-	case ERROR:
-		log.Level = logrus.ErrorLevel
-	case FATAL:
-		log.Level = logrus.FatalLevel
-	default:
-		fmt.Println("invalid log level. using DEBUG as default")
-		log.Level = logrus.DebugLevel
+	if l, err := logrus.ParseLevel(mode); err != nil {
+		fmt.Println(errors.Wrap(err, "using 'info' as default").Error())
+	} else {
+		log.Level = l
 	}
 
 	entry = logrus.NewEntry(log)

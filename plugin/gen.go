@@ -42,8 +42,8 @@ const (
 	DockerTemplate = `{{.Header}}
 
 RUN mkdir -p /opt
-ADD "{{.OpctlDownloadUrl}}" /opt/opctl
-RUN chmod +x /opt/opctl
+ADD "{{.OptimusDownloadUrl}}" /opt/optimus
+RUN chmod +x /opt/optimus
 
 RUN {{.EntrypointTemplate}}
 RUN chmod +x /opt/entrypoint.sh
@@ -57,8 +57,8 @@ ENTRYPOINT ["/opt/entrypoint.sh"]
 sleep 5
 
 # get resources
-echo "-- initializing opctl assets"
-OPTIMUS_ADMIN=1 /opt/opctl admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $TASK_TYPE --name $TASK_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
+echo "-- initializing optimus assets"
+OPTIMUS_ADMIN_ENABLED=1 /opt/optimus admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $TASK_TYPE --name $TASK_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
 
 # TODO: this doesnt support using back quote sign in env vars, fix it
 echo "-- exporting env"
@@ -76,7 +76,8 @@ exec $(eval echo "$@")
 	BinaryNameFormat = "optimus-%s-%s_%s_%s_%s"
 )
 
-func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, opctlDownloadUrl string, skipDockerBuild, skipBinaryBuild bool) error {
+// (kush.sharma): deprecated, gonna delete this soon
+func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, optimusDownloadUrl string, skipDockerBuild, skipBinaryBuild bool) error {
 	inputConfig := BuildConfig{}
 	if err := yaml.Unmarshal(configBytes, &inputConfig); err != nil {
 		return err
@@ -106,7 +107,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 
 		dockerFile, err := templateEngine.CompileString(DockerTemplate, map[string]interface{}{
 			"Header":             taskPlugin.Docker.Header,
-			"OpctlDownloadUrl":   opctlDownloadUrl,
+			"OptimusDownloadUrl": optimusDownloadUrl,
 			"EntrypointTemplate": preparedEntrypoint,
 			"Footer":             taskPlugin.Docker.Footer,
 		})
@@ -179,7 +180,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 	for _, hookPlugin := range inputConfig.Plugins.Hook {
 		dockerFile, err := templateEngine.CompileString(DockerTemplate, map[string]interface{}{
 			"Header":             hookPlugin.Docker.Header,
-			"OpctlDownloadUrl":   opctlDownloadUrl,
+			"OptimusDownloadUrl": optimusDownloadUrl,
 			"EntrypointTemplate": preparedEntrypoint,
 			"Footer":             hookPlugin.Docker.Footer,
 		})

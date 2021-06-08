@@ -8,7 +8,7 @@ You can install Optimus using homebrew on macOS:
 
 ```shell
 brew install odpf/taps/optimus
-opctl version
+optimus version
 ```
 
 ## Download Binaries
@@ -19,5 +19,33 @@ in your $PATH (e.g. /usr/local/bin, ...).
 
 Once installed, you should be able to run:
 ```shell
-opctl version
+optimus version
+```
+
+## Compiling from source
+
+### Prerequisites
+
+Optimus requires the following dependencies:
+* Golang (version 1.16 or above)
+* Git
+
+### Build
+
+Run the following commands to compile `optimus` from source
+```shell
+git clone git@github.com:odpf/optimus.git
+cd optimus
+make build
+```
+
+Use the following command to test
+```shell
+./optimus version
+```
+
+Optimus service can be started with the following command although there are few required 
+[configurations](./reference/configuration.md) for it to start.
+```shell
+./optimus serve
 ```

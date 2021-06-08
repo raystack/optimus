@@ -3,7 +3,7 @@
 Welcome to Optimus Guides. Please use the links below to navigate.
 
 * Quickstart
-  * [Creating a job](creating-a-job.md)
+  * [Creating a job](create-a-job.md)
   * [Adding a hook](adding-a-hook.md)
 * Tasks
   * [BigQuery to BigQuery Transformation](task-bq2bq.md)
@@ -14,3 +14,5 @@ Welcome to Optimus Guides. Please use the links below to navigate.
   * [Create bigquery dataset](create-bigquery-dataset.md)
   * [Create bigquery table](create-bigquery-table.md)
   * [Create bigquery view](create-bigquery-view.md)
+* Server
+  * [Starting optimus server](optimus-serve.md)

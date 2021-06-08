@@ -21,12 +21,13 @@ independently. The namespace's name can be chosen by user or can be provided by 
 authentication service.
 
 
-## Opctl
+## Optimus cli
 
-Optimus provides a cli used to interact with Optimus service. Although 
-it is not necessary to use this and GRPC/REST can also be used directly which is
-what CLI does internally. `Opctl` is generally recommended in a Git repository to
-version control specifications and bootstrap base specification files.
+Optimus provides a cli used to start Optimus service using `serve` command and a
+lot of other features like interacting with the remote/local optimus service, bootstrapping
+specifications, validating, testing, etc. Although it is not necessary to use cli
+and GRPC/REST can also be used directly which is what CLI does internally for communication
+with the service. 
 
 ## Job
 
@@ -68,10 +69,10 @@ the job.
 
 Optimus has a specification repository that holds all the details required to 
 define a scheduled operation. Repository has a fixed folder structure which is 
-maintained by Optimus CLI (opctl). Users can create and delete the jobs from the 
+maintained by Optimus CLI. Users can create and delete the jobs from the 
 repository using either optimus CLI or a simple text editor like 
 [VSCode](https://code.visualstudio.com/download). A sample command to create 
-a new job is "opctl create job", calling this will ask for a 
+a new job is "optimus create job", calling this will ask for a 
 few inputs which are required for the execution of this job and 
 leave rest for the user to modify of its own eg, the SQL.
 
@@ -79,7 +80,7 @@ Following is a sample job specification:
 ```yaml
 version: 1
 name: example_job
-owner: example@opctl.com
+owner: example@example.com
 description: sample example job
 schedule:
   start_date: "2021-02-18"
@@ -158,8 +159,8 @@ WHERE DATE(event_timestamp) < '{{ .DSTART|Date }}'
 
 Each job specification has a set of configs made with a key value pair. Keys are always 
 specific to the execution unit and value could be of 3 types.
-- User provided: These inputs are valus provided or configured by users at the time of creating
-  via opctl or modifying the job using a text editor. 
+- User provided: These inputs are values provided by users at the time of creating
+  via optimus cli or modifying the job using a text editor. 
 - Task inherited: Hooks can inherit the configuration values from base transformation and
   avoid providing the same thing using `{{.TASK__<CONFIG_NAME>}}` macro. 
   For example:  
@@ -195,7 +196,7 @@ hooks:
 
 ## Assets
 
-There should be an asset folder along with the `job.yaml` file generated via `opctl` when
+There could be an asset folder along with the `job.yaml` file generated via `optimus` when
 a new job is created. This is a shared folder across base transformation task
 and all associated hooks. For example, if BQ2BQ task is selected, it should generate a 
 template `query.sql` file for writing the BigQuery transformation SQL. Assets can use

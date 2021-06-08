@@ -1,10 +1,13 @@
-package commands
+package cmd
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
+
+	"github.com/odpf/optimus/store"
+
+	"github.com/odpf/optimus/store/local"
 
 	"github.com/odpf/optimus/core/fs"
 
@@ -13,13 +16,12 @@ import (
 	"github.com/fatih/color"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 	cli "github.com/spf13/cobra"
 )
 
-var prologueContents = `opctl %s
+var prologueContents = `optimus %s
 
-opctl is a scaffolding tool for creating transformation job specs
+optimus is a scaffolding tool for creating transformation job specs
 `
 
 var (
@@ -34,8 +36,6 @@ var (
 	GRPCMaxClientRecvSize = 25 << 20 // 25MB
 
 	OptimusDialTimeout = time.Second * 2
-	ConfigName         = "optimus"
-	ConfigExtension    = "yaml"
 )
 
 func programPrologue(ver string) string {
@@ -46,20 +46,14 @@ func programPrologue(ver string) string {
 // It houses all other sub commands
 func New(
 	l logger,
-	jobSpecRepo store.JobSpecRepository,
-	version string,
-	conf config.Opctl,
-	scheduler models.SchedulerUnit,
-
-	datastoreSpecsFs map[string]fs.FileSystem,
+	conf *config.Optimus,
 	tfRepo models.TaskPluginRepository,
 	hookRepo models.HookRepo,
 	dsRepo models.DatastoreRepo,
 ) *cli.Command {
-	var programName = "opctl"
 	var cmd = &cli.Command{
-		Use:  programName,
-		Long: programPrologue(version),
+		Use:  "optimus",
+		Long: programPrologue(config.Version),
 		PersistentPreRun: func(cmd *cli.Command, args []string) {
 			//initialise color if not requested to be disabled
 			if !disableColoredOut {
@@ -68,24 +62,35 @@ func New(
 				coloredSuccess = color.New(color.Bold, color.FgHiGreen).SprintFunc()
 			}
 		},
+		SilenceUsage: true,
 	}
-
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "disable colored output")
 
-	cmd.AddCommand(createCommand(l, conf, jobSpecRepo, tfRepo, hookRepo, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(versionCommand(l, version, conf))
-	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(renderCommand(l, conf, jobSpecRepo))
+	//init local specs
+	var jobSpecRepo store.JobSpecRepository
+	if conf.Job.Path != "" {
+		jobSpecRepo = local.NewJobSpecRepository(
+			&fs.LocalFileSystem{BasePath: conf.Job.Path},
+			local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
+		)
+	}
+	datastoreSpecsFs := map[string]fs.FileSystem{}
+	for _, dsConfig := range conf.Datastore {
+		datastoreSpecsFs[dsConfig.Type] = &fs.LocalFileSystem{
+			BasePath: dsConfig.Path,
+		}
+	}
+
+	cmd.AddCommand(versionCommand(l, conf.Host))
 	cmd.AddCommand(configCommand(l, dsRepo))
-	cmd.AddCommand(validateCommand(l, conf, jobSpecRepo))
+	cmd.AddCommand(createCommand(l, jobSpecRepo, tfRepo, hookRepo, dsRepo, datastoreSpecsFs))
+	cmd.AddCommand(deployCommand(l, jobSpecRepo, *conf, dsRepo, datastoreSpecsFs))
+	cmd.AddCommand(renderCommand(l, conf.Host, jobSpecRepo))
+	cmd.AddCommand(validateCommand(l, conf.Host, jobSpecRepo))
+	cmd.AddCommand(optimusServeCommand(l, conf))
 
 	// admin specific commands
-	switch os.Getenv("OPTIMUS_ADMIN") {
-	case "true":
-		fallthrough
-	case "on":
-		fallthrough
-	case "1":
+	if conf.Admin.Enabled {
 		cmd.AddCommand(adminCommand(l, tfRepo, hookRepo))
 	}
 

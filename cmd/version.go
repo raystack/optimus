@@ -1,7 +1,8 @@
-package commands
+package cmd
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/odpf/optimus/config"
@@ -16,23 +17,21 @@ const (
 	versionTimeout = time.Second * 2
 )
 
-func versionCommand(l logger, clientVer string, conf config.Opctl) *cli.Command {
-	// Version prints the current version of the tool.
+func versionCommand(l logger, host string) *cli.Command {
 	c := &cli.Command{
 		Use:   "version",
 		Short: "Print the client version information",
-		Run: func(c *cli.Command, args []string) {
-			l.Printf("client: %s", coloredNotice(clientVer))
-			if conf.Host != "" {
-				srvVer, err := getVersionRequest(clientVer, conf.Host)
+		RunE: func(c *cli.Command, args []string) error {
+			l.Printf(fmt.Sprintf("client: %s-%s", coloredNotice(config.Version), config.BuildCommit))
+
+			if host != "" {
+				srvVer, err := getVersionRequest(config.Version, host)
 				if err != nil {
-					if errors.Is(err, context.DeadlineExceeded) {
-						return
-					}
-					panic(err)
+					return err
 				}
 				l.Printf("server: %s", coloredNotice(srvVer))
 			}
+			return nil
 		},
 	}
 	return c

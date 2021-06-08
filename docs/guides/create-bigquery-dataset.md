@@ -6,17 +6,17 @@ A table or view must belong to a dataset, so you need to create at least one.
 
 There are 3 ways to create a dataset:
 
-### Creating dataset with Opctl
+### Creating dataset with Optimus
 
 Supported datastore can be selected by calling
 ```bash
-opctl create resource
+optimus create resource
 ```
-Opctl will request a resource name which should be unique across whole datastore.
+Optimus will request a resource name which should be unique across whole datastore.
 All resource specification contains a name field which conforms to a fixed format.
 In case of bigquery dataset, format should be
 `projectname.datasetname`.
-After the name is provided, `Opctl` will create a file in configured datastore 
+After the name is provided, `optimus` will create a file in configured datastore 
 directory. Open the created specification file and add additional spec details
 as follows:
 ```yaml

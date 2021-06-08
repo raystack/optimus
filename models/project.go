@@ -15,6 +15,8 @@ const (
 	ProjectStoragePathKey = "STORAGE_PATH"
 	ProjectSchedulerHost  = "SCHEDULER_HOST"
 
+	// Secret used for uploading prepared scheduler specifications to cloud
+	// e.g. for gcs it will be base64 encoded service account for the bucket
 	ProjectSecretStorageKey = "STORAGE"
 )
 

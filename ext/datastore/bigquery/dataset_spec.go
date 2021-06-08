@@ -49,7 +49,7 @@ type datasetSpecHandler struct {
 
 func (s datasetSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
 	if optResource.Spec == nil {
-		// usually happens when resource is requested to be created for the first time via opctl
+		// usually happens when resource is requested to be created for the first time via optimus cli
 		optResource.Spec = BQDataset{}
 	}
 	bqResource, ok := optResource.Spec.(BQDataset)

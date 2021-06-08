@@ -7,7 +7,7 @@ In order to add a hook to an existing Job, run the following command and answer 
 corresponding prompts:
 
 ```
-$ ./opctl create hook
+$ ./optimus create hook
 ? Select a Job example_job
 ? Which hook to run? transporter
 ? Filter expression for extracting transformation rows? event_timestamp >= '{{.DSTART}}' 
@@ -24,7 +24,7 @@ the job specification would look like:
 ```yaml
 version: 1
 name: example_job
-owner: example@opctl.com
+owner: example@example.com
 description: example job to demonstrate hook
 schedule:
   start_date: "2021-02-18"

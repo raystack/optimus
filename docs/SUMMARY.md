@@ -7,10 +7,13 @@
 ## Guides
 
 * [Overview](guides/overview.md)
+* [Installation](installation.md)
+    * [Configuration](reference/configuration.md)
 * [Create bigquery dataset](guides/create-bigquery-dataset.md)
 * [Create bigquery table](guides/create-bigquery-table.md)
 * [Create bigquery view](guides/create-bigquery-view.md)
 * [Create a job](guides/create-a-job.md)
+* [Starting optimus server](guides/optimus-serve.md)
 
 ## Concepts
 
@@ -27,4 +30,4 @@
 
 * [Configurations](reference/configuration.md)
 * [API](reference/API.md)
-* [FAQ](reference/faq.md)
+* [FAQ](reference/FAQ.md)

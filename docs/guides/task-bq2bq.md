@@ -3,7 +3,7 @@
 ### Creating Task
 Command to create a task :
 ```
-opctl create job
+optimus create job
 ```
 This command will invoke an interactive cli that contains configurations that 
 need to be filled for the task. The tasks files will be generated at 
@@ -22,7 +22,7 @@ For example `job.yaml` config :
 ```yaml
 version: 1
 name: example_job
-owner: example@opctl.com
+owner: example@example.com
 schedule:
   start_date: "2021-02-18"
   interval: 0 3 * * *

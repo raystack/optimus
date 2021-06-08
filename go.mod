@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig/v3 v3.2.2
-	github.com/deckarep/golang-set v1.7.1
 	github.com/fatih/color v1.7.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -26,6 +25,7 @@ require (
 	github.com/jhump/protoreflect v1.8.1 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.11.7 // indirect
+	github.com/knadh/koanf v1.1.0
 	github.com/kushsharma/parallel v0.2.1
 	github.com/kushsharma/structs v1.1.1
 	github.com/lib/pq v1.9.0
@@ -36,8 +36,8 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/sirupsen/logrus v1.7.0
+	github.com/spf13/afero v1.1.2
 	github.com/spf13/cobra v1.1.2
-	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777

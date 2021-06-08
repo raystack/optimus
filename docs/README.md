@@ -29,39 +29,8 @@ transformers can be done easily.
     deployment query will be dry-run to make sure it passes basic sanity 
     checks
 - Extensibility to support Python transformation
-- Task versioning: If there is a scheduled job *A* and this gets modified as
-  *A1* then it is possible to schedule same job for a date range as *A* and 
-  thereafter as *A1*. **[in roadmap]**
 - Git based specification management
-- GRPC/REST based specification management **[in roadmap]**
+- GRPC/REST based specification management
   
 NOTE: This is still in early stages and very close to use for production.
 We are taking feedback and making breaking changes based on user requirements.
-
-
-# Table of Contents:
-* [Installation](installation.md)
-* Guides
-  * Quickstart
-    * [Creating a job](guides/creating-a-job.md)
-    * [Adding a hook](guides/adding-a-hook.md)
-  * Transformer
-    * [BigQuery to BigQuery Transformation](guides/task-bq2bq.md)
-  * Hook
-    * [Publishing BigQuery to Kafka](guides/publishing-from-bigquery-to-kafka.md)
-    * [Profiling and Auditing BigQuery tables](guides/predator.md)
-  * Datastore
-    * [Create bigquery dataset](guides/create-bigquery-dataset.md)
-    * [Create bigquery table](guides/create-bigquery-table.md)
-    * [Create bigquery view](guides/create-bigquery-view.md)
-* [Concepts](concepts/index.md)
-  * [Intervals and Windows](concepts/intervals-and-windows.md)
-  * [Asset templating](concepts/index.md#Assets)
-* [Whats new in Optimus v2](concepts/v1-to-v2.md)
-* [FAQ](reference/FAQ.md)
-* [Contributing](contribute/contributing.md)
-
-### References
-- [REST API](https://github.com/odpf/optimus/blob/423da2b52f454d8ef8a4297873a3cf3d1fc9067a/third_party/OpenAPI/odpf/optimus/RuntimeService.swagger.json)
-- [GRPC](https://github.com/odpf/proton/blob/c13453f190124e2d94a485343768b3f59b4da061/odpf/optimus/runtime_service.proto)
-- [Functional Data Warehouse](https://medium.com/@maximebeauchemin/functional-data-engineering-a-modern-paradigm-for-batch-data-processing-2327ec32c42a)

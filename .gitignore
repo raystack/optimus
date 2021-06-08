@@ -13,15 +13,13 @@ TODO
 version
 temp
 coverage.out
-/opctl
 jobs
 /resources/resource_fs.go
 /auth.json
 /development.env
 /resources/resource_fs.go
 __pycache__
-
-optimus.yaml
+.optimus.yaml
 
 # git ignore generate files related to gRPC and proto
 /proton/

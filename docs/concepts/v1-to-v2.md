@@ -1,6 +1,5 @@
 # What's new in v2 so far
 
-- Binary is called `opctl` now instead of optimus.
 - There are no dags, tasks anymore. Specifications are called `job` and there is
   only a single file for it.
 - There are no `properties.cfg` file, all these configs goes in same job.yaml file.
@@ -53,11 +52,11 @@ Select * from sometable where event_time < "{{.DSTART}}"
 dependencies:
   job: jobname
 ```
-  - `depends_on_past`: self-explanatory as opctl generates them, same as V1
-  - `catch_up`: self-explanatory as opctl generates them, same as V1
-  - `start_date`: self-explanatory as opctl generates them, same as V1
+  - `depends_on_past`: self-explanatory as `optimus` cli generates them, same as V1
+  - `catch_up`: self-explanatory as `optimus` cli generates them, same as V1
+  - `start_date`: self-explanatory as `optimus` cli generates them, same as V1
   - `end_date`: when the job should finish executing the schedule
-  - `interval`: self-explanatory as opctl generates them, same as V1
+  - `interval`: self-explanatory as `optimus` cli generates them, same as V1
 - Support for creating datasets/tables/views
   - Specification used to create tables have changed, please go through documentation
   for details

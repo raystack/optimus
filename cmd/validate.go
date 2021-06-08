@@ -1,10 +1,9 @@
-package commands
+package cmd
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
@@ -14,7 +13,6 @@ import (
 	"github.com/odpf/optimus/store"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/config"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -24,53 +22,56 @@ const (
 	validateTimeout = time.Minute * 3
 )
 
-func validateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func validateCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "validate",
 		Short: "check if specifications are valid for deployment",
 	}
-	cmd.AddCommand(validateJobCommand(l, conf, jobSpecRepo))
+	if jobSpecRepo != nil {
+		cmd.AddCommand(validateJobCommand(l, host, jobSpecRepo))
+	}
 	return cmd
 }
 
-func validateJobCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func validateJobCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
 		Short:   "run basic checks on job",
-		Example: "opctl validate job",
+		Example: "optimus validate job",
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
 	cmd.MarkFlagRequired("project")
 	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
 	cmd.MarkFlagRequired("namespace")
 
-	cmd.Run = func(c *cli.Command, args []string) {
+	cmd.RunE = func(c *cli.Command, args []string) error {
 		start := time.Now()
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
-			errExit(l, err)
+			return err
 		}
-		if err := validateJobSpecificationRequest(l, projectName, namespace, jobSpecs, conf); err != nil {
-			l.Println(err)
-			os.Exit(1)
+		if err := validateJobSpecificationRequest(l, projectName, namespace, jobSpecs, host); err != nil {
+			return err
 		}
 		l.Println("jobs successfully validated")
 		l.Printf("validated in %s\n", time.Since(start).String())
+
+		return nil
 	}
 
 	return cmd
 }
 
-func validateJobSpecificationRequest(l logger, projectName string, namespace string, jobSpecs []models.JobSpec, conf config.Opctl) (err error) {
+func validateJobSpecificationRequest(l logger, projectName string, namespace string, jobSpecs []models.JobSpec, host string) (err error) {
 	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry)
 
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Println("can't reach optimus service")
 		}

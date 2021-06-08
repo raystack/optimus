@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	v1 "github.com/odpf/optimus/api/handler/v1"
 
@@ -17,7 +18,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/odpf/optimus/plugin/task"
@@ -42,10 +42,10 @@ var (
 	HookPluginName = models.InstanceTypeHook.String()
 )
 
-func Initialize(pluginLogger hclog.Logger) {
-	discoveredPlugins, err := DiscoverPlugins()
+func Initialize(pluginLogger hclog.Logger) error {
+	discoveredPlugins, err := DiscoverPlugins(pluginLogger)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "DiscoverPlugins")
 	}
 	pluginLogger.Debug(fmt.Sprintf("discovering plugins(%d)...",
 		len(discoveredPlugins[TaskPluginName])+len(discoveredPlugins[HookPluginName])))
@@ -85,15 +85,13 @@ func Initialize(pluginLogger hclog.Logger) {
 			// Connect via GRPC
 			rpcClient, err := client.Client()
 			if err != nil {
-				pluginLogger.Error("Error:", err.Error())
-				os.Exit(1)
+				return errors.Wrapf(err, "client.Client(): %s", pluginPath)
 			}
 
 			// Request the plugin
 			raw, err := rpcClient.Dispense(pluginType)
 			if err != nil {
-				pluginLogger.Error("Error:", err.Error())
-				os.Exit(1)
+				return errors.Wrapf(err, "rpcClient.Dispense: %s", pluginPath)
 			}
 
 			switch pluginType {
@@ -101,8 +99,7 @@ func Initialize(pluginLogger hclog.Logger) {
 				taskClient := raw.(models.TaskPlugin)
 				taskSchema, err := taskClient.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
 				if err != nil {
-					pluginLogger.Error("Error:", err.Error())
-					os.Exit(1)
+					return errors.Wrapf(err, "taskClient.GetTaskSchema: %s", pluginPath)
 				}
 				pluginLogger.Debug("tested plugin communication for task", taskSchema.Name)
 
@@ -113,63 +110,66 @@ func Initialize(pluginLogger hclog.Logger) {
 				}
 
 				if err := models.TaskRegistry.Add(taskClient); err != nil {
-					pluginLogger.Error("Error:", err.Error())
-					os.Exit(1)
+					return errors.Wrapf(err, "models.TaskRegistry.Add: %s", pluginPath)
 				}
 			case HookPluginName:
 				hookClient := raw.(models.HookPlugin)
 				hookSchema, err := hookClient.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
 				if err != nil {
-					pluginLogger.Error("Error:", err.Error())
-					os.Exit(1)
+					return errors.Wrapf(err, "hookClient.GetTaskSchema: %s", pluginPath)
 				}
 				pluginLogger.Debug("tested plugin communication for hook ", hookSchema.Name)
 
 				if err := models.HookRegistry.Add(hookClient); err != nil {
-					pluginLogger.Error("Error:", err.Error())
-					os.Exit(1)
+					return errors.Wrapf(err, "models.HookRegistry.Add: %s", pluginPath)
 				}
 			default:
-				pluginLogger.Error("Error: unsupported plugin type")
-				os.Exit(1)
+				return errors.Wrapf(err, "unsupported plugin type: %s", pluginType)
 			}
 		}
 	}
+
+	return nil
 }
 
-// DiscoverPlugins look for plugin binaries
-// following folders will be used in order
+// DiscoverPlugins look for plugin binaries in following folders
+// order to search is top to down
 // ./
+// <exec>/
+// <exec>/.optimus/plugins
+// $HOME/.optimus/plugins
 // /usr/bin
 // /usr/local/bin
-// exec/.optimus/plugins
-// $HOME/.optimus/plugins
 //
+// for duplicate binaries(even with different versions for now), only the first found will be used
 // sample plugin name: optimus-task-myplugin_0.1_linux_amd64
-func DiscoverPlugins() (map[string][]string, error) {
+func DiscoverPlugins(pluginLogger hclog.Logger) (map[string][]string, error) {
 	var (
 		prefix            = "optimus-"
 		suffix            = fmt.Sprintf("_%s_%s", runtime.GOOS, runtime.GOARCH)
-		discoveredPlugins = map[string]mapset.Set{}
+		discoveredPlugins = map[string][]string{}
 	)
 
-	dirs := []string{".", "/usr/bin", "/usr/local/bin"}
+	dirs := []string{}
+	// current working directory
+	if p, err := os.Getwd(); err == nil {
+		dirs = append(dirs, p)
+	}
+	{
+		// look in the same directory as the executable
+		if exePath, err := os.Executable(); err != nil {
+			pluginLogger.Debug(fmt.Sprintf("Error discovering exe directory: %s", err))
+		} else {
+			dirs = append(dirs, filepath.Dir(exePath))
+		}
+	}
 	{
 		// add user home directory
 		if currentHomeDir, err := os.UserHomeDir(); err == nil {
 			dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
 		}
 	}
-	{
-		// look in the same directory as the executable
-		exePath, err := os.Executable()
-		if err != nil {
-			log.Printf("[ERROR] Error discovering exe directory: %s", err)
-		} else {
-			dirs = append(dirs, filepath.Dir(exePath))
-		}
-		dirs = append(dirs, exePath)
-	}
+	dirs = append(dirs, []string{"/usr/bin", "/usr/local/bin"}...)
 
 	for _, dirPath := range dirs {
 		fileInfos, err := ioutil.ReadDir(dirPath)
@@ -206,29 +206,37 @@ func DiscoverPlugins() (map[string][]string, error) {
 				continue
 			}
 
+			pluginName := strings.Split(nameParts[2], "_")[0]
 			absPath = filepath.Clean(absPath)
 			switch nameParts[1] {
 			case TaskPluginName:
-				if _, ok := discoveredPlugins[TaskPluginName]; !ok {
-					discoveredPlugins[TaskPluginName] = mapset.NewSet()
+				// check for duplicate binaries, could be different versions
+				// if we have already discovered one, ignore rest
+				isAlreadyFound := false
+				for _, storedName := range discoveredPlugins[TaskPluginName] {
+					if strings.Contains(storedName, pluginName) {
+						isAlreadyFound = true
+					}
 				}
-				discoveredPlugins[TaskPluginName].Add(absPath)
+
+				if !isAlreadyFound {
+					discoveredPlugins[TaskPluginName] = append(discoveredPlugins[TaskPluginName], absPath)
+				}
 			case HookPluginName:
-				if _, ok := discoveredPlugins[HookPluginName]; !ok {
-					discoveredPlugins[HookPluginName] = mapset.NewSet()
+				isAlreadyFound := false
+				for _, storedName := range discoveredPlugins[HookPluginName] {
+					if strings.Contains(storedName, pluginName) {
+						isAlreadyFound = true
+					}
 				}
-				discoveredPlugins[HookPluginName].Add(absPath)
+
+				if !isAlreadyFound {
+					discoveredPlugins[HookPluginName] = append(discoveredPlugins[HookPluginName], absPath)
+				}
 			default:
 				// skip
 			}
 		}
 	}
-
-	stringMap := map[string][]string{}
-	for t, s := range discoveredPlugins {
-		for _, path := range s.ToSlice() {
-			stringMap[t] = append(stringMap[t], path.(string))
-		}
-	}
-	return stringMap, nil
+	return discoveredPlugins, nil
 }
