@@ -2,22 +2,17 @@
 .DELETE_ON_ERROR:
 MAKEFLAGS += --no-builtin-rules
 NAME = "github.com/odpf/optimus"
-CTL_VERSION := "$(shell git rev-parse --short HEAD)"
-OPMS_VERSION := "$(shell git rev-parse --short HEAD)"
+LAST_COMMIT := $(shell git rev-parse --short HEAD)
+LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
+OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
 
 all: build
 
-.PHONY: build build-optimus smoke-test unit-test test clean generate dist init vet
+.PHONY: build smoke-test unit-test test clean generate dist init vet
 
-build-ctl: generate ## generate opctl
-	@echo " > building opctl version ${CTL_VERSION}"
-	@go build -ldflags "-X config.Version=${CTL_VERSION}" ${NAME}/cmd/opctl
-
-build-optimus: generate ## generate optimus server
+build: generate # build optimus binary
 	@echo " > building optimus version ${OPMS_VERSION}"
-	@go build -ldflags "-X 'config.Version=${OPMS_VERSION}'" ${NAME}/cmd/optimus
-
-build: build-optimus build-ctl
+	@go build -ldflags "-X ${NAME}/config.Version=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 	
 test: smoke-test unit-test vet ## run tests
@@ -39,7 +34,7 @@ generate-proto: ## regenerate protos
 unit-test:
 	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test
 
-smoke-test: build-ctl
+smoke-test: build
 	@bash ./scripts/smoke-test.sh
 
 integration-test: build
@@ -55,7 +50,7 @@ dist: generate
 	@bash ./scripts/build-distributables.sh
 
 clean:
-	rm -rf ./optimus ./opctl ./dist ./proton ./api/proto/*
+	rm -rf ./optimus ./dist ./proton ./api/proto/*
 
 install: ## install required dependencies
 	@echo "> installing dependencies"

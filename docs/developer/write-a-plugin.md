@@ -532,12 +532,13 @@ Use this [repository](https://github.com/kushsharma/optimus-plugins) as an examp
 
 Plugins need to be installed in Optimus server before it can be used. Optimus uses following directories for discovering plugin binaries
 
-```
+```shell
 ./
+<exec>/
+<exec>/.optimus/plugins
+$HOME/.optimus/plugins
 /usr/bin
 /usr/local/bin
-<binary>/.optimus/plugins
-$HOME/.optimus/plugins
 ```
 
 If Optimus cli is used to generate specifications or deployment, plugin should be installed in a client's machine as well. 
@@ -621,10 +622,10 @@ Plugin can choose to make a GRPC call using `RegisterInstance` [function](https:
 There could be scenarios where it is not possible or maybe not convenient to modify the base execution image and still task need context configuration values. One easy way to do this is by wrapping the base docker image into another docker image and using optimus binary to request task context. Optimus command will internally send a GRPC call and store the output in `${JOB_DIR}/in/` directory. It will create one `.env` file containing all the configuration files and all the asset files belong to the provided task. Optimus command can be invoked as
 
 ```shell
-OPTIMUS_ADMIN=1 /opt/optimus admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $INSTANCE_TYPE --name $INSTANCE_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
+OPTIMUS_ADMIN_ENABLED=1 /opt/optimus admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $INSTANCE_TYPE --name $INSTANCE_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
 ```
 
-You might have noticed, optimus need OPTIMUS_ADMIN as env variable to enable admin commands. An example of wrapper `Dockerfile` is as follows
+You might have noticed, optimus need OPTIMUS_ADMIN_ENABLED as env variable to enable admin commands. An example of wrapper `Dockerfile` is as follows
 
 ```dockerfile
 FROM ghcr.io/kushsharma/optimus-task-neo-executor:latest
@@ -634,9 +635,9 @@ ARG OPTIMUS_RELEASE_URL
 
 RUN apt install curl tar -y
 RUN mkdir -p /opt
-RUN curl -sL ${OPTIMUS_RELEASE_URL} | tar xvz opctl
-RUN mv opctl /opt/opctl || true
-RUN chmod +x /opt/opctl
+RUN curl -sL ${OPTIMUS_RELEASE_URL} | tar xvz optimus
+RUN mv optimus /opt/optimus || true
+RUN chmod +x /opt/optimus
 
 # or copy like this
 COPY task/neo/example.entrypoint.sh /opt/entrypoint.sh
@@ -654,8 +655,8 @@ Where `entrypoint.sh` is as follows
 sleep 5
 
 # get resources
-echo "-- initializing opctl assets"
-OPTIMUS_ADMIN=1 /opt/opctl admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $TASK_TYPE --name $TASK_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
+echo "-- initializing optimus assets"
+OPTIMUS_ADMIN_ENABLED=1 /opt/optimus admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $TASK_TYPE --name $TASK_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
 
 # TODO: this doesnt support using back quote sign in env vars
 echo "-- exporting env"

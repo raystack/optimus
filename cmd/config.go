@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ const (
 func configCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 	c := &cli.Command{
 		Use:   "config",
-		Short: "Manage opctl configuration required to deploy specifications",
+		Short: "Manage optimus configuration required to deploy specifications",
 	}
 	c.AddCommand(configInitCommand(l, dsRepo))
 	return c
@@ -28,9 +28,9 @@ func configCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 	c := &cli.Command{
 		Use:   "init",
-		Short: "Initialize opctl configuration file",
-		Run: func(c *cli.Command, args []string) {
-			conf := config.Opctl{
+		Short: "Initialize optimus configuration file",
+		RunE: func(c *cli.Command, args []string) (err error) {
+			conf := config.Optimus{
 				Version: 1,
 				Host:    defaultHost,
 			}
@@ -55,13 +55,16 @@ func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 			}
 			answers := map[string]interface{}{}
 			if err := survey.Ask(questions, &answers); err != nil {
-				errExit(l, err)
+				return err
 			}
 			conf.Job.Path = answers["JobPath"].(string)
 
 			// for global config
 			if option, ok := answers["RegisterGlobalConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf = globalConfigQuestions(l, conf)
+				conf, err = globalConfigQuestions(l, conf)
+				if err != nil {
+					return err
+				}
 			}
 
 			// questions for local config
@@ -77,12 +80,15 @@ func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 			}
 			answers = map[string]interface{}{}
 			if err := survey.Ask(questions, &answers); err != nil {
-				errExit(l, err)
+				return err
 			}
 
 			// for local config
 			if option, ok := answers["RegisterLocalConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf = localConfigQuestions(l, conf)
+				conf, err = localConfigQuestions(l, conf)
+				if err != nil {
+					return err
+				}
 			}
 
 			// for datastore
@@ -98,26 +104,31 @@ func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 			}
 			answers = map[string]interface{}{}
 			if err := survey.Ask(questions, &answers); err != nil {
-				errExit(l, err)
+				return err
 			}
 			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf = datastoreConfigQuestions(l, conf, dsRepo)
+				conf, err = datastoreConfigQuestions(l, conf, dsRepo)
+				if err != nil {
+					return err
+				}
 			}
 
 			confMarshaled, err := yaml.Marshal(conf)
 			if err != nil {
-				errExit(l, err)
+				return err
 			}
-			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", ConfigName, ConfigExtension), confMarshaled, 0655); err != nil {
-				errExit(l, err)
+			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0655); err != nil {
+				return err
 			}
 			l.Println("configuration initialised successfully")
+
+			return nil
 		},
 	}
 	return c
 }
 
-func globalConfigQuestions(l logger, conf config.Opctl) config.Opctl {
+func globalConfigQuestions(l logger, conf config.Optimus) (config.Optimus, error) {
 	conf.Config.Global = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
@@ -138,7 +149,7 @@ func globalConfigQuestions(l logger, conf config.Opctl) config.Opctl {
 				Validate: survey.MinLength(1),
 			},
 		}, &configAnswers); err != nil {
-			errExit(l, err)
+			return conf, err
 		}
 
 		if err := survey.AskOne(&survey.Select{
@@ -146,15 +157,15 @@ func globalConfigQuestions(l logger, conf config.Opctl) config.Opctl {
 			Options: []string{"Yes", "No"},
 			Default: "Yes",
 		}, &registerMore); err != nil {
-			errExit(l, err)
+			return conf, err
 		}
 		conf.Config.Global[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
 	}
 
-	return conf
+	return conf, nil
 }
 
-func localConfigQuestions(l logger, conf config.Opctl) config.Opctl {
+func localConfigQuestions(l logger, conf config.Optimus) (config.Optimus, error) {
 	conf.Config.Local = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
@@ -175,7 +186,7 @@ func localConfigQuestions(l logger, conf config.Opctl) config.Opctl {
 				Validate: survey.MinLength(1),
 			},
 		}, &configAnswers); err != nil {
-			errExit(l, err)
+			return conf, err
 		}
 
 		if err := survey.AskOne(&survey.Select{
@@ -183,15 +194,15 @@ func localConfigQuestions(l logger, conf config.Opctl) config.Opctl {
 			Options: []string{"Yes", "No"},
 			Default: "Yes",
 		}, &registerMore); err != nil {
-			errExit(l, err)
+			return conf, err
 		}
 		conf.Config.Local[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
 	}
 
-	return conf
+	return conf, nil
 }
 
-func datastoreConfigQuestions(l logger, conf config.Opctl, dsRepo models.DatastoreRepo) config.Opctl {
+func datastoreConfigQuestions(l logger, conf config.Optimus, dsRepo models.DatastoreRepo) (config.Optimus, error) {
 	dsOptions := []string{}
 	for _, ds := range dsRepo.GetAll() {
 		dsOptions = append(dsOptions, ds.Name())
@@ -215,12 +226,12 @@ func datastoreConfigQuestions(l logger, conf config.Opctl, dsRepo models.Datasto
 			Validate: survey.MinLength(1),
 		},
 	}, &configAnswers); err != nil {
-		errExit(l, err)
+		return conf, err
 	}
 	conf.Datastore = append(conf.Datastore, config.Datastore{
 		Type: configAnswers["Type"].(survey.OptionAnswer).Value,
 		Path: configAnswers["Path"].(string),
 	})
 
-	return conf
+	return conf, nil
 }

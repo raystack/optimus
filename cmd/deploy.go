@@ -1,10 +1,9 @@
-package commands
+package cmd
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/odpf/optimus/store/local"
@@ -22,13 +21,11 @@ import (
 )
 
 var (
-	errRequestFail = errors.New("🔥 unable to complete request successfully")
-
 	deploymentTimeout = time.Minute * 10
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Opctl,
+func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Optimus,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem) *cli.Command {
 	var projectName string
 	var namespace string
@@ -46,18 +43,21 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "ignore deployment of resources")
 
-	cmd.Run = func(c *cli.Command, args []string) {
+	cmd.RunE = func(c *cli.Command, args []string) error {
 		l.Printf("deploying project %s for namespace %s at %s\nplease wait...\n", projectName, namespace, conf.Host)
 		start := time.Now()
+		if jobSpecRepo == nil {
+			// job repo not configured
+			ignoreJobs = true
+		}
 
 		if err := postDeploymentRequest(l, projectName, namespace, jobSpecRepo, conf, datastoreRepo,
 			datastoreSpecFs, ignoreJobs, ignoreResources); err != nil {
-			l.Println(err)
-			l.Println(errRequestFail)
-			os.Exit(1)
+			return err
 		}
 
 		l.Printf("deployment took %v\n", time.Since(start))
+		return nil
 	}
 
 	return cmd
@@ -65,7 +65,7 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo store.JobSpecRepository,
-	conf config.Opctl, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem,
+	conf config.Optimus, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
@@ -108,12 +108,12 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 		for storeName, repoFS := range datastoreSpecFs {
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				errExit(l, fmt.Errorf("unsupported datastore: %s\n", storeName))
+				return fmt.Errorf("unsupported datastore: %s\n", storeName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll()
 			if err != nil {
-				errExit(l, err)
+				return errors.Wrap(err, "resourceSpecRepo.GetAll()")
 			}
 
 			// prepare specs

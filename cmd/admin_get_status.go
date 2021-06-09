@@ -1,8 +1,7 @@
-package commands
+package cmd
 
 import (
 	"context"
-	"os"
 	"sort"
 	"time"
 
@@ -24,7 +23,7 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "status",
 		Short:   "Get current job status",
-		Example: `opctl admin get status sample_replace --project \"project-id\"`,
+		Example: `optimus admin get status sample_replace --project \"project-id\"`,
 		Args:    cli.MinimumNArgs(1),
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the tenant")
@@ -32,16 +31,16 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	cmd.Flags().StringVar(&optimusHost, "host", "", "optimus service endpoint url")
 	cmd.MarkFlagRequired("host")
 
-	cmd.Run = func(c *cli.Command, args []string) {
+	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
 		l.Printf("requesting status for project %s, job %s[%s] at %s\nplease wait...\n",
 			projectName, jobName, optimusHost)
 
 		if err := getJobStatusRequest(l, jobName, optimusHost, projectName); err != nil {
-			l.Print(err)
-			l.Print(errRequestFail)
-			os.Exit(1)
+			return err
 		}
+
+		return nil
 	}
 	return cmd
 }

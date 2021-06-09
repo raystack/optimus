@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -76,7 +77,7 @@ type PluginQuestions []PluginQuestion
 
 func (q PluginQuestions) Get(name string) (PluginQuestion, bool) {
 	for _, que := range q {
-		if que.Name == name {
+		if strings.ToLower(que.Name) == strings.ToLower(name) {
 			return que, true
 		}
 	}
@@ -92,7 +93,7 @@ type PluginAnswers []PluginAnswer
 
 func (ans PluginAnswers) Get(name string) (PluginAnswer, bool) {
 	for _, a := range ans {
-		if a.Question.Name == name {
+		if strings.ToLower(a.Question.Name) == strings.ToLower(name) {
 			return a, true
 		}
 	}
@@ -127,7 +128,7 @@ type TaskPluginConfigs []TaskPluginConfig
 
 func (c TaskPluginConfigs) Get(name string) (TaskPluginConfig, bool) {
 	for _, con := range c {
-		if con.Name == name {
+		if strings.ToLower(con.Name) == strings.ToLower(name) {
 			return con, true
 		}
 	}
@@ -176,7 +177,7 @@ type TaskPluginAssets []TaskPluginAsset
 
 func (c TaskPluginAssets) Get(name string) (TaskPluginAsset, bool) {
 	for _, con := range c {
-		if con.Name == name {
+		if strings.ToLower(con.Name) == strings.ToLower(name) {
 			return con, true
 		}
 	}

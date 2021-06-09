@@ -7,25 +7,7 @@ before:
     - make install
     - make generate
 builds:
-  - main: ./cmd/opctl/main.go
-    id: "opctl"
-    binary: opctl
-    flags:
-      - -a
-    ldflags:
-      - -s -w -X github.com/odpf/optimus/config.Version={{.Tag}} -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - 386
-      - arm
-      - arm64
-    env:
-      - CGO_ENABLED=0
-  - main: ./cmd/optimus/main.go
+  - main: ./main.go
     id: "optimus"
     binary: optimus
     flags:
@@ -89,7 +71,7 @@ brews:
     dependencies:
       - name: git
     install: |-
-      bin.install "opctl"
+      bin.install "optimus"
     commit_author:
       name: Kush Sharma
       email: 3647166+kushsharma@users.noreply.github.com

@@ -1,15 +1,12 @@
-package commands
+package cmd
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"time"
 
 	"github.com/odpf/optimus/core/fs"
-
-	"github.com/odpf/optimus/config"
 
 	"github.com/odpf/optimus/utils"
 
@@ -32,23 +29,17 @@ var (
 		survey.MaxLength(1024))
 )
 
-func errExit(l logger, err error) {
-	if err == nil {
-		return
-	}
-	l.Println("ERROR: ", err)
-	os.Exit(1)
-}
-
-func createCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository,
+func createCommand(l logger, jobSpecRepo store.JobSpecRepository,
 	taskRepo models.TaskPluginRepository, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo,
 	datastoreSpecsFs map[string]fs.FileSystem) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new job/resource",
 	}
-	cmd.AddCommand(createJobSubCommand(l, jobSpecRepo, taskRepo, hookRepo))
-	cmd.AddCommand(createHookSubCommand(l, jobSpecRepo, hookRepo))
+	if jobSpecRepo != nil {
+		cmd.AddCommand(createJobSubCommand(l, jobSpecRepo, taskRepo, hookRepo))
+		cmd.AddCommand(createHookSubCommand(l, jobSpecRepo, hookRepo))
+	}
 	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
 	return cmd
 }
@@ -58,19 +49,20 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository, taskRepo
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
-		Run: func(cmd *cli.Command, args []string) {
+		RunE: func(cmd *cli.Command, args []string) error {
 			jobInput, err := createJobSurvey(jobSpecRepo, taskRepo)
 			if err != nil {
-				errExit(l, err)
+				return err
 			}
 			spec, err := local.NewJobSpecAdapter(taskRepo, hookRepo).ToSpec(jobInput)
 			if err != nil {
-				errExit(l, err)
+				return err
 			}
 			if err := jobSpecRepo.Save(spec); err != nil {
-				errExit(l, err)
+				return err
 			}
 			l.Println("job created successfully", spec.Name)
+			return nil
 		},
 	}
 }
@@ -359,7 +351,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem
 	return &cli.Command{
 		Use:   "resource",
 		Short: "create a new resource",
-		Run: func(cmd *cli.Command, args []string) {
+		RunE: func(cmd *cli.Command, args []string) error {
 			availableStorer := []string{}
 			for _, s := range datastoreRepo.GetAll() {
 				availableStorer = append(availableStorer, s.Name())
@@ -369,11 +361,11 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem
 				Message: "Select supported datastores?",
 				Options: availableStorer,
 			}, &storerName); err != nil {
-				errExit(l, err)
+				return err
 			}
 			repoFS, ok := datastoreSpecFs[storerName]
 			if !ok {
-				errExit(l, fmt.Errorf("unregistered datastore, please use configuration file to set datastore path"))
+				return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
 			}
 
 			availableTypes := []string{}
@@ -388,7 +380,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem
 				Message: "Select supported resource type?",
 				Options: availableTypes,
 			}, &resourceType); err != nil {
-				errExit(l, err)
+				return err
 			}
 			typeController, _ := datastore.Types()[models.ResourceType(resourceType)]
 
@@ -405,7 +397,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem
 			}
 			inputs := map[string]interface{}{}
 			if err := survey.Ask(qs, &inputs); err != nil {
-				errExit(l, err)
+				return err
 			}
 			resourceName := inputs["name"].(string)
 
@@ -416,9 +408,11 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem
 				Datastore: datastore,
 				Assets:    typeController.DefaultAssets(),
 			}); err != nil {
-				errExit(l, err)
+				return err
 			}
 			l.Println("resource created successfully", resourceName)
+
+			return nil
 		},
 	}
 }

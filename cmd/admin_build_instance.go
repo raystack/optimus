@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "instance",
 		Short:   "Builds a Job instance including the assets for a scheduled execution",
-		Example: "opctl admin build instance sample_replace --project \"project-id\" --output-dir /tmp",
+		Example: "optimus admin build instance sample_replace --project \"project-id\" --output-dir /tmp",
 		Args:    cli.MinimumNArgs(1),
 	}
 
@@ -53,7 +53,7 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 	cmd.Flags().StringVar(&optimusHost, "host", "", "optimus service endpoint url")
 	cmd.MarkFlagRequired("host")
 
-	cmd.Run = func(c *cli.Command, args []string) {
+	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
 		l.Printf("requesting resources for project %s, job %s at %s\nplease wait...\n", projectName, jobName, optimusHost)
 		l.Printf("run name %s, run type %s, scheduled at %s\n", runName, runType, scheduledAt)
@@ -61,10 +61,9 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 		inputDirectory := filepath.Join(assetOutputDir, taskInputDirectory)
 
 		if err := getInstanceBuildRequest(l, jobName, inputDirectory, optimusHost, projectName, scheduledAt, runType, runName); err != nil {
-			l.Print(err)
-			l.Print(errRequestFail)
-			os.Exit(1)
+			return err
 		}
+		return nil
 	}
 	return cmd
 }

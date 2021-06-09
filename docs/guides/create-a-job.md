@@ -1,4 +1,4 @@
-# Using Opctl to create a Job
+# Using Optimus to create a Job
 
 A Job is the fundamental execution unit of an Optimus data pipeline. 
 It can be scheduled, configured and is always mapped to a single transformation type
@@ -18,14 +18,14 @@ is "example" & dataset is just called "data".
 ## Creating a Job
 
 Open your terminal and create a new directory that will hold the specifications 
-created by `opctl` (The CLI of Optimus). Once ready, you can run the following 
+created by `optimus` (The CLI of Optimus). Once ready, you can run the following 
 command and answer the corresponding prompts (do note that some prompts 
 would be to select from options instead of input):
 
 ```
-$ opctl create job
+$ optimus create job
 ? What is the job name? example_job
-? Who is the owner of this job? example@opctl.com
+? Who is the owner of this job? example@example.com
 ? Which task to run? bq2bq
 ? Specify the start date 2021-02-18
 ? Specify the interval (in crontab notation) 0 3 * * *
@@ -81,7 +81,7 @@ Finally, this is how our Job Specification will look like (example_job/job.yaml)
 ```yaml
 version: 1
 name: example_job
-owner: example@opctl.com
+owner: example@example.com
 schedule:
   start_date: "2021-02-18"
   interval: 0 3 * * *

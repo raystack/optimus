@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"context"
@@ -14,34 +14,36 @@ import (
 	"github.com/odpf/optimus/store"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/config"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
 
-const (
-	renderTimeout = time.Minute * 2
+var (
+	renderTimeout  = time.Minute * 2
+	templateEngine = instance.NewGoEngine()
 )
 
-func renderCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func renderCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "render",
 		Short: "convert raw representation of specification to consumables",
 	}
-	cmd.AddCommand(renderTemplateCommand(l, conf, jobSpecRepo))
-	cmd.AddCommand(renderJobCommand(l, conf))
+	if jobSpecRepo != nil {
+		cmd.AddCommand(renderTemplateCommand(l, jobSpecRepo))
+	}
+	cmd.AddCommand(renderJobCommand(l, host))
 	return cmd
 }
 
-func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func renderTemplateCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "template",
 		Short:   "render templates for a job to current 'render' directory",
-		Example: "opctl render template",
+		Example: "optimus render template",
 	}
 
-	cmd.Run = func(c *cli.Command, args []string) {
+	cmd.RunE = func(c *cli.Command, args []string) error {
 		var err error
 		var jobName string
 		if len(args) == 0 {
@@ -49,7 +51,7 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 			// more accurate results
 			jobName, err = selectJobSurvey(jobSpecRepo)
 			if err != nil {
-				errExit(l, err)
+				return err
 			}
 		} else {
 			jobName = args[0]
@@ -66,53 +68,51 @@ func renderTemplateCommand(l logger, conf config.Opctl, jobSpecRepo store.JobSpe
 
 		templates, err := instance.DumpAssets(jobSpec, now, templateEngine, true)
 		if err != nil {
-			errExit(l, err)
+			return err
 		}
 
 		writeToFileFn := utils.WriteStringToFileIndexed()
 		for name, content := range templates {
 			if err := writeToFileFn(filepath.Join(renderedPath, name), content, l.Writer()); err != nil {
-				errExit(l, err)
+				return err
 			}
 		}
 
 		l.Println(coloredSuccess("render complete"))
+		return nil
 	}
 
 	return cmd
 }
 
-func renderJobCommand(l logger, conf config.Opctl) *cli.Command {
+func renderJobCommand(l logger, host string) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
 		Short:   "write the scheduler representation of the job to stdout",
 		Args:    cli.MinimumNArgs(1),
-		Example: "opctl render job <job_name> --project g-optimus",
+		Example: "optimus render job <job_name> --project g-optimus",
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
 	cmd.MarkFlagRequired("project")
 	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
 	cmd.MarkFlagRequired("namespace")
 
-	cmd.Run = func(c *cli.Command, args []string) {
+	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
-		if err := renderJobSpecificationBuildRequest(l, projectName, namespace, jobName, conf); err != nil {
-			l.Println(err)
-			os.Exit(1)
-		}
+		return renderJobSpecificationBuildRequest(l, projectName, namespace, jobName, host)
 	}
 
 	return cmd
 }
 
-func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobName string, conf config.Opctl) (err error) {
+func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobName string, host string) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Println(coloredError("can't reach optimus service"))
 		}
