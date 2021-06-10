@@ -1,7 +1,7 @@
 package job
 
 import (
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 )
@@ -85,8 +85,8 @@ func (a *priorityResolver) resolvePriorities(jobSpecs []models.JobSpec) error {
 	return nil
 }
 
-func (a *priorityResolver) assignWeight(rootNodes []*multi_root_tree.TreeNode, weight int, taskPriorityMap map[string]int) {
-	subChildren := []*multi_root_tree.TreeNode{}
+func (a *priorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, taskPriorityMap map[string]int) {
+	subChildren := []*tree.TreeNode{}
 	for _, rootNode := range rootNodes {
 		taskPriorityMap[rootNode.GetName()] = weight
 		subChildren = append(subChildren, rootNode.Dependents...)
@@ -98,7 +98,7 @@ func (a *priorityResolver) assignWeight(rootNodes []*multi_root_tree.TreeNode, w
 
 // buildMultiRootDependencyTree - converts []JobSpec into a MultiRootTree
 // based on the dependencies of each DAG.
-func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec) (*multi_root_tree.MultiRootDAGTree, error) {
+func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec) (*tree.MultiRootTree, error) {
 	// creates map[jobName]jobSpec for faster retrieval
 	dagSpecMap := make(map[string]models.JobSpec)
 	for _, dagSpec := range jobSpecs {
@@ -107,7 +107,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 
 	// build a multi root tree and assign dependencies
 	// ignore any other dependency apart from intra-tenant
-	tree := multi_root_tree.NewMultiRootDAGTree()
+	tree := tree.NewMultiRootTree()
 	for _, childSpec := range dagSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
@@ -146,11 +146,11 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	return tree, nil
 }
 
-func (a *priorityResolver) findOrCreateDAGNode(tree *multi_root_tree.MultiRootDAGTree, dagSpec models.JobSpec) *multi_root_tree.TreeNode {
-	node, ok := tree.GetNodeByName(dagSpec.Name)
+func (a *priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {
+	node, ok := dagTree.GetNodeByName(dagSpec.Name)
 	if !ok {
-		node = multi_root_tree.NewTreeNode(dagSpec)
-		tree.AddNode(node)
+		node = tree.NewTreeNode(dagSpec)
+		dagTree.AddNode(node)
 	}
 	return node
 }

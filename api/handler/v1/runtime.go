@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/odpf/optimus/datastore"
 
@@ -57,7 +57,7 @@ type ProtoAdapter interface {
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
 
-	ToReplayResponseNode(res *multi_root_tree.TreeNode) (*pb.ReplayResponseNode, error)
+	ToReplayResponseNode(res *tree.TreeNode) (*pb.ReplayResponseNode, error)
 }
 
 type RuntimeServiceServer struct {

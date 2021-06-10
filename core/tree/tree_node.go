@@ -1,4 +1,4 @@
-package multi_root_tree
+package tree
 
 import (
 	"github.com/odpf/optimus/core/set"

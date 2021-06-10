@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/progress"
@@ -286,7 +286,7 @@ type JobService interface {
 	// Dump returns the compiled Job
 	Dump(NamespaceSpec, JobSpec) (Job, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(NamespaceSpec, JobSpec, bool, time.Time, time.Time) (*multi_root_tree.TreeNode, error)
+	Replay(NamespaceSpec, JobSpec, bool, time.Time, time.Time) (*tree.TreeNode, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
 	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace

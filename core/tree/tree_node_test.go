@@ -1,9 +1,9 @@
-package multi_root_tree_test
+package tree_test
 
 import (
 	"testing"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -19,8 +19,8 @@ func TestDagNode(t *testing.T) {
 		dependentJobSpec := models.JobSpec{
 			Name: dependentJobName,
 		}
-		dagNode := multi_root_tree.NewTreeNode(jobSpec)
-		dependentDagNode := multi_root_tree.NewTreeNode(dependentJobSpec)
+		dagNode := tree.NewTreeNode(jobSpec)
+		dependentDagNode := tree.NewTreeNode(dependentJobSpec)
 		dagNode.AddDependent(dependentDagNode)
 		assert.Equal(t, jobName, dagNode.GetName())
 	})

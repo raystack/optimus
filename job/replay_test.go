@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRuns(root *multi_root_tree.TreeNode, countMap map[string][]time.Time) {
+func getRuns(root *tree.TreeNode, countMap map[string][]time.Time) {
 	if _, ok := countMap[root.GetName()]; ok {
 		return
 	}

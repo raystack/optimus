@@ -1,23 +1,21 @@
-package multi_root_tree
+package tree
 
-import (
-	"github.com/pkg/errors"
-)
+import "github.com/pkg/errors"
 
 var (
 	// ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
 	ErrCyclicDependencyEncountered = errors.New("a cycle dependency encountered in the tree")
 )
 
-// MultiRootDAGTree - represents a data type which has multiple independent root nodes
+// MultiRootTree - represents a data type which has multiple independent root nodes
 // all root nodes have their independent tree based on depdencies of TreeNode.
 // it also maintains a map of nodes for faster lookups and managing node data.
-type MultiRootDAGTree struct {
+type MultiRootTree struct {
 	rootNodes []string
 	dataMap   map[string]*TreeNode
 }
 
-func (t *MultiRootDAGTree) GetRootNodes() []*TreeNode {
+func (t *MultiRootTree) GetRootNodes() []*TreeNode {
 	nodes := []*TreeNode{}
 	for _, name := range t.rootNodes {
 		node, _ := t.GetNodeByName(name)
@@ -27,28 +25,28 @@ func (t *MultiRootDAGTree) GetRootNodes() []*TreeNode {
 }
 
 // MarkRoot marks a node as root
-func (t *MultiRootDAGTree) MarkRoot(node *TreeNode) {
+func (t *MultiRootTree) MarkRoot(node *TreeNode) {
 	t.rootNodes = append(t.rootNodes, node.GetName())
 }
 
-func (t *MultiRootDAGTree) AddNode(node *TreeNode) {
+func (t *MultiRootTree) AddNode(node *TreeNode) {
 	t.dataMap[node.GetName()] = node
 }
 
-func (t *MultiRootDAGTree) AddNodeIfNotExist(node *TreeNode) {
+func (t *MultiRootTree) AddNodeIfNotExist(node *TreeNode) {
 	_, ok := t.GetNodeByName(node.GetName())
 	if !ok {
 		t.AddNode(node)
 	}
 }
 
-func (t *MultiRootDAGTree) GetNodeByName(dagName string) (*TreeNode, bool) {
+func (t *MultiRootTree) GetNodeByName(dagName string) (*TreeNode, bool) {
 	value, ok := t.dataMap[dagName]
 	return value, ok
 }
 
 // IsCyclic - detects if there are any cycles in the tree
-func (t *MultiRootDAGTree) IsCyclic() error {
+func (t *MultiRootTree) IsCyclic() error {
 	visitedMap := make(map[string]bool)
 	for _, node := range t.dataMap {
 		if _, visited := visitedMap[node.GetName()]; !visited {
@@ -63,7 +61,7 @@ func (t *MultiRootDAGTree) IsCyclic() error {
 }
 
 // runs a DFS on a given tree using visitor pattern
-func (t *MultiRootDAGTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool) error {
+func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool) error {
 	_, isNodeVisited := visited[root.GetName()]
 	if !isNodeVisited || !visited[root.GetName()] {
 		pathMap[root.GetName()] = true
@@ -92,9 +90,9 @@ func (t *MultiRootDAGTree) hasCycle(root *TreeNode, visited, pathMap map[string]
 	return nil
 }
 
-// NewMultiRootDAGTree returns an instance of multi root dag tree
-func NewMultiRootDAGTree() *MultiRootDAGTree {
-	return &MultiRootDAGTree{
+// NewMultiRootTree returns an instance of multi root dag tree
+func NewMultiRootTree() *MultiRootTree {
+	return &MultiRootTree{
 		dataMap:   map[string]*TreeNode{},
 		rootNodes: []string{},
 	}

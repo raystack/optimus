@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/odpf/optimus/instance"
 
@@ -1479,7 +1479,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			dagNode := multi_root_tree.NewTreeNode(jobSpec)
+			dagNode := tree.NewTreeNode(jobSpec)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)

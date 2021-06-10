@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/golang/protobuf/proto"
 
@@ -394,7 +394,7 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 	return typeController.Adapter().FromProtobuf(buf)
 }
 
-func (adapt *Adapter) ToReplayResponseNode(res *multi_root_tree.TreeNode) (*pb.ReplayResponseNode, error) {
+func (adapt *Adapter) ToReplayResponseNode(res *tree.TreeNode) (*pb.ReplayResponseNode, error) {
 	response := &pb.ReplayResponseNode{
 		JobName: res.GetName(),
 	}

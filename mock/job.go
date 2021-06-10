@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -195,9 +195,9 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 	return args.Error(0)
 }
 
-func (j *JobService) Replay(namespace models.NamespaceSpec, jobSpec models.JobSpec, dryRun bool, start time.Time, end time.Time) (*multi_root_tree.TreeNode, error) {
+func (j *JobService) Replay(namespace models.NamespaceSpec, jobSpec models.JobSpec, dryRun bool, start time.Time, end time.Time) (*tree.TreeNode, error) {
 	args := j.Called(namespace, jobSpec, dryRun, start, end)
-	return args.Get(0).(*multi_root_tree.TreeNode), args.Error(1)
+	return args.Get(0).(*tree.TreeNode), args.Error(1)
 }
 
 type Compiler struct {

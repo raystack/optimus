@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/core/cron"
-	"github.com/odpf/optimus/core/multi_root_tree"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 )
@@ -15,7 +15,7 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, dryRun bool, start, end time.Time) (*multi_root_tree.TreeNode, error) {
+func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, dryRun bool, start, end time.Time) (*tree.TreeNode, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
 	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
 	if err != nil {
@@ -40,15 +40,15 @@ func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.
 }
 
 // prepareTree creates a execution tree for replay operation
-func prepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, start, end time.Time) (*multi_root_tree.TreeNode, error) {
+func prepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, start, end time.Time) (*tree.TreeNode, error) {
 	replayJobSpec, found := dagSpecMap[replayJobName]
 	if !found {
 		return nil, fmt.Errorf("couldn't find any job with name %s", replayJobName)
 	}
 
 	// compute runs that require replay
-	tree := multi_root_tree.NewMultiRootDAGTree()
-	parentNode := multi_root_tree.NewTreeNode(replayJobSpec)
+	dagTree := tree.NewMultiRootTree()
+	parentNode := tree.NewTreeNode(replayJobSpec)
 	if runs, err := getRunsBetweenDates(start, end, replayJobSpec.Schedule.Interval); err == nil {
 		for _, run := range runs {
 			parentNode.Runs.Add(run)
@@ -56,9 +56,9 @@ func prepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, sta
 	} else {
 		return nil, err
 	}
-	tree.AddNode(parentNode)
+	dagTree.AddNode(parentNode)
 
-	rootInstance, err := populateDownstreamDAGs(tree, replayJobSpec, dagSpecMap)
+	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, dagSpecMap)
 	if err != nil {
 		return nil, err
 	}
@@ -71,18 +71,18 @@ func prepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, sta
 	return rootInstance, nil
 }
 
-func findOrCreateDAGNode(tree *multi_root_tree.MultiRootDAGTree, dagSpec models.JobSpec) *multi_root_tree.TreeNode {
-	node, ok := tree.GetNodeByName(dagSpec.Name)
+func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {
+	node, ok := dagTree.GetNodeByName(dagSpec.Name)
 	if !ok {
-		node = multi_root_tree.NewTreeNode(dagSpec)
-		tree.AddNode(node)
+		node = tree.NewTreeNode(dagSpec)
+		dagTree.AddNode(node)
 	}
 	return node
 }
 
-func populateDownstreamDAGs(tree *multi_root_tree.MultiRootDAGTree, jobSpec models.JobSpec, dagSpecMap map[string]models.JobSpec) (*multi_root_tree.TreeNode, error) {
+func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, dagSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
 	for _, childSpec := range dagSpecMap {
-		childNode := findOrCreateDAGNode(tree, childSpec)
+		childNode := findOrCreateDAGNode(dagTree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
 			var isExternal = false
 			parentSpec, ok := dagSpecMap[depDAG.Job.Name]
@@ -96,33 +96,33 @@ func populateDownstreamDAGs(tree *multi_root_tree.MultiRootDAGTree, jobSpec mode
 				parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
 				isExternal = true
 			}
-			parentNode := findOrCreateDAGNode(tree, parentSpec)
+			parentNode := findOrCreateDAGNode(dagTree, parentSpec)
 			parentNode.AddDependent(childNode)
-			tree.AddNode(parentNode)
+			dagTree.AddNode(parentNode)
 
 			if isExternal {
 				// dependency that are outside current project will be considered as root because
 				// optimus don't know dependencies of those external parents
-				tree.MarkRoot(parentNode)
+				dagTree.MarkRoot(parentNode)
 			}
 		}
 
 		if len(childSpec.Dependencies) == 0 {
-			tree.MarkRoot(childNode)
+			dagTree.MarkRoot(childNode)
 		}
 	}
 
-	if err := tree.IsCyclic(); err != nil {
+	if err := dagTree.IsCyclic(); err != nil {
 		return nil, err
 	}
 
 	// since we are adding the rootNode at start, it will always be present
-	rootNode, _ := tree.GetNodeByName(jobSpec.Name)
+	rootNode, _ := dagTree.GetNodeByName(jobSpec.Name)
 
 	return rootNode, nil
 }
 
-func populateDownstreamRuns(parentNode *multi_root_tree.TreeNode) (*multi_root_tree.TreeNode, error) {
+func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 	for idx, childNode := range parentNode.Dependents {
 		childDag := childNode.Data.(models.JobSpec)
 		taskSchedule, err := cron.ParseCronSchedule(childDag.Schedule.Interval)
