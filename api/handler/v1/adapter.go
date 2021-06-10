@@ -394,8 +394,8 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 	return typeController.Adapter().FromProtobuf(buf)
 }
 
-func (adapt *Adapter) ToReplayResponseNode(res *tree.TreeNode) (*pb.ReplayResponseNode, error) {
-	response := &pb.ReplayResponseNode{
+func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error) {
+	response := &pb.ReplayExecutionTreeNode{
 		JobName: res.GetName(),
 	}
 	for _, run := range res.Runs.Values() {
@@ -407,7 +407,7 @@ func (adapt *Adapter) ToReplayResponseNode(res *tree.TreeNode) (*pb.ReplayRespon
 		response.Runs = append(response.Runs, timestampPb)
 	}
 	for _, dep := range res.Dependents {
-		parsedDep, err := adapt.ToReplayResponseNode(dep)
+		parsedDep, err := adapt.ToReplayExecutionTreeNode(dep)
 		if err != nil {
 			return nil, err
 		}

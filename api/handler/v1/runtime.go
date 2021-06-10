@@ -57,7 +57,7 @@ type ProtoAdapter interface {
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
 
-	ToReplayResponseNode(res *tree.TreeNode) (*pb.ReplayResponseNode, error)
+	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
 }
 
 type RuntimeServiceServer struct {
@@ -733,7 +733,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
+func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
@@ -767,16 +767,16 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("replay end date cannot be before start date"))
 	}
 
-	rootNode, err := sv.jobSvc.Replay(namespaceSpec, jobSpec, req.DryRun, startDate, endDate)
+	rootNode, err := sv.jobSvc.ReplayDryRun(namespaceSpec, jobSpec, startDate, endDate)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
 	}
 
-	node, err := sv.adapter.ToReplayResponseNode(rootNode)
+	node, err := sv.adapter.ToReplayExecutionTreeNode(rootNode)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
 	}
-	return &pb.ReplayResponse{
+	return &pb.ReplayDryRunResponse{
 		Success:  true,
 		Response: node,
 	}, nil

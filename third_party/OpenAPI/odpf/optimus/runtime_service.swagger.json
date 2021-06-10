@@ -229,15 +229,14 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/replay": {
+    "/api/v1/project/{projectName}/job/{jobName}/replayDryRun": {
       "get": {
-        "summary": "Replay replays the given job between start_date and end_date",
-        "operationId": "RuntimeService_Replay",
+        "operationId": "RuntimeService_ReplayDryRun",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/optimusReplayResponse"
+              "$ref": "#/definitions/optimusReplayDryRunResponse"
             }
           },
           "default": {
@@ -265,12 +264,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "dryRun",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           },
           {
             "name": "startDate",
@@ -1424,18 +1417,18 @@
         }
       }
     },
-    "optimusReplayResponse": {
+    "optimusReplayDryRunResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
         },
         "response": {
-          "$ref": "#/definitions/optimusReplayResponseNode"
+          "$ref": "#/definitions/optimusReplayExecutionTreeNode"
         }
       }
     },
-    "optimusReplayResponseNode": {
+    "optimusReplayExecutionTreeNode": {
       "type": "object",
       "properties": {
         "jobName": {
@@ -1444,7 +1437,7 @@
         "dependents": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/optimusReplayResponseNode"
+            "$ref": "#/definitions/optimusReplayExecutionTreeNode"
           }
         },
         "runs": {

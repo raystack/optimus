@@ -15,7 +15,7 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, dryRun bool, start, end time.Time) (*tree.TreeNode, error) {
+func (srv *Service) ReplayDryRun(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, start, end time.Time) (*tree.TreeNode, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
 	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
 	if err != nil {
@@ -29,11 +29,6 @@ func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.
 	rootInstance, err := prepareTree(dagSpecMap, replayJobSpec.Name, start, end)
 	if err != nil {
 		return nil, err
-	}
-
-	if dryRun {
-		//if only dry run, exit now
-		return rootInstance, err
 	}
 
 	return rootInstance, nil

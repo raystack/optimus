@@ -36,7 +36,7 @@ func taskRunBlockComperator(a, b interface{}) int {
 }
 
 //formatRunsPerDAGInstance returns a hashmap with DAG -> Runs[] mapping
-func formatRunsPerDAGInstance(instance *pb.ReplayResponseNode, taskReruns map[string]taskRunBlock, height int) {
+func formatRunsPerDAGInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
 	if _, ok := taskReruns[instance.JobName]; !ok {
 		taskReruns[instance.JobName] = taskRunBlock{
 			name:   instance.JobName,
@@ -78,7 +78,7 @@ func replayRunSubCommand(l logger, conf *config.Optimus) *cli.Command {
 This operation takes three arguments, first is DAG name[required]
 used in optimus specification, second is start date[required] of
 replay, third is end date[optional] of replay. 
-Replay date ranges are inclusive.
+ReplayDryRun date ranges are inclusive.
 		`,
 		Args: func(cmd *cli.Command, args []string) error {
 			if len(args) < 1 {
@@ -101,7 +101,7 @@ Replay date ranges are inclusive.
 		if len(args) >= 3 {
 			endDate = args[2]
 		}
-		if err := replayJobBuildRequest(l, replayProject, namespace, args[0], args[1], endDate, dryRun, conf); err != nil {
+		if err := printReplayExecutionTree(l, replayProject, namespace, args[0], args[1], endDate, conf); err != nil {
 			return err
 		}
 		if dryRun {
@@ -113,7 +113,7 @@ Replay date ranges are inclusive.
 	return reCmd
 }
 
-func replayJobBuildRequest(l logger, projectName, namespace, jobName, startDate, endDate string, dryRun bool, conf *config.Optimus) (err error) {
+func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDate, endDate string, conf *config.Optimus) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -132,15 +132,14 @@ func replayJobBuildRequest(l logger, projectName, namespace, jobName, startDate,
 	l.Println("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	// fetch compiled JobSpec by calling the optimus API
-	replayRequest := &pb.ReplayRequest{
+	replayDryRunRequest := &pb.ReplayDryRunRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 		Namespace:   namespace,
 		StartDate:   startDate,
 		EndDate:     endDate,
-		DryRun:      dryRun,
 	}
-	replayResponse, err := runtime.Replay(dumpTimeoutCtx, replayRequest)
+	replayDryRunResponse, err := runtime.ReplayDryRun(dumpTimeoutCtx, replayDryRunRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Println("render process took too long, timing out")
@@ -148,12 +147,12 @@ func replayJobBuildRequest(l logger, projectName, namespace, jobName, startDate,
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 
-	printReplayResponse(l, replayRequest, replayResponse)
+	printReplayDryRunResponse(l, replayDryRunRequest, replayDryRunResponse)
 	return nil
 }
 
-func printReplayResponse(l logger, replayRequest *pb.ReplayRequest, replayResponse *pb.ReplayResponse) {
-	l.Printf("For %s project and %s namespace\n\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace))
+func printReplayDryRunResponse(l logger, replayDryRunRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
+	l.Printf("For %s project and %s namespace\n\n", coloredNotice(replayDryRunRequest.ProjectName), coloredNotice(replayDryRunRequest.Namespace))
 	l.Println(coloredNotice("REPLAY RUNS"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
@@ -164,7 +163,7 @@ func printReplayResponse(l logger, replayRequest *pb.ReplayRequest, replayRespon
 	})
 	// generate basic details
 	taskRerunsMap := make(map[string]taskRunBlock)
-	formatRunsPerDAGInstance(replayResponse.Response, taskRerunsMap, 0)
+	formatRunsPerDAGInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
 
 	//sort run block
 	taskRerunsSorted := set.NewTreeSetWith(taskRunBlockComperator)
@@ -184,12 +183,12 @@ func printReplayResponse(l logger, replayRequest *pb.ReplayRequest, replayRespon
 
 	//print tree
 	l.Println(coloredNotice("\nDEPENDENCY TREE"))
-	l.Println(fmt.Sprintf("%s", printExecutionTree(replayResponse.Response, treeprint.New())))
+	l.Println(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.Response, treeprint.New())))
 }
 
 // PrintExecutionTree creates a ascii tree to visually inspect
 // instance dependencies that will be recomputed after replay operation
-func printExecutionTree(instance *pb.ReplayResponseNode, tree treeprint.Tree) treeprint.Tree {
+func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tree) treeprint.Tree {
 	subtree := tree.AddBranch(instance.JobName)
 	runBranch := subtree.AddMetaBranch(len(instance.Runs), "runs")
 	for _, run := range instance.Runs {

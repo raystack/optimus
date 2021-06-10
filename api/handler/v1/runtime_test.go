@@ -1438,7 +1438,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 	})
 
-	t.Run("Replay", func(t *testing.T) {
+	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should update datastore resource successfully", func(t *testing.T) {
 			projectName := "a-data-project"
 			jobName := "a-data-job"
@@ -1483,7 +1483,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", namespaceSpec, jobSpec, true, startDate, endDate).Return(dagNode, nil)
+			jobService.On("ReplayDryRun", namespaceSpec, jobSpec, startDate, endDate).Return(dagNode, nil)
 			defer jobService.AssertExpectations(t)
 
 			projectRepository := new(mock.ProjectRepository)
@@ -1514,18 +1514,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			replayRequest := pb.ReplayRequest{
+			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName: projectName,
 				Namespace:   namespaceSpec.Name,
 				JobName:     jobName,
-				DryRun:      true,
 				StartDate:   startDate.Format(timeLayout),
 				EndDate:     endDate.Format(timeLayout),
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
-			expectedReplayResponse, err := adapter.ToReplayResponseNode(dagNode)
+			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.Response.JobName)
 			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.Response.Dependents)

@@ -110,7 +110,7 @@ func TestReplay(t *testing.T) {
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 		jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac)
-		_, err := jobSvc.Replay(namespaceSpec, specs[spec1], true, replayStart, replayEnd)
+		_, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
 
 		assert.NotNil(t, err)
 	})
@@ -138,7 +138,7 @@ func TestReplay(t *testing.T) {
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
-		_, err := jobSvc.Replay(namespaceSpec, specs[spec1], true, replayStart, replayEnd)
+		_, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
 
 		assert.NotNil(t, err)
 		merr := err.(*multierror.Error)
@@ -175,7 +175,7 @@ func TestReplay(t *testing.T) {
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
-		_, err := jobSvc.Replay(namespaceSpec, cyclicDagSpec[0], true, replayStart, replayEnd)
+		_, err := jobSvc.ReplayDryRun(namespaceSpec, cyclicDagSpec[0], replayStart, replayEnd)
 
 		assert.NotNil(t, err)
 		assert.True(t, strings.Contains(err.Error(), "a cycle dependency encountered in the tree"))
@@ -207,7 +207,7 @@ func TestReplay(t *testing.T) {
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-		tree, err := jobSvc.Replay(namespaceSpec, specs[spec1], true, replayStart, replayEnd)
+		tree, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
 
 		assert.Nil(t, err)
 		countMap := make(map[string][]time.Time)
@@ -253,7 +253,7 @@ func TestReplay(t *testing.T) {
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 
-		tree, err := jobSvc.Replay(namespaceSpec, specs[spec4], true, replayStart, replayEnd)
+		tree, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec4], replayStart, replayEnd)
 
 		assert.Nil(t, err)
 		countMap := make(map[string][]time.Time)

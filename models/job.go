@@ -285,8 +285,8 @@ type JobService interface {
 	GetByName(string, NamespaceSpec) (JobSpec, error)
 	// Dump returns the compiled Job
 	Dump(NamespaceSpec, JobSpec) (Job, error)
-	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(NamespaceSpec, JobSpec, bool, time.Time, time.Time) (*tree.TreeNode, error)
+	// ReplayDryRun replays the jobSpec and its dependencies between start and endDate
+	ReplayDryRun(NamespaceSpec, JobSpec, time.Time, time.Time) (*tree.TreeNode, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
 	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace

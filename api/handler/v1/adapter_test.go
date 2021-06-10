@@ -18,10 +18,10 @@ func TestAdapter(t *testing.T) {
 		timeRun := time.Date(2021, 11, 8, 0, 0, 0, 0, time.UTC)
 		treeNode.Runs.Add(timeRun)
 		adap := v1.Adapter{}
-		replayResponseNode, err := adap.ToReplayResponseNode(treeNode)
+		replayExecutionTreeNode, err := adap.ToReplayExecutionTreeNode(treeNode)
 		assert.Nil(t, err)
-		assert.Equal(t, replayResponseNode.JobName, "job-name")
-		assert.Equal(t, 1, len(replayResponseNode.Dependents))
-		assert.Equal(t, replayResponseNode.Dependents[0].JobName, "nested-job-name")
+		assert.Equal(t, replayExecutionTreeNode.JobName, "job-name")
+		assert.Equal(t, 1, len(replayExecutionTreeNode.Dependents))
+		assert.Equal(t, replayExecutionTreeNode.Dependents[0].JobName, "nested-job-name")
 	})
 }

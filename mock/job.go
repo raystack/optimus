@@ -195,8 +195,8 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 	return args.Error(0)
 }
 
-func (j *JobService) Replay(namespace models.NamespaceSpec, jobSpec models.JobSpec, dryRun bool, start time.Time, end time.Time) (*tree.TreeNode, error) {
-	args := j.Called(namespace, jobSpec, dryRun, start, end)
+func (j *JobService) ReplayDryRun(namespace models.NamespaceSpec, jobSpec models.JobSpec, start time.Time, end time.Time) (*tree.TreeNode, error) {
+	args := j.Called(namespace, jobSpec, start, end)
 	return args.Get(0).(*tree.TreeNode), args.Error(1)
 }
 
