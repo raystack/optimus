@@ -14,7 +14,6 @@ import (
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	mocked "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/resources"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,7 +59,7 @@ func TestAirflow2(t *testing.T) {
 			objectPath := fmt.Sprintf("hello/%s/%s", "dags", "__lib.py")
 			ow.On("NewWriter", ctx, bucket, objectPath).Return(wc, nil)
 
-			air := airflow2.NewScheduler(resources.FileSystem, owf, nil)
+			air := airflow2.NewScheduler(owf, nil)
 			err := air.Bootstrap(context.Background(), models.ProjectSpec{
 				Name: "proj-name",
 				Config: map[string]string{
@@ -76,7 +75,7 @@ func TestAirflow2(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		t.Run("should fail if no storage config is set", func(t *testing.T) {
-			air := airflow2.NewScheduler(nil, nil, nil)
+			air := airflow2.NewScheduler(nil, nil)
 			err := air.Bootstrap(ctx, models.ProjectSpec{
 				Name:   "proj-name",
 				Config: map[string]string{},
@@ -84,7 +83,7 @@ func TestAirflow2(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 		t.Run("should fail for unsupported storage interfaces", func(t *testing.T) {
-			air := airflow2.NewScheduler(nil, nil, nil)
+			air := airflow2.NewScheduler(nil, nil)
 			err := air.Bootstrap(ctx, models.ProjectSpec{
 				Name: "proj-name",
 				Config: map[string]string{
@@ -133,7 +132,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, nil, client)
+			air := airflow2.NewScheduler(nil, client)
 			status, err := air.GetJobStatus(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -156,7 +155,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, nil, client)
+			air := airflow2.NewScheduler(nil, client)
 			status, err := air.GetJobStatus(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{

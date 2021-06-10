@@ -26,16 +26,16 @@ var (
 )
 
 func main() {
-	configuration, err := config.Init()
+	configuration, err := config.InitOptimus()
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	pluginLogLevel := hclog.Info
-	if configuration.Log.Level != "" {
-		lg.Init(configuration.Log.Level)
-		if strings.ToLower(configuration.Log.Level) == "debug" {
+	if configuration.GetLog().Level != "" {
+		lg.Init(configuration.GetLog().Level)
+		if strings.ToLower(configuration.GetLog().Level) == "debug" {
 			pluginLogLevel = hclog.Debug
 		}
 	} else {

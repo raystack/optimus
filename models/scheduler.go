@@ -19,11 +19,10 @@ var (
 type SchedulerUnit interface {
 	GetName() string
 
-	// GetTemplatePath returns the path for template files used during spec
-	// compilation. Each scheduler needs to have a template file stored under
-	// resources/pack/template/scheduler dir. This path needs to be relative
-	// from pack folder.
-	GetTemplatePath() string
+	// GetTemplate returns template file used during spec compilation.
+	// Each scheduler needs to have a template file using which optimus
+	// compiler will inject its spec details
+	GetTemplate() []byte
 
 	// GetJobsDir returns the directory to use while storing compiled
 	// scheduler specific input files

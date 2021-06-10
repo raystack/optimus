@@ -1,9 +1,8 @@
 // +build !unit_test
 
-package integration_tests
+package airflow_2
 
 import (
-	"bytes"
 	"context"
 	"io/ioutil"
 	"testing"
@@ -13,7 +12,6 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/resources"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -127,6 +125,11 @@ func TestCompiler2(t *testing.T) {
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
 			DependsOnPast: false,
+			Retry: models.JobSpecBehaviorRetry{
+				Count:              4,
+				Delay:              0,
+				ExponentialBackoff: true,
+			},
 		},
 		Schedule: models.JobSpecSchedule{
 			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
@@ -162,30 +165,12 @@ func TestCompiler2(t *testing.T) {
 	}
 
 	t.Run("Compile", func(t *testing.T) {
-		templatePath := "./resources/pack/templates/scheduler/airflow_2/base_dag.py"
 		compiledTemplateOutput := "./expected_compiled_template.py"
 
-		t.Run("should compile template without any error", func(t *testing.T) {
-			// read scheduler template file
-			scheduler := airflow2.NewScheduler(resources.FileSystem, nil, nil)
-			airflowTemplateFile, err := resources.FileSystem.Open(scheduler.GetTemplatePath())
-			assert.Nil(t, err)
-			defer airflowTemplateFile.Close()
-			templateContent, err := ioutil.ReadAll(airflowTemplateFile)
-			assert.Nil(t, err)
-
-			templateFile := new(mock.HTTPFile)
-			templateFile.On("Read").Return(bytes.NewBufferString(string(templateContent)), nil)
-			templateFile.On("Close").Return(nil)
-			defer templateFile.AssertExpectations(t)
-
-			fsm := new(mock.HTTPFileSystem)
-			fsm.On("Open", templatePath).Return(templateFile, nil)
-			defer fsm.AssertExpectations(t)
-
+		t.Run("should compile basic template without any error", func(t *testing.T) {
+			scheduler := airflow2.NewScheduler(nil, nil)
 			com := job.NewCompiler(
-				fsm,
-				templatePath,
+				scheduler.GetTemplate(),
 				"http://airflow.example.io",
 			)
 			job, err := com.Compile(namespaceSpec, spec)

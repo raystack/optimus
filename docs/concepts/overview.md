@@ -78,19 +78,60 @@ leave rest for the user to modify of its own eg, the SQL.
 
 Following is a sample job specification:
 ```yaml
+# specification version, for now just keep it fixed unless optimus has any
+# breaking change
 version: 1
+
+# unique name for the job, try to use simple ascii characters and less than 200 chars
+# to keep scheduler db's happy
 name: example_job
+
+# owner of the job
 owner: example@example.com
+
+# description of this job, what this do
 description: sample example job
+
+# configure when it should start, when the job should stop executing and what
+# interval scheduler should use for execution
 schedule:
+  # time format should be RFC3339
   start_date: "2021-02-18"
   end_date: "2021-02-25"
+  
+  # supports standard cron notations
   interval: 0 3 * * *
+
+# extra modifiers to change the behavior of the job
 behavior:
+  
+  # should the job wait for previous runs to finish successfully before executing
+  # next run, this will make it execute in sequence
   depends_on_past: false
+  
+  # if start_date is set in the past, and catchup is true, it will allow scheduler
+  # to automatically backfill history executions till it reaches today
   catch_up: true
+  
+  # retry behaviour of this job if it fails to successfully complete in first try
+  retry:
+    
+    # maximum number of tries before giving up
+    count: 3
+    
+    # delay between retries
+    delay: "15m"
+    
+    # allow progressive longer waits between retries by using exponential backoff algorithm 
+    # on retry delay (delay will be converted into seconds)
+    exponential_backoff: false
+    
+# transformation task configuration for this job
 task:
+  # name of the task type
   name: bq2bq
+  
+  # configuration passed to the task before execution
   config:
     PROJECT: example
     DATASET: data
@@ -98,22 +139,52 @@ task:
     LOAD_METHOD: APPEND
     SQL_TYPE: STANDARD
     PARTITION_FILTER: 'event_timestamp >= "{{.DSTART}}" AND event_timestamp < "{{.DEND}}"'
+  
+  # time window, could be used by task for running incremental runs instead of processing
+  # complete past data at every iteration
   window:
+    
+    # size of incremental window
+    # eg: 1h, 6h, 48h, 2h30m
     size: 24h
+    
+    # shifting window forward of backward in time, by default it is yesterday
     offset: "0"
+    
+    # truncate time window to nearest hour/day/week/month
+    # possible values: h/d/w/M
     truncate_to: d
+    
+# labels gets passed to task/hooks
+# these can be used to attach metadata to running transformation
+# discovering usage, identifying cost, grouping identities, etc
 labels:
   orchestrator: optimus
+  
+# static dependencies that can be used to wait for upstream job to finish
+# before this job can be started for execution 
 dependencies:
-- job: sample_internal_job
+
+  # list `job: <jobname>`
+  - job: sample_internal_job
+  
+# adhoc operations marked for execution at different hook points
+# accepts a list
 hooks:
-- name: transporter
-  type: post
-  config:
-    KAFKA_TOPIC: optimus_example-data-hello_table
-    PRODUCER_CONFIG_BOOTSTRAP_SERVERS: '{{.GLOBAL__TransporterKafkaBroker}}'
-    PROTO_SCHEMA: example.data.HelloTable
-    ...
+  - # name of the hook
+    name: transporter
+    
+    # where & when to attach this process
+    type: post
+    
+    # configuration passed to hook before execution
+    config:
+      KAFKA_TOPIC: optimus_example-data-hello_table
+      
+      # configuration being inherited from project level variables
+      PRODUCER_CONFIG_BOOTSTRAP_SERVERS: '{{.GLOBAL__TransporterKafkaBroker}}'
+      
+      PROTO_SCHEMA: example.data.HelloTable
 ```
 
 ## Macros & Templates
@@ -312,7 +383,6 @@ At the moment, Optimus supports BigQuery datastore for 3 types of resources:
 - [Dataset](https://cloud.google.com/bigquery/docs/datasets-intro)
 - [Table](https://cloud.google.com/bigquery/docs/tables-intro)
 - [Standard View](https://cloud.google.com/bigquery/docs/views-intro)
-
 
 
 

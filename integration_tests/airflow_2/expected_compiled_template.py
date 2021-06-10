@@ -3,10 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
 from airflow.kubernetes.secret import Secret
-from airflow.utils.decorators import apply_defaults
-from airflow.utils.db import provide_session
 from airflow.configuration import conf
-from airflow.utils.state import State
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
@@ -20,9 +17,10 @@ DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60
 
 default_args = {
     "owner": "mee@mee",
-    "depends_on_past": False ,
-    "retries": DAG_RETRIES,
+    "depends_on_past": False,
+    "retries": 4,
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
+    "retry_exponential_backoff": True,
     "priority_weight": 2000,
     "start_date": datetime.strptime("2000-11-11T00:00:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2020-11-11T00:00:00","%Y-%m-%dT%H:%M:%S"),
@@ -57,17 +55,16 @@ transformation_bq = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[transformation_secret],
     env_vars = [
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value='/opt/optimus/secrets/auth.json'),
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='task'),
-        k8s.V1EnvVar(name="TASK_NAME",value='bq'),
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='task'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='bq'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-  	],
-    reattach_on_restart=True,
+    ],
+    reattach_on_restart=True
 )
 
 # hooks loop start
@@ -93,18 +90,17 @@ hook_transporter = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[hook_transporter_secret],
     env_vars = [
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value='/opt/optimus/secrets/auth.json'),
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='hook'),
-        k8s.V1EnvVar(name="TASK_NAME",value='transporter'),
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='transporter'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-  	],
-   reattach_on_restart=True,
+    ],
+    reattach_on_restart=True
 )
 
 
@@ -122,18 +118,17 @@ hook_predator = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[],
     env_vars = [
-        k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value=''),
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="TASK_TYPE",value='hook'),
-        k8s.V1EnvVar(name="TASK_NAME",value='predator'),
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='predator'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-  	],
-   reattach_on_restart=True,
+    ],
+    reattach_on_restart=True
 )
 # hooks loop ends
 

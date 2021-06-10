@@ -1,0 +1,3 @@
+ALTER TABLE job ADD IF NOT EXISTS behavior JSONB;
+ALTER TABLE job DROP IF EXISTS depends_on_past;
+ALTER TABLE job DROP IF EXISTS catch_up;

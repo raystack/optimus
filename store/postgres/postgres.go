@@ -1,25 +1,31 @@
 package postgres
 
 import (
+	"embed"
 	"fmt"
+	"net/http"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/jinzhu/gorm"
-	"github.com/odpf/optimus/resources"
 	"github.com/pkg/errors"
+
+	_ "embed"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for postgres migrate driver
 	_ "github.com/lib/pq"
 )
 
+//go:embed migrations
+var migrationFs embed.FS
+
 const (
-	resourcePath = "/migrations"
+	resourcePath = "migrations"
 )
 
 // NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
 func NewHTTPFSMigrator(DBConnURL string) (*migrate.Migrate, error) {
-	src, err := httpfs.New(resources.FileSystem, resourcePath)
+	src, err := httpfs.New(http.FS(migrationFs), resourcePath)
 	if err != nil {
 		return &migrate.Migrate{}, fmt.Errorf("db migrator: %v", err)
 	}

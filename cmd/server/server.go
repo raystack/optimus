@@ -46,7 +46,6 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	_ "github.com/odpf/optimus/plugin"
-	"github.com/odpf/optimus/resources"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/gcs"
 	"github.com/odpf/optimus/store/postgres"
@@ -222,16 +221,16 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 	}
 }
 
-func checkRequiredConfigs(conf *config.Optimus) error {
+func checkRequiredConfigs(conf config.Provider) error {
 	errRequiredMissing := errors.New("required config missing")
-	if conf.Serve.IngressHost == "" {
+	if conf.GetServe().IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
 
-	if conf.Serve.DB.DSN == "" {
+	if conf.GetServe().DB.DSN == "" {
 		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
 	}
-	if parsed, err := url.Parse(conf.Serve.DB.DSN); err != nil {
+	if parsed, err := url.Parse(conf.GetServe().DB.DSN); err != nil {
 		return errors.Wrap(err, "failed to parse serve.db.dsn")
 	} else {
 		if parsed.Scheme != "postgres" {
@@ -241,14 +240,14 @@ func checkRequiredConfigs(conf *config.Optimus) error {
 	return nil
 }
 
-func Initialize(conf *config.Optimus) error {
+func Initialize(conf config.Provider) error {
 	if err := checkRequiredConfigs(conf); err != nil {
 		return err
 	}
 
 	log := logrus.New()
 	log.SetOutput(os.Stdout)
-	logger.Init(conf.Log.Level)
+	logger.Init(conf.GetLog().Level)
 
 	mainLog := log.WithField("reporter", "main")
 	mainLog.Infof("starting optimus %s", config.Version)
@@ -258,38 +257,32 @@ func Initialize(conf *config.Optimus) error {
 	}
 
 	// setup db
-	if err := postgres.Migrate(conf.Serve.DB.DSN); err != nil {
+	if err := postgres.Migrate(conf.GetServe().DB.DSN); err != nil {
 		return errors.Wrap(err, "postgres.Migrate")
 	}
-	dbConn, err := postgres.Connect(conf.Serve.DB.DSN, conf.Serve.DB.MaxIdleConnection, conf.Serve.DB.MaxOpenConnection)
+	dbConn, err := postgres.Connect(conf.GetServe().DB.DSN, conf.GetServe().DB.MaxIdleConnection, conf.GetServe().DB.MaxOpenConnection)
 	if err != nil {
 		return errors.Wrap(err, "postgres.Connect")
 	}
 
 	// init default scheduler
-	switch conf.Scheduler.Name {
+	switch conf.GetScheduler().Name {
 	case "airflow":
 		models.Scheduler = airflow.NewScheduler(
-			resources.FileSystem,
 			&objectWriterFactory{},
 			&http.Client{},
 		)
 	case "airflow2":
 		models.Scheduler = airflow2.NewScheduler(
-			resources.FileSystem,
 			&objectWriterFactory{},
 			&http.Client{},
 		)
 	default:
-		models.Scheduler = airflow2.NewScheduler(
-			resources.FileSystem,
-			&objectWriterFactory{},
-			&http.Client{},
-		)
+		return errors.Errorf("unsupported scheduler: %s", conf.GetScheduler().Name)
 	}
 
 	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.Serve.AppKey)
+	appHash, err := models.NewApplicationSecret(conf.GetServe().AppKey)
 	if err != nil {
 		return errors.Wrap(err, "NewApplicationSecret")
 	}
@@ -337,7 +330,7 @@ func Initialize(conf *config.Optimus) error {
 		db:                    dbConn,
 		projectJobSpecRepoFac: projectJobSpecRepoFac,
 	}
-	jobCompiler := job.NewCompiler(resources.FileSystem, models.Scheduler.GetTemplatePath(), conf.Serve.IngressHost)
+	jobCompiler := job.NewCompiler(models.Scheduler.GetTemplate(), conf.GetServe().IngressHost)
 	dependencyResolver := job.NewDependencyResolver()
 	priorityResolver := job.NewPriorityResolver()
 
@@ -350,7 +343,7 @@ func Initialize(conf *config.Optimus) error {
 	// Make sure that log statements internal to gRPC library are logged using the logrus Logger as well.
 	grpc_logrus.ReplaceGrpcLogger(logrusEntry)
 
-	grpcAddr := fmt.Sprintf("%s:%d", conf.Serve.Host, conf.Serve.Port)
+	grpcAddr := fmt.Sprintf("%s:%d", conf.GetServe().Host, conf.GetServe().Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -363,10 +356,14 @@ func Initialize(conf *config.Optimus) error {
 
 	// prepare factory writer for metadata
 	var metaSvcFactory meta.MetaSvcFactory
-	kafkaWriter := NewKafkaWriter(conf.Serve.Metadata.KafkaJobTopic, strings.Split(conf.Serve.Metadata.KafkaBrokers, ","), conf.Serve.Metadata.KafkaBatchSize)
+	kafkaWriter := NewKafkaWriter(conf.GetServe().Metadata.KafkaJobTopic, strings.Split(conf.GetServe().Metadata.KafkaBrokers, ","), conf.GetServe().Metadata.KafkaBatchSize)
+	mainLog.WithFields(logrus.Fields{
+		"topic":   conf.GetServe().Metadata.KafkaJobTopic,
+		"brokers": conf.GetServe().Metadata.KafkaBrokers,
+	}).Debug("kafka metadata writer config received")
 	if kafkaWriter != nil {
-		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", conf.Serve.Metadata.KafkaBrokers, conf.Serve.Metadata.KafkaJobTopic)
-		metaWriter := meta.NewWriter(kafkaWriter, conf.Serve.Metadata.WriterBatchSize)
+		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", conf.GetServe().Metadata.KafkaBrokers, conf.GetServe().Metadata.KafkaJobTopic)
+		metaWriter := meta.NewWriter(kafkaWriter, conf.GetServe().Metadata.WriterBatchSize)
 		defer kafkaWriter.Close()
 		metaSvcFactory = &metadataServiceFactory{
 			writer: metaWriter,

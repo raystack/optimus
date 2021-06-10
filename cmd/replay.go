@@ -53,7 +53,7 @@ func formatRunsPerDAGInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 	}
 }
 
-func replayCommand(l logger, conf *config.Optimus) *cli.Command {
+func replayCommand(l logger, conf config.Provider) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "replay",
 		Short: "re-running jobs in order to update data for older dates/partitions",
@@ -63,7 +63,7 @@ func replayCommand(l logger, conf *config.Optimus) *cli.Command {
 	return cmd
 }
 
-func replayRunSubCommand(l logger, conf *config.Optimus) *cli.Command {
+func replayRunSubCommand(l logger, conf config.Provider) *cli.Command {
 	dryRun := false
 	var (
 		replayProject string
@@ -113,12 +113,12 @@ ReplayDryRun date ranges are inclusive.
 	return reCmd
 }
 
-func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDate, endDate string, conf *config.Optimus) (err error) {
+func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Println("can't reach optimus service")
 		}

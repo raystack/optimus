@@ -7,7 +7,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func optimusServeCommand(l logger, conf *config.Optimus) *cli.Command {
+func optimusServeCommand(l logger, conf config.Provider) *cli.Command {
 	c := &cli.Command{
 		Use:   "serve",
 		Short: "Starts optimus service",

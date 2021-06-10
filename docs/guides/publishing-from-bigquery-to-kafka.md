@@ -17,6 +17,7 @@ $ ./optimus create hook
 ? Which hook to run? transporter
 ? Filter expression for extracting transformation rows? event_timestamp >= '{{.DSTART}}' AND event_timestamp < '{{.DEND}}'
 ```
+Note: this is not available for public use at the moment
 
 ### Config:
 

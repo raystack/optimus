@@ -16,9 +16,10 @@ DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60
 
 default_args = {
     "owner": {{.Job.Owner | quote}},
-    "depends_on_past": {{- if .Job.Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
-    "retries": DAG_RETRIES,
-    "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
+    "depends_on_past": {{ if .Job.Behavior.DependsOnPast }} True {{- else -}} False {{- end -}},
+    "retries": {{ if gt .Job.Behavior.Retry.Count 0 -}} {{.Job.Behavior.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
+    "retry_delay": {{ if gt .Job.Behavior.Retry.Delay.Nanoseconds 0 -}} timedelta(seconds={{.Job.Behavior.Retry.Delay.Seconds}}) {{- else -}} timedelta(seconds=DAG_RETRY_DELAY) {{- end}},
+    "retry_exponential_backoff": {{if .Job.Behavior.Retry.ExponentialBackoff -}}True{{- else -}}False{{- end -}},
     "priority_weight": {{.Job.Task.Priority}},
     "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02T15:04:05" | quote }}, "%Y-%m-%dT%H:%M:%S"),
     {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}},"%Y-%m-%dT%H:%M:%S"),{{- else -}}{{- end}}

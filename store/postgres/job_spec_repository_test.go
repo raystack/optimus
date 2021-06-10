@@ -80,6 +80,15 @@ func TestJobRepository(t *testing.T) {
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "g-optimus-id",
+			Behavior: models.JobSpecBehavior{
+				DependsOnPast: false,
+				CatchUp:       true,
+				Retry: models.JobSpecBehaviorRetry{
+					Count:              2,
+					Delay:              0,
+					ExponentialBackoff: true,
+				},
+			},
 			Task: models.JobSpecTask{
 				Unit: execUnit1,
 				Config: []models.JobSpecConfigItem{
@@ -454,6 +463,42 @@ func TestJobRepository(t *testing.T) {
 			err = jobRepoNamespace2.Save(testModelA)
 			assert.NotNil(t, err)
 			assert.Equal(t, "job g-optimus-id already exists for the project t-optimus-id", err.Error())
+		})
+		t.Run("should properly insert spec behavior, reading and writing", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			testModelA := testConfigs[0]
+
+			unitData1 := models.GenerateTaskDestinationRequest{Config: models.TaskPluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.TaskPluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
+			defer execUnit1.AssertExpectations(t)
+
+			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
+			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
+			//try for create
+			err := repo.Save(testModelA)
+			assert.Nil(t, err)
+
+			checkModel, err := repo.GetByID(testModelA.ID)
+			assert.Nil(t, err)
+			assert.Equal(t, "g-optimus-id", checkModel.Name)
+			assert.Equal(t, true, checkModel.Behavior.CatchUp)
+			assert.Equal(t, false, checkModel.Behavior.DependsOnPast)
+			assert.Equal(t, 2, checkModel.Behavior.Retry.Count)
+			assert.Equal(t, 0, checkModel.Behavior.Retry.Delay)
+			assert.Equal(t, true, checkModel.Behavior.Retry.ExponentialBackoff)
+
+			//try for update
+			testModelA.Behavior.CatchUp = false
+			testModelA.Behavior.DependsOnPast = true
+			err = repo.Save(testModelA)
+			assert.Nil(t, err)
+
+			checkModel, err = repo.GetByID(testModelA.ID)
+			assert.Nil(t, err)
+			assert.Equal(t, false, checkModel.Behavior.CatchUp)
+			assert.Equal(t, true, checkModel.Behavior.DependsOnPast)
 		})
 	})
 

@@ -46,7 +46,7 @@ func programPrologue(ver string) string {
 // It houses all other sub commands
 func New(
 	l logger,
-	conf *config.Optimus,
+	conf config.Provider,
 	tfRepo models.TaskPluginRepository,
 	hookRepo models.HookRepo,
 	dsRepo models.DatastoreRepo,
@@ -68,30 +68,30 @@ func New(
 
 	//init local specs
 	var jobSpecRepo store.JobSpecRepository
-	if conf.Job.Path != "" {
+	if conf.GetJob().Path != "" {
 		jobSpecRepo = local.NewJobSpecRepository(
-			&fs.LocalFileSystem{BasePath: conf.Job.Path},
+			&fs.LocalFileSystem{BasePath: conf.GetJob().Path},
 			local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
 		)
 	}
 	datastoreSpecsFs := map[string]fs.FileSystem{}
-	for _, dsConfig := range conf.Datastore {
+	for _, dsConfig := range conf.GetDatastore() {
 		datastoreSpecsFs[dsConfig.Type] = &fs.LocalFileSystem{
 			BasePath: dsConfig.Path,
 		}
 	}
 
-	cmd.AddCommand(versionCommand(l, conf.Host))
+	cmd.AddCommand(versionCommand(l, conf.GetHost()))
 	cmd.AddCommand(configCommand(l, dsRepo))
 	cmd.AddCommand(createCommand(l, jobSpecRepo, tfRepo, hookRepo, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(deployCommand(l, jobSpecRepo, *conf, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(renderCommand(l, conf.Host, jobSpecRepo))
-	cmd.AddCommand(validateCommand(l, conf.Host, jobSpecRepo))
+	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf, dsRepo, datastoreSpecsFs))
+	cmd.AddCommand(renderCommand(l, conf.GetHost(), jobSpecRepo))
+	cmd.AddCommand(validateCommand(l, conf.GetHost(), jobSpecRepo))
 	cmd.AddCommand(optimusServeCommand(l, conf))
 	cmd.AddCommand(replayCommand(l, conf))
 
 	// admin specific commands
-	if conf.Admin.Enabled {
+	if conf.GetAdmin().Enabled {
 		cmd.AddCommand(adminCommand(l, tfRepo, hookRepo))
 	}
 
