@@ -27,7 +27,7 @@ pack-files: ./resources/pack ./resources/resource_fs_gen.go
 generate-proto: ## regenerate protos
 	@echo " > cloning protos from odpf/proton"
 	@rm -rf proton/
-	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch optimus-replay
+	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
 	@echo " > generating protos"
 	@buf generate
 

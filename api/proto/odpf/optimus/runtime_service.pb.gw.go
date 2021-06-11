@@ -2500,7 +2500,7 @@ var (
 
 	pattern_RuntimeService_UpdateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"api", "v1", "project", "project_name", "namespace", "datastore", "datastore_name", "resource"}, ""))
 
-	pattern_RuntimeService_ReplayDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"api", "v1", "project", "project_name", "job", "job_name", "replayDryRun"}, ""))
+	pattern_RuntimeService_ReplayDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"api", "v1", "project", "project_name", "job", "job_name", "replay-dry-run"}, ""))
 )
 
 var (

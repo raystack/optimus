@@ -229,7 +229,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/replayDryRun": {
+    "/api/v1/project/{projectName}/job/{jobName}/replay-dry-run": {
       "get": {
         "operationId": "RuntimeService_ReplayDryRun",
         "responses": {
