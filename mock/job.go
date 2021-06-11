@@ -2,6 +2,9 @@ package mock
 
 import (
 	"context"
+	"time"
+
+	"github.com/odpf/optimus/core/tree"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -190,6 +193,11 @@ func (j *JobService) Check(namespaceSpec models.NamespaceSpec, specs []models.Jo
 func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job models.JobSpec) error {
 	args := j.Called(ctx, c, job)
 	return args.Error(0)
+}
+
+func (j *JobService) ReplayDryRun(namespace models.NamespaceSpec, jobSpec models.JobSpec, start time.Time, end time.Time) (*tree.TreeNode, error) {
+	args := j.Called(namespace, jobSpec, start, end)
+	return args.Get(0).(*tree.TreeNode), args.Error(1)
 }
 
 type Compiler struct {

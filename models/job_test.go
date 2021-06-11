@@ -10,6 +10,12 @@ import (
 )
 
 func TestJob(t *testing.T) {
+	t.Run("GetName", func(t *testing.T) {
+		jobSpec := models.JobSpec{
+			Name: "job-name",
+		}
+		assert.Equal(t, "job-name", jobSpec.GetName())
+	})
 	t.Run("JobSpecTaskWindow", func(t *testing.T) {
 		t.Run("should generate valid window start and end", func(t *testing.T) {
 			cases := []struct {

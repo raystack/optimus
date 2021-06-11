@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/golang/protobuf/ptypes"
@@ -390,6 +392,28 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 		return models.ResourceSpec{}, err
 	}
 	return typeController.Adapter().FromProtobuf(buf)
+}
+
+func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error) {
+	response := &pb.ReplayExecutionTreeNode{
+		JobName: res.GetName(),
+	}
+	for _, run := range res.Runs.Values() {
+		runTime := run.(time.Time)
+		timestampPb, err := ptypes.TimestampProto(runTime)
+		if err != nil {
+			return nil, err
+		}
+		response.Runs = append(response.Runs, timestampPb)
+	}
+	for _, dep := range res.Dependents {
+		parsedDep, err := adapt.ToReplayExecutionTreeNode(dep)
+		if err != nil {
+			return nil, err
+		}
+		response.Dependents = append(response.Dependents, parsedDep)
+	}
+	return response, nil
 }
 
 func NewAdapter(supportedTaskRepo models.TaskPluginRepository,
