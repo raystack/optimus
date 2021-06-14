@@ -86,7 +86,7 @@ func InitOptimus() (*Optimus, error) {
 		return nil, errors.Wrap(err, "k.Load: error loading config from env")
 	}
 
-	if strings.ToLower(configuration.GetLog().Level) == "debug" {
+	if pathUsed != "" && strings.ToLower(configuration.GetLog().Level) == "debug" {
 		fmt.Printf("configuration used at %s out of %v\n", pathUsed, configDirs)
 	}
 	return configuration, nil
