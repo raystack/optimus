@@ -23,11 +23,21 @@ directory. Open the created specification file and add additional spec details
 as follows:
 ```yaml
 version: 1
+
+# unique name that must conform to validations of type of resource we are creating
+# in case of bigquery table, this is fully qualified name
 name: temporary-project.optimus-playground.first_table
+
+# type of resource that belong to this datastore
+# e.g.: table, dataset, view
 type: table
+
+# labels being passed to datastore which will be injected in the bigquery table
 labels:
   usage: testtable
   owner: optimus
+
+# actual specification details that matches the type we are trying to create/update
 spec:
   description: "example description"
   schema:

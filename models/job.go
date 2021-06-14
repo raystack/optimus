@@ -52,6 +52,7 @@ type JobSpec struct {
 	Dependencies map[string]JobSpecDependency // job name to dependency
 	Assets       JobAssets
 	Hooks        []JobSpecHook
+	Metadata     map[string]interface{}
 }
 
 func (js JobSpec) GetName() string {
@@ -88,6 +89,13 @@ type JobSpecSchedule struct {
 type JobSpecBehavior struct {
 	DependsOnPast bool
 	CatchUp       bool
+	Retry         JobSpecBehaviorRetry
+}
+
+type JobSpecBehaviorRetry struct {
+	Count              int
+	Delay              time.Duration
+	ExponentialBackoff bool
 }
 
 type JobSpecTask struct {

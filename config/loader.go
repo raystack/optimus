@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/knadh/koanf/providers/confmap"
+
 	"github.com/pkg/errors"
 
 	"github.com/knadh/koanf/providers/env"
@@ -21,9 +23,6 @@ var (
 	ErrFailedToRead = "unable to read optimus config file %v (%s)"
 	FileName        = ".optimus"
 	FileExtension   = "yaml"
-
-	k      = koanf.New(".")
-	parser = yaml.Parser()
 )
 
 // Load configuration file from following paths
@@ -31,10 +30,13 @@ var (
 // <exec>/
 // ~/.config/
 // ~/.optimus/
-func Init() (*Optimus, error) {
-	configuration := &Optimus{}
-	configDirs := []string{}
+func InitOptimus() (*Optimus, error) {
+	configuration := &Optimus{
+		k:      koanf.New("."),
+		parser: yaml.Parser(),
+	}
 
+	configDirs := []string{}
 	if p, err := os.Getwd(); err == nil {
 		configDirs = append(configDirs, p)
 	}
@@ -46,6 +48,21 @@ func Init() (*Optimus, error) {
 		configDirs = append(configDirs, filepath.Join(currentHomeDir, ".optimus"))
 	}
 
+	// load defaults
+	if err := configuration.k.Load(confmap.Provider(map[string]interface{}{
+		KeyLogLevel:                     "info",
+		KeyServePort:                    9100,
+		KeyServeHost:                    "0.0.0.0",
+		KeyServeDBMaxOpenConnection:     10,
+		KeyServeDBMaxIdleConnection:     5,
+		KeyServeMetadataKafkaJobTopic:   "resource_optimus_job_log",
+		KeyServeMetadataKafkaBatchSize:  50,
+		KeyServeMetadataWriterBatchSize: 50,
+		KeySchedulerName:                "airflow2",
+	}, "."), nil); err != nil {
+		return nil, errors.Wrap(err, "k.Load: error loading config defaults")
+	}
+
 	// Load yaml config
 	fs := afero.NewOsFs()
 	pathUsed := ""
@@ -54,7 +71,7 @@ func Init() (*Optimus, error) {
 		if ok, err := exists(fs, path); !ok || err != nil {
 			continue
 		}
-		if err := k.Load(file.Provider(path), parser); err != nil {
+		if err := configuration.k.Load(file.Provider(path), configuration.parser); err != nil {
 			return nil, errors.Wrapf(err, "k.Load: error loading config from %s", path)
 		}
 		pathUsed = path
@@ -62,57 +79,17 @@ func Init() (*Optimus, error) {
 	}
 
 	// load envs
-	if err := k.Load(env.Provider("OPTIMUS_", ".", func(s string) string {
+	if err := configuration.k.Load(env.Provider("OPTIMUS_", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
 			strings.TrimPrefix(s, "OPTIMUS_")), "_", ".", -1)
 	}), nil); err != nil {
 		return nil, errors.Wrap(err, "k.Load: error loading config from env")
 	}
 
-	if err := k.Unmarshal("", &configuration); err != nil {
-		return nil, errors.Wrap(err, "k.Unmarshal: error unmarshalling config")
-	}
-
-	configuration = setDefaults(configuration)
-	if strings.ToLower(configuration.Log.Level) == "debug" {
+	if strings.ToLower(configuration.GetLog().Level) == "debug" {
 		fmt.Printf("configuration used at %s out of %v\n", pathUsed, configDirs)
 	}
 	return configuration, nil
-}
-
-func setDefaults(conf *Optimus) *Optimus {
-	if conf.Log.Level == "" {
-		conf.Log.Level = "info"
-	}
-	if conf.Serve.Port == 0 {
-		conf.Serve.Port = 9100
-	}
-	if conf.Serve.Host == "" {
-		conf.Serve.Host = "0.0.0.0"
-	}
-	if conf.Serve.Port == 0 {
-		conf.Serve.Port = 9100
-	}
-	if conf.Serve.DB.MaxOpenConnection == 0 {
-		conf.Serve.DB.MaxOpenConnection = 10
-	}
-	if conf.Serve.DB.MaxIdleConnection == 0 {
-		conf.Serve.DB.MaxIdleConnection = 5
-	}
-	if conf.Serve.Metadata.KafkaJobTopic == "" {
-		conf.Serve.Metadata.KafkaJobTopic = "resource_optimus_job_log"
-	}
-	if conf.Serve.Metadata.KafkaBatchSize == 0 {
-		conf.Serve.Metadata.KafkaBatchSize = 50
-	}
-	if conf.Serve.Metadata.KafkaBatchSize == 0 {
-		conf.Serve.Metadata.KafkaBatchSize = 50
-	}
-	if conf.Serve.Metadata.WriterBatchSize == 0 {
-		conf.Serve.Metadata.WriterBatchSize = 50
-	}
-
-	return conf
 }
 
 func exists(fs afero.Fs, path string) (bool, error) {

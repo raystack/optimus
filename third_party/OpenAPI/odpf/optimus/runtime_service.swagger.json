@@ -841,6 +841,30 @@
     }
   },
   "definitions": {
+    "BehaviorRetry": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "delay": {
+          "type": "string"
+        },
+        "exponentialBackoff": {
+          "type": "boolean"
+        }
+      },
+      "title": "retry behaviour if job failed to execute for the first time"
+    },
+    "JobSpecificationBehavior": {
+      "type": "object",
+      "properties": {
+        "retry": {
+          "$ref": "#/definitions/BehaviorRetry"
+        }
+      }
+    },
     "ProjectSpecificationProjectSecret": {
       "type": "object",
       "properties": {
@@ -1181,6 +1205,9 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "behavior": {
+          "$ref": "#/definitions/JobSpecificationBehavior"
         }
       }
     },

@@ -52,8 +52,15 @@ type JobSchedule struct {
 }
 
 type JobBehavior struct {
-	DependsOnPast bool `yaml:"depends_on_past" json:"depends_on_past"`
-	Catchup       bool `yaml:"catch_up" json:"catch_up"`
+	DependsOnPast bool             `yaml:"depends_on_past" json:"depends_on_past"`
+	Catchup       bool             `yaml:"catch_up" json:"catch_up"`
+	Retry         JobBehaviorRetry `yaml:"retry,omitempty" json:"retry"`
+}
+
+type JobBehaviorRetry struct {
+	Count              int    `yaml:"count,omitempty" json:"count,omitempty"`
+	Delay              string `yaml:"delay,omitempty" json:"delay,omitempty"`
+	ExponentialBackoff bool   `yaml:"exponential_backoff,omitempty" json:"exponential_backoff,omitempty"`
 }
 
 type JobTask struct {
@@ -213,6 +220,14 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		})
 	}
 
+	retryDelayDuration := time.Duration(0)
+	if conf.Behavior.Retry.Delay != "" {
+		retryDelayDuration, err = time.ParseDuration(conf.Behavior.Retry.Delay)
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+	}
+
 	job := models.JobSpec{
 		Version:     conf.Version,
 		Name:        strings.TrimSpace(conf.Name),
@@ -227,6 +242,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       conf.Behavior.Catchup,
 			DependsOnPast: conf.Behavior.DependsOnPast,
+			Retry: models.JobSpecBehaviorRetry{
+				Count:              conf.Behavior.Retry.Count,
+				Delay:              retryDelayDuration,
+				ExponentialBackoff: conf.Behavior.Retry.ExponentialBackoff,
+			},
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -258,6 +278,11 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		})
 	}
 
+	retryDelayDuration := ""
+	if spec.Behavior.Retry.Delay.Nanoseconds() > 0 {
+		retryDelayDuration = spec.Behavior.Retry.Delay.String()
+	}
+
 	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
 	if err != nil {
 		return Job{}, err
@@ -276,6 +301,11 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		Behavior: JobBehavior{
 			DependsOnPast: spec.Behavior.DependsOnPast,
 			Catchup:       spec.Behavior.CatchUp,
+			Retry: JobBehaviorRetry{
+				Count:              spec.Behavior.Retry.Count,
+				Delay:              retryDelayDuration,
+				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
+			},
 		},
 		Task: JobTask{
 			Name:   taskSchema.Name,

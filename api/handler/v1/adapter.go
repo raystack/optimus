@@ -85,6 +85,11 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		Behavior: models.JobSpecBehavior{
 			DependsOnPast: spec.DependsOnPast,
 			CatchUp:       spec.CatchUp,
+			Retry: models.JobSpecBehaviorRetry{
+				Count:              int(spec.Behavior.Retry.Count),
+				Delay:              spec.Behavior.Retry.Delay.AsDuration(),
+				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
+			},
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -152,6 +157,13 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		Hooks:            adaptedHook,
 		Description:      spec.Description,
 		Labels:           spec.Labels,
+		Behavior: &pb.JobSpecification_Behavior{
+			Retry: &pb.JobSpecification_Behavior_Retry{
+				Count:              int32(spec.Behavior.Retry.Count),
+				Delay:              ptypes.DurationProto(spec.Behavior.Retry.Delay),
+				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
+			},
+		},
 	}
 	if spec.Schedule.EndDate != nil {
 		conf.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)

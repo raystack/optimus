@@ -17,9 +17,10 @@ DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60
 
 default_args = {
     "owner": {{.Job.Owner | quote}},
-    "depends_on_past": {{- if .Job.Behavior.DependsOnPast }} True {{ else }} False {{ end -}},
-    "retries": DAG_RETRIES,
-    "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
+    "depends_on_past": {{ if .Job.Behavior.DependsOnPast }} True {{- else -}} False {{- end -}},
+    "retries": {{ if gt .Job.Behavior.Retry.Count 0 -}} {{.Job.Behavior.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
+    "retry_delay": {{ if gt .Job.Behavior.Retry.Delay.Nanoseconds 0 -}} timedelta(seconds={{.Job.Behavior.Retry.Delay.Seconds}}) {{- else -}} timedelta(seconds=DAG_RETRY_DELAY) {{- end}},
+    "retry_exponential_backoff": {{if .Job.Behavior.Retry.ExponentialBackoff -}}True{{- else -}}False{{- end -}},
     "priority_weight": {{.Job.Task.Priority}},
     "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02T15:04:05" | quote }}, "%Y-%m-%dT%H:%M:%S"),
     {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}},"%Y-%m-%dT%H:%M:%S"),{{- else -}}{{- end}}
@@ -31,7 +32,7 @@ dag = DAG(
     dag_id={{.Job.Name | quote}},
     default_args=default_args,
     schedule_interval={{.Job.Schedule.Interval | quote}},
-    catchup ={{ if .Job.Behavior.CatchUp }} True{{ else }} False{{ end }}
+    catchup = {{ if .Job.Behavior.CatchUp -}} True{{- else -}} False {{- end }}
 )
 
 {{$baseTaskSchema := .Job.Task.Unit.GetTaskSchema $.Context $.TaskSchemaRequest -}}
@@ -65,8 +66,8 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
-  	],
-    reattach_on_restart=True,
+    ],
+    reattach_on_restart=True
 )
 
 # hooks loop start
@@ -105,8 +106,8 @@ hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-  	],
-   reattach_on_restart=True,
+    ],
+    reattach_on_restart=True
 )
 {{- end }}
 # hooks loop ends

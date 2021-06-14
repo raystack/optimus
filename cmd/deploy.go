@@ -25,7 +25,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Optimus,
+func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Provider,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem) *cli.Command {
 	var projectName string
 	var namespace string
@@ -44,7 +44,7 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		l.Printf("deploying project %s for namespace %s at %s\nplease wait...\n", projectName, namespace, conf.Host)
+		l.Printf("deploying project %s for namespace %s at %s\nplease wait...\n", projectName, namespace, conf.GetHost())
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -65,13 +65,13 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Op
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo store.JobSpecRepository,
-	conf config.Optimus, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem,
+	conf config.Provider, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Println("can't reach optimus service")
 		}
@@ -89,11 +89,11 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
 		Project: &pb.ProjectSpecification{
 			Name:   projectName,
-			Config: conf.Config.Global,
+			Config: conf.GetProjectConfig().Global,
 		},
 		Namespace: &pb.NamespaceSpecification{
 			Name:   namespace,
-			Config: conf.Config.Local,
+			Config: conf.GetProjectConfig().Local,
 		},
 	})
 	if err != nil {

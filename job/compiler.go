@@ -3,8 +3,6 @@ package job
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
-	"net/http"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
@@ -19,23 +17,18 @@ var (
 // Compiler converts generic job spec data to scheduler specific file that will
 // be consumed by the target scheduler
 type Compiler struct {
-	templatePath string // template path relative to resources for dag generation
-	fs           http.FileSystem
-	hostname     string
+	schedulerTemplate []byte // template string for dag generation
+	hostname          string
 }
 
 // Compile use golang template engine to parse and insert job
 // specific details in template file
 func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (job models.Job, err error) {
-	airflowTemplate, err := com.getTemplate()
-	if err != nil {
-		return models.Job{}, err
-	}
-	if len(airflowTemplate) == 0 {
+	if len(com.schedulerTemplate) == 0 {
 		return models.Job{}, ErrEmptyTemplateFile
 	}
 
-	tmpl, err := template.New("compiler").Funcs(sprig.TxtFuncMap()).Parse(string(airflowTemplate))
+	tmpl, err := template.New("compiler").Funcs(sprig.TxtFuncMap()).Parse(string(com.schedulerTemplate))
 	if err != nil {
 		return models.Job{}, err
 	}
@@ -80,20 +73,10 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 	}, nil
 }
 
-func (com *Compiler) getTemplate() ([]byte, error) {
-	airflowTemplateFile, err := com.fs.Open(com.templatePath)
-	if err != nil {
-		return nil, err
-	}
-	defer airflowTemplateFile.Close()
-	return ioutil.ReadAll(airflowTemplateFile)
-}
-
 // NewCompiler constructs a new Compiler that satisfies dag.Compiler
-func NewCompiler(fs http.FileSystem, templatePath string, hostname string) *Compiler {
+func NewCompiler(schedulerTemplate []byte, hostname string) *Compiler {
 	return &Compiler{
-		fs:           fs,
-		templatePath: templatePath,
-		hostname:     hostname,
+		schedulerTemplate: schedulerTemplate,
+		hostname:          hostname,
 	}
 }

@@ -22,7 +22,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.4.1
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/jhump/protoreflect v1.7.1 // indirect
+	github.com/jhump/protoreflect v1.8.1 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.11.7 // indirect
 	github.com/knadh/koanf v1.1.0
@@ -34,8 +34,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.12
-	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
-	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.1.2
 	github.com/spf13/cobra v1.1.2
@@ -49,7 +47,7 @@ require (
 	google.golang.org/api v0.33.0
 	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea
 	google.golang.org/grpc v1.35.0
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/protobuf v1.25.1-0.20201208041424-160c7477e0e8
 	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b

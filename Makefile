@@ -20,16 +20,18 @@ test: smoke-test unit-test vet ## run tests
 generate: pack-files
 	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
 	
-pack-files: ./resources/pack ./resources/resource_fs_gen.go
+pack-files:
 	@echo " > packing resources"
-	@go generate ./resources
+	@go generate ./..
 
 generate-proto: ## regenerate protos
-	@echo " > cloning protos from odpf/proton"
+	@echo " > cloning protobuf from odpf/proton"
 	@rm -rf proton/
 	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
-	@echo " > generating protos"
+	@echo " > generating protobuf"
+	@echo " > info: make sure correct version of dependencies are installed using 'install'"
 	@buf generate
+	@echo " > protobuf compilation finished"
 
 unit-test:
 	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test

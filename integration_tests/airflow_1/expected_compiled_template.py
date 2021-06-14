@@ -16,9 +16,10 @@ DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60
 
 default_args = {
     "owner": "mee@mee",
-    "depends_on_past": False ,
+    "depends_on_past": False,
     "retries": DAG_RETRIES,
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
+    "retry_exponential_backoff": False,
     "priority_weight": 2000,
     "start_date": datetime.strptime("2000-11-11T00:00:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2020-11-11T00:00:00","%Y-%m-%dT%H:%M:%S"),

@@ -1,6 +1,7 @@
 # Profiling and Auditing BigQuery tables
 
 To enable Profiler and Auditor (Predator), answer the related questions in Job specification.
+Note: this is not available for public use at the moment
 
 ```bash
 • $ optimus create job

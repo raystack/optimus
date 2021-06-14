@@ -55,7 +55,7 @@ log:
 
 This configuration file should not be checked in version control. All the configs can also be passed as environment
 variables using `OPTIMUS_<CONFIGNAME>` convention, for example to set client host `OPTIMUS_HOST=localhost:9100` to set
-database user `OPTIMUS_SERVE_DB_USER=saturn`.
+database connection string `OPTIMUS_SERVE_DB_DSN=postgres://dbconenctionurl`.
 
 Assuming the following configuration layout:
 
@@ -66,8 +66,9 @@ serve:
   app_key: randomhash
 ```
 
-Key `host` can be set as an environment variable by upper-casing it's path, using `_` as the
+Key `host` can be set as an environment variable by upper-casing its path, using `_` as the
 path delimiter and prefixing with `OPTIMUS_`:
+
 `serve.port` -> `OPTIMUS_SERVE_PORT=9100`
 or:
 `host` -> `OPTIMUS_HOST=localhost:9100`

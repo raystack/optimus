@@ -14,19 +14,18 @@ import (
 // Job are inputs from user to create a job
 // postgres representation of the job
 type Job struct {
-	ID            uuid.UUID `gorm:"primary_key;type:uuid;"`
-	Version       int
-	Name          string `gorm:"not null" json:"name"`
-	Owner         string
-	Description   string
-	Labels        datatypes.JSON
-	StartDate     time.Time
-	EndDate       *time.Time
-	Interval      string
-	DependsOnPast *bool
-	CatchUp       *bool
-	Destination   string
-	Dependencies  datatypes.JSON
+	ID           uuid.UUID `gorm:"primary_key;type:uuid;"`
+	Version      int
+	Name         string `gorm:"not null" json:"name"`
+	Owner        string
+	Description  string
+	Labels       datatypes.JSON
+	StartDate    time.Time
+	EndDate      *time.Time
+	Interval     string
+	Destination  string
+	Dependencies datatypes.JSON
+	Behavior     datatypes.JSON
 
 	ProjectID uuid.UUID
 	Project   Project `gorm:"foreignKey:ProjectID"`
@@ -46,6 +45,18 @@ type Job struct {
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 	DeletedAt *time.Time
+}
+
+type JobBehavior struct {
+	DependsOnPast bool
+	CatchUp       bool
+	Retry         JobBehaviorRetry
+}
+
+type JobBehaviorRetry struct {
+	Count              int
+	Delay              int64
+	ExponentialBackoff bool
 }
 
 type JobAsset struct {
@@ -126,6 +137,13 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		}
 	}
 
+	behavior := JobBehavior{}
+	if conf.Behavior != nil {
+		if err := json.Unmarshal(conf.Behavior, &behavior); err != nil {
+			return models.JobSpec{}, err
+		}
+	}
+
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	if err := json.Unmarshal(conf.Dependencies, &dependencies); err != nil {
@@ -180,8 +198,13 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 			Interval:  conf.Interval,
 		},
 		Behavior: models.JobSpecBehavior{
-			CatchUp:       *conf.CatchUp,
-			DependsOnPast: *conf.DependsOnPast,
+			DependsOnPast: behavior.DependsOnPast,
+			CatchUp:       behavior.CatchUp,
+			Retry: models.JobSpecBehaviorRetry{
+				Count:              behavior.Retry.Count,
+				Delay:              time.Duration(behavior.Retry.Delay),
+				ExponentialBackoff: behavior.Retry.ExponentialBackoff,
+			},
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -206,6 +229,19 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	}
 
 	labelsJSON, err := json.Marshal(spec.Labels)
+	if err != nil {
+		return Job{}, err
+	}
+
+	behaviorJSON, err := json.Marshal(JobBehavior{
+		DependsOnPast: spec.Behavior.DependsOnPast,
+		CatchUp:       spec.Behavior.CatchUp,
+		Retry: JobBehaviorRetry{
+			Count:              spec.Behavior.Retry.Count,
+			Delay:              spec.Behavior.Retry.Delay.Nanoseconds(),
+			ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
+		},
+	})
 	if err != nil {
 		return Job{}, err
 	}
@@ -276,8 +312,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		StartDate:        spec.Schedule.StartDate,
 		EndDate:          spec.Schedule.EndDate,
 		Interval:         spec.Schedule.Interval,
-		DependsOnPast:    &spec.Behavior.DependsOnPast,
-		CatchUp:          &spec.Behavior.CatchUp,
+		Behavior:         behaviorJSON,
 		Destination:      jobDestination.Destination,
 		Dependencies:     dependenciesJSON,
 		TaskName:         taskSchema.Name,

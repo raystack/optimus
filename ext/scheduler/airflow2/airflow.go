@@ -16,13 +16,19 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
+
+	_ "embed"
 )
 
-const (
-	baseTemplateFilePath = "./templates/scheduler/airflow_2/base_dag.py"
-	baseLibFilePath      = "./templates/scheduler/airflow_2/__lib.py"
+//go:embed resources/__lib.py
+var resSharedLib []byte
 
-	dagStatusUrl = "api/v1/dags/%s/dagRuns"
+//go:embed resources/base_dag.py
+var resBaseDAG []byte
+
+const (
+	baseLibFileName = "__lib.py"
+	dagStatusUrl    = "api/v1/dags/%s/dagRuns"
 )
 
 type HttpClient interface {
@@ -35,21 +41,18 @@ type ObjectWriterFactory interface {
 
 type scheduler struct {
 	objWriterFac ObjectWriterFactory
-	templateFS   http.FileSystem
-
-	httpClient HttpClient
+	httpClient   HttpClient
 }
 
-func NewScheduler(lfs http.FileSystem, ow ObjectWriterFactory, httpClient HttpClient) *scheduler {
+func NewScheduler(ow ObjectWriterFactory, httpClient HttpClient) *scheduler {
 	return &scheduler{
-		templateFS:   lfs,
 		objWriterFac: ow,
 		httpClient:   httpClient,
 	}
 }
 
 func (a *scheduler) GetName() string {
-	return "airflow"
+	return "airflow2"
 }
 
 func (a *scheduler) GetJobsDir() string {
@@ -60,8 +63,8 @@ func (a *scheduler) GetJobsExtension() string {
 	return ".py"
 }
 
-func (a *scheduler) GetTemplatePath() string {
-	return baseTemplateFilePath
+func (a *scheduler) GetTemplate() []byte {
+	return resBaseDAG
 }
 
 func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
@@ -82,25 +85,12 @@ func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 	if err != nil {
 		return errors.Errorf("object writer failed for %s", proj.Name)
 	}
-	return a.migrateLibFileToWriter(ctx, objectWriter, p.Hostname(), filepath.Join(strings.Trim(p.Path, "/"), a.GetJobsDir(), filepath.Base(baseLibFilePath)))
+	return a.migrateLibFileToWriter(ctx, objectWriter, p.Hostname(), filepath.Join(strings.Trim(p.Path, "/"), a.GetJobsDir(), baseLibFileName))
 }
 
-func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objDir string) (err error) {
-	// copy lib file
-	baseLibFile, err := a.templateFS.Open(baseLibFilePath)
-	if err != nil {
-		return err
-	}
-	defer baseLibFile.Close()
-
-	// read file
-	fileContent, err := ioutil.ReadAll(baseLibFile)
-	if err != nil {
-		return err
-	}
-
+func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objPath string) (err error) {
 	// copy to fs
-	dst, err := objWriter.NewWriter(ctx, bucket, objDir)
+	dst, err := objWriter.NewWriter(ctx, bucket, objPath)
 	if err != nil {
 		return err
 	}
@@ -114,7 +104,7 @@ func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.
 		}
 	}()
 
-	_, err = io.Copy(dst, bytes.NewBuffer(fileContent))
+	_, err = io.Copy(dst, bytes.NewBuffer(resSharedLib))
 	return
 }
 

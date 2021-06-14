@@ -585,7 +585,11 @@ A task is like a pipeline, it takes some input, it runs a procedure on the input
 
 ##### Task Configuration
 
-Task configurations are key value pair provided as part of job specification in `job.yaml` file. These are based on plugin implementation of `TaskPlugin` interface. These configurations accept simple strings as well as Optimus [macros](../concepts#Macros-&-Templates).
+Task configurations are key value pair provided as part of job specification in `job.yaml` file. These are based on plugin implementation of `TaskPlugin` interface. These configurations accept simple strings as well as Optimus [macros](../concepts#Macros-&-Templates). There are few Optimus provided configuration to all tasks and hooks even if users don't specifically provide them:
+
+- DSTART
+- DEND
+- EXECUTION_TIME
 
 ##### File Assets
 
