@@ -1,3 +1,5 @@
+output:
+  format: line-number
 linters:
   enable-all: false
   disable-all: true

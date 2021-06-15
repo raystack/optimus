@@ -38,7 +38,7 @@ func validateJobCommand(l logger, host string, jobSpecRepo store.JobSpecReposito
 	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
-		Short:   "run basic checks on job",
+		Short:   "run basic checks on all jobs",
 		Example: "optimus validate job",
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
