@@ -121,9 +121,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 		log:    logrus.New(),
 	})
 
-	// delete specs not sent for deployment
-	// currently we don't support deploying a single dag at a time so this will change
-	// once we do that
+	// delete specs not sent for deployment from internal repository
 	if err := sv.jobSvc.KeepOnly(namespaceSpec, jobsToKeep, observers); err != nil {
 		return status.Error(codes.Internal, fmt.Sprintf("%s: failed to delete jobs", err.Error()))
 	}

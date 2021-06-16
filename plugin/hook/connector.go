@@ -3,6 +3,8 @@ package hook
 import (
 	"context"
 
+	v1 "github.com/odpf/optimus/api/handler/v1"
+
 	"github.com/odpf/optimus/models"
 
 	"github.com/hashicorp/go-plugin"
@@ -38,4 +40,18 @@ func (p *Plugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *g
 		client:             pb.NewHookPluginClient(c),
 		projectSpecAdapter: p.ProjectSpecAdapter,
 	}, nil
+}
+
+func NewPlugin(impl models.HookPlugin) *Plugin {
+	return &Plugin{
+		Impl:               impl,
+		ProjectSpecAdapter: v1.NewAdapter(nil, nil, nil),
+	}
+}
+
+func NewPluginWithAdapter(impl models.HookPlugin, projAdapt ProjectSpecAdapter) *Plugin {
+	return &Plugin{
+		Impl:               impl,
+		ProjectSpecAdapter: projAdapt,
+	}
 }
