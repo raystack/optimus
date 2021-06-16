@@ -205,7 +205,7 @@ func (repo *JobRepository) pathFor(j models.Job) string {
 
 func (repo *JobRepository) jobNameFromPath(filePath string) string {
 	jobFileName := path.Base(filePath)
-	return strings.ReplaceAll(jobFileName, repo.Suffix, "")
+	return strings.TrimRight(jobFileName, repo.Suffix)
 }
 
 func cleanPrefix(prefix string) string {
