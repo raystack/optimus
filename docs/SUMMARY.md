@@ -8,11 +8,14 @@
 
 * [Overview](guides/overview.md)
 * [Installation](installation.md)
-    * [Configuration](reference/configuration.md)
-* [Create bigquery dataset](guides/create-bigquery-dataset.md)
-* [Create bigquery table](guides/create-bigquery-table.md)
-* [Create bigquery view](guides/create-bigquery-view.md)
 * [Create a job](guides/create-a-job.md)
+* [Adding a hook](guides/adding-a-hook.md)
+* Tasks
+  * [BigQuery to BigQuery Transformation](guides/task-bq2bq.md)
+* Datastore
+  * [Create bigquery dataset](guides/create-bigquery-dataset.md)
+  * [Create bigquery table](guides/create-bigquery-table.md)
+  * [Create bigquery view](guides/create-bigquery-view.md)
 * [Starting optimus server](guides/optimus-serve.md)
 
 ## Concepts
