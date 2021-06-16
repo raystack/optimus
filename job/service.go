@@ -425,17 +425,17 @@ func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func setSubstract(left []string, right []string) []string {
-	rightMap := make(map[string]struct{})
-	for _, item := range right {
-		rightMap[item] = struct{}{}
+// remove items present in from
+func setSubstract(from []string, remove []string) []string {
+	removeMap := make(map[string]bool)
+	for _, item := range remove {
+		removeMap[item] = true
 	}
 
 	res := make([]string, 0)
-	for _, leftKey := range left {
-		_, exists := rightMap[leftKey]
-		if !exists {
-			res = append(res, leftKey)
+	for _, fromKey := range from {
+		if _, exists := removeMap[fromKey]; !exists {
+			res = append(res, fromKey)
 		}
 	}
 

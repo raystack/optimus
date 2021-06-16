@@ -9,7 +9,7 @@ Basic building blocks of Optimus are
 
 ### Overview
 
-![Overview](OptimusArchitecture_dark_07June2021.png?raw=true "OptimusArchitecture")
+![Overview](https://github.com/odpf/optimus/blob/95372d614af47dc0140f6b96f819bf08eb62a189/docs/concepts/OptimusArchitecture_dark_07June2021.png?raw=true "OptimusArchitecture")
 
 ### Optimus CLI
 
