@@ -2,8 +2,11 @@ package v1_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 
 	"github.com/odpf/optimus/mock"
 
@@ -85,4 +88,60 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, jobSpec, original)
 		assert.Nil(t, err)
 	})
+}
+
+func TestAdapter_FromProjectProtoWithSecrets(t *testing.T) {
+	type args struct {
+		conf *pb.ProjectSpecification
+	}
+	tests := []struct {
+		name string
+		args args
+		want models.ProjectSpec
+	}{
+		{
+			name: "null project should be handled correctly",
+			args: args{
+				conf: nil,
+			},
+			want: models.ProjectSpec{},
+		},
+		{
+			name: "proto should be converted correctly",
+			args: args{
+				conf: &pb.ProjectSpecification{
+					Name: "hello",
+					Config: map[string]string{
+						"key": "val",
+					},
+					Secrets: []*pb.ProjectSpecification_ProjectSecret{
+						{
+							Name:  "key",
+							Value: "sec",
+						},
+					},
+				},
+			},
+			want: models.ProjectSpec{
+				Name: "hello",
+				Config: map[string]string{
+					"KEY": "val",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  "key",
+						Value: "sec",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			adapt := &v1.Adapter{}
+			if got := adapt.FromProjectProtoWithSecrets(tt.args.conf); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FromProjectProtoWithSecrets() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

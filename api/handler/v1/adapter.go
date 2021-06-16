@@ -225,16 +225,23 @@ func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.Pro
 }
 
 func (adapt *Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
+	if conf == nil {
+		return models.ProjectSpec{}
+	}
 	pConf := map[string]string{}
-	for key, val := range conf.GetConfig() {
-		pConf[strings.ToUpper(key)] = val
+	if conf.GetConfig() != nil {
+		for key, val := range conf.GetConfig() {
+			pConf[strings.ToUpper(key)] = val
+		}
 	}
 	pSec := models.ProjectSecrets{}
-	for _, s := range conf.GetSecrets() {
-		pSec = append(pSec, models.ProjectSecretItem{
-			Name:  s.Name,
-			Value: s.Value,
-		})
+	if conf.GetSecrets() != nil {
+		for _, s := range conf.GetSecrets() {
+			pSec = append(pSec, models.ProjectSecretItem{
+				Name:  s.Name,
+				Value: s.Value,
+			})
+		}
 	}
 	return models.ProjectSpec{
 		Name:   conf.GetName(),
