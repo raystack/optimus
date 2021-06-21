@@ -15,6 +15,13 @@ type TreeNode struct {
 	Runs       set.Set
 }
 
+func (t *TreeNode) GetAllNodes(allNodes map[string]*TreeNode) {
+	allNodes[t.Data.GetName()] = t
+	for _, dep := range t.Dependents {
+		dep.GetAllNodes(allNodes)
+	}
+}
+
 func (t *TreeNode) GetName() string {
 	return t.Data.GetName()
 }

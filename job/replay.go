@@ -26,7 +26,7 @@ func (srv *Service) ReplayDryRun(namespace models.NamespaceSpec, replayJobSpec m
 		dagSpecMap[currSpec.Name] = currSpec
 	}
 
-	rootInstance, err := prepareTree(dagSpecMap, replayJobSpec.Name, start, end)
+	rootInstance, err := PrepareTree(dagSpecMap, replayJobSpec.Name, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -34,8 +34,32 @@ func (srv *Service) ReplayDryRun(namespace models.NamespaceSpec, replayJobSpec m
 	return rootInstance, nil
 }
 
-// prepareTree creates a execution tree for replay operation
-func prepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, start, end time.Time) (*tree.TreeNode, error) {
+func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, start, end time.Time) (string, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
+	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
+	if err != nil {
+		return "", err
+	}
+	dagSpecMap := make(map[string]models.JobSpec)
+	for _, currSpec := range jobSpecs {
+		dagSpecMap[currSpec.Name] = currSpec
+	}
+	replayRequest := models.ReplayRequestInput{
+		Job:        replayJobSpec,
+		Start:      start,
+		End:        end,
+		Project:    namespace.ProjectSpec,
+		DagSpecMap: dagSpecMap,
+	}
+	replayUUID, err := srv.replayManager.Replay(replayRequest)
+	if err != nil {
+		return "", err
+	}
+	return replayUUID, nil
+}
+
+// PrepareTree creates a execution tree for replay operation
+func PrepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, start, end time.Time) (*tree.TreeNode, error) {
 	replayJobSpec, found := dagSpecMap[replayJobName]
 	if !found {
 		return nil, fmt.Errorf("couldn't find any job with name %s", replayJobName)

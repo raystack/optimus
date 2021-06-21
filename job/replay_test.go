@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/job"
+
 	"github.com/odpf/optimus/core/tree"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -109,7 +110,7 @@ func TestReplay(t *testing.T) {
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-		jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac)
+		jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
 		_, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
 
 		assert.NotNil(t, err)
@@ -137,7 +138,7 @@ func TestReplay(t *testing.T) {
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
+		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 		_, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
 
 		assert.NotNil(t, err)
@@ -174,7 +175,7 @@ func TestReplay(t *testing.T) {
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
+		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 		_, err := jobSvc.ReplayDryRun(namespaceSpec, cyclicDagSpec[0], replayStart, replayEnd)
 
 		assert.NotNil(t, err)
@@ -203,7 +204,7 @@ func TestReplay(t *testing.T) {
 		compiler := new(mock.Compiler)
 		defer compiler.AssertExpectations(t)
 
-		jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
+		jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
@@ -249,7 +250,7 @@ func TestReplay(t *testing.T) {
 		compiler := new(mock.Compiler)
 		defer compiler.AssertExpectations(t)
 
-		jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
+		jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 

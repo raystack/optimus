@@ -37,6 +37,9 @@ type SchedulerUnit interface {
 
 	// GetJobStatus should return the current and previous status of job
 	GetJobStatus(ctx context.Context, projSpec ProjectSpec, jobName string) ([]JobStatus, error)
+
+	// Clear clears state of job between provided start and end dates
+	Clear(ctx context.Context, projSpec ProjectSpec, jobName string, startDate, endDate time.Time) error
 }
 
 type JobStatusState string

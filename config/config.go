@@ -96,8 +96,9 @@ type ServerConfig struct {
 	// random 32 character hash used for encrypting secrets
 	AppKey string `yaml:"app_key"`
 
-	DB       DBConfig       `yaml:"db"`
-	Metadata MetadataConfig `yaml:"metadata"`
+	DB           DBConfig       `yaml:"db"`
+	Metadata     MetadataConfig `yaml:"metadata"`
+	JobQueueSize int            `yaml:"job_queue_size"`
 }
 
 type DBConfig struct {

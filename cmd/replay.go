@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
+
 	"github.com/odpf/optimus/core/set"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
@@ -108,6 +110,20 @@ ReplayDryRun date ranges are inclusive.
 			//if only dry run, exit now
 			return nil
 		}
+
+		confirm := false
+		if err := survey.AskOne(&survey.Select{
+			Message: "Proceed with replay?",
+			Options: []string{"Yes", "No"},
+			Default: "Yes",
+		}, &confirm); err != nil {
+			return err
+		}
+		if !confirm {
+			l.Print("aborting...")
+			return nil
+		}
+
 		return nil
 	}
 	return reCmd

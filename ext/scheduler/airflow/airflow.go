@@ -29,6 +29,7 @@ var resBaseDAG []byte
 const (
 	baseLibFileName = "__lib.py"
 	dagStatusURL    = "api/experimental/dags/%s/dag_runs"
+	dagRunClearURL  = "clear&dag_id=%s&start_date=%s&end_date=%s"
 )
 
 type HTTPClient interface {
@@ -169,4 +170,57 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	}
 
 	return jobStatus, nil
+}
+
+func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
+	if !ok {
+		return errors.Errorf("scheduler host not set for %s", projSpec.Name)
+	}
+
+	schdHost = strings.Trim(schdHost, "/")
+	airflowDateFormat := "2006-01-02T15:04:05"
+	utcTimezone, _ := time.LoadLocation("UTC")
+	fetchURL := fmt.Sprintf(
+		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
+		jobName,
+		startDate.In(utcTimezone).Format(airflowDateFormat),
+		endDate.In(utcTimezone).Format(airflowDateFormat))
+	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
+	if err != nil {
+		return errors.Wrapf(err, "failed to build http request for %s", fetchURL)
+	}
+
+	resp, err := a.httpClient.Do(request)
+	if err != nil {
+		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", fetchURL)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("failed to clear airflow dag runs from %s", fetchURL)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "failed to read airflow response")
+	}
+
+	//{
+	//	"http_response_code": 200,
+	//	"status": "status"
+	//}
+	responseJSON := map[string]interface{}{}
+	err = json.Unmarshal(body, &responseJSON)
+	if err != nil {
+		return errors.Wrapf(err, "json error: %s", string(body))
+	}
+
+	responseFields := []string{"http_response_code", "status"}
+	for _, field := range responseFields {
+		_, ok := responseJSON[field]
+		if !ok {
+			return errors.Errorf("failed to find required response fields %s in %s", field, responseJSON)
+		}
+	}
+	return nil
 }

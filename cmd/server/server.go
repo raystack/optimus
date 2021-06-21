@@ -379,6 +379,9 @@ func Initialize(conf config.Provider) error {
 		db:                         dbConn,
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
+	replayRepo := postgres.NewReplayRepository(dbConn)
+	replayWorker := job.NewReplayWorker(replayRepo, models.Scheduler)
+	replayManager := job.NewManager(replayWorker, conf.GetServe().JobQueueSize)
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
@@ -394,6 +397,7 @@ func Initialize(conf config.Provider) error {
 			priorityResolver,
 			metaSvcFactory,
 			&projectJobSpecRepoFac,
+			replayManager,
 		),
 		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry),
 		projectRepoFac,

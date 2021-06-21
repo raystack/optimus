@@ -63,6 +63,7 @@ type Service struct {
 	priorityResolver          PriorityResolver
 	metaSvcFactory            meta.MetaSvcFactory
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+	replayManager             ReplayManager
 
 	Now           func() time.Time
 	assetCompiler AssetCompiler
@@ -471,6 +472,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, jobRepoFact JobRepoFactory,
 	compiler models.JobCompiler, assetCompiler AssetCompiler, dependencyResolver DependencyResolver,
 	priorityResolver PriorityResolver, metaSvcFactory meta.MetaSvcFactory,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+	replayManager ReplayManager,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
@@ -480,6 +482,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, jobRepoFact JobRepoFactory,
 		priorityResolver:          priorityResolver,
 		metaSvcFactory:            metaSvcFactory,
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		replayManager:             replayManager,
 
 		assetCompiler: assetCompiler,
 		Now:           time.Now,
