@@ -186,17 +186,19 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	}
 
 	schdHost = strings.Trim(schdHost, "/")
-	airflowDateFormat := "2006-01-02T15:04:05"
-	var jsonStr = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s"}`,
+	airflowDateFormat := "2006-01-02T15:04:05+00:00"
+	var jsonStr = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
 	postURL := fmt.Sprintf(
 		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
 		jobName)
+
 	request, err := http.NewRequest(http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return errors.Wrapf(err, "failed to build http request for %s", postURL)
 	}
+	request.Header.Set("Content-Type", "application/json")
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {

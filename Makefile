@@ -27,7 +27,7 @@ pack-files:
 generate-proto: ## regenerate protos
 	@echo " > cloning protobuf from odpf/proton"
 	@rm -rf proton/
-	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
+	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch DBTCH-1024
 	@echo " > generating protobuf"
 	@echo " > info: make sure correct version of dependencies are installed using 'install'"
 	@buf generate

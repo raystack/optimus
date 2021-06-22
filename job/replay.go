@@ -15,18 +15,20 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) ReplayDryRun(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, start, end time.Time) (*tree.TreeNode, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
+func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
+	jobSpecs, err := srv.getDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	dagSpecMap := make(map[string]models.JobSpec)
 	for _, currSpec := range jobSpecs {
 		dagSpecMap[currSpec.Name] = currSpec
 	}
+	replayRequest.DagSpecMap = dagSpecMap
 
-	rootInstance, err := PrepareTree(dagSpecMap, replayJobSpec.Name, start, end)
+	rootInstance, err := prepareTree(replayRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -34,23 +36,19 @@ func (srv *Service) ReplayDryRun(namespace models.NamespaceSpec, replayJobSpec m
 	return rootInstance, nil
 }
 
-func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.JobSpec, start, end time.Time) (string, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
+func (srv *Service) Replay(replayRequest *models.ReplayRequestInput) (string, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
+	jobSpecs, err := srv.getDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
 		return "", err
 	}
+
 	dagSpecMap := make(map[string]models.JobSpec)
 	for _, currSpec := range jobSpecs {
 		dagSpecMap[currSpec.Name] = currSpec
 	}
-	replayRequest := models.ReplayRequestInput{
-		Job:        replayJobSpec,
-		Start:      start,
-		End:        end,
-		Project:    namespace.ProjectSpec,
-		DagSpecMap: dagSpecMap,
-	}
+	replayRequest.DagSpecMap = dagSpecMap
+
 	replayUUID, err := srv.replayManager.Replay(replayRequest)
 	if err != nil {
 		return "", err
@@ -58,17 +56,17 @@ func (srv *Service) Replay(namespace models.NamespaceSpec, replayJobSpec models.
 	return replayUUID, nil
 }
 
-// PrepareTree creates a execution tree for replay operation
-func PrepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, start, end time.Time) (*tree.TreeNode, error) {
-	replayJobSpec, found := dagSpecMap[replayJobName]
+// prepareTree creates a execution tree for replay operation
+func prepareTree(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
+	replayJobSpec, found := replayRequest.DagSpecMap[replayRequest.Job.Name]
 	if !found {
-		return nil, fmt.Errorf("couldn't find any job with name %s", replayJobName)
+		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
 	}
 
 	// compute runs that require replay
 	dagTree := tree.NewMultiRootTree()
 	parentNode := tree.NewTreeNode(replayJobSpec)
-	if runs, err := getRunsBetweenDates(start, end, replayJobSpec.Schedule.Interval); err == nil {
+	if runs, err := getRunsBetweenDates(replayRequest.Start, replayRequest.End, replayJobSpec.Schedule.Interval); err == nil {
 		for _, run := range runs {
 			parentNode.Runs.Add(run)
 		}
@@ -77,7 +75,7 @@ func PrepareTree(dagSpecMap map[string]models.JobSpec, replayJobName string, sta
 	}
 	dagTree.AddNode(parentNode)
 
-	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, dagSpecMap)
+	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.DagSpecMap)
 	if err != nil {
 		return nil, err
 	}

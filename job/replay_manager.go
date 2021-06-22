@@ -19,7 +19,7 @@ var (
 
 type ReplayManager interface {
 	Init()
-	Replay(models.ReplayRequestInput) (string, error)
+	Replay(*models.ReplayRequestInput) (string, error)
 }
 
 // Manager for replaying operation(s).
@@ -34,7 +34,7 @@ type Manager struct {
 	mu sync.Mutex
 
 	// request queue, used by workers
-	requestQ chan models.ReplayRequestInput
+	requestQ chan *models.ReplayRequestInput
 	// request map, used for verifying if a request is
 	// in queue without actually consuming it
 	requestMap map[uuid.UUID]bool
@@ -48,7 +48,7 @@ type Manager struct {
 
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
-func (m *Manager) Replay(reqInput models.ReplayRequestInput) (string, error) {
+func (m *Manager) Replay(reqInput *models.ReplayRequestInput) (string, error) {
 	uuidOb, err := uuid.NewRandom()
 	if err != nil {
 		return "", err
@@ -134,7 +134,7 @@ func NewManager(worker ReplayWorker, size int) *Manager {
 	mgr := &Manager{
 		replayWorker:            worker,
 		requestMap:              make(map[uuid.UUID]bool),
-		requestQ:                make(chan models.ReplayRequestInput, size),
+		requestQ:                make(chan *models.ReplayRequestInput, size),
 		clearRequestMapListener: make(chan interface{}),
 	}
 	mgr.Init()

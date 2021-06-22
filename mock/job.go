@@ -2,7 +2,6 @@ package mock
 
 import (
 	"context"
-	"time"
 
 	"github.com/odpf/optimus/job"
 
@@ -197,9 +196,14 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 	return args.Error(0)
 }
 
-func (j *JobService) ReplayDryRun(namespace models.NamespaceSpec, jobSpec models.JobSpec, start time.Time, end time.Time) (*tree.TreeNode, error) {
-	args := j.Called(namespace, jobSpec, start, end)
+func (j *JobService) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
+	args := j.Called(replayRequest)
 	return args.Get(0).(*tree.TreeNode), args.Error(1)
+}
+
+func (j *JobService) Replay(replayRequest *models.ReplayRequestInput) (string, error) {
+	args := j.Called(replayRequest)
+	return args.Get(0).(string), args.Error(1)
 }
 
 type Compiler struct {

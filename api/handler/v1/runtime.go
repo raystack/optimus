@@ -727,7 +727,44 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
+func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayDryRunResponse, error) {
+	replayRequestInput, err := sv.parseReplayRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	rootNode, err := sv.jobSvc.ReplayDryRun(replayRequestInput)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+	}
+
+	node, err := sv.adapter.ToReplayExecutionTreeNode(rootNode)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+	}
+	return &pb.ReplayDryRunResponse{
+		Success:  true,
+		Response: node,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
+	replayRequestInput, err := sv.parseReplayRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	replayUUID, err := sv.jobSvc.Replay(replayRequestInput)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+	}
+
+	return &pb.ReplayResponse{
+		Id: replayUUID,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*models.ReplayRequestInput, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
@@ -760,20 +797,13 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 	if endDate.Before(startDate) {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("replay end date cannot be before start date"))
 	}
-
-	rootNode, err := sv.jobSvc.ReplayDryRun(namespaceSpec, jobSpec, startDate, endDate)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+	replayRequest := models.ReplayRequestInput{
+		Job:     jobSpec,
+		Start:   startDate,
+		End:     endDate,
+		Project: projSpec,
 	}
-
-	node, err := sv.adapter.ToReplayExecutionTreeNode(rootNode)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
-	}
-	return &pb.ReplayDryRunResponse{
-		Success:  true,
-		Response: node,
-	}, nil
+	return &replayRequest, nil
 }
 
 func NewRuntimeServiceServer(

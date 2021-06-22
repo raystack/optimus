@@ -1,10 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS replay (
   id UUID PRIMARY KEY NOT NULL,
-  dag_id TEXT NOT NULL,
+  job_id UUID NOT NULL,
   start_date TIMESTAMP WITH TIME ZONE NOT NULL,
   end_date TIMESTAMP WITH TIME ZONE NOT NULL,
-  status TEXT NOT NULL,
+  status varchar(20) NOT NULL,
+  commit_id varchar(20),
   message TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL

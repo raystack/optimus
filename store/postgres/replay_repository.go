@@ -16,12 +16,9 @@ type Replay struct {
 	JobID uuid.UUID `gorm:"not null"`
 	Job   Job       `gorm:"foreignKey:JobID"`
 
-	ProjectID uuid.UUID `gorm:"not null"`
-	Project   Project   `gorm:"foreignKey:ProjectID"`
-
-	StartDate time.Time
-	EndDate   time.Time
-	Status    string
+	StartDate time.Time `gorm:"not null"`
+	EndDate   time.Time `gorm:"not null"`
+	Status    string    `gorm:"not null"`
 	Message   string
 	CommitID  string
 
@@ -33,7 +30,6 @@ func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
 	return Replay{
 		ID:        spec.ID,
 		JobID:     spec.Job.ID,
-		ProjectID: spec.Project.ID,
 		StartDate: spec.StartDate,
 		EndDate:   spec.EndDate,
 		Status:    spec.Status,
@@ -80,4 +76,18 @@ func (repo *replayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
 		return models.ReplaySpec{}, err
 	}
 	return r.ToSpec()
+}
+
+func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status, message string) error {
+	var r Replay
+	if err := repo.DB.Where("id = ?", replayID).Find(&r).Error; err != nil {
+		return errors.New("could not update non-existing replay")
+	}
+	r.Status = status
+	r.UpdatedAt = time.Now()
+	r.Message = message
+	if err := repo.DB.Save(&r).Error; err != nil {
+		return err
+	}
+	return nil
 }

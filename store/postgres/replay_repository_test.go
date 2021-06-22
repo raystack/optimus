@@ -41,9 +41,6 @@ func TestReplayRepository(t *testing.T) {
 	jobSpec := models.JobSpec{
 		Name: "job-name",
 	}
-	projectSpec := models.ProjectSpec{
-		Name: "project-name",
-	}
 
 	startTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-15")
 	endTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-20")
@@ -55,7 +52,6 @@ func TestReplayRepository(t *testing.T) {
 			StartDate: startTime,
 			EndDate:   endTime,
 			Status:    models.ReplayStatusAccepted,
-			Project:   projectSpec,
 		},
 	}
 

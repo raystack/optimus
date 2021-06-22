@@ -9,6 +9,9 @@ import (
 const (
 	// ReplayStatusAccepted worker picked up the request
 	ReplayStatusAccepted = "Accepted"
+	// ReplayStatusFailed worker fail while processing the replay request
+	ReplayStatusFailed  = "Failed"  // end state
+	ReplayStatusSuccess = "Success" // end state
 )
 
 type ReplayRequestInput struct {
@@ -28,7 +31,6 @@ type ReplaySpec struct {
 	Status    string
 	Message   string
 	CommitID  string
-	Project   ProjectSpec
 }
 
 type Syncer interface {
@@ -38,4 +40,5 @@ type Syncer interface {
 type ReplayRepository interface {
 	Insert(replay *ReplaySpec) error
 	GetByID(id uuid.UUID) (ReplaySpec, error)
+	UpdateStatus(replayID uuid.UUID, status, message string) error
 }

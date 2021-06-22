@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
-	"github.com/google/uuid"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -92,12 +91,6 @@ func TestReplay(t *testing.T) {
 		Name: "proj",
 	}
 
-	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
-		Name:        "dev-team-1",
-		ProjectSpec: projSpec,
-	}
-
 	t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
 		projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 		projectJobSpecRepo.On("GetAll").Return(nil, errors.New("error while getting all dags"))
@@ -111,7 +104,13 @@ func TestReplay(t *testing.T) {
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 		jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-		_, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
+		replayRequest := &models.ReplayRequestInput{
+			Job:     specs[spec1],
+			Start:   replayStart,
+			End:     replayEnd,
+			Project: projSpec,
+		}
+		_, err := jobSvc.ReplayDryRun(replayRequest)
 
 		assert.NotNil(t, err)
 	})
@@ -139,7 +138,13 @@ func TestReplay(t *testing.T) {
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-		_, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
+		replayRequest := &models.ReplayRequestInput{
+			Job:     specs[spec1],
+			Start:   replayStart,
+			End:     replayEnd,
+			Project: projSpec,
+		}
+		_, err := jobSvc.ReplayDryRun(replayRequest)
 
 		assert.NotNil(t, err)
 		merr := err.(*multierror.Error)
@@ -176,7 +181,13 @@ func TestReplay(t *testing.T) {
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 		jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-		_, err := jobSvc.ReplayDryRun(namespaceSpec, cyclicDagSpec[0], replayStart, replayEnd)
+		replayRequest := &models.ReplayRequestInput{
+			Job:     cyclicDagSpec[0],
+			Start:   replayStart,
+			End:     replayEnd,
+			Project: projSpec,
+		}
+		_, err := jobSvc.ReplayDryRun(replayRequest)
 
 		assert.NotNil(t, err)
 		assert.True(t, strings.Contains(err.Error(), "a cycle dependency encountered in the tree"))
@@ -207,8 +218,14 @@ func TestReplay(t *testing.T) {
 		jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
+		replayRequest := &models.ReplayRequestInput{
+			Job:     specs[spec1],
+			Start:   replayStart,
+			End:     replayEnd,
+			Project: projSpec,
+		}
 
-		tree, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec1], replayStart, replayEnd)
+		tree, err := jobSvc.ReplayDryRun(replayRequest)
 
 		assert.Nil(t, err)
 		countMap := make(map[string][]time.Time)
@@ -253,8 +270,14 @@ func TestReplay(t *testing.T) {
 		jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 		replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 		replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+		replayRequest := &models.ReplayRequestInput{
+			Job:     specs[spec4],
+			Start:   replayStart,
+			End:     replayEnd,
+			Project: projSpec,
+		}
 
-		tree, err := jobSvc.ReplayDryRun(namespaceSpec, specs[spec4], replayStart, replayEnd)
+		tree, err := jobSvc.ReplayDryRun(replayRequest)
 
 		assert.Nil(t, err)
 		countMap := make(map[string][]time.Time)

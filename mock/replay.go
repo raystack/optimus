@@ -18,3 +18,7 @@ func (repo *ReplayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
 func (repo *ReplayRepository) Insert(replay *models.ReplaySpec) error {
 	return repo.Called(replay).Error(0)
 }
+
+func (repo *ReplayRepository) UpdateStatus(replayID uuid.UUID, status, message string) error {
+	return repo.Called(replayID, status, message).Error(0)
+}

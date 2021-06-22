@@ -17,7 +17,7 @@ func TestReplayWorker(t *testing.T) {
 	startDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-22")
 	endDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-26")
 	currUUID := uuid.Must(uuid.NewRandom())
-	replayRequest := models.ReplayRequestInput{
+	replayRequest := &models.ReplayRequestInput{
 		ID: currUUID,
 		Job: models.JobSpec{
 			Name: "job-name",
@@ -34,7 +34,6 @@ func TestReplayWorker(t *testing.T) {
 		StartDate: startDate,
 		EndDate:   endDate,
 		Status:    models.ReplayStatusAccepted,
-		Project:   replayRequest.Project,
 		Job:       replayRequest.Job,
 	}
 	t.Run("Process", func(t *testing.T) {

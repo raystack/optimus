@@ -2,6 +2,10 @@ package job
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"github.com/odpf/optimus/core/logger"
 
 	"github.com/odpf/optimus/core/bus"
 	"github.com/odpf/optimus/core/tree"
@@ -17,10 +21,12 @@ const (
 	// EvtFailedToPrepareForReplay is emitted to event bus when a replay is failed to even prepare
 	// to execute, it passes replay ID as string in bus
 	EvtFailedToPrepareForReplay = "replay_request_failed_to_prepare"
+
+	MsgReplaySuccessfullyCompleted = "Completed successfully"
 )
 
 type ReplayWorker interface {
-	Process(context.Context, models.ReplayRequestInput) error
+	Process(context.Context, *models.ReplayRequestInput) error
 }
 
 type replayWorker struct {
@@ -28,7 +34,7 @@ type replayWorker struct {
 	scheduler  models.SchedulerUnit
 }
 
-func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequestInput) (err error) {
+func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequestInput) (err error) {
 	// save replay request
 	replay := models.ReplaySpec{
 		ID:        input.ID,
@@ -36,14 +42,13 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequestIn
 		StartDate: input.Start,
 		EndDate:   input.End,
 		Status:    models.ReplayStatusAccepted,
-		Project:   input.Project,
 	}
 	if err = w.replayRepo.Insert(&replay); err != nil {
 		bus.Post(EvtFailedToPrepareForReplay, input.ID)
 		return
 	}
 
-	replayTree, err := PrepareTree(input.DagSpecMap, input.Job.Name, input.Start, input.End)
+	replayTree, err := prepareTree(input)
 	if err != nil {
 		return err
 	}
@@ -51,12 +56,26 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequestIn
 	replayDagsMap := make(map[string]*tree.TreeNode)
 	replayTree.GetAllNodes(replayDagsMap)
 
-	for jobName := range replayDagsMap {
-		if err = w.scheduler.Clear(ctx, input.Project, jobName, input.Start, input.End); err != nil {
-			return errors.Wrapf(err, "error while clearing dag runs for job %s", jobName)
+	for jobName, treeNode := range replayDagsMap {
+		runTimes := treeNode.Runs.Values()
+		startTime := runTimes[0].(time.Time)
+		endTime := runTimes[treeNode.Runs.Size()-1].(time.Time)
+		if err = w.scheduler.Clear(ctx, input.Project, jobName, startTime, endTime); err != nil {
+			err = errors.Wrapf(err, "error while clearing dag runs for job %s", jobName)
+			logger.W(fmt.Sprintf("error while running replay %s: %s", replay.ID.String(), err.Error()))
+			err = w.replayRepo.UpdateStatus(replay.ID, models.ReplayStatusFailed, err.Error())
+			if err != nil {
+				return err
+			}
+			return err
 		}
 	}
 
+	err = w.replayRepo.UpdateStatus(replay.ID, models.ReplayStatusSuccess, MsgReplaySuccessfullyCompleted)
+	if err != nil {
+		return err
+	}
+	logger.I(fmt.Sprintf("successfully completed replay id: %s", replay.ID.String()))
 	bus.Post(EvtRecordInsertedInDB, replay.ID)
 	return nil
 }
