@@ -55,13 +55,13 @@ func TestReplayRepository(t *testing.T) {
 		},
 	}
 
-	t.Run("Insert", func(t *testing.T) {
+	t.Run("Insert and GetByID", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
 		testModels := []*models.ReplaySpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewReplayRepository(db)
+		repo := NewReplayRepository(db, jobSpec)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -69,5 +69,30 @@ func TestReplayRepository(t *testing.T) {
 		checkModel, err := repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, uuid, checkModel.ID)
+	})
+
+	t.Run("UpdateStatus", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+		testModels := []*models.ReplaySpec{}
+		testModels = append(testModels, testConfigs...)
+
+		repo := NewReplayRepository(db, jobSpec)
+
+		err := repo.Insert(testModels[0])
+		assert.Nil(t, err)
+
+		errMessage := "failed to execute"
+		replayMessage := models.ReplayMessage{
+			Status:  models.ReplayStatusFailed,
+			Message: errMessage,
+		}
+		err = repo.UpdateStatus(uuid, models.ReplayStatusFailed, replayMessage)
+		assert.Nil(t, err)
+
+		checkModel, err := repo.GetByID(testModels[0].ID)
+		assert.Nil(t, err)
+		assert.Equal(t, models.ReplayStatusFailed, checkModel.Status)
+		assert.Equal(t, errMessage, checkModel.Message.Message)
 	})
 }

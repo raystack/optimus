@@ -52,6 +52,11 @@ type JobRepoFactory interface {
 	New(context.Context, models.ProjectSpec) (store.JobRepository, error)
 }
 
+// ReplaySpecRepoFactory is used to manage replay spec objects from store
+type ReplaySpecRepoFactory interface {
+	New(jobSpec models.JobSpec) store.ReplaySpecRepository
+}
+
 // Service compiles all jobs with its dependencies, priority and
 // and other properties. Finally, it syncs the jobs with corresponding
 // store

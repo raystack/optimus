@@ -1,8 +1,11 @@
 package postgres
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
+
+	"gorm.io/datatypes"
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
@@ -19,43 +22,51 @@ type Replay struct {
 	StartDate time.Time `gorm:"not null"`
 	EndDate   time.Time `gorm:"not null"`
 	Status    string    `gorm:"not null"`
-	Message   string
-	CommitID  string
+	Message   datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
 
 func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
+	jsonBytes, err := json.Marshal(spec.Message)
+	if err != nil {
+		return Replay{}, nil
+	}
 	return Replay{
 		ID:        spec.ID,
 		JobID:     spec.Job.ID,
 		StartDate: spec.StartDate,
 		EndDate:   spec.EndDate,
 		Status:    spec.Status,
-		CommitID:  spec.CommitID,
-		Message:   spec.Message,
+		Message:   jsonBytes,
 	}, nil
 }
 
-func (p Replay) ToSpec() (models.ReplaySpec, error) {
+func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
+	message := models.ReplayMessage{}
+	if err := json.Unmarshal(p.Message, &message); err != nil {
+		return models.ReplaySpec{}, nil
+	}
 	return models.ReplaySpec{
 		ID:        p.ID,
+		Job:       jobSpec,
 		Status:    p.Status,
 		StartDate: p.StartDate,
 		EndDate:   p.EndDate,
-		Message:   p.Message,
-		CommitID:  p.CommitID,
+		Message:   message,
 	}, nil
 }
 
 type replayRepository struct {
-	DB *gorm.DB
+	DB      *gorm.DB
+	jobSpec models.JobSpec
 }
 
-func NewReplayRepository(db *gorm.DB) *replayRepository {
+func NewReplayRepository(db *gorm.DB, jobSpec models.JobSpec) *replayRepository {
 	return &replayRepository{
-		DB: db,
+		DB:      db,
+		jobSpec: jobSpec,
 	}
 }
 
@@ -75,17 +86,21 @@ func (repo *replayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
 		}
 		return models.ReplaySpec{}, err
 	}
-	return r.ToSpec()
+	return r.ToSpec(repo.jobSpec)
 }
 
-func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status, message string) error {
+func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error {
 	var r Replay
 	if err := repo.DB.Where("id = ?", replayID).Find(&r).Error; err != nil {
 		return errors.New("could not update non-existing replay")
 	}
+	jsonBytes, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
 	r.Status = status
 	r.UpdatedAt = time.Now()
-	r.Message = message
+	r.Message = jsonBytes
 	if err := repo.DB.Save(&r).Error; err != nil {
 		return err
 	}

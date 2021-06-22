@@ -8,11 +8,17 @@ import (
 
 const (
 	// ReplayStatusAccepted worker picked up the request
-	ReplayStatusAccepted = "Accepted"
+	ReplayStatusAccepted   = "accepted"
+	ReplayStatusInProgress = "inprogress"
 	// ReplayStatusFailed worker fail while processing the replay request
-	ReplayStatusFailed  = "Failed"  // end state
-	ReplayStatusSuccess = "Success" // end state
+	ReplayStatusFailed  = "failed"  // end state
+	ReplayStatusSuccess = "success" // end state
 )
+
+type ReplayMessage struct {
+	Status  string
+	Message string
+}
 
 type ReplayRequestInput struct {
 	ID         uuid.UUID
@@ -29,16 +35,5 @@ type ReplaySpec struct {
 	StartDate time.Time
 	EndDate   time.Time
 	Status    string
-	Message   string
-	CommitID  string
-}
-
-type Syncer interface {
-	SyncReplayStatusWithAirflow(ReplaySpec) error
-}
-
-type ReplayRepository interface {
-	Insert(replay *ReplaySpec) error
-	GetByID(id uuid.UUID) (ReplaySpec, error)
-	UpdateStatus(replayID uuid.UUID, status, message string) error
+	Message   ReplayMessage
 }

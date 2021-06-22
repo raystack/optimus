@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/odpf/optimus/utils"
+
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 
 	"github.com/odpf/optimus/config"
@@ -67,6 +69,15 @@ type projectJobSpecRepoFactory struct {
 
 func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
 	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+}
+
+type replaySpecRepoRepository struct {
+	db             *gorm.DB
+	jobSpecRepoFac jobSpecRepoFactory
+}
+
+func (fac *replaySpecRepoRepository) New(job models.JobSpec) store.ReplaySpecRepository {
+	return postgres.NewReplayRepository(fac.db, job)
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -379,9 +390,13 @@ func Initialize(conf config.Provider) error {
 		db:                         dbConn,
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
-	replayRepo := postgres.NewReplayRepository(dbConn)
-	replayWorker := job.NewReplayWorker(replayRepo, models.Scheduler)
-	replayManager := job.NewManager(replayWorker, conf.GetServe().JobQueueSize)
+
+	replaySpecRepoFac := &replaySpecRepoRepository{
+		db:             dbConn,
+		jobSpecRepoFac: jobSpecRepoFac,
+	}
+	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
+	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), conf.GetServe().JobQueueSize)
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
@@ -470,6 +485,10 @@ func Initialize(conf config.Provider) error {
 	// Block until we receive our signal.
 	<-termChan
 	mainLog.Info("termination request received")
+	err = replayManager.Close()
+	if err != nil {
+		return err
+	}
 
 	// Create a deadline to wait for server
 	ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)

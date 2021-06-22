@@ -15,18 +15,25 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
+func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayRequestInput) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
 	jobSpecs, err := srv.getDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	dagSpecMap := make(map[string]models.JobSpec)
 	for _, currSpec := range jobSpecs {
 		dagSpecMap[currSpec.Name] = currSpec
 	}
 	replayRequest.DagSpecMap = dagSpecMap
+	return nil
+}
+
+func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
+	err := srv.populateRequestWithJobSpecs(replayRequest)
+	if err != nil {
+		return nil, err
+	}
 
 	rootInstance, err := prepareTree(replayRequest)
 	if err != nil {
@@ -37,17 +44,10 @@ func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tre
 }
 
 func (srv *Service) Replay(replayRequest *models.ReplayRequestInput) (string, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
-	jobSpecs, err := srv.getDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
+	err := srv.populateRequestWithJobSpecs(replayRequest)
 	if err != nil {
 		return "", err
 	}
-
-	dagSpecMap := make(map[string]models.JobSpec)
-	for _, currSpec := range jobSpecs {
-		dagSpecMap[currSpec.Name] = currSpec
-	}
-	replayRequest.DagSpecMap = dagSpecMap
 
 	replayUUID, err := srv.replayManager.Replay(replayRequest)
 	if err != nil {

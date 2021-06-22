@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/odpf/optimus/utils"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/bus"
 	"github.com/odpf/optimus/core/logger"
@@ -33,6 +35,8 @@ type Manager struct {
 	wg sync.WaitGroup
 	mu sync.Mutex
 
+	uuidProvider utils.UUIDProvider
+
 	// request queue, used by workers
 	requestQ chan *models.ReplayRequestInput
 	// request map, used for verifying if a request is
@@ -43,17 +47,31 @@ type Manager struct {
 	clearRequestMapListener chan interface{}
 
 	//request worker
-	replayWorker ReplayWorker
+	replayWorker      ReplayWorker
+	replaySpecRepoFac ReplaySpecRepoFactory
 }
 
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
 func (m *Manager) Replay(reqInput *models.ReplayRequestInput) (string, error) {
-	uuidOb, err := uuid.NewRandom()
+	uuidOb, err := m.uuidProvider.NewUUID()
 	if err != nil {
 		return "", err
 	}
 	reqInput.ID = uuidOb
+
+	// save replay request and mark status as accepted
+	replay := models.ReplaySpec{
+		ID:        uuidOb,
+		Job:       reqInput.Job,
+		StartDate: reqInput.Start,
+		EndDate:   reqInput.End,
+		Status:    models.ReplayStatusAccepted,
+	}
+	replaySpecRepo := m.replaySpecRepoFac.New(reqInput.Job)
+	if err = replaySpecRepo.Insert(&replay); err != nil {
+		return "", err
+	}
 
 	// try sending the job request down the request queue
 	// if full return error indicating that we don't have capacity
@@ -77,7 +95,7 @@ func (m *Manager) spawnServiceWorker() {
 	go func() {
 		defer m.wg.Done()
 		for reqInput := range m.requestQ {
-			logger.I("worker picked up the request for ", reqInput.Project.Name)
+			logger.I("worker picked up the request for ", reqInput.Job.Name)
 			ctx := context.Background()
 
 			if err := m.replayWorker.Process(ctx, reqInput); err != nil {
@@ -130,12 +148,14 @@ func (m *Manager) Init() {
 }
 
 // NewManager constructs a new instance of Manager
-func NewManager(worker ReplayWorker, size int) *Manager {
+func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider, size int) *Manager {
 	mgr := &Manager{
 		replayWorker:            worker,
 		requestMap:              make(map[uuid.UUID]bool),
 		requestQ:                make(chan *models.ReplayRequestInput, size),
+		replaySpecRepoFac:       replaySpecRepoFac,
 		clearRequestMapListener: make(chan interface{}),
+		uuidProvider:            uuidProvider,
 	}
 	mgr.Init()
 	return mgr

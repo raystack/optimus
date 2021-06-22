@@ -5,8 +5,7 @@ CREATE TABLE IF NOT EXISTS replay (
   start_date TIMESTAMP WITH TIME ZONE NOT NULL,
   end_date TIMESTAMP WITH TIME ZONE NOT NULL,
   status varchar(20) NOT NULL,
-  commit_id varchar(20),
-  message TEXT,
+  message JSONB,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );

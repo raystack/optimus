@@ -23,6 +23,7 @@ const (
 	EvtFailedToPrepareForReplay = "replay_request_failed_to_prepare"
 
 	MsgReplaySuccessfullyCompleted = "Completed successfully"
+	MsgReplayInProgress            = "Replay Request Picked up by replay worker"
 )
 
 type ReplayWorker interface {
@@ -30,22 +31,19 @@ type ReplayWorker interface {
 }
 
 type replayWorker struct {
-	replayRepo models.ReplayRepository
-	scheduler  models.SchedulerUnit
+	replaySpecRepoFac ReplaySpecRepoFactory
+	scheduler         models.SchedulerUnit
 }
 
 func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequestInput) (err error) {
-	// save replay request
-	replay := models.ReplaySpec{
-		ID:        input.ID,
-		Job:       input.Job,
-		StartDate: input.Start,
-		EndDate:   input.End,
-		Status:    models.ReplayStatusAccepted,
-	}
-	if err = w.replayRepo.Insert(&replay); err != nil {
-		bus.Post(EvtFailedToPrepareForReplay, input.ID)
-		return
+	replaySpecRepo := w.replaySpecRepoFac.New(input.Job)
+	// mark replay request in progress
+	inProgressErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusInProgress, models.ReplayMessage{
+		Status:  models.ReplayStatusInProgress,
+		Message: MsgReplayInProgress,
+	})
+	if inProgressErr != nil {
+		return inProgressErr
 	}
 
 	replayTree, err := prepareTree(input)
@@ -62,24 +60,30 @@ func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequestI
 		endTime := runTimes[treeNode.Runs.Size()-1].(time.Time)
 		if err = w.scheduler.Clear(ctx, input.Project, jobName, startTime, endTime); err != nil {
 			err = errors.Wrapf(err, "error while clearing dag runs for job %s", jobName)
-			logger.W(fmt.Sprintf("error while running replay %s: %s", replay.ID.String(), err.Error()))
-			err = w.replayRepo.UpdateStatus(replay.ID, models.ReplayStatusFailed, err.Error())
-			if err != nil {
-				return err
+			logger.W(fmt.Sprintf("error while running replay %s: %s", input.ID.String(), err.Error()))
+			updateStatusErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusFailed, models.ReplayMessage{
+				Status:  models.ReplayStatusFailed,
+				Message: err.Error(),
+			})
+			if updateStatusErr != nil {
+				return updateStatusErr
 			}
 			return err
 		}
 	}
 
-	err = w.replayRepo.UpdateStatus(replay.ID, models.ReplayStatusSuccess, MsgReplaySuccessfullyCompleted)
+	err = replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusSuccess, models.ReplayMessage{
+		Status:  models.ReplayStatusSuccess,
+		Message: MsgReplaySuccessfullyCompleted,
+	})
 	if err != nil {
 		return err
 	}
-	logger.I(fmt.Sprintf("successfully completed replay id: %s", replay.ID.String()))
-	bus.Post(EvtRecordInsertedInDB, replay.ID)
+	logger.I(fmt.Sprintf("successfully completed replay id: %s", input.ID.String()))
+	bus.Post(EvtRecordInsertedInDB, input.ID)
 	return nil
 }
 
-func NewReplayWorker(replayRepo models.ReplayRepository, scheduler models.SchedulerUnit) *replayWorker {
-	return &replayWorker{replayRepo: replayRepo, scheduler: scheduler}
+func NewReplayWorker(replaySpecRepoFac ReplaySpecRepoFactory, scheduler models.SchedulerUnit) *replayWorker {
+	return &replayWorker{replaySpecRepoFac: replaySpecRepoFac, scheduler: scheduler}
 }
