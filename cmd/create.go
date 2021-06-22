@@ -542,13 +542,15 @@ func AskTaskSurveyQuestion(ques models.PluginQuestion, execUnit models.TaskPlugi
 	}
 
 	// check if sub questions are attached on this question
-	if len(ques.SubQuestions) > 0 && responseStr == ques.SubQuestionsIfValue {
-		for _, subQues := range ques.SubQuestions {
-			subQuesAnswer, err := AskTaskSurveyQuestion(subQues, execUnit)
-			if err != nil {
-				return nil, err
+	for _, subQues := range ques.SubQuestions {
+		if responseStr == subQues.IfValue {
+			for _, subQ := range subQues.Questions {
+				subQuesAnswer, err := AskTaskSurveyQuestion(subQ, execUnit)
+				if err != nil {
+					return nil, err
+				}
+				answers = append(answers, subQuesAnswer...)
 			}
-			answers = append(answers, subQuesAnswer...)
 		}
 	}
 
@@ -608,13 +610,15 @@ func AskHookSurveyQuestion(ques models.PluginQuestion, execUnit models.HookPlugi
 	}
 
 	// check if sub questions are attached on this question
-	if len(ques.SubQuestions) > 0 && responseStr == ques.SubQuestionsIfValue {
-		for _, subQues := range ques.SubQuestions {
-			subQuesAnswer, err := AskHookSurveyQuestion(subQues, execUnit)
-			if err != nil {
-				return nil, err
+	for _, subQues := range ques.SubQuestions {
+		if responseStr == subQues.IfValue {
+			for _, subQ := range subQues.Questions {
+				subQuesAnswer, err := AskHookSurveyQuestion(subQ, execUnit)
+				if err != nil {
+					return nil, err
+				}
+				answers = append(answers, subQuesAnswer...)
 			}
-			answers = append(answers, subQuesAnswer...)
 		}
 	}
 

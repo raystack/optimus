@@ -113,6 +113,10 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll()
+			if err == models.ErrNoResources {
+				l.Println(coloredNotice("no resource specifications found"))
+				continue
+			}
 			if err != nil {
 				return errors.Wrap(err, "resourceSpecRepo.GetAll()")
 			}

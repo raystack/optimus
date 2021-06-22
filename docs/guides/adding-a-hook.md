@@ -1,7 +1,7 @@
 ## Adding a Hook to a Job
 
 There might be a certain operations that you might want to run before or after the Job.
-Please go through [concepts](../concepts/index.md) to know more about it.
+Please go through [concepts](../concepts/overview.md) to know more about it.
 
 In order to add a hook to an existing Job, run the following command and answer the 
 corresponding prompts:

@@ -18,7 +18,7 @@ type GRPCClient struct {
 	client             pb.TaskPluginClient
 	projectSpecAdapter ProjectSpecAdapter
 
-	// Plugin name, used in filtering project secrets
+	// plugin name, used in filtering project secrets
 	Name string
 }
 
@@ -175,7 +175,7 @@ func (m *GRPCClient) GenerateTaskDependencies(ctx context.Context, request model
 
 func ifFailToReachServerThenCrash(err error) {
 	if strings.Contains(err.Error(), "connection refused") && strings.Contains(err.Error(), "dial unix") {
-		logger.E(fmt.Sprintf("plugin communication failed with: %s", err.Error()))
+		logger.E(fmt.Sprintf("connector communication failed with: %s", err.Error()))
 		// TODO(kush.sharma): once plugins are more stable, remove this fail
 		os.Exit(1)
 	}
