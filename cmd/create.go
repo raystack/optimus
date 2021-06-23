@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/odpf/optimus/core/fs"
+	"github.com/spf13/afero"
 
 	"github.com/odpf/optimus/utils"
 
@@ -31,7 +31,7 @@ var (
 
 func createCommand(l logger, jobSpecRepo store.JobSpecRepository,
 	taskRepo models.TaskPluginRepository, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo,
-	datastoreSpecsFs map[string]fs.FileSystem) *cli.Command {
+	datastoreSpecsFs map[string]afero.Fs) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new job/resource",
@@ -347,7 +347,7 @@ func IsJobNameUnique(repository store.JobSpecRepository) survey.Validator {
 	}
 }
 
-func createResourceSubCommand(l logger, datastoreSpecFs map[string]fs.FileSystem, datastoreRepo models.DatastoreRepo) *cli.Command {
+func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
 	return &cli.Command{
 		Use:   "resource",
 		Short: "create a new resource",

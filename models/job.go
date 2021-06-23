@@ -52,7 +52,6 @@ type JobSpec struct {
 	Dependencies map[string]JobSpecDependency // job name to dependency
 	Assets       JobAssets
 	Hooks        []JobSpecHook
-	Metadata     map[string]interface{}
 }
 
 func (js JobSpec) GetName() string {

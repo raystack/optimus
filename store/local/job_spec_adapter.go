@@ -104,6 +104,146 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	}, nil
 }
 
+// MergeFrom merges parent job into this
+// - non zero values on child are ignored
+// - zero values on parent are ignored
+// - slices are merged
+func (conf *Job) MergeFrom(parent Job) {
+	if conf.Version == 0 {
+		conf.Version = parent.Version
+	}
+
+	if conf.Schedule.Interval == "" {
+		conf.Schedule.Interval = parent.Schedule.Interval
+	}
+	if conf.Schedule.StartDate == "" {
+		conf.Schedule.StartDate = parent.Schedule.StartDate
+	}
+	if conf.Schedule.EndDate == "" {
+		conf.Schedule.EndDate = parent.Schedule.EndDate
+	}
+
+	if conf.Behavior.Retry.ExponentialBackoff == false {
+		conf.Behavior.Retry.ExponentialBackoff = parent.Behavior.Retry.ExponentialBackoff
+	}
+	if conf.Behavior.Retry.Delay == "" {
+		conf.Behavior.Retry.Delay = parent.Behavior.Retry.Delay
+	}
+	if conf.Behavior.Retry.Count == 0 {
+		conf.Behavior.Retry.Count = parent.Behavior.Retry.Count
+	}
+	if conf.Behavior.DependsOnPast == false {
+		conf.Behavior.DependsOnPast = parent.Behavior.DependsOnPast
+	}
+	if conf.Behavior.Catchup == false {
+		conf.Behavior.Catchup = parent.Behavior.Catchup
+	}
+
+	if conf.Description == "" {
+		conf.Description = parent.Description
+	}
+
+	if conf.Owner == "" {
+		conf.Owner = parent.Owner
+	}
+
+	if parent.Labels != nil {
+		if conf.Labels == nil {
+			conf.Labels = map[string]string{}
+		}
+	}
+	for k, v := range parent.Labels {
+		if _, ok := conf.Labels[k]; !ok {
+			conf.Labels[k] = v
+		}
+	}
+
+	if parent.Dependencies != nil {
+		if conf.Dependencies == nil {
+			conf.Dependencies = []JobDependency{}
+		}
+	}
+	for _, dep := range parent.Dependencies {
+		alreadyExists := false
+		for _, cd := range conf.Dependencies {
+			if dep.JobName == cd.JobName && dep.Type == cd.Type {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			conf.Dependencies = append(conf.Dependencies, dep)
+		}
+	}
+
+	if conf.Task.Name == "" {
+		conf.Task.Name = parent.Task.Name
+	}
+	if conf.Task.Window.TruncateTo == "" {
+		conf.Task.Window.TruncateTo = parent.Task.Window.TruncateTo
+	}
+	if conf.Task.Window.Offset == "" {
+		conf.Task.Window.Offset = parent.Task.Window.Offset
+	}
+	if conf.Task.Window.Size == "" {
+		conf.Task.Window.Size = parent.Task.Window.Size
+	}
+	if parent.Task.Config != nil {
+		if conf.Task.Config == nil {
+			conf.Task.Config = []yaml.MapItem{}
+		}
+	}
+	for _, pc := range parent.Task.Config {
+		alreadyExists := false
+		for _, cc := range conf.Task.Config {
+			if cc.Key.(string) == pc.Key.(string) {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			conf.Task.Config = append(conf.Task.Config, pc)
+		}
+	}
+
+	if parent.Hooks != nil {
+		if conf.Hooks == nil {
+			conf.Hooks = []JobHook{}
+		}
+	}
+	existingHooks := map[string]bool{}
+	for _, ph := range parent.Hooks {
+		for chi := range conf.Hooks {
+			existingHooks[conf.Hooks[chi].Name] = true
+			// check if hook already present in child
+			if ph.Name == conf.Hooks[chi].Name {
+				// try to copy configs
+				for _, phc := range ph.Config {
+					alreadyExists := false
+					for chci := range conf.Hooks[chi].Config {
+						if phc.Key == conf.Hooks[chi].Config[chci].Key {
+							alreadyExists = true
+							break
+						}
+					}
+					if !alreadyExists {
+						conf.Hooks[chi].Config = append(conf.Hooks[chi].Config, phc)
+					}
+				}
+			}
+		}
+	}
+	for _, ph := range parent.Hooks {
+		// copy non existing hooks
+		if _, ok := existingHooks[ph.Name]; !ok {
+			conf.Hooks = append(conf.Hooks, JobHook{
+				Name:   ph.Name,
+				Config: append(yaml.MapSlice{}, ph.Config...),
+			})
+		}
+	}
+}
+
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}

@@ -6,10 +6,11 @@ import (
 	"io"
 	"time"
 
+	"github.com/spf13/afero"
+
 	"github.com/odpf/optimus/store/local"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/fs"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
@@ -26,7 +27,7 @@ var (
 
 // deployCommand pushes current repo to optimus service
 func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Provider,
-	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem) *cli.Command {
+	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var projectName string
 	var namespace string
 	var ignoreJobs bool
@@ -65,7 +66,7 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Pr
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo store.JobSpecRepository,
-	conf config.Provider, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]fs.FileSystem,
+	conf config.Provider, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
