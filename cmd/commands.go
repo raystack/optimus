@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/afero"
+
 	"github.com/odpf/optimus/store"
 
 	"github.com/odpf/optimus/store/local"
-
-	"github.com/odpf/optimus/core/fs"
 
 	"google.golang.org/grpc"
 
@@ -70,15 +70,13 @@ func New(
 	var jobSpecRepo store.JobSpecRepository
 	if conf.GetJob().Path != "" {
 		jobSpecRepo = local.NewJobSpecRepository(
-			&fs.LocalFileSystem{BasePath: conf.GetJob().Path},
+			afero.NewBasePathFs(afero.NewOsFs(), conf.GetJob().Path),
 			local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
 		)
 	}
-	datastoreSpecsFs := map[string]fs.FileSystem{}
+	datastoreSpecsFs := map[string]afero.Fs{}
 	for _, dsConfig := range conf.GetDatastore() {
-		datastoreSpecsFs[dsConfig.Type] = &fs.LocalFileSystem{
-			BasePath: dsConfig.Path,
-		}
+		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
 
 	cmd.AddCommand(versionCommand(l, conf.GetHost()))

@@ -3,11 +3,13 @@ package local
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/odpf/optimus/core/fs"
+	"github.com/spf13/afero"
+
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gopkg.in/validator.v2"
@@ -15,8 +17,9 @@ import (
 )
 
 const (
-	JobSpecFileName = "job.yaml"
-	AssetFolderName = "assets"
+	JobSpecParentName = "this.yaml"
+	JobSpecFileName   = "job.yaml"
+	AssetFolderName   = "assets"
 )
 
 var (
@@ -24,7 +27,7 @@ var (
 )
 
 type jobRepository struct {
-	fs    fs.FileSystem
+	fs    afero.Fs
 	cache struct {
 		dirty bool
 
@@ -37,31 +40,28 @@ type jobRepository struct {
 func (repo *jobRepository) Save(job models.JobSpec) error {
 	config, err := repo.adapter.FromSpec(job)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "repo.adapter.FromSpec: %s", config.Name)
 	}
 
 	if err := validator.Validate(config); err != nil {
-		return err
+		return errors.Wrapf(err, "validator.Validate: %s", config.Name)
+	}
+
+	// create necessary folders
+	if err = repo.fs.MkdirAll(repo.assetFolderPath(config.Name), os.FileMode(0765)|os.ModeDir); err != nil {
+		return errors.Wrapf(err, "repo.fs.MkdirAll: %s", config.Name)
 	}
 
 	// save assets
 	for assetName, assetValue := range config.Asset {
-		assetFd, err := repo.fs.OpenForWrite(repo.assetFilePath(config.Name, assetName))
-		if err != nil {
-			return err
+		if err := afero.WriteFile(repo.fs, repo.assetFilePath(config.Name, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
+			return errors.Wrapf(err, "WriteFile.Asset: %s", repo.assetFilePath(config.Name, assetName))
 		}
-		_, err = assetFd.Write([]byte(assetValue))
-		if err != nil {
-			return err
-		}
-
-		assetFd.Close()
 	}
 	config.Asset = nil
 
 	// save job
-	fileName := repo.jobFilePath(config.Name)
-	fd, err := repo.fs.OpenForWrite(fileName)
+	fd, err := repo.fs.OpenFile(repo.jobFilePath(config.Name), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(0755))
 	if err != nil {
 		return err
 	}
@@ -125,8 +125,8 @@ func (repo *jobRepository) refreshCache() error {
 	repo.cache.dirty = true
 	repo.cache.data = make(map[string]models.JobSpec)
 
-	jobSpecs, err := repo.scanDirs(".")
-	if err != nil && err != fs.ErrNoSuchFile {
+	jobSpecs, err := repo.scanDirs(".", Job{})
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	if len(jobSpecs) < 1 {
@@ -137,7 +137,7 @@ func (repo *jobRepository) refreshCache() error {
 	return nil
 }
 
-func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
+func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.JobSpec, error) {
 	jobSpec := models.JobSpec{}
 	if strings.TrimSpace(dirName) == "" {
 		return jobSpec, fmt.Errorf("dir name cannot be an empty string")
@@ -145,18 +145,19 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 
 	fd, err := repo.fs.Open(repo.jobFilePath(dirName))
 	if err != nil {
-		if err == fs.ErrNoSuchFile {
+		if os.IsNotExist(err) {
 			err = models.ErrNoSuchSpec
 		}
 		return jobSpec, err
 	}
 	defer fd.Close()
 
-	var inputs Job
 	dec := yaml.NewDecoder(fd)
+	var inputs Job
 	if err = dec.Decode(&inputs); err != nil {
 		return jobSpec, errors.Wrapf(err, "error parsing job spec in %s", dirName)
 	}
+	inputs.MergeFrom(inheritedSpec)
 	if err := validator.Validate(inputs); err != nil {
 		return jobSpec, errors.Wrapf(err, "failed to validate job specification: %s", dirName)
 	}
@@ -175,15 +176,15 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 			return jobSpec, err
 		}
 		for _, fileName := range fileNames {
-			assetFd, err := repo.fs.Open(repo.assetFilePath(dirName, fileName))
-			if err != nil {
+			// skip directories in assets folder
+			if isDir, err := afero.IsDir(repo.fs, repo.assetFilePath(dirName, fileName)); err == nil && isDir {
+				continue
+			} else if err != nil {
 				return jobSpec, err
 			}
 
-			if isDir, err := assetFd.IsDir(); err == nil && isDir {
-				assetFd.Close()
-				continue
-			} else if err != nil {
+			assetFd, err := repo.fs.Open(repo.assetFilePath(dirName, fileName))
+			if err != nil {
 				return jobSpec, err
 			}
 
@@ -205,8 +206,15 @@ func (repo *jobRepository) findInDir(dirName string) (models.JobSpec, error) {
 	return jobSpec, nil
 }
 
-func (repo *jobRepository) scanDirs(path string) ([]models.JobSpec, error) {
+func (repo *jobRepository) scanDirs(path string, inheritedSpec Job) ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
+
+	// find this config
+	thisSpec, err := repo.getThisSpec(path)
+	if err != nil {
+		return nil, err
+	}
+	thisSpec.MergeFrom(inheritedSpec)
 
 	// filter folders & scan recursively
 	folders, err := repo.getDirs(path)
@@ -214,17 +222,17 @@ func (repo *jobRepository) scanDirs(path string) ([]models.JobSpec, error) {
 		return nil, err
 	}
 	for _, folder := range folders {
-		s, err := repo.scanDirs(filepath.Join(path, folder))
-		if err != nil && err != fs.ErrNoSuchFile {
+		s, err := repo.scanDirs(filepath.Join(path, folder), thisSpec)
+		if err != nil && !os.IsNotExist(err) {
 			return s, err
 		}
 		specs = append(specs, s...)
 	}
 
 	// find job in this folder
-	spec, err := repo.findInDir(path)
+	spec, err := repo.findInDir(path, thisSpec)
 	if err != nil {
-		if err != fs.ErrNoSuchFile && err != models.ErrNoSuchSpec {
+		if !os.IsNotExist(err) && err != models.ErrNoSuchSpec {
 			return nil, err
 		}
 	} else {
@@ -232,6 +240,25 @@ func (repo *jobRepository) scanDirs(path string) ([]models.JobSpec, error) {
 	}
 
 	return specs, nil
+}
+
+func (repo *jobRepository) getThisSpec(dirName string) (Job, error) {
+	fd, err := repo.fs.Open(repo.thisFilePath(dirName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Job{}, nil
+		}
+		return Job{}, err
+	}
+	defer fd.Close()
+
+	// prepare a clone
+	var inputs Job
+	dec := yaml.NewDecoder(fd)
+	if err = dec.Decode(&inputs); err != nil {
+		return Job{}, errors.Wrapf(err, "error parsing job spec in %s", dirName)
+	}
+	return inputs, nil
 }
 
 // getDirs return names of all the folders in provided path
@@ -256,22 +283,21 @@ func (repo *jobRepository) getDirs(dirPath string) ([]string, error) {
 			continue
 		}
 
-		fd, err := repo.fs.Open(filepath.Join(dirPath, fileName))
-		if err != nil {
-			return nil, err
-		}
-		if isDir, err := fd.IsDir(); err == nil && !isDir {
-			fd.Close()
+		if isDir, err := afero.IsDir(repo.fs, filepath.Join(dirPath, fileName)); err == nil && !isDir {
 			continue
 		} else if err != nil {
-			fd.Close()
 			return nil, err
 		}
-		fd.Close()
 
 		folderPath = append(folderPath, fileName)
 	}
 	return folderPath, nil
+}
+
+// thisFilePath generates the filename for this specification which will be inherited by
+// all children
+func (repo *jobRepository) thisFilePath(name string) string {
+	return filepath.Join(name, JobSpecParentName)
 }
 
 // jobFilePath generates the filename for a given job
@@ -291,7 +317,7 @@ func (repo *jobRepository) assetFilePath(job string, file string) string {
 	return filepath.Join(repo.assetFolderPath(job), file)
 }
 
-func NewJobSpecRepository(fs fs.FileSystem, adapter *JobSpecAdapter) *jobRepository {
+func NewJobSpecRepository(fs afero.Fs, adapter *JobSpecAdapter) *jobRepository {
 	repo := new(jobRepository)
 	repo.fs = fs
 	repo.cache.dirty = true

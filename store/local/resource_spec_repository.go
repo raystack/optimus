@@ -3,10 +3,12 @@ package local
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/odpf/optimus/core/fs"
+	"github.com/spf13/afero"
+
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -25,7 +27,7 @@ type Resource struct {
 }
 
 type resourceRepository struct {
-	fs    fs.FileSystem
+	fs    afero.Fs
 	cache struct {
 		dirty bool
 
@@ -47,30 +49,22 @@ func (repo *resourceRepository) Save(resourceSpec models.ResourceSpec) error {
 		return err
 	}
 
+	// create necessary folders
+	if err = repo.fs.MkdirAll(repo.assetFolderPath(resourceSpec.Name), os.FileMode(0765)|os.ModeDir); err != nil {
+		return errors.Wrapf(err, "repo.fs.MkdirAll: %s", resourceSpec.Name)
+	}
+
 	// save assets
 	for assetName, assetValue := range resourceSpec.Assets {
-		assetFd, err := repo.fs.OpenForWrite(repo.assetFilePath(resourceSpec.Name, assetName))
-		if err != nil {
-			return err
+		if err := afero.WriteFile(repo.fs, repo.assetFilePath(resourceSpec.Name, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
+			return errors.Wrapf(err, "WriteFile.Asset: %s", repo.assetFilePath(resourceSpec.Name, assetName))
 		}
-		_, err = assetFd.Write([]byte(assetValue))
-		if err != nil {
-			return err
-		}
-		assetFd.Close()
 	}
 
 	// save resource
-	fileName := repo.resourceFilePath(resourceSpec.Name)
-	fd, err := repo.fs.OpenForWrite(fileName)
-	if err != nil {
+	if afero.WriteFile(repo.fs, repo.resourceFilePath(resourceSpec.Name), specBytes, os.FileMode(0755)); err != nil {
 		return err
 	}
-
-	if _, err := fd.Write(specBytes); err != nil {
-		return err
-	}
-	fd.Close()
 
 	repo.cache.dirty = true
 	return nil
@@ -123,7 +117,7 @@ func (repo *resourceRepository) refreshCache() error {
 	repo.cache.data = make(map[string]models.ResourceSpec)
 
 	resourceSpecs, err := repo.scanDirs(".")
-	if err != nil && err != fs.ErrNoSuchFile {
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	if len(resourceSpecs) < 1 {
@@ -142,7 +136,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 
 	resourceFD, err := repo.fs.Open(repo.resourceFilePath(dirName))
 	if err != nil {
-		if err == fs.ErrNoSuchFile {
+		if os.IsNotExist(err) {
 			err = models.ErrNoSuchSpec
 		}
 		return resourceSpec, err
@@ -185,16 +179,16 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 				continue
 			}
 
-			assetFd, err := repo.fs.Open(repo.assetFilePath(dirName, fileName))
-			if err != nil {
+			// skip directories in assets folder
+			if isDir, err := afero.IsDir(repo.fs, repo.assetFilePath(dirName, fileName)); err == nil && isDir {
+				continue
+			} else if err != nil {
 				return resourceSpec, err
 			}
 
-			if isDir, err := assetFd.IsDir(); err == nil && isDir {
-				assetFd.Close()
-				continue
-			} else if err != nil {
-				return models.ResourceSpec{}, err
+			assetFd, err := repo.fs.Open(repo.assetFilePath(dirName, fileName))
+			if err != nil {
+				return resourceSpec, err
 			}
 
 			fileContent, err := ioutil.ReadAll(assetFd)
@@ -225,7 +219,7 @@ func (repo *resourceRepository) scanDirs(path string) ([]models.ResourceSpec, er
 
 	for _, folder := range folders {
 		s, err := repo.scanDirs(filepath.Join(path, folder))
-		if err != nil && err != fs.ErrNoSuchFile {
+		if err != nil && !os.IsNotExist(err) {
 			return s, err
 		}
 		specs = append(specs, s...)
@@ -234,7 +228,7 @@ func (repo *resourceRepository) scanDirs(path string) ([]models.ResourceSpec, er
 	// find resources in this folder
 	spec, err := repo.findInDir(path)
 	if err != nil {
-		if err != fs.ErrNoSuchFile && err != models.ErrNoSuchSpec {
+		if !os.IsNotExist(err) && err != models.ErrNoSuchSpec {
 			return nil, err
 		}
 	} else {
@@ -265,18 +259,11 @@ func (repo *resourceRepository) getDirs(dirPath string) ([]string, error) {
 			continue
 		}
 
-		fd, err := repo.fs.Open(filepath.Join(dirPath, fileName))
-		if err != nil {
-			return nil, err
-		}
-		if isDir, err := fd.IsDir(); err == nil && !isDir {
-			fd.Close()
+		if isDir, err := afero.IsDir(repo.fs, filepath.Join(dirPath, fileName)); err == nil && !isDir {
 			continue
 		} else if err != nil {
-			fd.Close()
 			return nil, err
 		}
-		fd.Close()
 
 		folderPath = append(folderPath, fileName)
 	}
@@ -289,6 +276,7 @@ func (repo *resourceRepository) resourceFilePath(name string) string {
 }
 
 // assetFolderPath generates the path to asset directory folder
+// for now we are keeping all assets in the same folder as resource yaml file
 func (repo *resourceRepository) assetFolderPath(name string) string {
 	return name
 }
@@ -298,7 +286,7 @@ func (repo *resourceRepository) assetFilePath(job string, file string) string {
 	return filepath.Join(repo.assetFolderPath(job), file)
 }
 
-func NewResourceSpecRepository(fs fs.FileSystem, ds models.Datastorer) *resourceRepository {
+func NewResourceSpecRepository(fs afero.Fs, ds models.Datastorer) *resourceRepository {
 	repo := new(resourceRepository)
 	repo.fs = fs
 	repo.cache.dirty = true
