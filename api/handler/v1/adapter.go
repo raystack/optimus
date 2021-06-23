@@ -71,8 +71,14 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	}
 
 	retryDelay := time.Duration(0)
-	if spec.Behavior != nil && spec.Behavior.Retry.Delay != nil && spec.Behavior.Retry.Delay.IsValid() {
-		retryDelay = spec.Behavior.Retry.Delay.AsDuration()
+	retryCount := 0
+	retryExponentialBackoff := false
+	if spec.Behavior != nil && spec.Behavior.Retry != nil {
+		retryCount = int(spec.Behavior.Retry.Count)
+		retryExponentialBackoff = spec.Behavior.Retry.ExponentialBackoff
+		if spec.Behavior.Retry.Delay != nil && spec.Behavior.Retry.Delay.IsValid() {
+			retryDelay = spec.Behavior.Retry.Delay.AsDuration()
+		}
 	}
 	return models.JobSpec{
 		Version:     int(spec.Version),
@@ -90,9 +96,9 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 			DependsOnPast: spec.DependsOnPast,
 			CatchUp:       spec.CatchUp,
 			Retry: models.JobSpecBehaviorRetry{
-				Count:              int(spec.Behavior.Retry.Count),
+				Count:              retryCount,
 				Delay:              retryDelay,
-				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
+				ExponentialBackoff: retryExponentialBackoff,
 			},
 		},
 		Task: models.JobSpecTask{
