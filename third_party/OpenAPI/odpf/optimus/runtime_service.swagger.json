@@ -42,7 +42,7 @@
         ]
       },
       "post": {
-        "summary": "RegisterProject creates a new project",
+        "summary": "RegisterProject creates a new optimus project",
         "operationId": "RuntimeService_RegisterProject",
         "responses": {
           "200": {

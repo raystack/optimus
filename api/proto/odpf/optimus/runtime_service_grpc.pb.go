@@ -41,7 +41,7 @@ type RuntimeServiceClient interface {
 	CheckJobSpecification(ctx context.Context, in *CheckJobSpecificationRequest, opts ...grpc.CallOption) (*CheckJobSpecificationResponse, error)
 	// CheckJobSpecifications checks if the job specifications are valid
 	CheckJobSpecifications(ctx context.Context, in *CheckJobSpecificationsRequest, opts ...grpc.CallOption) (RuntimeService_CheckJobSpecificationsClient, error)
-	// RegisterProject creates a new project
+	// RegisterProject creates a new optimus project
 	RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error)
 	// RegisterProjectNamespace creates a new namespace for a project
 	RegisterProjectNamespace(ctx context.Context, in *RegisterProjectNamespaceRequest, opts ...grpc.CallOption) (*RegisterProjectNamespaceResponse, error)
@@ -381,7 +381,7 @@ type RuntimeServiceServer interface {
 	CheckJobSpecification(context.Context, *CheckJobSpecificationRequest) (*CheckJobSpecificationResponse, error)
 	// CheckJobSpecifications checks if the job specifications are valid
 	CheckJobSpecifications(*CheckJobSpecificationsRequest, RuntimeService_CheckJobSpecificationsServer) error
-	// RegisterProject creates a new project
+	// RegisterProject creates a new optimus project
 	RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error)
 	// RegisterProjectNamespace creates a new namespace for a project
 	RegisterProjectNamespace(context.Context, *RegisterProjectNamespaceRequest) (*RegisterProjectNamespaceResponse, error)

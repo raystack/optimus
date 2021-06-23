@@ -19,8 +19,8 @@ serve:
 You will need to change `dsn` and `app_key` according to your installation.
 
 Once the server is up and running, before it is ready to deploy `jobs` we need to
-- Register a project
-- Register a namespace
-- Register required secrets
+- Register an optimus project
+- Register a namespace under project
+- Register required secrets under project
 
 This needs to be done in order using REST/GRPC endpoints provided by the server.

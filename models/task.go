@@ -67,10 +67,14 @@ type PluginQuestion struct {
 	Default     string
 	Multiselect []string
 
-	// SubQuestionsIfValue is used as an if condition to match with user input
+	SubQuestions []PluginSubQuestion
+}
+
+type PluginSubQuestion struct {
+	// IfValue is used as an if condition to match with user input
 	// if user value matches this only then ask sub questions
-	SubQuestionsIfValue string
-	SubQuestions        PluginQuestions
+	IfValue   string
+	Questions PluginQuestions
 }
 
 type PluginQuestions []PluginQuestion

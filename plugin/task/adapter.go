@@ -7,38 +7,49 @@ import (
 
 func adaptQuestionToProto(q models.PluginQuestion) *pb.PluginQuestion {
 	pq := &pb.PluginQuestion{
-		Name:                q.Name,
-		Prompt:              q.Prompt,
-		Help:                q.Help,
-		Default:             q.Default,
-		Multiselect:         q.Multiselect,
-		SubQuestionsIfValue: q.SubQuestionsIfValue,
+		Name:        q.Name,
+		Prompt:      q.Prompt,
+		Help:        q.Help,
+		Default:     q.Default,
+		Multiselect: q.Multiselect,
 	}
-	subQ := []*pb.PluginQuestion{}
+	var protoSubQuestions []*pb.PluginQuestion_SubQuestion
 	if len(q.SubQuestions) > 0 {
 		for _, sq := range q.SubQuestions {
-			subQ = append(subQ, adaptQuestionToProto(sq))
+			protoSubQ := &pb.PluginQuestion_SubQuestion{
+				IfValue:   sq.IfValue,
+				Questions: []*pb.PluginQuestion{},
+			}
+			for _, sqq := range sq.Questions {
+				protoSubQ.Questions = append(protoSubQ.Questions, adaptQuestionToProto(sqq))
+			}
+			protoSubQuestions = append(protoSubQuestions, protoSubQ)
 		}
-		pq.SubQuestions = subQ
+		pq.SubQuestions = protoSubQuestions
 	}
 	return pq
 }
 
 func adaptQuestionFromProto(q *pb.PluginQuestion) models.PluginQuestion {
 	pq := models.PluginQuestion{
-		Name:                q.Name,
-		Prompt:              q.Prompt,
-		Help:                q.Help,
-		Default:             q.Default,
-		Multiselect:         q.Multiselect,
-		SubQuestionsIfValue: q.SubQuestionsIfValue,
+		Name:         q.Name,
+		Prompt:       q.Prompt,
+		Help:         q.Help,
+		Default:      q.Default,
+		Multiselect:  q.Multiselect,
+		SubQuestions: []models.PluginSubQuestion{},
 	}
-	subQ := models.PluginQuestions{}
 	if len(q.SubQuestions) > 0 {
-		for _, sq := range q.SubQuestions {
-			subQ = append(subQ, adaptQuestionFromProto(sq))
+		for _, protoSubQ := range q.SubQuestions {
+			subQ := models.PluginSubQuestion{
+				IfValue:   protoSubQ.IfValue,
+				Questions: models.PluginQuestions{},
+			}
+			for _, q := range protoSubQ.Questions {
+				subQ.Questions = append(subQ.Questions, adaptQuestionFromProto(q))
+			}
+			pq.SubQuestions = append(pq.SubQuestions, subQ)
 		}
-		pq.SubQuestions = subQ
 	}
 	return pq
 }

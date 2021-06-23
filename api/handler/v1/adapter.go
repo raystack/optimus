@@ -71,7 +71,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	}
 
 	retryDelay := time.Duration(0)
-	if spec.Behavior.Retry.Delay != nil && spec.Behavior.Retry.Delay.IsValid() {
+	if spec.Behavior != nil && spec.Behavior.Retry.Delay != nil && spec.Behavior.Retry.Delay.IsValid() {
 		retryDelay = spec.Behavior.Retry.Delay.AsDuration()
 	}
 	return models.JobSpec{

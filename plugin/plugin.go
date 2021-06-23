@@ -12,8 +12,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	v1 "github.com/odpf/optimus/api/handler/v1"
-
 	"github.com/odpf/optimus/plugin/hook"
 
 	"github.com/odpf/optimus/models"
@@ -62,12 +60,8 @@ func Initialize(pluginLogger hclog.Logger) error {
 
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		TaskPluginName: &task.Plugin{
-			ProjectSpecAdapter: v1.NewAdapter(nil, nil, nil),
-		},
-		HookPluginName: &hook.Plugin{
-			ProjectSpecAdapter: v1.NewAdapter(nil, nil, nil),
-		},
+		TaskPluginName: task.NewPluginClient(),
+		HookPluginName: hook.NewPluginClient(),
 	}
 
 	for pluginType, pluginPaths := range discoveredPlugins {

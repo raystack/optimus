@@ -12,7 +12,7 @@ import (
 
 // GRPCServer will be used by plugins this is working as proto adapter
 type GRPCServer struct {
-	// This is the real implementation
+	// This is the real implementation coming from plugin
 	Impl models.HookPlugin
 
 	projectSpecAdapter ProjectSpecAdapter
