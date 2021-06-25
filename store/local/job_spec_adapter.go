@@ -72,7 +72,7 @@ type JobTask struct {
 type JobTaskWindow struct {
 	Size       string
 	Offset     string
-	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|M)$"`
+	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|M|m)$"`
 }
 
 type JobHook struct {
