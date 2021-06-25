@@ -3,8 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
+
+	petname "github.com/dustinkirkland/golang-petname"
 
 	"github.com/spf13/afero"
 
@@ -27,30 +31,47 @@ var (
 		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3),
 		survey.MaxLength(1024))
+
+	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func createCommand(l logger, jobSpecRepo store.JobSpecRepository,
-	taskRepo models.TaskPluginRepository, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo,
-	datastoreSpecsFs map[string]afero.Fs) *cli.Command {
+func createCommand(l logger, jobSpecFs afero.Fs, datastoreSpecsFs map[string]afero.Fs,
+	taskRepo models.TaskPluginRepository, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new job/resource",
 	}
-	if jobSpecRepo != nil {
-		cmd.AddCommand(createJobSubCommand(l, jobSpecRepo, taskRepo, hookRepo))
-		cmd.AddCommand(createHookSubCommand(l, jobSpecRepo, hookRepo))
-	}
+	cmd.AddCommand(createJobSubCommand(l, jobSpecFs, taskRepo, hookRepo))
+	cmd.AddCommand(createHookSubCommand(l, jobSpecFs, hookRepo))
 	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository, taskRepo models.TaskPluginRepository,
+func createJobSubCommand(l logger, jobSpecFs afero.Fs, taskRepo models.TaskPluginRepository,
 	hookRepo models.HookRepo) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
 		RunE: func(cmd *cli.Command, args []string) error {
-			jobInput, err := createJobSurvey(jobSpecRepo, taskRepo)
+			var jobSpecRepo JobSpecRepository
+			jobSpecRepo = local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
+			)
+
+			jwd, err := getWorkingDirectory(jobSpecFs, "")
+			if err != nil {
+				return err
+			}
+			newDirName, err := getDirectoryName(jwd)
+			if err != nil {
+				return err
+			}
+
+			jobDirectory := filepath.Join(jwd, newDirName)
+			jobNameDefault := strings.ReplaceAll(strings.ReplaceAll(jobDirectory, "/", "."), "\\", ".")
+
+			jobInput, err := createJobSurvey(jobSpecRepo, taskRepo, jobNameDefault)
 			if err != nil {
 				return err
 			}
@@ -58,18 +79,92 @@ func createJobSubCommand(l logger, jobSpecRepo store.JobSpecRepository, taskRepo
 			if err != nil {
 				return err
 			}
-			if err := jobSpecRepo.Save(spec); err != nil {
+			if err := jobSpecRepo.SaveAt(spec, jobDirectory); err != nil {
 				return err
 			}
-			l.Println("job created successfully", spec.Name)
+			l.Println("job successfully created at", jobDirectory)
 			return nil
 		},
 	}
 }
 
-func createJobSurvey(jobSpecRepo store.JobSpecRepository, taskRepo models.TaskPluginRepository) (local.Job, error) {
-	// TODO: take an additional input "--spec-dir" with default as "." in order to save job specs to a specific directory
-	availableTasks := []string{}
+// getWorkingDirectory returns the directory where the new spec folder should be created
+func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
+	directories, err := afero.ReadDir(jobSpecFs, root)
+	if err != nil {
+		return "", err
+	}
+	if len(directories) == 0 {
+		return root, nil
+	}
+
+	currentFolder := ". (current directory)"
+
+	availableDirs := []string{currentFolder}
+	for _, dir := range directories {
+		if !dir.IsDir() {
+			continue
+		}
+
+		// if it contain job or resource, skip it from valid options
+		dirItems, err := afero.ReadDir(jobSpecFs, filepath.Join(root, dir.Name()))
+		if err != nil {
+			return "", err
+		}
+		var alreadyOccupied bool
+		for _, dirItem := range dirItems {
+			if utils.ContainsString(specFileNames, dirItem.Name()) {
+				alreadyOccupied = true
+				break
+			}
+		}
+		if alreadyOccupied {
+			continue
+		}
+		availableDirs = append(availableDirs, dir.Name())
+	}
+
+	messageStr := "Select directory to save specification?"
+	if root != "" {
+		messageStr = fmt.Sprintf("%s [%s]", messageStr, root)
+	}
+	var selectedDir string
+	if err = survey.AskOne(&survey.Select{
+		Message: messageStr,
+		Default: currentFolder,
+		Help:    "Optimus helps organize specifications in sub-directories.\nPlease select where you want this new specification to be stored",
+		Options: availableDirs,
+	}, &selectedDir); err != nil {
+		return "", err
+	}
+
+	// check for sub directories
+	if selectedDir != currentFolder {
+		return getWorkingDirectory(jobSpecFs, filepath.Join(root, selectedDir))
+	}
+
+	return root, nil
+}
+
+// getDirectoryName returns the directory name of the new spec folder
+func getDirectoryName(root string) (string, error) {
+	sampleDirectoryName := petname.Generate(2, "_")
+
+	var selectedDir string
+	if err := survey.AskOne(&survey.Input{
+		Message: fmt.Sprintf("Provide new directory name to create for this spec?[%s/.]", root),
+		Default: sampleDirectoryName,
+		Help:    fmt.Sprintf("A new directory will be created under '%s/%s'", root, sampleDirectoryName),
+	}, &selectedDir); err != nil {
+		return "", err
+	}
+
+	return selectedDir, nil
+}
+
+func createJobSurvey(jobSpecRepo JobSpecRepository, taskRepo models.TaskPluginRepository,
+	jobNameDefault string) (local.Job, error) {
+	var availableTasks []string
 	for _, task := range taskRepo.GetAll() {
 		schema, err := task.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
 		if err != nil {
@@ -83,6 +178,8 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository, taskRepo models.TaskPl
 			Name: "name",
 			Prompt: &survey.Input{
 				Message: "What is the job name?",
+				Default: jobNameDefault,
+				Help:    "It should be unique across whole optimus project",
 			},
 			Validate: survey.ComposeValidators(validateJobName, IsJobNameUnique(jobSpecRepo)),
 		},
@@ -97,24 +194,25 @@ func createJobSurvey(jobSpecRepo store.JobSpecRepository, taskRepo models.TaskPl
 		{
 			Name: "task",
 			Prompt: &survey.Select{
-				Message: "Which task to run?",
+				Message: "Select task to run?",
 				Options: availableTasks,
+				Help:    "Select the transformation task for this job",
 			},
 			Validate: survey.Required,
 		},
 		{
 			Name: "start_date",
 			Prompt: &survey.Input{
-				Message: "Specify the start date",
+				Message: "Specify the schedule start date",
 				Help:    "Format: (YYYY-MM-DD)",
-				Default: time.Now().UTC().Format(models.JobDatetimeLayout),
+				Default: time.Now().AddDate(0, 0, -1).UTC().Format(models.JobDatetimeLayout),
 			},
 			Validate: validateDate,
 		},
 		{
 			Name: "interval",
 			Prompt: &survey.Input{
-				Message: "Specify the interval (in crontab notation)",
+				Message: "Specify the schedule interval (in crontab notation)",
 				Default: "0 2 * * *",
 				Help:    "0 2 * * * / @daily / @hourly",
 			},
@@ -203,11 +301,17 @@ this effects runtime dependencies and template macros`,
 	return jobInput, nil
 }
 
-func createHookSubCommand(l logger, jobSpecRepo store.JobSpecRepository, hookRepo models.HookRepo) *cli.Command {
+func createHookSubCommand(l logger, jobSpecFs afero.Fs, hookRepo models.HookRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "hook",
 		Short: "create a new Hook",
 		RunE: func(cmd *cli.Command, args []string) error {
+			var jobSpecRepo JobSpecRepository
+			jobSpecRepo = local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
+			)
+
 			selectJobName, err := selectJobSurvey(jobSpecRepo)
 			if err != nil {
 				return err
@@ -220,7 +324,12 @@ func createHookSubCommand(l logger, jobSpecRepo store.JobSpecRepository, hookRep
 			if err != nil {
 				return err
 			}
-			return jobSpecRepo.Save(jobSpec)
+			if err := jobSpecRepo.Save(jobSpec); err != nil {
+				return err
+			}
+
+			l.Println("hook successfully added to", selectJobName)
+			return nil
 		},
 	}
 	return cmd
@@ -299,7 +408,7 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 }
 
 // selectJobSurvey runs a survey to select a job and returns its name
-func selectJobSurvey(jobSpecRepo store.JobSpecRepository) (string, error) {
+func selectJobSurvey(jobSpecRepo JobSpecRepository) (string, error) {
 	var allJobNames []string
 	jobs, err := jobSpecRepo.GetAll()
 	if err != nil {
@@ -332,7 +441,7 @@ func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool 
 }
 
 // IsJobNameUnique return a validator that checks if the job already exists with the same name
-func IsJobNameUnique(repository store.JobSpecRepository) survey.Validator {
+func IsJobNameUnique(repository JobSpecRepository) survey.Validator {
 	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
 			if _, err := repository.GetByName(str); err == nil {
@@ -368,6 +477,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, dat
 				return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
 			}
 
+			// find requested datastore
 			availableTypes := []string{}
 			datastore, _ := datastoreRepo.GetByName(storerName)
 			for dsType := range datastore.Types() {
@@ -375,6 +485,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, dat
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, datastore)
 
+			// find resource type
 			var resourceType string
 			if err := survey.AskOne(&survey.Select{
 				Message: "Select supported resource type?",
@@ -384,11 +495,25 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, dat
 			}
 			typeController, _ := datastore.Types()[models.ResourceType(resourceType)]
 
+			// find directory to store spec
+			rwd, err := getWorkingDirectory(repoFS, "")
+			if err != nil {
+				return err
+			}
+			newDirName, err := getDirectoryName(rwd)
+			if err != nil {
+				return err
+			}
+
+			resourceDirectory := filepath.Join(rwd, newDirName)
+			resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirectory, "/", "."), "\\", ".")
+
 			var qs = []*survey.Question{
 				{
 					Name: "name",
 					Prompt: &survey.Input{
 						Message: "What is the resource name?(should conform to selected resource type)",
+						Default: resourceNameDefault,
 					},
 					Validate: survey.ComposeValidators(validateNoSlash, survey.MinLength(3),
 						survey.MaxLength(1024), IsValidDatastoreSpec(typeController.Validator()),
@@ -401,17 +526,17 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, dat
 			}
 			resourceName := inputs["name"].(string)
 
-			if err := resourceSpecRepo.Save(models.ResourceSpec{
+			if err := resourceSpecRepo.SaveAt(models.ResourceSpec{
 				Version:   1,
 				Name:      resourceName,
 				Type:      models.ResourceType(resourceType),
 				Datastore: datastore,
 				Assets:    typeController.DefaultAssets(),
-			}); err != nil {
+			}, resourceDirectory); err != nil {
 				return err
 			}
-			l.Println("resource created successfully", resourceName)
 
+			l.Println("resource created successfully", resourceName)
 			return nil
 		},
 	}

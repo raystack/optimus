@@ -32,10 +32,6 @@ type NamespaceRepoFactory interface {
 	New(spec models.ProjectSpec) store.NamespaceRepository
 }
 
-type JobRepoFactory interface {
-	New(spec models.ProjectSpec) store.JobSpecRepository
-}
-
 type SecretRepoFactory interface {
 	New(spec models.ProjectSpec) store.ProjectSecretRepository
 }

@@ -11,8 +11,6 @@ import (
 
 	"github.com/odpf/optimus/utils"
 
-	"github.com/odpf/optimus/store"
-
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
@@ -24,7 +22,7 @@ var (
 	templateEngine = instance.NewGoEngine()
 )
 
-func renderCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func renderCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "render",
 		Short: "convert raw representation of specification to consumables",
@@ -36,7 +34,7 @@ func renderCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *
 	return cmd
 }
 
-func renderTemplateCommand(l logger, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func renderTemplateCommand(l logger, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "template",
 		Short:   "render templates for a job to current 'render' directory",

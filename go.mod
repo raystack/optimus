@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/emirpasic/gods v1.12.0
 	github.com/fatih/color v1.7.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3

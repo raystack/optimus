@@ -117,8 +117,8 @@ func TestInstanceRepository(t *testing.T) {
 		prepo := NewProjectRepository(dbConn, hash)
 		assert.Nil(t, prepo.Save(projectSpec))
 
-		projectJobSpecRepo := NewProjectJobRepository(dbConn, projectSpec, adapter)
-		jrepo := NewJobRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
+		jrepo := NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
 		assert.Nil(t, jrepo.Save(jobConfigs[0]))
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(jobConfigs[1]).Error())
 		return dbConn
@@ -147,8 +147,8 @@ func TestInstanceRepository(t *testing.T) {
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
 
-		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-		jobRepo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 		err := jobRepo.Insert(testModels[0].Job)
 		assert.Nil(t, err)
 

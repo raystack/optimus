@@ -26,18 +26,23 @@ var (
 	specSuffixRegex = regexp.MustCompile(`\.(yaml|cfg|sql|txt)$`)
 )
 
+type cacheItem struct {
+	path string
+	item interface{}
+}
+
 type jobRepository struct {
 	fs    afero.Fs
 	cache struct {
 		dirty bool
 
-		// cache is mapped with jobSpec name -> jobSpec
-		data map[string]models.JobSpec
+		// cache is mapped with jobSpec name -> cacheItem
+		data map[string]cacheItem
 	}
 	adapter *JobSpecAdapter
 }
 
-func (repo *jobRepository) Save(job models.JobSpec) error {
+func (repo *jobRepository) SaveAt(job models.JobSpec, rootDir string) error {
 	config, err := repo.adapter.FromSpec(job)
 	if err != nil {
 		return errors.Wrapf(err, "repo.adapter.FromSpec: %s", config.Name)
@@ -47,21 +52,26 @@ func (repo *jobRepository) Save(job models.JobSpec) error {
 		return errors.Wrapf(err, "validator.Validate: %s", config.Name)
 	}
 
+	// set default dir name as config name
+	if rootDir == "" {
+		rootDir = config.Name
+	}
+
 	// create necessary folders
-	if err = repo.fs.MkdirAll(repo.assetFolderPath(config.Name), os.FileMode(0765)|os.ModeDir); err != nil {
-		return errors.Wrapf(err, "repo.fs.MkdirAll: %s", config.Name)
+	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0765)|os.ModeDir); err != nil {
+		return errors.Wrapf(err, "repo.fs.MkdirAll: %s", rootDir)
 	}
 
 	// save assets
 	for assetName, assetValue := range config.Asset {
-		if err := afero.WriteFile(repo.fs, repo.assetFilePath(config.Name, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
-			return errors.Wrapf(err, "WriteFile.Asset: %s", repo.assetFilePath(config.Name, assetName))
+		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
+			return errors.Wrapf(err, "WriteFile.Asset: %s", repo.assetFilePath(rootDir, assetName))
 		}
 	}
 	config.Asset = nil
 
 	// save job
-	fd, err := repo.fs.OpenFile(repo.jobFilePath(config.Name), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(0755))
+	fd, err := repo.fs.OpenFile(repo.jobFilePath(rootDir), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(0755))
 	if err != nil {
 		return err
 	}
@@ -75,6 +85,26 @@ func (repo *jobRepository) Save(job models.JobSpec) error {
 	return nil
 }
 
+func (repo *jobRepository) Save(job models.JobSpec) error {
+	if job.Name == "" {
+		return errors.New("invalid job name")
+	}
+	// refresh local cache if needed, going to need this to find existing spec paths
+	if repo.cache.dirty {
+		if err := repo.refreshCache(); err != nil {
+			return err
+		}
+	}
+
+	specDir := ""
+	// check if we are updating an existing spec
+	existingJob, ok := repo.cache.data[job.Name]
+	if ok {
+		specDir = existingJob.path
+	}
+	return repo.SaveAt(job, specDir)
+}
+
 // GetAll finds all the jobs recursively in current and sub directory
 func (repo *jobRepository) GetAll() ([]models.JobSpec, error) {
 	jobSpecs := []models.JobSpec{}
@@ -85,31 +115,33 @@ func (repo *jobRepository) GetAll() ([]models.JobSpec, error) {
 	}
 
 	for _, j := range repo.cache.data {
-		jobSpecs = append(jobSpecs, j)
+		jobSpecs = append(jobSpecs, j.item.(models.JobSpec))
+	}
+	if len(jobSpecs) < 1 {
+		return nil, models.ErrNoDAGSpecs
 	}
 	return jobSpecs, nil
 }
 
 // GetByName returns a job requested by the name
 func (repo *jobRepository) GetByName(jobName string) (models.JobSpec, error) {
-	jobSpec := models.JobSpec{}
 	if strings.TrimSpace(jobName) == "" {
-		return jobSpec, errors.Errorf("job name cannot be an empty string")
+		return models.JobSpec{}, errors.Errorf("job name cannot be an empty string")
 	}
 
 	// refresh local cache if needed
 	if repo.cache.dirty {
 		if err := repo.refreshCache(); err != nil {
-			return jobSpec, err
+			return models.JobSpec{}, err
 		}
 	}
 
 	// check if available in cache
-	jobSpec, ok := repo.cache.data[jobName]
+	blob, ok := repo.cache.data[jobName]
 	if !ok {
-		return jobSpec, models.ErrNoSuchSpec
+		return models.JobSpec{}, models.ErrNoSuchSpec
 	}
-	return jobSpec, nil
+	return blob.item.(models.JobSpec), nil
 }
 
 func (repo *jobRepository) GetByDestination(jobName string) (models.JobSpec, models.ProjectSpec, error) {
@@ -123,14 +155,11 @@ func (repo *jobRepository) Delete(jobName string) error {
 
 func (repo *jobRepository) refreshCache() error {
 	repo.cache.dirty = true
-	repo.cache.data = make(map[string]models.JobSpec)
+	repo.cache.data = make(map[string]cacheItem)
 
-	jobSpecs, err := repo.scanDirs(".", Job{})
+	_, err := repo.scanDirs(".", Job{})
 	if err != nil && !os.IsNotExist(err) {
 		return err
-	}
-	if len(jobSpecs) < 1 {
-		return models.ErrNoDAGSpecs
 	}
 
 	repo.cache.dirty = false
@@ -202,7 +231,10 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.
 	if _, ok := repo.cache.data[jobSpec.Name]; ok {
 		return jobSpec, errors.Errorf("job name should be unique across directories: %s", jobSpec.Name)
 	}
-	repo.cache.data[jobSpec.Name] = jobSpec
+	repo.cache.data[jobSpec.Name] = cacheItem{
+		path: dirName,
+		item: jobSpec,
+	}
 	return jobSpec, nil
 }
 

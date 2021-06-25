@@ -85,7 +85,7 @@ func TestResourceSpecRepository(t *testing.T) {
 		})
 		t.Run("should return error if type is empty", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(nil, datastorer)
-			err := repo.Save(models.ResourceSpec{Name: "foo"})
+			err := repo.SaveAt(models.ResourceSpec{Name: "foo"}, "")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return error if name is empty", func(t *testing.T) {
@@ -127,18 +127,18 @@ func TestResourceSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, specTable, returnedSpecAgain)
 		})
-		t.Run("should return ErrNoResources in case no job folder exist", func(t *testing.T) {
+		t.Run("should return ErrNoSuchSpec in case no job folder exist", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(afero.NewMemMapFs(), datastorer)
 			_, err := repo.GetByName(specTable.Name)
-			assert.Equal(t, models.ErrNoResources, err)
+			assert.Equal(t, models.ErrNoSuchSpec, err)
 		})
-		t.Run("should return ErrNoResources in case the folder exist but no resource file exist", func(t *testing.T) {
+		t.Run("should return ErrNoSuchSpec in case the folder exist but no resource file exist", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 			appFS.MkdirAll(specTable.Name, 0755)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
 			_, err := repo.GetByName(specTable.Name)
-			assert.Equal(t, models.ErrNoResources, err)
+			assert.Equal(t, models.ErrNoSuchSpec, err)
 		})
 		t.Run("should return an error if name is empty", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(afero.NewMemMapFs(), nil)

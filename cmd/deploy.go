@@ -15,7 +15,6 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -26,7 +25,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Provider,
+func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var projectName string
 	var namespace string
@@ -65,7 +64,7 @@ func deployCommand(l logger, jobSpecRepo store.JobSpecRepository, conf config.Pr
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo store.JobSpecRepository,
+func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo JobSpecRepository,
 	conf config.Provider, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
