@@ -19,8 +19,7 @@ Before getting into the difference between two plugins ,we need to get familiar 
 | Configuration          | It has its own set of configs and share the same asset folder as the base job.                                                                | It has its own set of configs and may share only the dependencies with the other jobs in the repo.                                                                                      |
 | Examples               | 1. Transporter(BQ/GCS to Kafka)<br>2. Predator(Auditing & Profiling for BQ)<br>3. BeastLagChecker<br>4. Http Hooks<br>5. Tableau view updates | 1. BQ2BQTask - Transformation from BigQuery to BigQuery in SQL <br>2. SparkSQLTask - Transformation from BQ/GCS to BQ/GCS in SparkSQL <br>3. PySparkTask - Transformation using python. |
 
-The hook can also be visualise as the subset of the Task in the view of functionality/specification. 
-
+A hook has less functionality/specification as compared to a task.
 
 ## Creating a task plugin
 
