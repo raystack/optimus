@@ -396,7 +396,10 @@ func Initialize(conf config.Provider) error {
 		jobSpecRepoFac: jobSpecRepoFac,
 	}
 	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
-	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), conf.GetServe().JobQueueSize)
+	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+		QueueSize:     conf.GetServe().ReplayJobQueueSize,
+		WorkerTimeout: conf.GetServe().ReplayWorkerTimeout,
+	})
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
@@ -485,8 +488,7 @@ func Initialize(conf config.Provider) error {
 	// Block until we receive our signal.
 	<-termChan
 	mainLog.Info("termination request received")
-	err = replayManager.Close()
-	if err != nil {
+	if err = replayManager.Close(); err != nil {
 		return err
 	}
 

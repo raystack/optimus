@@ -15,9 +15,13 @@ import (
 )
 
 func TestReplayManager(t *testing.T) {
+	replayManagerConfig := job.ReplayManagerConfig{
+		QueueSize:     5,
+		WorkerTimeout: 1000,
+	}
 	t.Run("Close", func(t *testing.T) {
 		logger.Init(logger.ERROR)
-		manager := job.NewManager(nil, nil, nil, 5)
+		manager := job.NewManager(nil, nil, nil, replayManagerConfig)
 		err := manager.Close()
 		assert.Nil(t, err)
 	})
@@ -32,7 +36,7 @@ func TestReplayManager(t *testing.T) {
 				Interval:  "0 2 * * *",
 			},
 		}
-		replayRequest := &models.ReplayRequestInput{
+		replayRequest := &models.ReplayWorkerRequest{
 			Job:   jobSpec,
 			Start: startDate,
 			End:   endDate,
@@ -51,7 +55,7 @@ func TestReplayManager(t *testing.T) {
 			errMessage := "error while generating uuid"
 			uuidProvider.On("NewUUID").Return(objUUID, errors.New(errMessage))
 
-			replayManager := job.NewManager(nil, nil, uuidProvider, 5)
+			replayManager := job.NewManager(nil, nil, uuidProvider, replayManagerConfig)
 			_, err := replayManager.Replay(replayRequest)
 			assert.NotNil(t, err)
 			assert.True(t, strings.Contains(err.Error(), errMessage))
@@ -79,7 +83,7 @@ func TestReplayManager(t *testing.T) {
 			}
 			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, 5)
+			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig)
 			_, err := replayManager.Replay(replayRequest)
 			assert.NotNil(t, err)
 			assert.True(t, strings.Contains(err.Error(), errMessage))

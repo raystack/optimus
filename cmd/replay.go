@@ -19,6 +19,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	replayTimeout = time.Minute * 1
+)
+
 type taskRunBlock struct {
 	name   string
 	height int
@@ -37,8 +41,8 @@ func taskRunBlockComperator(a, b interface{}) int {
 	return strings.Compare(aAsserted.name, bAsserted.name)
 }
 
-//formatRunsPerDAGInstance returns a hashmap with DAG -> Runs[] mapping
-func formatRunsPerDAGInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
+//formatRunsPerJobInstance returns a hashmap with Job -> Runs[] mapping
+func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
 	if _, ok := taskReruns[instance.JobName]; !ok {
 		taskReruns[instance.JobName] = taskRunBlock{
 			name:   instance.JobName,
@@ -51,7 +55,7 @@ func formatRunsPerDAGInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 		taskReruns[instance.JobName].runs.Add(taskRun.AsTime())
 	}
 	for _, child := range instance.Dependents {
-		formatRunsPerDAGInstance(child, taskReruns, height+1)
+		formatRunsPerJobInstance(child, taskReruns, height+1)
 	}
 }
 
@@ -111,23 +115,16 @@ ReplayDryRun date ranges are inclusive.
 			return nil
 		}
 
-		answers := map[string]interface{}{}
-		questions := []*survey.Question{
-			{
-				Name: "ProceedReplay",
-				Prompt: &survey.Select{
-
-					Message: "Proceed with replay?",
-					Options: []string{"Yes", "No"},
-					Default: "Yes",
-				},
-			},
-		}
-
-		if err := survey.Ask(questions, &answers); err != nil {
+		proceedWithReplay := "Yes"
+		if err := survey.AskOne(&survey.Select{
+			Message: "Proceed with replay?",
+			Options: []string{"Yes", "No"},
+			Default: "Yes",
+		}, &proceedWithReplay); err != nil {
 			return err
 		}
-		if option, ok := answers["ProceedReplay"]; ok && option.(survey.OptionAnswer).Value == "No" {
+
+		if proceedWithReplay == "No" {
 			l.Println("aborting...")
 			return nil
 		}
@@ -155,12 +152,11 @@ func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDa
 	}
 	defer conn.Close()
 
-	dumpTimeoutCtx, dumpCancel := context.WithTimeout(context.Background(), renderTimeout)
-	defer dumpCancel()
+	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
+	defer replayRequestCancel()
 
 	l.Println("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
-	// fetch compiled JobSpec by calling the optimus API
 	replayRequest := &pb.ReplayRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
@@ -168,10 +164,10 @@ func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDa
 		StartDate:   startDate,
 		EndDate:     endDate,
 	}
-	replayDryRunResponse, err := runtime.ReplayDryRun(dumpTimeoutCtx, replayRequest)
+	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("render process took too long, timing out")
+			l.Println("replay dry run took too long, timing out")
 		}
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
@@ -187,12 +183,11 @@ func printReplayDryRunResponse(l logger, replayRequest *pb.ReplayRequest, replay
 	table.SetBorder(false)
 	table.SetHeader([]string{
 		"Index",
-		"DAG",
+		"Job",
 		"Run",
 	})
-	// generate basic details
 	taskRerunsMap := make(map[string]taskRunBlock)
-	formatRunsPerDAGInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
+	formatRunsPerJobInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
 
 	//sort run block
 	taskRerunsSorted := set.NewTreeSetWith(taskRunBlockComperator)
@@ -245,12 +240,11 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 	}
 	defer conn.Close()
 
-	dumpTimeoutCtx, dumpCancel := context.WithTimeout(context.Background(), renderTimeout)
-	defer dumpCancel()
+	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
+	defer replayRequestCancel()
 
 	l.Println("firing the replay request...")
 	runtime := pb.NewRuntimeServiceClient(conn)
-	// fetch compiled JobSpec by calling the optimus API
 	replayRequest := &pb.ReplayRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
@@ -258,10 +252,10 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 		StartDate:   startDate,
 		EndDate:     endDate,
 	}
-	replayResponse, err := runtime.Replay(dumpTimeoutCtx, replayRequest)
+	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("render process took too long, timing out")
+			l.Println("replay request took too long, timing out")
 		}
 		return "", errors.Wrapf(err, "request failed for job %s", jobName)
 	}

@@ -30,7 +30,7 @@ func TestReplayWorker(t *testing.T) {
 			Interval:  "0 2 * * *",
 		},
 	}
-	replayRequest := &models.ReplayRequestInput{
+	replayRequest := &models.ReplayWorkerRequest{
 		ID:    currUUID,
 		Job:   jobSpec,
 		Start: startDate,
@@ -48,11 +48,7 @@ func TestReplayWorker(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			errMessage := "replay repo error"
-			message := models.ReplayMessage{
-				Status:  models.ReplayStatusInProgress,
-				Message: job.MsgReplayInProgress,
-			}
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, message).Return(errors.New(errMessage))
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(errors.New(errMessage))
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -68,14 +64,10 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			inProgressReplayMessage := models.ReplayMessage{
-				Status:  models.ReplayStatusInProgress,
-				Message: job.MsgReplayInProgress,
-			}
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, inProgressReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			errMessage := "error while clearing dag runs for job job-name: scheduler clear error"
 			failedReplayMessage := models.ReplayMessage{
-				Status:  models.ReplayStatusFailed,
+				Type:    job.AirflowClearDagRunFailed,
 				Message: errMessage,
 			}
 			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
@@ -99,14 +91,10 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			inProgressReplayMessage := models.ReplayMessage{
-				Status:  models.ReplayStatusInProgress,
-				Message: job.MsgReplayInProgress,
-			}
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, inProgressReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			errMessage := "error while clearing dag runs for job job-name: scheduler clear error"
 			failedReplayMessage := models.ReplayMessage{
-				Status:  models.ReplayStatusFailed,
+				Type:    job.AirflowClearDagRunFailed,
 				Message: errMessage,
 			}
 			updateStatusErr := errors.New("error while updating status to failed")
@@ -132,17 +120,9 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			message := models.ReplayMessage{
-				Status:  models.ReplayStatusInProgress,
-				Message: job.MsgReplayInProgress,
-			}
-			successReplayMessage := models.ReplayMessage{
-				Status:  models.ReplayStatusSuccess,
-				Message: job.MsgReplaySuccessfullyCompleted,
-			}
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, message).Return(nil)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			updateSuccessStatusErr := errors.New("error while updating replay request")
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusSuccess, successReplayMessage).Return(updateSuccessStatusErr)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusSuccess, models.ReplayMessage{}).Return(updateSuccessStatusErr)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -161,16 +141,8 @@ func TestReplayWorker(t *testing.T) {
 			logger.Init(logger.ERROR)
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
-			message := models.ReplayMessage{
-				Status:  models.ReplayStatusInProgress,
-				Message: job.MsgReplayInProgress,
-			}
-			successReplayMessage := models.ReplayMessage{
-				Status:  models.ReplayStatusSuccess,
-				Message: job.MsgReplaySuccessfullyCompleted,
-			}
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, message).Return(nil)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusSuccess, successReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusSuccess, models.ReplayMessage{}).Return(nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)

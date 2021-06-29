@@ -728,19 +728,19 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 }
 
 func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayDryRunResponse, error) {
-	replayRequestInput, err := sv.parseReplayRequest(req)
+	replayWorkerRequest, err := sv.parseReplayRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while parsing replay dry run request: %v", err))
 	}
 
-	rootNode, err := sv.jobSvc.ReplayDryRun(replayRequestInput)
+	rootNode, err := sv.jobSvc.ReplayDryRun(replayWorkerRequest)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay dry run: %v", err))
 	}
 
 	node, err := sv.adapter.ToReplayExecutionTreeNode(rootNode)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while preparing replay dry run response: %v", err))
 	}
 	return &pb.ReplayDryRunResponse{
 		Success:  true,
@@ -749,12 +749,12 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 }
 
 func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
-	replayRequestInput, err := sv.parseReplayRequest(req)
+	replayWorkerRequest, err := sv.parseReplayRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, fmt.Sprintf("error while parsing replay request: %v", err))
 	}
 
-	replayUUID, err := sv.jobSvc.Replay(replayRequestInput)
+	replayUUID, err := sv.jobSvc.Replay(replayWorkerRequest)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
 	}
@@ -764,7 +764,7 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*models.ReplayRequestInput, error) {
+func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*models.ReplayWorkerRequest, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
@@ -797,7 +797,7 @@ func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*mode
 	if endDate.Before(startDate) {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("replay end date cannot be before start date"))
 	}
-	replayRequest := models.ReplayRequestInput{
+	replayRequest := models.ReplayWorkerRequest{
 		Job:     jobSpec,
 		Start:   startDate,
 		End:     endDate,

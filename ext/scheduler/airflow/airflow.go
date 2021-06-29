@@ -181,24 +181,23 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	schdHost = strings.Trim(schdHost, "/")
 	airflowDateFormat := "2006-01-02T15:04:05"
 	utcTimezone, _ := time.LoadLocation("UTC")
-	fetchURL := fmt.Sprintf(
+	clearDagRunURL := fmt.Sprintf(
 		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
 		jobName,
 		startDate.In(utcTimezone).Format(airflowDateFormat),
 		endDate.In(utcTimezone).Format(airflowDateFormat))
-	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
+	request, err := http.NewRequest(http.MethodGet, clearDagRunURL, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to build http request for %s", fetchURL)
+		return errors.Wrapf(err, "failed to build http request for %s", clearDagRunURL)
 	}
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {
-		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", fetchURL)
+		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", clearDagRunURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("failed to clear airflow dag runs from %s", fetchURL)
+		return errors.Errorf("failed to clear airflow dag runs from %s", clearDagRunURL)
 	}
-	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -217,8 +216,7 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 
 	responseFields := []string{"http_response_code", "status"}
 	for _, field := range responseFields {
-		_, ok := responseJSON[field]
-		if !ok {
+		if _, ok := responseJSON[field]; !ok {
 			return errors.Errorf("failed to find required response fields %s in %s", field, responseJSON)
 		}
 	}

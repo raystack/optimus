@@ -107,7 +107,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -141,7 +141,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -184,7 +184,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:     cyclicDagSpec[0],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -221,7 +221,7 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -273,7 +273,7 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:     specs[spec4],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -317,7 +317,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -348,7 +348,7 @@ func TestReplay(t *testing.T) {
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:        specs[spec1],
 				Start:      replayStart,
 				End:        replayEnd,
@@ -388,7 +388,7 @@ func TestReplay(t *testing.T) {
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequestInput{
+			replayRequest := &models.ReplayWorkerRequest{
 				Job:        specs[spec1],
 				Start:      replayStart,
 				End:        replayEnd,

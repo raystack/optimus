@@ -84,7 +84,7 @@ func TestReplayRepository(t *testing.T) {
 
 		errMessage := "failed to execute"
 		replayMessage := models.ReplayMessage{
-			Status:  models.ReplayStatusFailed,
+			Type:    "test failure",
 			Message: errMessage,
 		}
 		err = repo.UpdateStatus(uuid, models.ReplayStatusFailed, replayMessage)

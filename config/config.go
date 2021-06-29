@@ -32,6 +32,8 @@ var (
 	KeyServeMetadataKafkaBrokers    = "serve.metadata.kafka_brokers"
 	KeyServeMetadataKafkaJobTopic   = "serve.metadata.kafka_job_topic"
 	KeyServeMetadataKafkaBatchSize  = "serve.metadata.kafka_batch_size"
+	KeyServeReplayJobQueueSize      = "serve.replay_job_queue_size"
+	KeyServeReplayWorkerTimeout     = "serve.replay_worker_timeout"
 
 	KeySchedulerName = "scheduler.name"
 
@@ -96,9 +98,10 @@ type ServerConfig struct {
 	// random 32 character hash used for encrypting secrets
 	AppKey string `yaml:"app_key"`
 
-	DB           DBConfig       `yaml:"db"`
-	Metadata     MetadataConfig `yaml:"metadata"`
-	JobQueueSize int            `yaml:"job_queue_size"`
+	DB                  DBConfig       `yaml:"db"`
+	Metadata            MetadataConfig `yaml:"metadata"`
+	ReplayJobQueueSize  int            `yaml:"replay_job_queue_size"`
+	ReplayWorkerTimeout int            `yaml:"replay_worker_timeout"`
 }
 
 type DBConfig struct {
@@ -186,6 +189,8 @@ func (o Optimus) GetServe() ServerConfig {
 			KafkaBrokers:    o.eKs(KeyServeMetadataKafkaBrokers),
 			KafkaBatchSize:  o.eKi(KeyServeMetadataKafkaBatchSize),
 		},
+		ReplayJobQueueSize:  o.k.Int(KeyServeReplayJobQueueSize),
+		ReplayWorkerTimeout: o.k.Int(KeyServeReplayWorkerTimeout),
 	}
 }
 

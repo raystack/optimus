@@ -15,11 +15,18 @@ type TreeNode struct {
 	Runs       set.Set
 }
 
-func (t *TreeNode) GetAllNodes(allNodes map[string]*TreeNode) {
-	allNodes[t.Data.GetName()] = t
-	for _, dep := range t.Dependents {
-		dep.GetAllNodes(allNodes)
+// GetAllNodes returns level order traversal of tree starting from current node
+func (t *TreeNode) GetAllNodes() []*TreeNode {
+	allNodes := make([]*TreeNode, 0)
+	nodesQueue := make([]*TreeNode, 0)
+	nodesQueue = append(nodesQueue, t)
+	for len(nodesQueue) != 0 {
+		topNode := nodesQueue[0]
+		nodesQueue = nodesQueue[1:]
+		allNodes = append(allNodes, topNode)
+		nodesQueue = append(nodesQueue, topNode.Dependents...)
 	}
+	return allNodes
 }
 
 func (t *TreeNode) GetName() string {

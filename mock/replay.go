@@ -38,7 +38,7 @@ type ReplayManager struct {
 	mock.Mock
 }
 
-func (rm *ReplayManager) Replay(reqInput *models.ReplayRequestInput) (string, error) {
+func (rm *ReplayManager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 	args := rm.Called(reqInput)
 	return args.Get(0).(string), args.Error(1)
 }
@@ -52,7 +52,7 @@ type ReplayWorker struct {
 	mock.Mock
 }
 
-func (rm *ReplayWorker) Process(ctx context.Context, replayRequest *models.ReplayRequestInput) error {
+func (rm *ReplayWorker) Process(ctx context.Context, replayRequest *models.ReplayWorkerRequest) error {
 	args := rm.Called(ctx, replayRequest)
 	return args.Error(0)
 }

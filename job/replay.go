@@ -15,7 +15,7 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayRequestInput) error {
+func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayWorkerRequest) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
 	jobSpecs, err := srv.getDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
@@ -29,9 +29,8 @@ func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayRequ
 	return nil
 }
 
-func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
-	err := srv.populateRequestWithJobSpecs(replayRequest)
-	if err != nil {
+func (srv *Service) ReplayDryRun(replayRequest *models.ReplayWorkerRequest) (*tree.TreeNode, error) {
+	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
 		return nil, err
 	}
 
@@ -43,9 +42,8 @@ func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequestInput) (*tre
 	return rootInstance, nil
 }
 
-func (srv *Service) Replay(replayRequest *models.ReplayRequestInput) (string, error) {
-	err := srv.populateRequestWithJobSpecs(replayRequest)
-	if err != nil {
+func (srv *Service) Replay(replayRequest *models.ReplayWorkerRequest) (string, error) {
+	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
 		return "", err
 	}
 
@@ -57,7 +55,7 @@ func (srv *Service) Replay(replayRequest *models.ReplayRequestInput) (string, er
 }
 
 // prepareTree creates a execution tree for replay operation
-func prepareTree(replayRequest *models.ReplayRequestInput) (*tree.TreeNode, error) {
+func prepareTree(replayRequest *models.ReplayWorkerRequest) (*tree.TreeNode, error) {
 	replayJobSpec, found := replayRequest.DagSpecMap[replayRequest.Job.Name]
 	if !found {
 		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)

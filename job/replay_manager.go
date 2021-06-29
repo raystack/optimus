@@ -3,11 +3,11 @@ package job
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/odpf/optimus/utils"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/bus"
 	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -19,9 +19,14 @@ var (
 	ErrRequestQueueFull = errors.New("request queue is full")
 )
 
+type ReplayManagerConfig struct {
+	QueueSize     int
+	WorkerTimeout int
+}
+
 type ReplayManager interface {
 	Init()
-	Replay(*models.ReplayRequestInput) (string, error)
+	Replay(*models.ReplayWorkerRequest) (string, error)
 }
 
 // Manager for replaying operation(s).
@@ -36,15 +41,13 @@ type Manager struct {
 	mu sync.Mutex
 
 	uuidProvider utils.UUIDProvider
+	config       ReplayManagerConfig
 
 	// request queue, used by workers
-	requestQ chan *models.ReplayRequestInput
+	requestQ chan *models.ReplayWorkerRequest
 	// request map, used for verifying if a request is
 	// in queue without actually consuming it
 	requestMap map[uuid.UUID]bool
-
-	//listen for replay requests inserted in db
-	clearRequestMapListener chan interface{}
 
 	//request worker
 	replayWorker      ReplayWorker
@@ -53,7 +56,7 @@ type Manager struct {
 
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
-func (m *Manager) Replay(reqInput *models.ReplayRequestInput) (string, error) {
+func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 	uuidOb, err := m.uuidProvider.NewUUID()
 	if err != nil {
 		return "", err
@@ -91,19 +94,20 @@ func (m *Manager) Replay(reqInput *models.ReplayRequestInput) (string, error) {
 
 // start a worker goroutine that runs the deployment pipeline in background
 func (m *Manager) spawnServiceWorker() {
+	defer m.wg.Done()
 	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		for reqInput := range m.requestQ {
-			logger.I("worker picked up the request for ", reqInput.Job.Name)
-			ctx := context.Background()
 
-			if err := m.replayWorker.Process(ctx, reqInput); err != nil {
-				//do something about this error
-				logger.E(errors.Wrap(err, "worker failed to process"))
-			}
+	for reqInput := range m.requestQ {
+		logger.I("worker picked up the request for ", reqInput.Job.Name)
+		ctx, cancelCtx := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(m.config.WorkerTimeout))
+
+		if err := m.replayWorker.Process(ctx, reqInput); err != nil {
+			//do something about this error
+			logger.E(errors.Wrap(err, "worker failed to process"))
+			cancelCtx()
 		}
-	}()
+		cancelCtx()
+	}
 }
 
 //Close stops consuming any new request
@@ -116,46 +120,25 @@ func (m *Manager) Close() error {
 	//wait for request worker to finish
 	m.wg.Wait()
 
-	_ = bus.Stop(EvtRecordInsertedInDB, m.clearRequestMapListener)
-	_ = bus.Stop(EvtFailedToPrepareForReplay, m.clearRequestMapListener)
-	if m.clearRequestMapListener != nil {
-		close(m.clearRequestMapListener)
-	}
 	return nil
 }
 
 func (m *Manager) Init() {
 	logger.I("starting replay workers")
-	m.spawnServiceWorker()
-
-	// listen for replay request being inserted in db
-	bus.Listen(EvtRecordInsertedInDB, m.clearRequestMapListener)
-	// listen when replay failed to even prepare to start
-	bus.Listen(EvtFailedToPrepareForReplay, m.clearRequestMapListener)
-	go func() {
-		for {
-			raw, ok := <-m.clearRequestMapListener
-			if !ok {
-				return
-			}
-
-			ID := raw.(uuid.UUID)
-			m.mu.Lock()
-			delete(m.requestMap, ID)
-			m.mu.Unlock()
-		}
-	}()
+	for i := 0; i < m.config.QueueSize; i++ {
+		go m.spawnServiceWorker()
+	}
 }
 
 // NewManager constructs a new instance of Manager
-func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider, size int) *Manager {
+func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider, config ReplayManagerConfig) *Manager {
 	mgr := &Manager{
-		replayWorker:            worker,
-		requestMap:              make(map[uuid.UUID]bool),
-		requestQ:                make(chan *models.ReplayRequestInput, size),
-		replaySpecRepoFac:       replaySpecRepoFac,
-		clearRequestMapListener: make(chan interface{}),
-		uuidProvider:            uuidProvider,
+		replayWorker:      worker,
+		requestMap:        make(map[uuid.UUID]bool),
+		config:            config,
+		requestQ:          make(chan *models.ReplayWorkerRequest, config.QueueSize),
+		replaySpecRepoFac: replaySpecRepoFac,
+		uuidProvider:      uuidProvider,
 	}
 	mgr.Init()
 	return mgr

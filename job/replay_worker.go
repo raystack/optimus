@@ -7,27 +7,16 @@ import (
 
 	"github.com/odpf/optimus/core/logger"
 
-	"github.com/odpf/optimus/core/bus"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 )
 
 const (
-	// EvtRecordInsertedInDB is emitted to event bus when a replay record is inserted in db
-	// it passes replay ID as string in bus
-	EvtRecordInsertedInDB = "replay_record_inserted_in_db"
-
-	// EvtFailedToPrepareForReplay is emitted to event bus when a replay is failed to even prepare
-	// to execute, it passes replay ID as string in bus
-	EvtFailedToPrepareForReplay = "replay_request_failed_to_prepare"
-
-	MsgReplaySuccessfullyCompleted = "Completed successfully"
-	MsgReplayInProgress            = "Replay Request Picked up by replay worker"
+	AirflowClearDagRunFailed = "failed to clear airflow dag run"
 )
 
 type ReplayWorker interface {
-	Process(context.Context, *models.ReplayRequestInput) error
+	Process(context.Context, *models.ReplayWorkerRequest) error
 }
 
 type replayWorker struct {
@@ -35,14 +24,10 @@ type replayWorker struct {
 	scheduler         models.SchedulerUnit
 }
 
-func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequestInput) (err error) {
+func (w *replayWorker) Process(ctx context.Context, input *models.ReplayWorkerRequest) (err error) {
 	replaySpecRepo := w.replaySpecRepoFac.New(input.Job)
 	// mark replay request in progress
-	inProgressErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusInProgress, models.ReplayMessage{
-		Status:  models.ReplayStatusInProgress,
-		Message: MsgReplayInProgress,
-	})
-	if inProgressErr != nil {
+	if inProgressErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusInProgress, models.ReplayMessage{}); inProgressErr != nil {
 		return inProgressErr
 	}
 
@@ -51,36 +36,28 @@ func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequestI
 		return err
 	}
 
-	replayDagsMap := make(map[string]*tree.TreeNode)
-	replayTree.GetAllNodes(replayDagsMap)
-
-	for jobName, treeNode := range replayDagsMap {
+	replayDagsMap := replayTree.GetAllNodes()
+	for _, treeNode := range replayDagsMap {
 		runTimes := treeNode.Runs.Values()
 		startTime := runTimes[0].(time.Time)
 		endTime := runTimes[treeNode.Runs.Size()-1].(time.Time)
-		if err = w.scheduler.Clear(ctx, input.Project, jobName, startTime, endTime); err != nil {
-			err = errors.Wrapf(err, "error while clearing dag runs for job %s", jobName)
+		if err = w.scheduler.Clear(ctx, input.Project, treeNode.GetName(), startTime, endTime); err != nil {
+			err = errors.Wrapf(err, "error while clearing dag runs for job %s", treeNode.GetName())
 			logger.W(fmt.Sprintf("error while running replay %s: %s", input.ID.String(), err.Error()))
-			updateStatusErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusFailed, models.ReplayMessage{
-				Status:  models.ReplayStatusFailed,
+			if updateStatusErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusFailed, models.ReplayMessage{
+				Type:    AirflowClearDagRunFailed,
 				Message: err.Error(),
-			})
-			if updateStatusErr != nil {
+			}); updateStatusErr != nil {
 				return updateStatusErr
 			}
 			return err
 		}
 	}
 
-	err = replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusSuccess, models.ReplayMessage{
-		Status:  models.ReplayStatusSuccess,
-		Message: MsgReplaySuccessfullyCompleted,
-	})
-	if err != nil {
+	if err = replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusSuccess, models.ReplayMessage{}); err != nil {
 		return err
 	}
 	logger.I(fmt.Sprintf("successfully completed replay id: %s", input.ID.String()))
-	bus.Post(EvtRecordInsertedInDB, input.ID)
 	return nil
 }
 

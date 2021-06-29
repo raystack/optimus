@@ -1479,7 +1479,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			replayRequestInput := &models.ReplayRequestInput{
+			replayWorkerRequest := &models.ReplayWorkerRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -1489,7 +1489,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", replayRequestInput).Return(dagNode, nil)
+			jobService.On("ReplayDryRun", replayWorkerRequest).Return(dagNode, nil)
 			defer jobService.AssertExpectations(t)
 
 			projectRepository := new(mock.ProjectRepository)

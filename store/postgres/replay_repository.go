@@ -99,10 +99,6 @@ func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, me
 		return err
 	}
 	r.Status = status
-	r.UpdatedAt = time.Now()
 	r.Message = jsonBytes
-	if err := repo.DB.Save(&r).Error; err != nil {
-		return err
-	}
-	return nil
+	return repo.DB.Save(&r).Error
 }

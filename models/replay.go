@@ -16,11 +16,11 @@ const (
 )
 
 type ReplayMessage struct {
-	Status  string
+	Type    string
 	Message string
 }
 
-type ReplayRequestInput struct {
+type ReplayWorkerRequest struct {
 	ID         uuid.UUID
 	Job        JobSpec
 	Start      time.Time

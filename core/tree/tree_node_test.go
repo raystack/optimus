@@ -27,22 +27,27 @@ func TestDagNode(t *testing.T) {
 	t.Run("GetAllNodes", func(t *testing.T) {
 		treeNode := tree.TreeNode{
 			Data: models.JobSpec{
-				Name: "parent-job",
+				Name: "job-level-0",
 			},
 			Dependents: []*tree.TreeNode{
 				{
 					Data: models.JobSpec{
-						Name: "child-job",
+						Name: "job-level-1",
+					},
+					Dependents: []*tree.TreeNode{
+						{
+							Data: models.JobSpec{
+								Name: "job-level-2",
+							},
+						},
 					},
 				},
 			},
 		}
-		nodesMap := make(map[string]*tree.TreeNode)
-		treeNode.GetAllNodes(nodesMap)
-		assert.Equal(t, 2, len(nodesMap))
-		_, parentNodeFound := nodesMap["parent-job"]
-		assert.True(t, parentNodeFound)
-		_, childNodeFound := nodesMap["child-job"]
-		assert.True(t, childNodeFound)
+		allNodes := treeNode.GetAllNodes()
+		assert.Equal(t, 3, len(allNodes))
+		assert.Equal(t, "job-level-0", allNodes[0].Data.GetName())
+		assert.Equal(t, "job-level-1", allNodes[1].Data.GetName())
+		assert.Equal(t, "job-level-2", allNodes[2].Data.GetName())
 	})
 }

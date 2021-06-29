@@ -230,7 +230,7 @@
       }
     },
     "/api/v1/project/{projectName}/job/{jobName}/replay": {
-      "get": {
+      "post": {
         "operationId": "RuntimeService_Replay",
         "responses": {
           "200": {
@@ -257,24 +257,6 @@
             "name": "jobName",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespace",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
