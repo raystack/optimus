@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/job"
+
 	"github.com/odpf/optimus/core/tree"
 
 	"github.com/odpf/optimus/core/progress"
@@ -56,8 +58,8 @@ type JobSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepoFactory) New(namespace models.NamespaceSpec) store.JobSpecRepository {
-	return repo.Called(namespace).Get(0).(store.JobSpecRepository)
+func (repo *JobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
+	return repo.Called(namespace).Get(0).(job.SpecRepository)
 }
 
 // JobSpecRepoFactory to store raw specs

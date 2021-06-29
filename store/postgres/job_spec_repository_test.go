@@ -167,7 +167,7 @@ func TestJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err := repo.Insert(testModels[0])
 			assert.Nil(t, err)
@@ -210,7 +210,7 @@ func TestJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// first insert
 			err := repo.Insert(testModels[0])
@@ -262,8 +262,8 @@ func TestJobRepository(t *testing.T) {
 			execUnit2.On("GenerateTaskDestination", context.TODO(), unitData2).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit2.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -299,8 +299,8 @@ func TestJobRepository(t *testing.T) {
 			execUnit2.On("GenerateTaskDestination", context.TODO(), unitData2).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit2.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			testModelA.Task.Unit = execUnit1
@@ -334,8 +334,8 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
-			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -350,8 +350,8 @@ func TestJobRepository(t *testing.T) {
 			defer db.Close()
 			testModel := testConfigs[2]
 
-			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err := repo.Insert(testModel)
 			assert.Nil(t, err)
@@ -443,9 +443,9 @@ func TestJobRepository(t *testing.T) {
 			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-			jobRepoNamespace1 := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			jobRepoNamespace2 := NewJobRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			jobRepoNamespace1 := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepoNamespace2 := NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
 
 			// try to create with first namespace
 			err := jobRepoNamespace1.Save(testModelA)
@@ -473,8 +473,8 @@ func TestJobRepository(t *testing.T) {
 			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData1).Return(models.GenerateTaskDestinationResponse{Destination: destination}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-			repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -508,8 +508,8 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -526,8 +526,8 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -675,8 +675,8 @@ func TestProjectJobRepository(t *testing.T) {
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
-		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -705,8 +705,8 @@ func TestProjectJobRepository(t *testing.T) {
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
-		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-		repo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -734,8 +734,8 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectJobSpecRepo := NewProjectJobRepository(db, projectSpec, adapter)
-		jobRepo := NewJobRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 		err := jobRepo.Insert(testModels[0])
 		assert.Nil(t, err)
 

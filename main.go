@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -26,6 +28,8 @@ var (
 )
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	configuration, err := config.InitOptimus()
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())

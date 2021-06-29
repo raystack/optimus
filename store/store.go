@@ -20,14 +20,6 @@ type ProjectJobSpecRepository interface {
 	GetByDestination(string) (models.JobSpec, models.ProjectSpec, error)
 }
 
-// JobSpecRepository represents a storage interface for Job specifications at a namespace level
-type JobSpecRepository interface {
-	Save(models.JobSpec) error
-	GetByName(string) (models.JobSpec, error)
-	GetAll() ([]models.JobSpec, error)
-	Delete(string) error
-}
-
 // ProjectRepository represents a storage interface for registered projects
 type ProjectRepository interface {
 	Save(models.ProjectSpec) error

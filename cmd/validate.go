@@ -10,8 +10,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	"github.com/odpf/optimus/store"
-
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
@@ -22,7 +20,7 @@ const (
 	validateTimeout = time.Minute * 3
 )
 
-func validateCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func validateCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "validate",
 		Short: "check if specifications are valid for deployment",
@@ -33,7 +31,7 @@ func validateCommand(l logger, host string, jobSpecRepo store.JobSpecRepository)
 	return cmd
 }
 
-func validateJobCommand(l logger, host string, jobSpecRepo store.JobSpecRepository) *cli.Command {
+func validateJobCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{

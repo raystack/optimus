@@ -7,8 +7,6 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/odpf/optimus/store/local"
 
 	"google.golang.org/grpc"
@@ -32,14 +30,22 @@ var (
 	coloredError   = fmt.Sprint
 	coloredSuccess = fmt.Sprint
 
-	GRPCMaxClientSendSize = 25 << 20 // 25MB
-	GRPCMaxClientRecvSize = 25 << 20 // 25MB
+	GRPCMaxClientSendSize = 45 << 20 // 45MB
+	GRPCMaxClientRecvSize = 45 << 20 // 45MB
 
 	OptimusDialTimeout = time.Second * 2
 )
 
 func programPrologue(ver string) string {
 	return fmt.Sprintf(prologueContents, ver)
+}
+
+// JobSpecRepository represents a storage interface for Job specifications locally
+type JobSpecRepository interface {
+	SaveAt(models.JobSpec, string) error
+	Save(models.JobSpec) error
+	GetByName(string) (models.JobSpec, error)
+	GetAll() ([]models.JobSpec, error)
 }
 
 // New constructs the 'root' command.
@@ -67,10 +73,11 @@ func New(
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "disable colored output")
 
 	//init local specs
-	var jobSpecRepo store.JobSpecRepository
+	var jobSpecRepo JobSpecRepository
+	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.GetJob().Path)
 	if conf.GetJob().Path != "" {
 		jobSpecRepo = local.NewJobSpecRepository(
-			afero.NewBasePathFs(afero.NewOsFs(), conf.GetJob().Path),
+			jobSpecFs,
 			local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
 		)
 	}
@@ -81,8 +88,8 @@ func New(
 
 	cmd.AddCommand(versionCommand(l, conf.GetHost()))
 	cmd.AddCommand(configCommand(l, dsRepo))
-	cmd.AddCommand(createCommand(l, jobSpecRepo, tfRepo, hookRepo, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(deployCommand(l, jobSpecRepo, conf, dsRepo, datastoreSpecsFs))
+	cmd.AddCommand(createCommand(l, jobSpecFs, datastoreSpecsFs, tfRepo, hookRepo, dsRepo))
+	cmd.AddCommand(deployCommand(l, conf, jobSpecRepo, dsRepo, datastoreSpecsFs))
 	cmd.AddCommand(renderCommand(l, conf.GetHost(), jobSpecRepo))
 	cmd.AddCommand(validateCommand(l, conf.GetHost(), jobSpecRepo))
 	cmd.AddCommand(optimusServeCommand(l, conf))

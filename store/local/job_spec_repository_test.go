@@ -175,7 +175,7 @@ func TestJobSpecRepository(t *testing.T) {
 		})
 		t.Run("should return error if task is empty", func(t *testing.T) {
 			repo := local.NewJobSpecRepository(nil, adapter)
-			err := repo.Save(models.JobSpec{Name: "foo"})
+			err := repo.SaveAt(models.JobSpec{Name: "foo"}, "")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return error if name is empty", func(t *testing.T) {
@@ -368,21 +368,21 @@ task:
 			assert.Nil(t, err)
 			assert.Equal(t, spec2, returnedSpecAgain)
 		})
-		t.Run("should return ErrNoDAGSpecs in case no job folder exist", func(t *testing.T) {
+		t.Run("should return ErrNoSuchSpec in case no job folder exist", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			_, err := repo.GetByName(spec.Name)
-			assert.Equal(t, models.ErrNoDAGSpecs, err)
+			assert.Equal(t, models.ErrNoSuchSpec, err)
 		})
-		t.Run("should return ErrNoDAGSpecs in case the job folder exist but no job file exist", func(t *testing.T) {
+		t.Run("should return ErrNoSuchSpec in case the job folder exist but no job file exist", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 			appFS.MkdirAll(spec.Name, 0755)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			_, err := repo.GetByName(spec.Name)
-			assert.Equal(t, models.ErrNoDAGSpecs, err)
+			assert.Equal(t, models.ErrNoSuchSpec, err)
 		})
 		t.Run("should return an error if jobName is empty", func(t *testing.T) {
 			repo := local.NewJobSpecRepository(afero.NewMemMapFs(), nil)

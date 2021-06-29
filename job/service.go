@@ -32,9 +32,9 @@ type DependencyResolver interface {
 		jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 }
 
-// JobSpecRepoFactory is used to manage job specs at namespace level
-type JobSpecRepoFactory interface {
-	New(spec models.NamespaceSpec) store.JobSpecRepository
+// SpecRepoFactory is used to manage job specs at namespace level
+type SpecRepoFactory interface {
+	New(spec models.NamespaceSpec) SpecRepository
 }
 
 // ProjectJobSpecRepoFactory is used to manage job specs at project level
@@ -56,7 +56,7 @@ type JobRepoFactory interface {
 // and other properties. Finally, it syncs the jobs with corresponding
 // store
 type Service struct {
-	jobSpecRepoFactory        JobSpecRepoFactory
+	jobSpecRepoFactory        SpecRepoFactory
 	compiler                  models.JobCompiler
 	jobRepoFactory            JobRepoFactory
 	dependencyResolver        DependencyResolver
@@ -467,7 +467,7 @@ func jobDeletionFilter(dagNames []string) []string {
 
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(jobSpecRepoFactory JobSpecRepoFactory, jobRepoFact JobRepoFactory,
+func NewService(jobSpecRepoFactory SpecRepoFactory, jobRepoFact JobRepoFactory,
 	compiler models.JobCompiler, assetCompiler AssetCompiler, dependencyResolver DependencyResolver,
 	priorityResolver PriorityResolver, metaSvcFactory meta.MetaSvcFactory,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,

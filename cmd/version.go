@@ -18,13 +18,14 @@ const (
 )
 
 func versionCommand(l logger, host string) *cli.Command {
+	var serverVersion bool
 	c := &cli.Command{
 		Use:   "version",
 		Short: "Print the client version information",
 		RunE: func(c *cli.Command, args []string) error {
 			l.Printf(fmt.Sprintf("client: %s-%s", coloredNotice(config.Version), config.BuildCommit))
 
-			if host != "" {
+			if host != "" && serverVersion {
 				srvVer, err := getVersionRequest(config.Version, host)
 				if err != nil {
 					return err
@@ -34,6 +35,7 @@ func versionCommand(l logger, host string) *cli.Command {
 			return nil
 		},
 	}
+	c.Flags().BoolVar(&serverVersion, "with-server", false, "check for server version")
 	return c
 }
 

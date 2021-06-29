@@ -10,21 +10,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type projectJobSpecRepository struct {
+type ProjectJobSpecRepository struct {
 	db      *gorm.DB
 	project models.ProjectSpec
 	adapter *JobSpecAdapter
 }
 
-func NewProjectJobRepository(db *gorm.DB, project models.ProjectSpec, adapter *JobSpecAdapter) *projectJobSpecRepository {
-	return &projectJobSpecRepository{
+func NewProjectJobSpecRepository(db *gorm.DB, project models.ProjectSpec, adapter *JobSpecAdapter) *ProjectJobSpecRepository {
+	return &ProjectJobSpecRepository{
 		db:      db,
 		project: project,
 		adapter: adapter,
 	}
 }
 
-func (repo *projectJobSpecRepository) GetByName(name string) (models.JobSpec, models.NamespaceSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByName(name string) (models.JobSpec, models.NamespaceSpec, error) {
 	var r Job
 	if err := repo.db.Preload("Namespace").Where("project_id = ? AND name = ?", repo.project.ID, name).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -46,7 +46,7 @@ func (repo *projectJobSpecRepository) GetByName(name string) (models.JobSpec, mo
 	return jobSpec, namespaceSpec, nil
 }
 
-func (repo *projectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
+func (repo *ProjectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 	jobs := []Job{}
 	if err := repo.db.Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
@@ -63,7 +63,7 @@ func (repo *projectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return specs, nil
 }
 
-func (repo *projectJobSpecRepository) GetByDestination(destination string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByDestination(destination string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
 	if err := repo.db.Preload("Project").Where("destination = ?", destination).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -85,14 +85,14 @@ func (repo *projectJobSpecRepository) GetByDestination(destination string) (mode
 	return jSpec, pSpec, err
 }
 
-type jobSpecRepository struct {
+type JobSpecRepository struct {
 	db                 *gorm.DB
 	namespace          models.NamespaceSpec
 	projectJobSpecRepo store.ProjectJobSpecRepository
 	adapter            *JobSpecAdapter
 }
 
-func (repo *jobSpecRepository) Insert(spec models.JobSpec) error {
+func (repo *JobSpecRepository) Insert(spec models.JobSpec) error {
 	resource, err := repo.adapter.FromSpecWithNamespace(spec, repo.namespace)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (repo *jobSpecRepository) Insert(spec models.JobSpec) error {
 	return repo.db.Create(&resource).Error
 }
 
-func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
+func (repo *JobSpecRepository) Save(spec models.JobSpec) error {
 	// while saving a JobSpec, we need to ensure that it's name is unique for a project
 	existingJobSpec, namespaceSpec, err := repo.projectJobSpecRepo.GetByName(spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
@@ -129,7 +129,7 @@ func (repo *jobSpecRepository) Save(spec models.JobSpec) error {
 	return repo.db.Model(resource).Updates(resource).Error
 }
 
-func (repo *jobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
+func (repo *JobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
 	var r Job
 	if err := repo.db.Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -141,7 +141,7 @@ func (repo *jobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
 	return repo.adapter.ToSpec(r)
 }
 
-func (repo *jobSpecRepository) GetByName(name string) (models.JobSpec, error) {
+func (repo *JobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 	var r Job
 	if err := repo.db.Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -153,11 +153,11 @@ func (repo *jobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 	return repo.adapter.ToSpec(r)
 }
 
-func (repo *jobSpecRepository) Delete(name string) error {
+func (repo *JobSpecRepository) Delete(name string) error {
 	return repo.db.Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).Delete(&Job{}).Error
 }
 
-func (repo *jobSpecRepository) HardDelete(name string) error {
+func (repo *JobSpecRepository) HardDelete(name string) error {
 	//find the base job
 	var r Job
 	if err := repo.db.Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
@@ -173,7 +173,7 @@ func (repo *jobSpecRepository) HardDelete(name string) error {
 	return repo.db.Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
 }
 
-func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
+func (repo *JobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 	jobs := []Job{}
 	if err := repo.db.Where("namespace_id = ?", repo.namespace.ID).Find(&jobs).Error; err != nil {
@@ -190,8 +190,8 @@ func (repo *jobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return specs, nil
 }
 
-func NewJobRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJobSpecRepo store.ProjectJobSpecRepository, adapter *JobSpecAdapter) *jobSpecRepository {
-	return &jobSpecRepository{
+func NewJobSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJobSpecRepo store.ProjectJobSpecRepository, adapter *JobSpecAdapter) *JobSpecRepository {
+	return &JobSpecRepository{
 		db:                 db,
 		namespace:          namespace,
 		projectJobSpecRepo: projectJobSpecRepo,

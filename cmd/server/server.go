@@ -57,7 +57,7 @@ var (
 
 	shutdownWait = 30 * time.Second
 
-	GRPCMaxRecvMsgSize = 25 << 20 // 25MB
+	GRPCMaxRecvMsgSize = 45 << 20 // 45MB
 )
 
 // projectJobSpecRepoFactory stores raw specifications
@@ -66,7 +66,7 @@ type projectJobSpecRepoFactory struct {
 }
 
 func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
-	return postgres.NewProjectJobRepository(fac.db, project, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -75,8 +75,8 @@ type jobSpecRepoFactory struct {
 	projectJobSpecRepoFac projectJobSpecRepoFactory
 }
 
-func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) store.JobSpecRepository {
-	return postgres.NewJobRepository(
+func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
+	return postgres.NewJobSpecRepository(
 		fac.db,
 		namespace,
 		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
