@@ -18,7 +18,6 @@ Before getting into the difference between two plugins ,we need to get familiar 
 | Fundamental Difference | It can have dependencies over other hooks within the job.                      | It can have dependencies over other jobs inside the optimus project.                                          |
 | Configuration          | It has its own set of configs and share the same asset folder as the base job. | It has its own set of configs and may share only the dependencies with the other jobs in the optimus project. |
 
-A hook has less functionality/specification as compared to a task.
 
 ## Creating a task plugin
 
