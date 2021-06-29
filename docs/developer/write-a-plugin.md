@@ -8,6 +8,17 @@ Whereas tasks used in jobs that define how the transformation will execute, what
 
 Optimus can be divided in two logical parts when we are thinking of a pluggable model, one is the **core** where everything happens which is common for all job/datastore, and the other part which could be variable and needs user specific definitions of how things should work which is a **plugin**.
 
+## Types of Plugins in Optimus
+At the moment mainly there are two types of plugins which optimus supports. These are : ***Hook*** and  ***Task***
+Before getting into the difference between two plugins ,we need to get familiar with [Jobs](../concepts/overview.md#Job).
+
+| Type                   | Hook                                                                           | Task                                                                                                          |
+|------------------------|--------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| Definition             | It is the operation that we preferably run before or after a Job.              | It is the single base transformation in a Job.                                                                |
+| Fundamental Difference | It can have dependencies over other hooks within the job.                      | It can have dependencies over other jobs inside the optimus project.                                          |
+| Configuration          | It has its own set of configs and share the same asset folder as the base job. | It has its own set of configs and may share only the dependencies with the other jobs in the optimus project. |
+
+
 ## Creating a task plugin
 
 At the moment Optimus supports task as well as hook plugins. In this section we will be explaining how to write a new task although both are very similar. Plugins are implemented using [go-plugin](https://github.com/hashicorp/go-plugin) developed by Hashicorp used in terraform and other similar products. 
