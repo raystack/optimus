@@ -1,7 +1,6 @@
 package tree_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/odpf/optimus/core/tree"
@@ -25,7 +24,7 @@ func TestMultiRootDagTree(t *testing.T) {
 
 		err := multiRootTree.IsCyclic()
 		assert.NotNil(t, err)
-		assert.True(t, strings.Contains(err.Error(), tree.ErrCyclicDependencyEncountered.Error()))
+		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
 	t.Run("MarkRoot", func(t *testing.T) {
 		treeNode1 := tree.NewTreeNode(models.JobSpec{
@@ -53,7 +52,7 @@ func TestMultiRootDagTree(t *testing.T) {
 			treeNode2.AddDependent(treeNode1)
 			err := multiRootTree.IsCyclic()
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), "cycle dependency"))
+			assert.Contains(t, err.Error(), "cycle dependency")
 		})
 		t.Run("should not return error if not cyclic", func(t *testing.T) {
 			treeNode1 := tree.NewTreeNode(models.JobSpec{

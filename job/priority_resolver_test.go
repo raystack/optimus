@@ -1,7 +1,6 @@
 package job_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/odpf/optimus/core/tree"
@@ -336,7 +335,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assginer := job.NewPriorityResolver()
 		_, err := assginer.Resolve(dagSpec)
 		assert.NotNil(t, err)
-		assert.True(t, strings.Contains(err.Error(), tree.ErrCyclicDependencyEncountered.Error()))
+		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
 
 	t.Run("Resolve should assign correct weights (maxWeight) with no dependencies", func(t *testing.T) {
@@ -524,7 +523,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 		err := dagTree.IsCyclic()
 		assert.NotNil(t, err)
-		assert.True(t, strings.Contains(err.Error(), tree.ErrCyclicDependencyEncountered.Error()))
+		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
 
 	t.Run("should create tree with multi level dependencies", func(t *testing.T) {
@@ -653,6 +652,6 @@ func TestMultiRootDAGTree(t *testing.T) {
 
 		err := dagTree.IsCyclic()
 		assert.NotNil(t, err)
-		assert.True(t, strings.Contains(err.Error(), tree.ErrCyclicDependencyEncountered.Error()))
+		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
 }

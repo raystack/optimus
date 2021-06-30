@@ -1,7 +1,6 @@
 package job_test
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -193,7 +192,7 @@ func TestReplay(t *testing.T) {
 			_, err := jobSvc.ReplayDryRun(replayRequest)
 
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), "a cycle dependency encountered in the tree"))
+			assert.Contains(t, err.Error(), "a cycle dependency encountered in the tree")
 		})
 
 		t.Run("resolve create replay tree for a dag with three day task window and mentioned dependencies", func(t *testing.T) {
@@ -353,7 +352,7 @@ func TestReplay(t *testing.T) {
 				Start:      replayStart,
 				End:        replayEnd,
 				Project:    projSpec,
-				DagSpecMap: specs,
+				JobSpecMap: specs,
 			}
 
 			errMessage := "error with replay manager"
@@ -365,7 +364,7 @@ func TestReplay(t *testing.T) {
 
 			_, err := jobSvc.Replay(replayRequest)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), errMessage))
+			assert.Contains(t, err.Error(), errMessage)
 		})
 
 		t.Run("should succeed if replay manager successfully processes request", func(t *testing.T) {
@@ -393,7 +392,7 @@ func TestReplay(t *testing.T) {
 				Start:      replayStart,
 				End:        replayEnd,
 				Project:    projSpec,
-				DagSpecMap: specs,
+				JobSpecMap: specs,
 			}
 
 			replayManager := new(mock.ReplayManager)

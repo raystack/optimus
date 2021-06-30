@@ -237,7 +237,9 @@ func checkRequiredConfigs(conf config.Provider) error {
 	if conf.GetServe().IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
-
+	if conf.GetServe().ReplayNumWorkers < 1 {
+		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
+	}
 	if conf.GetServe().DB.DSN == "" {
 		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
 	}
@@ -397,8 +399,8 @@ func Initialize(conf config.Provider) error {
 	}
 	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
 	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		QueueSize:     conf.GetServe().ReplayJobQueueSize,
-		WorkerTimeout: conf.GetServe().ReplayWorkerTimeout,
+		NumWorkers:    conf.GetServe().ReplayNumWorkers,
+		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutMillis,
 	})
 
 	// runtime service instance over grpc

@@ -50,15 +50,17 @@ func InitOptimus() (*Optimus, error) {
 
 	// load defaults
 	if err := configuration.k.Load(confmap.Provider(map[string]interface{}{
-		KeyLogLevel:                     "info",
-		KeyServePort:                    9100,
-		KeyServeHost:                    "0.0.0.0",
-		KeyServeDBMaxOpenConnection:     10,
-		KeyServeDBMaxIdleConnection:     5,
-		KeyServeMetadataKafkaJobTopic:   "resource_optimus_job_log",
-		KeyServeMetadataKafkaBatchSize:  50,
-		KeyServeMetadataWriterBatchSize: 50,
-		KeySchedulerName:                "airflow2",
+		KeyLogLevel:                       "info",
+		KeyServePort:                      9100,
+		KeyServeHost:                      "0.0.0.0",
+		KeyServeDBMaxOpenConnection:       10,
+		KeyServeDBMaxIdleConnection:       5,
+		KeyServeMetadataKafkaJobTopic:     "resource_optimus_job_log",
+		KeyServeMetadataKafkaBatchSize:    50,
+		KeyServeMetadataWriterBatchSize:   50,
+		KeySchedulerName:                  "airflow2",
+		KeyServeReplayNumWorkers:          1,
+		KeyServeReplayWorkerTimeoutMillis: 1000,
 	}, "."), nil); err != nil {
 		return nil, errors.Wrap(err, "k.Load: error loading config defaults")
 	}

@@ -1,7 +1,6 @@
 package job_test
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 
 func TestReplayManager(t *testing.T) {
 	replayManagerConfig := job.ReplayManagerConfig{
-		QueueSize:     5,
+		NumWorkers:    5,
 		WorkerTimeout: 1000,
 	}
 	t.Run("Close", func(t *testing.T) {
@@ -43,7 +42,7 @@ func TestReplayManager(t *testing.T) {
 			Project: models.ProjectSpec{
 				Name: "project-name",
 			},
-			DagSpecMap: map[string]models.JobSpec{
+			JobSpecMap: map[string]models.JobSpec{
 				"job-name": jobSpec,
 			},
 		}
@@ -58,7 +57,7 @@ func TestReplayManager(t *testing.T) {
 			replayManager := job.NewManager(nil, nil, uuidProvider, replayManagerConfig)
 			_, err := replayManager.Replay(replayRequest)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), errMessage))
+			assert.Contains(t, err.Error(), errMessage)
 		})
 		t.Run("should throw an error if replay repo throws error", func(t *testing.T) {
 			logger.Init(logger.ERROR)
@@ -86,7 +85,7 @@ func TestReplayManager(t *testing.T) {
 			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig)
 			_, err := replayManager.Replay(replayRequest)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), errMessage))
+			assert.Contains(t, err.Error(), errMessage)
 		})
 	})
 }

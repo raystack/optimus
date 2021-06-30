@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -38,7 +37,7 @@ func TestReplayWorker(t *testing.T) {
 		Project: models.ProjectSpec{
 			Name: "project-name",
 		},
-		DagSpecMap: map[string]models.JobSpec{
+		JobSpecMap: map[string]models.JobSpec{
 			"job-name": jobSpec,
 		},
 	}
@@ -84,7 +83,7 @@ func TestReplayWorker(t *testing.T) {
 			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), errorMessage))
+			assert.Contains(t, err.Error(), errorMessage)
 		})
 		t.Run("should throw an error when updatestatus throws an error for failed request", func(t *testing.T) {
 			logger.Init(logger.ERROR)
@@ -112,7 +111,7 @@ func TestReplayWorker(t *testing.T) {
 			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), updateStatusErr.Error()))
+			assert.Contains(t, err.Error(), updateStatusErr.Error())
 		})
 
 		t.Run("should throw an error when updatestatus throws an error for successful request", func(t *testing.T) {
@@ -135,7 +134,7 @@ func TestReplayWorker(t *testing.T) {
 			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), updateSuccessStatusErr.Error()))
+			assert.Contains(t, err.Error(), updateSuccessStatusErr.Error())
 		})
 		t.Run("should update replay status if successful", func(t *testing.T) {
 			logger.Init(logger.ERROR)

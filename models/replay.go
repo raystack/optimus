@@ -26,7 +26,7 @@ type ReplayWorkerRequest struct {
 	Start      time.Time
 	End        time.Time
 	Project    ProjectSpec
-	DagSpecMap map[string]JobSpec
+	JobSpecMap map[string]JobSpec
 }
 
 type ReplaySpec struct {

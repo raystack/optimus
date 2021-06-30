@@ -21,11 +21,11 @@ func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayWork
 	if err != nil {
 		return err
 	}
-	dagSpecMap := make(map[string]models.JobSpec)
+	jobSpecMap := make(map[string]models.JobSpec)
 	for _, currSpec := range jobSpecs {
-		dagSpecMap[currSpec.Name] = currSpec
+		jobSpecMap[currSpec.Name] = currSpec
 	}
-	replayRequest.DagSpecMap = dagSpecMap
+	replayRequest.JobSpecMap = jobSpecMap
 	return nil
 }
 
@@ -56,7 +56,7 @@ func (srv *Service) Replay(replayRequest *models.ReplayWorkerRequest) (string, e
 
 // prepareTree creates a execution tree for replay operation
 func prepareTree(replayRequest *models.ReplayWorkerRequest) (*tree.TreeNode, error) {
-	replayJobSpec, found := replayRequest.DagSpecMap[replayRequest.Job.Name]
+	replayJobSpec, found := replayRequest.JobSpecMap[replayRequest.Job.Name]
 	if !found {
 		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
 	}
@@ -73,7 +73,7 @@ func prepareTree(replayRequest *models.ReplayWorkerRequest) (*tree.TreeNode, err
 	}
 	dagTree.AddNode(parentNode)
 
-	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.DagSpecMap)
+	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +95,12 @@ func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *t
 	return node
 }
 
-func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, dagSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
-	for _, childSpec := range dagSpecMap {
+func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, jobSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
+	for _, childSpec := range jobSpecMap {
 		childNode := findOrCreateDAGNode(dagTree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
 			var isExternal = false
-			parentSpec, ok := dagSpecMap[depDAG.Job.Name]
+			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
 					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)

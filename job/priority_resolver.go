@@ -100,19 +100,19 @@ func (a *priorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, 
 // based on the dependencies of each DAG.
 func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec) (*tree.MultiRootTree, error) {
 	// creates map[jobName]jobSpec for faster retrieval
-	dagSpecMap := make(map[string]models.JobSpec)
+	jobSpecMap := make(map[string]models.JobSpec)
 	for _, dagSpec := range jobSpecs {
-		dagSpecMap[dagSpec.Name] = dagSpec
+		jobSpecMap[dagSpec.Name] = dagSpec
 	}
 
 	// build a multi root tree and assign dependencies
 	// ignore any other dependency apart from intra-tenant
 	tree := tree.NewMultiRootTree()
-	for _, childSpec := range dagSpecMap {
+	for _, childSpec := range jobSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
 			var isExternal = false
-			parentSpec, ok := dagSpecMap[depDAG.Job.Name]
+			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
 					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)

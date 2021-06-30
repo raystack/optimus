@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -362,9 +361,9 @@ func TestService(t *testing.T) {
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), "2 errors occurred"))
-			assert.True(t, strings.Contains(err.Error(), "error test"))
-			assert.True(t, strings.Contains(err.Error(), "error test-2"))
+			assert.Contains(t, err.Error(), "2 errors occurred")
+			assert.Contains(t, err.Error(), "error test")
+			assert.Contains(t, err.Error(), "error test-2")
 		})
 
 		t.Run("should successfully publish metadata for all job specs", func(t *testing.T) {

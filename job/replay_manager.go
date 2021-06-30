@@ -20,8 +20,8 @@ var (
 )
 
 type ReplayManagerConfig struct {
-	QueueSize     int
-	WorkerTimeout int
+	NumWorkers    int
+	WorkerTimeout time.Duration
 }
 
 type ReplayManager interface {
@@ -31,10 +31,8 @@ type ReplayManager interface {
 
 // Manager for replaying operation(s).
 // Offers an asynchronous interface to pipeline, with a fixed size request queue
-// Only one replay happens at one time, any other request is queued, and executed
-// when any in-progress operation is complete.
-// The zero value of a Manager is an invalid Manager. Use `NewManager` constructor for
-// creating a manager.
+// Each replay request is handled by a replay worker and the number of parallel replay workers
+// can be provided through configuration.
 type Manager struct {
 	// wait group to synchronise on workers
 	wg sync.WaitGroup
@@ -95,12 +93,10 @@ func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 // start a worker goroutine that runs the deployment pipeline in background
 func (m *Manager) spawnServiceWorker() {
 	defer m.wg.Done()
-	m.wg.Add(1)
 
 	for reqInput := range m.requestQ {
 		logger.I("worker picked up the request for ", reqInput.Job.Name)
-		ctx, cancelCtx := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(m.config.WorkerTimeout))
-
+		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := m.replayWorker.Process(ctx, reqInput); err != nil {
 			//do something about this error
 			logger.E(errors.Wrap(err, "worker failed to process"))
@@ -125,7 +121,8 @@ func (m *Manager) Close() error {
 
 func (m *Manager) Init() {
 	logger.I("starting replay workers")
-	for i := 0; i < m.config.QueueSize; i++ {
+	for i := 0; i < m.config.NumWorkers; i++ {
+		m.wg.Add(1)
 		go m.spawnServiceWorker()
 	}
 }
@@ -136,7 +133,7 @@ func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uu
 		replayWorker:      worker,
 		requestMap:        make(map[uuid.UUID]bool),
 		config:            config,
-		requestQ:          make(chan *models.ReplayWorkerRequest, config.QueueSize),
+		requestQ:          make(chan *models.ReplayWorkerRequest, 0),
 		replaySpecRepoFac: replaySpecRepoFac,
 		uuidProvider:      uuidProvider,
 	}
