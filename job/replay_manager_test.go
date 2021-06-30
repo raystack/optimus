@@ -1,11 +1,13 @@
 package job_test
 
 import (
+	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/logger"
+
+	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -14,12 +16,12 @@ import (
 )
 
 func TestReplayManager(t *testing.T) {
+	logger.InitWithWriter(logger.DEBUG, ioutil.Discard)
 	replayManagerConfig := job.ReplayManagerConfig{
 		NumWorkers:    5,
 		WorkerTimeout: 1000,
 	}
 	t.Run("Close", func(t *testing.T) {
-		logger.Init(logger.ERROR)
 		manager := job.NewManager(nil, nil, nil, replayManagerConfig)
 		err := manager.Close()
 		assert.Nil(t, err)
@@ -47,7 +49,6 @@ func TestReplayManager(t *testing.T) {
 			},
 		}
 		t.Run("should throw error if uuid provider returns failure", func(t *testing.T) {
-			logger.Init(logger.ERROR)
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 			objUUID := uuid.Must(uuid.NewRandom())
@@ -60,7 +61,6 @@ func TestReplayManager(t *testing.T) {
 			assert.Contains(t, err.Error(), errMessage)
 		})
 		t.Run("should throw an error if replay repo throws error", func(t *testing.T) {
-			logger.Init(logger.ERROR)
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)

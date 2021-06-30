@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 )
 
 func TestReplayWorker(t *testing.T) {
+	logger.InitWithWriter(logger.DEBUG, ioutil.Discard)
 	dagStartTime, _ := time.Parse(job.ReplayDateFormat, "2020-04-05")
 	startDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-22")
 	endDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-26")
@@ -59,7 +61,6 @@ func TestReplayWorker(t *testing.T) {
 			assert.Equal(t, errMessage, err.Error())
 		})
 		t.Run("should throw an error when scheduler throws an error", func(t *testing.T) {
-			logger.Init(logger.ERROR)
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
@@ -86,7 +87,6 @@ func TestReplayWorker(t *testing.T) {
 			assert.Contains(t, err.Error(), errorMessage)
 		})
 		t.Run("should throw an error when updatestatus throws an error for failed request", func(t *testing.T) {
-			logger.Init(logger.ERROR)
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
@@ -115,7 +115,6 @@ func TestReplayWorker(t *testing.T) {
 		})
 
 		t.Run("should throw an error when updatestatus throws an error for successful request", func(t *testing.T) {
-			logger.Init(logger.ERROR)
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
@@ -137,7 +136,6 @@ func TestReplayWorker(t *testing.T) {
 			assert.Contains(t, err.Error(), updateSuccessStatusErr.Error())
 		})
 		t.Run("should update replay status if successful", func(t *testing.T) {
-			logger.Init(logger.ERROR)
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)

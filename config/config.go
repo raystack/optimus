@@ -22,19 +22,19 @@ var (
 	KeyLogLevel  = "log.level"
 	KeyLogFormat = "log.format"
 
-	KeyServeHost                      = "serve.host"
-	KeyServePort                      = "serve.port"
-	KeyServeAppKey                    = "serve.app_key"
-	KeyServeIngressHost               = "serve.ingress_host"
-	KeyServeDBDSN                     = "serve.db.dsn"
-	KeyServeDBMaxIdleConnection       = "serve.db.max_idle_connection"
-	KeyServeDBMaxOpenConnection       = "serve.db.max_open_connection"
-	KeyServeMetadataWriterBatchSize   = "serve.metadata.writer_batch_size"
-	KeyServeMetadataKafkaBrokers      = "serve.metadata.kafka_brokers"
-	KeyServeMetadataKafkaJobTopic     = "serve.metadata.kafka_job_topic"
-	KeyServeMetadataKafkaBatchSize    = "serve.metadata.kafka_batch_size"
-	KeyServeReplayNumWorkers          = "serve.replay_num_workers"
-	KeyServeReplayWorkerTimeoutMillis = "serve.replay_worker_timeout_millis"
+	KeyServeHost                    = "serve.host"
+	KeyServePort                    = "serve.port"
+	KeyServeAppKey                  = "serve.app_key"
+	KeyServeIngressHost             = "serve.ingress_host"
+	KeyServeDBDSN                   = "serve.db.dsn"
+	KeyServeDBMaxIdleConnection     = "serve.db.max_idle_connection"
+	KeyServeDBMaxOpenConnection     = "serve.db.max_open_connection"
+	KeyServeMetadataWriterBatchSize = "serve.metadata.writer_batch_size"
+	KeyServeMetadataKafkaBrokers    = "serve.metadata.kafka_brokers"
+	KeyServeMetadataKafkaJobTopic   = "serve.metadata.kafka_job_topic"
+	KeyServeMetadataKafkaBatchSize  = "serve.metadata.kafka_batch_size"
+	KeyServeReplayNumWorkers        = "serve.replay_num_workers"
+	KeyServeReplayWorkerTimeoutSecs = "serve.replay_worker_timeout_secs"
 
 	KeySchedulerName = "scheduler.name"
 
@@ -99,10 +99,10 @@ type ServerConfig struct {
 	// random 32 character hash used for encrypting secrets
 	AppKey string `yaml:"app_key"`
 
-	DB                        DBConfig       `yaml:"db"`
-	Metadata                  MetadataConfig `yaml:"metadata"`
-	ReplayNumWorkers          int            `yaml:"replay_num_workers"`
-	ReplayWorkerTimeoutMillis time.Duration  `yaml:"replay_worker_timeout_millis"`
+	DB                      DBConfig       `yaml:"db"`
+	Metadata                MetadataConfig `yaml:"metadata"`
+	ReplayNumWorkers        int            `yaml:"replay_num_workers"`
+	ReplayWorkerTimeoutSecs time.Duration  `yaml:"replay_worker_timeout_secs"`
 }
 
 type DBConfig struct {
@@ -190,8 +190,8 @@ func (o Optimus) GetServe() ServerConfig {
 			KafkaBrokers:    o.eKs(KeyServeMetadataKafkaBrokers),
 			KafkaBatchSize:  o.eKi(KeyServeMetadataKafkaBatchSize),
 		},
-		ReplayNumWorkers:          o.k.Int(KeyServeReplayNumWorkers),
-		ReplayWorkerTimeoutMillis: time.Millisecond * time.Duration(o.k.Int(KeyServeReplayWorkerTimeoutMillis)),
+		ReplayNumWorkers:        o.k.Int(KeyServeReplayNumWorkers),
+		ReplayWorkerTimeoutSecs: time.Second * time.Duration(o.k.Int(KeyServeReplayWorkerTimeoutSecs)),
 	}
 }
 
