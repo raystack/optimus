@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
+
+	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/mock"
@@ -165,6 +168,58 @@ func TestAirflow2(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.Len(t, status, 0)
+		})
+	})
+	t.Run("Clear", func(t *testing.T) {
+		host := "http://airflow.example.io"
+		startDate := "2021-05-20"
+		startDateTime, _ := time.Parse(job.ReplayDateFormat, startDate)
+		endDate := "2021-05-25"
+		endDateTime, _ := time.Parse(job.ReplayDateFormat, endDate)
+
+		t.Run("should clear dagrun state successfully", func(t *testing.T) {
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader([]byte("")))
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client)
+			err := air.Clear(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, "sample_select", startDateTime, endDateTime)
+
+			assert.Nil(t, err)
+		})
+		t.Run("should fail if host fails to return OK", func(t *testing.T) {
+			respString := `INTERNAL ERROR`
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusInternalServerError,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client)
+			err := air.Clear(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, "sample_select", startDateTime, endDateTime)
+
+			assert.NotNil(t, err)
 		})
 	})
 }

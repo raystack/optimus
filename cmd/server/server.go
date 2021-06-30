@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/odpf/optimus/utils"
+
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 
 	"github.com/odpf/optimus/config"
@@ -67,6 +69,15 @@ type projectJobSpecRepoFactory struct {
 
 func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
 	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+}
+
+type replaySpecRepoRepository struct {
+	db             *gorm.DB
+	jobSpecRepoFac jobSpecRepoFactory
+}
+
+func (fac *replaySpecRepoRepository) New(job models.JobSpec) store.ReplaySpecRepository {
+	return postgres.NewReplayRepository(fac.db, job)
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -226,7 +237,9 @@ func checkRequiredConfigs(conf config.Provider) error {
 	if conf.GetServe().IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
-
+	if conf.GetServe().ReplayNumWorkers < 1 {
+		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
+	}
 	if conf.GetServe().DB.DSN == "" {
 		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
 	}
@@ -380,6 +393,16 @@ func Initialize(conf config.Provider) error {
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
 
+	replaySpecRepoFac := &replaySpecRepoRepository{
+		db:             dbConn,
+		jobSpecRepoFac: jobSpecRepoFac,
+	}
+	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
+	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+		NumWorkers:    conf.GetServe().ReplayNumWorkers,
+		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
+	})
+
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		config.Version,
@@ -394,6 +417,7 @@ func Initialize(conf config.Provider) error {
 			priorityResolver,
 			metaSvcFactory,
 			&projectJobSpecRepoFac,
+			replayManager,
 		),
 		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry),
 		projectRepoFac,
@@ -466,6 +490,9 @@ func Initialize(conf config.Provider) error {
 	// Block until we receive our signal.
 	<-termChan
 	mainLog.Info("termination request received")
+	if err = replayManager.Close(); err != nil {
+		return err
+	}
 
 	// Create a deadline to wait for server
 	ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)

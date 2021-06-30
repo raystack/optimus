@@ -59,6 +59,8 @@ func InitOptimus() (*Optimus, error) {
 		KeyServeMetadataKafkaBatchSize:  50,
 		KeyServeMetadataWriterBatchSize: 50,
 		KeySchedulerName:                "airflow2",
+		KeyServeReplayNumWorkers:        1,
+		KeyServeReplayWorkerTimeoutSecs: 120,
 	}, "."), nil); err != nil {
 		return nil, errors.Wrap(err, "k.Load: error loading config defaults")
 	}

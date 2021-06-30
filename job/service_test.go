@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -54,7 +53,7 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.Create(namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
@@ -86,7 +85,7 @@ func TestService(t *testing.T) {
 			repoFac.On("New", namespaceSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
 			err := svc.Create(namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})
@@ -195,7 +194,7 @@ func TestService(t *testing.T) {
 				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -311,7 +310,7 @@ func TestService(t *testing.T) {
 			// delete unwanted
 			jobRepo.On("Delete", ctx, namespaceSpec, jobs[1].Name).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -359,12 +358,12 @@ func TestService(t *testing.T) {
 				errors.New("error test-2"))
 			defer depenResolver.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
-			assert.True(t, strings.Contains(err.Error(), "2 errors occurred"))
-			assert.True(t, strings.Contains(err.Error(), "error test"))
-			assert.True(t, strings.Contains(err.Error(), "error test-2"))
+			assert.Contains(t, err.Error(), "2 errors occurred")
+			assert.Contains(t, err.Error(), "error test")
+			assert.Contains(t, err.Error(), "error test-2")
 		})
 
 		t.Run("should successfully publish metadata for all job specs", func(t *testing.T) {
@@ -467,7 +466,7 @@ func TestService(t *testing.T) {
 				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, metaSvcFact, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, metaSvcFact, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -541,7 +540,7 @@ func TestService(t *testing.T) {
 			// delete unwanted
 			jobSpecRepo.On("Delete", jobSpecsBase[0].Name).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.KeepOnly(namespaceSpec, toKeep, nil)
 			assert.Nil(t, err)
 		})
@@ -646,7 +645,7 @@ func TestService(t *testing.T) {
 				compiler.On("Compile", namespaceSpec, jobSpecsAfterPriorityResolve[idx]).Return(compiledJob, nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			compiledJob, err := svc.Dump(namespaceSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 			assert.Equal(t, "come string", string(compiledJob.Contents))
@@ -758,7 +757,7 @@ func TestService(t *testing.T) {
 				jobRepo.On("Save", ctx, compiledJob).Return(nil)
 			}
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 		})
@@ -847,7 +846,7 @@ func TestService(t *testing.T) {
 			compiler := new(mock.Compiler)
 			defer compiler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac)
+			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.NotNil(t, err)
 			assert.Equal(t, "cannot delete job test since it's dependency of job downstream-test", err.Error())

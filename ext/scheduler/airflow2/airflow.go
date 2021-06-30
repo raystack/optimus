@@ -29,6 +29,7 @@ var resBaseDAG []byte
 const (
 	baseLibFileName = "__lib.py"
 	dagStatusUrl    = "api/v1/dags/%s/dagRuns"
+	dagRunClearURL  = "api/v1/dags/%s/clearTaskInstances"
 )
 
 type HttpClient interface {
@@ -176,4 +177,37 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	}
 
 	return jobStatus, nil
+}
+
+func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
+	if !ok {
+		return errors.Errorf("scheduler host not set for %s", projSpec.Name)
+	}
+
+	schdHost = strings.Trim(schdHost, "/")
+	airflowDateFormat := "2006-01-02T15:04:05+00:00"
+	var jsonStr = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false}`,
+		startDate.UTC().Format(airflowDateFormat),
+		endDate.UTC().Format(airflowDateFormat)))
+	postURL := fmt.Sprintf(
+		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
+		jobName)
+
+	request, err := http.NewRequest(http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
+	if err != nil {
+		return errors.Wrapf(err, "failed to build http request for %s", postURL)
+	}
+	request.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(request)
+	if err != nil {
+		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", postURL)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("failed to clear airflow dag runs from %s", postURL)
+	}
+	defer resp.Body.Close()
+
+	return nil
 }

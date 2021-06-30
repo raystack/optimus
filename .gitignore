@@ -20,6 +20,7 @@ jobs
 /resources/resource_fs.go
 __pycache__
 .optimus.yaml
+coverage.txt
 
 # git ignore generate files related to gRPC and proto
 /proton/

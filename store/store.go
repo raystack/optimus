@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/models"
 )
 
@@ -84,4 +86,11 @@ type ObjectWriter interface {
 // ObjectReader similar to objectWriter but for reading
 type ObjectReader interface {
 	NewReader(bucket, path string) (io.ReadCloser, error)
+}
+
+// ReplaySpecRepository represents a storage interface for replay objects
+type ReplaySpecRepository interface {
+	Insert(replay *models.ReplaySpec) error
+	GetByID(id uuid.UUID) (models.ReplaySpec, error)
+	UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"strings"
+	"time"
 
 	"github.com/knadh/koanf"
 )
@@ -32,6 +33,8 @@ var (
 	KeyServeMetadataKafkaBrokers    = "serve.metadata.kafka_brokers"
 	KeyServeMetadataKafkaJobTopic   = "serve.metadata.kafka_job_topic"
 	KeyServeMetadataKafkaBatchSize  = "serve.metadata.kafka_batch_size"
+	KeyServeReplayNumWorkers        = "serve.replay_num_workers"
+	KeyServeReplayWorkerTimeoutSecs = "serve.replay_worker_timeout_secs"
 
 	KeySchedulerName = "scheduler.name"
 
@@ -96,8 +99,10 @@ type ServerConfig struct {
 	// random 32 character hash used for encrypting secrets
 	AppKey string `yaml:"app_key"`
 
-	DB       DBConfig       `yaml:"db"`
-	Metadata MetadataConfig `yaml:"metadata"`
+	DB                      DBConfig       `yaml:"db"`
+	Metadata                MetadataConfig `yaml:"metadata"`
+	ReplayNumWorkers        int            `yaml:"replay_num_workers"`
+	ReplayWorkerTimeoutSecs time.Duration  `yaml:"replay_worker_timeout_secs"`
 }
 
 type DBConfig struct {
@@ -185,6 +190,8 @@ func (o Optimus) GetServe() ServerConfig {
 			KafkaBrokers:    o.eKs(KeyServeMetadataKafkaBrokers),
 			KafkaBatchSize:  o.eKi(KeyServeMetadataKafkaBatchSize),
 		},
+		ReplayNumWorkers:        o.k.Int(KeyServeReplayNumWorkers),
+		ReplayWorkerTimeoutSecs: time.Second * time.Duration(o.k.Int(KeyServeReplayWorkerTimeoutSecs)),
 	}
 }
 

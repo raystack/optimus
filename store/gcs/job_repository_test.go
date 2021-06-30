@@ -197,8 +197,8 @@ func TestJobRepository(t *testing.T) {
 				Prefix: prefix,
 			}
 			err := repo.Delete(ctx, namespaceSpec, jobName)
-
-			assert.Error(t, models.ErrNoSuchJob, err)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), models.ErrNoSuchJob.Error())
 		})
 		t.Run("should return err when unable to get the object info", func(t *testing.T) {
 			namespaceSpec := models.NamespaceSpec{
@@ -366,8 +366,8 @@ func TestJobRepository(t *testing.T) {
 				Suffix:       suffix,
 			}
 			_, err := repo.GetByName(ctx, nonExistentDAGName)
-
-			assert.Error(t, models.ErrNoSuchJob, err)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), models.ErrNoSuchJob.Error())
 		})
 		t.Run("should return error when failed to get the bucket", func(t *testing.T) {
 			expected := errors.New("failed to get bucket attrs")

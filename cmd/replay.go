@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
+
 	"github.com/odpf/optimus/core/set"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
@@ -15,6 +17,10 @@ import (
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
 	"google.golang.org/grpc"
+)
+
+var (
+	replayTimeout = time.Minute * 1
 )
 
 type taskRunBlock struct {
@@ -35,8 +41,8 @@ func taskRunBlockComperator(a, b interface{}) int {
 	return strings.Compare(aAsserted.name, bAsserted.name)
 }
 
-//formatRunsPerDAGInstance returns a hashmap with DAG -> Runs[] mapping
-func formatRunsPerDAGInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
+//formatRunsPerJobInstance returns a hashmap with Job -> Runs[] mapping
+func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
 	if _, ok := taskReruns[instance.JobName]; !ok {
 		taskReruns[instance.JobName] = taskRunBlock{
 			name:   instance.JobName,
@@ -49,7 +55,7 @@ func formatRunsPerDAGInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 		taskReruns[instance.JobName].runs.Add(taskRun.AsTime())
 	}
 	for _, child := range instance.Dependents {
-		formatRunsPerDAGInstance(child, taskReruns, height+1)
+		formatRunsPerJobInstance(child, taskReruns, height+1)
 	}
 }
 
@@ -108,6 +114,26 @@ ReplayDryRun date ranges are inclusive.
 			//if only dry run, exit now
 			return nil
 		}
+
+		proceedWithReplay := "Yes"
+		if err := survey.AskOne(&survey.Select{
+			Message: "Proceed with replay?",
+			Options: []string{"Yes", "No"},
+			Default: "Yes",
+		}, &proceedWithReplay); err != nil {
+			return err
+		}
+
+		if proceedWithReplay == "No" {
+			l.Println("aborting...")
+			return nil
+		}
+
+		replayId, err := runReplayRequest(l, replayProject, namespace, args[0], args[1], endDate, conf)
+		if err != nil {
+			return err
+		}
+		l.Printf("🚀 replay request created with id %s\n", replayId)
 		return nil
 	}
 	return reCmd
@@ -126,44 +152,42 @@ func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDa
 	}
 	defer conn.Close()
 
-	dumpTimeoutCtx, dumpCancel := context.WithTimeout(context.Background(), renderTimeout)
-	defer dumpCancel()
+	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
+	defer replayRequestCancel()
 
 	l.Println("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
-	// fetch compiled JobSpec by calling the optimus API
-	replayDryRunRequest := &pb.ReplayDryRunRequest{
+	replayRequest := &pb.ReplayRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 		Namespace:   namespace,
 		StartDate:   startDate,
 		EndDate:     endDate,
 	}
-	replayDryRunResponse, err := runtime.ReplayDryRun(dumpTimeoutCtx, replayDryRunRequest)
+	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("render process took too long, timing out")
+			l.Println("replay dry run took too long, timing out")
 		}
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 
-	printReplayDryRunResponse(l, replayDryRunRequest, replayDryRunResponse)
+	printReplayDryRunResponse(l, replayRequest, replayDryRunResponse)
 	return nil
 }
 
-func printReplayDryRunResponse(l logger, replayDryRunRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
-	l.Printf("For %s project and %s namespace\n\n", coloredNotice(replayDryRunRequest.ProjectName), coloredNotice(replayDryRunRequest.Namespace))
+func printReplayDryRunResponse(l logger, replayRequest *pb.ReplayRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
+	l.Printf("For %s project and %s namespace\n\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace))
 	l.Println(coloredNotice("REPLAY RUNS"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
 		"Index",
-		"DAG",
+		"Job",
 		"Run",
 	})
-	// generate basic details
 	taskRerunsMap := make(map[string]taskRunBlock)
-	formatRunsPerDAGInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
+	formatRunsPerJobInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
 
 	//sort run block
 	taskRerunsSorted := set.NewTreeSetWith(taskRunBlockComperator)
@@ -186,7 +210,7 @@ func printReplayDryRunResponse(l logger, replayDryRunRequest *pb.ReplayDryRunReq
 	l.Println(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.Response, treeprint.New())))
 }
 
-// PrintExecutionTree creates a ascii tree to visually inspect
+// printExecutionTree creates a ascii tree to visually inspect
 // instance dependencies that will be recomputed after replay operation
 func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tree) treeprint.Tree {
 	subtree := tree.AddBranch(instance.JobName)
@@ -201,4 +225,39 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 		printExecutionTree(childInstance, subtree)
 	}
 	return tree
+}
+
+func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (string, error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Println("can't reach optimus service")
+		}
+		return "", err
+	}
+	defer conn.Close()
+
+	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
+	defer replayRequestCancel()
+
+	l.Println("firing the replay request...")
+	runtime := pb.NewRuntimeServiceClient(conn)
+	replayRequest := &pb.ReplayRequest{
+		ProjectName: projectName,
+		JobName:     jobName,
+		Namespace:   namespace,
+		StartDate:   startDate,
+		EndDate:     endDate,
+	}
+	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Println("replay request took too long, timing out")
+		}
+		return "", errors.Wrapf(err, "request failed for job %s", jobName)
+	}
+	return replayResponse.Id, nil
 }

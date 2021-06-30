@@ -229,6 +229,42 @@
         ]
       }
     },
+    "/api/v1/project/{projectName}/job/{jobName}/replay": {
+      "post": {
+        "operationId": "RuntimeService_Replay",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusReplayResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/api/v1/project/{projectName}/job/{jobName}/replay-dry-run": {
       "get": {
         "operationId": "RuntimeService_ReplayDryRun",
@@ -1473,6 +1509,14 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      }
+    },
+    "optimusReplayResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
         }
       }
     },
