@@ -41,6 +41,16 @@ func TestAdapter(t *testing.T) {
 		allTasksRepo.On("GetByName", "sample-task").Return(execUnit1, nil)
 		defer allTasksRepo.AssertExpectations(t)
 
+		hookUnit1 := new(mock.HookPlugin)
+		hookUnit1.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+			Name: "sample-hook",
+		}, nil)
+		defer hookUnit1.AssertExpectations(t)
+
+		allHookRepo := new(mock.SupportedHookRepo)
+		allHookRepo.On("GetByName", "sample-hook").Return(hookUnit1, nil)
+		defer allHookRepo.AssertExpectations(t)
+
 		jobSpec := models.JobSpec{
 			Name: "test-job",
 			Schedule: models.JobSpecSchedule{
@@ -54,6 +64,15 @@ func TestAdapter(t *testing.T) {
 					Count:              5,
 					Delay:              0,
 					ExponentialBackoff: true,
+				},
+				Notify: []models.JobSpecNotifier{
+					{
+						On: models.JobEventTypeFailure,
+						Config: map[string]string{
+							"key": "val",
+						},
+						Channels: []string{"slack://@devs"},
+					},
 				},
 			},
 			Task: models.JobSpecTask{
@@ -79,9 +98,20 @@ func TestAdapter(t *testing.T) {
 				},
 			),
 			Dependencies: map[string]models.JobSpecDependency{},
+			Hooks: []models.JobSpecHook{
+				{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "PROJECT",
+							Value: "this",
+						},
+					},
+					Unit: hookUnit1,
+				},
+			},
 		}
 
-		adapter := v1.NewAdapter(allTasksRepo, nil, nil)
+		adapter := v1.NewAdapter(allTasksRepo, allHookRepo, nil)
 		inProto, err := adapter.ToJobProto(jobSpec)
 		assert.Nil(t, err)
 		original, err := adapter.FromJobProto(inProto)

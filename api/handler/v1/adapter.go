@@ -73,11 +73,22 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	retryDelay := time.Duration(0)
 	retryCount := 0
 	retryExponentialBackoff := false
-	if spec.Behavior != nil && spec.Behavior.Retry != nil {
-		retryCount = int(spec.Behavior.Retry.Count)
-		retryExponentialBackoff = spec.Behavior.Retry.ExponentialBackoff
-		if spec.Behavior.Retry.Delay != nil && spec.Behavior.Retry.Delay.IsValid() {
-			retryDelay = spec.Behavior.Retry.Delay.AsDuration()
+	var notifiers []models.JobSpecNotifier
+	if spec.Behavior != nil {
+		if spec.Behavior.Retry != nil {
+			retryCount = int(spec.Behavior.Retry.Count)
+			retryExponentialBackoff = spec.Behavior.Retry.ExponentialBackoff
+			if spec.Behavior.Retry.Delay != nil && spec.Behavior.Retry.Delay.IsValid() {
+				retryDelay = spec.Behavior.Retry.Delay.AsDuration()
+			}
+		}
+
+		for _, notify := range spec.Behavior.Notify {
+			notifiers = append(notifiers, models.JobSpecNotifier{
+				On:       models.JobEventType(strings.ToLower(notify.On.String())),
+				Config:   notify.Config,
+				Channels: notify.Channels,
+			})
 		}
 	}
 	return models.JobSpec{
@@ -100,6 +111,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 				Delay:              retryDelay,
 				ExponentialBackoff: retryExponentialBackoff,
 			},
+			Notify: notifiers,
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -150,6 +162,15 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		return nil, err
 	}
 
+	var notifyProto []*pb.JobSpecification_Behavior_Notifiers
+	for _, notify := range spec.Behavior.Notify {
+		notifyProto = append(notifyProto, &pb.JobSpecification_Behavior_Notifiers{
+			On:       pb.JobEvent_Type(pb.JobEvent_Type_value[strings.ToUpper(string(notify.On))]),
+			Channels: notify.Channels,
+			Config:   notify.Config,
+		})
+	}
+
 	conf := &pb.JobSpecification{
 		Version:          int32(spec.Version),
 		Name:             spec.Name,
@@ -173,6 +194,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 				Delay:              ptypes.DurationProto(spec.Behavior.Retry.Delay),
 				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
 			},
+			Notify: notifyProto,
 		},
 	}
 	if spec.Schedule.EndDate != nil {
@@ -185,7 +207,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		})
 	}
 
-	taskConfigs := []*pb.JobConfigItem{}
+	var taskConfigs []*pb.JobConfigItem
 	for _, c := range spec.Task.Config {
 		taskConfigs = append(taskConfigs, &pb.JobConfigItem{
 			Name:  strings.ToUpper(c.Name),

@@ -20,9 +20,9 @@ func TestConvert(t *testing.T) {
 		}
 		answerMap, err := utils.ConvertToStringMap(inputs)
 		assert.Nil(t, err)
-		assert.Equal(t, answerMap["key-1"], "1")
-		assert.Equal(t, answerMap["key-2"], "string")
-		assert.Equal(t, answerMap["key-3"], optionAnswer.Value)
+		assert.Equal(t, "1", answerMap["key-1"])
+		assert.Equal(t, "string", answerMap["key-2"])
+		assert.Equal(t, optionAnswer.Value, answerMap["key-3"])
 	})
 	t.Run("convert fails while converting double vals	", func(t *testing.T) {
 		inputs := map[string]interface{}{

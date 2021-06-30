@@ -1,21 +1,21 @@
-// +build !unit_test
-
-package airflow_2
+package airflow2
 
 import (
 	"context"
-	"io/ioutil"
+	_ "embed"
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCompiler2(t *testing.T) {
+//go:embed resources/expected_compiled_template.py
+var CompiledTemplate []byte
+
+func TestCompiler(t *testing.T) {
 	ctx := context.Background()
 	execUnit := new(mock.TaskPlugin)
 	execUnit.On("GetTaskSchema", ctx, models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
@@ -41,12 +41,19 @@ func TestCompiler2(t *testing.T) {
 		Image: "example.io/namespace/predator-image:latest",
 	}, nil)
 
+	hookUnit3 := new(mock.HookPlugin)
+	hookUnit3.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name:  "hook-for-fail",
+		Type:  models.HookTypeFail,
+		Image: "example.io/namespace/fail-image:latest",
+	}, nil)
+
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
 	}
 
 	namespaceSpec := models.NamespaceSpec{
-		Name:        "foo-namespace",
+		Name:        "bar-namespace",
 		ProjectSpec: projSpec,
 	}
 
@@ -119,6 +126,10 @@ func TestCompiler2(t *testing.T) {
 		Unit:      hookUnit2,
 		DependsOn: []*models.JobSpecHook{&hook1},
 	}
+	hook3 := models.JobSpecHook{
+		Config: []models.JobSpecConfigItem{},
+		Unit:   hookUnit3,
+	}
 	spec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -129,6 +140,13 @@ func TestCompiler2(t *testing.T) {
 				Count:              4,
 				Delay:              0,
 				ExponentialBackoff: true,
+			},
+			Notify: []models.JobSpecNotifier{
+				{
+					On: models.JobEventTypeSLAMiss, Config: map[string]string{
+						"duration": "2h",
+					},
+				},
 			},
 		},
 		Schedule: models.JobSpecSchedule{
@@ -158,26 +176,22 @@ func TestCompiler2(t *testing.T) {
 				},
 			},
 		),
-		Hooks: []models.JobSpecHook{hook1, hook2},
+		Hooks: []models.JobSpecHook{hook1, hook2, hook3},
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
 	}
 
 	t.Run("Compile", func(t *testing.T) {
-		compiledTemplateOutput := "./expected_compiled_template.py"
-
 		t.Run("should compile basic template without any error", func(t *testing.T) {
-			scheduler := airflow2.NewScheduler(nil, nil)
+			scheduler := NewScheduler(nil, nil)
 			com := job.NewCompiler(
 				scheduler.GetTemplate(),
 				"http://airflow.example.io",
 			)
 			job, err := com.Compile(namespaceSpec, spec)
 			assert.Nil(t, err)
-			expectedCompiledOutput, err := ioutil.ReadFile(compiledTemplateOutput)
-			assert.Nil(t, err)
-			assert.Equal(t, string(expectedCompiledOutput), string(job.Contents))
+			assert.Equal(t, string(CompiledTemplate), string(job.Contents))
 		})
 	})
 }

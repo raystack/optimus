@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/core/tree"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/odpf/optimus/mock"

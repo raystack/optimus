@@ -30,7 +30,7 @@ var (
 	validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
 		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3),
-		survey.MaxLength(1024))
+		survey.MaxLength(220))
 
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )

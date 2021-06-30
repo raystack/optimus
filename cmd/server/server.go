@@ -12,6 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
+	"github.com/odpf/optimus/ext/notify/slack"
+
 	"github.com/odpf/optimus/utils"
 
 	"github.com/odpf/optimus/ext/scheduler/airflow"
@@ -32,6 +36,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	slackapi "github.com/slack-go/slack"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -259,6 +264,9 @@ func Initialize(conf config.Provider) error {
 	}
 
 	log := logrus.New()
+	if loglevel, err := logrus.ParseLevel(conf.GetLog().Level); err == nil {
+		log.Level = loglevel
+	}
 	log.SetOutput(os.Stdout)
 	logger.Init(conf.GetLog().Level)
 
@@ -403,6 +411,17 @@ func Initialize(conf config.Provider) error {
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
 	})
 
+	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
+	defer cancelNotifiers()
+	eventService := job.NewEventService(map[string]models.Notifier{
+		"slack": slack.NewNotifier(notificationContext, slackapi.APIURL,
+			slack.DefaultEventBatchInterval,
+			func(err error) {
+				logger.E(err)
+			},
+		),
+	})
+
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		config.Version,
@@ -419,6 +438,7 @@ func Initialize(conf config.Provider) error {
 			&projectJobSpecRepoFac,
 			replayManager,
 		),
+		eventService,
 		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry),
 		projectRepoFac,
 		namespaceSpecRepoFac,
@@ -451,9 +471,9 @@ func Initialize(conf config.Provider) error {
 	if err != nil {
 		return errors.Wrap(err, "grpc.DialContext")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	if err := pb.RegisterRuntimeServiceHandler(ctx, gwmux, grpcConn); err != nil {
+	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
+	defer runtimeCancel()
+	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
 		return errors.Wrap(err, "RegisterRuntimeServiceHandler")
 	}
 
@@ -472,7 +492,7 @@ func Initialize(conf config.Provider) error {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// run our server in a goroutine so that it doesn't block.
+	// run our server in a goroutine so that it doesn't block to wait for termination requests
 	go func() {
 		mainLog.Infoln("starting listening at ", grpcAddr)
 		if err := srv.ListenAndServe(); err != nil {
@@ -490,8 +510,10 @@ func Initialize(conf config.Provider) error {
 	// Block until we receive our signal.
 	<-termChan
 	mainLog.Info("termination request received")
+	var terminalError error
+
 	if err = replayManager.Close(); err != nil {
-		return err
+		terminalError = multierror.Append(terminalError, errors.Wrap(err, "replayManager.Close"))
 	}
 
 	// Create a deadline to wait for server
@@ -501,13 +523,19 @@ func Initialize(conf config.Provider) error {
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
 	if err := srv.Shutdown(ctxProxy); err != nil {
-		return errors.Wrap(err, "srv.Shutdown")
+		terminalError = multierror.Append(terminalError, errors.Wrap(err, "srv.Shutdown"))
 	}
 	grpcServer.GracefulStop()
 
+	// gracefully shutdown event service, e.g. slack notifiers flush in memory batches
+	cancelNotifiers()
+	if err := eventService.Close(); err != nil && len(err.Error()) != 0 {
+		terminalError = multierror.Append(terminalError, errors.Wrap(err, "eventService.Close"))
+	}
+
 	mainLog.Info("bye")
 
-	return nil
+	return terminalError
 }
 
 // grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.

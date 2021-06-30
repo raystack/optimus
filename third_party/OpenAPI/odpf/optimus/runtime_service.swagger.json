@@ -312,6 +312,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -348,12 +354,6 @@
             "name": "jobName",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespace",
-            "in": "query",
-            "required": false,
             "type": "string"
           }
         ],
@@ -747,6 +747,57 @@
         ]
       }
     },
+    "/api/v1/project/{projectName}/namespace/{namespace}/job/{jobName}/event": {
+      "post": {
+        "summary": "RegisterJobEvent notifies optimus service about an event related to job",
+        "operationId": "RuntimeService_RegisterJobEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusRegisterJobEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusRegisterJobEventRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/api/v1/project/{projectName}/secret/{secretName}": {
       "post": {
         "summary": "RegisterSecret creates a new secret of a project",
@@ -877,6 +928,27 @@
     }
   },
   "definitions": {
+    "BehaviorNotifiers": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "$ref": "#/definitions/optimusJobEventType"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Notifiers are used to set custom alerting in case of job failure/sla_miss"
+    },
     "BehaviorRetry": {
       "type": "object",
       "properties": {
@@ -898,6 +970,12 @@
       "properties": {
         "retry": {
           "$ref": "#/definitions/BehaviorRetry"
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BehaviorNotifiers"
+          }
         }
       }
     },
@@ -1155,6 +1233,27 @@
         }
       }
     },
+    "optimusJobEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/optimusJobEventType"
+        },
+        "value": {
+          "type": "object"
+        }
+      }
+    },
+    "optimusJobEventType": {
+      "type": "string",
+      "enum": [
+        "INVALID",
+        "SLA_MISS",
+        "FAILURE",
+        "SUCCESS"
+      ],
+      "default": "INVALID"
+    },
     "optimusJobSpecHook": {
       "type": "object",
       "properties": {
@@ -1410,6 +1509,26 @@
           "$ref": "#/definitions/optimusInstanceContext"
         }
       }
+    },
+    "optimusRegisterJobEventRequest": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "event": {
+          "$ref": "#/definitions/optimusJobEvent"
+        }
+      }
+    },
+    "optimusRegisterJobEventResponse": {
+      "type": "object"
     },
     "optimusRegisterProjectNamespaceRequest": {
       "type": "object",

@@ -233,3 +233,23 @@ func (srv *PriorityResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpe
 	args := srv.Called(jobSpecs)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
+
+type EventService struct {
+	mock.Mock
+}
+
+func (e *EventService) Register(ctx context.Context, spec models.NamespaceSpec, spec2 models.JobSpec, event models.JobEvent) error {
+	return e.Called(ctx, spec, spec2, event).Error(0)
+}
+
+type Notifier struct {
+	mock.Mock
+}
+
+func (n *Notifier) Close() error {
+	return n.Called().Error(0)
+}
+
+func (n *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
+	return n.Called(ctx, attr).Error(0)
+}

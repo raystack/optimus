@@ -1,6 +1,4 @@
-// +build !unit_test
-
-package airflow_1
+package airflow
 
 import (
 	"context"
@@ -8,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 )
 
-//go:embed expected_compiled_template.py
+//go:embed resources/expected_compiled_template.py
 var CompiledTemplate []byte
 
 func TestCompiler(t *testing.T) {
@@ -44,12 +41,19 @@ func TestCompiler(t *testing.T) {
 		Image: "example.io/namespace/predator-image:latest",
 	}, nil)
 
+	hookUnit3 := new(mock.HookPlugin)
+	hookUnit3.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+		Name:  "hook-for-fail",
+		Type:  models.HookTypeFail,
+		Image: "example.io/namespace/fail-image:latest",
+	}, nil)
+
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
 	}
 
 	namespaceSpec := models.NamespaceSpec{
-		Name:        "foo-namespace",
+		Name:        "bar-namespace",
 		ProjectSpec: projSpec,
 	}
 
@@ -122,6 +126,9 @@ func TestCompiler(t *testing.T) {
 		Unit:      hookUnit2,
 		DependsOn: []*models.JobSpecHook{&hook1},
 	}
+	hook3 := models.JobSpecHook{
+		Unit: hookUnit3,
+	}
 	spec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -156,7 +163,7 @@ func TestCompiler(t *testing.T) {
 				},
 			},
 		),
-		Hooks: []models.JobSpecHook{hook1, hook2},
+		Hooks: []models.JobSpecHook{hook1, hook2, hook3},
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
@@ -164,7 +171,7 @@ func TestCompiler(t *testing.T) {
 
 	t.Run("Compile", func(t *testing.T) {
 		t.Run("should compile template without any error", func(t *testing.T) {
-			scheduler := airflow.NewScheduler(nil, nil)
+			scheduler := NewScheduler(nil, nil)
 			com := job.NewCompiler(
 				scheduler.GetTemplate(),
 				"http://airflow.example.io",

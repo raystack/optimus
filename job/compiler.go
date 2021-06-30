@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"text/template"
+	"time"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/odpf/optimus/models"
@@ -33,9 +34,24 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 		return models.Job{}, err
 	}
 
+	var slaMissDurationInSec int64
+	for _, notify := range jobSpec.Behavior.Notify {
+		if notify.On == models.JobEventTypeSLAMiss {
+			if _, ok := notify.Config["duration"]; !ok {
+				continue
+			}
+
+			dur, err := time.ParseDuration(notify.Config["duration"])
+			if err != nil {
+				return models.Job{}, errors.Wrapf(err, "failed to parse sla_miss duration %s", notify.Config["duration"])
+			}
+			slaMissDurationInSec = int64(dur.Seconds())
+		}
+	}
+
 	var buf bytes.Buffer
 	if err = tmpl.Execute(&buf, struct {
-		Project                    models.ProjectSpec
+		Namespace                  models.NamespaceSpec
 		Job                        models.JobSpec
 		TaskSchemaRequest          models.GetTaskSchemaRequest
 		HookSchemaRequest          models.GetHookSchemaRequest
@@ -43,13 +59,15 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 		Hostname                   string
 		HookTypePre                string
 		HookTypePost               string
+		HookTypeFail               string
 		InstanceTypeTask           string
 		InstanceTypeHook           string
 		JobSpecDependencyTypeIntra string
 		JobSpecDependencyTypeInter string
 		JobSpecDependencyTypeExtra string
+		SLAMissDurationInSec       int64
 	}{
-		Project:                    namespaceSpec.ProjectSpec,
+		Namespace:                  namespaceSpec,
 		Job:                        jobSpec,
 		Hostname:                   com.hostname,
 		TaskSchemaRequest:          models.GetTaskSchemaRequest{},
@@ -57,11 +75,13 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 		Context:                    context.Background(),
 		HookTypePre:                string(models.HookTypePre),
 		HookTypePost:               string(models.HookTypePost),
+		HookTypeFail:               string(models.HookTypeFail),
 		InstanceTypeTask:           string(models.InstanceTypeTask),
 		InstanceTypeHook:           string(models.InstanceTypeHook),
 		JobSpecDependencyTypeIntra: string(models.JobSpecDependencyTypeIntra),
 		JobSpecDependencyTypeInter: string(models.JobSpecDependencyTypeInter),
 		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
+		SLAMissDurationInSec:       slaMissDurationInSec,
 	}); err != nil {
 		return models.Job{}, errors.Wrap(err, "failed to templatize job")
 	}

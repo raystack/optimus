@@ -56,10 +56,13 @@ type RuntimeServiceClient interface {
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
+	// RegisterJobEvent notifies optimus service about an event related to job
+	RegisterJobEvent(ctx context.Context, in *RegisterJobEventRequest, opts ...grpc.CallOption) (*RegisterJobEventResponse, error)
 	// GetWindow provides the start and end dates provided a scheduled date
 	// of the execution window
 	GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error)
 	// DeployResourceSpecification migrate all resource specifications of a datastore in project
+	// State of the world request
 	DeployResourceSpecification(ctx context.Context, in *DeployResourceSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployResourceSpecificationClient, error)
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(ctx context.Context, in *ListResourceSpecificationRequest, opts ...grpc.CallOption) (*ListResourceSpecificationResponse, error)
@@ -269,6 +272,15 @@ func (c *runtimeServiceClient) JobStatus(ctx context.Context, in *JobStatusReque
 	return out, nil
 }
 
+func (c *runtimeServiceClient) RegisterJobEvent(ctx context.Context, in *RegisterJobEventRequest, opts ...grpc.CallOption) (*RegisterJobEventResponse, error) {
+	out := new(RegisterJobEventResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/RegisterJobEvent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *runtimeServiceClient) GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error) {
 	out := new(GetWindowResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/GetWindow", in, out, opts...)
@@ -406,10 +418,13 @@ type RuntimeServiceServer interface {
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)
+	// RegisterJobEvent notifies optimus service about an event related to job
+	RegisterJobEvent(context.Context, *RegisterJobEventRequest) (*RegisterJobEventResponse, error)
 	// GetWindow provides the start and end dates provided a scheduled date
 	// of the execution window
 	GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error)
 	// DeployResourceSpecification migrate all resource specifications of a datastore in project
+	// State of the world request
 	DeployResourceSpecification(*DeployResourceSpecificationRequest, RuntimeService_DeployResourceSpecificationServer) error
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(context.Context, *ListResourceSpecificationRequest) (*ListResourceSpecificationResponse, error)
@@ -473,6 +488,9 @@ func (UnimplementedRuntimeServiceServer) RegisterInstance(context.Context, *Regi
 }
 func (UnimplementedRuntimeServiceServer) JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JobStatus not implemented")
+}
+func (UnimplementedRuntimeServiceServer) RegisterJobEvent(context.Context, *RegisterJobEventRequest) (*RegisterJobEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterJobEvent not implemented")
 }
 func (UnimplementedRuntimeServiceServer) GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWindow not implemented")
@@ -805,6 +823,24 @@ func _RuntimeService_JobStatus_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeService_RegisterJobEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterJobEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).RegisterJobEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.RuntimeService/RegisterJobEvent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).RegisterJobEvent(ctx, req.(*RegisterJobEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RuntimeService_GetWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWindowRequest)
 	if err := dec(in); err != nil {
@@ -1014,6 +1050,10 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "JobStatus",
 			Handler:    _RuntimeService_JobStatus_Handler,
+		},
+		{
+			MethodName: "RegisterJobEvent",
+			Handler:    _RuntimeService_RegisterJobEvent_Handler,
 		},
 		{
 			MethodName: "GetWindow",

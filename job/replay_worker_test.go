@@ -76,7 +76,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			errorMessage := "scheduler clear error"
 			scheduler.On("Clear", ctx, replayRequest.Project, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
@@ -103,7 +103,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			errorMessage := "scheduler clear error"
 			scheduler.On("Clear", ctx, replayRequest.Project, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
@@ -126,7 +126,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("Clear", ctx, replayRequest.Project, "job-name", dagRunStartTime, dagRunEndTime).Return(nil)
 
@@ -145,7 +145,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("Clear", ctx, replayRequest.Project, "job-name", dagRunStartTime, dagRunEndTime).Return(nil)
 
