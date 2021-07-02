@@ -105,6 +105,7 @@ func (ans PluginAnswers) Get(name string) (PluginAnswer, bool) {
 }
 
 type GetTaskQuestionsRequest struct {
+	JobName string
 	PluginOptions
 }
 

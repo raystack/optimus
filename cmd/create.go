@@ -268,7 +268,9 @@ this effects runtime dependencies and template macros`,
 		return jobInput, err
 	}
 
-	taskQuesResponse, err := executionTask.GetTaskQuestions(context.TODO(), models.GetTaskQuestionsRequest{})
+	taskQuesResponse, err := executionTask.GetTaskQuestions(context.TODO(), models.GetTaskQuestionsRequest{
+		JobName: jobInput.Name,
+	})
 	if err != nil {
 		return jobInput, err
 	}
@@ -378,7 +380,9 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 		return emptyJobSpec, err
 	}
 
-	taskQuesResponse, err := executionHook.GetHookQuestions(context.TODO(), models.GetHookQuestionsRequest{})
+	taskQuesResponse, err := executionHook.GetHookQuestions(context.TODO(), models.GetHookQuestionsRequest{
+		JobName: jobSpec.Name,
+	})
 	if err != nil {
 		return emptyJobSpec, err
 	}
