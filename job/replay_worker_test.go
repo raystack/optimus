@@ -113,7 +113,6 @@ func TestReplayWorker(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), updateStatusErr.Error())
 		})
-
 		t.Run("should throw an error when updatestatus throws an error for successful request", func(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
@@ -152,6 +151,24 @@ func TestReplayWorker(t *testing.T) {
 			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.Nil(t, err)
+		})
+		t.Run("should throw an error when prepareTree throws an error", func(t *testing.T) {
+			replayRequest.JobSpecMap = make(map[string]models.JobSpec)
+			ctx := context.Background()
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+
+			scheduler := new(mock.MockScheduler)
+			defer scheduler.AssertExpectations(t)
+
+			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
+			err := worker.Process(ctx, replayRequest)
+			assert.NotNil(t, err)
 		})
 	})
 }
