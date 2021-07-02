@@ -55,18 +55,21 @@ func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
 		StartDate: p.StartDate,
 		EndDate:   p.EndDate,
 		Message:   message,
+		CreatedAt: p.CreatedAt,
 	}, nil
 }
 
 type replayRepository struct {
 	DB      *gorm.DB
 	jobSpec models.JobSpec
+	adapter *JobSpecAdapter
 }
 
-func NewReplayRepository(db *gorm.DB, jobSpec models.JobSpec) *replayRepository {
+func NewReplayRepository(db *gorm.DB, jobSpec models.JobSpec, jobAdapter *JobSpecAdapter) *replayRepository {
 	return &replayRepository{
 		DB:      db,
 		jobSpec: jobSpec,
+		adapter: jobAdapter,
 	}
 }
 
@@ -101,4 +104,52 @@ func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, me
 	r.Status = status
 	r.Message = jsonBytes
 	return repo.DB.Save(&r).Error
+}
+
+func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec, error) {
+	var replays []Replay
+	if err := repo.DB.Where("status in (?)", status).Preload("Job").Find(&replays).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []models.ReplaySpec{}, store.ErrResourceNotFound
+		}
+		return []models.ReplaySpec{}, err
+	}
+
+	var replaySpecs []models.ReplaySpec
+	for _, r := range replays {
+		jobSpec, err := repo.adapter.ToSpec(r.Job)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpec, err := r.ToSpec(jobSpec)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpecs = append(replaySpecs, replaySpec)
+	}
+	return replaySpecs, nil
+}
+
+func (repo *replayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+	var replays []Replay
+	if err := repo.DB.Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Find(&replays).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []models.ReplaySpec{}, store.ErrResourceNotFound
+		}
+		return []models.ReplaySpec{}, err
+	}
+
+	var replaySpecs []models.ReplaySpec
+	for _, r := range replays {
+		jobSpec, err := repo.adapter.ToSpec(r.Job)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpec, err := r.ToSpec(jobSpec)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpecs = append(replaySpecs, replaySpec)
+	}
+	return replaySpecs, nil
 }

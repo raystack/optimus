@@ -13,6 +13,7 @@ var (
 
 	JobStatusStateSuccess JobStatusState = "success"
 	JobStatusStateFailed  JobStatusState = "failed"
+	JobStatusStateRunning JobStatusState = "running"
 )
 
 // SchedulerUnit is implemented by supported schedulers
@@ -40,6 +41,10 @@ type SchedulerUnit interface {
 
 	// Clear clears state of job between provided start and end dates
 	Clear(ctx context.Context, projSpec ProjectSpec, jobName string, startDate, endDate time.Time) error
+
+	// GetDagRunStatus should return batch of runs of a job
+	GetDagRunStatus(ctx context.Context, projSpec ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
+		batchSize int) ([]JobStatus, error)
 }
 
 type JobStatusState string

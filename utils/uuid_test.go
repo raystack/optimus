@@ -1,9 +1,10 @@
 package utils_test
 
 import (
+	"testing"
+
 	"github.com/odpf/optimus/utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestUUID(t *testing.T) {

@@ -11,8 +11,9 @@ const (
 	ReplayStatusAccepted   = "accepted"
 	ReplayStatusInProgress = "inprogress"
 	// ReplayStatusFailed worker fail while processing the replay request
-	ReplayStatusFailed  = "failed"  // end state
-	ReplayStatusSuccess = "success" // end state
+	ReplayStatusFailed    = "failed"    // end state
+	ReplayStatusSuccess   = "success"   // end state
+	ReplayStatusCancelled = "cancelled" // end state
 )
 
 type ReplayMessage struct {
@@ -27,6 +28,7 @@ type ReplayWorkerRequest struct {
 	End        time.Time
 	Project    ProjectSpec
 	JobSpecMap map[string]JobSpec
+	Force      bool
 }
 
 type ReplaySpec struct {
@@ -36,4 +38,5 @@ type ReplaySpec struct {
 	EndDate   time.Time
 	Status    string
 	Message   ReplayMessage
+	CreatedAt time.Time
 }
