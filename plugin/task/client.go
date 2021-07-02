@@ -38,6 +38,7 @@ func (m *GRPCClient) GetTaskSchema(ctx context.Context, _ models.GetTaskSchemaRe
 
 func (m *GRPCClient) GetTaskQuestions(ctx context.Context, request models.GetTaskQuestionsRequest) (models.GetTaskQuestionsResponse, error) {
 	resp, err := m.client.GetTaskQuestions(ctx, &pb.GetTaskQuestions_Request{
+		JobName: request.JobName,
 		Options: &pb.PluginOptions{DryRun: request.DryRun},
 	})
 	if err != nil {

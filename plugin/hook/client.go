@@ -32,6 +32,7 @@ func (m *GRPCClient) GetHookSchema(ctx context.Context, _ models.GetHookSchemaRe
 
 func (m *GRPCClient) GetHookQuestions(ctx context.Context, request models.GetHookQuestionsRequest) (models.GetHookQuestionsResponse, error) {
 	resp, err := m.client.GetHookQuestions(ctx, &pb.GetHookQuestions_Request{
+		JobName: request.JobName,
 		Options: &pb.PluginOptions{DryRun: request.DryRun},
 	})
 	if err != nil {
