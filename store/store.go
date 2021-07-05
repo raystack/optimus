@@ -93,4 +93,5 @@ type ReplaySpecRepository interface {
 	Insert(replay *models.ReplaySpec) error
 	GetByID(id uuid.UUID) (models.ReplaySpec, error)
 	UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error
+	GetByStatus(status []string) ([]models.ReplaySpec, error)
 }

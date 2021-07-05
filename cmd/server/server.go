@@ -77,7 +77,7 @@ type replaySpecRepoRepository struct {
 }
 
 func (fac *replaySpecRepoRepository) New(job models.JobSpec) store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, job)
+	return postgres.NewReplayRepository(fac.db, job, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
 }
 
 // jobSpecRepoFactory stores raw specifications
