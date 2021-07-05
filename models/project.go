@@ -18,6 +18,9 @@ const (
 	// Secret used for uploading prepared scheduler specifications to cloud
 	// e.g. for gcs it will be base64 encoded service account for the bucket
 	ProjectSecretStorageKey = "STORAGE"
+
+	// Secret used to authenticate with scheduler provided at ProjectSchedulerHost
+	ProjectSchedulerAuth = "SCHEDULER_AUTH"
 )
 
 var (
