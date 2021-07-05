@@ -26,6 +26,11 @@ func (repo *ReplayRepository) UpdateStatus(replayID uuid.UUID, status string, me
 	return repo.Called(replayID, status, message).Error(0)
 }
 
+func (repo *ReplayRepository) GetByStatus(status []string) ([]models.ReplaySpec, error) {
+	args := repo.Called(status)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
+}
+
 type ReplaySpecRepoFactory struct {
 	mock.Mock
 }

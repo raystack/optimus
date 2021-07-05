@@ -49,13 +49,22 @@ func TestReplayManager(t *testing.T) {
 			},
 		}
 		t.Run("should throw error if uuid provider returns failure", func(t *testing.T) {
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			statusToCheck := []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted}
+			replayRepository.On("GetByStatus", statusToCheck).Return([]models.ReplaySpec{}, nil)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 			objUUID := uuid.Must(uuid.NewRandom())
 			errMessage := "error while generating uuid"
 			uuidProvider.On("NewUUID").Return(objUUID, errors.New(errMessage))
 
-			replayManager := job.NewManager(nil, nil, uuidProvider, replayManagerConfig)
+			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig)
 			_, err := replayManager.Replay(replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -63,6 +72,9 @@ func TestReplayManager(t *testing.T) {
 		t.Run("should throw an error if replay repo throws error", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
+			statusToCheck := []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted}
+			replayRepository.On("GetByStatus", statusToCheck).Return([]models.ReplaySpec{}, nil)
+
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
