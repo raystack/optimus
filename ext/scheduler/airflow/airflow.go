@@ -128,7 +128,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch airflow dag runs from %s", fetchURL)
+		return nil, errors.Errorf("failed to fetch airflow dag runs from %s: %d", fetchURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
@@ -196,7 +196,7 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", clearDagRunURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("failed to clear airflow dag runs from %s", clearDagRunURL)
+		return errors.Errorf("failed to clear airflow dag runs from %s: %d", clearDagRunURL, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)

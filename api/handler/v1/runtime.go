@@ -486,13 +486,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: project %s not found", err.Error(), req.GetProjectName()))
 	}
 
-	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
-	if err != nil {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: namespace %s not found", err.Error(), req.GetNamespace()))
-	}
-
-	_, err = sv.jobSvc.GetByName(req.GetJobName(), namespaceSpec)
+	_, _, err = sv.jobSvc.GetByNameForProject(req.GetJobName(), projSpec)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("%s: failed to find the job %s for namespace %s", err.Error(),
 			req.GetJobName(), req.GetNamespace()))
@@ -504,7 +498,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 			req.GetJobName()))
 	}
 
-	adaptedJobStatus := []*pb.JobStatus{}
+	var adaptedJobStatus []*pb.JobStatus
 	for _, jobStatus := range jobStatuses {
 		ts, err := ptypes.TimestampProto(jobStatus.ScheduledAt)
 		if err != nil {
