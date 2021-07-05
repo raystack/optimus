@@ -2,16 +2,15 @@ package job
 
 import (
 	"context"
-	"github.com/odpf/optimus/core/tree"
-	"github.com/odpf/optimus/store"
 	"sync"
 	"time"
 
-	"github.com/odpf/optimus/utils"
-
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/utils"
 	"github.com/pkg/errors"
 )
 

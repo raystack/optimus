@@ -4,7 +4,6 @@ package postgres
 
 import (
 	"context"
-	"github.com/odpf/optimus/mock"
 	"os"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 )
