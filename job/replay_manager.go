@@ -2,6 +2,8 @@ package job
 
 import (
 	"context"
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/store"
 	"sync"
 	"time"
 
@@ -55,6 +57,13 @@ type Manager struct {
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
 func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
+	replaySpecRepo := m.replaySpecRepoFac.New(reqInput.Job)
+
+	err := validate(replaySpecRepo, reqInput)
+	if err != nil {
+		return "", err
+	}
+
 	uuidOb, err := m.uuidProvider.NewUUID()
 	if err != nil {
 		return "", err
@@ -69,7 +78,6 @@ func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 		EndDate:   reqInput.End,
 		Status:    models.ReplayStatusAccepted,
 	}
-	replaySpecRepo := m.replaySpecRepoFac.New(reqInput.Job)
 	if err = replaySpecRepo.Insert(&replay); err != nil {
 		return "", err
 	}
@@ -88,6 +96,71 @@ func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 	default:
 		return "", ErrRequestQueueFull
 	}
+}
+
+func validate(replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayWorkerRequest) error {
+	reqReplayTree, err := prepareTree(reqInput)
+	if err != nil {
+		return err
+	}
+	reqReplayNodes := reqReplayTree.GetAllNodes()
+
+	//check if this dag have running instance in Airflow (?)
+
+	//check another replay active for this dag
+	statusToValidate := []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted}
+	activeReplaySpecs, err := replaySpecRepo.GetByStatus(statusToValidate)
+	if err != nil {
+		if err == store.ErrResourceNotFound {
+			return nil
+		}
+		return err
+	}
+	return validateReplayJobsConflict(activeReplaySpecs, reqInput, reqReplayNodes)
+}
+
+func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput *models.ReplayWorkerRequest,
+	reqReplayNodes []*tree.TreeNode) error {
+	for _, activeSpec := range activeReplaySpecs {
+		activeReplayWorkerRequest := &models.ReplayWorkerRequest{
+			ID:         activeSpec.ID,
+			Job:        activeSpec.Job,
+			Start:      activeSpec.StartDate,
+			End:        activeSpec.EndDate,
+			Project:    reqInput.Project,
+			JobSpecMap: reqInput.JobSpecMap,
+		}
+		activeTree, err := prepareTree(activeReplayWorkerRequest)
+		if err != nil {
+			return err
+		}
+		activeNodes := activeTree.GetAllNodes()
+
+		return checkAnyConflictedDags(activeNodes, reqReplayNodes)
+	}
+	return nil
+}
+
+func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree.TreeNode) error {
+	for _, activeNode := range activeNodes {
+		for _, reqNode := range reqReplayNodes {
+			if activeNode.Data.GetName() == reqNode.Data.GetName() {
+				return checkAnyConflictedRuns(activeNode, reqNode)
+			}
+		}
+	}
+	return nil
+}
+
+func checkAnyConflictedRuns(activeNode *tree.TreeNode, reqNode *tree.TreeNode) error {
+	for _, activeNodeRun := range activeNode.Runs.Values() {
+		for _, reqNodeRun := range reqNode.Runs.Values() {
+			if activeNodeRun == reqNodeRun {
+				return errors.New("conflict msg")
+			}
+		}
+	}
+	return nil
 }
 
 // start a worker goroutine that runs the deployment pipeline in background
