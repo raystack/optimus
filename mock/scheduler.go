@@ -41,3 +41,9 @@ func (ms *MockScheduler) Clear(ctx context.Context, projSpec models.ProjectSpec,
 	args := ms.Called(ctx, projSpec, jobName, startDate, endDate)
 	return args.Error(0)
 }
+
+func (ms *MockScheduler) GetDagRunStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate time.Time,
+	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
+	args := ms.Called(ctx, projSpec, jobName, startDate, endDate, batchSize)
+	return args.Get(0).([]models.JobStatus), args.Error(1)
+}
