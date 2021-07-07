@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -265,6 +266,145 @@ func TestAirflow2(t *testing.T) {
 				},
 			}, "sample_select", startDateTime, endDateTime)
 			assert.NotNil(t, err)
+		})
+	})
+	t.Run("GetDagRunStatus", func(t *testing.T) {
+		host := "http://airflow.example.io"
+		startDate := "2021-05-20"
+		startDateTime, _ := time.Parse(job.ReplayDateFormat, startDate)
+		endDate := "2021-05-25"
+		endDateTime, _ := time.Parse(job.ReplayDateFormat, endDate)
+		batchSize := 2
+		projectSpec := models.ProjectSpec{
+			Name: "test-proj",
+			Config: map[string]string{
+				models.ProjectSchedulerHost: host,
+			},
+		}
+		jobName := "sample_select"
+
+		t.Run("should return dag run status with valid args", func(t *testing.T) {
+			respString := `
+{
+"dag_runs": [
+	{
+		"conf": {},
+        "dag_id": "sample_select",
+        "dag_run_id": "scheduled__2020-03-25T02:00:00+00:00",
+        "end_date": "2020-06-01T17:32:58.489042+00:00",
+        "execution_date": "2020-03-25T02:00:00+00:00",
+        "external_trigger": false,
+        "start_date": "2020-06-01T16:32:58.489042+00:00",
+        "state": "success"
+	},
+	{
+		"conf": {},
+        "dag_id": "sample_select",
+        "dag_run_id": "scheduled__2020-03-26T02:00:00+00:00",
+        "end_date": "2020-06-01T16:33:01.020645+00:00",
+        "execution_date": "2020-03-26T02:00:00+00:00",
+        "external_trigger": false,
+        "start_date": "2020-06-01T16:33:01.020645+00:00",
+        "state": "success"
+	}
+],
+"total_entries": 2
+}`
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client)
+			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
+
+			assert.Nil(t, err)
+			assert.Len(t, status, 2)
+		})
+		t.Run("should return all dag run status when total entries is greater than page limit request", func(t *testing.T) {
+			respStringFirst := `{
+    "dag_runs": [
+        {
+            "conf": {},
+            "dag_id": "sample_select",
+            "dag_run_id": "scheduled__2020-03-25T02:00:00+00:00",
+            "end_date": "2020-06-01T17:32:58.489042+00:00",
+            "execution_date": "2020-03-25T02:00:00+00:00",
+            "external_trigger": false,
+            "start_date": "2020-06-01T16:32:58.489042+00:00",
+            "state": "success"
+        },
+        {
+            "conf": {},
+            "dag_id": "sample_select",
+            "dag_run_id": "scheduled__2020-03-26T02:00:00+00:00",
+            "end_date": "2020-06-01T16:33:01.020645+00:00",
+            "execution_date": "2020-03-26T02:00:00+00:00",
+            "external_trigger": false,
+            "start_date": "2020-06-01T16:33:01.020645+00:00",
+            "state": "failed"
+        }
+    ],
+    "total_entries": 3
+}`
+			respStringSecond := `{
+    "dag_runs": [
+        {
+            "conf": {},
+            "dag_id": "sample_select",
+            "dag_run_id": "scheduled__2020-03-27T02:00:00+00:00",
+            "end_date": "2020-06-01T16:34:01.020645+00:00",
+            "execution_date": "2020-03-26T02:00:00+00:00",
+            "external_trigger": false,
+            "start_date": "2020-06-01T16:35:01.020645+00:00",
+            "state": "running"
+        }
+    ],
+    "total_entries": 3
+}`
+			dagRunResp := []io.ReadCloser{
+				ioutil.NopCloser(bytes.NewReader([]byte(respStringFirst))),
+				ioutil.NopCloser(bytes.NewReader([]byte(respStringSecond))),
+			}
+			countDagRunReq := -1
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					countDagRunReq++
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       dagRunResp[countDagRunReq],
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client)
+			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
+
+			assert.Nil(t, err)
+			assert.Len(t, status, 3)
+		})
+		t.Run("should fail if host fails to return OK", func(t *testing.T) {
+			respString := `INTERNAL ERROR`
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusInternalServerError,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client)
+			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
+
+			assert.NotNil(t, err)
+			assert.Len(t, status, 0)
 		})
 	})
 }
