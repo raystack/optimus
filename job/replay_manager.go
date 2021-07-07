@@ -18,6 +18,8 @@ var (
 	// ErrRequestQueueFull signifies that the deployment manager's
 	// request queue is full
 	ErrRequestQueueFull = errors.New("request queue is full")
+	// ErrConflictedJobRun signifies other replay job / dependency run is active or instance already running
+	ErrConflictedJobRun = errors.New("conflicted job run found")
 )
 
 type ReplayManagerConfig struct {
@@ -49,8 +51,10 @@ type Manager struct {
 	requestMap map[uuid.UUID]bool
 
 	//request worker
-	replayWorker      ReplayWorker
+	replayWorker ReplayWorker
+
 	replaySpecRepoFac ReplaySpecRepoFactory
+	scheduler         models.SchedulerUnit
 }
 
 // Replay a request asynchronously, returns a replay id that can
@@ -58,7 +62,7 @@ type Manager struct {
 func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 	replaySpecRepo := m.replaySpecRepoFac.New(reqInput.Job)
 
-	err := validate(replaySpecRepo, reqInput)
+	err := m.validate(replaySpecRepo, reqInput)
 	if err != nil {
 		return "", err
 	}
@@ -97,14 +101,18 @@ func (m *Manager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
 	}
 }
 
-func validate(replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayWorkerRequest) error {
+func (m *Manager) validate(replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayWorkerRequest) error {
 	reqReplayTree, err := prepareTree(reqInput)
 	if err != nil {
 		return err
 	}
 	reqReplayNodes := reqReplayTree.GetAllNodes()
 
-	//check if this dag have running instance in Airflow (?)
+	//check if this dag have running instance in the scheduler
+	err = m.validateRunningInstance(reqReplayNodes, reqInput)
+	if err != nil {
+		return err
+	}
 
 	//check another replay active for this dag
 	statusToValidate := []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted}
@@ -116,6 +124,24 @@ func validate(replaySpecRepo store.ReplaySpecRepository, reqInput *models.Replay
 		return err
 	}
 	return validateReplayJobsConflict(activeReplaySpecs, reqInput, reqReplayNodes)
+}
+
+func (m *Manager) validateRunningInstance(reqReplayNodes []*tree.TreeNode, reqInput *models.ReplayWorkerRequest) error {
+	ctx := context.Background()
+	requestBatchSize := 100
+	for _, reqReplayNode := range reqReplayNodes {
+		batchEndDate := reqInput.End.AddDate(0, 0, 1)
+		jobStatusAllRuns, err := m.scheduler.GetDagRunStatus(ctx, reqInput.Project, reqInput.Job.Name, reqInput.Start, batchEndDate, requestBatchSize)
+		if err != nil {
+			return err
+		}
+		for _, jobStatus := range jobStatusAllRuns {
+			if reqReplayNode.Runs.Contains(jobStatus.ScheduledAt) && jobStatus.State == models.JobStatusStateRunning {
+				return ErrConflictedJobRun
+			}
+		}
+	}
+	return nil
 }
 
 func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput *models.ReplayWorkerRequest,
@@ -152,11 +178,9 @@ func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree
 }
 
 func checkAnyConflictedRuns(activeNode *tree.TreeNode, reqNode *tree.TreeNode) error {
-	for _, activeNodeRun := range activeNode.Runs.Values() {
-		for _, reqNodeRun := range reqNode.Runs.Values() {
-			if activeNodeRun == reqNodeRun {
-				return errors.New("conflict msg")
-			}
+	for _, reqNodeRun := range reqNode.Runs.Values() {
+		if activeNode.Runs.Contains(reqNodeRun.(time.Time)) {
+			return ErrConflictedJobRun
 		}
 	}
 	return nil
@@ -200,7 +224,8 @@ func (m *Manager) Init() {
 }
 
 // NewManager constructs a new instance of Manager
-func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider, config ReplayManagerConfig) *Manager {
+func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider,
+	config ReplayManagerConfig, scheduler models.SchedulerUnit) *Manager {
 	mgr := &Manager{
 		replayWorker:      worker,
 		requestMap:        make(map[uuid.UUID]bool),
@@ -208,6 +233,7 @@ func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uu
 		requestQ:          make(chan *models.ReplayWorkerRequest, 0),
 		replaySpecRepoFac: replaySpecRepoFac,
 		uuidProvider:      uuidProvider,
+		scheduler:         scheduler,
 	}
 	mgr.Init()
 	return mgr

@@ -222,3 +222,8 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	}
 	return nil
 }
+
+func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
+	batchSize int) ([]models.JobStatus, error) {
+	panic("not implemented")
+}
