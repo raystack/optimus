@@ -401,7 +401,7 @@ func Initialize(conf config.Provider) error {
 	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
-	})
+	}, models.Scheduler)
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
