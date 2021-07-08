@@ -31,6 +31,11 @@ func (repo *ReplayRepository) GetByStatus(status []string) ([]models.ReplaySpec,
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
+func (repo *ReplayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+	args := repo.Called(jobID, status)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
+}
+
 type ReplaySpecRepoFactory struct {
 	mock.Mock
 }
@@ -43,8 +48,8 @@ type ReplayManager struct {
 	mock.Mock
 }
 
-func (rm *ReplayManager) Replay(reqInput *models.ReplayWorkerRequest) (string, error) {
-	args := rm.Called(reqInput)
+func (rm *ReplayManager) Replay(ctx context.Context, reqInput *models.ReplayWorkerRequest) (string, error) {
+	args := rm.Called(ctx, reqInput)
 	return args.Get(0).(string), args.Error(1)
 }
 

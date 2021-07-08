@@ -748,7 +748,7 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 		return nil, status.Error(codes.Internal, fmt.Sprintf("error while parsing replay request: %v", err))
 	}
 
-	replayUUID, err := sv.jobSvc.Replay(replayWorkerRequest)
+	replayUUID, err := sv.jobSvc.Replay(ctx, replayWorkerRequest)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("error while processing replay: %v", err))
 	}
@@ -796,6 +796,7 @@ func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*mode
 		Start:   startDate,
 		End:     endDate,
 		Project: projSpec,
+		Force:   req.Force,
 	}
 	return &replayRequest, nil
 }

@@ -295,7 +295,7 @@ type JobService interface {
 	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
 	ReplayDryRun(*ReplayWorkerRequest) (*tree.TreeNode, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(*ReplayWorkerRequest) (string, error)
+	Replay(context.Context, *ReplayWorkerRequest) (string, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
 	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
