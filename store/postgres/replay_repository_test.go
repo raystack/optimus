@@ -161,7 +161,7 @@ func TestReplayRepository(t *testing.T) {
 	})
 
 	t.Run("GetJobByStatus", func(t *testing.T) {
-		t.Run("should return list of job ID given list of status", func(t *testing.T) {
+		t.Run("should return list of job specs given list of status", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			testModels := []*models.ReplaySpec{}
@@ -189,6 +189,37 @@ func TestReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, jobConfigs[0].ID, replays[0].Job.ID)
 			assert.Equal(t, jobConfigs[2].ID, replays[1].Job.ID)
+		})
+	})
+
+	t.Run("GetJobByIDAndStatus", func(t *testing.T) {
+		t.Run("should return list of job specs given job_id and list of status", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			var testModels []*models.ReplaySpec
+			testModels = append(testModels, testConfigs...)
+
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			err := jobRepo.Insert(testModels[0].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[1].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[2].Job)
+			assert.Nil(t, err)
+
+			repo := NewReplayRepository(db, jobConfigs[0], adapter)
+			err = repo.Insert(testModels[0])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[1])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[2])
+			assert.Nil(t, err)
+
+			statusList := []string{models.ReplayStatusAccepted, models.ReplayStatusInProgress}
+			replays, err := repo.GetByJobIDAndStatus(testModels[2].Job.ID, statusList)
+			assert.Nil(t, err)
+			assert.Equal(t, jobConfigs[2].ID, replays[0].Job.ID)
 		})
 	})
 }

@@ -71,6 +71,7 @@ func replayCommand(l logger, conf config.Provider) *cli.Command {
 
 func replayRunSubCommand(l logger, conf config.Provider) *cli.Command {
 	dryRun := false
+	forceRun := false
 	var (
 		replayProject string
 		namespace     string
@@ -101,6 +102,7 @@ ReplayDryRun date ranges are inclusive.
 	reCmd.MarkFlagRequired("project")
 	reCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of deployee")
 	reCmd.MarkFlagRequired("namespace")
+	reCmd.Flags().BoolVarP(&forceRun, "force", "f", forceRun, "run replay even if a previous run is in progress")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		endDate := args[1]
@@ -129,7 +131,7 @@ ReplayDryRun date ranges are inclusive.
 			return nil
 		}
 
-		replayId, err := runReplayRequest(l, replayProject, namespace, args[0], args[1], endDate, conf)
+		replayId, err := runReplayRequest(l, replayProject, namespace, args[0], args[1], endDate, conf, forceRun)
 		if err != nil {
 			return err
 		}
@@ -227,7 +229,7 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 	return tree
 }
 
-func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (string, error) {
+func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider, forceRun bool) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -244,6 +246,9 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 	defer replayRequestCancel()
 
 	l.Println("firing the replay request...")
+	if forceRun {
+		l.Println("force running replay even if its already in progress")
+	}
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
 		ProjectName: projectName,
@@ -251,6 +256,7 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 		Namespace:   namespace,
 		StartDate:   startDate,
 		EndDate:     endDate,
+		Force:       forceRun,
 	}
 	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
 	if err != nil {
