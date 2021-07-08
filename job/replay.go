@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -42,12 +43,12 @@ func (srv *Service) ReplayDryRun(replayRequest *models.ReplayWorkerRequest) (*tr
 	return rootInstance, nil
 }
 
-func (srv *Service) Replay(replayRequest *models.ReplayWorkerRequest) (string, error) {
+func (srv *Service) Replay(ctx context.Context, replayRequest *models.ReplayWorkerRequest) (string, error) {
 	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
 		return "", err
 	}
 
-	replayUUID, err := srv.replayManager.Replay(replayRequest)
+	replayUUID, err := srv.replayManager.Replay(ctx, replayRequest)
 	if err != nil {
 		return "", err
 	}

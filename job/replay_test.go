@@ -1,6 +1,7 @@
 package job_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -36,6 +37,7 @@ func getRuns(root *tree.TreeNode, countMap map[string][]time.Time) {
 }
 
 func TestReplay(t *testing.T) {
+	ctx := context.Background()
 	noDependency := map[string]models.JobSpecDependency{}
 	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
@@ -322,7 +324,7 @@ func TestReplay(t *testing.T) {
 				End:     replayEnd,
 				Project: projSpec,
 			}
-			_, err := jobSvc.Replay(replayRequest)
+			_, err := jobSvc.Replay(ctx, replayRequest)
 
 			assert.NotNil(t, err)
 		})
@@ -357,12 +359,12 @@ func TestReplay(t *testing.T) {
 
 			errMessage := "error with replay manager"
 			replayManager := new(mock.ReplayManager)
-			replayManager.On("Replay", replayRequest).Return("", errors.New(errMessage))
+			replayManager.On("Replay", ctx, replayRequest).Return("", errors.New(errMessage))
 			defer replayManager.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
 
-			_, err := jobSvc.Replay(replayRequest)
+			_, err := jobSvc.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 		})
@@ -397,12 +399,12 @@ func TestReplay(t *testing.T) {
 
 			replayManager := new(mock.ReplayManager)
 			objUUID := uuid.Must(uuid.NewRandom())
-			replayManager.On("Replay", replayRequest).Return(objUUID.String(), nil)
+			replayManager.On("Replay", ctx, replayRequest).Return(objUUID.String(), nil)
 			defer replayManager.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
 
-			replayUUID, err := jobSvc.Replay(replayRequest)
+			replayUUID, err := jobSvc.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, objUUID.String(), replayUUID)
 		})

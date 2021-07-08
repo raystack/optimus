@@ -201,8 +201,8 @@ func (j *JobService) ReplayDryRun(replayRequest *models.ReplayWorkerRequest) (*t
 	return args.Get(0).(*tree.TreeNode), args.Error(1)
 }
 
-func (j *JobService) Replay(replayRequest *models.ReplayWorkerRequest) (string, error) {
-	args := j.Called(replayRequest)
+func (j *JobService) Replay(ctx context.Context, replayRequest *models.ReplayWorkerRequest) (string, error) {
+	args := j.Called(ctx, replayRequest)
 	return args.Get(0).(string), args.Error(1)
 }
 

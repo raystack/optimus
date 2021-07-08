@@ -1703,7 +1703,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", replayWorkerRequest).Return(randomUUID, nil)
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(randomUUID, nil)
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -1796,7 +1796,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", replayWorkerRequest).Return(emptyUUID, errors.New("internal error"))
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(emptyUUID, errors.New("internal error"))
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
