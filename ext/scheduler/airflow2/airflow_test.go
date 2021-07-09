@@ -280,6 +280,12 @@ func TestAirflow2(t *testing.T) {
 			Config: map[string]string{
 				models.ProjectSchedulerHost: host,
 			},
+			Secret: []models.ProjectSecretItem{
+				{
+					Name:  models.ProjectSchedulerAuth,
+					Value: "admin:admin",
+				},
+			},
 		}
 		jobName := "sample_select"
 
@@ -418,6 +424,12 @@ func TestAirflow2(t *testing.T) {
 			Name: "test-proj",
 			Config: map[string]string{
 				models.ProjectSchedulerHost: host,
+			},
+			Secret: []models.ProjectSecretItem{
+				{
+					Name:  models.ProjectSchedulerAuth,
+					Value: "admin:admin",
+				},
 			},
 		}
 		jobName := "sample_select"

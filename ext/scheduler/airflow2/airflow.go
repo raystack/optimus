@@ -29,7 +29,7 @@ var resBaseDAG []byte
 
 const (
 	baseLibFileName   = "__lib.py"
-    dagStatusUrl      = "api/v1/dags/%s/dagRuns?limit=99999"
+	dagStatusUrl      = "api/v1/dags/%s/dagRuns?limit=99999"
 	dagStatusBatchUrl = "api/v1/dags/~/dagRuns/list"
 	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
@@ -214,9 +214,11 @@ func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.Project
 		return nil, errors.Errorf("scheduler host not set for %s", projSpec.Name)
 	}
 	schdHost = strings.Trim(schdHost, "/")
-	postURL := fmt.Sprintf(
-		fmt.Sprintf("%s/%s", schdHost, dagStatusBatchUrl),
-		jobName)
+	postURL := fmt.Sprintf("%s/%s", schdHost, dagStatusBatchUrl)
+	authToken, ok := projSpec.Secret.GetByName(models.ProjectSchedulerAuth)
+	if !ok {
+		return nil, errors.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projSpec.Name)
+	}
 
 	pageOffset := 0
 	var jobStatus []models.JobStatus
@@ -238,6 +240,8 @@ func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.Project
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to build http request for %s", dagStatusBatchUrl)
 		}
+
+		request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 		resp, err := a.httpClient.Do(request)
 		if err != nil {
