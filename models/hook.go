@@ -60,6 +60,7 @@ type GetHookSchemaResponse struct {
 }
 
 type GetHookQuestionsRequest struct {
+	JobName string
 	PluginOptions
 }
 

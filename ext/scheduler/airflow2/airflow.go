@@ -3,6 +3,7 @@ package airflow2
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,7 +29,7 @@ var resBaseDAG []byte
 
 const (
 	baseLibFileName = "__lib.py"
-	dagStatusUrl    = "api/v1/dags/%s/dagRuns"
+	dagStatusUrl    = "api/v1/dags/%s/dagRuns?limit=99999"
 	dagRunClearURL  = "api/v1/dags/%s/clearTaskInstances"
 )
 
@@ -116,19 +117,24 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		return nil, errors.Errorf("scheduler host not set for %s", projSpec.Name)
 	}
 	schdHost = strings.Trim(schdHost, "/")
-
-	fetchUrl := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
-	request, err := http.NewRequest(http.MethodGet, fetchUrl, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchUrl)
+	authToken, ok := projSpec.Secret.GetByName(models.ProjectSchedulerAuth)
+	if !ok {
+		return nil, errors.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projSpec.Name)
 	}
+
+	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
+	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchURL)
+	}
+	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchUrl)
+		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch airflow dag runs from %s", fetchUrl)
+		return nil, errors.Errorf("failed to fetch airflow dag runs from %s: %d", fetchURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
@@ -184,6 +190,10 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	if !ok {
 		return errors.Errorf("scheduler host not set for %s", projSpec.Name)
 	}
+	authToken, ok := projSpec.Secret.GetByName(models.ProjectSchedulerAuth)
+	if !ok {
+		return errors.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projSpec.Name)
+	}
 
 	schdHost = strings.Trim(schdHost, "/")
 	airflowDateFormat := "2006-01-02T15:04:05+00:00"
@@ -199,13 +209,14 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		return errors.Wrapf(err, "failed to build http request for %s", postURL)
 	}
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {
 		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", postURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("failed to clear airflow dag runs from %s", postURL)
+		return errors.Errorf("failed to clear airflow dag runs from %s: %d", postURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 

@@ -140,6 +140,13 @@ func TestAirflow2(t *testing.T) {
 				Name: "test-proj",
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
+					models.ProjectSchedulerAuth: "admin:admin",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
 				},
 			}, "sample_select")
 
@@ -164,10 +171,26 @@ func TestAirflow2(t *testing.T) {
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
 				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
 			}, "sample_select")
 
 			assert.NotNil(t, err)
 			assert.Len(t, status, 0)
+		})
+		t.Run("should fail if not scheduler secret registered", func(t *testing.T) {
+			air := airflow2.NewScheduler(nil, nil)
+			_, err := air.GetJobStatus(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, "sample_select")
+			assert.NotNil(t, err)
 		})
 	})
 	t.Run("Clear", func(t *testing.T) {
@@ -195,6 +218,12 @@ func TestAirflow2(t *testing.T) {
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
 				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
 			}, "sample_select", startDateTime, endDateTime)
 
 			assert.Nil(t, err)
@@ -217,8 +246,24 @@ func TestAirflow2(t *testing.T) {
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
 				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
 			}, "sample_select", startDateTime, endDateTime)
 
+			assert.NotNil(t, err)
+		})
+		t.Run("should fail if not scheduler secret registered", func(t *testing.T) {
+			air := airflow2.NewScheduler(nil, nil)
+			err := air.Clear(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, "sample_select", startDateTime, endDateTime)
 			assert.NotNil(t, err)
 		})
 	})

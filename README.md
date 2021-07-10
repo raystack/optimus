@@ -57,7 +57,7 @@ Optimus service can be started with
 ```
 
 `serve` command has few required configurations that needs to be set for it to start. Configuration can either be stored
-in `.optimus.yaml` file or set as environment variable. Read more about it in [references](./docs/reference/configuration.md).
+in `.optimus.yaml` file or set as environment variable. Read more about it in [getting started](https://odpf.github.io/optimus/getting-started/configuration/).
 
 ### Installing via brew
 

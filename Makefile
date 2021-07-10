@@ -56,11 +56,11 @@ clean:
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
-	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.25.0
-	go get github.com/golang/protobuf/proto@v1.4.3
-	go get github.com/golang/protobuf/protoc-gen-go@v1.4.3
+	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.26.0
+	go get github.com/golang/protobuf/proto@v1.5.2
+	go get github.com/golang/protobuf/protoc-gen-go@v1.5.2
 	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
-	go get google.golang.org/grpc@v1.35.0
+	go get google.golang.org/grpc@v1.38.0
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.2.0
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.2.0
 	go get github.com/bufbuild/buf/cmd/buf@v0.37.0

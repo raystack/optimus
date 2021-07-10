@@ -36,6 +36,7 @@ func (s *GRPCServer) GetHookSchema(ctx context.Context, req *pb.GetHookSchema_Re
 
 func (s *GRPCServer) GetHookQuestions(ctx context.Context, req *pb.GetHookQuestions_Request) (*pb.GetHookQuestions_Response, error) {
 	resp, err := s.Impl.GetHookQuestions(ctx, models.GetHookQuestionsRequest{
+		JobName:       req.JobName,
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {
