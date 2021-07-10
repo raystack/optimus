@@ -1,35 +1,61 @@
 # Shell Autocompletion Feature
 
-The shell autcompletion feature in optimus CLI is supported by one of the popular CLI framework for Go i.e Cobra, which contains a library for creating powerful modern CLI applications and a tool to rapidly generate Cobra based applications and command files.
-The cobra version v1.2.1 which enables the following functionality in Optimus CLI :-
-Automatically adds completion command for shell completions i.e bash, zsh, fish and PowerShell. If a completion command is already provided, uses that instead.
+The shell auto-completion feature in optimus CLI provide the relief you not to remember the specific command , you just need to type some initials of the command then complete command gets generated automatically.If a completion command is already provided, uses that instead.
 
 ## Steps to setup shell completion functionality 
 
-Before moving towards setup one can check whether the functionality is enabled in it Optimus binary by executing `optimus [tab][tab]` in the optimus CLI. If it's working fine then you are good to go.
+Before moving towards setup one can check whether the functionality is enabled in it's Optimus binary by executing `optimus [tab][tab]` in the CLI. If it's working fine then you are good to go.
 Otherwise, follow the setup shown below.
+
+### 1. Bash auto-completion 
+
+### Introduction :
+The optimus completion script for Bash can be generated with `./optimus completion bash`. Sourcing this script in your shell enables optimus completion.
+
+However, the completion script depends on bash-completion, which means that you have to install this software first (you can test if you have bash-completion already installed by running 
+`type _init_completion`).
+
+
+>Warning: There are two versions of bash-completion, v1 and v2. V1 is for Bash 3.2 (which is the default on macOS), and v2 is for Bash 4.1+. The optimus completion script doesn't work correctly with bash-completion v1 and Bash 3.2. It requires bash-completion v2 and Bash 4.1+. Thus, to be able to correctly use optimus completion on macOS, you have to install and use Bash 4.1+ (instructions). The following instructions assume that you use Bash 4.1+ (that is, any Bash version of 4.1 or newer).
+
+### Enable optimus autocompletion
+You now have to ensure that the optimus completion script gets sourced in all your shell sessions. There are multiple ways to achieve this:
+- Source the completion script in your ~/.bash_profile file:
+
 ```
-Bash:
+echo 'source <(./optimus completion bash)' >> ~/.bash_profile
+```
 
-  $ source <(./optimus completion bash)
+- Add the completion script to the /usr/local/etc/bash_completion.d directory:
+```
+# To load completions for each session, execute once:
+# Linux:
+$ ./optimus completion bash > /etc/bash_completion.d/_optimus
+# macOS:
+$ ./optimus completion bash > /usr/local/etc/bash_completion.d/_optimus
+```
 
-  # To load completions for each session, execute once:
-  # Linux:
-  $ ./optimus completion bash > /etc/bash_completion.d/./optimus
-  # macOS:
-  $ ./optimus completion bash > /usr/local/etc/bash_completion.d/./optimus
+- If you installed optimus with Homebrew (as explained here), then the optimus completion script should already be in /usr/local/etc/bash_completion.d/_optimus. In that case, you don't need to do anything.
 
-Zsh:
+>Note: The Homebrew installation of bash-completion v2 sources all the files in the BASH_COMPLETION_COMPAT_DIR directory, that's why the latter two methods work.
 
-  # If shell completion is not already enabled in your environment,you will need to enable it.
-  # You can execute the following once:
+In any case, after reloading your shell, optimus completion should be working.
 
+### 2. Zsh Auto-completion
+
+The optimus completion script for Zsh can be generated with the command `./optimus completion zsh`. Sourcing the completion script in your shell enables optimus autocompletion.
+
+- If shell completion is not already enabled in your environment,you will need to enable it.You can execute the following once:
+If you get an error like complete:13: command not found: compdef, then add the following to the beginning of your ~/.zshrc file:
+```
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
-
-  # To load completions for each session, execute once:
+```
+- To load completions for each session, execute once:
+```
   $ ./optimus completion zsh > "${fpath[1]}/_optimus"
-
-  # Now start a new shell for this setup to take effect and execute the below command :
+```
+- Now start a new shell for this setup to take effect and execute the below command to do sourcing in all your shell session:
+```
   $ source ~/.zshrc 
 ```
 
