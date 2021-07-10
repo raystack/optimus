@@ -443,12 +443,13 @@ class OptimusAPIClient:
         return response.json()
 
     def get_job_metadata(self, execution_date, project, job) -> dict:
-        url = '{optimus_host}/api/v1/instance'.format(optimus_host=self.host)
+        url = '{optimus_host}/api/v1/project/{project_name}/job/{job_name}/instance'.format(optimus_host=self.host,
+                                                                                            project_name=project,
+                                                                                            job_name=job)
         request_data = {
             "scheduledAt": execution_date,
-            "projectName": project,
-            "jobName": job,
-            "type": "hook",
+            "instance_type": "TASK",
+            "instance_name": "none"
         }
         response = requests.post(url, data=json.dumps(request_data))
         self._raise_error_if_request_failed(response)

@@ -33,6 +33,7 @@ func (s *GRPCServer) GetTaskSchema(ctx context.Context, req *pb.GetTaskSchema_Re
 
 func (s *GRPCServer) GetTaskQuestions(ctx context.Context, req *pb.GetTaskQuestions_Request) (*pb.GetTaskQuestions_Response, error) {
 	resp, err := s.Impl.GetTaskQuestions(ctx, models.GetTaskQuestionsRequest{
+		JobName:       req.JobName,
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {
