@@ -225,5 +225,17 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 
 func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
 	batchSize int) ([]models.JobStatus, error) {
-	panic("not implemented")
+	allJobStatus, err := a.GetJobStatus(ctx, projSpec, jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	var requestedJobStatus []models.JobStatus
+	for _, jobStatus := range allJobStatus {
+		if jobStatus.ScheduledAt.Equal(startDate) || (jobStatus.ScheduledAt.After(startDate) && jobStatus.ScheduledAt.Before(endDate)) {
+			requestedJobStatus = append(requestedJobStatus, jobStatus)
+		}
+	}
+
+	return requestedJobStatus, nil
 }
