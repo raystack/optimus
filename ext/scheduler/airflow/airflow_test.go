@@ -224,4 +224,99 @@ func TestAirflow(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	})
+	t.Run("GetDagRunStatus", func(t *testing.T) {
+		host := "http://airflow.example.io"
+		startDate := "2020-03-25"
+		startDateTime, _ := time.Parse(job.ReplayDateFormat, startDate)
+		endDate := "2020-03-27"
+		endDateTime, _ := time.Parse(job.ReplayDateFormat, endDate)
+		t.Run("should return dag run status list with valid args", func(t *testing.T) {
+			respString := `
+[
+{
+	"dag_id": "sample_select",
+	"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-25+02%3A00%3A00%2B00%3A00",
+	"execution_date": "2020-03-25T02:00:00+00:00",
+	"id": 1997,
+	"run_id": "scheduled__2020-03-25T02:00:00+00:00",
+	"start_date": "2020-06-01T16:32:58.489042+00:00",
+	"state": "success"
+},
+{
+	"dag_id": "sample_select",
+	"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-26+02%3A00%3A00%2B00%3A00",
+	"execution_date": "2020-03-26T02:00:00+00:00",
+	"id": 1998,
+	"run_id": "scheduled__2020-03-26T02:00:00+00:00",
+	"start_date": "2020-06-01T16:33:01.020645+00:00",
+	"state": "running"
+}
+]`
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow.NewScheduler(nil, client)
+			status, err := air.GetDagRunStatus(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, "sample_select", startDateTime, endDateTime, 0)
+
+			assert.Nil(t, err)
+			assert.Len(t, status, 2)
+		})
+		t.Run("should not return any status if no dag run found for the requested window", func(t *testing.T) {
+			respString := `
+[
+{
+	"dag_id": "sample_select",
+	"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-25+02%3A00%3A00%2B00%3A00",
+	"execution_date": "2020-03-01T02:00:00+00:00",
+	"id": 1997,
+	"run_id": "scheduled__2020-03-25T02:00:00+00:00",
+	"start_date": "2020-06-01T16:32:58.489042+00:00",
+	"state": "success"
+},
+{
+	"dag_id": "sample_select",
+	"dag_run_url": "/graph?dag_id=sample_select&execution_date=2020-03-26+02%3A00%3A00%2B00%3A00",
+	"execution_date": "2020-03-02T02:00:00+00:00",
+	"id": 1998,
+	"run_id": "scheduled__2020-03-26T02:00:00+00:00",
+	"start_date": "2020-06-01T16:33:01.020645+00:00",
+	"state": "running"
+}
+]`
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHttpClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow.NewScheduler(nil, client)
+			status, err := air.GetDagRunStatus(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, "sample_select", startDateTime, endDateTime, 0)
+
+			assert.Nil(t, err)
+			assert.Len(t, status, 0)
+		})
+	})
 }
