@@ -1605,46 +1605,46 @@ func TestRuntimeServiceServer(t *testing.T) {
 	})
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
-		t.Run("should update datastore resource successfully", func(t *testing.T) {
-			projectName := "a-data-project"
-			jobName := "a-data-job"
-			timeLayout := "2006-01-02"
-			startDate, _ := time.Parse(timeLayout, "2020-11-25")
-			endDate, _ := time.Parse(timeLayout, "2020-11-28")
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: "dev-test-namespace-1",
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-				ProjectSpec: projectSpec,
-			}
-			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: jobName,
-				Task: models.JobSpecTask{
-					Config: models.JobSpecConfigs{
-						{
-							Name:  "do",
-							Value: "this",
-						},
+		projectName := "a-data-project"
+		jobName := "a-data-job"
+		timeLayout := "2006-01-02"
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "dev-test-namespace-1",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+			ProjectSpec: projectSpec,
+		}
+		jobSpec := models.JobSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: jobName,
+			Task: models.JobSpecTask{
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "do",
+						Value: "this",
 					},
 				},
-				Assets: *models.JobAssets{}.New(
-					[]models.JobSpecAsset{
-						{
-							Name:  "query.sql",
-							Value: "select * from 1",
-						},
-					}),
-			}
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				}),
+		}
+		t.Run("should do replay dry run successfully", func(t *testing.T) {
+			startDate, _ := time.Parse(timeLayout, "2020-11-25")
+			endDate, _ := time.Parse(timeLayout, "2020-11-28")
 			replayWorkerRequest := &models.ReplayWorkerRequest{
 				Job:     jobSpec,
 				Start:   startDate,
@@ -1652,6 +1652,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project: projectSpec,
 			}
 			dagNode := tree.NewTreeNode(jobSpec)
+			dagNode.Runs.Add(time.Date(2020, 11, 25, 2, 0, 0, 0, time.UTC))
+			dagNode.Runs.Add(time.Date(2020, 11, 26, 2, 0, 0, 0, time.UTC))
+			dagNode.Runs.Add(time.Date(2020, 11, 27, 2, 0, 0, 0, time.UTC))
+			dagNode.Runs.Add(time.Date(2020, 11, 28, 2, 0, 0, 0, time.UTC))
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
@@ -1701,6 +1705,387 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.Response.JobName)
 			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.Response.Dependents)
 			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.Response.Runs)
+		})
+		t.Run("should failed when replay request is invalid", func(t *testing.T) {
+			startDate, _ := time.Parse(timeLayout, "2020-11-25")
+			endDate, _ := time.Parse(timeLayout, "2020-11-24")
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Nil(t, replayResponse)
+		})
+		t.Run("should failed when unable to prepare the job specs", func(t *testing.T) {
+			startDate, _ := time.Parse(timeLayout, "2020-11-25")
+			endDate, _ := time.Parse(timeLayout, "2020-11-28")
+			replayWorkerRequest := &models.ReplayWorkerRequest{
+				Job:     jobSpec,
+				Start:   startDate,
+				End:     endDate,
+				Project: projectSpec,
+			}
+			dagNode := tree.NewTreeNode(jobSpec)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("ReplayDryRun", replayWorkerRequest).Return(dagNode, errors.New("populating jobs spec failed"))
+			defer jobService.AssertExpectations(t)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Nil(t, replayResponse)
+		})
+	})
+
+	t.Run("Replay", func(t *testing.T) {
+		projectName := "a-data-project"
+		jobName := "a-data-job"
+		timeLayout := "2006-01-02"
+		startDate, _ := time.Parse(timeLayout, "2020-11-25")
+		endDate, _ := time.Parse(timeLayout, "2020-11-28")
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "dev-test-namespace-1",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+			ProjectSpec: projectSpec,
+		}
+		jobSpec := models.JobSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: jobName,
+			Task: models.JobSpecTask{
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "do",
+						Value: "this",
+					},
+				},
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				}),
+		}
+		t.Run("should do replay successfully", func(t *testing.T) {
+			replayWorkerRequest := &models.ReplayWorkerRequest{
+				Job:     jobSpec,
+				Start:   startDate,
+				End:     endDate,
+				Project: projectSpec,
+			}
+			randomUUID := "random-uuid"
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(randomUUID, nil)
+			defer jobService.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, randomUUID, replayResponse.Id)
+		})
+		t.Run("should failed when replay request is invalid", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New("Namespace not found"))
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				nil,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Nil(t, replayResponse)
+		})
+		t.Run("should failed when replay process is failed", func(t *testing.T) {
+			replayWorkerRequest := &models.ReplayWorkerRequest{
+				Job:     jobSpec,
+				Start:   startDate,
+				End:     endDate,
+				Project: projectSpec,
+			}
+			emptyUUID := ""
+			errMessage := "internal error"
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(emptyUUID, errors.New(errMessage))
+			defer jobService.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), errMessage)
+			assert.Nil(t, replayResponse)
+		})
+		t.Run("should failed when project is not found", func(t *testing.T) {
+			errMessage := "project not found"
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(models.ProjectSpec{}, errors.New(errMessage))
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				nil,
+				nil,
+				nil,
+				projectRepoFactory,
+				nil,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), errMessage)
+			assert.Nil(t, replayResponse)
+		})
+		t.Run("should failed when job is not found in the namespace", func(t *testing.T) {
+			errMessage := "job not found in namespace"
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(models.JobSpec{}, errors.New(errMessage))
+			defer jobService.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), errMessage)
+			assert.Nil(t, replayResponse)
 		})
 	})
 }
