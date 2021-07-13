@@ -320,7 +320,7 @@ type JobService interface {
 	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
 	ReplayDryRun(*ReplayWorkerRequest) (*tree.TreeNode, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(*ReplayWorkerRequest) (string, error)
+	Replay(context.Context, *ReplayWorkerRequest) (string, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
