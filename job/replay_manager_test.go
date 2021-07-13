@@ -139,7 +139,7 @@ func TestReplayManager(t *testing.T) {
 			errMessage := "error while generating uuid"
 			uuidProvider.On("NewUUID").Return(objUUID, errors.New(errMessage))
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
@@ -174,7 +174,7 @@ func TestReplayManager(t *testing.T) {
 			}
 			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
@@ -195,7 +195,7 @@ func TestReplayManager(t *testing.T) {
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
@@ -232,7 +232,7 @@ func TestReplayManager(t *testing.T) {
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
@@ -279,7 +279,7 @@ func TestReplayManager(t *testing.T) {
 			}
 			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
@@ -327,7 +327,7 @@ func TestReplayManager(t *testing.T) {
 			}
 			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
@@ -345,7 +345,7 @@ func TestReplayManager(t *testing.T) {
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			errMessage := "unable to get status"
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errMessage))
@@ -365,7 +365,7 @@ func TestReplayManager(t *testing.T) {
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			jobStatus := []models.JobStatus{
 				{
@@ -411,7 +411,7 @@ func TestReplayManager(t *testing.T) {
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			jobStatus := []models.JobStatus{
 				{

@@ -1734,6 +1734,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService,
 				nil,
+				nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -1788,6 +1789,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
 				jobService,
+				nil,
 				nil,
 				projectRepoFactory,
 				namespaceRepoFact,
@@ -1884,6 +1886,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService,
 				nil,
+				nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -1922,6 +1925,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			adapter := v1.NewAdapter(nil, nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
+				nil,
 				nil,
 				nil,
 				projectRepoFactory,
@@ -1978,6 +1982,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService,
 				nil,
+				nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -2011,6 +2016,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			adapter := v1.NewAdapter(nil, nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
+				nil,
 				nil,
 				nil,
 				projectRepoFactory,
@@ -2059,6 +2065,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
 				jobService,
+				nil,
 				nil,
 				projectRepoFactory,
 				namespaceRepoFact,

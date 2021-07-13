@@ -163,7 +163,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
 
-			scheduler := new(mock.MockScheduler)
+			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 
 			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
