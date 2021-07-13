@@ -1,5 +1,5 @@
 # Optimus
-[![Coverage Status](https://coveralls.io/repos/github/odpf/optimus/badge.svg?branch=master)](https://coveralls.io/github/odpf/optimus?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/odpf/optimus/badge.svg?branch=main)](https://coveralls.io/github/odpf/optimus?branch=main)
 [![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)](test)
 [![build workflow](https://github.com/odpf/optimus/actions/workflows/build.yml/badge.svg)](build)
 
