@@ -252,6 +252,19 @@ func TestAirflow(t *testing.T) {
 	"state": "running"
 }
 ]`
+			expectedExecutionTime0, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-25T02:00:00+00:00")
+			expectedExecutionTime1, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-26T02:00:00+00:00")
+			expectedStatus := []models.JobStatus{
+				{
+					ScheduledAt: expectedExecutionTime0,
+					State:       models.JobStatusStateSuccess,
+				},
+				{
+					ScheduledAt: expectedExecutionTime1,
+					State:       models.JobStatusStateRunning,
+				},
+			}
+
 			// create a new reader with JSON
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHttpClient{
@@ -272,7 +285,7 @@ func TestAirflow(t *testing.T) {
 			}, "sample_select", startDateTime, endDateTime, 0)
 
 			assert.Nil(t, err)
-			assert.Len(t, status, 2)
+			assert.Equal(t, expectedStatus, status)
 		})
 		t.Run("should not return any status if no dag run found for the requested window", func(t *testing.T) {
 			respString := `

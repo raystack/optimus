@@ -1785,6 +1785,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project: projectSpec,
 			}
 			emptyUUID := ""
+			errMessage := "internal error"
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
@@ -1796,7 +1797,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(emptyUUID, errors.New("internal error"))
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(emptyUUID, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -1828,11 +1829,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when project is not found", func(t *testing.T) {
+			errMessage := "project not found"
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", projectName).Return(models.ProjectSpec{}, errors.New("project not found"))
+			projectRepository.On("GetByName", projectName).Return(models.ProjectSpec{}, errors.New(errMessage))
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -1861,9 +1864,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when job is not found in the namespace", func(t *testing.T) {
+			errMessage := "job not found in namespace"
+
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
 			defer projectRepository.AssertExpectations(t)
@@ -1877,7 +1883,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepository.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
-			jobService.On("GetByName", jobName, namespaceSpec).Return(models.JobSpec{}, errors.New("job not found in namespace"))
+			jobService.On("GetByName", jobName, namespaceSpec).Return(models.JobSpec{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepoFact := new(mock.NamespaceRepoFactory)
@@ -1905,6 +1911,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
 		})
 	})

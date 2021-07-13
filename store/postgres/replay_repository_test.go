@@ -31,44 +31,42 @@ func TestReplayRepository(t *testing.T) {
 	}
 
 	gTask := "g-task"
-	execUnit1 := new(mock.TaskPlugin)
-	execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
-		Name: gTask,
-	}, nil)
-
-	allTasksRepo := new(mock.SupportedTaskRepo)
-	allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
-	adapter := NewAdapter(allTasksRepo, nil)
-
 	jobConfigs := []models.JobSpec{
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "job-1",
-			Task: models.JobSpecTask{
-				Unit: execUnit1,
-			},
 		},
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "job-2",
-			Task: models.JobSpecTask{
-				Unit: execUnit1,
-			},
 		},
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "job-3",
-			Task: models.JobSpecTask{
-				Unit: execUnit1,
-			},
 		},
 	}
-
-	unitData := models.GenerateTaskDestinationRequest{
-		Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-		Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+	startTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-15")
+	endTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-20")
+	testConfigs := []*models.ReplaySpec{
+		{
+			ID:        uuid.Must(uuid.NewRandom()),
+			StartDate: startTime,
+			EndDate:   endTime,
+			Status:    models.ReplayStatusAccepted,
+		},
+		{
+			ID:        uuid.Must(uuid.NewRandom()),
+			StartDate: startTime,
+			EndDate:   endTime,
+			Status:    models.ReplayStatusFailed,
+		},
+		{
+			ID:        uuid.Must(uuid.NewRandom()),
+			StartDate: startTime,
+			EndDate:   endTime,
+			Status:    models.ReplayStatusInProgress,
+		},
 	}
-	execUnit1.On("GenerateTaskDestination", context.TODO(), unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
@@ -93,40 +91,26 @@ func TestReplayRepository(t *testing.T) {
 		return dbConn
 	}
 
-	startTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-15")
-	endTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-20")
-	testConfigs := []*models.ReplaySpec{
-		{
-			ID:        uuid.Must(uuid.NewRandom()),
-			Job:       jobConfigs[0],
-			StartDate: startTime,
-			EndDate:   endTime,
-			Status:    models.ReplayStatusAccepted,
-		},
-		{
-			ID:        uuid.Must(uuid.NewRandom()),
-			Job:       jobConfigs[1],
-			StartDate: startTime,
-			EndDate:   endTime,
-			Status:    models.ReplayStatusFailed,
-		},
-		{
-			ID:        uuid.Must(uuid.NewRandom()),
-			Job:       jobConfigs[2],
-			StartDate: startTime,
-			EndDate:   endTime,
-			Status:    models.ReplayStatusInProgress,
-		},
-	}
-
 	t.Run("Insert and GetByID", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
-		testModels := []*models.ReplaySpec{}
+
+		execUnit1 := new(mock.TaskPlugin)
+		defer execUnit1.AssertExpectations(t)
+
+		for idx, jobConfig := range jobConfigs {
+			jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+			testConfigs[idx].Job = jobConfig
+		}
+
+		allTasksRepo := new(mock.SupportedTaskRepo)
+		defer allTasksRepo.AssertExpectations(t)
+		adapter := NewAdapter(allTasksRepo, nil)
+
+		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
 		repo := NewReplayRepository(db, jobConfigs[0], adapter)
-
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
@@ -138,11 +122,22 @@ func TestReplayRepository(t *testing.T) {
 	t.Run("UpdateStatus", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
-		testModels := []*models.ReplaySpec{}
+		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewReplayRepository(db, jobConfigs[0], adapter)
+		execUnit1 := new(mock.TaskPlugin)
+		defer execUnit1.AssertExpectations(t)
 
+		for idx, jobConfig := range jobConfigs {
+			jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+			testConfigs[idx].Job = jobConfig
+		}
+
+		allTasksRepo := new(mock.SupportedTaskRepo)
+		defer allTasksRepo.AssertExpectations(t)
+
+		adapter := NewAdapter(allTasksRepo, nil)
+		repo := NewReplayRepository(db, jobConfigs[0], adapter)
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
@@ -166,6 +161,27 @@ func TestReplayRepository(t *testing.T) {
 			defer db.Close()
 			testModels := []*models.ReplaySpec{}
 			testModels = append(testModels, testConfigs...)
+
+			execUnit1 := new(mock.TaskPlugin)
+			defer execUnit1.AssertExpectations(t)
+			execUnit1.On("GetTaskSchema", context.TODO(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: gTask,
+			}, nil)
+			for idx, jobConfig := range jobConfigs {
+				jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+				testConfigs[idx].Job = jobConfig
+			}
+
+			allTasksRepo := new(mock.SupportedTaskRepo)
+			defer allTasksRepo.AssertExpectations(t)
+			allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
+			adapter := NewAdapter(allTasksRepo, nil)
+
+			unitData := models.GenerateTaskDestinationRequest{
+				Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
 
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
@@ -198,6 +214,27 @@ func TestReplayRepository(t *testing.T) {
 			defer db.Close()
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
+
+			execUnit1 := new(mock.TaskPlugin)
+			defer execUnit1.AssertExpectations(t)
+			execUnit1.On("GetTaskSchema", context.TODO(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+				Name: gTask,
+			}, nil)
+			for idx, jobConfig := range jobConfigs {
+				jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+				testConfigs[idx].Job = jobConfig
+			}
+
+			allTasksRepo := new(mock.SupportedTaskRepo)
+			defer allTasksRepo.AssertExpectations(t)
+			allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
+			adapter := NewAdapter(allTasksRepo, nil)
+
+			unitData := models.GenerateTaskDestinationRequest{
+				Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			}
+			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
 
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)

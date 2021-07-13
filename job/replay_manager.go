@@ -196,10 +196,15 @@ func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput 
 }
 
 func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree.TreeNode) error {
-	for _, activeNode := range activeNodes {
-		for _, reqNode := range reqReplayNodes {
-			if activeNode.Data.GetName() == reqNode.Data.GetName() {
-				return checkAnyConflictedRuns(activeNode, reqNode)
+	activeNodesMap := make(map[string]*tree.TreeNode)
+	for _, activeNodes := range activeNodes {
+		activeNodesMap[activeNodes.GetName()] = activeNodes
+	}
+
+	for _, reqNode := range reqReplayNodes {
+		if activeNodesMap[reqNode.Data.GetName()] != nil {
+			if err := checkAnyConflictedRuns(activeNodesMap[reqNode.Data.GetName()], reqNode); err != nil {
+				return err
 			}
 		}
 	}
@@ -256,16 +261,16 @@ func (m *Manager) Init() {
 
 func (m *Manager) shuttingDownLongRunningReplay() {
 	replaySpecRepo := m.replaySpecRepoFac.New(models.JobSpec{})
-	replaySpecs, err := replaySpecRepo.GetByStatus([]string{models.ReplayStatusInProgress, models.ReplayStatusAccepted})
+	runningReplaySpecs, err := replaySpecRepo.GetByStatus(ReplayStatusToValidate)
 	if err != nil {
-		logger.I("shutting down long running replay jobs failed")
+		logger.I("shutting down long running replay jobs failed: query failed")
 	}
-	for _, replaySpec := range replaySpecs {
-		runningTime := time.Now().Sub(replaySpec.CreatedAt)
+	for _, runningReplaySpec := range runningReplaySpecs {
+		runningTime := time.Now().Sub(runningReplaySpec.CreatedAt)
 		if runningTime > m.config.RunTimeout {
-			if updateStatusErr := replaySpecRepo.UpdateStatus(replaySpec.ID, models.ReplayStatusFailed, models.ReplayMessage{
+			if updateStatusErr := replaySpecRepo.UpdateStatus(runningReplaySpec.ID, models.ReplayStatusFailed, models.ReplayMessage{
 				Type:    ReplayRunTimeout,
-				Message: fmt.Sprintf("replay has been running since %s", replaySpec.CreatedAt.UTC().Format(TimestampLogFormat)),
+				Message: fmt.Sprintf("replay has been running since %s", runningReplaySpec.CreatedAt.UTC().Format(TimestampLogFormat)),
 			}); updateStatusErr != nil {
 				logger.I(fmt.Sprintf("shutting down long running replay jobs failed: %s", updateStatusErr))
 			}

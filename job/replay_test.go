@@ -37,7 +37,7 @@ func getRuns(root *tree.TreeNode, countMap map[string][]time.Time) {
 }
 
 func TestReplay(t *testing.T) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	noDependency := map[string]models.JobSpecDependency{}
 	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil

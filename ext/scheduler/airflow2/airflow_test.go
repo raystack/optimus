@@ -270,6 +270,7 @@ func TestAirflow2(t *testing.T) {
 	})
 	t.Run("GetDagRunStatus", func(t *testing.T) {
 		host := "http://airflow.example.io"
+		dagStatusBatchUrl := "api/v1/dags/~/dagRuns/list"
 		startDate := "2021-05-20"
 		startDateTime, _ := time.Parse(job.ReplayDateFormat, startDate)
 		endDate := "2021-05-25"
@@ -279,6 +280,12 @@ func TestAirflow2(t *testing.T) {
 			Name: "test-proj",
 			Config: map[string]string{
 				models.ProjectSchedulerHost: host,
+			},
+			Secret: []models.ProjectSecretItem{
+				{
+					Name:  models.ProjectSchedulerAuth,
+					Value: "admin:admin",
+				},
 			},
 		}
 		jobName := "sample_select"
@@ -310,6 +317,19 @@ func TestAirflow2(t *testing.T) {
 ],
 "total_entries": 2
 }`
+			expectedExecutionTime0, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-25T02:00:00+00:00")
+			expectedExecutionTime1, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-26T02:00:00+00:00")
+			expectedStatus := []models.JobStatus{
+				{
+					ScheduledAt: expectedExecutionTime0,
+					State:       models.JobStatusStateSuccess,
+				},
+				{
+					ScheduledAt: expectedExecutionTime1,
+					State:       models.JobStatusStateSuccess,
+				},
+			}
+
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHttpClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
@@ -324,7 +344,7 @@ func TestAirflow2(t *testing.T) {
 			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.Nil(t, err)
-			assert.Len(t, status, 2)
+			assert.Equal(t, expectedStatus, status)
 		})
 		t.Run("should return all dag run status when total entries is greater than page limit request", func(t *testing.T) {
 			respStringFirst := `{
@@ -367,6 +387,24 @@ func TestAirflow2(t *testing.T) {
     ],
     "total_entries": 3
 }`
+			expectedExecutionTime0, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-25T02:00:00+00:00")
+			expectedExecutionTime1, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-26T02:00:00+00:00")
+			expectedExecutionTime2, _ := time.Parse(models.InstanceScheduledAtTimeLayout, "2020-03-26T02:00:00+00:00")
+			expectedStatus := []models.JobStatus{
+				{
+					ScheduledAt: expectedExecutionTime0,
+					State:       models.JobStatusStateSuccess,
+				},
+				{
+					ScheduledAt: expectedExecutionTime1,
+					State:       models.JobStatusStateFailed,
+				},
+				{
+					ScheduledAt: expectedExecutionTime2,
+					State:       models.JobStatusStateRunning,
+				},
+			}
+
 			dagRunResp := []io.ReadCloser{
 				ioutil.NopCloser(bytes.NewReader([]byte(respStringFirst))),
 				ioutil.NopCloser(bytes.NewReader([]byte(respStringSecond))),
@@ -386,7 +424,7 @@ func TestAirflow2(t *testing.T) {
 			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.Nil(t, err)
-			assert.Len(t, status, 3)
+			assert.Equal(t, expectedStatus, status)
 		})
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
@@ -404,6 +442,7 @@ func TestAirflow2(t *testing.T) {
 			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("failed to fetch airflow dag runs from %s", dagStatusBatchUrl))
 			assert.Len(t, status, 0)
 		})
 	})
