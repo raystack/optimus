@@ -55,12 +55,19 @@ type JobBehavior struct {
 	DependsOnPast bool             `yaml:"depends_on_past" json:"depends_on_past"`
 	Catchup       bool             `yaml:"catch_up" json:"catch_up"`
 	Retry         JobBehaviorRetry `yaml:"retry,omitempty" json:"retry"`
+	Notify        []JobNotifier    `yaml:"notify,omitempty" json:"notify"`
 }
 
 type JobBehaviorRetry struct {
 	Count              int    `yaml:"count,omitempty" json:"count,omitempty"`
 	Delay              string `yaml:"delay,omitempty" json:"delay,omitempty"`
 	ExponentialBackoff bool   `yaml:"exponential_backoff,omitempty" json:"exponential_backoff,omitempty"`
+}
+
+type JobNotifier struct {
+	On       string `yaml:"on" json:"on" validate:"regexp=^(sla_miss|failure|)$"`
+	Config   map[string]string
+	Channels []string
 }
 
 type JobTask struct {
@@ -137,6 +144,47 @@ func (conf *Job) MergeFrom(parent Job) {
 	}
 	if conf.Behavior.Catchup == false {
 		conf.Behavior.Catchup = parent.Behavior.Catchup
+	}
+	for _, pNotify := range parent.Behavior.Notify {
+		childNotifyIdx := -1
+		for cnIdx, cn := range conf.Behavior.Notify {
+			if pNotify.On == cn.On {
+				childNotifyIdx = cnIdx
+				break
+			}
+		}
+		if childNotifyIdx == -1 {
+			conf.Behavior.Notify = append(conf.Behavior.Notify, pNotify)
+		} else {
+			// already exists just inherit
+
+			// configs
+			if conf.Behavior.Notify[childNotifyIdx].Config == nil {
+				conf.Behavior.Notify[childNotifyIdx].Config = map[string]string{}
+			}
+			for pNotifyConfigKey, pNotifyConfigVal := range pNotify.Config {
+				if _, ok := conf.Behavior.Notify[childNotifyIdx].Config[pNotifyConfigKey]; !ok {
+					conf.Behavior.Notify[childNotifyIdx].Config[pNotifyConfigKey] = pNotifyConfigVal
+				}
+			}
+
+			// channels
+			if conf.Behavior.Notify[childNotifyIdx].Channels == nil {
+				conf.Behavior.Notify[childNotifyIdx].Channels = []string{}
+			}
+			for _, pNotifyChannel := range pNotify.Channels {
+				childNotifyChannelIdx := -1
+				for cnChannelIdx, cnChannel := range conf.Behavior.Notify[childNotifyIdx].Channels {
+					if cnChannel == pNotifyChannel {
+						childNotifyChannelIdx = cnChannelIdx
+						break
+					}
+				}
+				if childNotifyChannelIdx == -1 {
+					conf.Behavior.Notify[childNotifyIdx].Channels = append(conf.Behavior.Notify[childNotifyIdx].Channels, pNotifyChannel)
+				}
+			}
+		}
 	}
 
 	if conf.Description == "" {
@@ -368,6 +416,15 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		}
 	}
 
+	var jobNotifiers []models.JobSpecNotifier
+	for _, notify := range conf.Behavior.Notify {
+		jobNotifiers = append(jobNotifiers, models.JobSpecNotifier{
+			On:       models.JobEventType(notify.On),
+			Config:   notify.Config,
+			Channels: notify.Channels,
+		})
+	}
+
 	job := models.JobSpec{
 		Version:     conf.Version,
 		Name:        strings.TrimSpace(conf.Name),
@@ -387,6 +444,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				Delay:              retryDelayDuration,
 				ExponentialBackoff: conf.Behavior.Retry.ExponentialBackoff,
 			},
+			Notify: jobNotifiers,
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -428,6 +486,15 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		return Job{}, err
 	}
 
+	var notifiers []JobNotifier
+	for _, notify := range spec.Behavior.Notify {
+		notifiers = append(notifiers, JobNotifier{
+			On:       string(notify.On),
+			Config:   notify.Config,
+			Channels: notify.Channels,
+		})
+	}
+
 	parsed := Job{
 		Version:     spec.Version,
 		Name:        spec.Name,
@@ -446,6 +513,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 				Delay:              retryDelayDuration,
 				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
 			},
+			Notify: notifiers,
 		},
 		Task: JobTask{
 			Name:   taskSchema.Name,

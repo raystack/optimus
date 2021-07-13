@@ -112,7 +112,7 @@ func (srv *Service) GetAll(namespace models.NamespaceSpec) ([]models.JobSpec, er
 // Dump takes a jobSpec of a project, resolves dependencies, priorities and returns the compiled Job
 func (srv *Service) Dump(namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.Job, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
 	if err != nil {
 		return models.Job{}, err
 	}
@@ -213,7 +213,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 // store
 func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, progressObserver progress.Observer) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.getDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
 	if err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func (srv *Service) filterJobSpecForNamespace(jobSpecs []models.JobSpec, namespa
 	return filteredJobSpecs, nil
 }
 
-func (srv *Service) getDependencyResolvedSpecs(proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+func (srv *Service) GetDependencyResolvedSpecs(proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
 	jobSpecs, err := projectJobSpecRepo.GetAll()
@@ -408,7 +408,7 @@ func (srv *Service) publishMetadata(namespace models.NamespaceSpec, jobSpecs []m
 func (srv *Service) isJobDeletable(projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
 	// check if this job spec is dependency of any other job spec
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	depsResolvedJobSpecs, err := srv.getDependencyResolvedSpecs(projectSpec, projectJobSpecRepo, nil)
+	depsResolvedJobSpecs, err := srv.GetDependencyResolvedSpecs(projectSpec, projectJobSpecRepo, nil)
 	if err != nil {
 		return err
 	}

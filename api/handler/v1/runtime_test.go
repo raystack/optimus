@@ -3,9 +3,13 @@ package v1_test
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/core/tree"
 
@@ -25,7 +29,7 @@ import (
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
-	logger.Init("INFO")
+	logger.InitWithWriter("INFO", ioutil.Discard)
 
 	t.Run("Version", func(t *testing.T) {
 		t.Run("should save specs and return with data", func(t *testing.T) {
@@ -33,7 +37,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				nil, nil,
+				nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -43,7 +47,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			versionRequest := pb.VersionRequest{Client: Version}
-			resp, err := runtimeServiceServer.Version(context.TODO(), &versionRequest)
+			resp, err := runtimeServiceServer.Version(context.Background(), &versionRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, Version, resp.Server)
 			assert.Equal(t, &pb.VersionResponse{Server: Version}, resp)
@@ -157,7 +161,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				jobService,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				nil,
 				nil,
@@ -172,7 +176,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ScheduledAt:  scheduledAtTimestamp,
 				InstanceName: "test",
 			}
-			resp, err := runtimeServiceServer.RegisterInstance(context.TODO(), &versionRequest)
+			resp, err := runtimeServiceServer.RegisterInstance(context.Background(), &versionRequest)
 			assert.Nil(t, err)
 
 			adapter := v1.NewAdapter(models.TaskRegistry, nil, nil)
@@ -224,7 +228,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				jobService, nil,
+				jobService, nil, nil,
 				projectRepoFactory,
 
 				nil,
@@ -236,7 +240,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
+			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
 			assert.Equal(t, "rpc error: code = Internal desc = a random error: failed to save project a-data-project", err.Error())
 			assert.Nil(t, resp)
 		})
@@ -264,7 +268,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				jobService, nil,
+				jobService, nil, nil,
 				projectRepoFactory,
 
 				nil,
@@ -276,7 +280,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
+			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
 				Success: true,
@@ -323,7 +327,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				jobSvc,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -337,7 +341,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:   adapter.ToProjectProto(projectSpec),
 				Namespace: adapter.ToNamespaceProto(namespaceSpec),
 			}
-			resp, err := runtimeServiceServer.RegisterProject(context.TODO(), &projectRequest)
+			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
 				Success: true,
@@ -386,7 +390,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				jobSvc,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -400,7 +404,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName: projectName,
 				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
 			}
-			resp, err := runtimeServiceServer.RegisterProjectNamespace(context.TODO(), &namespaceRequest)
+			resp, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectNamespaceResponse{
 				Success: true,
@@ -443,7 +447,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				jobSvc,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -457,7 +461,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName: projectName,
 				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
 			}
-			_, err := runtimeServiceServer.RegisterProjectNamespace(context.TODO(), &namespaceRequest)
+			_, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: project a-data-project not found", err.Error())
 		})
@@ -543,7 +547,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
 				jobSvc,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -559,7 +563,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Namespace:   namespaceSpec.Name,
 				Spec:        jobProto,
 			}
-			resp, err := runtimeServiceServer.CreateJobSpecification(context.TODO(), &request)
+			resp, err := runtimeServiceServer.CreateJobSpecification(context.Background(), &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,
@@ -606,7 +610,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				jobService, nil,
+				jobService, nil, nil,
 				projectRepoFactory,
 				nil,
 				projectSecretRepoFactory,
@@ -621,7 +625,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				SecretName:  "hello",
 				Value:       base64.StdEncoding.EncodeToString([]byte("world")),
 			}
-			resp, err := runtimeServiceServer.RegisterSecret(context.TODO(), &secretRequest)
+			resp, err := runtimeServiceServer.RegisterSecret(context.Background(), &secretRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterSecretResponse{
 				Success: true,
@@ -664,7 +668,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"someVersion1.0",
-				jobService, nil,
+				jobService, nil, nil,
 				projectRepoFactory,
 				nil,
 				projectSecretRepoFactory,
@@ -679,7 +683,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				SecretName:  "hello",
 				Value:       base64.StdEncoding.EncodeToString([]byte("world")),
 			}
-			resp, err := runtimeServiceServer.RegisterSecret(context.TODO(), &secretRequest)
+			resp, err := runtimeServiceServer.RegisterSecret(context.Background(), &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to save secret hello", err.Error())
 		})
@@ -777,13 +781,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			grpcRespStream := new(mock.RuntimeService_DeployJobSpecificationServer)
-			grpcRespStream.On("Context").Return(context.TODO())
+			grpcRespStream.On("Context").Return(context.Background())
 			defer grpcRespStream.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				jobService,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -884,7 +888,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				jobService,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -896,7 +900,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
 			deployRequest := pb.ReadJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
-			jobSpecResp, err := runtimeServiceServer.ReadJobSpecification(context.TODO(), &deployRequest)
+			jobSpecResp, err := runtimeServiceServer.ReadJobSpecification(context.Background(), &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
 		})
@@ -950,7 +954,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				jobService,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -962,7 +966,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			namespaceAdapted := adapter.ToNamespaceProto(namespaceSpec)
 			request := pb.ListProjectNamespacesRequest{ProjectName: projectName}
-			resp, err := runtimeServiceServer.ListProjectNamespaces(context.TODO(), &request)
+			resp, err := runtimeServiceServer.ListProjectNamespaces(context.Background(), &request)
 			assert.Nil(t, err)
 			assert.Equal(t, []*pb.NamespaceSpecification{namespaceAdapted}, resp.GetNamespaces())
 		})
@@ -1048,7 +1052,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				jobService,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -1059,9 +1063,171 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, Namespace: namespaceSpec.Name}
-			resp, err := runtimeServiceServer.DeleteJobSpecification(context.TODO(), &deployRequest)
+			resp, err := runtimeServiceServer.DeleteJobSpecification(context.Background(), &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, "job a-data-job has been deleted", resp.GetMessage())
+		})
+	})
+
+	t.Run("JobStatus", func(t *testing.T) {
+		t.Run("should return all job status via scheduler if valid inputs", func(t *testing.T) {
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil, nil)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			jobStatuses := []models.JobStatus{
+				{
+					ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+					State:       "failed",
+				},
+				{
+					ScheduledAt: time.Date(2020, 11, 10, 0, 0, 0, 0, time.UTC),
+					State:       "success",
+				},
+			}
+			scheduler := new(mock.Scheduler)
+			scheduler.On("GetJobStatus", context.Background(), projectSpec, jobSpec.Name).Return(jobStatuses, nil)
+			defer scheduler.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				jobService, nil, nil,
+				projectRepoFactory,
+				nil,
+				nil,
+				adapter,
+				nil,
+				nil,
+				scheduler,
+			)
+
+			req := &pb.JobStatusRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+			}
+			resp, err := runtimeServiceServer.JobStatus(context.Background(), req)
+			assert.Nil(t, err)
+			assert.Equal(t, len(jobStatuses), len(resp.Statuses))
+			for _, expectedStatus := range jobStatuses {
+				var found bool
+				for _, respVal := range resp.Statuses {
+					if expectedStatus.ScheduledAt.Equal(respVal.ScheduledAt.AsTime()) &&
+						expectedStatus.State.String() == respVal.State {
+						found = true
+						break
+					}
+				}
+				if !found {
+					assert.Fail(t, fmt.Sprintf("failed to find expected job status %v", expectedStatus))
+				}
+			}
+		})
+	})
+
+	t.Run("RegisterJobEvent", func(t *testing.T) {
+		t.Run("should register the event if valid inputs", func(t *testing.T) {
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+
+			jobSpecs := []models.JobSpec{
+				{
+					Name: "transform-tables",
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil, nil)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			defer jobService.AssertExpectations(t)
+
+			eventValues, _ := structpb.NewStruct(
+				map[string]interface{}{
+					"url": "http://example.io",
+				},
+			)
+			eventSvc := new(mock.EventService)
+			eventSvc.On("Register", context.Background(), namespaceSpec, jobSpecs[0], models.JobEvent{
+				Type:  models.JobEventTypeFailure,
+				Value: eventValues.GetFields(),
+			}).Return(nil)
+			defer eventSvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				Version,
+				jobService, eventSvc, nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			req := &pb.RegisterJobEventRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpecs[0].Name,
+				Namespace:   namespaceSpec.Name,
+				Event: &pb.JobEvent{
+					Type:  pb.JobEvent_FAILURE,
+					Value: eventValues,
+				},
+			}
+			_, err := runtimeServiceServer.RegisterJobEvent(context.Background(), req)
+			assert.Nil(t, err)
 		})
 	})
 
@@ -1071,7 +1237,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
-				nil, nil,
+				nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -1088,7 +1254,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Offset:      "24h",
 				TruncateTo:  "d",
 			}
-			resp, err := runtimeServiceServer.GetWindow(context.TODO(), &req)
+			resp, err := runtimeServiceServer.GetWindow(context.Background(), &req)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", ptypes.TimestampString(resp.GetStart()))
@@ -1100,7 +1266,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				nil, nil,
-				nil,
+				nil, nil,
 				nil,
 				nil,
 				nil,
@@ -1116,7 +1282,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Offset:      "24h",
 				TruncateTo:  "d",
 			}
-			_, err := runtimeServiceServer.GetWindow(context.TODO(), &req)
+			_, err := runtimeServiceServer.GetWindow(context.Background(), &req)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
 		})
 	})
@@ -1220,7 +1386,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				Version,
 				jobService,
-				nil,
+				nil, nil,
 				projectRepoFactory,
 				namespaceRepoFact,
 				nil,
@@ -1235,7 +1401,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				JobName:     jobName,
 				Namespace:   namespaceSpec.Name,
 			}
-			resp, err := runtimeServiceServer.DumpJobSpecification(context.TODO(), &req)
+			resp, err := runtimeServiceServer.DumpJobSpecification(context.Background(), &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 			assert.Equal(t, "content-of-dag", resp.GetContent())
@@ -1310,7 +1476,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("CreateResource", context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("CreateResource", context.Background(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -1323,7 +1489,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
-				nil,
+				nil, nil,
 				resourceSvc,
 				projectRepoFactory,
 				namespaceRepoFact,
@@ -1334,7 +1500,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			resp, err := runtimeServiceServer.CreateResource(context.TODO(), &req)
+			resp, err := runtimeServiceServer.CreateResource(context.Background(), &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 		})
@@ -1408,7 +1574,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("UpdateResource", context.TODO(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("UpdateResource", context.Background(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -1421,7 +1587,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
-				nil,
+				nil, nil,
 				resourceSvc,
 				projectRepoFactory,
 				namespaceRepoFact,
@@ -1432,7 +1598,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			resp, err := runtimeServiceServer.UpdateResource(context.TODO(), &req)
+			resp, err := runtimeServiceServer.UpdateResource(context.Background(), &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 		})
@@ -1510,7 +1676,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			adapter := v1.NewAdapter(nil, nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				"Version",
-				jobService,
+				jobService, nil,
 				nil,
 				projectRepoFactory,
 				namespaceRepoFact,
@@ -1527,7 +1693,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				StartDate:   startDate.Format(timeLayout),
 				EndDate:     endDate.Format(timeLayout),
 			}
-			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.Background(), &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)

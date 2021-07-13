@@ -68,6 +68,12 @@ brew install odpf/taps/optimus
 optimus version
 ```
 
+### Stability and Compatibility
+Optimus is currently undergoing heavy development with frequent, breaking API changes.
+
+ > ⭐ Current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs are appreciated). 
+ > The public API could change without a major version update before v1.0.0 release.
+
 ## Credits
 
 This project exists thanks to all the [contributors](https://github.com/odpf/optimus/graphs/contributors).

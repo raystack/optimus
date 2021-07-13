@@ -185,6 +185,15 @@ func TestJobSpecRepository(t *testing.T) {
 			}})
 			assert.NotNil(t, err)
 		})
+		t.Run("should return error if notify on is unknown", func(t *testing.T) {
+			repo := local.NewJobSpecRepository(nil, adapter)
+			testSpec := spec2
+			testSpec.Behavior.Notify = append(testSpec.Behavior.Notify, models.JobSpecNotifier{
+				On: "invalid",
+			})
+			err := repo.SaveAt(testSpec, "")
+			assert.NotNil(t, err)
+		})
 		t.Run("should update the file with hooks in the same spec ${ROOT}/${name}.yaml", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 

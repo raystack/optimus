@@ -7,8 +7,8 @@ from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
-from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
-    CrossTenantDependencySensor
+from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+    SuperExternalTaskSensor, CrossTenantDependencySensor
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -16,6 +16,12 @@ DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
 
 default_args = {
+    "params": {
+        "project_name": {{.Namespace.ProjectSpec.Name | quote}},
+        "namespace": {{.Namespace.Name | quote}},
+        "job_name": {{.Job.Name | quote}},
+        "optimus_hostname": {{.Hostname | quote}}
+    },
     "owner": {{.Job.Owner | quote}},
     "depends_on_past": {{ if .Job.Behavior.DependsOnPast }} True {{- else -}} False {{- end -}},
     "retries": {{ if gt .Job.Behavior.Retry.Count 0 -}} {{.Job.Behavior.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
@@ -24,7 +30,7 @@ default_args = {
     "priority_weight": {{.Job.Task.Priority}},
     "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02T15:04:05" | quote }}, "%Y-%m-%dT%H:%M:%S"),
     {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}},"%Y-%m-%dT%H:%M:%S"),{{- else -}}{{- end}}
-    "on_failure_callback": alert_failed_to_slack,
+    "on_failure_callback": optimus_failure_notify,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -32,6 +38,7 @@ dag = DAG(
     dag_id={{.Job.Name | quote}},
     default_args=default_args,
     schedule_interval={{.Job.Schedule.Interval | quote}},
+    sla_miss_callback=optimus_sla_miss_notify,
     catchup = {{ if .Job.Behavior.CatchUp -}} True{{- else -}} False {{- end }}
 )
 
@@ -62,11 +69,15 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='{{.Hostname}}'),
         k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='{{.Project.Name}}'),
+        k8s.V1EnvVar(name="PROJECT",value='{{.Namespace.ProjectSpec.Name}}'),
+        k8s.V1EnvVar(name="NAMESPACE",value='{{.Namespace.Name}}'),
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
     ],
+{{- if gt .SLAMissDurationInSec 0 }}
+    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+{{- end }}
     reattach_on_restart=True
 )
 
@@ -83,7 +94,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 )
 {{- end }}
 
-hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
+hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
@@ -101,12 +112,16 @@ hook_{{$hookSchema.Name}} = SuperKubernetesPodOperator(
         k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='{{$.Hostname}}'),
         k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='{{$.Project.Name}}'),
+        k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
+        k8s.V1EnvVar(name="NAMESPACE",value='{{$.Namespace.Name}}'),
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
     ],
+    {{ if eq $hookSchema.Type $.HookTypeFail -}}
+        trigger_rule="one_failed",
+    {{ end -}}
     reattach_on_restart=True
 )
 {{- end }}
@@ -157,10 +172,13 @@ wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> trans
 {{- range $_, $task := .Job.Hooks }}
 {{- $hookSchema := $task.Unit.GetHookSchema $.Context $.HookSchemaRequest }}
 {{- if eq $hookSchema.Type $.HookTypePre }}
-hook_{{$hookSchema.Name}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end -}}
 {{- if eq $hookSchema.Type $.HookTypePost }}
-transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name}}
+transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}}
+{{- end -}}
+{{- if eq $hookSchema.Type $.HookTypeFail }}
+transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}}
 {{- end -}}
 {{- end }}
 
@@ -169,6 +187,23 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
 {{- $hookSchema := $t.Unit.GetHookSchema $.Context $.HookSchemaRequest }}
 {{- range $_, $depend := $t.DependsOn }}
 {{- $dependHookSchema := $depend.Unit.GetHookSchema $.Context $.HookSchemaRequest }}
-hook_{{$dependHookSchema.Name}} >> hook_{{$hookSchema.Name}}
+hook_{{$dependHookSchema.Name | replace "-" "__dash__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}}
 {{- end }}
 {{- end }}
+
+# arrange failure hook after post hooks
+{{- range $_, $task := .Job.Hooks -}}
+{{- $hookSchema := $task.Unit.GetHookSchema $.Context $.HookSchemaRequest }}
+
+{{- if eq $hookSchema.Type $.HookTypePost }}
+
+hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> [
+{{- range $_, $ftask := $.Job.Hooks }}
+{{- $fhookSchema := $ftask.Unit.GetHookSchema $.Context $.HookSchemaRequest }}
+{{- if eq $fhookSchema.Type $.HookTypeFail }} hook_{{$fhookSchema.Name | replace "-" "__dash__"}}, {{- end -}}
+{{- end -}}
+]
+
+{{- end -}}
+
+{{- end -}}

@@ -51,12 +51,19 @@ type JobBehavior struct {
 	DependsOnPast bool
 	CatchUp       bool
 	Retry         JobBehaviorRetry
+	Notify        []JobBehaviorNotifier
 }
 
 type JobBehaviorRetry struct {
 	Count              int
 	Delay              int64
 	ExponentialBackoff bool
+}
+
+type JobBehaviorNotifier struct {
+	On       string
+	Config   map[string]string
+	Channels []string
 }
 
 type JobAsset struct {
@@ -185,6 +192,15 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
 	}
 
+	var notifiers []models.JobSpecNotifier
+	for _, notify := range behavior.Notify {
+		notifiers = append(notifiers, models.JobSpecNotifier{
+			On:       models.JobEventType(notify.On),
+			Config:   notify.Config,
+			Channels: notify.Channels,
+		})
+	}
+
 	job := models.JobSpec{
 		ID:          conf.ID,
 		Version:     conf.Version,
@@ -205,6 +221,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				Delay:              time.Duration(behavior.Retry.Delay),
 				ExponentialBackoff: behavior.Retry.ExponentialBackoff,
 			},
+			Notify: notifiers,
 		},
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
@@ -233,6 +250,15 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		return Job{}, err
 	}
 
+	var notifiers []JobBehaviorNotifier
+	for _, notify := range spec.Behavior.Notify {
+		notifiers = append(notifiers, JobBehaviorNotifier{
+			On:       string(notify.On),
+			Config:   notify.Config,
+			Channels: notify.Channels,
+		})
+	}
+
 	behaviorJSON, err := json.Marshal(JobBehavior{
 		DependsOnPast: spec.Behavior.DependsOnPast,
 		CatchUp:       spec.Behavior.CatchUp,
@@ -241,6 +267,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Delay:              spec.Behavior.Retry.Delay.Nanoseconds(),
 			ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
 		},
+		Notify: notifiers,
 	})
 	if err != nil {
 		return Job{}, err

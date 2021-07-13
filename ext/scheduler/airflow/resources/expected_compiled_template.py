@@ -5,10 +5,9 @@ from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOp
 from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
-from kubernetes.client import models as k8s
 
-from __lib import alert_failed_to_slack, SuperKubernetesPodOperator, SuperExternalTaskSensor, \
-    CrossTenantDependencySensor
+from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+    SuperExternalTaskSensor, CrossTenantDependencySensor
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -16,15 +15,21 @@ DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
 
 default_args = {
+    "params": {
+        "project_name": "foo-project",
+        "namespace": "bar-namespace",
+        "job_name": "foo",
+        "optimus_hostname": "http://airflow.example.io"
+    },
     "owner": "mee@mee",
     "depends_on_past": False,
-    "retries": 4,
+    "retries": DAG_RETRIES,
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
-    "retry_exponential_backoff": True,
+    "retry_exponential_backoff": False,
     "priority_weight": 2000,
     "start_date": datetime.strptime("2000-11-11T00:00:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2020-11-11T00:00:00","%Y-%m-%dT%H:%M:%S"),
-    "on_failure_callback": alert_failed_to_slack,
+    "on_failure_callback": optimus_failure_notify,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -32,6 +37,7 @@ dag = DAG(
     dag_id="foo",
     default_args=default_args,
     schedule_interval="* * * * *",
+    sla_miss_callback=optimus_sla_miss_notify,
     catchup = True
 )
 
@@ -54,16 +60,14 @@ transformation_bq = SuperKubernetesPodOperator(
     is_delete_operator_pod=True,
     do_xcom_push=False,
     secrets=[transformation_secret],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='task'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='bq'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-    ],
+    env_vars={
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "INSTANCE_TYPE":'task', "INSTANCE_NAME":'bq',
+        "SCHEDULED_AT":'{{ next_execution_date }}',
+    },
+
     reattach_on_restart=True
 )
 
@@ -71,7 +75,7 @@ transformation_bq = SuperKubernetesPodOperator(
 
 hook_transporter_secret = Secret(
     "volume",
-    "/opt/optimus/secrets",
+    "/tmp",
     "optimus-hook-transporter",
     "auth.json"
 )
@@ -89,17 +93,14 @@ hook_transporter = SuperKubernetesPodOperator(
     is_delete_operator_pod=True,
     do_xcom_push=False,
     secrets=[hook_transporter_secret],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='transporter'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
+    env_vars={
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "INSTANCE_TYPE":'hook', "INSTANCE_NAME":'transporter',
+        "SCHEDULED_AT":'{{ next_execution_date }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    },
     reattach_on_restart=True
 )
 
@@ -117,17 +118,40 @@ hook_predator = SuperKubernetesPodOperator(
     is_delete_operator_pod=True,
     do_xcom_push=False,
     secrets=[],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='predator'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
+    env_vars={
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "INSTANCE_TYPE":'hook', "INSTANCE_NAME":'predator',
+        "SCHEDULED_AT":'{{ next_execution_date }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    },
+    reattach_on_restart=True
+)
+
+
+hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
+    image_pull_policy="Always",
+    namespace = conf.get('kubernetes', 'namespace', fallback="default"),
+    image = "example.io/namespace/fail-image:latest",
+    cmds=[],
+    name="hook_hook-for-fail",
+    task_id="hook_hook-for-fail",
+    get_logs=True,
+    dag=dag,
+    in_cluster=True,
+    is_delete_operator_pod=True,
+    do_xcom_push=False,
+    secrets=[],
+    env_vars={
+        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
+        "JOB_DIR":'/data', "PROJECT":'foo-project',
+        "INSTANCE_TYPE":'hook', "INSTANCE_NAME":'hook-for-fail',
+        "SCHEDULED_AT":'{{ next_execution_date }}',
+        # rest of the env vars are pulled from the container by making a GRPC call to optimus
+    },
+    trigger_rule="one_failed",
     reattach_on_restart=True
 )
 # hooks loop ends
@@ -166,6 +190,11 @@ wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
 # set inter-dependencies between task and hooks
 hook_transporter >> transformation_bq
 transformation_bq >> hook_predator
+transformation_bq >> hook_hook__dash__for__dash__fail
 
 # set inter-dependencies between hooks and hooks
 hook_transporter >> hook_predator
+
+# arrange failure hook after post hooks
+
+hook_predator >> [ hook_hook__dash__for__dash__fail,]

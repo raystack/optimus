@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
+
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/core/tree"
 
@@ -35,6 +38,9 @@ const (
 	JobSpecDependencyTypeInter JobSpecDependencyType = "inter"
 	// outside optimus
 	JobSpecDependencyTypeExtra JobSpecDependencyType = "extra"
+
+	JobEventTypeSLAMiss JobEventType = "sla_miss"
+	JobEventTypeFailure JobEventType = "failure"
 )
 
 // JobSpec represents a job
@@ -89,12 +95,19 @@ type JobSpecBehavior struct {
 	DependsOnPast bool
 	CatchUp       bool
 	Retry         JobSpecBehaviorRetry
+	Notify        []JobSpecNotifier
 }
 
 type JobSpecBehaviorRetry struct {
 	Count              int
 	Delay              time.Duration
 	ExponentialBackoff bool
+}
+
+type JobSpecNotifier struct {
+	On       JobEventType
+	Config   map[string]string
+	Channels []string
 }
 
 type JobSpecTask struct {
@@ -292,10 +305,6 @@ type JobService interface {
 	GetByName(string, NamespaceSpec) (JobSpec, error)
 	// Dump returns the compiled Job
 	Dump(NamespaceSpec, JobSpec) (Job, error)
-	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
-	ReplayDryRun(*ReplayWorkerRequest) (*tree.TreeNode, error)
-	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(*ReplayWorkerRequest) (string, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
 	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
@@ -308,6 +317,10 @@ type JobService interface {
 	GetByNameForProject(string, ProjectSpec) (JobSpec, NamespaceSpec, error)
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(NamespaceSpec, []JobSpec, progress.Observer) error
+	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
+	ReplayDryRun(*ReplayWorkerRequest) (*tree.TreeNode, error)
+	// Replay replays the jobSpec and its dependencies between start and endDate
+	Replay(*ReplayWorkerRequest) (string, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
@@ -322,4 +335,27 @@ type Job struct {
 	Name        string
 	NamespaceID string
 	Contents    []byte
+}
+
+type JobEventType string
+
+// JobEvent refers to status updates related to job
+// posted by scheduler
+type JobEvent struct {
+	Type  JobEventType
+	Value map[string]*structpb.Value
+}
+
+type NotifyAttrs struct {
+	Namespace NamespaceSpec
+
+	JobSpec  JobSpec
+	JobEvent JobEvent
+
+	Route string
+}
+
+type Notifier interface {
+	io.Closer
+	Notify(ctx context.Context, attr NotifyAttrs) error
 }

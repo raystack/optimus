@@ -1,6 +1,6 @@
 import unittest
 import sys
-sys.path.insert(1, '../../../../resources/pack/templates/scheduler/airflow_2')
+sys.path.insert(1, '../resources')
 
 import importlib.util
 
@@ -15,7 +15,7 @@ def load_file_as_module(filepath):
 class TestCompiledAirflowTemplate(unittest.TestCase):
 
     def test_should_run_compiled_airflow_template(self):
-        compiled_dag_lib = load_file_as_module('../../../../integration_tests/airflow_2/expected_compiled_template.py')
+        compiled_dag_lib = load_file_as_module('../resources/expected_compiled_template.py')
 
         dag = compiled_dag_lib.dag
 

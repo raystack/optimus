@@ -17,7 +17,7 @@ const (
 
 func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayWorkerRequest) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
-	jobSpecs, err := srv.getDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
 		return err
 	}

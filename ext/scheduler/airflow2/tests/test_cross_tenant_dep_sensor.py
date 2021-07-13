@@ -1,6 +1,6 @@
 import unittest
 import sys
-sys.path.insert(1, '../../../../resources/pack/templates/scheduler/airflow_2')
+sys.path.insert(1, '../resources')
 
 from datetime import datetime
 from __lib import CrossTenantDependencySensor, OptimusAPIClient

@@ -27,6 +27,20 @@ func TestCompiler(t *testing.T) {
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
 			DependsOnPast: false,
+			Retry: models.JobSpecBehaviorRetry{
+				Count:              2,
+				Delay:              time.Second * 2,
+				ExponentialBackoff: false,
+			},
+			Notify: []models.JobSpecNotifier{
+				{
+					On: models.JobEventTypeSLAMiss,
+					Config: map[string]string{
+						"duration": "2s",
+					},
+					Channels: []string{"scheme://route"},
+				},
+			},
 		},
 		Schedule: models.JobSpecSchedule{
 			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
@@ -51,6 +65,18 @@ func TestCompiler(t *testing.T) {
 				"",
 			)
 			dag, err := com.Compile(namespaceSpec, spec)
+
+			assert.Equal(t, dag.Contents, []byte("content = foo"))
+			assert.Nil(t, err)
+		})
+		t.Run("should compile template without any error without notify channels", func(t *testing.T) {
+			tempSpec := spec
+			tempSpec.Behavior.Notify = []models.JobSpecNotifier{}
+			com := job.NewCompiler(
+				[]byte("content = {{.Job.Name}}"),
+				"",
+			)
+			dag, err := com.Compile(namespaceSpec, tempSpec)
 
 			assert.Equal(t, dag.Contents, []byte("content = foo"))
 			assert.Nil(t, err)

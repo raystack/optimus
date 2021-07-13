@@ -10,6 +10,7 @@ import (
 const (
 	HookTypePre  HookType = "pre"
 	HookTypePost HookType = "post"
+	HookTypeFail HookType = "fail"
 )
 
 type HookType string

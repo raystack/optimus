@@ -80,6 +80,8 @@ a new job is "optimus create job", calling this will ask for a
 few inputs which are required for the execution of this job and 
 leave rest for the user to modify of its own eg, the SQL.
 
+If you're new to YAML and want to learn more, see [Learn YAML in Y minutes.](https://learnxinyminutes.com/docs/yaml/)
+
 Following is a sample job specification:
 ```yaml
 # specification version, for now just keep it fixed unless optimus has any

@@ -2,6 +2,7 @@ package local_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/odpf/optimus/models"
@@ -25,6 +26,10 @@ schedule:
 behavior:
   depends_on_past: true
   catch_up: false
+  notify:
+    - on: test
+      channel:
+        - test://hello
 task:
   name: bq2bq
   config:
@@ -46,13 +51,13 @@ hooks: []
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
-		bq2bqTrasnformer := new(mock.TaskPlugin)
-		bq2bqTrasnformer.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		bq2bqTransformer := new(mock.TaskPlugin)
+		bq2bqTransformer.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
 			Name: "bq2bq",
 		}, nil)
 
 		allTasksRepo := new(mock.SupportedTaskRepo)
-		allTasksRepo.On("GetByName", "bq2bq").Return(bq2bqTrasnformer, nil)
+		allTasksRepo.On("GetByName", "bq2bq").Return(bq2bqTransformer, nil)
 
 		adapter := local.NewJobSpecAdapter(allTasksRepo, nil)
 		modelJob, err := adapter.ToSpec(localJobParsed)
@@ -297,6 +302,57 @@ func TestJob_MergeFrom(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "should inherit notify configs from parent if doesn't exists",
+			fields: fields{
+				child: local.Job{
+					Behavior: local.JobBehavior{
+						Notify: []local.JobNotifier{
+							{
+								On:       "test",
+								Channels: []string{"t://hello"},
+							},
+						},
+					},
+				},
+				expected: local.Job{
+					Behavior: local.JobBehavior{
+						Notify: []local.JobNotifier{
+							{
+								On:       "test",
+								Channels: []string{"t://hello", "t://hello-parent"},
+								Config: map[string]string{
+									"duration": "2h",
+								},
+							},
+							{
+								On:       "test-2",
+								Channels: []string{"t://hello-2"},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				parent: local.Job{
+					Behavior: local.JobBehavior{
+						Notify: []local.JobNotifier{
+							{
+								On:       "test",
+								Channels: []string{"t://hello-parent"},
+								Config: map[string]string{
+									"duration": "2h",
+								},
+							},
+							{
+								On:       "test-2",
+								Channels: []string{"t://hello-2"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -322,6 +378,13 @@ func TestJob_MergeFrom(t *testing.T) {
 			for idx, eh := range tt.fields.expected.Hooks {
 				assert.Equal(t, eh.Name, tt.fields.child.Hooks[idx].Name)
 				assert.ElementsMatch(t, eh.Config, tt.fields.child.Hooks[idx].Config)
+			}
+			for idx, en := range tt.fields.expected.Behavior.Notify {
+				assert.Equal(t, en.On, tt.fields.child.Behavior.Notify[idx].On)
+				assert.ElementsMatch(t, en.Channels, tt.fields.child.Behavior.Notify[idx].Channels)
+				if !reflect.DeepEqual(en.Config, tt.fields.child.Behavior.Notify[idx].Config) {
+					t.Errorf("want: %v, got: %v", en.Config, tt.fields.child.Behavior.Notify[idx].Config)
+				}
 			}
 		})
 	}
