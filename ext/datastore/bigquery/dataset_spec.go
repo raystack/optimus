@@ -70,7 +70,7 @@ func (s datasetSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, err
 func (s datasetSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	var yamlResource DatasetResourceSpec
 	if err := yaml.Unmarshal(b, &yamlResource); err != nil {
-		return models.ResourceSpec{}, nil
+		return models.ResourceSpec{}, err
 	}
 
 	parsedNames := datasetNameParseRegex.FindStringSubmatch(yamlResource.Name)

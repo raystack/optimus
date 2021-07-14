@@ -145,7 +145,7 @@ func (s tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error
 func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	var yamlResource TableResourceSpec
 	if err := yaml.Unmarshal(b, &yamlResource); err != nil {
-		return models.ResourceSpec{}, nil
+		return models.ResourceSpec{}, err
 	}
 
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(yamlResource.Name)
