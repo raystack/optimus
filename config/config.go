@@ -35,6 +35,7 @@ var (
 	KeyServeMetadataKafkaBatchSize  = "serve.metadata.kafka_batch_size"
 	KeyServeReplayNumWorkers        = "serve.replay_num_workers"
 	KeyServeReplayWorkerTimeoutSecs = "serve.replay_worker_timeout_secs"
+	KeyServeReplayRunTimeoutSecs    = "serve.replay_run_timeout_secs"
 
 	KeySchedulerName = "scheduler.name"
 
@@ -103,6 +104,7 @@ type ServerConfig struct {
 	Metadata                MetadataConfig `yaml:"metadata"`
 	ReplayNumWorkers        int            `yaml:"replay_num_workers"`
 	ReplayWorkerTimeoutSecs time.Duration  `yaml:"replay_worker_timeout_secs"`
+	ReplayRunTimeoutSecs    time.Duration  `yaml:"replay_run_timeout_secs"`
 }
 
 type DBConfig struct {
@@ -192,6 +194,7 @@ func (o Optimus) GetServe() ServerConfig {
 		},
 		ReplayNumWorkers:        o.k.Int(KeyServeReplayNumWorkers),
 		ReplayWorkerTimeoutSecs: time.Second * time.Duration(o.k.Int(KeyServeReplayWorkerTimeoutSecs)),
+		ReplayRunTimeoutSecs:    time.Second * time.Duration(o.k.Int(KeyServeReplayRunTimeoutSecs)),
 	}
 }
 
