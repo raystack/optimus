@@ -486,7 +486,7 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, true, checkModel.Behavior.CatchUp)
 			assert.Equal(t, false, checkModel.Behavior.DependsOnPast)
 			assert.Equal(t, 2, checkModel.Behavior.Retry.Count)
-			assert.Equal(t, 0, checkModel.Behavior.Retry.Delay)
+			assert.Equal(t, time.Duration(0), checkModel.Behavior.Retry.Delay)
 			assert.Equal(t, true, checkModel.Behavior.Retry.ExponentialBackoff)
 
 			//try for update
