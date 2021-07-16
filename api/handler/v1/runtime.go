@@ -794,6 +794,11 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 
 	replayUUID, err := sv.jobSvc.Replay(ctx, replayWorkerRequest)
 	if err != nil {
+		if err == job.ErrRequestQueueFull {
+			return nil, status.Errorf(codes.Unavailable, "error while processing replay: %v", err)
+		} else if err == job.ErrConflictedJobRun {
+			return nil, status.Errorf(codes.FailedPrecondition, "error while validating replay: %v", err)
+		}
 		return nil, status.Errorf(codes.Internal, "error while processing replay: %v", err)
 	}
 

@@ -167,7 +167,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		return nil, errors.Wrapf(err, "json error: %s", string(body))
 	}
 
-	return toJobStatus(responseJson.DagRuns, jobName, []models.JobStatus{})
+	return toJobStatus(responseJson.DagRuns, jobName)
 }
 
 func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
@@ -257,15 +257,15 @@ func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.Project
 			return nil, errors.Wrap(err, "failed to read airflow response")
 		}
 
-		err = json.Unmarshal(body, &responseJson)
-		if err != nil {
+		if err := json.Unmarshal(body, &responseJson); err != nil {
 			return nil, errors.Wrapf(err, "json error: %s", string(body))
 		}
 
-		jobStatus, err = toJobStatus(responseJson.DagRuns, jobName, jobStatus)
+		jobStatusPerBatch, err := toJobStatus(responseJson.DagRuns, jobName)
 		if err != nil {
 			return nil, err
 		}
+		jobStatus = append(jobStatus, jobStatusPerBatch...)
 
 		pageOffset += batchSize
 		if responseJson.TotalEntries <= pageOffset {
@@ -276,7 +276,8 @@ func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.Project
 	return jobStatus, nil
 }
 
-func toJobStatus(dagRuns []map[string]interface{}, jobName string, jobStatus []models.JobStatus) ([]models.JobStatus, error) {
+func toJobStatus(dagRuns []map[string]interface{}, jobName string) ([]models.JobStatus, error) {
+	var jobStatus []models.JobStatus
 	for _, status := range dagRuns {
 		_, ok1 := status["execution_date"]
 		_, ok2 := status["state"]

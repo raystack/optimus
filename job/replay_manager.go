@@ -114,9 +114,10 @@ func (m *Manager) validate(ctx context.Context, replaySpecRepo store.ReplaySpecR
 	if err != nil {
 		return err
 	}
-	reqReplayNodes := reqReplayTree.GetAllNodes()
 
 	if !reqInput.Force {
+		reqReplayNodes := reqReplayTree.GetAllNodes()
+
 		//check if this dag have running instance in the scheduler
 		err = m.validateRunningInstance(ctx, reqReplayNodes, reqInput)
 		if err != nil {
@@ -249,7 +250,7 @@ func (m *Manager) Close() error {
 }
 
 func (m *Manager) Init() {
-	m.shuttingDownLongRunningReplay()
+	m.shuttingDownTimedOutReplays()
 
 	logger.I("starting replay workers")
 	for i := 0; i < m.config.NumWorkers; i++ {
@@ -258,7 +259,7 @@ func (m *Manager) Init() {
 	}
 }
 
-func (m *Manager) shuttingDownLongRunningReplay() {
+func (m *Manager) shuttingDownTimedOutReplays() {
 	replaySpecRepo := m.replaySpecRepoFac.New(models.JobSpec{})
 	runningReplaySpecs, err := replaySpecRepo.GetByStatus(ReplayStatusToValidate)
 	if err != nil {
