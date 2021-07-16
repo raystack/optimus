@@ -94,6 +94,7 @@ func TestInstanceRepository(t *testing.T) {
 	execUnit2.On("GenerateDestination", context.TODO(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
+		os.Setenv("TEST_OPTIMUS_DB_URL", "postgresql://root:@localhost:5432/optimus_test")
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
