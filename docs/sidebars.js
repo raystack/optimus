@@ -53,7 +53,7 @@ module.exports = {
     {
       type: "category",
       label: "Reference",
-      items: ["reference/api", "reference/faq"],
+      items: ["reference/api", "reference/faq", "reference/shell-autocompletion"],
     },
   ],
 
