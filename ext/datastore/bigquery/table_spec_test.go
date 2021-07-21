@@ -21,6 +21,11 @@ spec:
   partition:
     field: aa
     expiration: 24
+  external_source:
+    uri: https://docs.google.com/spreadsheets/d/1rdpWqiWSXHEYBzUqIsFaHsrQ_AH7NhTckCmcPb2_7RQ
+    skip_leading_rows: 1
+    range: Dataset!A1:B20
+
 `
 		tabHandler := tableSpecHandler{}
 		res, err := tabHandler.FromYaml([]byte(fl))

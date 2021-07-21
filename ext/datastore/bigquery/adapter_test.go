@@ -170,6 +170,11 @@ func TestAdapter(t *testing.T) {
 					Expiration: partitionExpiration,
 				},
 				ExpirationTime: expirationTimeStr,
+				ExternalSource: &BQExternalSource{
+					URI: "google.com",
+					SkipLeadingRows: 1,
+					Range: "A",
+				},
 			}
 			bQResource := BQTable{
 				Project:  testingProject,

@@ -62,11 +62,12 @@ func (t BQTable) Validate() error {
 
 // BQTableMetadata holds configuration for a table
 type BQTableMetadata struct {
-	Schema         BQSchema          `yaml:"schema" structs:"schema"`
-	Description    string            `yaml:",omitempty" structs:"description,omitempty"`
-	Cluster        *BQClusteringInfo `yaml:",omitempty" structs:"cluster,omitempty"`
-	Partition      *BQPartitionInfo  `yaml:",omitempty" structs:"partition,omitempty"`
-	ExpirationTime string            `yaml:"expiration_time,omitempty" structs:"expiration_time,omitempty"`
+	Schema         BQSchema          	  `yaml:"schema" structs:"schema"`
+	Description    string            	  `yaml:",omitempty" structs:"description,omitempty"`
+	Cluster        *BQClusteringInfo 	  `yaml:",omitempty" structs:"cluster,omitempty"`
+	Partition      *BQPartitionInfo  	  `yaml:",omitempty" structs:"partition,omitempty"`
+	ExpirationTime string            	  `yaml:"expiration_time,omitempty" structs:"expiration_time,omitempty"`
+	ExternalSource *BQExternalSource      `yaml:"external_source,omitempty" structs:"external_source,omitempty"`
 
 	// regular view query
 	ViewQuery string `yaml:"view_query,omitempty" structs:"view_query,omitempty"`
@@ -116,6 +117,16 @@ type BQPartitioningRange struct {
 	Interval int64 `yaml:",omitempty" structs:"interval,omitempty"`
 }
 
+// BQExternalSource specifies table source information for external data source
+type BQExternalSource struct {
+	// Google Sheets URI string for the referenced spreadsheets
+	URI 			string `yaml:"uri,omitempty" structs:"uri,omitempty"`
+	// Number of rows in the selected sheets to be skipped
+	SkipLeadingRows int64  `yaml:"skip_leading_rows,omitempty" structs:"skip_leading_rows,omitempty"`
+	// Sheet name and cell range to be included in the table - for example Dataset!A1:B20
+	Range 			string `yaml:"range,omitempty" structs:"range,omitempty"`
+}
+
 // tableSpecHandler helps serializing/deserializing datastore resource for table
 type tableSpecHandler struct {
 }
@@ -143,11 +154,11 @@ func (s tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error
 }
 
 func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
+	fmt.Println("FromYaml()")
 	var yamlResource TableResourceSpec
 	if err := yaml.Unmarshal(b, &yamlResource); err != nil {
-		return models.ResourceSpec{}, err
+		return models.ResourceSpec{}, nil
 	}
-
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(yamlResource.Name)
 	if len(parsedTableName) < 4 {
 		return models.ResourceSpec{}, fmt.Errorf("invalid yamlResource name %s", yamlResource.Name)

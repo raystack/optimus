@@ -85,6 +85,21 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 	return fm, nil
 }
 
+func bqExternalDataConfigTo(es *BQExternalSource) (*bqapi.ExternalDataConfig) {
+	fmt.Println(es.URI)
+	fmt.Println(es.Range)
+	options :=  &bqapi.GoogleSheetsOptions{
+		SkipLeadingRows: es.SkipLeadingRows,
+		Range: es.Range,
+	}
+	externalConfig := &bqapi.ExternalDataConfig{
+		SourceFormat: bqapi.GoogleSheets,
+		SourceURIs:   []string{es.URI},
+		Options: options,
+	}
+	return externalConfig
+}
+
 func bqFieldModeFrom(fm fieldMode) string {
 	if fm.repeated {
 		return "repeated"
@@ -159,6 +174,12 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 			meta.RangePartitioning = bqPartitioningRangeTo(*t.Metadata.Partition)
 		}
 	}
+	fmt.Println("Test")
+	fmt.Println(t.Metadata.ExternalSource)
+	if t.Metadata.ExternalSource != nil {
+		meta.ExternalDataConfig = bqExternalDataConfigTo(t.Metadata.ExternalSource)
+	}
+
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
@@ -195,6 +216,7 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 	for key, value := range t.Metadata.Labels {
 		meta.SetLabel(key, value)
 	}
+
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
