@@ -39,18 +39,6 @@ type Resource struct {
 }
 
 func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
-	// serialize resource spec without assets to one of the datastore provided wire format
-	binaryReadySpec := resourceSpec
-	binaryReadySpec.Assets = nil
-	controller, ok := resourceSpec.Datastore.Types()[resourceSpec.Type]
-	if !ok {
-		return Resource{}, fmt.Errorf("unknown type of datastore %s", resourceSpec.Type)
-	}
-	serializedSpec, err := controller.Adapter().ToYaml(binaryReadySpec)
-	if err != nil {
-		return Resource{}, err
-	}
-
 	assetBytes, err := json.Marshal(resourceSpec.Assets)
 	if err != nil {
 		return Resource{}, err
@@ -58,6 +46,20 @@ func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 	labelBytes, err := json.Marshal(resourceSpec.Labels)
 	if err != nil {
 		return Resource{}, err
+	}
+
+	// serialize resource spec without assets to one of the datastore provided wire format
+	controller, ok := resourceSpec.Datastore.Types()[resourceSpec.Type]
+	if !ok {
+		return Resource{}, fmt.Errorf("unknown type of datastore %s", resourceSpec.Type)
+	}
+
+	binaryReadySpec := resourceSpec
+	binaryReadySpec.Assets = nil
+	binaryReadySpec.Labels = nil
+	serializedSpec, err := controller.Adapter().ToYaml(binaryReadySpec)
+	if err != nil {
+		return Resource{}, errors.Wrapf(err, "controller.Adapter().ToYaml: %v", binaryReadySpec)
 	}
 
 	return Resource{
@@ -107,7 +109,7 @@ func (r Resource) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
 	}
 	deserializedSpec, err := controller.Adapter().FromYaml(r.Spec)
 	if err != nil {
-		return models.ResourceSpec{}, err
+		return models.ResourceSpec{}, errors.Wrapf(err, "controller.Adapter().FromYaml: %s", string(r.Spec))
 	}
 
 	var assets map[string]string
