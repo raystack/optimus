@@ -85,19 +85,23 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 	return fm, nil
 }
 
-func bqExternalDataConfigTo(es *BQExternalSource) (*bqapi.ExternalDataConfig) {
-	fmt.Println(es.URI)
-	fmt.Println(es.Range)
-	options :=  &bqapi.GoogleSheetsOptions{
-		SkipLeadingRows: es.SkipLeadingRows,
-		Range: es.Range,
+func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, error) {
+
+	switch bqapi.DataFormat(strings.ToUpper(es.SourceType)) {
+	case bqapi.GoogleSheets:
+		externalConfig := &bqapi.ExternalDataConfig{
+			SourceFormat: bqapi.GoogleSheets,
+			SourceURIs:   es.SourceURIs,
+			Options: &bqapi.GoogleSheetsOptions{
+				SkipLeadingRows: int64(es.Config["skip_leading_rows"].(float64)),
+				Range:           es.Config["range"].(string),
+			},
+		}
+		return externalConfig, nil
 	}
-	externalConfig := &bqapi.ExternalDataConfig{
-		SourceFormat: bqapi.GoogleSheets,
-		SourceURIs:   []string{es.URI},
-		Options: options,
-	}
-	return externalConfig
+
+	return &bqapi.ExternalDataConfig{}, fmt.Errorf("Source format not yet implemented %s", es.SourceType)
+
 }
 
 func bqFieldModeFrom(fm fieldMode) string {
@@ -174,10 +178,9 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 			meta.RangePartitioning = bqPartitioningRangeTo(*t.Metadata.Partition)
 		}
 	}
-	fmt.Println("Test")
-	fmt.Println(t.Metadata.ExternalSource)
-	if t.Metadata.ExternalSource != nil {
-		meta.ExternalDataConfig = bqExternalDataConfigTo(t.Metadata.ExternalSource)
+
+	if meta.ExternalDataConfig, err = bqExternalDataConfigTo(*t.Metadata.Source); err != nil {
+		return nil, err
 	}
 
 	if t.Metadata.ExpirationTime != "" {

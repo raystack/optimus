@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	ResourceTypeTable   ResourceType = "table"
-	ResourceTypeDataset ResourceType = "dataset"
-	ResourceTypeView    ResourceType = "view"
+	ResourceTypeTable         ResourceType = "table"
+	ResourceTypeDataset       ResourceType = "dataset"
+	ResourceTypeView          ResourceType = "view"
+	ResourceTypeExternalTable ResourceType = "external_table"
 )
 
 type ResourceType string
