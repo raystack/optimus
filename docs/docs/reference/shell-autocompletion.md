@@ -1,5 +1,7 @@
-# Shell Autocompletion Feature
-
+---
+id: shell-autocompletion
+title: Shell autocompletion
+---
 ### Bash auto-completion 
 
 The optimus completion script for Bash can be generated with `optimus completion bash`. Sourcing this script in your shell enables optimus completion.
@@ -27,7 +29,7 @@ $ optimus completion bash > /etc/bash_completion.d/_optimus
 $ optimus completion bash > /usr/local/etc/bash_completion.d/_optimus
 ```
 
-- If you installed optimus with Homebrew (as explained in [getting started](../getting-started/installation)), then the optimus completion script should already be in /usr/local/etc/bash_completion.d/_optimus. In that case, you don't need to do anything.
+- If you installed optimus with Homebrew (as explained in [getting started](../getting-started/installation.md)), then the optimus completion script should already be in /usr/local/etc/bash_completion.d/_optimus. In that case, you don't need to do anything.
 
 >Note: The Homebrew installation of bash-completion v2 sources all the files in the BASH_COMPLETION_COMPAT_DIR directory, that's why the latter two methods work.
 
