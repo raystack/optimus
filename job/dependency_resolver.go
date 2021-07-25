@@ -45,20 +45,22 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobS
 
 func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
-	// get destinations of dependencies, assets should be
-	jobDependenciesDestination, err := jobSpec.Task.Unit.GenerateTaskDependencies(context.TODO(),
-		models.GenerateTaskDependenciesRequest{
-			Config:  models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:  models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
+	// get destinations of dependencies, assets should be dependent on
+	var jobDependencies []string
+	if jobSpec.Task.Unit.DependencyMod != nil {
+		resp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
+			Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			Project: projectSpec,
-		},
-	)
-	if err != nil {
-		return models.JobSpec{}, err
+		})
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+		jobDependencies = resp.Dependencies
 	}
 
 	// get job spec of these destinations and append to current jobSpec
-	for _, depDestination := range jobDependenciesDestination.Dependencies {
+	for _, depDestination := range jobDependencies {
 		depSpec, depProj, err := projectJobSpecRepo.GetByDestination(depDestination)
 		if err != nil {
 			if err == store.ErrResourceNotFound {
@@ -109,11 +111,7 @@ func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, p
 func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (models.JobSpec, error) {
 	for hookIdx, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
-		schema, err := jobHook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-		if err != nil {
-			return models.JobSpec{}, err
-		}
-		for _, depends := range schema.DependsOn {
+		for _, depends := range jobHook.Unit.Info().DependsOn {
 			dependentHook, err := jobSpec.GetHookByName(depends)
 			if err == nil {
 				jobHook.DependsOn = append(jobHook.DependsOn, &dependentHook)

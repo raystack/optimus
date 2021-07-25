@@ -1,7 +1,6 @@
 package local
 
 import (
-	"context"
 	"regexp"
 	"strconv"
 	"strings"
@@ -88,8 +87,8 @@ type JobHook struct {
 }
 
 // ToSpec converts the local's JobHook representation to the optimus' models.JobSpecHook
-func (a JobHook) ToSpec(supportedHookRepo models.HookRepo) (models.JobSpecHook, error) {
-	hookUnit, err := supportedHookRepo.GetByName(a.Name)
+func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook, error) {
+	hookUnit, err := pluginsRepo.GetByName(a.Name)
 	if err != nil {
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
 	}
@@ -101,12 +100,8 @@ func (a JobHook) ToSpec(supportedHookRepo models.HookRepo) (models.JobSpecHook, 
 
 // FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
 func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
-	schema, err := spec.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-	if err != nil {
-		return JobHook{}, err
-	}
 	return JobHook{
-		Name:   schema.Name,
+		Name:   spec.Unit.Info().Name,
 		Config: JobSpecConfigToYamlSlice(spec.Config),
 	}, nil
 }
@@ -336,8 +331,7 @@ type JobDependency struct {
 }
 
 type JobSpecAdapter struct {
-	supportedTaskRepo models.TaskPluginRepository
-	supportedHookRepo models.HookRepo
+	pluginRepo models.PluginRepository
 }
 
 func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
@@ -377,7 +371,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	// prep hooks
 	var hooks []models.JobSpecHook
 	for _, hook := range conf.Hooks {
-		adaptHook, err := hook.ToSpec(adapt.supportedHookRepo)
+		adaptHook, err := hook.ToSpec(adapt.pluginRepo)
 		if err != nil {
 			return models.JobSpec{}, err
 		}
@@ -390,7 +384,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
-	execUnit, err := adapt.supportedTaskRepo.GetByName(conf.Task.Name)
+	execUnit, err := adapt.pluginRepo.GetByName(conf.Task.Name)
 	if err != nil {
 		return models.JobSpec{}, errors.Wrapf(err, "spec reading error, failed to find exec unit %s", conf.Task.Name)
 	}
@@ -481,11 +475,6 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		retryDelayDuration = spec.Behavior.Retry.Delay.String()
 	}
 
-	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
-	if err != nil {
-		return Job{}, err
-	}
-
 	var notifiers []JobNotifier
 	for _, notify := range spec.Behavior.Notify {
 		notifiers = append(notifiers, JobNotifier{
@@ -516,7 +505,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Notify: notifiers,
 		},
 		Task: JobTask{
-			Name:   taskSchema.Name,
+			Name:   spec.Task.Unit.Info().Name,
 			Config: taskConf,
 			Window: JobTaskWindow{
 				Size:       spec.Task.Window.SizeString(),
@@ -551,10 +540,9 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	return parsed, nil
 }
 
-func NewJobSpecAdapter(supportedTaskRepo models.TaskPluginRepository, supportedHookRepo models.HookRepo) *JobSpecAdapter {
+func NewJobSpecAdapter(pluginRepo models.PluginRepository) *JobSpecAdapter {
 	return &JobSpecAdapter{
-		supportedTaskRepo: supportedTaskRepo,
-		supportedHookRepo: supportedHookRepo,
+		pluginRepo: pluginRepo,
 	}
 }
 

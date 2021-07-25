@@ -1,7 +1,6 @@
 package v1_test
 
 import (
-	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -31,25 +30,17 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, replayExecutionTreeNode.Dependents[0].JobName, "nested-job-name")
 	})
 	t.Run("should successfully parse job spec to and from proto", func(t *testing.T) {
-		execUnit1 := new(mock.TaskPlugin)
-		execUnit1.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		execUnit1 := new(mock.BasePlugin)
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: "sample-task",
 		}, nil)
 		defer execUnit1.AssertExpectations(t)
 
-		allTasksRepo := new(mock.SupportedTaskRepo)
-		allTasksRepo.On("GetByName", "sample-task").Return(execUnit1, nil)
-		defer allTasksRepo.AssertExpectations(t)
-
-		hookUnit1 := new(mock.HookPlugin)
-		hookUnit1.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
-			Name: "sample-hook",
+		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo.On("GetByName", "sample-task").Return(&models.Plugin{
+			Base: execUnit1,
 		}, nil)
-		defer hookUnit1.AssertExpectations(t)
-
-		allHookRepo := new(mock.SupportedHookRepo)
-		allHookRepo.On("GetByName", "sample-hook").Return(hookUnit1, nil)
-		defer allHookRepo.AssertExpectations(t)
+		adapter := v1.NewAdapter(pluginRepo, nil)
 
 		jobSpec := models.JobSpec{
 			Name: "test-job",
@@ -76,7 +67,7 @@ func TestAdapter(t *testing.T) {
 				},
 			},
 			Task: models.JobSpecTask{
-				Unit: execUnit1,
+				Unit: &models.Plugin{Base: execUnit1},
 				Config: models.JobSpecConfigs{
 					{
 						Name:  "DO",
@@ -106,12 +97,11 @@ func TestAdapter(t *testing.T) {
 							Value: "this",
 						},
 					},
-					Unit: hookUnit1,
+					Unit: &models.Plugin{Base: execUnit1},
 				},
 			},
 		}
 
-		adapter := v1.NewAdapter(allTasksRepo, allHookRepo, nil)
 		inProto, err := adapter.ToJobProto(jobSpec)
 		assert.Nil(t, err)
 		original, err := adapter.FromJobProto(inProto)

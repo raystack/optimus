@@ -19,7 +19,7 @@
     "application/json"
   ],
   "paths": {
-    "/api/v1/project": {
+    "/v1/project": {
       "get": {
         "summary": "ListProjects returns list of registered projects and configurations",
         "operationId": "RuntimeService_ListProjects",
@@ -73,7 +73,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job": {
+    "/v1/project/{projectName}/job": {
       "get": {
         "summary": "ListJobSpecification returns list of jobs created in a project",
         "operationId": "RuntimeService_ListJobSpecification",
@@ -110,7 +110,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/check": {
+    "/v1/project/{projectName}/job/check": {
       "post": {
         "summary": "CheckJobSpecification checks if a job specification is valid",
         "operationId": "RuntimeService_CheckJobSpecification",
@@ -141,7 +141,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/dump": {
+    "/v1/project/{projectName}/job/{jobName}/dump": {
       "get": {
         "summary": "DumpJobSpecification returns compiled representation of the job in a scheduler\nconsumable form",
         "operationId": "RuntimeService_DumpJobSpecification",
@@ -184,7 +184,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/instance": {
+    "/v1/project/{projectName}/job/{jobName}/instance": {
       "post": {
         "summary": "RegisterInstance is an internal admin command used during task/hook execution\nto pull task/hook compiled configuration and assets.",
         "operationId": "RuntimeService_RegisterInstance",
@@ -229,7 +229,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/replay": {
+    "/v1/project/{projectName}/job/{jobName}/replay": {
       "post": {
         "operationId": "RuntimeService_Replay",
         "responses": {
@@ -265,7 +265,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/replay-dry-run": {
+    "/v1/project/{projectName}/job/{jobName}/replay-dry-run": {
       "get": {
         "operationId": "RuntimeService_ReplayDryRun",
         "responses": {
@@ -325,7 +325,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/job/{jobName}/status": {
+    "/v1/project/{projectName}/job/{jobName}/status": {
       "get": {
         "summary": "JobStatus returns the current and past run status of jobs",
         "operationId": "RuntimeService_JobStatus",
@@ -362,7 +362,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/namespace": {
+    "/v1/project/{projectName}/namespace": {
       "get": {
         "summary": "ListProjectNamespaces returns list of namespaces of a project",
         "operationId": "RuntimeService_ListProjectNamespaces",
@@ -430,7 +430,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource": {
+    "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource": {
       "get": {
         "summary": "ListResourceSpecification lists all resource specifications of a datastore in project",
         "operationId": "RuntimeService_ListResourceSpecification",
@@ -570,7 +570,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource/{resourceName}": {
+    "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource/{resourceName}": {
       "get": {
         "operationId": "RuntimeService_ReadResource",
         "responses": {
@@ -618,7 +618,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/namespace/{namespace}/job": {
+    "/v1/project/{projectName}/namespace/{namespace}/job": {
       "post": {
         "summary": "CreateJobSpecification registers a new job for a namespace which belongs to a project",
         "operationId": "RuntimeService_CreateJobSpecification",
@@ -663,7 +663,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/namespace/{namespace}/job/{jobName}": {
+    "/v1/project/{projectName}/namespace/{namespace}/job/{jobName}": {
       "get": {
         "summary": "ReadJobSpecification reads a provided job spec of a namespace",
         "operationId": "RuntimeService_ReadJobSpecification",
@@ -747,7 +747,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/namespace/{namespace}/job/{jobName}/event": {
+    "/v1/project/{projectName}/namespace/{namespace}/job/{jobName}/event": {
       "post": {
         "summary": "RegisterJobEvent notifies optimus service about an event related to job",
         "operationId": "RuntimeService_RegisterJobEvent",
@@ -798,7 +798,7 @@
         ]
       }
     },
-    "/api/v1/project/{projectName}/secret/{secretName}": {
+    "/v1/project/{projectName}/secret/{secretName}": {
       "post": {
         "summary": "RegisterSecret creates a new secret of a project",
         "operationId": "RuntimeService_RegisterSecret",
@@ -843,7 +843,7 @@
         ]
       }
     },
-    "/api/v1/version": {
+    "/v1/version": {
       "post": {
         "summary": "server ping with version",
         "operationId": "RuntimeService_Version",
@@ -876,7 +876,7 @@
         ]
       }
     },
-    "/api/v1/window": {
+    "/v1/window": {
       "get": {
         "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
         "operationId": "RuntimeService_GetWindow",
@@ -1195,21 +1195,21 @@
     "optimusInstanceSpecDataType": {
       "type": "string",
       "enum": [
-        "INVALID",
+        "UNKNOWN",
         "ENV",
         "FILE"
       ],
-      "default": "INVALID",
+      "default": "UNKNOWN",
       "title": "type of data, could be an env var or file"
     },
     "optimusInstanceSpecType": {
       "type": "string",
       "enum": [
-        "INVALID",
+        "UNKNOWN",
         "TASK",
         "HOOK"
       ],
-      "default": "INVALID"
+      "default": "UNKNOWN"
     },
     "optimusJobConfigItem": {
       "type": "object",
@@ -1247,12 +1247,12 @@
     "optimusJobEventType": {
       "type": "string",
       "enum": [
-        "INVALID",
+        "UNKNOWN",
         "SLA_MISS",
         "FAILURE",
         "SUCCESS"
       ],
-      "default": "INVALID"
+      "default": "UNKNOWN"
     },
     "optimusJobSpecHook": {
       "type": "object",

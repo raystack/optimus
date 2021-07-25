@@ -62,8 +62,7 @@ func main() {
 	command := cmd.New(
 		log.New(os.Stderr, "", 0),
 		configuration,
-		models.TaskRegistry,
-		models.HookRegistry,
+		models.PluginRegistry,
 		models.DatastoreRegistry,
 	)
 	if err := command.Execute(); err != nil {

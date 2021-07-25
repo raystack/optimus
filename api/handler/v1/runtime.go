@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/core/tree"
@@ -508,10 +510,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 
 	var adaptedJobStatus []*pb.JobStatus
 	for _, jobStatus := range jobStatuses {
-		ts, err := ptypes.TimestampProto(jobStatus.ScheduledAt)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to parse time for %s", err.Error(), req.GetJobName())
-		}
+		ts := timestamppb.New(jobStatus.ScheduledAt)
 		adaptedJobStatus = append(adaptedJobStatus, &pb.JobStatus{
 			State:       jobStatus.State.String(),
 			ScheduledAt: ts,
@@ -574,11 +573,8 @@ func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindow
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	windowStart, err1 := ptypes.TimestampProto(window.GetStart(scheduledTime))
-	windowEnd, err2 := ptypes.TimestampProto(window.GetEnd(scheduledTime))
-	if err1 != nil || err2 != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to convert timestamp %s", err.Error(), scheduledTime)
-	}
+	windowStart := timestamppb.New(window.GetStart(scheduledTime))
+	windowEnd := timestamppb.New(window.GetEnd(scheduledTime))
 
 	return &pb.GetWindowResponse{
 		Start: windowStart,

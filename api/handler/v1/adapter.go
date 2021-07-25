@@ -1,10 +1,11 @@
 package v1
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/tree"
 
@@ -18,8 +19,7 @@ import (
 
 // Note: all config keys will be converted to upper case automatically
 type Adapter struct {
-	supportedTaskRepo      models.TaskPluginRepository
-	supportedHookRepo      models.HookRepo
+	pluginRepo             models.PluginRepository
 	supportedDatastoreRepo models.DatastoreRepo
 }
 
@@ -51,7 +51,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
-	execUnit, err := adapt.supportedTaskRepo.GetByName(spec.TaskName)
+	execUnit, err := adapt.pluginRepo.GetByName(spec.TaskName)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -149,14 +149,6 @@ func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecT
 }
 
 func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, error) {
-	if spec.Task.Unit == nil {
-		return nil, errors.New("task unit cannot be nil")
-	}
-	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
-	if err != nil {
-		return nil, err
-	}
-
 	adaptedHook, err := adapt.ToHookProto(spec.Hooks)
 	if err != nil {
 		return nil, err
@@ -179,7 +171,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		StartDate:        spec.Schedule.StartDate.Format(models.JobDatetimeLayout),
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
-		TaskName:         taskSchema.Name,
+		TaskName:         spec.Task.Unit.Info().Name,
 		WindowSize:       spec.Task.Window.SizeString(),
 		WindowOffset:     spec.Task.Window.OffsetString(),
 		WindowTruncateTo: spec.Task.Window.TruncateTo,
@@ -325,10 +317,7 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[strings.ToUpper(asset.Type)]),
 		})
 	}
-	schdAt, err := ptypes.TimestampProto(spec.ScheduledAt)
-	if err != nil {
-		return nil, err
-	}
+	schdAt := timestamppb.New(spec.ScheduledAt)
 	return &pb.InstanceSpec{
 		JobName:     spec.Job.Name,
 		ScheduledAt: schdAt,
@@ -368,7 +357,7 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobSpecHook, error) {
 	var hooks []models.JobSpecHook
 	for _, hook := range hooksProto {
-		hookUnit, err := adapt.supportedHookRepo.GetByName(hook.Name)
+		hookUnit, err := adapt.pluginRepo.GetByName(hook.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -399,12 +388,8 @@ func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 			})
 		}
 
-		schema, err := hook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-		if err != nil {
-			return nil, err
-		}
 		protoHooks = append(protoHooks, &pb.JobSpecHook{
-			Name:   schema.Name,
+			Name:   hook.Unit.Info().Name,
 			Config: hookConfigs,
 		})
 	}
@@ -451,10 +436,7 @@ func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayE
 	}
 	for _, run := range res.Runs.Values() {
 		runTime := run.(time.Time)
-		timestampPb, err := ptypes.TimestampProto(runTime)
-		if err != nil {
-			return nil, err
-		}
+		timestampPb := timestamppb.New(runTime)
 		response.Runs = append(response.Runs, timestampPb)
 	}
 	for _, dep := range res.Dependents {
@@ -467,11 +449,9 @@ func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayE
 	return response, nil
 }
 
-func NewAdapter(supportedTaskRepo models.TaskPluginRepository,
-	supportedHookRepo models.HookRepo, datastoreRepo models.DatastoreRepo) *Adapter {
+func NewAdapter(pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *Adapter {
 	return &Adapter{
-		supportedTaskRepo:      supportedTaskRepo,
-		supportedHookRepo:      supportedHookRepo,
+		pluginRepo:             pluginRepo,
 		supportedDatastoreRepo: datastoreRepo,
 	}
 }

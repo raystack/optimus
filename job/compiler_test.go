@@ -5,14 +5,11 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCompiler(t *testing.T) {
-	execUnit := new(mock.TaskPlugin)
-
 	projSpec := models.ProjectSpec{
 		Name: "foo-project",
 	}
@@ -47,7 +44,7 @@ func TestCompiler(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     execUnit,
+			Unit:     &models.Plugin{},
 			Priority: 2000,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Hour,

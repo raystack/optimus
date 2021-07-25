@@ -20,18 +20,18 @@ const (
 	validateTimeout = time.Minute * 3
 )
 
-func validateCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
+func validateCommand(l logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "validate",
 		Short: "check if specifications are valid for deployment",
 	}
 	if jobSpecRepo != nil {
-		cmd.AddCommand(validateJobCommand(l, host, jobSpecRepo))
+		cmd.AddCommand(validateJobCommand(l, host, pluginRepo, jobSpecRepo))
 	}
 	return cmd
 }
 
-func validateJobCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
+func validateJobCommand(l logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
@@ -50,7 +50,7 @@ func validateJobCommand(l logger, host string, jobSpecRepo JobSpecRepository) *c
 		if err != nil {
 			return err
 		}
-		if err := validateJobSpecificationRequest(l, projectName, namespace, jobSpecs, host); err != nil {
+		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host); err != nil {
 			return err
 		}
 		l.Println("jobs successfully validated")
@@ -62,8 +62,9 @@ func validateJobCommand(l logger, host string, jobSpecRepo JobSpecRepository) *c
 	return cmd
 }
 
-func validateJobSpecificationRequest(l logger, projectName string, namespace string, jobSpecs []models.JobSpec, host string) (err error) {
-	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry)
+func validateJobSpecificationRequest(l logger, projectName string, namespace string,
+	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string) (err error) {
+	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()

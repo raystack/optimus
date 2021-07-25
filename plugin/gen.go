@@ -73,10 +73,10 @@ echo "-- running unit"
 exec $(eval echo "$@")
 `
 
-	BinaryNameFormat = "optimus-%s-%s_%s_%s_%s"
+	BinaryNameFormat = "optimus-%s_%s_%s"
 )
 
-// (kush.sharma): deprecated, gonna delete this soon
+// (kush.sharma): deprecated, gonna replace it with(#14)
 func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, optimusDownloadUrl string, skipDockerBuild, skipBinaryBuild bool) error {
 	inputConfig := BuildConfig{}
 	if err := yaml.Unmarshal(configBytes, &inputConfig); err != nil {
@@ -126,7 +126,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 			if len(taskPlugin.Binary.OS) > 0 {
 				for _, binOS := range taskPlugin.Binary.OS {
 					for _, binArch := range taskPlugin.Binary.Arch {
-						binName := strings.ToLower(fmt.Sprintf(BinaryNameFormat, TaskPluginName, pluginName, taskPlugin.Version, binOS, binArch))
+						binName := strings.ToLower(fmt.Sprintf(BinaryNameFormat, pluginName, binOS, binArch))
 						args := []string{
 							"build",
 							"-ldflags", fmt.Sprintf("-X '%s=%s'", "main.Version", taskPlugin.Version),
@@ -199,7 +199,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 			if len(hookPlugin.Binary.OS) > 0 {
 				for _, binOS := range hookPlugin.Binary.OS {
 					for _, binArch := range hookPlugin.Binary.Arch {
-						binName := strings.ToLower(fmt.Sprintf(BinaryNameFormat, HookPluginName, pluginName, hookPlugin.Version, binOS, binArch))
+						binName := strings.ToLower(fmt.Sprintf(BinaryNameFormat, pluginName, binOS, binArch))
 						args := []string{
 							"build",
 							"-ldflags", fmt.Sprintf("-X '%s=%s'", "main.Version", hookPlugin.Version),

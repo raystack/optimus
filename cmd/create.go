@@ -36,19 +36,18 @@ var (
 )
 
 func createCommand(l logger, jobSpecFs afero.Fs, datastoreSpecsFs map[string]afero.Fs,
-	taskRepo models.TaskPluginRepository, hookRepo models.HookRepo, datastoreRepo models.DatastoreRepo) *cli.Command {
+	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
 		Short: "Create a new job/resource",
 	}
-	cmd.AddCommand(createJobSubCommand(l, jobSpecFs, taskRepo, hookRepo))
-	cmd.AddCommand(createHookSubCommand(l, jobSpecFs, hookRepo))
+	cmd.AddCommand(createJobSubCommand(l, jobSpecFs, pluginRepo))
+	cmd.AddCommand(createHookSubCommand(l, jobSpecFs, pluginRepo))
 	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSpecFs afero.Fs, taskRepo models.TaskPluginRepository,
-	hookRepo models.HookRepo) *cli.Command {
+func createJobSubCommand(l logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
@@ -56,7 +55,7 @@ func createJobSubCommand(l logger, jobSpecFs afero.Fs, taskRepo models.TaskPlugi
 			var jobSpecRepo JobSpecRepository
 			jobSpecRepo = local.NewJobSpecRepository(
 				jobSpecFs,
-				local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
+				local.NewJobSpecAdapter(pluginRepo),
 			)
 
 			jwd, err := getWorkingDirectory(jobSpecFs, "")
@@ -71,11 +70,11 @@ func createJobSubCommand(l logger, jobSpecFs afero.Fs, taskRepo models.TaskPlugi
 			jobDirectory := filepath.Join(jwd, newDirName)
 			jobNameDefault := strings.ReplaceAll(strings.ReplaceAll(jobDirectory, "/", "."), "\\", ".")
 
-			jobInput, err := createJobSurvey(jobSpecRepo, taskRepo, jobNameDefault)
+			jobInput, err := createJobSurvey(jobSpecRepo, pluginRepo, jobNameDefault)
 			if err != nil {
 				return err
 			}
-			spec, err := local.NewJobSpecAdapter(taskRepo, hookRepo).ToSpec(jobInput)
+			spec, err := local.NewJobSpecAdapter(pluginRepo).ToSpec(jobInput)
 			if err != nil {
 				return err
 			}
@@ -162,15 +161,14 @@ func getDirectoryName(root string) (string, error) {
 	return selectedDir, nil
 }
 
-func createJobSurvey(jobSpecRepo JobSpecRepository, taskRepo models.TaskPluginRepository,
+func createJobSurvey(jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
 	jobNameDefault string) (local.Job, error) {
 	var availableTasks []string
-	for _, task := range taskRepo.GetAll() {
-		schema, err := task.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
-		if err != nil {
-			return local.Job{}, err
-		}
-		availableTasks = append(availableTasks, schema.Name)
+	for _, task := range pluginRepo.GetTasks() {
+		availableTasks = append(availableTasks, task.Info().Name)
+	}
+	if len(availableTasks) == 0 {
+		return local.Job{}, errors.New("no supported task plugin found")
 	}
 
 	var qs = []*survey.Question{
@@ -263,12 +261,17 @@ this effects runtime dependencies and template macros`,
 		},
 	}
 
-	executionTask, err := taskRepo.GetByName(jobInput.Task.Name)
+	executionTask, err := pluginRepo.GetByName(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
 
-	taskQuesResponse, err := executionTask.GetTaskQuestions(context.TODO(), models.GetTaskQuestionsRequest{
+	cliMod := executionTask.CLIMod
+	if cliMod == nil {
+		return jobInput, nil
+	}
+
+	taskQuesResponse, err := cliMod.GetQuestions(context.Background(), models.GetQuestionsRequest{
 		JobName: jobInput.Name,
 	})
 	if err != nil {
@@ -276,34 +279,40 @@ this effects runtime dependencies and template macros`,
 	}
 
 	userInputs := models.PluginAnswers{}
-	for _, ques := range taskQuesResponse.Questions {
-		responseAnswer, err := AskTaskSurveyQuestion(ques, executionTask)
-		if err != nil {
-			return local.Job{}, err
+	if taskQuesResponse.Questions != nil {
+		for _, ques := range taskQuesResponse.Questions {
+			responseAnswer, err := AskCLISurveyQuestion(ques, cliMod)
+			if err != nil {
+				return local.Job{}, err
+			}
+			userInputs = append(userInputs, responseAnswer...)
 		}
-		userInputs = append(userInputs, responseAnswer...)
 	}
 
-	generateConfResponse, err := executionTask.DefaultTaskConfig(context.TODO(), models.DefaultTaskConfigRequest{
+	generateConfResponse, err := cliMod.DefaultConfig(context.Background(), models.DefaultConfigRequest{
 		Answers: userInputs,
 	})
 	if err != nil {
 		return jobInput, err
 	}
-	jobInput.Task.Config = local.JobSpecConfigToYamlSlice(generateConfResponse.Config.ToJobSpec())
+	if generateConfResponse.Config != nil {
+		jobInput.Task.Config = local.JobSpecConfigToYamlSlice(generateConfResponse.Config.ToJobSpec())
+	}
 
-	genAssetResponse, err := executionTask.DefaultTaskAssets(context.TODO(), models.DefaultTaskAssetsRequest{
+	genAssetResponse, err := cliMod.DefaultAssets(context.Background(), models.DefaultAssetsRequest{
 		Answers: userInputs,
 	})
 	if err != nil {
 		return jobInput, err
 	}
-	jobInput.Asset = genAssetResponse.Assets.ToJobSpec().ToMap()
+	if genAssetResponse.Assets != nil {
+		jobInput.Asset = genAssetResponse.Assets.ToJobSpec().ToMap()
+	}
 
 	return jobInput, nil
 }
 
-func createHookSubCommand(l logger, jobSpecFs afero.Fs, hookRepo models.HookRepo) *cli.Command {
+func createHookSubCommand(l logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "hook",
 		Short: "create a new Hook",
@@ -311,7 +320,7 @@ func createHookSubCommand(l logger, jobSpecFs afero.Fs, hookRepo models.HookRepo
 			var jobSpecRepo JobSpecRepository
 			jobSpecRepo = local.NewJobSpecRepository(
 				jobSpecFs,
-				local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
+				local.NewJobSpecAdapter(pluginRepo),
 			)
 
 			selectJobName, err := selectJobSurvey(jobSpecRepo)
@@ -322,7 +331,7 @@ func createHookSubCommand(l logger, jobSpecFs afero.Fs, hookRepo models.HookRepo
 			if err != nil {
 				return err
 			}
-			jobSpec, err = createHookSurvey(jobSpec, hookRepo)
+			jobSpec, err = createHookSurvey(jobSpec, pluginRepo)
 			if err != nil {
 				return err
 			}
@@ -337,18 +346,14 @@ func createHookSubCommand(l logger, jobSpecFs afero.Fs, hookRepo models.HookRepo
 	return cmd
 }
 
-func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.JobSpec, error) {
+func createHookSurvey(jobSpec models.JobSpec, pluginRepo models.PluginRepository) (models.JobSpec, error) {
 	emptyJobSpec := models.JobSpec{}
 	var availableHooks []string
-	for _, hook := range hookRepo.GetAll() {
-		schema, err := hook.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-		if err != nil {
-			return models.JobSpec{}, err
-		}
-
-		// TODO: this should be generated at runtime based on what base task is
-		// selected, support it when we add more than one type of task
-		availableHooks = append(availableHooks, schema.Name)
+	for _, hook := range pluginRepo.GetHooks() {
+		availableHooks = append(availableHooks, hook.Info().Name)
+	}
+	if len(availableHooks) == 0 {
+		return emptyJobSpec, errors.New("no supported hook plugin found")
 	}
 
 	var qs = []*survey.Question{
@@ -375,38 +380,45 @@ func createHookSurvey(jobSpec models.JobSpec, hookRepo models.HookRepo) (models.
 		return emptyJobSpec, errors.Errorf("hook %s already exists for this job", selectedHook)
 	}
 
-	executionHook, err := hookRepo.GetByName(selectedHook)
+	executionHook, err := pluginRepo.GetByName(selectedHook)
 	if err != nil {
 		return emptyJobSpec, err
 	}
 
-	taskQuesResponse, err := executionHook.GetHookQuestions(context.TODO(), models.GetHookQuestionsRequest{
-		JobName: jobSpec.Name,
-	})
-	if err != nil {
-		return emptyJobSpec, err
-	}
-
-	userInputs := models.PluginAnswers{}
-	for _, ques := range taskQuesResponse.Questions {
-		responseAnswer, err := AskHookSurveyQuestion(ques, executionHook)
+	var jobSpecConfigs models.JobSpecConfigs
+	cliMod := executionHook.CLIMod
+	if cliMod != nil {
+		taskQuesResponse, err := cliMod.GetQuestions(context.Background(), models.GetQuestionsRequest{
+			JobName: jobSpec.Name,
+		})
 		if err != nil {
 			return emptyJobSpec, err
 		}
-		userInputs = append(userInputs, responseAnswer...)
-	}
 
-	generateConfResponse, err := executionHook.DefaultHookConfig(context.TODO(), models.DefaultHookConfigRequest{
-		Answers:    userInputs,
-		TaskConfig: models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-	})
-	if err != nil {
-		return emptyJobSpec, err
-	}
+		userInputs := models.PluginAnswers{}
+		if taskQuesResponse.Questions != nil {
+			for _, ques := range taskQuesResponse.Questions {
+				responseAnswer, err := AskCLISurveyQuestion(ques, cliMod)
+				if err != nil {
+					return emptyJobSpec, err
+				}
+				userInputs = append(userInputs, responseAnswer...)
+			}
+		}
 
+		generateConfResponse, err := cliMod.DefaultConfig(context.Background(), models.DefaultConfigRequest{
+			Answers: userInputs,
+		})
+		if err != nil {
+			return emptyJobSpec, err
+		}
+		if generateConfResponse.Config != nil {
+			jobSpecConfigs = generateConfResponse.Config.ToJobSpec()
+		}
+	}
 	jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
 		Unit:   executionHook,
-		Config: generateConfResponse.Config.ToJobSpec(),
+		Config: jobSpecConfigs,
 	})
 	return jobSpec, nil
 }
@@ -433,11 +445,7 @@ func selectJobSurvey(jobSpecRepo JobSpecRepository) (string, error) {
 
 func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool {
 	for _, hook := range jobSpec.Hooks {
-		schema, err := hook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-		if err != nil {
-			return false
-		}
-		if schema.Name == newHookName {
+		if hook.Unit.Info().Name == newHookName {
 			return true
 		}
 	}
@@ -618,7 +626,7 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 	}
 }
 
-func AskTaskSurveyQuestion(ques models.PluginQuestion, execUnit models.TaskPlugin) (models.PluginAnswers, error) {
+func AskCLISurveyQuestion(ques models.PluginQuestion, cliMod models.CommandLineMod) (models.PluginAnswers, error) {
 	var surveyPrompt survey.Prompt
 	if len(ques.Multiselect) > 0 {
 		sel := &survey.Select{
@@ -646,7 +654,7 @@ func AskTaskSurveyQuestion(ques models.PluginQuestion, execUnit models.TaskPlugi
 		if err != nil {
 			return err
 		}
-		resp, err := execUnit.ValidateTaskQuestion(context.TODO(), models.ValidateTaskQuestionRequest{
+		resp, err := cliMod.ValidateQuestion(context.TODO(), models.ValidateQuestionRequest{
 			Answer: models.PluginAnswer{
 				Question: ques,
 				Value:    str,
@@ -674,75 +682,7 @@ func AskTaskSurveyQuestion(ques models.PluginQuestion, execUnit models.TaskPlugi
 	for _, subQues := range ques.SubQuestions {
 		if responseStr == subQues.IfValue {
 			for _, subQ := range subQues.Questions {
-				subQuesAnswer, err := AskTaskSurveyQuestion(subQ, execUnit)
-				if err != nil {
-					return nil, err
-				}
-				answers = append(answers, subQuesAnswer...)
-			}
-		}
-	}
-
-	return answers, nil
-}
-
-func AskHookSurveyQuestion(ques models.PluginQuestion, execUnit models.HookPlugin) (models.PluginAnswers, error) {
-	var surveyPrompt survey.Prompt
-	if len(ques.Multiselect) > 0 {
-		sel := &survey.Select{
-			Message: ques.Prompt,
-			Help:    ques.Help,
-			Options: ques.Multiselect,
-		}
-		if len(ques.Default) > 0 {
-			sel.Default = ques.Default
-		}
-		surveyPrompt = sel
-	} else {
-		sel := &survey.Input{
-			Message: ques.Prompt,
-			Help:    ques.Help,
-		}
-		if len(ques.Default) > 0 {
-			sel.Default = ques.Default
-		}
-		surveyPrompt = sel
-	}
-	var responseStr string
-	if err := survey.AskOne(surveyPrompt, &responseStr, survey.WithValidator(func(val interface{}) error {
-		str, err := ConvertUserInputToString(val)
-		if err != nil {
-			return err
-		}
-		resp, err := execUnit.ValidateHookQuestion(context.TODO(), models.ValidateHookQuestionRequest{
-			Answer: models.PluginAnswer{
-				Question: ques,
-				Value:    str,
-			},
-		})
-		if err != nil {
-			return err
-		}
-		if !resp.Success {
-			return errors.New(resp.Error)
-		}
-		return nil
-	})); err != nil {
-		return nil, errors.Wrap(err, "AskHookSurveyQuestion")
-	}
-
-	answers := models.PluginAnswers{
-		models.PluginAnswer{
-			Question: ques,
-			Value:    responseStr,
-		},
-	}
-
-	// check if sub questions are attached on this question
-	for _, subQues := range ques.SubQuestions {
-		if responseStr == subQues.IfValue {
-			for _, subQ := range subQues.Questions {
-				subQuesAnswer, err := AskHookSurveyQuestion(subQ, execUnit)
+				subQuesAnswer, err := AskCLISurveyQuestion(subQ, cliMod)
 				if err != nil {
 					return nil, err
 				}

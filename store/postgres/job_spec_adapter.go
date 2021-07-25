@@ -91,8 +91,8 @@ type JobHook struct {
 }
 
 // ToSpec converts the postgres' JobHook representation to the optimus' models.JobSpecHook
-func (a JobHook) ToSpec(supportedHookRepo models.HookRepo) (models.JobSpecHook, error) {
-	hookUnit, err := supportedHookRepo.GetByName(a.Name)
+func (a JobHook) ToSpec(pluginRepo models.PluginRepository) (models.JobSpecHook, error) {
+	hookUnit, err := pluginRepo.GetByName(a.Name)
 	if err != nil {
 		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
 	}
@@ -113,25 +113,19 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	if err != nil {
 		return JobHook{}, err
 	}
-	schema, err := spec.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-	if err != nil {
-		return JobHook{}, err
-	}
 	return JobHook{
-		Name:   schema.Name,
+		Name:   spec.Unit.Info().Name,
 		Config: configJSON,
 	}, nil
 }
 
 type JobSpecAdapter struct {
-	supportedTaskRepo models.TaskPluginRepository
-	supportedHookRepo models.HookRepo
+	pluginRepo models.PluginRepository
 }
 
-func NewAdapter(supportedTaskRepo models.TaskPluginRepository, supportedHookRepo models.HookRepo) *JobSpecAdapter {
+func NewAdapter(pluginRepo models.PluginRepository) *JobSpecAdapter {
 	return &JobSpecAdapter{
-		supportedTaskRepo: supportedTaskRepo,
-		supportedHookRepo: supportedHookRepo,
+		pluginRepo: pluginRepo,
 	}
 }
 
@@ -180,14 +174,14 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 	for _, hook := range hooksRaw {
-		hookSpec, err := hook.ToSpec(adapt.supportedHookRepo)
+		hookSpec, err := hook.ToSpec(adapt.pluginRepo)
 		if err != nil {
 			return models.JobSpec{}, err
 		}
 		jobHooks = append(jobHooks, hookSpec)
 	}
 
-	execUnit, err := adapt.supportedTaskRepo.GetByName(conf.TaskName)
+	execUnit, err := adapt.pluginRepo.GetByName(conf.TaskName)
 	if err != nil {
 		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
 	}
@@ -316,17 +310,16 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	wsize := spec.Task.Window.Size.Nanoseconds()
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
-	taskSchema, err := spec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
-	if err != nil {
-		return Job{}, err
-	}
-
-	jobDestination, err := spec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
-		Config: models.TaskPluginConfigs{}.FromJobSpec(spec.Task.Config),
-		Assets: models.TaskPluginAssets{}.FromJobSpec(spec.Assets),
-	})
-	if err != nil {
-		return Job{}, err
+	var jobDestination string
+	if spec.Task.Unit.DependencyMod != nil {
+		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
+			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),
+		})
+		if err != nil {
+			return Job{}, err
+		}
+		jobDestination = jobDestinationResponse.Destination
 	}
 
 	return Job{
@@ -340,9 +333,9 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		EndDate:          spec.Schedule.EndDate,
 		Interval:         spec.Schedule.Interval,
 		Behavior:         behaviorJSON,
-		Destination:      jobDestination.Destination,
+		Destination:      jobDestination,
 		Dependencies:     dependenciesJSON,
-		TaskName:         taskSchema.Name,
+		TaskName:         spec.Task.Unit.Info().Name,
 		TaskConfig:       taskConfigJSON,
 		WindowSize:       &wsize,
 		WindowOffset:     &woffset,

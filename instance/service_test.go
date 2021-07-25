@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	mock2 "github.com/stretchr/testify/mock"
+
+	"github.com/odpf/optimus/store"
 
 	"github.com/odpf/optimus/instance"
 	"github.com/pkg/errors"
@@ -18,10 +18,11 @@ import (
 )
 
 func TestService(t *testing.T) {
-	execUnit := new(mock.TaskPlugin)
-	execUnit.On("Name").Return("bq")
-	execUnit.On("GenerateTaskDestination", context.TODO(), mock2.AnythingOfType("models.GenerateTaskDestinationRequest")).Return(
-		models.GenerateTaskDestinationResponse{Destination: "proj.data.tab"}, nil)
+	execUnit := new(mock.BasePlugin)
+	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
+	depMod := new(mock.DependencyResolverMod)
+	depMod.On("GenerateDestination", context.TODO(), mock2.AnythingOfType("models.GenerateDestinationRequest")).Return(
+		&models.GenerateDestinationResponse{Destination: "proj.data.tab"}, nil)
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -34,7 +35,7 @@ func TestService(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     execUnit,
+			Unit:     &models.Plugin{Base: execUnit, DependencyMod: depMod},
 			Priority: 2000,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Hour,

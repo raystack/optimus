@@ -1,7 +1,6 @@
 package airflow2
 
 import (
-	"context"
 	_ "embed"
 	"testing"
 	"time"
@@ -16,36 +15,35 @@ import (
 var CompiledTemplate []byte
 
 func TestCompiler(t *testing.T) {
-	ctx := context.Background()
-	execUnit := new(mock.TaskPlugin)
-	execUnit.On("GetTaskSchema", ctx, models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+	execUnit := new(mock.BasePlugin)
+	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       "bq",
 		Image:      "example.io/namespace/image:latest",
 		SecretPath: "/opt/optimus/secrets/auth.json",
 	}, nil)
 
 	transporterHook := "transporter"
-	hookUnit := new(mock.HookPlugin)
-	hookUnit.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+	hookUnit := new(mock.BasePlugin)
+	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       transporterHook,
-		Type:       models.HookTypePre,
+		HookType:   models.HookTypePre,
 		Image:      "example.io/namespace/hook-image:latest",
 		SecretPath: "/opt/optimus/secrets/auth.json",
 	}, nil)
 
 	predatorHook := "predator"
-	hookUnit2 := new(mock.HookPlugin)
-	hookUnit2.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
-		Name:  predatorHook,
-		Type:  models.HookTypePost,
-		Image: "example.io/namespace/predator-image:latest",
+	hookUnit2 := new(mock.BasePlugin)
+	hookUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
+		Name:     predatorHook,
+		HookType: models.HookTypePost,
+		Image:    "example.io/namespace/predator-image:latest",
 	}, nil)
 
-	hookUnit3 := new(mock.HookPlugin)
-	hookUnit3.On("GetHookSchema", ctx, models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
-		Name:  "hook-for-fail",
-		Type:  models.HookTypeFail,
-		Image: "example.io/namespace/fail-image:latest",
+	hookUnit3 := new(mock.BasePlugin)
+	hookUnit3.On("PluginInfo").Return(&models.PluginInfoResponse{
+		Name:     "hook-for-fail",
+		HookType: models.HookTypeFail,
+		Image:    "example.io/namespace/fail-image:latest",
 	}, nil)
 
 	projSpec := models.ProjectSpec{
@@ -73,7 +71,7 @@ func TestCompiler(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     execUnit,
+			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Hour,
@@ -95,7 +93,7 @@ func TestCompiler(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     execUnit,
+			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Hour,
@@ -113,7 +111,7 @@ func TestCompiler(t *testing.T) {
 				Value: "event_timestamp > 10000",
 			},
 		},
-		Unit:      hookUnit,
+		Unit:      &models.Plugin{Base: hookUnit},
 		DependsOn: nil,
 	}
 	hook2 := models.JobSpecHook{
@@ -123,12 +121,12 @@ func TestCompiler(t *testing.T) {
 				Value: "event_timestamp > 10000",
 			},
 		},
-		Unit:      hookUnit2,
+		Unit:      &models.Plugin{Base: hookUnit2},
 		DependsOn: []*models.JobSpecHook{&hook1},
 	}
 	hook3 := models.JobSpecHook{
 		Config: []models.JobSpecConfigItem{},
-		Unit:   hookUnit3,
+		Unit:   &models.Plugin{Base: hookUnit3},
 	}
 	spec := models.JobSpec{
 		Name:  "foo",
@@ -155,7 +153,7 @@ func TestCompiler(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     execUnit,
+			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Hour,

@@ -78,12 +78,16 @@ func (s *Service) Register(jobSpec models.JobSpec, scheduledAt time.Time,
 }
 
 func (s *Service) PrepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (models.InstanceSpec, error) {
-	jobDestination, err := jobSpec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
-		Config: models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets: models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
-	})
-	if err != nil {
-		return models.InstanceSpec{}, errors.Wrapf(err, "failed to generate destination for job %s", jobSpec.Name)
+	var jobDestination string
+	if jobSpec.Task.Unit.DependencyMod != nil {
+		jobDestinationResponse, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+			Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+		})
+		if err != nil {
+			return models.InstanceSpec{}, errors.Wrapf(err, "failed to generate destination for job %s", jobSpec.Name)
+		}
+		jobDestination = jobDestinationResponse.Destination
 	}
 
 	return models.InstanceSpec{
@@ -110,7 +114,7 @@ func (s *Service) PrepInstance(jobSpec models.JobSpec, scheduledAt time.Time) (m
 			},
 			{
 				Name:  ConfigKeyDestination,
-				Value: jobDestination.Destination,
+				Value: jobDestination,
 				Type:  models.InstanceDataTypeEnv,
 			},
 		},

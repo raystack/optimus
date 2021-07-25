@@ -43,7 +43,7 @@ module.exports = {
     {
       type: "category",
       label: "Development",
-      items: ["development/task-plugin"],
+      items: ["development/building-plugin"],
     },
     {
       type: "category",

@@ -66,11 +66,7 @@ func (js JobSpec) GetName() string {
 
 func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
 	for _, hook := range js.Hooks {
-		schema, err := hook.Unit.GetHookSchema(context.Background(), GetHookSchemaRequest{})
-		if err != nil {
-			return JobSpecHook{}, err
-		}
-		if schema.Name == name {
+		if hook.Unit.Info().Name == name {
 			return hook, nil
 		}
 	}
@@ -111,7 +107,7 @@ type JobSpecNotifier struct {
 }
 
 type JobSpecTask struct {
-	Unit     TaskPlugin
+	Unit     *Plugin
 	Config   JobSpecConfigs
 	Window   JobSpecTaskWindow
 	Priority int
@@ -207,7 +203,7 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 
 type JobSpecHook struct {
 	Config    JobSpecConfigs
-	Unit      HookPlugin
+	Unit      *Plugin
 	DependsOn []*JobSpecHook
 }
 

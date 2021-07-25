@@ -6,13 +6,13 @@ import (
 )
 
 // adminCommand requests a resource from optimus
-func adminCommand(l logger, taskRepo models.TaskPluginRepository, hookRepo models.HookRepo) *cli.Command {
+func adminCommand(l logger, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "admin",
 		Short: "administration commands, should not be used by user",
 	}
 	cmd.AddCommand(adminBuildCommand(l))
-	cmd.AddCommand(adminGetCommand(l, taskRepo, hookRepo))
+	cmd.AddCommand(adminGetCommand(l, pluginRepo))
 	return cmd
 }
 
@@ -27,11 +27,10 @@ func adminBuildCommand(l logger) *cli.Command {
 }
 
 // adminGetCommand gets a resource
-func adminGetCommand(l logger, taskRepo models.TaskPluginRepository, hookRepo models.HookRepo) *cli.Command {
+func adminGetCommand(l logger, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use: "get",
 	}
 	cmd.AddCommand(adminGetStatusCommand(l))
-	cmd.AddCommand(adminGetPluginsCommand(l, taskRepo, hookRepo))
 	return cmd
 }

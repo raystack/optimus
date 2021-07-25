@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	pb "github.com/odpf/optimus/api/proto/odpf/metadata/optimus"
 	"github.com/odpf/optimus/models"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,41 +19,39 @@ func (a JobAdapter) buildUrn(projectSpec models.ProjectSpec, jobSpec models.JobS
 }
 
 func (a JobAdapter) FromJobSpec(namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (*models.JobMetadata, error) {
-	taskSchema, err := jobSpec.Task.Unit.GetTaskSchema(context.Background(), models.GetTaskSchemaRequest{})
-	if err != nil {
-		return nil, err
-	}
+	taskSchema := jobSpec.Task.Unit.Info()
 
-	taskPluginConfigs := models.TaskPluginConfigs{}
+	taskPluginConfigs := models.PluginConfigs{}
 	for _, c := range jobSpec.Task.Config {
-		taskPluginConfigs = append(taskPluginConfigs, models.TaskPluginConfig{
+		taskPluginConfigs = append(taskPluginConfigs, models.PluginConfig{
 			Name:  c.Name,
 			Value: c.Value,
 		})
 	}
-	taskPluginAssets := models.TaskPluginAssets{}
+	taskPluginAssets := models.PluginAssets{}
 	for _, c := range jobSpec.Assets.GetAll() {
-		taskPluginAssets = append(taskPluginAssets, models.TaskPluginAsset{
+		taskPluginAssets = append(taskPluginAssets, models.PluginAsset{
 			Name:  c.Name,
 			Value: c.Value,
 		})
 	}
-	taskDestination, err := jobSpec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
-		Config: taskPluginConfigs,
-		Assets: taskPluginAssets,
-	})
-	if err != nil {
-		return nil, err
+	var jobDestination string
+	if jobSpec.Task.Unit.DependencyMod != nil {
+		jobDestinationResponse, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+			Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+		})
+		if err != nil {
+			return nil, err
+		}
+		jobDestination = jobDestinationResponse.Destination
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	taskMetadata := models.JobTaskMetadata{
 		Name:        taskSchema.Name,
 		Image:       taskSchema.Image,
 		Description: taskSchema.Description,
-		Destination: taskDestination.Destination,
+		Destination: jobDestination,
 		Config:      jobSpec.Task.Config,
 		Window:      jobSpec.Task.Window,
 		Priority:    jobSpec.Task.Priority,
@@ -85,16 +82,13 @@ func (a JobAdapter) FromJobSpec(namespaceSpec models.NamespaceSpec, jobSpec mode
 	}
 
 	for _, hook := range jobSpec.Hooks {
-		schema, err := hook.Unit.GetHookSchema(context.Background(), models.GetHookSchemaRequest{})
-		if err != nil {
-			return &resourceMetadata, err
-		}
+		schema := hook.Unit.Info()
 		resourceMetadata.Hooks = append(resourceMetadata.Hooks, models.JobHookMetadata{
 			Name:        schema.Name,
 			Image:       schema.Image,
 			Description: schema.Description,
 			Config:      hook.Config,
-			Type:        schema.Type,
+			Type:        schema.HookType,
 			DependsOn:   schema.DependsOn,
 		})
 	}
@@ -109,10 +103,7 @@ func (a JobAdapter) CompileKey(urn string) ([]byte, error) {
 }
 
 func (a JobAdapter) CompileMessage(jobMetadata *models.JobMetadata) ([]byte, error) {
-	timestamp, err := ptypes.TimestampProto(time.Now())
-	if err != nil {
-		return nil, err
-	}
+	timestamp := timestamppb.New(time.Now())
 
 	jobSchedule, err := a.compileJobSchedule(jobMetadata)
 	if err != nil {
@@ -188,17 +179,11 @@ func (a JobAdapter) compileHooks(resource *models.JobMetadata) (hooks []*pb.JobH
 }
 
 func (a JobAdapter) compileJobSchedule(resource *models.JobMetadata) (*pb.JobSchedule, error) {
-	scheduleStartDate, err := ptypes.TimestampProto(resource.Schedule.StartDate)
-	if err != nil {
-		return nil, err
-	}
+	scheduleStartDate := timestamppb.New(resource.Schedule.StartDate)
 
 	var scheduleEndDate *timestamppb.Timestamp
 	if resource.Schedule.EndDate != nil {
-		scheduleEndDate, err = ptypes.TimestampProto(*resource.Schedule.EndDate)
-		if err != nil {
-			return nil, err
-		}
+		scheduleEndDate = timestamppb.New(*resource.Schedule.EndDate)
 	}
 
 	return &pb.JobSchedule{

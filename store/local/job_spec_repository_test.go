@@ -1,7 +1,6 @@
 package local_test
 
 import (
-	"context"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -43,13 +42,13 @@ hooks: []
 
 func TestJobSpecRepository(t *testing.T) {
 	// prepare adapter
-	execUnit := new(mock.TaskPlugin)
-	execUnit.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+	execUnit := new(mock.BasePlugin)
+	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: "foo",
 	}, nil)
-	allTasksRepo := new(mock.SupportedTaskRepo)
-	allTasksRepo.On("GetByName", "foo").Return(execUnit, nil)
-	adapter := local.NewJobSpecAdapter(allTasksRepo, nil)
+	pluginRepo := new(mock.SupportedPluginRepo)
+	pluginRepo.On("GetByName", "foo").Return(&models.Plugin{Base: execUnit}, nil)
+	adapter := local.NewJobSpecAdapter(pluginRepo)
 
 	jobConfig := local.Job{
 		Version: 1,
@@ -100,7 +99,7 @@ func TestJobSpecRepository(t *testing.T) {
 			DependsOnPast: false,
 		},
 		Task: models.JobSpecTask{
-			Unit: execUnit,
+			Unit: &models.Plugin{Base: execUnit},
 			Window: models.JobSpecTaskWindow{
 				Offset:     0,
 				Size:       time.Hour * 24,
@@ -134,7 +133,7 @@ func TestJobSpecRepository(t *testing.T) {
 			DependsOnPast: false,
 		},
 		Task: models.JobSpecTask{
-			Unit: execUnit,
+			Unit: &models.Plugin{Base: execUnit},
 			Window: models.JobSpecTaskWindow{
 				Offset:     0,
 				Size:       time.Hour * 24,
@@ -181,7 +180,7 @@ func TestJobSpecRepository(t *testing.T) {
 		t.Run("should return error if name is empty", func(t *testing.T) {
 			repo := local.NewJobSpecRepository(nil, adapter)
 			err := repo.Save(models.JobSpec{Task: models.JobSpecTask{
-				Unit: execUnit,
+				Unit: &models.Plugin{Base: execUnit},
 			}})
 			assert.NotNil(t, err)
 		})
@@ -211,13 +210,15 @@ func TestJobSpecRepository(t *testing.T) {
 
 			// update the spec.
 			hookName := "g-hook"
-			hookUnit1 := new(mock.HookPlugin)
-			hookUnit1.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
-				Name: hookName,
+			hookUnit1 := new(mock.BasePlugin)
+			hookUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:       hookName,
+				PluginType: models.PluginTypeHook,
 			}, nil)
-			allHooksRepo := new(mock.SupportedHookRepo)
-			allHooksRepo.On("GetByName", hookName).Return(hookUnit1, nil)
-			adapterNew := local.NewJobSpecAdapter(allTasksRepo, allHooksRepo)
+			pluginsRepo := new(mock.SupportedPluginRepo)
+			pluginsRepo.On("GetByName", hookName).Return(&models.Plugin{Base: hookUnit1}, nil)
+			pluginsRepo.On("GetByName", "foo").Return(&models.Plugin{Base: execUnit}, nil)
+			adapterNew := local.NewJobSpecAdapter(pluginsRepo)
 
 			specCopy := spec
 			specCopy.Hooks = []models.JobSpecHook{
@@ -226,7 +227,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name:  "key",
 						Value: "value",
 					},
-				}, Unit: hookUnit1},
+				}, Unit: &models.Plugin{Base: hookUnit1}},
 			}
 
 			repoNew := local.NewJobSpecRepository(appFS, adapterNew)
@@ -458,7 +459,7 @@ hooks: []`,
 					DependsOnPast: false,
 				},
 				Task: models.JobSpecTask{
-					Unit:   execUnit,
+					Unit:   &models.Plugin{Base: execUnit},
 					Config: models.JobSpecConfigs{},
 					Window: models.JobSpecTaskWindow{
 						Offset:     0,
@@ -483,7 +484,7 @@ hooks: []`,
 					DependsOnPast: false,
 				},
 				Task: models.JobSpecTask{
-					Unit:   execUnit,
+					Unit:   &models.Plugin{Base: execUnit},
 					Config: models.JobSpecConfigs{},
 					Window: models.JobSpecTaskWindow{
 						Offset:     0,

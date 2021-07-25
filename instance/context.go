@@ -31,6 +31,8 @@ var (
 // Raw task assets may not be executable in there default state and needs to be
 // transformed before they can work as inputs. Input could be through
 // environment variables or as a file.
+// It exposes .proj, .inst, .task variable names containing configs that can be
+// used in job specification
 type ContextManager struct {
 	namespace models.NamespaceSpec
 	jobSpec   models.JobSpec
@@ -45,40 +47,35 @@ func (fm *ContextManager) Generate(
 	runType models.InstanceType,
 	runName string,
 ) (envMap map[string]string, fileMap map[string]string, err error) {
-	// project configs will be used for templating
-	// prefix project configs to avoid conflicts with project/instance configs
-	projectConfig := map[string]string{}
-	for key, val := range fm.getProjectConfigMap() {
-		projectConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
-	}
-
-	// use namespace configs for templating. also, override project config with
-	// namespace's configs when present
-	for key, val := range fm.getNamespaceConfigMap() {
-		projectConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
-	}
+	projectPrefixedConfig, projRawConfig := fm.projectEnvs()
 
 	// instance env will be used for templating
 	instanceEnvMap, instanceFileMap := fm.getInstanceData(instanceSpec)
 
 	// merge both
-	projectInstanceContext := MergeStringMap(instanceEnvMap, projectConfig)
+	projectInstanceContext := MergeInterfaceMapToInterface(instanceEnvMap, projectPrefixedConfig)
+	projectInstanceContext["proj"] = projRawConfig
+	projectInstanceContext["inst"] = instanceEnvMap
 
 	// prepare configs
 	envMap, err = fm.generateEnvs(runName, runType, projectInstanceContext)
-
-	// transformation may need instance variables as well
-	envMap = MergeStringMap(envMap, instanceEnvMap)
 	if err != nil {
-		return
+		return nil, nil, err
+	}
+
+	// append instance envMap
+	for k, v := range instanceEnvMap {
+		if vs, ok := v.(string); ok {
+			envMap[k] = vs
+		}
 	}
 
 	// do the same for asset files
 	// check if task needs to override the compilation behaviour
-	compiledAssetResponse, err := fm.jobSpec.Task.Unit.CompileTaskAssets(context.TODO(), models.CompileTaskAssetsRequest{
-		TaskWindow:       fm.jobSpec.Task.Window,
-		Config:           models.TaskPluginConfigs{}.FromJobSpec(fm.jobSpec.Task.Config),
-		Assets:           models.TaskPluginAssets{}.FromJobSpec(fm.jobSpec.Assets),
+	compiledAssetResponse, err := fm.jobSpec.Task.Unit.CLIMod.CompileAssets(context.Background(), models.CompileAssetsRequest{
+		Window:           fm.jobSpec.Task.Window,
+		Config:           models.PluginConfigs{}.FromJobSpec(fm.jobSpec.Task.Config),
+		Assets:           models.PluginAssets{}.FromJobSpec(fm.jobSpec.Assets),
 		InstanceSchedule: instanceSpec.ScheduledAt,
 		InstanceData:     instanceSpec.Data,
 	})
@@ -88,14 +85,33 @@ func (fm *ContextManager) Generate(
 
 	// append job spec assets to list of files need to write
 	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
-	if fileMap, err = fm.engine.CompileFiles(fileMap, ConvertStringToInterfaceMap(projectInstanceContext)); err != nil {
+	if fileMap, err = fm.engine.CompileFiles(fileMap, projectInstanceContext); err != nil {
 		return
 	}
 	return envMap, fileMap, nil
 }
 
+func (fm *ContextManager) projectEnvs() (map[string]interface{}, map[string]interface{}) {
+	// project configs will be used for templating
+	// prefix project configs to avoid conflicts with project/instance configs
+	projectPrefixedConfig := map[string]interface{}{}
+	projRawConfig := map[string]interface{}{}
+	for key, val := range fm.getProjectConfigMap() {
+		projectPrefixedConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
+		projRawConfig[key] = val
+	}
+
+	// use namespace configs for templating. also, override project config with
+	// namespace's configs when present
+	for key, val := range fm.getNamespaceConfigMap() {
+		projectPrefixedConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
+		projRawConfig[key] = val
+	}
+	return projectPrefixedConfig, projRawConfig
+}
+
 func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceType,
-	projectInstanceContext map[string]string) (map[string]string, error) {
+	projectInstanceContext map[string]interface{}) (map[string]string, error) {
 	transformationConfigs, hookConfigs, err := fm.getConfigMaps(fm.jobSpec, runName, runType)
 	if err != nil {
 		return nil, err
@@ -108,28 +124,33 @@ func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceTy
 
 	// if this is requested for transformation, just return from here
 	if runType == models.InstanceTypeTask {
-		return transformationConfigs, nil
+		return MergeInterfaceMapToString(transformationConfigs, nil), nil
 	}
 
 	// prefix transformation configs to avoid conflicts with project/instance configs
-	prefixedTransformationConfigs := map[string]string{}
-	for key, val := range transformationConfigs {
-		prefixedTransformationConfigs[fmt.Sprintf("%s%s", TaskConfigPrefix, key)] = val
+	prefixedTransformationConfigs := map[string]interface{}{}
+	for k, v := range transformationConfigs {
+		prefixedTransformationConfigs[fmt.Sprintf("%s%s", TaskConfigPrefix, k)] = v
 	}
 
 	// templatize configs of hook with transformation, project and instance
-	projectInstanceTransformationConfigs := MergeStringMap(projectInstanceContext, prefixedTransformationConfigs)
+	projectInstanceTransformationConfigs := MergeInterfaceMapToInterface(projectInstanceContext, prefixedTransformationConfigs)
+	projectInstanceTransformationConfigs["task"] = transformationConfigs
 	if hookConfigs, err = fm.compileTemplates(hookConfigs, projectInstanceTransformationConfigs); err != nil {
 		return nil, err
 	}
 
 	// merge transformation and hook configs
-	return MergeStringMap(prefixedTransformationConfigs, hookConfigs), nil
+	return MergeInterfaceMapToString(prefixedTransformationConfigs, hookConfigs), nil
 }
 
-func (fm *ContextManager) compileTemplates(templateValueMap, templateContext map[string]string) (map[string]string, error) {
+func (fm *ContextManager) compileTemplates(templateValueMap, templateContext map[string]interface{}) (map[string]interface{}, error) {
 	for key, val := range templateValueMap {
-		compiledValue, err := fm.engine.CompileString(val, ConvertStringToInterfaceMap(templateContext))
+		valString, ok := val.(string)
+		if !ok {
+			continue
+		}
+		compiledValue, err := fm.engine.CompileString(valString, templateContext)
 		if err != nil {
 			return nil, err
 		}
@@ -154,8 +175,8 @@ func (fm *ContextManager) getNamespaceConfigMap() map[string]string {
 	return configMap
 }
 
-func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]string, map[string]string) {
-	envMap := map[string]string{}
+func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]interface{}, map[string]string) {
+	envMap := map[string]interface{}{}
 	fileMap := map[string]string{}
 
 	if instanceSpec.Data != nil {
@@ -172,14 +193,14 @@ func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map
 }
 
 func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
-	runType models.InstanceType) (map[string]string,
-	map[string]string, error) {
-	transformationMap := map[string]string{}
+	runType models.InstanceType) (map[string]interface{},
+	map[string]interface{}, error) {
+	transformationMap := map[string]interface{}{}
 	for _, val := range jobSpec.Task.Config {
 		transformationMap[val.Name] = val.Value
 	}
 
-	hookMap := map[string]string{}
+	hookMap := map[string]interface{}{}
 	if runType == models.InstanceTypeHook {
 		hook, err := jobSpec.GetHookByName(runName)
 		if err != nil {
@@ -211,35 +232,59 @@ func MergeStringMap(mp1, mp2 map[string]string) (mp3 map[string]string) {
 	return mp3
 }
 
-func ConvertStringToInterfaceMap(i map[string]string) map[string]interface{} {
-	o := map[string]interface{}{}
-	for k, v := range i {
-		o[k] = v
+func MergeInterfaceMapToInterface(mp1, mp2 map[string]interface{}) (mp3 map[string]interface{}) {
+	mp3 = make(map[string]interface{})
+	for k, v := range mp1 {
+		mp3[k] = v
 	}
-	return o
+	for k, v := range mp2 {
+		mp3[k] = v
+	}
+	return mp3
+}
+
+// merge two maps and return a map of string
+// it will ignore whatever is not a string type
+func MergeInterfaceMapToString(mp1, mp2 map[string]interface{}) (mp3 map[string]string) {
+	mp3 = make(map[string]string)
+	for k, v := range mp1 {
+		if vs, ok := v.(string); ok {
+			mp3[k] = vs
+		}
+	}
+	for k, v := range mp2 {
+		if vs, ok := v.(string); ok {
+			mp3[k] = vs
+		}
+	}
+	return mp3
 }
 
 // DumpAssets used for dry run and does not effect actual execution of a job
 func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine, allowOverride bool) (map[string]string, error) {
-	jobDestination, err := jobSpec.Task.Unit.GenerateTaskDestination(context.TODO(), models.GenerateTaskDestinationRequest{
-		Config: models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets: models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
-		PluginOptions: models.PluginOptions{
-			DryRun: true,
-		},
-	})
-	if err != nil {
-		return nil, err
+	var jobDestination string
+	if jobSpec.Task.Unit.DependencyMod != nil {
+		jobDestinationResponse, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+			Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+			PluginOptions: models.PluginOptions{
+				DryRun: true,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		jobDestination = jobDestinationResponse.Destination
 	}
 
 	assetsToDump := jobSpec.Assets.ToMap()
 
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := jobSpec.Task.Unit.CompileTaskAssets(context.TODO(), models.CompileTaskAssetsRequest{
-			TaskWindow:       jobSpec.Task.Window,
-			Config:           models.TaskPluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:           models.TaskPluginAssets{}.FromJobSpec(jobSpec.Assets),
+		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(context.TODO(), models.CompileAssetsRequest{
+			Window:           jobSpec.Task.Window,
+			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			InstanceSchedule: scheduledAt,
 			InstanceData: []models.InstanceSpecData{
 				{
