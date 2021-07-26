@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/job"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/core/tree"
@@ -2001,6 +2005,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
+			assert.Equal(t, codes.Internal, status.Code(err))
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when project is not found", func(t *testing.T) {
@@ -2085,6 +2090,118 @@ func TestRuntimeServiceServer(t *testing.T) {
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
+			assert.Nil(t, replayResponse)
+		})
+		t.Run("should failed when replay validation is failed", func(t *testing.T) {
+			replayWorkerRequest := &models.ReplayWorkerRequest{
+				Job:     jobSpec,
+				Start:   startDate,
+				End:     endDate,
+				Project: projectSpec,
+			}
+			emptyUUID := ""
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(emptyUUID, job.ErrConflictedJobRun)
+			defer jobService.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), job.ErrConflictedJobRun.Error())
+			assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+			assert.Nil(t, replayResponse)
+		})
+		t.Run("should failed when request queue is full", func(t *testing.T) {
+			replayWorkerRequest := &models.ReplayWorkerRequest{
+				Job:     jobSpec,
+				Start:   startDate,
+				End:     endDate,
+				Project: projectSpec,
+			}
+			emptyUUID := ""
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
+			jobService.On("Replay", context.TODO(), replayWorkerRequest).Return(emptyUUID, job.ErrRequestQueueFull)
+			defer jobService.AssertExpectations(t)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil, nil)
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				"Version",
+				jobService,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+			replayRequest := pb.ReplayRequest{
+				ProjectName: projectName,
+				Namespace:   namespaceSpec.Name,
+				JobName:     jobName,
+				StartDate:   startDate.Format(timeLayout),
+				EndDate:     endDate.Format(timeLayout),
+			}
+			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), job.ErrRequestQueueFull.Error())
+			assert.Equal(t, codes.Unavailable, status.Code(err))
 			assert.Nil(t, replayResponse)
 		})
 	})

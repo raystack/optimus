@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -45,8 +44,8 @@ func TestReplayRepository(t *testing.T) {
 			Name: "job-3",
 		},
 	}
-	startTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-15")
-	endTime, _ := time.Parse(job.ReplayDateFormat, "2020-01-20")
+	startTime := time.Date(2021, 1, 15, 0, 0, 0, 0, time.UTC)
+	endTime := time.Date(2021, 1, 20, 0, 0, 0, 0, time.UTC)
 	testConfigs := []*models.ReplaySpec{
 		{
 			ID:        uuid.Must(uuid.NewRandom()),
