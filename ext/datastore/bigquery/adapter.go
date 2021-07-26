@@ -84,23 +84,41 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 	}
 	return fm, nil
 }
+func bqGoogleSheetsOptionsTo(m map[string]interface{}) *bqapi.GoogleSheetsOptions {
+	var skipLeadingRows int64
+	var sheetRange string
 
-func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, error) {
-
-	switch bqapi.DataFormat(strings.ToUpper(es.SourceType)) {
-	case bqapi.GoogleSheets:
-		externalConfig := &bqapi.ExternalDataConfig{
-			SourceFormat: bqapi.GoogleSheets,
-			SourceURIs:   es.SourceURIs,
-			Options: &bqapi.GoogleSheetsOptions{
-				SkipLeadingRows: int64(es.Config["skip_leading_rows"].(float64)),
-				Range:           es.Config["range"].(string),
-			},
-		}
-		return externalConfig, nil
+	if val, ok := m["skip_leading_rows"]; ok {
+		skipLeadingRows = int64(val.(float64))
 	}
 
-	return &bqapi.ExternalDataConfig{}, fmt.Errorf("Source format not yet implemented %s", es.SourceType)
+	if val, ok := m["range"]; ok {
+		sheetRange = val.(string)
+	}
+
+	return &bqapi.GoogleSheetsOptions{
+		SkipLeadingRows: skipLeadingRows,
+		Range:           sheetRange,
+	}
+
+}
+func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, error) {
+	var option bqapi.ExternalDataConfigOptions
+	var sourceType bqapi.DataFormat
+	switch bqapi.DataFormat(strings.ToUpper(es.SourceType)) {
+	case bqapi.GoogleSheets:
+		option = bqGoogleSheetsOptionsTo(es.Config)
+		sourceType = bqapi.GoogleSheets
+	default:
+		return &bqapi.ExternalDataConfig{}, fmt.Errorf("Source format not yet implemented %s", es.SourceType)
+	}
+
+	externalConfig := &bqapi.ExternalDataConfig{
+		SourceFormat: sourceType,
+		SourceURIs:   es.SourceURIs,
+		Options:      option,
+	}
+	return externalConfig, nil
 
 }
 
