@@ -21,11 +21,6 @@ spec:
   partition:
     field: aa
     expiration: 24
-  external_source:
-    uri: https://docs.google.com/spreadsheets/d/1rdpWqiWSXHEYBzUqIsFaHsrQ_AH7NhTckCmcPb2_7RQ
-    skip_leading_rows: 1
-    range: Dataset!A1:B20
-
 `
 		tabHandler := tableSpecHandler{}
 		res, err := tabHandler.FromYaml([]byte(fl))
@@ -59,6 +54,11 @@ spec:
 					},
 					Cluster: &BQClusteringInfo{
 						Using: []string{"col1"},
+					},
+					Source: &BQExternalSource{
+						SourceType: string(ExternalTableTypeGoogleSheets),
+						SourceURIs: []string{"http://googlesheets.com/1234"},
+						Config:     map[string]interface{}{"skip_leading_rows": 1.0, "range": "A!:A1:B1"},
 					},
 				},
 			},

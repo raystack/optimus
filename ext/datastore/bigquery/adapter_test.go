@@ -67,6 +67,35 @@ func TestAdapter(t *testing.T) {
 		},
 	}
 
+	t.Run("should convert from and to BQ ExternalDataConfig successfully", func(t *testing.T) {
+
+		externalDataSource := BQExternalSource{
+			SourceType: string(ExternalTableTypeGoogleSheets),
+			SourceURIs: []string{"http://googlesheets.com/1234"},
+			Config:     map[string]interface{}{"skip_leading_rows": 1.0, "range": "A!:A1:B1"},
+		}
+		expectedBQExternalDataConfig := &bigquery.ExternalDataConfig{
+			SourceFormat: bigquery.GoogleSheets,
+			SourceURIs:   []string{"http://googlesheets.com/1234"},
+			Options: &bigquery.GoogleSheetsOptions{
+				SkipLeadingRows: 1,
+				Range:           "A!:A1:B1",
+			},
+		}
+
+		bQExternalDataConfigResult, err := bqExternalDataConfigTo(externalDataSource)
+
+		assert.Nil(t, err)
+
+		assert.Equal(t, expectedBQExternalDataConfig, bQExternalDataConfigResult)
+
+		externalSourceResult, err := bqExternalDataConfigFrom(bQExternalDataConfigResult)
+
+		assert.Nil(t, err)
+
+		assert.Equal(t, &externalDataSource, externalSourceResult)
+	})
+
 	t.Run("should convert from and to BQ TimePartitioning successfully", func(t *testing.T) {
 		partitionField := "partition-field"
 		partitionExpiryInHours := int64(720)
@@ -150,6 +179,7 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, schema, schemaResult)
 		assert.Nil(t, err)
 	})
+
 	t.Run("bqCreateTableMetaAdapter", func(t *testing.T) {
 		t.Run("should convert to BQ TableMetadata", func(t *testing.T) {
 			testingProject := "project"

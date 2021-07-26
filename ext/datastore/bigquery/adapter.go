@@ -102,6 +102,20 @@ func bqGoogleSheetsOptionsTo(m map[string]interface{}) *bqapi.GoogleSheetsOption
 	}
 
 }
+
+func bqGoogleSheetsOptionsFrom(opt *bqapi.GoogleSheetsOptions) map[string]interface{} {
+	resultMap := make(map[string]interface{})
+
+	if opt.SkipLeadingRows != 0 {
+		// Map value of int has to be converted to float because of using interface{}
+		resultMap["skip_leading_rows"] = float64(opt.SkipLeadingRows)
+	}
+	if opt.Range != "" {
+		resultMap["range"] = opt.Range
+	}
+	return resultMap
+}
+
 func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, error) {
 	var option bqapi.ExternalDataConfigOptions
 	var sourceType bqapi.DataFormat
@@ -120,6 +134,24 @@ func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, err
 	}
 	return externalConfig, nil
 
+}
+
+func bqExternalDataConfigFrom(c *bqapi.ExternalDataConfig) (*BQExternalSource, error) {
+	var option map[string]interface{}
+
+	switch ExternalTableType(c.SourceFormat) {
+	case ExternalTableTypeGoogleSheets:
+		option = bqGoogleSheetsOptionsFrom(c.Options.(*bqapi.GoogleSheetsOptions))
+	default:
+		return &BQExternalSource{}, fmt.Errorf("Source format not yet implemented %s", c.SourceFormat)
+	}
+
+	externalDataConfig := &BQExternalSource{
+		SourceType: string(c.SourceFormat),
+		SourceURIs: c.SourceURIs,
+		Config:     option,
+	}
+	return externalDataConfig, nil
 }
 
 func bqFieldModeFrom(fm fieldMode) string {
@@ -197,8 +229,11 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 		}
 	}
 
-	if meta.ExternalDataConfig, err = bqExternalDataConfigTo(*t.Metadata.Source); err != nil {
-		return nil, err
+	if t.Metadata.Source != nil {
+		meta.ExternalDataConfig, err = bqExternalDataConfigTo(*t.Metadata.Source)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if t.Metadata.ExpirationTime != "" {

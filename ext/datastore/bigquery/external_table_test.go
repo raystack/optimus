@@ -12,18 +12,21 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-func TestStandardView(t *testing.T) {
+func TestExternalTable(t *testing.T) {
 	testingContext := context.Background()
 	testingProject := "project"
 	testingDataset := "dataset"
-	testingTable := "view"
-	eTag := "etag-0000"
+	testingTable := "external_table"
 	errNotFound := &googleapi.Error{
 		Code: 404,
 	}
-	viewQuery := "select * from project.dataset.table"
+	testingSource := &BQExternalSource{
+		SourceType: string(ExternalTableTypeGoogleSheets),
+		SourceURIs: []string{"http://googlesheets.com/1234"},
+		Config:     map[string]interface{}{"skip_leading_rows": 1.0, "range": "A!:A1:B1"},
+	}
 	bQTableMetadata := BQTableMetadata{
-		ViewQuery: viewQuery,
+		Source: testingSource,
 	}
 	bQResource := BQTable{
 		Project:  testingProject,
@@ -32,10 +35,18 @@ func TestStandardView(t *testing.T) {
 		Metadata: bQTableMetadata,
 	}
 	createTableMeta := &bigquery.TableMetadata{
-		ViewQuery: bQResource.Metadata.ViewQuery,
+		Name: testingTable,
+		ExternalDataConfig: &bigquery.ExternalDataConfig{
+			SourceFormat: bigquery.GoogleSheets,
+			SourceURIs:   []string{"http://googlesheets.com/1234"},
+			Options: &bigquery.GoogleSheetsOptions{
+				SkipLeadingRows: 1,
+				Range:           "A!:A1:B1",
+			},
+		},
 	}
-	t.Run("ensureStandardView", func(t *testing.T) {
-		t.Run("should create view if it does not exist", func(t *testing.T) {
+	t.Run("ensureExternalTable", func(t *testing.T) {
+		t.Run("should create external table if it does not exist", func(t *testing.T) {
 			upsert := false
 
 			bQTable := new(BqTableMock)
@@ -44,10 +55,10 @@ func TestStandardView(t *testing.T) {
 			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), errNotFound)
 			bQTable.On("Create", testingContext, createTableMeta).Return(nil)
 
-			err := ensureStandardView(testingContext, bQTable, bQResource, upsert)
+			err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
 		})
-		t.Run("should not do insert nor update if view is exist and not an upsert call", func(t *testing.T) {
+		t.Run("should not do insert nor update if external table is exist and not an upsert call", func(t *testing.T) {
 			upsert := false
 
 			bQTable := new(BqTableMock)
@@ -55,7 +66,7 @@ func TestStandardView(t *testing.T) {
 
 			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), nil)
 
-			err := ensureStandardView(testingContext, bQTable, bQResource, upsert)
+			err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
 		})
 		t.Run("should return any error encountered, except for an *googleapi.Error{Code: 404}", func(t *testing.T) {
@@ -70,16 +81,14 @@ func TestStandardView(t *testing.T) {
 
 				bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), e)
 
-				err := ensureStandardView(testingContext, bQTable, bQResource, upsert)
+				err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 				assert.Equal(t, e, err)
 			}
 		})
-		t.Run("should update view if it is already exist and an upsert call", func(t *testing.T) {
+		t.Run("should update external table if it is already exist and an upsert call", func(t *testing.T) {
 			upsert := true
-			updatedViewQuery := "select * from project.dataset.table when current_date() >= event_timestamp"
-			description := "view description"
+			description := "table description"
 			updatedBQTableMetadata := BQTableMetadata{
-				ViewQuery:   updatedViewQuery,
 				Description: description,
 			}
 			updateBQResource := BQTable{
@@ -90,57 +99,24 @@ func TestStandardView(t *testing.T) {
 			}
 			updateTableMeta := bigquery.TableMetadataToUpdate{
 				Description: description,
-				ViewQuery:   updatedViewQuery,
 			}
 			tableMeta := &bigquery.TableMetadata{
-				ViewQuery: bQResource.Metadata.ViewQuery,
-				ETag:      eTag,
+				ETag: "etag-0000",
 			}
 
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
 			bQTable.On("Metadata", testingContext).Return(tableMeta, nil)
-			bQTable.On("Update", testingContext, updateTableMeta, eTag).Return((*bigquery.TableMetadata)(nil), nil)
+			bQTable.On("Update", testingContext, updateTableMeta, tableMeta.ETag).Return((*bigquery.TableMetadata)(nil), nil)
 
-			err := ensureStandardView(testingContext, bQTable, updateBQResource, upsert)
+			err := ensureExternalTable(testingContext, bQTable, updateBQResource, upsert)
 			assert.Nil(t, err)
 		})
-		t.Run("should return error when update view failed", func(t *testing.T) {
-			upsert := true
-			updatedViewQuery := "select * from project.dataset.table when current_date() >= event_timestamp"
-			description := "view description"
-			updatedBQTableMetadata := BQTableMetadata{
-				ViewQuery:   updatedViewQuery,
-				Description: description,
-			}
-			updateBQResource := BQTable{
-				Project:  bQResource.Project,
-				Dataset:  bQResource.Dataset,
-				Table:    bQResource.Dataset,
-				Metadata: updatedBQTableMetadata,
-			}
-			updateTableMeta := bigquery.TableMetadataToUpdate{
-				Description: description,
-				ViewQuery:   updatedViewQuery,
-			}
-			tableMeta := &bigquery.TableMetadata{
-				ViewQuery: bQResource.Metadata.ViewQuery,
-				ETag:      eTag,
-			}
 
-			bQTable := new(BqTableMock)
-			defer bQTable.AssertExpectations(t)
-
-			bQTable.On("Metadata", testingContext).Return(tableMeta, nil)
-			bQTable.On("Update", testingContext, updateTableMeta, eTag).Return((*bigquery.TableMetadata)(nil), errors.New("some error"))
-
-			err := ensureStandardView(testingContext, bQTable, updateBQResource, upsert)
-			assert.NotNil(t, err)
-		})
 	})
-	t.Run("createStandardView", func(t *testing.T) {
-		t.Run("should create view if given valid input", func(t *testing.T) {
+	t.Run("createExternalTable", func(t *testing.T) {
+		t.Run("should create external table if given valid input", func(t *testing.T) {
 			upsert := false
 			resourceSpec := models.ResourceSpec{
 				Spec: bQResource,
@@ -164,19 +140,19 @@ func TestStandardView(t *testing.T) {
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable, nil)
 			bQTable.On("Create", testingContext, createTableMeta).Return(nil)
 
-			err := createStandardView(testingContext, resourceSpec, bQClient, upsert)
+			err := createExternalTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.Nil(t, err)
 		})
 		t.Run("should return error if read BQ table spec is failed", func(t *testing.T) {
 			upsert := false
 			resourceSpec := models.ResourceSpec{
-				Spec: "non bq view",
+				Spec: "non bq table",
 			}
 
 			bQClient := new(BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			err := createStandardView(testingContext, resourceSpec, bQClient, upsert)
+			err := createExternalTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.NotNil(t, err)
 		})
 		t.Run("should return error if ensuring dataset is failed", func(t *testing.T) {
@@ -197,7 +173,7 @@ func TestStandardView(t *testing.T) {
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
 			bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
 
-			err := createStandardView(testingContext, resourceSpec, bQClient, upsert)
+			err := createExternalTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.NotNil(t, err)
 		})
 	})

@@ -14,15 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// func handleExternalTableTypeConfig(config interface{}, sourceType string) interface{} {
-// 	switch sourceType {
-// 	case string(ExternalTableTypeGoogleSheets):
-// 		return config.(GoogleSheetsSpec)
-// 	}
-// 	return fmt.Errorf("unsupported external table type %s", sourceType)
-
-// }
-
 func createExternalTable(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
 	bqResource, ok := spec.Spec.(BQTable)
 

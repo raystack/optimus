@@ -13,8 +13,6 @@ const (
 
 type ExternalTableType string
 
-type ExternalTable struct{}
-
 // BQExternalSource specifies table source information for external data source
 type BQExternalSource struct {
 	SourceType string `yaml:"type,omitempty" structs:"type"`
