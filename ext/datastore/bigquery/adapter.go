@@ -100,7 +100,6 @@ func bqGoogleSheetsOptionsTo(m map[string]interface{}) *bqapi.GoogleSheetsOption
 		SkipLeadingRows: skipLeadingRows,
 		Range:           sheetRange,
 	}
-
 }
 
 func bqGoogleSheetsOptionsFrom(opt *bqapi.GoogleSheetsOptions) map[string]interface{} {
@@ -133,7 +132,6 @@ func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, err
 		Options:      option,
 	}
 	return externalConfig, nil
-
 }
 
 func bqExternalDataConfigFrom(c *bqapi.ExternalDataConfig) (*BQExternalSource, error) {

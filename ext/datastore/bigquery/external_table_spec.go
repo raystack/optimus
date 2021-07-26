@@ -28,7 +28,6 @@ type externalTableSpec struct{}
 
 func (s externalTableSpec) Adapter() models.DatastoreSpecAdapter {
 	return &tableSpecHandler{}
-
 }
 
 func (s externalTableSpec) Validator() models.DatastoreSpecValidator {

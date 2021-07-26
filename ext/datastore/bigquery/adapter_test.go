@@ -68,7 +68,6 @@ func TestAdapter(t *testing.T) {
 	}
 
 	t.Run("should convert from and to BQ ExternalDataConfig successfully", func(t *testing.T) {
-
 		externalDataSource := BQExternalSource{
 			SourceType: string(ExternalTableTypeGoogleSheets),
 			SourceURIs: []string{"http://googlesheets.com/1234"},
