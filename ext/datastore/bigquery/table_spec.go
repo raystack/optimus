@@ -148,7 +148,7 @@ func (s tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error
 func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	var yamlResource TableResourceSpec
 	if err := yaml.Unmarshal(b, &yamlResource); err != nil {
-		return models.ResourceSpec{}, nil
+		return models.ResourceSpec{}, err
 	}
 
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(yamlResource.Name)
@@ -269,7 +269,6 @@ func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 		if protoSpecField, ok := protoSpec.Spec.Fields["partition"]; ok {
 			bqTable.Metadata.Partition = extractTablePartitionFromProtoStruct(protoSpecField)
 		}
-
 	}
 	return models.ResourceSpec{
 		Version:   int(protoSpec.Version),

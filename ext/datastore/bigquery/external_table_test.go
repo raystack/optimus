@@ -113,7 +113,6 @@ func TestExternalTable(t *testing.T) {
 			err := ensureExternalTable(testingContext, bQTable, updateBQResource, upsert)
 			assert.Nil(t, err)
 		})
-
 	})
 	t.Run("createExternalTable", func(t *testing.T) {
 		t.Run("should create external table if given valid input", func(t *testing.T) {
