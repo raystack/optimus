@@ -137,8 +137,8 @@ func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, err
 func bqExternalDataConfigFrom(c *bqapi.ExternalDataConfig) (*BQExternalSource, error) {
 	var option map[string]interface{}
 
-	switch ExternalTableType(c.SourceFormat) {
-	case ExternalTableTypeGoogleSheets:
+	switch c.SourceFormat {
+	case bqapi.GoogleSheets:
 		option = bqGoogleSheetsOptionsFrom(c.Options.(*bqapi.GoogleSheetsOptions))
 	default:
 		return &BQExternalSource{}, fmt.Errorf("Source format not yet implemented %s", c.SourceFormat)

@@ -2,6 +2,7 @@ package bigquery
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/odpf/optimus/models"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -53,7 +54,7 @@ func extractTableSourceFromProtoStruct(protoVal *structpb.Value) *BQExternalSour
 		return sInfo
 	}
 	if f, ok := protoVal.GetStructValue().Fields["type"]; ok {
-		sInfo.SourceType = f.GetStringValue()
+		sInfo.SourceType = strings.ToUpper(f.GetStringValue())
 	}
 	if f, ok := protoVal.GetStructValue().Fields["uris"]; ok {
 		var sourceURIs []string

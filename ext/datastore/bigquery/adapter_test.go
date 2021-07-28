@@ -81,17 +81,12 @@ func TestAdapter(t *testing.T) {
 				Range:           "A!:A1:B1",
 			},
 		}
-
 		bQExternalDataConfigResult, err := bqExternalDataConfigTo(externalDataSource)
-
 		assert.Nil(t, err)
-
 		assert.Equal(t, expectedBQExternalDataConfig, bQExternalDataConfigResult)
 
 		externalSourceResult, err := bqExternalDataConfigFrom(bQExternalDataConfigResult)
-
 		assert.Nil(t, err)
-
 		assert.Equal(t, &externalDataSource, externalSourceResult)
 	})
 
