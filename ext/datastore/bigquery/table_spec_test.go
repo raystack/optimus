@@ -55,6 +55,11 @@ spec:
 					Cluster: &BQClusteringInfo{
 						Using: []string{"col1"},
 					},
+					Source: &BQExternalSource{
+						SourceType: string(ExternalTableTypeGoogleSheets),
+						SourceURIs: []string{"http://googlesheets.com/1234"},
+						Config:     map[string]interface{}{"skip_leading_rows": 1.0, "range": "A!:A1:B1"},
+					},
 				},
 			},
 			Assets: map[string]string{

@@ -68,6 +68,9 @@ type BQTableMetadata struct {
 	Partition      *BQPartitionInfo  `yaml:",omitempty" structs:"partition,omitempty"`
 	ExpirationTime string            `yaml:"expiration_time,omitempty" structs:"expiration_time,omitempty"`
 
+	// external source options
+	Source *BQExternalSource `yaml:",omitempty" structs:"source,omitempty"`
+
 	// regular view query
 	ViewQuery string `yaml:"view_query,omitempty" structs:"view_query,omitempty"`
 
@@ -165,6 +168,7 @@ func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 			Metadata: yamlResource.Spec,
 		},
 	}
+
 	if len(yamlResource.Labels) > 0 {
 		optResource.Labels = yamlResource.Labels
 	}
@@ -228,11 +232,17 @@ func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 			viewQuery = protoSpecField.GetStringValue()
 		}
 
+		var externalSource *BQExternalSource
+		if protoSpecField, ok := protoSpec.Spec.Fields["source"]; ok {
+			externalSource = extractTableSourceFromProtoStruct(protoSpecField)
+		}
+
 		bqTable.Metadata = BQTableMetadata{
 			Schema:      tableSchema,
 			Description: description,
 			ViewQuery:   viewQuery,
 			Location:    location,
+			Source:      externalSource,
 		}
 
 		if protoSpecField, ok := protoSpec.Spec.Fields["expiration_time"]; ok {

@@ -84,6 +84,73 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 	}
 	return fm, nil
 }
+func bqGoogleSheetsOptionsTo(m map[string]interface{}) *bqapi.GoogleSheetsOptions {
+	var skipLeadingRows int64
+	var sheetRange string
+
+	if val, ok := m["skip_leading_rows"]; ok {
+		skipLeadingRows = int64(val.(float64))
+	}
+
+	if val, ok := m["range"]; ok {
+		sheetRange = val.(string)
+	}
+
+	return &bqapi.GoogleSheetsOptions{
+		SkipLeadingRows: skipLeadingRows,
+		Range:           sheetRange,
+	}
+}
+
+func bqGoogleSheetsOptionsFrom(opt *bqapi.GoogleSheetsOptions) map[string]interface{} {
+	resultMap := make(map[string]interface{})
+
+	if opt.SkipLeadingRows != 0 {
+		// Map value of int has to be converted to float because of using interface{}
+		resultMap["skip_leading_rows"] = float64(opt.SkipLeadingRows)
+	}
+	if opt.Range != "" {
+		resultMap["range"] = opt.Range
+	}
+	return resultMap
+}
+
+func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, error) {
+	var option bqapi.ExternalDataConfigOptions
+	var sourceType bqapi.DataFormat
+	switch bqapi.DataFormat(strings.ToUpper(es.SourceType)) {
+	case bqapi.GoogleSheets:
+		option = bqGoogleSheetsOptionsTo(es.Config)
+		sourceType = bqapi.GoogleSheets
+	default:
+		return &bqapi.ExternalDataConfig{}, fmt.Errorf("Source format not yet implemented %s", es.SourceType)
+	}
+
+	externalConfig := &bqapi.ExternalDataConfig{
+		SourceFormat: sourceType,
+		SourceURIs:   es.SourceURIs,
+		Options:      option,
+	}
+	return externalConfig, nil
+}
+
+func bqExternalDataConfigFrom(c *bqapi.ExternalDataConfig) (*BQExternalSource, error) {
+	var option map[string]interface{}
+
+	switch c.SourceFormat {
+	case bqapi.GoogleSheets:
+		option = bqGoogleSheetsOptionsFrom(c.Options.(*bqapi.GoogleSheetsOptions))
+	default:
+		return &BQExternalSource{}, fmt.Errorf("Source format not yet implemented %s", c.SourceFormat)
+	}
+
+	externalDataConfig := &BQExternalSource{
+		SourceType: string(c.SourceFormat),
+		SourceURIs: c.SourceURIs,
+		Config:     option,
+	}
+	return externalDataConfig, nil
+}
 
 func bqFieldModeFrom(fm fieldMode) string {
 	if fm.repeated {
@@ -159,6 +226,14 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 			meta.RangePartitioning = bqPartitioningRangeTo(*t.Metadata.Partition)
 		}
 	}
+
+	if t.Metadata.Source != nil {
+		meta.ExternalDataConfig, err = bqExternalDataConfigTo(*t.Metadata.Source)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
@@ -195,6 +270,7 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 	for key, value := range t.Metadata.Labels {
 		meta.SetLabel(key, value)
 	}
+
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {

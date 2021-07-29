@@ -41,9 +41,10 @@ func (b BigQuery) Description() string {
 
 func (b BigQuery) Types() map[models.ResourceType]models.DatastoreTypeController {
 	return map[models.ResourceType]models.DatastoreTypeController{
-		models.ResourceTypeTable:   &tableSpec{},
-		models.ResourceTypeView:    &standardViewSpec{},
-		models.ResourceTypeDataset: &datasetSpec{},
+		models.ResourceTypeTable:         &tableSpec{},
+		models.ResourceTypeView:          &standardViewSpec{},
+		models.ResourceTypeDataset:       &datasetSpec{},
+		models.ResourceTypeExternalTable: &externalTableSpec{},
 	}
 }
 
@@ -65,6 +66,8 @@ func (b *BigQuery) CreateResource(ctx context.Context, request models.CreateReso
 		return createStandardView(ctx, request.Resource, client, false)
 	case models.ResourceTypeDataset:
 		return createDataset(ctx, request.Resource, client, false)
+	case models.ResourceTypeExternalTable:
+		return createExternalTable(ctx, request.Resource, client, false)
 	}
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
@@ -87,6 +90,8 @@ func (b *BigQuery) UpdateResource(ctx context.Context, request models.UpdateReso
 		return createStandardView(ctx, request.Resource, client, true)
 	case models.ResourceTypeDataset:
 		return createDataset(ctx, request.Resource, client, true)
+	case models.ResourceTypeExternalTable:
+		return createExternalTable(ctx, request.Resource, client, true)
 	}
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
