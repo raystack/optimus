@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
@@ -76,10 +77,7 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectNam
 	if err != nil {
 		return errors.Wrapf(err, "invalid time format, please use %s", models.InstanceScheduledAtTimeLayout)
 	}
-	jobScheduledTimeProto, err := ptypes.TimestampProto(jobScheduledTime)
-	if err != nil {
-		return errors.Wrapf(err, "unable to parse timestamp to proto %s", jobScheduledTime.String())
-	}
+	jobScheduledTimeProto := timestamppb.New(jobScheduledTime)
 
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()

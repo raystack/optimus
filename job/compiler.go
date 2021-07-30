@@ -2,9 +2,10 @@ package job
 
 import (
 	"bytes"
-	"context"
 	"text/template"
 	"time"
+
+	"github.com/odpf/optimus/config"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/odpf/optimus/models"
@@ -53,9 +54,6 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 	if err = tmpl.Execute(&buf, struct {
 		Namespace                  models.NamespaceSpec
 		Job                        models.JobSpec
-		TaskSchemaRequest          models.GetTaskSchemaRequest
-		HookSchemaRequest          models.GetHookSchemaRequest
-		Context                    context.Context
 		Hostname                   string
 		HookTypePre                string
 		HookTypePost               string
@@ -66,13 +64,11 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 		JobSpecDependencyTypeInter string
 		JobSpecDependencyTypeExtra string
 		SLAMissDurationInSec       int64
+		Version                    string
 	}{
 		Namespace:                  namespaceSpec,
 		Job:                        jobSpec,
 		Hostname:                   com.hostname,
-		TaskSchemaRequest:          models.GetTaskSchemaRequest{},
-		HookSchemaRequest:          models.GetHookSchemaRequest{},
-		Context:                    context.Background(),
 		HookTypePre:                string(models.HookTypePre),
 		HookTypePost:               string(models.HookTypePost),
 		HookTypeFail:               string(models.HookTypeFail),
@@ -82,6 +78,7 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 		JobSpecDependencyTypeInter: string(models.JobSpecDependencyTypeInter),
 		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
 		SLAMissDurationInSec:       slaMissDurationInSec,
+		Version:                    config.Version,
 	}); err != nil {
 		return models.Job{}, errors.Wrap(err, "failed to templatize job")
 	}

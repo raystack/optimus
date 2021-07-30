@@ -94,17 +94,17 @@ func TestReplayRepository(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
 
-		execUnit1 := new(mock.TaskPlugin)
+		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
 
 		for idx, jobConfig := range jobConfigs {
-			jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+			jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
 			testConfigs[idx].Job = jobConfig
 		}
 
-		allTasksRepo := new(mock.SupportedTaskRepo)
-		defer allTasksRepo.AssertExpectations(t)
-		adapter := NewAdapter(allTasksRepo, nil)
+		pluginRepo := new(mock.SupportedPluginRepo)
+		defer pluginRepo.AssertExpectations(t)
+		adapter := NewAdapter(pluginRepo)
 
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
@@ -124,18 +124,18 @@ func TestReplayRepository(t *testing.T) {
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
-		execUnit1 := new(mock.TaskPlugin)
+		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
 
 		for idx, jobConfig := range jobConfigs {
-			jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+			jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
 			testConfigs[idx].Job = jobConfig
 		}
 
-		allTasksRepo := new(mock.SupportedTaskRepo)
-		defer allTasksRepo.AssertExpectations(t)
+		pluginRepo := new(mock.SupportedPluginRepo)
+		defer pluginRepo.AssertExpectations(t)
 
-		adapter := NewAdapter(allTasksRepo, nil)
+		adapter := NewAdapter(pluginRepo)
 		repo := NewReplayRepository(db, jobConfigs[0], adapter)
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
@@ -158,29 +158,32 @@ func TestReplayRepository(t *testing.T) {
 		t.Run("should return list of job specs given list of status", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
-			testModels := []*models.ReplaySpec{}
+			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
-			execUnit1 := new(mock.TaskPlugin)
+			execUnit1 := new(mock.BasePlugin)
 			defer execUnit1.AssertExpectations(t)
-			execUnit1.On("GetTaskSchema", context.TODO(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
 			}, nil)
+			depMod1 := new(mock.DependencyResolverMod)
+			defer depMod1.AssertExpectations(t)
+
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
-			allTasksRepo := new(mock.SupportedTaskRepo)
-			defer allTasksRepo.AssertExpectations(t)
-			allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
-			adapter := NewAdapter(allTasksRepo, nil)
+			pluginRepo := new(mock.SupportedPluginRepo)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			adapter := NewAdapter(pluginRepo)
 
-			unitData := models.GenerateTaskDestinationRequest{
-				Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			unitData := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
@@ -214,26 +217,28 @@ func TestReplayRepository(t *testing.T) {
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
-			execUnit1 := new(mock.TaskPlugin)
+			execUnit1 := new(mock.BasePlugin)
 			defer execUnit1.AssertExpectations(t)
-			execUnit1.On("GetTaskSchema", context.TODO(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
 			}, nil)
+			depMod1 := new(mock.DependencyResolverMod)
+			defer depMod1.AssertExpectations(t)
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: execUnit1}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
-			allTasksRepo := new(mock.SupportedTaskRepo)
-			defer allTasksRepo.AssertExpectations(t)
-			allTasksRepo.On("GetByName", gTask).Return(execUnit1, nil)
-			adapter := NewAdapter(allTasksRepo, nil)
+			pluginRepo := new(mock.SupportedPluginRepo)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			adapter := NewAdapter(pluginRepo)
 
-			unitData := models.GenerateTaskDestinationRequest{
-				Config: models.TaskPluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.TaskPluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			unitData := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			execUnit1.On("GenerateTaskDestination", context.TODO(), unitData).Return(models.GenerateTaskDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)

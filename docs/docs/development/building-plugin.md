@@ -1,6 +1,6 @@
 ---
-id: task-plugin
-title: Developing task plugin
+id: building-plugin
+title: Developing plugins
 ---
 
 Optimus's responsibilities are currently divided in two parts, scheduling a transformation [task](../concepts/overview.md#Job) and running one time action to create or modify a [datastore](../concepts/overview.md#Datastore) resource. Defining how a datastore is managed can be easy and doesn't leave many options for configuration or ambiguity although the way datastores are implemented gives developers flexibility to contribute additional type of datastore, but it is not something we do every day.
@@ -15,38 +15,37 @@ Optimus can be divided in two logical parts when we are thinking of a pluggable 
 At the moment mainly there are two types of plugins which optimus supports. These are : ***Hook*** and  ***Task***
 Before getting into the difference between two plugins ,we need to get familiar with [Jobs](../concepts/overview.md#Job).
 
-| Type                   | Hook                                                                           | Task                                                                                                          |
-|------------------------|--------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| Definition             | It is the operation that we preferably run before or after a Job.              | It is the single base transformation in a Job.                                                                |
-| Fundamental Difference | It can have dependencies over other hooks within the job.                      | It can have dependencies over other jobs inside the optimus project.                                          |
-| Configuration          | It has its own set of configs and share the same asset folder as the base job. | It has its own set of configs and may share only the dependencies with the other jobs in the optimus project. |
+| Type                   | Task                                                         | Hook                                                         |
+| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Definition             | It is the single base transformation in a Job.               | It is the operation that we preferably run before or after a Job. |
+| Fundamental Difference | It can have dependencies over other jobs inside the Optimus project. | It can have dependencies over other hooks within the job.    |
+| Configuration          | It has its own set of configs and asset directory.           | It has its own set of configs and share the same asset directory across all hooks as the base job. |
 
 
-## Creating a task plugin
+## Creating a plugin
 
 At the moment Optimus supports task as well as hook plugins. In this section we will be explaining how to write a new task although both are very similar. Plugins are implemented using [go-plugin](https://github.com/hashicorp/go-plugin) developed by Hashicorp used in terraform and other similar products. 
 
-> Plugins can be implemented in any language as long as they can be exported as a single self-contained executable binary. 
+> Plugins can be implemented in any language as long as they can be exported as a single self-contained executable binary and implements a GRPC server. 
 
-It is recommended to use Golang currently for writing plugins because of its cross platform build functionality and to reuse protobuf adapter provided 
-within Optimus core. Although the plugin is written in Golang, it will be just an adapter between what actually needs to be executed. Actual transformation will be packed in a docker image and Optimus will execute these arbitrary docker images as long as it has access to reach container registry. 
+It is recommended to use Go currently for writing plugins because of its cross platform build functionality and to reuse protobuf sdk provided within Optimus core. Although the plugin is written in Go, it will be just an adapter between what actually needs to be executed. Actual transformation will be packed in a docker image and Optimus will execute these arbitrary docker images as long as it has access to reach container registry. 
 
-> Task plugin binary itself is not executed for transformation but only used for adapting conditions which Optimus requires to be defined for each task.
+> Plugin binary itself is not executed for transformation but only used for adapting conditions which Optimus requires to be defined for each task.
 
-To demonstrate this wrapping functionality, lets create a plugin in Golang and use python for actual transformation logic. You can choose to fork this [example](https://github.com/kushsharma/optimus-plugins) template and modify it as per your needs or start fresh. To demonstrate how to start from scratch, will be starting from an empty git repository and build a plugin which will find potential hazardous **Near Earth Orbit** objects every day, lets call it **neo** for short. 
+To demonstrate this wrapping functionality, let's create a plugin in Go and use python for actual transformation logic. You can choose to fork this [example](https://github.com/kushsharma/optimus-plugins) template and modify it as per your needs or start fresh. To demonstrate how to start from scratch, we will be starting from an empty git repository and build a plugin which will find potential hazardous **Near Earth Orbit** objects every day, let's call it **neo** for short. 
 
 Brief description of Neo is as follows
 
-- Using  [NASA API](https://api.nasa.gov/) we can get count of hazardous objects, there diameter and velocity.
+- Using  [NASA API](https://api.nasa.gov/) we can get count of hazardous objects, their diameter and velocity.
 - Task will need two config as input, `RANGE_START`, `RANGE_END` as date time string which will filter the count for this specific period only.
-- Execute every day, lets say at 2 AM.
-- Need a secret token that will be passed to nasa api endpoint for each request.
+- Execute every day, say at 2 AM.
+- Need a secret token that will be passed to NASA api endpoint for each request.
 - Output of this object count can be printed in logs for now but in a real use case can be pushed to Kafka topic or written to a database.
-- Plugin will be written in **golang** and **Neo** in **python**.
+- Plugin will be written in **Go** and **Neo** in **python**.
 
-### Preparing task logic
+### Preparing task executor
 
-Start by initializing an empty git repository with the following folder structure
+Start by initialising an empty git repository with the following folder structure
 
 ```shell
 .git
@@ -64,7 +63,6 @@ That is three folders one inside another. This might look confusing for now, a l
 Add the following code to `main.py`
 
 ```python
-
 import os
 import requests
 import json
@@ -211,7 +209,7 @@ Now that base image is ready for execution, this needs to be scheduled at a fixe
 
 ### Implementing plugin interface
 
-Because we are using golang, start by initializing go module in `neo` directory as follows
+Because we are using Go, start by initialising Go module in `neo` directory as follows
 
 ```go
 go mod init github.com/kushsharma/optimus-plugins/task/neo
@@ -244,48 +242,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
-	"github.com/odpf/optimus/plugin"
-
+	"github.com/hashicorp/go-hclog"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/plugin/task"
-
-	hplugin "github.com/hashicorp/go-plugin"
+	"github.com/odpf/optimus/plugin"
+	"github.com/odpf/optimus/plugin/base"
 )
 
 var (
-	Name           = "neo"
-	DatetimeFormat = "2006-01-02"
-	Version        = "latest"
-	Image          = "ghcr.io/kushsharma/optimus-task-neo-executor"
+	Name    = "neo"
+	Version = "latest"
+	Image   = "ghcr.io/kushsharma/optimus-task-neo-executor"
 )
 
 type Neo struct{}
 
 func main() {
-	neo := &Neo{}
-
-	// start serving the plugin on a unix socket as a grpc server
-	hplugin.Serve(&hplugin.ServeConfig{
-
-		// this will be printed on stdout and will be piped to optimus core
-		HandshakeConfig: hplugin.HandshakeConfig{
-			// Need to be set as needed
-			ProtocolVersion: 1,
-
-			// Magic cookie key and value are just there to make sure you want to connect
-			// with optimus core, this is not authentication
-			MagicCookieKey:   plugin.MagicCookieKey,
-			MagicCookieValue: plugin.MagicCookieValue,
-		},
-
-		// what are we serving on grpc
-		Plugins: map[string]hplugin.Plugin{
-			plugin.TaskPluginName: &task.Plugin{Impl: neo},
-		},
-
-		// default grpc server
-		GRPCServer: hplugin.DefaultGRPCServer,
+	plugin.Serve(func(log hclog.Logger) interface{} {
+		return &Neo{
+			log: log,
+		}
 	})
 }
 ```
@@ -301,32 +278,116 @@ CORE-PROTOCOL-VERSION | APP-PROTOCOL-VERSION | NETWORK-TYPE | NETWORK-ADDR | PRO
 
 1|1|tcp|127.0.0.1:1234|grpc
 
-You don't have to worry about this if you are using the provided handshake struct. Core will initiate a connection with the plugin server as a client when the core binary boots and caches the connection for further internal use.
+You don't have to worry about this if you are using the provided `plugin.Serve` and all this happens automatically behind the scene. Core will initiate a connection with the plugin server as a client when the core binary boots and caches the connection for further internal use.
 
-A single binary can serve more than one kind of plugin, in this example stick with just one. To start serving GRPC, either we write our own implementation for serialising/deserializing golang structs to protobufs or reuse the one already provided by [core](https://github.com/odpf/optimus/blob/eaa50bb37d7e738d9b8a94332312f34b04a7e16b/plugin/task/server.go). Optimus GRPC server adapter for protobuf accepts an [interface](https://github.com/odpf/optimus/blob/0ab5a4d44a7b2b85e9a160aef3648d8ba798536a/models/task.go) which we will implement next on Neo struct. Custom protobuf adapter can also be written using the [provided](https://github.com/odpf/proton/blob/e7fd43798f0c5bcf083c821cc98843639c3883fa/odpf/optimus/task_plugin.proto) protobuf stored in odpf [repository](https://github.com/odpf/proton).
+A single binary can serve more than one kind of plugin, in this example stick with just one. Each plugin is composed of one `base` plugin implementation and some additional optional `mods`.
 
-Add the following code in the existing `main.go` as an implementation to [TaskPlugin](https://github.com/odpf/optimus/blob/0ab5a4d44a7b2b85e9a160aef3648d8ba798536a/models/task.go)
+#### Base Plugin
+
+Base plugin interface needs to be [implemented](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/base.proto) by every plugin. It is responsible for providing plugin metadata to Optimus core.
+
+```protobuf
+syntax = "proto3";
+package odpf.optimus.plugins;
+
+// Base must be implemented by all plugins
+service Base {
+    // PluginInfo provides basic details for this plugin
+    rpc PluginInfo(PluginInfoRequest) returns (PluginInfoResponse);
+}
+
+// PluginType enumerates the type of plugins Optimus supports
+enum PluginType {
+    PluginType_UNKNOWN = 0;
+    PluginType_TASK = 1;
+    PluginType_HOOK = 2;
+}
+
+// PluginMod enumerates the type of mods this plugin supports
+enum PluginMod {
+    PluginMod_UNKNOWN = 0;
+    PluginMod_CLI = 1;
+    PluginMod_DEPENDENCYRESOLVER = 2;
+}
+
+// HookType enumerates the type of hook Optimus supports
+enum HookType {
+    HookType_UNKNOWN = 0;
+    HookType_PRE = 1;
+    HookType_POST = 2;
+    HookType_FAIL = 3;
+}
+
+message PluginInfoRequest {}
+message PluginInfoResponse {
+    string name = 1;
+    string description = 2;
+    PluginType plugin_type = 3;
+    repeated PluginMod plugin_mods = 4;
+
+    // plugin_version is the semver version of this individual plugin
+    string plugin_version = 5;
+    // api_versions indicates the versions of the Optimus Plugin API
+    // this plugin supports
+    repeated string api_version = 6;
+
+    // docker image including version if this executes a docker image
+    string image = 10;
+
+    // HOOK specific
+    // name of hooks on which this should depend on before executing
+    repeated string depends_on = 20;
+    HookType hook_type = 21;
+
+    // Experimental
+    // will be mounted inside the container as volume
+    string secret_path = 30;
+}
+```
+
+If your plugin simply wants to register itself as task or hook for execution and nothing else then that's it. You don't need to implement anything else but for additional features we can implement plugin `mod`.
+
+#### Plugin Mods
+
+Plugin can have none or many plugins mods being implemented at the same time. At the moment there are 2 mods available for usage
+
+1. [CLIMod](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/cli.proto): It provides plugin to interact with Optimus cli. Plugin can provide default configs, ask questions from users to create job specification, override default asset macro compilation behaviour, etc.
+2. [DependencyResolverMod](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/dependency_resolver.proto): It provides plugin to implement automatic dependency resolution using assets/configs.
+
+In this example we will use the CLIMod.
+
+To start serving GRPC, either we write our own implementation for serialising/deserialising Go structs to protobufs or reuse the one already provided by [core](https://github.com/odpf/optimus/blob/eaa50bb37d7e738d9b8a94332312f34b04a7e16b/plugin/task/server.go). Optimus GRPC server accepts an interface which we will implement next on Neo struct. Custom protobuf adapter can also be written using the [provided](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/base.proto) protobuf stored in odpf [repository](https://github.com/odpf/proton).
+
+Add the following code in the existing `main.go` as an implementation to [BasePlugin](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/base.proto)
 
 ```go
 type Neo struct{}
 
-// GetTaskSchema provides basic task details
-func (n *Neo) GetTaskSchema(ctx context.Context, req models.GetTaskSchemaRequest) (models.GetTaskSchemaResponse, error) {
-	return models.GetTaskSchemaResponse{
-		Name:        Name,
-		Description: "Near earth object tracker",
+// GetSchema provides basic task details
+func (n *Neo) PluginInfo() (*models.PluginInfoResponse, error) {
+	return &models.PluginInfoResponse{
+		Name:          Name,
+		Description:   "Near earth object tracker",
+		PluginType:    models.PluginTypeTask,
+		PluginMods:    []models.PluginMod{models.ModTypeCLI},
+		PluginVersion: Version,
+		APIVersion:    []string{strconv.Itoa(base.ProtocolVersion)},
 
 		// docker image that will be executed as the actual transformation task
-		Image:      fmt.Sprintf("%s:%s", Image, Version),
-    
-    // this is where the secret required by docker container will be mounted
+		Image: fmt.Sprintf("%s:%s", Image, Version),
+		// this is where the secret required by docker container will be mounted
 		SecretPath: "/tmp/key.json",
 	}, nil
 }
+```
 
-// GetTaskQuestions provides questions asked via optimus cli when a new job spec
+You might have noticed we have specified at line number 9 that we are supporting `models.ModTypeCLI`. This will let Optimus know what all this plugin is capable of. Let's implement the [CLIMod](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/cli.proto) now.
+
+
+```go
+// GetQuestions provides questions asked via optimus cli when a new job spec
 // is requested to be created
-func (n *Neo) GetTaskQuestions(ctx context.Context, req models.GetTaskQuestionsRequest) (models.GetTaskQuestionsResponse, error) {
+func (n *Neo) GetQuestions(ctx context.Context, req models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
 	tQues := []models.PluginQuestion{
 		{
 			Name:   "Start",
@@ -339,14 +400,14 @@ func (n *Neo) GetTaskQuestions(ctx context.Context, req models.GetTaskQuestionsR
 			Help:   "YYYY-MM-DD format",
 		},
 	}
-	return models.GetTaskQuestionsResponse{
+	return &models.GetQuestionsResponse{
 		Questions: tQues,
 	}, nil
 }
 
-// ValidateTaskQuestion validate how stupid user is
-// Each question config in GetTaskQuestions will send a validation request
-func (n *Neo) ValidateTaskQuestion(ctx context.Context, req models.ValidateTaskQuestionRequest) (models.ValidateTaskQuestionResponse, error) {
+// ValidateQuestion validate how stupid user is
+// Each question config in GetQuestions will send a validation request
+func (n *Neo) ValidateQuestion(ctx context.Context, req models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
 	var err error
 	switch req.Answer.Question.Name {
 	case "Start":
@@ -375,12 +436,12 @@ func (n *Neo) ValidateTaskQuestion(ctx context.Context, req models.ValidateTaskQ
 		}(req.Answer.Value)
 	}
 	if err != nil {
-		return models.ValidateTaskQuestionResponse{
+		return &models.ValidateQuestionResponse{
 			Success: false,
 			Error:   err.Error(),
 		}, nil
 	}
-	return models.ValidateTaskQuestionResponse{
+	return &models.ValidateQuestionResponse{
 		Success: true,
 	}, nil
 }
@@ -394,14 +455,16 @@ func findAnswerByName(name string, answers []models.PluginAnswer) (models.Plugin
 	return models.PluginAnswer{}, false
 }
 
-// DefaultTaskConfig are a set of key value pair which will be embedded in job
+// DefaultConfig are a set of key value pair which will be embedded in job
 // specification. These configs can be requested by the docker container before
 // execution
-func (n *Neo) DefaultTaskConfig(ctx context.Context, request models.DefaultTaskConfigRequest) (models.DefaultTaskConfigResponse, error) {
+// PluginConfig Value can contain valid go templates and they will be parsed at
+// runtime
+func (n *Neo) DefaultConfig(ctx context.Context, request models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
 	start, _ := findAnswerByName("Start", request.Answers)
 	end, _ := findAnswerByName("End", request.Answers)
 
-	conf := []models.TaskPluginConfig{
+	conf := []models.PluginConfig{
 		{
 			Name:  "RANGE_START",
 			Value: start.Value,
@@ -411,36 +474,23 @@ func (n *Neo) DefaultTaskConfig(ctx context.Context, request models.DefaultTaskC
 			Value: end.Value,
 		},
 	}
-	return models.DefaultTaskConfigResponse{
+	return &models.DefaultConfigResponse{
 		Config: conf,
 	}, nil
 }
 
-// DefaultTaskAssets are a set of files which will be embedded in job
+// DefaultAssets are a set of files which will be embedded in job
 // specification in assets folder. These configs can be requested by the
 // docker container before execution.
-func (n *Neo) DefaultTaskAssets(ctx context.Context, _ models.DefaultTaskAssetsRequest) (models.DefaultTaskAssetsResponse, error) {
-	return models.DefaultTaskAssetsResponse{}, nil
+func (n *Neo) DefaultAssets(ctx context.Context, _ models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+	return &models.DefaultAssetsResponse{}, nil
 }
 
 // override the compilation behaviour of assets - if needed
-func (n *Neo) CompileTaskAssets(ctx context.Context, req models.CompileTaskAssetsRequest) (models.CompileTaskAssetsResponse, error) {
-	return models.CompileTaskAssetsResponse{
+func (n *Neo) CompileAssets(ctx context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+	return &models.CompileAssetsResponse{
 		Assets: req.Assets,
 	}, nil
-}
-
-// a task should ideally always have a destination, it could be endpoint, table, bucket, etc
-// in our case it is actually nothing
-func (n *Neo) GenerateTaskDestination(ctx context.Context, request models.GenerateTaskDestinationRequest) (models.GenerateTaskDestinationResponse, error) {
-	return models.GenerateTaskDestinationResponse{
-		Destination: "none",
-	}, nil
-}
-
-// as this task doesn't need dependency resolution, just leaving this empty
-func (n *Neo) GenerateTaskDependencies(ctx context.Context, request models.GenerateTaskDependenciesRequest) (response models.GenerateTaskDependenciesResponse, err error) {
-	return response, nil
 }
 ```
 
@@ -450,9 +500,10 @@ All the functions are prefixed with comments to give you basic idea of what each
 
 Few things to note:
 
-- `GetTaskSchema` is used to define a unique name used by your plugin to identify yourself, keep it simple. 
-- `GetTaskSchema` contains `Image` field that specify the docker image which Optimus will execute when needed. This is where the neo python image will go.
+- `PluginInfo` is used to define a unique `name` used by your plugin to identify yourself, keep it simple. 
+- `PluginInfo` contains `Image` field that specify the docker image which Optimus will execute when needed. This is where the neo python image will go.
 - `Version` field can be injected using build system, here we are only keeping a default value.
+- `PluginType` in `PluginInfo` will tell of this plugin should be read as `Task` or `Hook` by Optimus core.
 
 
 
@@ -467,7 +518,7 @@ builds:
   - dir: ./task/neo
     main: .
     id: "neo"
-    binary: "optimus-task-neo_{{.Version}}_{{.Os}}_{{.Arch}}"
+    binary: "optimus-neo_{{.Os}}_{{.Arch}}"
     ldflags:
       - -s -w -X main.Version={{.Version}} -X main.Image=ghcr.io/kushsharma/optimus-task-neo-executor
     goos:
@@ -530,7 +581,7 @@ Please go through goreleaser documentation to understand what this config is doi
 - It will build golang task plugin adapter for multiple platforms, archives them and release on Github
 - Build and push the docker image for the python neo task
 - Create a Formula for installing this plugin on Mac using brew
-- Each plugin will follow the binary naming convention as `optimus-task-<pluginname>_<version>_<os>_<arch>`. For example: `optimus-task-bq2bq_0.0.1_linux_amd64`
+- Each plugin will follow the binary naming convention as `optimus-<pluginname>_<os>_<arch>`. For example: `optimus-bq2bq_linux_amd64`
 
 Once installed, run goreleaser using
 
@@ -745,4 +796,4 @@ data:
   key.json: base64encodedAPIkeygoes
 ```
 
-Notice the name of the secret `optimus-task-neo` which is actually based on a convention. That is if secret is defined, Optimus will look in kubernetes using `optimus-task-<taskname>` as the secret name and mount it to the path provided in `SecretPath` field of `TaskSchema`.
+Notice the name of the secret `optimus-task-neo` which is actually based on a convention. That is if secret is defined, Optimus will look in kubernetes using `optimus-task-<taskname>` as the secret name and mount it to the path provided in `SecretPath` field of `PluginInfo`.

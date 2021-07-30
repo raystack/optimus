@@ -20,7 +20,7 @@ Optimus helps your organization to build & manage data pipelines with ease.
     - Dry run query: Before SQL query is scheduled for transformation, during
       deployment query will be dry-run to make sure it passes basic sanity
       checks
-    - Sink BigQuery tables to Kafka [using additional hook]
+    - Sink BigQuery tables to Kafka [using additional plugins]
 - Extensibility to support Python transformation
 - Git based specification management
 - REST/GRPC based specification management

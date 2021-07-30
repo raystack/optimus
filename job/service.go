@@ -159,9 +159,9 @@ func (srv *Service) Check(namespace models.NamespaceSpec, jobSpecs []models.JobS
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				// check dependencies
-				if _, err := currentSpec.Task.Unit.GenerateTaskDependencies(context.TODO(), models.GenerateTaskDependenciesRequest{
-					Config:  models.TaskPluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
-					Assets:  models.TaskPluginAssets{}.FromJobSpec(currentSpec.Assets),
+				if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
+					Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
+					Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
 					Project: namespace.ProjectSpec,
 					PluginOptions: models.PluginOptions{
 						DryRun: true,

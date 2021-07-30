@@ -26,7 +26,7 @@ var (
 
 // deployCommand pushes current repo to optimus service
 func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository,
-	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
+	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var projectName string
 	var namespace string
 	var ignoreJobs bool
@@ -51,7 +51,7 @@ func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository
 			ignoreJobs = true
 		}
 
-		if err := postDeploymentRequest(l, projectName, namespace, jobSpecRepo, conf, datastoreRepo,
+		if err := postDeploymentRequest(l, projectName, namespace, jobSpecRepo, conf, pluginRepo, datastoreRepo,
 			datastoreSpecFs, ignoreJobs, ignoreResources); err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo JobSpecRepository,
-	conf config.Provider, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
+	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
@@ -83,7 +83,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 	defer deployCancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter(models.TaskRegistry, models.HookRegistry, datastoreRepo)
+	adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 
 	// update project config if needed
 	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
@@ -181,7 +181,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 			return err
 		}
 
-		adaptedJobSpecs := []*pb.JobSpecification{}
+		var adaptedJobSpecs []*pb.JobSpecification
 		for _, spec := range jobSpecs {
 			adaptJob, err := adapt.ToJobProto(spec)
 			if err != nil {

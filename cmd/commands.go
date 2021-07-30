@@ -53,8 +53,7 @@ type JobSpecRepository interface {
 func New(
 	l logger,
 	conf config.Provider,
-	tfRepo models.TaskPluginRepository,
-	hookRepo models.HookRepo,
+	pluginRepo models.PluginRepository,
 	dsRepo models.DatastoreRepo,
 ) *cli.Command {
 	var cmd = &cli.Command{
@@ -78,7 +77,7 @@ func New(
 	if conf.GetJob().Path != "" {
 		jobSpecRepo = local.NewJobSpecRepository(
 			jobSpecFs,
-			local.NewJobSpecAdapter(models.TaskRegistry, models.HookRegistry),
+			local.NewJobSpecAdapter(pluginRepo),
 		)
 	}
 	datastoreSpecsFs := map[string]afero.Fs{}
@@ -86,18 +85,18 @@ func New(
 		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
 
-	cmd.AddCommand(versionCommand(l, conf.GetHost()))
+	cmd.AddCommand(versionCommand(l, conf.GetHost(), pluginRepo))
 	cmd.AddCommand(configCommand(l, dsRepo))
-	cmd.AddCommand(createCommand(l, jobSpecFs, datastoreSpecsFs, tfRepo, hookRepo, dsRepo))
-	cmd.AddCommand(deployCommand(l, conf, jobSpecRepo, dsRepo, datastoreSpecsFs))
+	cmd.AddCommand(createCommand(l, jobSpecFs, datastoreSpecsFs, pluginRepo, dsRepo))
+	cmd.AddCommand(deployCommand(l, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))
 	cmd.AddCommand(renderCommand(l, conf.GetHost(), jobSpecRepo))
-	cmd.AddCommand(validateCommand(l, conf.GetHost(), jobSpecRepo))
+	cmd.AddCommand(validateCommand(l, conf.GetHost(), pluginRepo, jobSpecRepo))
 	cmd.AddCommand(optimusServeCommand(l, conf))
 	cmd.AddCommand(replayCommand(l, conf))
 
 	// admin specific commands
 	if conf.GetAdmin().Enabled {
-		cmd.AddCommand(adminCommand(l, tfRepo, hookRepo))
+		cmd.AddCommand(adminCommand(l, pluginRepo))
 	}
 
 	return cmd

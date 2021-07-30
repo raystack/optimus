@@ -27,8 +27,9 @@ func TestJobAdapter(t *testing.T) {
 		ProjectSpec: projectSpec,
 	}
 
-	execUnit := new(mock.TaskPlugin)
-	hookUnit := new(mock.HookPlugin)
+	execUnit := new(mock.BasePlugin)
+	depMod := new(mock.DependencyResolverMod)
+	hookUnit := new(mock.BasePlugin)
 
 	jobSpecs := []models.JobSpec{
 		{
@@ -45,7 +46,7 @@ func TestJobAdapter(t *testing.T) {
 				Interval:  "* * * * *",
 			},
 			Task: models.JobSpecTask{
-				Unit: execUnit,
+				Unit: &models.Plugin{Base: execUnit, DependencyMod: depMod},
 				Config: models.JobSpecConfigs{
 					{
 						Name:  "do",
@@ -87,28 +88,28 @@ func TestJobAdapter(t *testing.T) {
 							Value: `{{.GLOBAL__transporterKafkaBroker}}`,
 						},
 					},
-					Unit: hookUnit,
+					Unit: &models.Plugin{Base: hookUnit},
 				},
 			},
 		},
 	}
 
-	execUnit.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:        "bq2bq",
 		Image:       "image",
 		Description: "description",
 	}, nil)
-	execUnit.On("GenerateTaskDestination", context.TODO(), models.GenerateTaskDestinationRequest{
-		Config: models.TaskPluginConfigs{}.FromJobSpec(jobSpecs[0].Task.Config),
-		Assets: models.TaskPluginAssets{}.FromJobSpec(jobSpecs[0].Assets),
-	}).Return(models.GenerateTaskDestinationResponse{Destination: "destination_table"}, nil)
+	depMod.On("GenerateDestination", context.TODO(), models.GenerateDestinationRequest{
+		Config: models.PluginConfigs{}.FromJobSpec(jobSpecs[0].Task.Config),
+		Assets: models.PluginAssets{}.FromJobSpec(jobSpecs[0].Assets),
+	}).Return(&models.GenerateDestinationResponse{Destination: "destination_table"}, nil)
 
-	hookUnit.On("GetHookSchema", context.Background(), models.GetHookSchemaRequest{}).Return(models.GetHookSchemaResponse{
+	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:        "transporter",
 		Description: "h_description",
 		Image:       "h_image",
 		DependsOn:   []string{"some_value"},
-		Type:        models.HookTypePost,
+		HookType:    models.HookTypePost,
 	}, nil)
 
 	t.Run("should build JobMetadata from JobSpec without any error", func(t *testing.T) {

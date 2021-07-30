@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/models"
+
 	"github.com/odpf/optimus/config"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
@@ -17,7 +19,7 @@ const (
 	versionTimeout = time.Second * 2
 )
 
-func versionCommand(l logger, host string) *cli.Command {
+func versionCommand(l logger, host string, pluginRepo models.PluginRepository) *cli.Command {
 	var serverVersion bool
 	c := &cli.Command{
 		Use:   "version",
@@ -31,6 +33,24 @@ func versionCommand(l logger, host string) *cli.Command {
 					return err
 				}
 				l.Printf("server: %s", coloredNotice(srvVer))
+			}
+
+			l.Println("\nDiscovered plugins:")
+			for taskIdx, tasks := range pluginRepo.GetAll() {
+				schema := tasks.Info()
+				l.Printf("%d. %s\n", taskIdx+1, schema.Name)
+				l.Printf("Description: %s\n", schema.Description)
+				l.Printf("Image: %s\n", schema.Image)
+				l.Printf("Type: %s\n", schema.PluginType)
+				l.Printf("Plugin version: %s\n", schema.PluginVersion)
+				l.Printf("Plugin mods: %v\n", schema.PluginMods)
+				if schema.HookType != "" {
+					l.Printf("Hook type: %s\n", schema.HookType)
+				}
+				if len(schema.DependsOn) != 0 {
+					l.Printf("Depends on: %v\n", schema.DependsOn)
+				}
+				l.Println("")
 			}
 			return nil
 		},

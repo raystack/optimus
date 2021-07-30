@@ -1,7 +1,6 @@
 package local_test
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -51,15 +50,17 @@ hooks: []
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
-		bq2bqTransformer := new(mock.TaskPlugin)
-		bq2bqTransformer.On("GetTaskSchema", context.Background(), models.GetTaskSchemaRequest{}).Return(models.GetTaskSchemaResponse{
+		execUnit := new(mock.BasePlugin)
+		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: "bq2bq",
 		}, nil)
 
-		allTasksRepo := new(mock.SupportedTaskRepo)
-		allTasksRepo.On("GetByName", "bq2bq").Return(bq2bqTransformer, nil)
+		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
+			Base: execUnit,
+		}, nil)
+		adapter := local.NewJobSpecAdapter(pluginRepo)
 
-		adapter := local.NewJobSpecAdapter(allTasksRepo, nil)
 		modelJob, err := adapter.ToSpec(localJobParsed)
 		assert.Nil(t, err)
 

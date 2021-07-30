@@ -26,7 +26,7 @@ jobs:
         with:
           skip-go-installation: true
 
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

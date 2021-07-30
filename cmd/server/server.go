@@ -73,7 +73,7 @@ type projectJobSpecRepoFactory struct {
 }
 
 func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
-	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.PluginRegistry))
 }
 
 type replaySpecRepoRepository struct {
@@ -82,7 +82,7 @@ type replaySpecRepoRepository struct {
 }
 
 func (fac *replaySpecRepoRepository) New(job models.JobSpec) store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, job, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+	return postgres.NewReplayRepository(fac.db, job, postgres.NewAdapter(models.PluginRegistry))
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -96,7 +96,7 @@ func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepos
 		fac.db,
 		namespace,
 		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
-		postgres.NewAdapter(models.TaskRegistry, models.HookRegistry),
+		postgres.NewAdapter(models.PluginRegistry),
 	)
 }
 
@@ -163,7 +163,7 @@ type instanceRepoFactory struct {
 }
 
 func (fac *instanceRepoFactory) New(spec models.JobSpec) store.InstanceSpecRepository {
-	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.TaskRegistry, models.HookRegistry))
+	return postgres.NewInstanceRepository(fac.db, spec, postgres.NewAdapter(models.PluginRegistry))
 }
 
 // projectResourceSpecRepoFactory stores raw resource specifications at a project level
@@ -444,7 +444,7 @@ func Initialize(conf config.Provider) error {
 		projectRepoFac,
 		namespaceSpecRepoFac,
 		projectSecretRepoFac,
-		v1.NewAdapter(models.TaskRegistry, models.HookRegistry, models.DatastoreRegistry),
+		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
 		instance.NewService(
 			&instanceRepoFactory{
@@ -480,10 +480,10 @@ func Initialize(conf config.Provider) error {
 
 	// base router
 	baseMux := http.NewServeMux()
-	baseMux.HandleFunc("/ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	baseMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
-	}))
-	baseMux.Handle("/", gwmux)
+	})
+	baseMux.Handle("/api/", http.StripPrefix("/api", gwmux))
 
 	srv := &http.Server{
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
@@ -535,7 +535,6 @@ func Initialize(conf config.Provider) error {
 	}
 
 	mainLog.Info("bye")
-
 	return terminalError
 }
 

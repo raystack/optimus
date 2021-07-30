@@ -2,7 +2,12 @@ version: v1beta1
 plugins:
   - name: go
     out: api/proto
-    opt: paths=source_relative
+    # appending ",M<path/to/protofile>=<package name in current project after compilation>"
+    # is required for protoc-gen-go to provide what the import path for a given
+    # proto file should be.
+    # This is necessary while importing a proto file foo/a.proto from another
+    # directory, e.g. bar/b.proto
+    opt: paths=source_relative,Modpf/optimus/runtime_service.proto=github.com/odpf/optimus/api/proto/odpf/optimus
   - name: go-grpc
     out: api/proto
     opt: paths=source_relative,require_unimplemented_servers=true
