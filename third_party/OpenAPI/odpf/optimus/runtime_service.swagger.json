@@ -325,6 +325,54 @@
         ]
       }
     },
+    "/api/v1/project/{projectName}/job/{jobName}/replay/{id}": {
+      "get": {
+        "operationId": "RuntimeService_GetReplayStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusReplayStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/api/v1/project/{projectName}/job/{jobName}/status": {
       "get": {
         "summary": "JobStatus returns the current and past run status of jobs",
@@ -1635,6 +1683,52 @@
       "type": "object",
       "properties": {
         "id": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusReplayStatusResponse": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "response": {
+          "$ref": "#/definitions/optimusReplayStatusTreeNode"
+        }
+      }
+    },
+    "optimusReplayStatusRun": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusReplayStatusTreeNode": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "dependents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusReplayStatusTreeNode"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusReplayStatusRun"
+          }
+        },
+        "state": {
           "type": "string"
         }
       }

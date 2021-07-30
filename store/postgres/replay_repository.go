@@ -108,7 +108,7 @@ func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, me
 
 func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.Where("status in (?)", status).Preload("Job").Find(&replays).Error; err != nil {
+	if err := repo.DB.Where("status in (?)", status).Preload("Job").Preload("Job.Project").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -121,6 +121,12 @@ func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec,
 		if err != nil {
 			return []models.ReplaySpec{}, err
 		}
+		projectSpec, err := r.Job.Project.ToSpec()
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		jobSpec.Project = projectSpec
+
 		replaySpec, err := r.ToSpec(jobSpec)
 		if err != nil {
 			return []models.ReplaySpec{}, err

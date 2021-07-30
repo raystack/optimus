@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/models"
+
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/odpf/optimus/core/set"
@@ -66,6 +68,7 @@ func replayCommand(l logger, conf config.Provider) *cli.Command {
 		Long:  `Backfill etl job and all of its downstream dependencies`,
 	}
 	cmd.AddCommand(replayRunSubCommand(l, conf))
+	cmd.AddCommand(replayStatusSubCommand(l, conf))
 	return cmd
 }
 
@@ -266,4 +269,91 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 		return "", errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 	return replayResponse.Id, nil
+}
+
+func replayStatusSubCommand(l logger, conf config.Provider) *cli.Command {
+	var (
+		replayProject string
+		namespace     string
+	)
+
+	reCmd := &cli.Command{
+		Use:     "status",
+		Short:   "get status of a replay using its ID",
+		Example: "optimus replay status replay-id",
+		Long: `
+This operation takes one argument, replay ID[required]
+that generated when starting a replay.
+		`,
+		Args: func(cmd *cli.Command, args []string) error {
+			if len(args) < 2 {
+				return errors.New("job name and replay ID are required")
+			}
+			return nil
+		},
+	}
+	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
+	reCmd.MarkFlagRequired("project")
+	reCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of deployee")
+	reCmd.MarkFlagRequired("namespace")
+
+	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+		defer dialCancel()
+
+		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Println("can't reach optimus service")
+			}
+			return err
+		}
+		defer conn.Close()
+
+		replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
+		defer replayRequestCancel()
+
+		runtime := pb.NewRuntimeServiceClient(conn)
+		replayStatusRequest := &pb.ReplayStatusRequest{
+			Id:          args[1],
+			JobName:     args[0],
+			ProjectName: replayProject,
+			Namespace:   namespace,
+		}
+		replayResponse, err := runtime.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Println("replay request took too long, timing out")
+			}
+			return errors.Wrapf(err, "request getting status for replay %s is failed", args[1])
+		}
+		printReplayStatusResponse(l, replayResponse)
+		return nil
+	}
+	return reCmd
+}
+
+func printReplayStatusResponse(l logger, replayStatusResponse *pb.ReplayStatusResponse) {
+	if replayStatusResponse.State == models.ReplayStatusFailed {
+		l.Printf("\nThis replay has been marked as %s.\n\n", coloredNotice(models.ReplayStatusFailed))
+	} else if replayStatusResponse.State == models.ReplayStatusReplayed {
+		l.Printf("\nThis replay is still %s.\n\n", coloredNotice("running"))
+	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
+		l.Printf("\nThis replay has been marked as %s.\n\n", coloredNotice(models.ReplayStatusSuccess))
+	}
+	l.Println(coloredNotice("Latest Instances State"))
+	l.Println(fmt.Sprintf("%s", printStatusTree(replayStatusResponse.Response, treeprint.New())))
+}
+
+func printStatusTree(instance *pb.ReplayStatusTreeNode, tree treeprint.Tree) treeprint.Tree {
+	subtree := tree.AddBranch(instance.JobName)
+	runBranch := subtree.AddMetaBranch(len(instance.Runs), "runs")
+	for _, run := range instance.Runs {
+		runBranch.AddNode(fmt.Sprintf("%s (%s)", run.Run.AsTime().Format(time.RFC3339), run.State))
+	}
+
+	for _, childInstance := range instance.Dependents {
+		printStatusTree(childInstance, subtree)
+	}
+	return tree
 }

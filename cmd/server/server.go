@@ -314,7 +314,8 @@ func Initialize(conf config.Provider) error {
 		db:   dbConn,
 		hash: appHash,
 	}
-	registeredProjects, err := projectRepoFac.New().GetAll()
+	projectRepo := projectRepoFac.New()
+	registeredProjects, err := projectRepo.GetAll()
 	if err != nil {
 		return errors.Wrap(err, "projectRepoFactory.GetAll()")
 	}
@@ -406,11 +407,13 @@ func Initialize(conf config.Provider) error {
 		jobSpecRepoFac: jobSpecRepoFac,
 	}
 	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
+	replayValidator := job.NewReplayValidator(models.Scheduler)
+	replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, models.Scheduler, dependencyResolver, &projectJobSpecRepoFac, jobSpecAssetDump(), registeredProjects)
 	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
 		RunTimeout:    conf.GetServe().ReplayRunTimeoutSecs,
-	}, models.Scheduler)
+	}, models.Scheduler, replayValidator, replaySyncer)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	defer cancelNotifiers()
