@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/core/set"
+	"github.com/odpf/optimus/job"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 
 	"github.com/odpf/optimus/mock"
@@ -28,6 +31,25 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, replayExecutionTreeNode.JobName, "job-name")
 		assert.Equal(t, 1, len(replayExecutionTreeNode.Dependents))
 		assert.Equal(t, replayExecutionTreeNode.Dependents[0].JobName, "nested-job-name")
+	})
+	t.Run("should parse dag with status node to replay with status node", func(t *testing.T) {
+		treeNode := tree.NewTreeNode(models.JobSpec{Name: "job-name"})
+		nestedTreeNode := tree.NewTreeNode(models.JobSpec{Name: "nested-job-name"})
+		treeNode.Dependents = append(treeNode.Dependents, nestedTreeNode)
+		timeRun := time.Date(2021, 11, 8, 0, 0, 0, 0, time.UTC)
+		jobStatus := models.JobStatus{
+			State:       models.InstanceStateRunning,
+			ScheduledAt: timeRun,
+		}
+		treeNode.Runs = set.NewTreeSetWith(job.TimeOfJobStatusComparator)
+		treeNode.Runs.Add(jobStatus)
+		adap := v1.Adapter{}
+		replayExecutionTreeNode, err := adap.ToReplayStatusTreeNode(treeNode)
+		assert.Nil(t, err)
+		assert.Equal(t, replayExecutionTreeNode.JobName, "job-name")
+		assert.Equal(t, 1, len(replayExecutionTreeNode.Dependents))
+		assert.Equal(t, replayExecutionTreeNode.Dependents[0].JobName, "nested-job-name")
+		assert.Equal(t, jobStatus.State.String(), replayExecutionTreeNode.Runs[0].State)
 	})
 	t.Run("should successfully parse job spec to and from proto", func(t *testing.T) {
 		execUnit1 := new(mock.BasePlugin)

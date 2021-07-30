@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/core/set"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
@@ -16,7 +18,7 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayWorkerRequest) error {
+func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayRequest) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
 	jobSpecs, err := srv.GetDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
@@ -30,12 +32,12 @@ func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayWork
 	return nil
 }
 
-func (srv *Service) ReplayDryRun(replayRequest *models.ReplayWorkerRequest) (*tree.TreeNode, error) {
+func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
 	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
 		return nil, err
 	}
 
-	rootInstance, err := prepareTree(replayRequest)
+	rootInstance, err := prepareReplayExecutionTree(replayRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +45,7 @@ func (srv *Service) ReplayDryRun(replayRequest *models.ReplayWorkerRequest) (*tr
 	return rootInstance, nil
 }
 
-func (srv *Service) Replay(ctx context.Context, replayRequest *models.ReplayWorkerRequest) (string, error) {
+func (srv *Service) Replay(ctx context.Context, replayRequest *models.ReplayRequest) (string, error) {
 	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
 		return "", err
 	}
@@ -55,8 +57,8 @@ func (srv *Service) Replay(ctx context.Context, replayRequest *models.ReplayWork
 	return replayUUID, nil
 }
 
-// prepareTree creates a execution tree for replay operation
-func prepareTree(replayRequest *models.ReplayWorkerRequest) (*tree.TreeNode, error) {
+// prepareReplayExecutionTree creates a execution tree for replay operation
+func prepareReplayExecutionTree(replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
 	replayJobSpec, found := replayRequest.JobSpecMap[replayRequest.Job.Name]
 	if !found {
 		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
@@ -200,4 +202,98 @@ func getRunsBetweenDates(start time.Time, end time.Time, schedule string) ([]tim
 	}
 
 	return runs, nil
+}
+
+func (srv *Service) GetStatus(ctx context.Context, replayRequest *models.ReplayRequest) (*models.ReplayState, error) {
+	// Get replay
+	replaySpec, err := srv.replayManager.GetReplay(replayRequest.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// populate
+	replayRequest.Start = replaySpec.StartDate
+	replayRequest.End = replaySpec.EndDate
+	if err = srv.populateRequestWithJobSpecs(replayRequest); err != nil {
+		return nil, err
+	}
+
+	// forming tree with status per run
+	rootInstance, err := srv.prepareReplayStatusTree(ctx, replayRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ReplayState{
+		Status: replaySpec.Status,
+		Node:   rootInstance,
+	}, nil
+}
+
+func TimeOfJobStatusComparator(a, b interface{}) int {
+	aAsserted := a.(models.JobStatus).ScheduledAt
+	bAsserted := b.(models.JobStatus).ScheduledAt
+	switch {
+	case aAsserted.After(bAsserted):
+		return 1
+	case aAsserted.Before(bAsserted):
+		return -1
+	default:
+		return 0
+	}
+}
+
+// prepareReplayStatusTree creates a execution tree with the status per run
+func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
+	replayJobSpec, found := replayRequest.JobSpecMap[replayRequest.Job.Name]
+	if !found {
+		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
+	}
+
+	// compute runs that require replay
+	dagTree := tree.NewMultiRootTree()
+	parentNode := tree.NewTreeNode(replayJobSpec)
+	jobStatusList, err := srv.replayManager.GetRunsStatus(ctx, replayRequest, replayRequest.Job.Name)
+	if err != nil {
+		return nil, err
+	}
+	parentNode.Runs = set.NewTreeSetWith(TimeOfJobStatusComparator)
+	for _, jobStatus := range jobStatusList {
+		parentNode.Runs.Add(jobStatus)
+	}
+	dagTree.AddNode(parentNode)
+
+	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
+	if err != nil {
+		return nil, err
+	}
+
+	rootInstance, err = srv.populateDownstreamRunsWithStatus(ctx, rootInstance, replayRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return rootInstance, nil
+}
+
+func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, parentNode *tree.TreeNode, replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
+	for idx, childNode := range parentNode.Dependents {
+		childDag := childNode.Data.(models.JobSpec)
+
+		jobStatusList, err := srv.replayManager.GetRunsStatus(ctx, replayRequest, childDag.Name)
+		if err != nil {
+			return nil, err
+		}
+		childNode.Runs = set.NewTreeSetWith(TimeOfJobStatusComparator)
+		for _, jobStatus := range jobStatusList {
+			childNode.Runs.Add(jobStatus)
+		}
+
+		updatedChildNode, err := srv.populateDownstreamRunsWithStatus(ctx, childNode, replayRequest)
+		if err != nil {
+			return nil, err
+		}
+		parentNode.Dependents[idx] = updatedChildNode
+	}
+	return parentNode, nil
 }

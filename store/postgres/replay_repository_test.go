@@ -32,16 +32,19 @@ func TestReplayRepository(t *testing.T) {
 	gTask := "g-task"
 	jobConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "job-1",
+			ID:      uuid.Must(uuid.NewRandom()),
+			Name:    "job-1",
+			Project: projectSpec,
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "job-2",
+			ID:      uuid.Must(uuid.NewRandom()),
+			Name:    "job-2",
+			Project: projectSpec,
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: "job-3",
+			ID:      uuid.Must(uuid.NewRandom()),
+			Name:    "job-3",
+			Project: projectSpec,
 		},
 	}
 	startTime := time.Date(2021, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -89,6 +92,7 @@ func TestReplayRepository(t *testing.T) {
 
 		return dbConn
 	}
+	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
 	t.Run("Insert and GetByID", func(t *testing.T) {
 		db := DBSetup()
@@ -187,7 +191,12 @@ func TestReplayRepository(t *testing.T) {
 
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err := jobRepo.Insert(testModels[0].Job)
+			projectRepo := NewProjectRepository(db, hash)
+
+			err := projectRepo.Insert(projectSpec)
+			assert.Nil(t, err)
+
+			err = jobRepo.Insert(testModels[0].Job)
 			assert.Nil(t, err)
 			err = jobRepo.Insert(testModels[1].Job)
 			assert.Nil(t, err)
@@ -207,6 +216,7 @@ func TestReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, jobConfigs[0].ID, replays[0].Job.ID)
 			assert.Equal(t, jobConfigs[2].ID, replays[1].Job.ID)
+			assert.Equal(t, jobConfigs[0].Project.Name, replays[0].Job.Project.Name)
 		})
 	})
 

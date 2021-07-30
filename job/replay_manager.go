@@ -2,15 +2,14 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/robfig/cron/v3"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/logger"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 	"github.com/pkg/errors"
 )
@@ -25,8 +24,12 @@ var (
 	ReplayRunTimeout = "long running replay timeout"
 	// TimestampLogFormat format of a timestamp will be used in logs
 	TimestampLogFormat = "2006-01-02T15:04:05+00:00"
-	// ReplayStatusToValidate signifies list of status to be used when checking active replays
-	ReplayStatusToValidate = []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted}
+	// schedulerBatchSize number of run instances to be checked per request
+	schedulerBatchSize = 100
+)
+
+const (
+	airflowSyncInterval = "@every 1m"
 )
 
 type ReplayManagerConfig struct {
@@ -37,7 +40,9 @@ type ReplayManagerConfig struct {
 
 type ReplayManager interface {
 	Init()
-	Replay(context.Context, *models.ReplayWorkerRequest) (string, error)
+	Replay(context.Context, *models.ReplayRequest) (string, error)
+	GetReplay(uuid uuid.UUID) (*models.ReplaySpec, error)
+	GetRunsStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error)
 }
 
 // Manager for replaying operation(s).
@@ -53,7 +58,7 @@ type Manager struct {
 	config       ReplayManagerConfig
 
 	// request queue, used by workers
-	requestQ chan *models.ReplayWorkerRequest
+	requestQ chan *models.ReplayRequest
 	// request map, used for verifying if a request is
 	// in queue without actually consuming it
 	requestMap map[uuid.UUID]bool
@@ -63,14 +68,17 @@ type Manager struct {
 
 	replaySpecRepoFac ReplaySpecRepoFactory
 	scheduler         models.SchedulerUnit
+	replayValidator   ReplayValidator
+	replaySyncer      ReplaySyncer
+	SyncerScheduler   *cron.Cron
 }
 
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
-func (m *Manager) Replay(ctx context.Context, reqInput *models.ReplayWorkerRequest) (string, error) {
+func (m *Manager) Replay(ctx context.Context, reqInput *models.ReplayRequest) (string, error) {
 	replaySpecRepo := m.replaySpecRepoFac.New(reqInput.Job)
 
-	err := m.validate(ctx, replaySpecRepo, reqInput)
+	err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput)
 	if err != nil {
 		return "", err
 	}
@@ -109,117 +117,6 @@ func (m *Manager) Replay(ctx context.Context, reqInput *models.ReplayWorkerReque
 	}
 }
 
-func (m *Manager) validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayWorkerRequest) error {
-	reqReplayTree, err := prepareTree(reqInput)
-	if err != nil {
-		return err
-	}
-
-	if !reqInput.Force {
-		reqReplayNodes := reqReplayTree.GetAllNodes()
-
-		//check if this dag have running instance in the scheduler
-		err = m.validateRunningInstance(ctx, reqReplayNodes, reqInput)
-		if err != nil {
-			return err
-		}
-
-		//check another replay active for this dag
-		activeReplaySpecs, err := replaySpecRepo.GetByStatus(ReplayStatusToValidate)
-		if err != nil {
-			if err == store.ErrResourceNotFound {
-				return nil
-			}
-			return err
-		}
-		return validateReplayJobsConflict(activeReplaySpecs, reqInput, reqReplayNodes)
-	}
-	//check and cancel if found conflicted replays for same job ID
-	return cancelConflictedReplays(replaySpecRepo, reqInput)
-}
-
-func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayWorkerRequest) error {
-	duplicatedReplaySpecs, err := replaySpecRepo.GetByJobIDAndStatus(reqInput.Job.ID, ReplayStatusToValidate)
-	if err != nil {
-		if err == store.ErrResourceNotFound {
-			return nil
-		}
-		return err
-	}
-	for _, replaySpec := range duplicatedReplaySpecs {
-		if err := replaySpecRepo.UpdateStatus(replaySpec.ID, models.ReplayStatusCancelled, models.ReplayMessage{
-			Type:    ErrConflictedJobRun.Error(),
-			Message: fmt.Sprintf("force started replay with ID: %s", reqInput.ID),
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *Manager) validateRunningInstance(ctx context.Context, reqReplayNodes []*tree.TreeNode, reqInput *models.ReplayWorkerRequest) error {
-	requestBatchSize := 100
-	for _, reqReplayNode := range reqReplayNodes {
-		batchEndDate := reqInput.End.AddDate(0, 0, 1)
-		jobStatusAllRuns, err := m.scheduler.GetDagRunStatus(ctx, reqInput.Project, reqInput.Job.Name, reqInput.Start, batchEndDate, requestBatchSize)
-		if err != nil {
-			return err
-		}
-		for _, jobStatus := range jobStatusAllRuns {
-			if reqReplayNode.Runs.Contains(jobStatus.ScheduledAt) && jobStatus.State == models.JobStatusStateRunning {
-				return ErrConflictedJobRun
-			}
-		}
-	}
-	return nil
-}
-
-func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput *models.ReplayWorkerRequest,
-	reqReplayNodes []*tree.TreeNode) error {
-	for _, activeSpec := range activeReplaySpecs {
-		activeReplayWorkerRequest := &models.ReplayWorkerRequest{
-			ID:         activeSpec.ID,
-			Job:        activeSpec.Job,
-			Start:      activeSpec.StartDate,
-			End:        activeSpec.EndDate,
-			Project:    reqInput.Project,
-			JobSpecMap: reqInput.JobSpecMap,
-		}
-		activeTree, err := prepareTree(activeReplayWorkerRequest)
-		if err != nil {
-			return err
-		}
-		activeNodes := activeTree.GetAllNodes()
-		return checkAnyConflictedDags(activeNodes, reqReplayNodes)
-	}
-	return nil
-}
-
-func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree.TreeNode) error {
-	activeNodesMap := make(map[string]*tree.TreeNode)
-	for _, activeNodes := range activeNodes {
-		activeNodesMap[activeNodes.GetName()] = activeNodes
-	}
-
-	for _, reqNode := range reqReplayNodes {
-		if _, ok := activeNodesMap[reqNode.GetName()]; ok {
-			if err := checkAnyConflictedRuns(activeNodesMap[reqNode.GetName()], reqNode); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func checkAnyConflictedRuns(activeNode *tree.TreeNode, reqNode *tree.TreeNode) error {
-	for _, reqNodeRun := range reqNode.Runs.Values() {
-		if activeNode.Runs.Contains(reqNodeRun.(time.Time)) {
-			return ErrConflictedJobRun
-		}
-	}
-	return nil
-}
-
 // start a worker goroutine that runs the deployment pipeline in background
 func (m *Manager) spawnServiceWorker() {
 	defer m.wg.Done()
@@ -236,6 +133,18 @@ func (m *Manager) spawnServiceWorker() {
 	}
 }
 
+// AirflowSyncer to sync for latest replay status
+func (m *Manager) AirflowSyncer() {
+	logger.I("start synchronizing replays...")
+	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
+	if err := m.replaySyncer.Sync(ctx, m.config.RunTimeout); err != nil {
+		logger.E(errors.Wrap(err, "syncer failed to process"))
+		cancelCtx()
+	}
+	logger.I("replays synced")
+	cancelCtx()
+}
+
 //Close stops consuming any new request
 func (m *Manager) Close() error {
 	if m.requestQ != nil {
@@ -246,11 +155,17 @@ func (m *Manager) Close() error {
 	//wait for request worker to finish
 	m.wg.Wait()
 
+	if m.SyncerScheduler != nil {
+		//wait for syncer to finish
+		<-m.SyncerScheduler.Stop().Done()
+	}
+
 	return nil
 }
 
 func (m *Manager) Init() {
-	m.shuttingDownTimedOutReplays()
+	m.SyncerScheduler.AddFunc(airflowSyncInterval, m.AirflowSyncer)
+	m.SyncerScheduler.Start()
 
 	logger.I("starting replay workers")
 	for i := 0; i < m.config.NumWorkers; i++ {
@@ -259,37 +174,40 @@ func (m *Manager) Init() {
 	}
 }
 
-func (m *Manager) shuttingDownTimedOutReplays() {
-	replaySpecRepo := m.replaySpecRepoFac.New(models.JobSpec{})
-	runningReplaySpecs, err := replaySpecRepo.GetByStatus(ReplayStatusToValidate)
-	if err != nil {
-		logger.I(fmt.Sprintf("shutting down long running replay jobs failed: %s", err))
-	}
-	for _, runningReplaySpec := range runningReplaySpecs {
-		runningTime := time.Now().Sub(runningReplaySpec.CreatedAt)
-		if runningTime > m.config.RunTimeout {
-			if updateStatusErr := replaySpecRepo.UpdateStatus(runningReplaySpec.ID, models.ReplayStatusFailed, models.ReplayMessage{
-				Type:    ReplayRunTimeout,
-				Message: fmt.Sprintf("replay has been running since %s", runningReplaySpec.CreatedAt.UTC().Format(TimestampLogFormat)),
-			}); updateStatusErr != nil {
-				logger.I(fmt.Sprintf("shutting down long running replay jobs failed: %s", updateStatusErr))
-			}
-		}
-	}
-}
-
 // NewManager constructs a new instance of Manager
 func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider,
-	config ReplayManagerConfig, scheduler models.SchedulerUnit) *Manager {
+	config ReplayManagerConfig, scheduler models.SchedulerUnit, validator ReplayValidator, syncer ReplaySyncer) *Manager {
 	mgr := &Manager{
 		replayWorker:      worker,
 		requestMap:        make(map[uuid.UUID]bool),
 		config:            config,
-		requestQ:          make(chan *models.ReplayWorkerRequest, 0),
+		requestQ:          make(chan *models.ReplayRequest, 0),
 		replaySpecRepoFac: replaySpecRepoFac,
 		uuidProvider:      uuidProvider,
 		scheduler:         scheduler,
+		replayValidator:   validator,
+		replaySyncer:      syncer,
+		SyncerScheduler:   cron.New(),
 	}
 	mgr.Init()
 	return mgr
+}
+
+// GetReplay using UUID
+func (m *Manager) GetReplay(replayUUID uuid.UUID) (*models.ReplaySpec, error) {
+	replaySpecRepo := m.replaySpecRepoFac.New(models.JobSpec{})
+
+	replaySpec, err := replaySpecRepo.GetByID(replayUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &replaySpec, nil
+}
+
+// GetRunsStatus
+func (m *Manager) GetRunsStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error) {
+	requestBatchSize := 100
+	batchEndDate := reqInput.End.AddDate(0, 0, 1).Add(time.Second * -1)
+	return m.scheduler.GetDagRunStatus(ctx, reqInput.Project, jobName, reqInput.Start, batchEndDate, requestBatchSize)
 }

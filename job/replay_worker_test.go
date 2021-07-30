@@ -31,7 +31,7 @@ func TestReplayWorker(t *testing.T) {
 			Interval:  "0 2 * * *",
 		},
 	}
-	replayRequest := &models.ReplayWorkerRequest{
+	replayRequest := &models.ReplayRequest{
 		ID:    currUUID,
 		Job:   jobSpec,
 		Start: startDate,
@@ -119,7 +119,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replayRepository.AssertExpectations(t)
 			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			updateSuccessStatusErr := errors.New("error while updating replay request")
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusSuccess, models.ReplayMessage{}).Return(updateSuccessStatusErr)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(updateSuccessStatusErr)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -138,7 +138,7 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusSuccess, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -152,7 +152,7 @@ func TestReplayWorker(t *testing.T) {
 			err := worker.Process(ctx, replayRequest)
 			assert.Nil(t, err)
 		})
-		t.Run("should throw an error when prepareTree throws an error", func(t *testing.T) {
+		t.Run("should throw an error when prepareReplayExecutionTree throws an error", func(t *testing.T) {
 			replayRequest.JobSpecMap = make(map[string]models.JobSpec)
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
