@@ -553,9 +553,9 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[2].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2], jobStatusList[3], jobStatusList[4]}, nil)
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[2].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2], jobStatusList[3], jobStatusList[4]}, nil)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -686,7 +686,7 @@ func TestReplay(t *testing.T) {
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
 			errorMsg := "unable to get status of a job run"
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -780,9 +780,9 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -876,10 +876,10 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
-			replayManager.On("GetRunsStatus", ctx, replayReq, dagSpec[2].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
+			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[2].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)

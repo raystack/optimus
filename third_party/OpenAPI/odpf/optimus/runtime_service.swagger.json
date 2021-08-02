@@ -258,6 +258,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusReplayRequest"
+            }
           }
         ],
         "tags": [
@@ -266,7 +274,7 @@
       }
     },
     "/v1/project/{projectName}/job/{jobName}/replay-dry-run": {
-      "get": {
+      "post": {
         "operationId": "RuntimeService_ReplayDryRun",
         "responses": {
           "200": {
@@ -296,28 +304,54 @@
             "type": "string"
           },
           {
-            "name": "namespace",
-            "in": "query",
-            "required": false,
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/optimusReplayRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
+    "/v1/project/{projectName}/job/{jobName}/replay/{id}": {
+      "get": {
+        "operationId": "RuntimeService_GetReplayStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusGetReplayStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
-            "name": "startDate",
-            "in": "query",
-            "required": false,
+            "name": "jobName",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
-            "name": "endDate",
-            "in": "query",
-            "required": false,
+            "name": "id",
+            "in": "path",
+            "required": true,
             "type": "string"
-          },
-          {
-            "name": "force",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           }
         ],
         "tags": [
@@ -1127,6 +1161,17 @@
         }
       }
     },
+    "optimusGetReplayStatusResponse": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "response": {
+          "$ref": "#/definitions/optimusReplayStatusTreeNode"
+        }
+      }
+    },
     "optimusGetWindowResponse": {
       "type": "object",
       "properties": {
@@ -1631,10 +1676,68 @@
         }
       }
     },
+    "optimusReplayRequest": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        },
+        "force": {
+          "type": "boolean"
+        }
+      }
+    },
     "optimusReplayResponse": {
       "type": "object",
       "properties": {
         "id": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusReplayStatusRun": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string"
+        }
+      }
+    },
+    "optimusReplayStatusTreeNode": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "dependents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusReplayStatusTreeNode"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusReplayStatusRun"
+          }
+        },
+        "state": {
           "type": "string"
         }
       }

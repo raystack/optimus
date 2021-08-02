@@ -215,7 +215,7 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, replayResult)
 		})
 	})
-	t.Run("GetRunsStatus", func(t *testing.T) {
+	t.Run("GetRunStatus", func(t *testing.T) {
 		t.Run("should return status of every runs in every jobs", func(t *testing.T) {
 			replayUUID := uuid.Must(uuid.NewRandom())
 			jobName := "dag1-no-deps"
@@ -249,7 +249,7 @@ func TestReplayManager(t *testing.T) {
 			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobName, startDate, batchEndDate, 100).Return(jobStatusList, nil)
 
 			replayManager := job.NewManager(nil, nil, nil, job.ReplayManagerConfig{}, scheduler, nil, nil)
-			jobStatusMap, err := replayManager.GetRunsStatus(context.TODO(), replayRequest, jobName)
+			jobStatusMap, err := replayManager.GetRunStatus(context.TODO(), replayRequest, jobName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, jobStatusList, jobStatusMap)

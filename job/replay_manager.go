@@ -42,7 +42,7 @@ type ReplayManager interface {
 	Init()
 	Replay(context.Context, *models.ReplayRequest) (string, error)
 	GetReplay(uuid uuid.UUID) (*models.ReplaySpec, error)
-	GetRunsStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error)
+	GetRunStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error)
 }
 
 // Manager for replaying operation(s).
@@ -137,12 +137,11 @@ func (m *Manager) spawnServiceWorker() {
 func (m *Manager) AirflowSyncer() {
 	logger.I("start synchronizing replays...")
 	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
+	defer cancelCtx()
 	if err := m.replaySyncer.Sync(ctx, m.config.RunTimeout); err != nil {
 		logger.E(errors.Wrap(err, "syncer failed to process"))
-		cancelCtx()
 	}
 	logger.I("replays synced")
-	cancelCtx()
 }
 
 //Close stops consuming any new request
@@ -206,7 +205,7 @@ func (m *Manager) GetReplay(replayUUID uuid.UUID) (*models.ReplaySpec, error) {
 }
 
 // GetRunsStatus
-func (m *Manager) GetRunsStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error) {
+func (m *Manager) GetRunStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error) {
 	requestBatchSize := 100
 	batchEndDate := reqInput.End.AddDate(0, 0, 1).Add(time.Second * -1)
 	return m.scheduler.GetDagRunStatus(ctx, reqInput.Project, jobName, reqInput.Start, batchEndDate, requestBatchSize)

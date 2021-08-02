@@ -214,6 +214,7 @@ func (srv *Service) GetStatus(ctx context.Context, replayRequest *models.ReplayR
 	// populate
 	replayRequest.Start = replaySpec.StartDate
 	replayRequest.End = replaySpec.EndDate
+	replayRequest.Job = replaySpec.Job
 	if err = srv.populateRequestWithJobSpecs(replayRequest); err != nil {
 		return nil, err
 	}
@@ -253,7 +254,7 @@ func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest *
 	// compute runs that require replay
 	dagTree := tree.NewMultiRootTree()
 	parentNode := tree.NewTreeNode(replayJobSpec)
-	jobStatusList, err := srv.replayManager.GetRunsStatus(ctx, replayRequest, replayRequest.Job.Name)
+	jobStatusList, err := srv.replayManager.GetRunStatus(ctx, replayRequest, replayRequest.Job.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +281,7 @@ func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, parent
 	for idx, childNode := range parentNode.Dependents {
 		childDag := childNode.Data.(models.JobSpec)
 
-		jobStatusList, err := srv.replayManager.GetRunsStatus(ctx, replayRequest, childDag.Name)
+		jobStatusList, err := srv.replayManager.GetRunStatus(ctx, replayRequest, childDag.Name)
 		if err != nil {
 			return nil, err
 		}

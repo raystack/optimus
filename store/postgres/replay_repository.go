@@ -83,13 +83,17 @@ func (repo *replayRepository) Insert(replay *models.ReplaySpec) error {
 
 func (repo *replayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
 	var r Replay
-	if err := repo.DB.Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.DB.Where("id = ?", id).Preload("Job").Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ReplaySpec{}, store.ErrResourceNotFound
 		}
 		return models.ReplaySpec{}, err
 	}
-	return r.ToSpec(repo.jobSpec)
+	jobSpec, err := repo.adapter.ToSpec(r.Job)
+	if err != nil {
+		return models.ReplaySpec{}, err
+	}
+	return r.ToSpec(jobSpec)
 }
 
 func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error {

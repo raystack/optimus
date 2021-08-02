@@ -314,8 +314,7 @@ func Initialize(conf config.Provider) error {
 		db:   dbConn,
 		hash: appHash,
 	}
-	projectRepo := projectRepoFac.New()
-	registeredProjects, err := projectRepo.GetAll()
+	registeredProjects, err := projectRepoFac.New().GetAll()
 	if err != nil {
 		return errors.Wrap(err, "projectRepoFactory.GetAll()")
 	}

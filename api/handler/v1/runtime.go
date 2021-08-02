@@ -9,6 +9,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/google/uuid"
+
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/core/tree"
@@ -63,6 +65,7 @@ type ProtoAdapter interface {
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
 
 	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
+	ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error)
 }
 
 type RuntimeServiceServer struct {
@@ -803,23 +806,54 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*models.ReplayWorkerRequest, error) {
-	projectRepo := sv.projectRepoFactory.New()
-	projSpec, err := projectRepo.GetByName(req.GetProjectName())
+func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.GetReplayStatusRequest) (*pb.GetReplayStatusResponse, error) {
+	replayRequest, err := sv.parseReplayStatusRequest(req)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
+		return nil, err
 	}
 
-	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
+	replayState, err := sv.jobSvc.GetStatus(ctx, replayRequest)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.Internal, "error while getting replay: %v", err)
 	}
 
-	jobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), namespaceSpec)
+	node, err := sv.adapter.ToReplayStatusTreeNode(replayState.Node)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: failed to find the job %s for namespace %s", err.Error(),
-			req.GetJobName(), req.GetNamespace())
+		return nil, status.Errorf(codes.Internal, "error while getting replay status tree: %v", err)
+	}
+
+	return &pb.GetReplayStatusResponse{
+		State:    replayState.Status,
+		Response: node,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) parseReplayStatusRequest(req *pb.GetReplayStatusRequest) (*models.ReplayRequest, error) {
+	projSpec, err := sv.getProjectSpec(req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	uuid, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ReplayRequest{
+		Project: projSpec,
+		ID:      uuid,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*models.ReplayRequest, error) {
+	projSpec, err := sv.getProjectSpec(req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpec, err := sv.getJobSpec(projSpec, req.Namespace, req.JobName)
+	if err != nil {
+		return nil, err
 	}
 
 	startDate, err := time.Parse(job.ReplayDateFormat, req.StartDate)
@@ -836,7 +870,7 @@ func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*mode
 	if endDate.Before(startDate) {
 		return nil, status.Errorf(codes.InvalidArgument, "replay end date cannot be before start date")
 	}
-	replayRequest := models.ReplayWorkerRequest{
+	replayRequest := models.ReplayRequest{
 		Job:     jobSpec,
 		Start:   startDate,
 		End:     endDate,
@@ -844,6 +878,30 @@ func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*mode
 		Force:   req.Force,
 	}
 	return &replayRequest, nil
+}
+
+func (sv *RuntimeServiceServer) getProjectSpec(projectName string) (models.ProjectSpec, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(projectName)
+	if err != nil {
+		return models.ProjectSpec{}, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), projectName)
+	}
+	return projSpec, nil
+}
+
+func (sv *RuntimeServiceServer) getJobSpec(projSpec models.ProjectSpec, namespace string, jobName string) (models.JobSpec, error) {
+	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
+	namespaceSpec, err := namespaceRepo.GetByName(namespace)
+	if err != nil {
+		return models.JobSpec{}, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), namespace)
+	}
+
+	jobSpec, err := sv.jobSvc.GetByName(jobName, namespaceSpec)
+	if err != nil {
+		return models.JobSpec{}, status.Errorf(codes.NotFound, "%s: failed to find the job %s for namespace %s", err.Error(),
+			jobName, namespace)
+	}
+	return jobSpec, nil
 }
 
 func NewRuntimeServiceServer(

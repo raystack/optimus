@@ -100,21 +100,30 @@ func TestReplayRepository(t *testing.T) {
 
 		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
-
-		for idx, jobConfig := range jobConfigs {
-			jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
-			testConfigs[idx].Job = jobConfig
-		}
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: gTask,
+		}, nil)
+		depMod1 := new(mock.DependencyResolverMod)
+		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := new(mock.SupportedPluginRepo)
 		defer pluginRepo.AssertExpectations(t)
+		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := NewAdapter(pluginRepo)
 
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
+		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
+		testConfigs[0].Job = jobConfigs[0]
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		err := jobRepo.Insert(jobConfigs[0])
+		assert.Nil(t, err)
+
 		repo := NewReplayRepository(db, jobConfigs[0], adapter)
-		err := repo.Insert(testModels[0])
+		err = repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByID(testModels[0].ID)
@@ -130,18 +139,27 @@ func TestReplayRepository(t *testing.T) {
 
 		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
-
-		for idx, jobConfig := range jobConfigs {
-			jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
-			testConfigs[idx].Job = jobConfig
-		}
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: gTask,
+		}, nil)
+		depMod1 := new(mock.DependencyResolverMod)
+		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := new(mock.SupportedPluginRepo)
 		defer pluginRepo.AssertExpectations(t)
-
+		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := NewAdapter(pluginRepo)
+
+		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
+		testConfigs[0].Job = jobConfigs[0]
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		err := jobRepo.Insert(jobConfigs[0])
+		assert.Nil(t, err)
+
 		repo := NewReplayRepository(db, jobConfigs[0], adapter)
-		err := repo.Insert(testModels[0])
+		err = repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
 		errMessage := "failed to execute"

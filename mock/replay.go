@@ -64,7 +64,7 @@ func (rm *ReplayManager) GetReplay(uuid uuid.UUID) (*models.ReplaySpec, error) {
 	return args.Get(0).(*models.ReplaySpec), args.Error(1)
 }
 
-func (rm *ReplayManager) GetRunsStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error) {
+func (rm *ReplayManager) GetRunStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error) {
 	args := rm.Called(ctx, reqInput, jobName)
 	return args.Get(0).([]models.JobStatus), args.Error(1)
 }

@@ -274,7 +274,6 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 func replayStatusSubCommand(l logger, conf config.Provider) *cli.Command {
 	var (
 		replayProject string
-		namespace     string
 	)
 
 	reCmd := &cli.Command{
@@ -282,20 +281,18 @@ func replayStatusSubCommand(l logger, conf config.Provider) *cli.Command {
 		Short:   "get status of a replay using its ID",
 		Example: "optimus replay status replay-id",
 		Long: `
-This operation takes one argument, replay ID[required]
-that generated when starting a replay.
+The status command is used to fetch the current replay progress.
+It takes one argument, replay ID[required] that gets generated when starting a replay. 
 		`,
 		Args: func(cmd *cli.Command, args []string) error {
-			if len(args) < 2 {
-				return errors.New("job name and replay ID are required")
+			if len(args) < 1 {
+				return errors.New("replay ID is required")
 			}
 			return nil
 		},
 	}
 	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
 	reCmd.MarkFlagRequired("project")
-	reCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of deployee")
-	reCmd.MarkFlagRequired("namespace")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -314,18 +311,16 @@ that generated when starting a replay.
 		defer replayRequestCancel()
 
 		runtime := pb.NewRuntimeServiceClient(conn)
-		replayStatusRequest := &pb.ReplayStatusRequest{
-			Id:          args[1],
-			JobName:     args[0],
+		replayStatusRequest := &pb.GetReplayStatusRequest{
+			Id:          args[0],
 			ProjectName: replayProject,
-			Namespace:   namespace,
 		}
 		replayResponse, err := runtime.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Println("replay request took too long, timing out")
 			}
-			return errors.Wrapf(err, "request getting status for replay %s is failed", args[1])
+			return errors.Wrapf(err, "request getting status for replay %s is failed", args[0])
 		}
 		printReplayStatusResponse(l, replayResponse)
 		return nil
@@ -333,7 +328,7 @@ that generated when starting a replay.
 	return reCmd
 }
 
-func printReplayStatusResponse(l logger, replayStatusResponse *pb.ReplayStatusResponse) {
+func printReplayStatusResponse(l logger, replayStatusResponse *pb.GetReplayStatusResponse) {
 	if replayStatusResponse.State == models.ReplayStatusFailed {
 		l.Printf("\nThis replay has been marked as %s.\n\n", coloredNotice(models.ReplayStatusFailed))
 	} else if replayStatusResponse.State == models.ReplayStatusReplayed {

@@ -72,7 +72,7 @@ type RuntimeServiceClient interface {
 	UpdateResource(ctx context.Context, in *UpdateResourceRequest, opts ...grpc.CallOption) (*UpdateResourceResponse, error)
 	ReplayDryRun(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error)
 	Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error)
-	GetReplayStatus(ctx context.Context, in *ReplayStatusRequest, opts ...grpc.CallOption) (*ReplayStatusResponse, error)
+	GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error)
 }
 
 type runtimeServiceClient struct {
@@ -377,8 +377,8 @@ func (c *runtimeServiceClient) Replay(ctx context.Context, in *ReplayRequest, op
 	return out, nil
 }
 
-func (c *runtimeServiceClient) GetReplayStatus(ctx context.Context, in *ReplayStatusRequest, opts ...grpc.CallOption) (*ReplayStatusResponse, error) {
-	out := new(ReplayStatusResponse)
+func (c *runtimeServiceClient) GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error) {
+	out := new(GetReplayStatusResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/GetReplayStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -444,7 +444,7 @@ type RuntimeServiceServer interface {
 	UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error)
 	ReplayDryRun(context.Context, *ReplayRequest) (*ReplayDryRunResponse, error)
 	Replay(context.Context, *ReplayRequest) (*ReplayResponse, error)
-	GetReplayStatus(context.Context, *ReplayStatusRequest) (*ReplayStatusResponse, error)
+	GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -527,7 +527,7 @@ func (UnimplementedRuntimeServiceServer) ReplayDryRun(context.Context, *ReplayRe
 func (UnimplementedRuntimeServiceServer) Replay(context.Context, *ReplayRequest) (*ReplayResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Replay not implemented")
 }
-func (UnimplementedRuntimeServiceServer) GetReplayStatus(context.Context, *ReplayStatusRequest) (*ReplayStatusResponse, error) {
+func (UnimplementedRuntimeServiceServer) GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetReplayStatus not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
@@ -1003,7 +1003,7 @@ func _RuntimeService_Replay_Handler(srv interface{}, ctx context.Context, dec fu
 }
 
 func _RuntimeService_GetReplayStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplayStatusRequest)
+	in := new(GetReplayStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1015,7 +1015,7 @@ func _RuntimeService_GetReplayStatus_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/odpf.optimus.RuntimeService/GetReplayStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).GetReplayStatus(ctx, req.(*ReplayStatusRequest))
+		return srv.(RuntimeServiceServer).GetReplayStatus(ctx, req.(*GetReplayStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
