@@ -401,7 +401,7 @@ func (s *registeredPlugins) GetCommandLines() []CommandLineMod {
 func (s *registeredPlugins) GetTasks() []*Plugin {
 	var list []*Plugin
 	for _, unit := range s.data {
-		if unit.DependencyMod != nil {
+		if unit.Info().PluginType == PluginTypeTask {
 			list = append(list, unit)
 		}
 	}
