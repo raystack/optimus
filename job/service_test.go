@@ -91,6 +91,72 @@ func TestService(t *testing.T) {
 		})
 	})
 
+	t.Run("Check", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Name:        "dev-team-1",
+			ProjectSpec: projSpec,
+		}
+		t.Run("should skip checking for dependencies for task that doesn't support this mod", func(t *testing.T) {
+			currentSpec := models.JobSpec{
+				Version: 1,
+				Name:    "test",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{},
+				},
+				Dependencies: map[string]models.JobSpecDependency{},
+			}
+			compiler := new(mock.Compiler)
+			compiler.On("Compile", namespaceSpec, currentSpec).Return(models.Job{}, nil)
+			defer compiler.AssertExpectations(t)
+
+			service := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, nil)
+			err := service.Check(namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			assert.Nil(t, err)
+		})
+		t.Run("should check for successful dependency resolution for task that does support this mod", func(t *testing.T) {
+			depMode := new(mock.DependencyResolverMod)
+			defer depMode.AssertExpectations(t)
+			currentSpec := models.JobSpec{
+				Version: 1,
+				Name:    "test",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: depMode},
+				},
+				Dependencies: map[string]models.JobSpecDependency{},
+			}
+			depMode.On("GenerateDependencies", context.TODO(), models.GenerateDependenciesRequest{
+				Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
+				Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
+				Project: namespaceSpec.ProjectSpec,
+				PluginOptions: models.PluginOptions{
+					DryRun: true,
+				},
+			}).Return(&models.GenerateDependenciesResponse{}, nil)
+
+			compiler := new(mock.Compiler)
+			compiler.On("Compile", namespaceSpec, currentSpec).Return(models.Job{}, nil)
+			defer compiler.AssertExpectations(t)
+
+			service := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, nil)
+			err := service.Check(namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			assert.Nil(t, err)
+		})
+	})
+
 	t.Run("Sync", func(t *testing.T) {
 		projSpec := models.ProjectSpec{
 			Name: "proj",
