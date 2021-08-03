@@ -159,25 +159,33 @@ func (srv *Service) Check(namespace models.NamespaceSpec, jobSpecs []models.JobS
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				// check dependencies
-				if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
-					Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
-					Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
-					Project: namespace.ProjectSpec,
-					PluginOptions: models.PluginOptions{
-						DryRun: true,
-					},
-				}); err != nil {
-					obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
-					return nil, errors.Wrapf(err, "failed to resolve dependencies %s", currentSpec.Name)
+				if currentSpec.Task.Unit.DependencyMod != nil {
+					if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
+						Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
+						Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
+						Project: namespace.ProjectSpec,
+						PluginOptions: models.PluginOptions{
+							DryRun: true,
+						},
+					}); err != nil {
+						if obs != nil {
+							obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
+						}
+						return nil, errors.Wrapf(err, "failed to resolve dependencies %s", currentSpec.Name)
+					}
 				}
 
 				// check compilation
 				if _, err := srv.compiler.Compile(namespace, currentSpec); err != nil {
-					obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
+					if obs != nil {
+						obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
+					}
 					return nil, errors.Wrapf(err, "failed to compile %s", currentSpec.Name)
 				}
 
-				obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
+				if obs != nil {
+					obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
+				}
 				return nil, nil
 			}
 		}(jSpec))
