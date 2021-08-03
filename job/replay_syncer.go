@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/salt/log"
 )
 
 var (
@@ -22,11 +22,13 @@ type Syncer struct {
 	projectRepoFactory ProjectRepoFactory
 	scheduler          models.SchedulerUnit
 	Now                func() time.Time
+	l                  log.Logger
 }
 
-func NewReplaySyncer(replaySpecFactory ReplaySpecRepoFactory, projectRepoFactory ProjectRepoFactory, scheduler models.SchedulerUnit,
+func NewReplaySyncer(log log.Logger, replaySpecFactory ReplaySpecRepoFactory, projectRepoFactory ProjectRepoFactory, scheduler models.SchedulerUnit,
 	timeFn func() time.Time) *Syncer {
 	return &Syncer{
+		l:                  log,
 		replaySpecFactory:  replaySpecFactory,
 		projectRepoFactory: projectRepoFactory,
 		scheduler:          scheduler,
@@ -75,7 +77,7 @@ func (s Syncer) syncTimedOutReplay(replaySpecRepo store.ReplaySpecRepository, re
 			Type:    ReplayRunTimeout,
 			Message: fmt.Sprintf("replay has been running since %s", replaySpec.CreatedAt.UTC().Format(TimestampLogFormat)),
 		}); updateStatusErr != nil {
-			logger.E(fmt.Sprintf("marking long running replay jobs as failed: %s", updateStatusErr))
+			s.l.Error("marking long running replay jobs as failed", "status error", updateStatusErr)
 			return updateStatusErr
 		}
 	}
@@ -88,7 +90,7 @@ func (s Syncer) syncRunningReplay(context context.Context, projectSpec models.Pr
 		return err
 	}
 
-	return updateCompletedReplays(stateSummary, replaySpecRepo, replaySpec.ID)
+	return updateCompletedReplays(s.l, stateSummary, replaySpecRepo, replaySpec.ID)
 }
 
 func (s Syncer) checkInstanceState(ctx context.Context, projectSpec models.ProjectSpec, replaySpec models.ReplaySpec) (map[string]int, error) {
@@ -110,13 +112,13 @@ func (s Syncer) checkInstanceState(ctx context.Context, projectSpec models.Proje
 	return stateSummary, nil
 }
 
-func updateCompletedReplays(stateSummary map[string]int, replaySpecRepo store.ReplaySpecRepository, replayID uuid.UUID) error {
+func updateCompletedReplays(l log.Logger, stateSummary map[string]int, replaySpecRepo store.ReplaySpecRepository, replayID uuid.UUID) error {
 	if stateSummary[models.InstanceStateRunning] == 0 && stateSummary[models.InstanceStateFailed] > 0 {
 		if updateStatusErr := replaySpecRepo.UpdateStatus(replayID, models.ReplayStatusFailed, models.ReplayMessage{
 			Type:    models.ReplayStatusFailed,
 			Message: ReplayMessageFailed,
 		}); updateStatusErr != nil {
-			logger.E(fmt.Sprintf("marking replay as failed error: %s", updateStatusErr))
+			l.Error("marking replay as failed error", "status error", updateStatusErr)
 			return updateStatusErr
 		}
 	} else if stateSummary[models.InstanceStateRunning] == 0 && stateSummary[models.InstanceStateFailed] == 0 && stateSummary[models.InstanceStateSuccess] > 0 {
@@ -124,10 +126,10 @@ func updateCompletedReplays(stateSummary map[string]int, replaySpecRepo store.Re
 			Type:    models.ReplayStatusSuccess,
 			Message: ReplayMessageSuccess,
 		}); updateStatusErr != nil {
-			logger.E(fmt.Sprintf("marking replay as success error: %s", updateStatusErr))
+			l.Error("marking replay as success error", "status error", updateStatusErr)
 			return updateStatusErr
 		}
-		logger.I(fmt.Sprintf("successfully marked replay %s as success", replayID))
+		l.Info("successfully marked replay", "replay id", replayID)
 	}
 	return nil
 }

@@ -8,14 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/protobuf/types/known/structpb"
-
 	"github.com/gorilla/mux"
-
-	api "github.com/slack-go/slack"
-
 	"github.com/odpf/optimus/models"
+	api "github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func getTestUserProfile() api.UserProfile {

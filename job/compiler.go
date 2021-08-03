@@ -5,9 +5,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/odpf/optimus/config"
-
 	"github.com/Masterminds/sprig/v3"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 )

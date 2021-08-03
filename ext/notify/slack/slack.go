@@ -8,10 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	api "github.com/slack-go/slack"
-
-	"github.com/odpf/optimus/models"
 )
 
 const (

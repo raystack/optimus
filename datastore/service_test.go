@@ -4,14 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pkg/errors"
-
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestService(t *testing.T) {

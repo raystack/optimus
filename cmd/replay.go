@@ -6,14 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/models"
-
 	"github.com/AlecAivazis/survey/v2"
-
-	"github.com/odpf/optimus/core/set"
-
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/set"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
@@ -61,7 +59,7 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 	}
 }
 
-func replayCommand(l logger, conf config.Provider) *cli.Command {
+func replayCommand(l log.Logger, conf config.Provider) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "replay",
 		Short: "re-running jobs in order to update data for older dates/partitions",
@@ -72,7 +70,7 @@ func replayCommand(l logger, conf config.Provider) *cli.Command {
 	return cmd
 }
 
-func replayRunSubCommand(l logger, conf config.Provider) *cli.Command {
+func replayRunSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	dryRun := false
 	forceRun := false
 	var (
@@ -130,7 +128,7 @@ ReplayDryRun date ranges are inclusive.
 		}
 
 		if proceedWithReplay == "No" {
-			l.Println("aborting...")
+			l.Info("aborting...")
 			return nil
 		}
 
@@ -138,20 +136,20 @@ ReplayDryRun date ranges are inclusive.
 		if err != nil {
 			return err
 		}
-		l.Printf("🚀 replay request created with id %s\n", replayId)
+		l.Info(fmt.Sprintf("🚀 replay request created with id %s", replayId))
 		return nil
 	}
 	return reCmd
 }
 
-func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (err error) {
+func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service")
+			l.Info("can't reach optimus service")
 		}
 		return err
 	}
@@ -160,7 +158,7 @@ func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDa
 	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
 	defer replayRequestCancel()
 
-	l.Println("please wait...")
+	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
 		ProjectName: projectName,
@@ -172,7 +170,7 @@ func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDa
 	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("replay dry run took too long, timing out")
+			l.Info("replay dry run took too long, timing out")
 		}
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
@@ -181,9 +179,9 @@ func printReplayExecutionTree(l logger, projectName, namespace, jobName, startDa
 	return nil
 }
 
-func printReplayDryRunResponse(l logger, replayRequest *pb.ReplayRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
-	l.Printf("For %s project and %s namespace\n\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace))
-	l.Println(coloredNotice("REPLAY RUNS"))
+func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
+	l.Info(fmt.Sprintf("For %s project and %s namespace", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace)))
+	l.Info(coloredNotice("REPLAY RUNS"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
@@ -211,8 +209,8 @@ func printReplayDryRunResponse(l logger, replayRequest *pb.ReplayRequest, replay
 	table.Render()
 
 	//print tree
-	l.Println(coloredNotice("\nDEPENDENCY TREE"))
-	l.Println(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.Response, treeprint.New())))
+	l.Info(coloredNotice("\nDEPENDENCY TREE"))
+	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.Response, treeprint.New())))
 }
 
 // printExecutionTree creates a ascii tree to visually inspect
@@ -232,14 +230,14 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 	return tree
 }
 
-func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider, forceRun bool) (string, error) {
+func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider, forceRun bool) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service")
+			l.Info("can't reach optimus service")
 		}
 		return "", err
 	}
@@ -248,9 +246,9 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
 	defer replayRequestCancel()
 
-	l.Println("firing the replay request...")
+	l.Info("firing the replay request...")
 	if forceRun {
-		l.Println("force running replay even if its already in progress")
+		l.Info("force running replay even if its already in progress")
 	}
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
@@ -264,14 +262,14 @@ func runReplayRequest(l logger, projectName, namespace, jobName, startDate, endD
 	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("replay request took too long, timing out")
+			l.Info("replay request took too long, timing out")
 		}
 		return "", errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 	return replayResponse.Id, nil
 }
 
-func replayStatusSubCommand(l logger, conf config.Provider) *cli.Command {
+func replayStatusSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var (
 		replayProject string
 	)
@@ -300,7 +298,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Println("can't reach optimus service")
+				l.Info("can't reach optimus service")
 			}
 			return err
 		}
@@ -317,7 +315,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 		replayResponse, err := runtime.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Println("replay request took too long, timing out")
+				l.Info("replay request took too long, timing out")
 			}
 			return errors.Wrapf(err, "request getting status for replay %s is failed", args[0])
 		}
@@ -327,16 +325,16 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	return reCmd
 }
 
-func printReplayStatusResponse(l logger, replayStatusResponse *pb.GetReplayStatusResponse) {
+func printReplayStatusResponse(l log.Logger, replayStatusResponse *pb.GetReplayStatusResponse) {
 	if replayStatusResponse.State == models.ReplayStatusFailed {
-		l.Printf("\nThis replay has been marked as %s.\n\n", coloredNotice(models.ReplayStatusFailed))
+		l.Info(fmt.Sprintf("\nThis replay has been marked as %s", coloredNotice(models.ReplayStatusFailed)))
 	} else if replayStatusResponse.State == models.ReplayStatusReplayed {
-		l.Printf("\nThis replay is still %s.\n\n", coloredNotice("running"))
+		l.Info(fmt.Sprintf("\nThis replay is still %s", coloredNotice("running")))
 	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
-		l.Printf("\nThis replay has been marked as %s.\n\n", coloredSuccess(models.ReplayStatusSuccess))
+		l.Info(fmt.Sprintf("\nThis replay has been marked as %s", coloredSuccess(models.ReplayStatusSuccess)))
 	}
-	l.Println(coloredNotice("Latest Instances State"))
-	l.Println(fmt.Sprintf("%s", printStatusTree(replayStatusResponse.Response, treeprint.New())))
+	l.Info(coloredNotice("Latest Instances State"))
+	l.Info(fmt.Sprintf("%s", printStatusTree(replayStatusResponse.Response, treeprint.New())))
 }
 
 func printStatusTree(instance *pb.ReplayStatusTreeNode, tree treeprint.Tree) treeprint.Tree {

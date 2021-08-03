@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/odpf/optimus/models"
-
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
@@ -16,7 +16,7 @@ const (
 	defaultHost = "localhost"
 )
 
-func configCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
+func configCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 	c := &cli.Command{
 		Use:   "config",
 		Short: "Manage optimus configuration required to deploy specifications",
@@ -25,7 +25,7 @@ func configCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 	return c
 }
 
-func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
+func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 	c := &cli.Command{
 		Use:   "init",
 		Short: "Initialize optimus configuration file",
@@ -120,7 +120,7 @@ func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0655); err != nil {
 				return err
 			}
-			l.Println("configuration initialised successfully")
+			l.Info("configuration initialised successfully")
 
 			return nil
 		},
@@ -128,7 +128,7 @@ func configInitCommand(l logger, dsRepo models.DatastoreRepo) *cli.Command {
 	return c
 }
 
-func globalConfigQuestions(l logger, conf config.Optimus) (config.Optimus, error) {
+func globalConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
 	conf.Config.Global = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
@@ -165,7 +165,7 @@ func globalConfigQuestions(l logger, conf config.Optimus) (config.Optimus, error
 	return conf, nil
 }
 
-func localConfigQuestions(l logger, conf config.Optimus) (config.Optimus, error) {
+func localConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
 	conf.Config.Local = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
@@ -202,7 +202,7 @@ func localConfigQuestions(l logger, conf config.Optimus) (config.Optimus, error)
 	return conf, nil
 }
 
-func datastoreConfigQuestions(l logger, conf config.Optimus, dsRepo models.DatastoreRepo) (config.Optimus, error) {
+func datastoreConfigQuestions(l log.Logger, conf config.Optimus, dsRepo models.DatastoreRepo) (config.Optimus, error) {
 	dsOptions := []string{}
 	for _, ds := range dsRepo.GetAll() {
 		dsOptions = append(dsOptions, ds.Name())

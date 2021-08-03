@@ -6,17 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/knadh/koanf/providers/confmap"
-
-	"github.com/pkg/errors"
-
-	"github.com/knadh/koanf/providers/env"
-
-	"github.com/knadh/koanf/providers/file"
-	"github.com/spf13/afero"
-
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/confmap"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 )
 
 var (
@@ -25,7 +21,7 @@ var (
 	FileExtension   = "yaml"
 )
 
-// Load configuration file from following paths
+// InitOptimus Load configuration file from following paths
 // ./
 // <exec>/
 // ~/.config/

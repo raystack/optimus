@@ -1,20 +1,16 @@
 package v1
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/golang/protobuf/proto"
-
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Note: all config keys will be converted to upper case automatically
@@ -340,7 +336,8 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 			Type:  assetType,
 		})
 	}
-	schdAt, err := ptypes.Timestamp(conf.ScheduledAt)
+	schdAt := conf.ScheduledAt.AsTime()
+	err := conf.ScheduledAt.CheckValid()
 	if err != nil {
 		return models.InstanceSpec{}, err
 	}
@@ -399,7 +396,7 @@ func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 func (adapt *Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
 	typeController, ok := spec.Datastore.Types()[spec.Type]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name()))
+		return nil, errors.Errorf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name())
 	}
 	buf, err := typeController.Adapter().ToProtobuf(spec)
 	if err != nil {
@@ -421,7 +418,7 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 
 	typeController, ok := storer.Types()[models.ResourceType(spec.GetType())]
 	if !ok {
-		return models.ResourceSpec{}, errors.New(fmt.Sprintf("unsupported type %s for datastore %s", spec.Type, storeName))
+		return models.ResourceSpec{}, errors.Errorf("unsupported type %s for datastore %s", spec.Type, storeName)
 	}
 	buf, err := proto.Marshal(spec)
 	if err != nil {

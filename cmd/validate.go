@@ -7,10 +7,9 @@ import (
 	"time"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
-
-	"github.com/odpf/optimus/models"
-
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -20,7 +19,7 @@ const (
 	validateTimeout = time.Minute * 3
 )
 
-func validateCommand(l logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
+func validateCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "validate",
 		Short: "check if specifications are valid for deployment",
@@ -31,7 +30,7 @@ func validateCommand(l logger, host string, pluginRepo models.PluginRepository, 
 	return cmd
 }
 
-func validateJobCommand(l logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
+func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
@@ -53,16 +52,15 @@ func validateJobCommand(l logger, host string, pluginRepo models.PluginRepositor
 		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host); err != nil {
 			return err
 		}
-		l.Println("jobs successfully validated")
-		l.Printf("validated in %s\n", time.Since(start).String())
+		l.Info("jobs successfully validated")
+		l.Info(fmt.Sprintf("validated in %s", time.Since(start).String()))
 
 		return nil
 	}
-
 	return cmd
 }
 
-func validateJobSpecificationRequest(l logger, projectName string, namespace string,
+func validateJobSpecificationRequest(l log.Logger, projectName string, namespace string,
 	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string) (err error) {
 	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
@@ -72,7 +70,7 @@ func validateJobSpecificationRequest(l logger, projectName string, namespace str
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service")
+			l.Info("can't reach optimus service")
 		}
 		return err
 	}
@@ -90,7 +88,7 @@ func validateJobSpecificationRequest(l logger, projectName string, namespace str
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
 
-	l.Println("validating please wait...")
+	l.Info("validating please wait...")
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	respStream, err := runtime.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
@@ -100,7 +98,7 @@ func validateJobSpecificationRequest(l logger, projectName string, namespace str
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("validate process took too long, timing out")
+			l.Info("validate process took too long, timing out")
 		}
 		return errors.Wrapf(err, "validate request failed")
 	}
@@ -122,16 +120,16 @@ func validateJobSpecificationRequest(l logger, projectName string, namespace str
 				totalErrors = append(totalErrors, fmt.Sprintf("unable to check: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
 			}
 			jobCounter++
-			l.Printf("%d/%d. %s successfully checked\n", jobCounter, totalJobs, resp.GetJobName())
+			l.Info(fmt.Sprintf("%d/%d. %s successfully checked", jobCounter, totalJobs, resp.GetJobName()))
 		} else {
 			// ordinary progress event
-			l.Printf("info '%s': %s\n", resp.GetJobName(), resp.GetMessage())
+			l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
 		}
 	}
 	if len(totalErrors) > 0 {
-		l.Println("errors:")
+		l.Info("errors:")
 		for i, reqErr := range totalErrors {
-			l.Printf("%d. %s", i, reqErr)
+			l.Info(fmt.Sprintf("%d. %s", i, reqErr))
 		}
 	}
 	return nil

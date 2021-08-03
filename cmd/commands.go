@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/store/local"
-
-	"google.golang.org/grpc"
-
 	"github.com/fatih/color"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
+	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 var prologueContents = `optimus %s
@@ -29,6 +27,8 @@ var (
 	coloredNotice  = fmt.Sprint
 	coloredError   = fmt.Sprint
 	coloredSuccess = fmt.Sprint
+	coloredShow    = fmt.Sprint
+	coloredPrint   = fmt.Sprint
 
 	GRPCMaxClientSendSize = 45 << 20 // 45MB
 	GRPCMaxClientRecvSize = 45 << 20 // 45MB
@@ -48,14 +48,8 @@ type JobSpecRepository interface {
 	GetAll() ([]models.JobSpec, error)
 }
 
-// New constructs the 'root' command.
-// It houses all other sub commands
-func New(
-	l logger,
-	conf config.Provider,
-	pluginRepo models.PluginRepository,
-	dsRepo models.DatastoreRepo,
-) *cli.Command {
+// New constructs the 'root' command.It houses all other sub commands
+func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	var cmd = &cli.Command{
 		Use:  "optimus",
 		Long: programPrologue(config.Version),
@@ -65,6 +59,8 @@ func New(
 				coloredNotice = color.New(color.Bold, color.FgCyan).SprintFunc()
 				coloredError = color.New(color.Bold, color.FgHiRed).SprintFunc()
 				coloredSuccess = color.New(color.Bold, color.FgHiGreen).SprintFunc()
+				coloredShow = color.New(color.Bold, color.FgHiWhite).SprintFunc()
+				coloredPrint = color.New(color.Bold, color.FgHiYellow).SprintFunc()
 			}
 		},
 		SilenceUsage: true,
@@ -85,18 +81,18 @@ func New(
 		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
 
-	cmd.AddCommand(versionCommand(l, conf.GetHost(), pluginRepo))
-	cmd.AddCommand(configCommand(l, dsRepo))
-	cmd.AddCommand(createCommand(l, jobSpecFs, datastoreSpecsFs, pluginRepo, dsRepo))
-	cmd.AddCommand(deployCommand(l, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(renderCommand(l, conf.GetHost(), jobSpecRepo))
-	cmd.AddCommand(validateCommand(l, conf.GetHost(), pluginRepo, jobSpecRepo))
-	cmd.AddCommand(optimusServeCommand(l, conf))
-	cmd.AddCommand(replayCommand(l, conf))
+	cmd.AddCommand(versionCommand(plainLog, conf.GetHost(), pluginRepo))
+	cmd.AddCommand(configCommand(plainLog, dsRepo))
+	cmd.AddCommand(createCommand(plainLog, jobSpecFs, datastoreSpecsFs, pluginRepo, dsRepo))
+	cmd.AddCommand(deployCommand(plainLog, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))
+	cmd.AddCommand(renderCommand(plainLog, conf.GetHost(), jobSpecRepo))
+	cmd.AddCommand(validateCommand(plainLog, conf.GetHost(), pluginRepo, jobSpecRepo))
+	cmd.AddCommand(serveCommand(jsonLog, conf))
+	cmd.AddCommand(replayCommand(plainLog, conf))
 
 	// admin specific commands
 	if conf.GetAdmin().Enabled {
-		cmd.AddCommand(adminCommand(l, pluginRepo))
+		cmd.AddCommand(adminCommand(plainLog, pluginRepo))
 	}
 
 	return cmd

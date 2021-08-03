@@ -6,18 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReplaySyncer(t *testing.T) {
+	log := log.NewNoop()
 	ctx := context.TODO()
 	reqBatchSize := 100
 	runTimeout := time.Hour * 5
@@ -95,7 +96,7 @@ func TestReplaySyncer(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, nil, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, nil, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -118,7 +119,7 @@ func TestReplaySyncer(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, nil, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, nil, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -161,7 +162,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusSuccess, successReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -204,7 +205,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -241,7 +242,7 @@ func TestReplaySyncer(t *testing.T) {
 			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -281,7 +282,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, nil, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, nil, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -308,7 +309,7 @@ func TestReplaySyncer(t *testing.T) {
 			errorMsg := "fetch dag run status from scheduler failed"
 			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errorMsg)).Once()
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
+			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Contains(t, err.Error(), errorMsg)

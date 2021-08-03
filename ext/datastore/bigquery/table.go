@@ -5,12 +5,10 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/pkg/errors"
-
-	"google.golang.org/api/googleapi"
-
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
+	"google.golang.org/api/googleapi"
 )
 
 var (

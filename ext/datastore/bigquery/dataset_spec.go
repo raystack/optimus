@@ -5,12 +5,11 @@ import (
 	"regexp"
 
 	"github.com/kushsharma/structs"
-	"google.golang.org/protobuf/types/known/structpb"
-
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"gopkg.in/yaml.v3"
 )
 

@@ -7,12 +7,10 @@ import (
 	"time"
 
 	bqapi "cloud.google.com/go/bigquery"
-
-	"google.golang.org/api/googleapi"
-
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
+	"google.golang.org/api/googleapi"
 )
 
 func createStandardView(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {

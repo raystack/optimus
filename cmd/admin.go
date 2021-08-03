@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 )
 
 // adminCommand requests a resource from optimus
-func adminCommand(l logger, pluginRepo models.PluginRepository) *cli.Command {
+func adminCommand(l log.Logger, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "admin",
 		Short: "administration commands, should not be used by user",
@@ -17,7 +18,7 @@ func adminCommand(l logger, pluginRepo models.PluginRepository) *cli.Command {
 }
 
 // adminBuildCommand builds a resource
-func adminBuildCommand(l logger) *cli.Command {
+func adminBuildCommand(l log.Logger) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "build",
 		Short: "Register a job run and get required assets",
@@ -27,7 +28,7 @@ func adminBuildCommand(l logger) *cli.Command {
 }
 
 // adminGetCommand gets a resource
-func adminGetCommand(l logger, pluginRepo models.PluginRepository) *cli.Command {
+func adminGetCommand(l log.Logger, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use: "get",
 	}

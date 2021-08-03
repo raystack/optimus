@@ -6,9 +6,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/odpf/optimus/models"
-
 	"github.com/Masterminds/sprig/v3"
+	"github.com/odpf/optimus/models"
 )
 
 // GoEngine compiles a set of defined macros using the provided context

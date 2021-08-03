@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -15,7 +17,7 @@ const (
 	adminStatusTimeout = time.Second * 10
 )
 
-func adminGetStatusCommand(l logger) *cli.Command {
+func adminGetStatusCommand(l log.Logger) *cli.Command {
 	var (
 		optimusHost string
 		projectName string
@@ -33,8 +35,8 @@ func adminGetStatusCommand(l logger) *cli.Command {
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
-		l.Printf("requesting status for project %s, job %s[%s] at %s\nplease wait...\n",
-			projectName, jobName, optimusHost)
+		l.Info(fmt.Sprintf("requesting status for project %s, job %s at %s\nplease wait...",
+			projectName, jobName, optimusHost))
 
 		if err := getJobStatusRequest(l, jobName, optimusHost, projectName); err != nil {
 			return err
@@ -45,7 +47,7 @@ func adminGetStatusCommand(l logger) *cli.Command {
 	return cmd
 }
 
-func getJobStatusRequest(l logger, jobName, host, projectName string) error {
+func getJobStatusRequest(l log.Logger, jobName, host, projectName string) error {
 	var err error
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
@@ -53,7 +55,7 @@ func getJobStatusRequest(l logger, jobName, host, projectName string) error {
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service, timing out")
+			l.Info("can't reach optimus service, timing out")
 		}
 		return err
 	}
@@ -78,7 +80,7 @@ func getJobStatusRequest(l logger, jobName, host, projectName string) error {
 	})
 
 	for _, status := range jobStatuses {
-		l.Printf("%s - %s\n", status.GetScheduledAt().AsTime(), status.GetState())
+		l.Info(fmt.Sprintf("%s - %s", status.GetScheduledAt().AsTime(), status.GetState()))
 	}
 	return err
 }
