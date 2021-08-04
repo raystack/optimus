@@ -32,7 +32,7 @@ func TestReplaySyncer(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, nil, nil)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, nil, nil, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -47,7 +47,7 @@ func TestReplaySyncer(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, nil, nil)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, nil, nil, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -141,7 +141,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusSuccess, successReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -235,7 +235,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -323,7 +323,7 @@ func TestReplaySyncer(t *testing.T) {
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -387,7 +387,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, dumpAssets, registeredProjects, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -458,7 +458,7 @@ func TestReplaySyncer(t *testing.T) {
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -536,7 +536,7 @@ func TestReplaySyncer(t *testing.T) {
 			errorMsg := "fetch dag run status from scheduler failed"
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errorMsg)).Once()
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Contains(t, err.Error(), errorMsg)
