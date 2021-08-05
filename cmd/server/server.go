@@ -407,7 +407,14 @@ func Initialize(conf config.Provider) error {
 	}
 	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
 	replayValidator := job.NewReplayValidator(models.Scheduler)
-	replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, models.Scheduler, dependencyResolver, &projectJobSpecRepoFac, jobSpecAssetDump(), projectRepoFac)
+	replaySyncer := job.NewReplaySyncer(
+		replaySpecRepoFac, models.Scheduler,
+		dependencyResolver, &projectJobSpecRepoFac,
+		jobSpecAssetDump(), projectRepoFac,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+	)
 	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,

@@ -334,7 +334,7 @@ func printReplayStatusResponse(l logger, replayStatusResponse *pb.GetReplayStatu
 	} else if replayStatusResponse.State == models.ReplayStatusReplayed {
 		l.Printf("\nThis replay is still %s.\n\n", coloredNotice("running"))
 	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
-		l.Printf("\nThis replay has been marked as %s.\n\n", coloredNotice(models.ReplayStatusSuccess))
+		l.Printf("\nThis replay has been marked as %s.\n\n", coloredSuccess(models.ReplayStatusSuccess))
 	}
 	l.Println(coloredNotice("Latest Instances State"))
 	l.Println(fmt.Sprintf("%s", printStatusTree(replayStatusResponse.Response, treeprint.New())))

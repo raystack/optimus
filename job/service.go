@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/kushsharma/parallel"
@@ -60,6 +61,13 @@ type ReplaySpecRepoFactory interface {
 // ProjectRepoFactory is used to manage projects from store
 type ProjectRepoFactory interface {
 	New() store.ProjectRepository
+}
+
+type ReplayManager interface {
+	Init()
+	Replay(context.Context, *models.ReplayRequest) (string, error)
+	GetReplay(uuid uuid.UUID) (*models.ReplaySpec, error)
+	GetRunStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error)
 }
 
 // Service compiles all jobs with its dependencies, priority and

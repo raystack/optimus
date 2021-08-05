@@ -35,10 +35,15 @@ type Syncer struct {
 
 func NewReplaySyncer(replaySpecFactory ReplaySpecRepoFactory, scheduler models.SchedulerUnit,
 	dependencyResolver DependencyResolver, projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	assetCompiler AssetCompiler, projectRepoFactory ProjectRepoFactory) *Syncer {
-	return &Syncer{replaySpecFactory: replaySpecFactory, scheduler: scheduler, dependencyResolver: dependencyResolver,
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory, assetCompiler: assetCompiler, Now: time.Now,
-		projectRepoFactory: projectRepoFactory}
+	assetCompiler AssetCompiler, projectRepoFactory ProjectRepoFactory, timeFn func() time.Time) *Syncer {
+	return &Syncer{
+		replaySpecFactory:         replaySpecFactory,
+		scheduler:                 scheduler,
+		dependencyResolver:        dependencyResolver,
+		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		assetCompiler:             assetCompiler,
+		Now:                       timeFn,
+		projectRepoFactory:        projectRepoFactory}
 }
 
 func (s Syncer) Sync(context context.Context, runTimeout time.Duration) error {
