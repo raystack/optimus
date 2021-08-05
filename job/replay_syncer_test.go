@@ -30,7 +30,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, nil, nil)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
@@ -45,7 +45,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, nil, nil)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
@@ -86,9 +86,6 @@ func TestReplaySyncer(t *testing.T) {
 			specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow, Project: projectSpec}
 			dagSpec = append(dagSpec, specs[spec2])
 
-			registeredProjects := []models.ProjectSpec{
-				projectSpec,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
 					ID:        activeReplayUUID,
@@ -105,7 +102,15 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -141,7 +146,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusSuccess, successReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, projectRepoFactory)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -180,9 +185,6 @@ func TestReplaySyncer(t *testing.T) {
 			specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow, Project: projectSpec}
 			dagSpec = append(dagSpec, specs[spec2])
 
-			registeredProjects := []models.ProjectSpec{
-				projectSpec,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
 					ID:        activeReplayUUID,
@@ -199,7 +201,15 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -235,7 +245,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, projectRepoFactory)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -274,9 +284,6 @@ func TestReplaySyncer(t *testing.T) {
 			specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow, Project: projectSpec}
 			dagSpec = append(dagSpec, specs[spec2])
 
-			registeredProjects := []models.ProjectSpec{
-				projectSpec,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
 					ID:        activeReplayUUID,
@@ -293,7 +300,15 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -323,7 +338,7 @@ func TestReplaySyncer(t *testing.T) {
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, projectRepoFactory)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -359,9 +374,6 @@ func TestReplaySyncer(t *testing.T) {
 			specs[spec1] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow, Project: projectSpec}
 			specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow, Project: projectSpec}
 
-			registeredProjects := []models.ProjectSpec{
-				projectSpec,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
 					ID:        activeReplayUUID,
@@ -379,7 +391,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			failedReplayMessage := models.ReplayMessage{
 				Type:    job.ReplayRunTimeout,
@@ -387,7 +399,7 @@ func TestReplaySyncer(t *testing.T) {
 			}
 			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, nil, nil, nil, dumpAssets, nil)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Nil(t, err)
@@ -422,9 +434,6 @@ func TestReplaySyncer(t *testing.T) {
 			specs[spec1] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow, Project: projectSpec}
 			specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow, Project: projectSpec}
 
-			registeredProjects := []models.ProjectSpec{
-				projectSpec,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
 					ID:        activeReplayUUID,
@@ -441,7 +450,15 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			errorMsg := "failed to retrieve jobs"
@@ -458,7 +475,7 @@ func TestReplaySyncer(t *testing.T) {
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, projectRepoFactory)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -497,9 +514,6 @@ func TestReplaySyncer(t *testing.T) {
 			specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow, Project: projectSpec}
 			dagSpec = append(dagSpec, specs[spec2])
 
-			registeredProjects := []models.ProjectSpec{
-				projectSpec,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
 					ID:        activeReplayUUID,
@@ -516,7 +530,15 @@ func TestReplaySyncer(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectSpec.Name).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
@@ -536,7 +558,7 @@ func TestReplaySyncer(t *testing.T) {
 			errorMsg := "fetch dag run status from scheduler failed"
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errorMsg)).Once()
 
-			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, registeredProjects)
+			replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, scheduler, depenResolver, projJobSpecRepoFac, dumpAssets, projectRepoFactory)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
 
 			assert.Contains(t, err.Error(), errorMsg)

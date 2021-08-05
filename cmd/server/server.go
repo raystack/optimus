@@ -81,8 +81,8 @@ type replaySpecRepoRepository struct {
 	jobSpecRepoFac jobSpecRepoFactory
 }
 
-func (fac *replaySpecRepoRepository) New(job models.JobSpec) store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, job, postgres.NewAdapter(models.PluginRegistry))
+func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
+	return postgres.NewReplayRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -407,7 +407,7 @@ func Initialize(conf config.Provider) error {
 	}
 	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
 	replayValidator := job.NewReplayValidator(models.Scheduler)
-	replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, models.Scheduler, dependencyResolver, &projectJobSpecRepoFac, jobSpecAssetDump(), registeredProjects)
+	replaySyncer := job.NewReplaySyncer(replaySpecRepoFac, models.Scheduler, dependencyResolver, &projectJobSpecRepoFac, jobSpecAssetDump(), projectRepoFac)
 	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,

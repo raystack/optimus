@@ -71,7 +71,7 @@ func TestReplayManager(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayValidator := new(mock.ReplayValidator)
 			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest).Return(nil)
@@ -94,7 +94,7 @@ func TestReplayManager(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayValidator := new(mock.ReplayValidator)
 			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest).Return(nil)
@@ -126,7 +126,7 @@ func TestReplayManager(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayValidator := new(mock.ReplayValidator)
 			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest).Return(job.ErrConflictedJobRun)
@@ -143,7 +143,7 @@ func TestReplayManager(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayValidator := new(mock.ReplayValidator)
 			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest).Return(nil)
@@ -189,7 +189,7 @@ func TestReplayManager(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
 			replayResult, err := replayManager.GetReplay(replayUUID)
@@ -206,7 +206,7 @@ func TestReplayManager(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
 			replayResult, err := replayManager.GetReplay(replayUUID)

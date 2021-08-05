@@ -54,7 +54,12 @@ type JobRepoFactory interface {
 
 // ReplaySpecRepoFactory is used to manage replay spec objects from store
 type ReplaySpecRepoFactory interface {
-	New(jobSpec models.JobSpec) store.ReplaySpecRepository
+	New() store.ReplaySpecRepository
+}
+
+// ProjectRepoFactory is used to manage projects from store
+type ProjectRepoFactory interface {
+	New() store.ProjectRepository
 }
 
 // Service compiles all jobs with its dependencies, priority and

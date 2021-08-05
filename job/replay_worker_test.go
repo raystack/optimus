@@ -53,7 +53,7 @@ func TestReplayWorker(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			worker := job.NewReplayWorker(replaySpecRepoFac, nil)
 			err := worker.Process(ctx, replayRequest)
@@ -74,7 +74,7 @@ func TestReplayWorker(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -101,7 +101,7 @@ func TestReplayWorker(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -123,7 +123,7 @@ func TestReplayWorker(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -142,7 +142,7 @@ func TestReplayWorker(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -161,7 +161,7 @@ func TestReplayWorker(t *testing.T) {
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)

@@ -30,15 +30,19 @@ type Syncer struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	assetCompiler             AssetCompiler
 	Now                       func() time.Time
-	projects                  []models.ProjectSpec
+	projectRepoFactory        ProjectRepoFactory
 }
 
-func NewReplaySyncer(replaySpecFactory ReplaySpecRepoFactory, scheduler models.SchedulerUnit, dependencyResolver DependencyResolver, projectJobSpecRepoFactory ProjectJobSpecRepoFactory, assetCompiler AssetCompiler, projects []models.ProjectSpec) *Syncer {
-	return &Syncer{replaySpecFactory: replaySpecFactory, scheduler: scheduler, dependencyResolver: dependencyResolver, projectJobSpecRepoFactory: projectJobSpecRepoFactory, assetCompiler: assetCompiler, Now: time.Now, projects: projects}
+func NewReplaySyncer(replaySpecFactory ReplaySpecRepoFactory, scheduler models.SchedulerUnit,
+	dependencyResolver DependencyResolver, projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+	assetCompiler AssetCompiler, projectRepoFactory ProjectRepoFactory) *Syncer {
+	return &Syncer{replaySpecFactory: replaySpecFactory, scheduler: scheduler, dependencyResolver: dependencyResolver,
+		projectJobSpecRepoFactory: projectJobSpecRepoFactory, assetCompiler: assetCompiler, Now: time.Now,
+		projectRepoFactory: projectRepoFactory}
 }
 
 func (s Syncer) Sync(context context.Context, runTimeout time.Duration) error {
-	replaySpecRepo := s.replaySpecFactory.New(models.JobSpec{})
+	replaySpecRepo := s.replaySpecFactory.New()
 	replaySpecs, err := replaySpecRepo.GetByStatus(ReplayStatusToSynced)
 	if err != nil {
 		if err == store.ErrResourceNotFound {
@@ -78,12 +82,9 @@ func syncTimedOutReplay(replaySpecRepo store.ReplaySpecRepository, replaySpec mo
 }
 
 func (s Syncer) syncRunningReplay(context context.Context, replaySpec models.ReplaySpec, replaySpecRepo store.ReplaySpecRepository) error {
-	var projSpec models.ProjectSpec
-	for _, project := range s.projects {
-		if project.Name == replaySpec.Job.Project.Name {
-			projSpec = project
-			break
-		}
+	projSpec, err := s.projectRepoFactory.New().GetByName(replaySpec.Job.Project.Name)
+	if err != nil {
+		return err
 	}
 	jobSpecMap, err := s.prepareJobSpecMap(projSpec)
 	if err != nil {
@@ -103,9 +104,8 @@ func (s Syncer) syncRunningReplay(context context.Context, replaySpec models.Rep
 	if err != nil {
 		return err
 	}
-	allNodes := treeNode.GetAllNodes()
 
-	stateSummary, err := s.checkInstanceState(context, projSpec, allNodes, replayRequest.Start, replayRequest.End)
+	stateSummary, err := s.checkInstanceState(context, projSpec, treeNode.GetAllNodes(), replayRequest.Start, replayRequest.End)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (s Syncer) prepareJobSpecMap(projSpec models.ProjectSpec) (map[string]model
 		resolvedSpecs = append(resolvedSpecs, resolvedSpec)
 	}
 	jobSpecMap := make(map[string]models.JobSpec)
-	for _, currSpec := range jobSpecs {
+	for _, currSpec := range resolvedSpecs {
 		jobSpecMap[currSpec.Name] = currSpec
 	}
 	return jobSpecMap, nil
@@ -168,6 +168,7 @@ func updateCompletedReplays(stateSummary map[string]int, replaySpecRepo store.Re
 			Message: ReplayMessageFailed,
 		}); updateStatusErr != nil {
 			logger.I(fmt.Sprintf("marking replay as failed error: %s", updateStatusErr))
+			return updateStatusErr
 		}
 	} else if stateSummary[models.InstanceStateRunning] == 0 && stateSummary[models.InstanceStateFailed] == 0 && stateSummary[models.InstanceStateSuccess] > 0 {
 		if updateStatusErr := replaySpecRepo.UpdateStatus(replayID, models.ReplayStatusSuccess, models.ReplayMessage{
@@ -175,6 +176,7 @@ func updateCompletedReplays(stateSummary map[string]int, replaySpecRepo store.Re
 			Message: ReplayMessageSuccess,
 		}); updateStatusErr != nil {
 			logger.I(fmt.Sprintf("marking replay as success error: %s", updateStatusErr))
+			return updateStatusErr
 		}
 	}
 	return nil

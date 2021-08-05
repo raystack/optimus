@@ -61,14 +61,12 @@ func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
 
 type replayRepository struct {
 	DB      *gorm.DB
-	jobSpec models.JobSpec
 	adapter *JobSpecAdapter
 }
 
-func NewReplayRepository(db *gorm.DB, jobSpec models.JobSpec, jobAdapter *JobSpecAdapter) *replayRepository {
+func NewReplayRepository(db *gorm.DB, jobAdapter *JobSpecAdapter) *replayRepository {
 	return &replayRepository{
 		DB:      db,
-		jobSpec: jobSpec,
 		adapter: jobAdapter,
 	}
 }

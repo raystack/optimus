@@ -41,8 +41,8 @@ type ReplaySpecRepoFactory struct {
 	mock.Mock
 }
 
-func (fac *ReplaySpecRepoFactory) New(jobSpec models.JobSpec) store.ReplaySpecRepository {
-	return fac.Called(jobSpec).Get(0).(store.ReplaySpecRepository)
+func (fac *ReplaySpecRepoFactory) New() store.ReplaySpecRepository {
+	return fac.Called().Get(0).(store.ReplaySpecRepository)
 }
 
 type ReplayManager struct {

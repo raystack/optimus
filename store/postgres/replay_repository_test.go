@@ -32,19 +32,16 @@ func TestReplayRepository(t *testing.T) {
 	gTask := "g-task"
 	jobConfigs := []models.JobSpec{
 		{
-			ID:      uuid.Must(uuid.NewRandom()),
-			Name:    "job-1",
-			Project: projectSpec,
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "job-1",
 		},
 		{
-			ID:      uuid.Must(uuid.NewRandom()),
-			Name:    "job-2",
-			Project: projectSpec,
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "job-2",
 		},
 		{
-			ID:      uuid.Must(uuid.NewRandom()),
-			Name:    "job-3",
-			Project: projectSpec,
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "job-3",
 		},
 	}
 	startTime := time.Date(2021, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -122,7 +119,7 @@ func TestReplayRepository(t *testing.T) {
 		err := jobRepo.Insert(jobConfigs[0])
 		assert.Nil(t, err)
 
-		repo := NewReplayRepository(db, jobConfigs[0], adapter)
+		repo := NewReplayRepository(db, adapter)
 		err = repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
@@ -158,7 +155,7 @@ func TestReplayRepository(t *testing.T) {
 		err := jobRepo.Insert(jobConfigs[0])
 		assert.Nil(t, err)
 
-		repo := NewReplayRepository(db, jobConfigs[0], adapter)
+		repo := NewReplayRepository(db, adapter)
 		err = repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
@@ -221,7 +218,7 @@ func TestReplayRepository(t *testing.T) {
 			err = jobRepo.Insert(testModels[2].Job)
 			assert.Nil(t, err)
 
-			repo := NewReplayRepository(db, jobConfigs[0], adapter)
+			repo := NewReplayRepository(db, adapter)
 			err = repo.Insert(testModels[0])
 			assert.Nil(t, err)
 			err = repo.Insert(testModels[1])
@@ -234,7 +231,6 @@ func TestReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, jobConfigs[0].ID, replays[0].Job.ID)
 			assert.Equal(t, jobConfigs[2].ID, replays[1].Job.ID)
-			assert.Equal(t, jobConfigs[0].Project.Name, replays[0].Job.Project.Name)
 		})
 	})
 
@@ -277,7 +273,7 @@ func TestReplayRepository(t *testing.T) {
 			err = jobRepo.Insert(testModels[2].Job)
 			assert.Nil(t, err)
 
-			repo := NewReplayRepository(db, jobConfigs[0], adapter)
+			repo := NewReplayRepository(db, adapter)
 			err = repo.Insert(testModels[0])
 			assert.Nil(t, err)
 			err = repo.Insert(testModels[1])

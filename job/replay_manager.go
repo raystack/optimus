@@ -76,7 +76,7 @@ type Manager struct {
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
 func (m *Manager) Replay(ctx context.Context, reqInput *models.ReplayRequest) (string, error) {
-	replaySpecRepo := m.replaySpecRepoFac.New(reqInput.Job)
+	replaySpecRepo := m.replaySpecRepoFac.New()
 
 	err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput)
 	if err != nil {
@@ -194,7 +194,7 @@ func NewManager(worker ReplayWorker, replaySpecRepoFac ReplaySpecRepoFactory, uu
 
 // GetReplay using UUID
 func (m *Manager) GetReplay(replayUUID uuid.UUID) (*models.ReplaySpec, error) {
-	replaySpecRepo := m.replaySpecRepoFac.New(models.JobSpec{})
+	replaySpecRepo := m.replaySpecRepoFac.New()
 
 	replaySpec, err := replaySpecRepo.GetByID(replayUUID)
 	if err != nil {

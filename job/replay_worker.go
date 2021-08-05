@@ -25,7 +25,7 @@ type replayWorker struct {
 }
 
 func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequest) (err error) {
-	replaySpecRepo := w.replaySpecRepoFac.New(input.Job)
+	replaySpecRepo := w.replaySpecRepoFac.New()
 	// mark replay request in progress
 	if inProgressErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusInProgress, models.ReplayMessage{}); inProgressErr != nil {
 		return inProgressErr
