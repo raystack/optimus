@@ -60,10 +60,10 @@ Use "optimus [command] --help" for more information about a command.
 ## Documentation
 Explore the following resources to get started with Optimus:
 
-* [Guides](docs/guides) provides guidance on [creating Firehose](docs/guides/overview.md) with different sinks.
-* [Concepts](docs/concepts) describes all important Firehose concepts.
-* [Reference](docs/reference) contains details about configurations, metrics and other aspects of Firehose.
-* [Contribute](docs/contribute/contribution.md) contains resources for anyone who wants to contribute to Firehose.
+* [Guides](https://odpf.github.io/optimus/guides/create-job/) provides guidance on using Optimus.
+* [Concepts](https://odpf.github.io/optimus/concepts/overview/) describes all important Optimus concepts.
+* [Reference](https://odpf.github.io/optimus/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
+* [Contribute](https://odpf.github.io/optimus/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
 
 ## Running locally 
 
