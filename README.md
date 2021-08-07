@@ -92,9 +92,7 @@ in `.optimus.yaml` file or set as environment variable. Read more about it in [g
 
 
 ## Compatibility
-Optimus is currently undergoing heavy development with frequent, breaking API changes.
-
-⭐ Current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs are appreciated). The public API could change without a major version update before v1.0.0 release.
+Optimus is currently undergoing heavy development with frequent, breaking API changes. Current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs are appreciated). The public API could change without a major version update before v1.0.0 release.
 
 ## Contribute
 
