@@ -5,9 +5,9 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/odpf/optimus?logo=semantic-release)](Version)
 
-Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It helps your organization to build & manage data pipelines with ease.
+Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform theuir data by writing simple SQL queries and YAML configuration while Optimus handles dependency management, scheduling and all other aspects of running transformation jobs at scale.
 
-<p align="center"><img src="./docs/static/img/overview.svg" /></p>
+<p align="center" style="margin-top:30px"><img src="./docs/static/img/overview.svg" /></p>
 
 ## Key Features
 Discover why users choose Optimus as their main data transformation tool.
