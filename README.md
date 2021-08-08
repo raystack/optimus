@@ -1,13 +1,8 @@
 # Optimus
-[![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)](test)
-[![build workflow](https://github.com/odpf/optimus/actions/workflows/build.yml/badge.svg)](build)
-[![Coverage Status](https://coveralls.io/repos/github/odpf/optimus/badge.svg?branch=main)](https://coveralls.io/github/odpf/optimus?branch=main)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](LICENSE)
-[![Version](https://img.shields.io/github/v/release/odpf/optimus?logo=semantic-release)](Version)
 
 Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform theuir data by writing simple SQL queries and YAML configuration while Optimus handles dependency management, scheduling and all other aspects of running transformation jobs at scale.
 
-<p align="center" style="margin-top:30px"><img src="./docs/static/img/optimus.svg" /></p>
+<p align="center" class="mt-5" style="margin-top:30px"><img src="https://github.com/odpf/optimus/raw/main/docs/static/img/optimus.svg" /></p>
 
 ## Key Features
 Discover why users choose Optimus as their main data transformation tool.
@@ -98,10 +93,6 @@ Optimus is currently undergoing heavy development with frequent, breaking API ch
 
 Development of Optimus happens in the open on GitHub, and we are grateful to the community for contributing bugfixes and improvements. Read below to learn how you can take part in improving Optimus.
 
-Read our [contributing guide](docs/contribute/contribution.md) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
+Read our [contributing guide](https://github.com/odpf/optimus/blob/main/CONTRIBUTING.md) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
 
 To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs which have a relatively limited scope. This is a great place to get started.
-
-
-## License
-Optimus is [Apache 2.0](LICENSE) licensed.
