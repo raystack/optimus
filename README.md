@@ -1,25 +1,29 @@
 # Optimus
 
-Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform theuir data by writing SQL queries and YAML configuration while Optimus handles dependency management, scheduling and all other aspects of running transformation jobs at scale.
+Optimus is an easy-to-use and fast workflow orchestrator with data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform their data by writing SQL queries and YAML configuration while Optimus handles dependency management, scheduling, and all other aspects of running transformation jobs at scale.
 
 <p align="center" class="mt-5" style="margin-top:30px"><img src="https://github.com/odpf/optimus/raw/main/docs/static/img/optimus.svg" /></p>
 
-## Key Features
-Discover why users choose Optimus as their main data transformation tool.
+## Benefits
 
-* **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML based configuration. 
-* **Scheduling:** Optimus provides an efficient way to schedule your SQL transformation through a YAML based configuration.
-* **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graphs automaticaly instead of users defining their source and taget dependencies in DAGs.
-* **Dry runs:** Before SQL query is scheduled for transformation, during deployment query will be dry-run to make sure it passes basic sanity checks.
-* **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc for allowing users to write complex tranformation logic.
-* **Cross tenant dependency:** Optimus is a multi-tenant service, if there are two tenants registered, serviceA and serviceB then service B can write queries eferencing serviceA as source and Optimus will handle this dependency as well.
-* **Hooks:** Optimus provides hooks for post tranformation logic. e,g. You can sink BigQuery tables to Kafka.
-* **Extensibility:** Optimus support Python transformation and allows for writing custom plugins. 
-* **Workflows:** Optimus provides industry proven workflows using git based specification management and REST/GRPC based specification management for data warehouse management.
+- [ ] **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML-based configuration. 
+
+- [ ] **Scheduling:** Optimus provides an efficient way to schedule your SQL transformation through a YAML-based configuration.
+
+- [ ] **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graph automatically instead of users defining their source and target dependencies in DAGs.
+
+- [ ] **Dry runs:** Before a SQL query is scheduled for transformation, during deployment, the query will be dry-run to make sure it passes basic sanity checks.
+
+- [ ] **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc, Allowing users to write complex transformation logic.
+
+* **Cross tenant dependency:** Optimus is a multi-tenant service. If there are two tenants registered, service A and service B, then service B can write queries referencing service A as a source and, Optimus will handle this dependency as well.
+* **Hooks:** Optimus provides hooks for post-transformation logic. e,g. You can sink BigQuery tables to Kafka.
+* **Extensibility:** Optimus supports Python transformation and allows for writing custom plugins. 
+* **Workflows:** Optimus provides industry-proven workflows using git-based specification management and REST/GRPC based specification management for data warehouse management.
 
 ## Usage
 
-Optimus has two components, Optimus service that is the core orchestrator installed on server side, and a CLI binary used to interact with this service. You can install Optimus CLI using homebrew on macOS:
+Optimus has two components, Optimus service that is the core orchestrator installed on the server side, and a CLI binary used to interact with this service. You can install Optimus CLI using homebrew on macOS:
 
 ```shell
 $ brew install odpf/taps/optimus
@@ -55,10 +59,10 @@ Use "optimus [command] --help" for more information about a command.
 ## Documentation
 Explore the following resources to get started with Optimus:
 
-* [Guides](https://odpf.github.io/optimus/guides/create-job/) provides guidance on using Optimus.
-* [Concepts](https://odpf.github.io/optimus/concepts/overview/) describes all important Optimus concepts.
-* [Reference](https://odpf.github.io/optimus/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
-* [Contribute](https://odpf.github.io/optimus/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
+* [Guides](https://odpf.github.io/optimus/guides/create-job/)
+* [Concepts](https://odpf.github.io/optimus/concepts/overview/)
+* [Reference](https://odpf.github.io/optimus/reference/api/)
+* [Contribute](https://odpf.github.io/optimus/contribute/contributing/)
 
 ## Running locally 
 
@@ -78,21 +82,22 @@ $ ./optimus version
 ```
 
 Optimus service can be started with
+
 ```shell
 $ ./optimus serve
 ```
 
-`serve` command has few required configurations that needs to be set for it to start. Configuration can either be stored
+`serve` command has few required configurations that need to be set for it to start. Configuration can either be stored
 in `.optimus.yaml` file or set as environment variable. Read more about it in [getting started](https://odpf.github.io/optimus/getting-started/configuration/).
 
 
 ## Compatibility
-Optimus is currently undergoing heavy development with frequent, breaking API changes. Current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs are appreciated). The public API could change without a major version update before v1.0.0 release.
+Optimus is currently undergoing heavy development with frequent, breaking API changes. The current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs is appreciated). The public API could change without a major version update before the v1.0.0 release.
 
 ## Contribute
 
-Development of Optimus happens in the open on GitHub, and we are grateful to the community for contributing bugfixes and improvements. Read below to learn how you can take part in improving Optimus.
+Development of Optimus happens in the open on GitHub, and we are grateful to the community for contributing bug fixes and improvements. Read below to learn how you can take part in improving Optimus.
 
 Read our [contributing guide](https://github.com/odpf/optimus/blob/main/CONTRIBUTING.md) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
 
-To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs which have a relatively limited scope. This is a great place to get started.
+To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs that have a relatively limited scope. This is a great place to get started.
