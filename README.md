@@ -1,6 +1,6 @@
 # Optimus
 
-Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform theuir data by writing simple SQL queries and YAML configuration while Optimus handles dependency management, scheduling and all other aspects of running transformation jobs at scale.
+Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform theuir data by writing SQL queries and YAML configuration while Optimus handles dependency management, scheduling and all other aspects of running transformation jobs at scale.
 
 <p align="center" class="mt-5" style="margin-top:30px"><img src="https://github.com/odpf/optimus/raw/main/docs/static/img/optimus.svg" /></p>
 
@@ -8,7 +8,7 @@ Optimus is an easy-to-use, reliable, and performant workflow orchestrator for da
 Discover why users choose Optimus as their main data transformation tool.
 
 * **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML based configuration. 
-* **Scheduling:** Optimus provides an easy way to schedule your SQL transformation through a YAML based configuration.
+* **Scheduling:** Optimus provides an efficient way to schedule your SQL transformation through a YAML based configuration.
 * **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graphs automaticaly instead of users defining their source and taget dependencies in DAGs.
 * **Dry runs:** Before SQL query is scheduled for transformation, during deployment query will be dry-run to make sure it passes basic sanity checks.
 * **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc for allowing users to write complex tranformation logic.
