@@ -98,7 +98,7 @@ Optimus is currently undergoing heavy development with frequent, breaking API ch
 
 Development of Optimus happens in the open on GitHub, and we are grateful to the community for contributing bugfixes and improvements. Read below to learn how you can take part in improving Optimus.
 
-Read our [contributing guide](docs/contribute/contribution.md) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
+Read our [contributing guide](https://odpf.github.io/optimus/contribute/contributing/) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
 
 To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs which have a relatively limited scope. This is a great place to get started.
 
