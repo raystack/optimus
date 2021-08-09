@@ -828,47 +828,48 @@ func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.Get
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayStatusRequest(req *pb.GetReplayStatusRequest) (*models.ReplayRequest, error) {
+func (sv *RuntimeServiceServer) parseReplayStatusRequest(req *pb.GetReplayStatusRequest) (models.ReplayRequest, error) {
 	projSpec, err := sv.getProjectSpec(req.ProjectName)
 	if err != nil {
-		return nil, err
+		return models.ReplayRequest{}, err
 	}
 
 	uuid, err := uuid.Parse(req.Id)
 	if err != nil {
-		return nil, err
+		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "error while parsing replay ID: %v", err)
 	}
 
-	return &models.ReplayRequest{
-		Project: projSpec,
+	replayRequest := models.ReplayRequest{
 		ID:      uuid,
-	}, nil
+		Project: projSpec,
+	}
+	return replayRequest, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*models.ReplayRequest, error) {
+func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (models.ReplayRequest, error) {
 	projSpec, err := sv.getProjectSpec(req.ProjectName)
 	if err != nil {
-		return nil, err
+		return models.ReplayRequest{}, err
 	}
 
 	jobSpec, err := sv.getJobSpec(projSpec, req.Namespace, req.JobName)
 	if err != nil {
-		return nil, err
+		return models.ReplayRequest{}, err
 	}
 
 	startDate, err := time.Parse(job.ReplayDateFormat, req.StartDate)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "unable to parse replay start date(e.g. %s): %v", job.ReplayDateFormat, err)
+		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "unable to parse replay start date(e.g. %s): %v", job.ReplayDateFormat, err)
 	}
 
 	endDate := startDate
 	if req.EndDate != "" {
 		if endDate, err = time.Parse(job.ReplayDateFormat, req.EndDate); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "unable to parse replay end date(e.g. %s): %v", job.ReplayDateFormat, err)
+			return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "unable to parse replay end date(e.g. %s): %v", job.ReplayDateFormat, err)
 		}
 	}
 	if endDate.Before(startDate) {
-		return nil, status.Errorf(codes.InvalidArgument, "replay end date cannot be before start date")
+		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "replay end date cannot be before start date")
 	}
 	replayRequest := models.ReplayRequest{
 		Job:     jobSpec,
@@ -877,7 +878,7 @@ func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (*mode
 		Project: projSpec,
 		Force:   req.Force,
 	}
-	return &replayRequest, nil
+	return replayRequest, nil
 }
 
 func (sv *RuntimeServiceServer) getProjectSpec(projectName string) (models.ProjectSpec, error) {

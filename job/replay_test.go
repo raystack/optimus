@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -34,23 +33,6 @@ func getRuns(root *tree.TreeNode, countMap map[string][]time.Time) {
 	}
 	for _, dep := range root.Dependents {
 		getRuns(dep, countMap)
-	}
-}
-
-func getRunsWithStatus(root *tree.TreeNode, countMap map[string][]models.JobStatus) {
-	if _, ok := countMap[root.GetName()]; ok {
-		return
-	}
-	for _, val := range root.Runs.Values() {
-		jobStatus := val.(models.JobStatus)
-		if _, found := countMap[root.GetName()]; !found {
-			countMap[root.GetName()] = []models.JobStatus{jobStatus}
-		} else {
-			countMap[root.GetName()] = append(countMap[root.GetName()], jobStatus)
-		}
-	}
-	for _, dep := range root.Dependents {
-		getRunsWithStatus(dep, countMap)
 	}
 }
 
@@ -95,6 +77,9 @@ func TestReplay(t *testing.T) {
 			Size: time.Hour * 24 * 3,
 		},
 	}
+	projSpec := models.ProjectSpec{
+		Name: "proj",
+	}
 
 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow}
 	dagSpec = append(dagSpec, specs[spec1])
@@ -108,9 +93,6 @@ func TestReplay(t *testing.T) {
 	dagSpec = append(dagSpec, specs[spec5])
 	specs[spec6] = models.JobSpec{Name: spec6, Dependencies: getDependencyObject(specs, spec4, spec5), Schedule: dailySchedule, Task: threeDayTaskWindow}
 	dagSpec = append(dagSpec, specs[spec6])
-	projSpec := models.ProjectSpec{
-		Name: "proj",
-	}
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
@@ -126,7 +108,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -160,7 +142,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -203,7 +185,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     cyclicDagSpec[0],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -240,7 +222,7 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -292,7 +274,7 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec4],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -336,7 +318,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -367,7 +349,7 @@ func TestReplay(t *testing.T) {
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:        specs[spec1],
 				Start:      replayStart,
 				End:        replayEnd,
@@ -407,7 +389,7 @@ func TestReplay(t *testing.T) {
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				Job:        specs[spec1],
 				Start:      replayStart,
 				End:        replayEnd,
@@ -429,6 +411,30 @@ func TestReplay(t *testing.T) {
 	})
 
 	t.Run("GetStatus", func(t *testing.T) {
+		run1 := time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC)
+		run2 := time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC)
+		run3 := time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC)
+
+		jobSpec2 := dagSpec[2]
+		executionTree2 := tree.NewTreeNode(jobSpec2)
+		executionTree2.Runs.Add(run1)
+		executionTree2.Runs.Add(run2)
+		executionTree2.Runs.Add(run3)
+
+		jobSpec1 := dagSpec[1]
+		executionTree1 := tree.NewTreeNode(jobSpec1)
+		executionTree1.Runs.Add(run1)
+		executionTree1.Runs.Add(run2)
+		executionTree1.Runs.Add(run3)
+		executionTree1.AddDependent(executionTree2)
+
+		jobSpec0 := dagSpec[0]
+		executionTree0 := tree.NewTreeNode(jobSpec0)
+		executionTree0.Runs.Add(run1)
+		executionTree0.Runs.Add(run2)
+		executionTree0.Runs.Add(run3)
+		executionTree0.AddDependent(executionTree1)
+
 		t.Run("should fail if unable to fetch replay spec", func(t *testing.T) {
 			ctx := context.TODO()
 			replayID := uuid.Must(uuid.NewRandom())
@@ -436,228 +442,17 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			errorMsg := "unable to fetch replay"
-			replayManager.On("GetReplay", replayID).Return(&models.ReplaySpec{}, errors.New(errorMsg))
-
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			replayRequest := &models.ReplayRequest{
+			replayManager.On("GetReplay", replayID).Return(models.ReplaySpec{}, errors.New(errorMsg))
+			replayRequest := models.ReplayRequest{
 				ID:      replayID,
-				Job:     specs[spec1],
 				Project: projSpec,
 			}
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetStatus(ctx, replayRequest)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, errorMsg, err.Error())
-		})
-		t.Run("should fail if unable to resolve jobs using dependency resolver", func(t *testing.T) {
-			ctx := context.TODO()
-			replayID := uuid.Must(uuid.NewRandom())
-
-			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
-			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
-			replaySpec := &models.ReplaySpec{
-				ID:        replayID,
-				Job:       specs[spec1],
-				StartDate: startDate,
-				EndDate:   endDate,
-				Status:    models.ReplayStatusReplayed,
-			}
-
-			replayManager := new(mock.ReplayManager)
-			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(models.JobSpec{}, errors.New("error while fetching dag1"))
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(models.JobSpec{}, errors.New("error while fetching dag3"))
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(models.JobSpec{}, errors.New("error while fetching dag4"))
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
-			defer depenResolver.AssertExpectations(t)
-
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
-			replayRequest := &models.ReplayRequest{
-				ID:      replayID,
-				Job:     specs[spec1],
-				Project: projSpec,
-			}
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
-
-			assert.NotNil(t, err)
-			merr := err.(*multierror.Error)
-			assert.Equal(t, 3, merr.Len())
-		})
-		t.Run("resolve create replay tree with status for a dag with three day task window and mentioned dependencies", func(t *testing.T) {
-			ctx := context.TODO()
-			replayID := uuid.Must(uuid.NewRandom())
-
-			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
-			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
-			replaySpec := &models.ReplaySpec{
-				ID:        replayID,
-				Job:       specs[spec1],
-				StartDate: startDate,
-				EndDate:   endDate,
-				Status:    models.ReplayStatusReplayed,
-			}
-
-			jobStatusList := []models.JobStatus{
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC),
-				},
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC),
-				},
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC),
-				},
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 8, 2, 0, 0, 0, time.UTC),
-				},
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 9, 2, 0, 0, 0, time.UTC),
-				},
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 10, 2, 0, 0, 0, time.UTC),
-				},
-				{
-					State:       models.InstanceStateRunning,
-					ScheduledAt: time.Date(2020, time.Month(8), 11, 2, 0, 0, 0, time.UTC),
-				},
-			}
-			replayReq := &models.ReplayRequest{
-				ID:         replayID,
-				Job:        dagSpec[0],
-				Start:      startDate,
-				End:        endDate,
-				Project:    projSpec,
-				JobSpecMap: specs,
-			}
-
-			replayManager := new(mock.ReplayManager)
-			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[2].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2], jobStatusList[3], jobStatusList[4]}, nil)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
-			defer depenResolver.AssertExpectations(t)
-
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
-				ID:      replayID,
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
-			}
-
-			tree, err := jobSvc.GetStatus(ctx, replayRequest)
-
-			assert.Nil(t, err)
-			countMap := make(map[string][]models.JobStatus)
-			getRunsWithStatus(tree.Node, countMap)
-			expectedRunMap := map[string][]models.JobStatus{}
-			expectedRunMap[spec1] = []models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}
-			expectedRunMap[spec2] = []models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}
-			expectedRunMap[spec3] = []models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2], jobStatusList[3], jobStatusList[4]}
-			for k, v := range countMap {
-				assert.Equal(t, expectedRunMap[k], v)
-			}
-		})
-		t.Run("should return error when job in replay is not found in the project", func(t *testing.T) {
-			ctx := context.TODO()
-			replayID := uuid.Must(uuid.NewRandom())
-
-			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
-			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
-			invalidJob := models.JobSpec{
-				Name: "invalid-job",
-			}
-			replaySpec := &models.ReplaySpec{
-				ID:        replayID,
-				Job:       invalidJob,
-				StartDate: startDate,
-				EndDate:   endDate,
-				Status:    models.ReplayStatusReplayed,
-			}
-
-			replayManager := new(mock.ReplayManager)
-			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
-			defer depenResolver.AssertExpectations(t)
-
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
-				ID:      replayID,
-				Job:     invalidJob,
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
-			}
-
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
-
-			assert.Equal(t, fmt.Sprintf("couldn't find any job with name %s", invalidJob.Name), err.Error())
 		})
 		t.Run("should return error when unable to get run status of a job", func(t *testing.T) {
 			ctx := context.TODO()
@@ -665,7 +460,7 @@ func TestReplay(t *testing.T) {
 
 			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
 			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
-			replaySpec := &models.ReplaySpec{
+			replaySpec := models.ReplaySpec{
 				ID:        replayID,
 				Job:       specs[spec1],
 				StartDate: startDate,
@@ -673,53 +468,25 @@ func TestReplay(t *testing.T) {
 				Status:    models.ReplayStatusReplayed,
 			}
 
-			replayReq := &models.ReplayRequest{
-				ID:         replayID,
-				Job:        dagSpec[0],
-				Start:      startDate,
-				End:        endDate,
-				Project:    projSpec,
-				JobSpecMap: specs,
-			}
-
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
 			errorMsg := "unable to get status of a job run"
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
-			defer depenResolver.AssertExpectations(t)
+			replayManager.On("GetRunStatus", ctx, projSpec, startDate, endDate, specs[spec1].Name).
+				Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			compiler := new(mock.Compiler)
 			defer compiler.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				ID:      replayID,
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
 				Project: projSpec,
+				Start:   startDate,
+				End:     endDate,
+				Job:     jobSpec1,
 			}
 
+			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -730,12 +497,14 @@ func TestReplay(t *testing.T) {
 
 			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
 			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
-			replaySpec := &models.ReplaySpec{
-				ID:        replayID,
-				Job:       specs[spec1],
-				StartDate: startDate,
-				EndDate:   endDate,
-				Status:    models.ReplayStatusReplayed,
+
+			replaySpec := models.ReplaySpec{
+				ID:            replayID,
+				Job:           specs[spec1],
+				StartDate:     startDate,
+				EndDate:       endDate,
+				Status:        models.ReplayStatusReplayed,
+				ExecutionTree: executionTree0,
 			}
 
 			jobStatusList := []models.JobStatus{
@@ -768,54 +537,26 @@ func TestReplay(t *testing.T) {
 					ScheduledAt: time.Date(2020, time.Month(8), 11, 2, 0, 0, 0, time.UTC),
 				},
 			}
-			replayReq := &models.ReplayRequest{
-				ID:         replayID,
-				Job:        dagSpec[0],
-				Start:      startDate,
-				End:        endDate,
-				Project:    projSpec,
-				JobSpecMap: specs,
-			}
 
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
-			defer depenResolver.AssertExpectations(t)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			compiler := new(mock.Compiler)
 			defer compiler.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				ID:      replayID,
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
 				Project: projSpec,
+				Start:   startDate,
+				End:     endDate,
+				Job:     jobSpec0,
 			}
 
+			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -826,12 +567,13 @@ func TestReplay(t *testing.T) {
 
 			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
 			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
-			replaySpec := &models.ReplaySpec{
-				ID:        replayID,
-				Job:       specs[spec1],
-				StartDate: startDate,
-				EndDate:   endDate,
-				Status:    models.ReplayStatusReplayed,
+			replaySpec := models.ReplaySpec{
+				ID:            replayID,
+				Job:           specs[spec1],
+				StartDate:     startDate,
+				EndDate:       endDate,
+				Status:        models.ReplayStatusReplayed,
+				ExecutionTree: executionTree0,
 			}
 
 			jobStatusList := []models.JobStatus{
@@ -864,55 +606,27 @@ func TestReplay(t *testing.T) {
 					ScheduledAt: time.Date(2020, time.Month(8), 11, 2, 0, 0, 0, time.UTC),
 				},
 			}
-			replayReq := &models.ReplayRequest{
-				ID:         replayID,
-				Job:        dagSpec[0],
-				Start:      startDate,
-				End:        endDate,
-				Project:    projSpec,
-				JobSpecMap: specs,
-			}
 
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[0].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[1].Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
-			replayManager.On("GetRunStatus", ctx, replayReq, dagSpec[2].Name).Return([]models.JobStatus{}, errors.New(errorMsg))
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
-			defer depenResolver.AssertExpectations(t)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec2.Name).Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			compiler := new(mock.Compiler)
 			defer compiler.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayRequest{
+			replayRequest := models.ReplayRequest{
 				ID:      replayID,
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
 				Project: projSpec,
+				Start:   startDate,
+				End:     endDate,
+				Job:     jobSpec0,
 			}
 
+			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())

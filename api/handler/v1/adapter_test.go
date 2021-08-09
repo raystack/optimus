@@ -46,9 +46,9 @@ func TestAdapter(t *testing.T) {
 		adap := v1.Adapter{}
 		replayExecutionTreeNode, err := adap.ToReplayStatusTreeNode(treeNode)
 		assert.Nil(t, err)
-		assert.Equal(t, replayExecutionTreeNode.JobName, "job-name")
+		assert.Equal(t, "job-name", replayExecutionTreeNode.JobName)
 		assert.Equal(t, 1, len(replayExecutionTreeNode.Dependents))
-		assert.Equal(t, replayExecutionTreeNode.Dependents[0].JobName, "nested-job-name")
+		assert.Equal(t, "nested-job-name", replayExecutionTreeNode.Dependents[0].JobName)
 		assert.Equal(t, jobStatus.State.String(), replayExecutionTreeNode.Runs[0].State)
 	})
 	t.Run("should successfully parse job spec to and from proto", func(t *testing.T) {

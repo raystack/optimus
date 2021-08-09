@@ -293,7 +293,6 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	}
 	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
 	reCmd.MarkFlagRequired("project")
-
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()

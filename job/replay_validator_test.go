@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
@@ -36,18 +38,26 @@ func TestReplayValidator(t *testing.T) {
 			Name:     "job-name-2",
 			Schedule: schedule,
 		}
-		replayRequest := &models.ReplayRequest{
-			Job:   jobSpec,
-			Start: startDate,
-			End:   endDate,
-			Project: models.ProjectSpec{
-				Name: "project-name",
-			},
+		projectSpec := models.ProjectSpec{
+			Name: "project-name",
+		}
+		replayRequest := models.ReplayRequest{
+			Job:     jobSpec,
+			Start:   startDate,
+			End:     endDate,
+			Project: projectSpec,
 			JobSpecMap: map[string]models.JobSpec{
 				jobSpec.Name:  jobSpec,
 				jobSpec2.Name: jobSpec2,
 			},
 		}
+		executionTree := tree.NewTreeNode(jobSpec)
+		executionTree.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
+		executionTree.Runs.Add(time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC))
+		executionTree.Runs.Add(time.Date(2020, time.Month(8), 24, 2, 0, 0, 0, time.UTC))
+		executionTree.Runs.Add(time.Date(2020, time.Month(8), 25, 2, 0, 0, 0, time.UTC))
+		executionTree.Runs.Add(time.Date(2020, time.Month(8), 26, 2, 0, 0, 0, time.UTC))
+
 		t.Run("should throw an error if unable to fetch active replays", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
@@ -56,10 +66,10 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -88,10 +98,10 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Equal(t, err, job.ErrConflictedJobRun)
 		})
@@ -114,10 +124,10 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Nil(t, err)
 		})
@@ -141,10 +151,10 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Nil(t, err)
 		})
@@ -155,10 +165,10 @@ func TestReplayValidator(t *testing.T) {
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			errMessage := "unable to get status"
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errMessage))
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errMessage))
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Equal(t, errMessage, err.Error())
 		})
@@ -178,10 +188,10 @@ func TestReplayValidator(t *testing.T) {
 					State:       models.JobStatusStateRunning,
 				},
 			}
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Equal(t, job.ErrConflictedJobRun, err)
 		})
@@ -215,10 +225,10 @@ func TestReplayValidator(t *testing.T) {
 					State:       models.JobStatusStateRunning,
 				},
 			}
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Equal(t, job.ErrConflictedJobRun, err)
 		})
@@ -249,7 +259,7 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRequest.Force = true
 			replayValidator := job.NewReplayValidator(scheduler)
-			err := replayValidator.Validate(ctx, replayRepository, replayRequest)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Nil(t, err)
 		})

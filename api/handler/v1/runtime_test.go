@@ -1667,9 +1667,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				}),
 		}
 		t.Run("should do replay dry run successfully", func(t *testing.T) {
-			startDate, _ := time.Parse(timeLayout, "2020-11-25")
-			endDate, _ := time.Parse(timeLayout, "2020-11-28")
-			replayWorkerRequest := &models.ReplayRequest{
+			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
+			replayWorkerRequest := models.ReplayRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -1731,8 +1731,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.Response.Runs)
 		})
 		t.Run("should failed when replay request is invalid", func(t *testing.T) {
-			startDate, _ := time.Parse(timeLayout, "2020-11-25")
-			endDate, _ := time.Parse(timeLayout, "2020-11-24")
+			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, 11, 24, 0, 0, 0, 0, time.UTC)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
@@ -1779,9 +1779,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when unable to prepare the job specs", func(t *testing.T) {
-			startDate, _ := time.Parse(timeLayout, "2020-11-25")
-			endDate, _ := time.Parse(timeLayout, "2020-11-28")
-			replayWorkerRequest := &models.ReplayRequest{
+			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
+			replayWorkerRequest := models.ReplayRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -1840,8 +1840,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 		projectName := "a-data-project"
 		jobName := "a-data-job"
 		timeLayout := "2006-01-02"
-		startDate, _ := time.Parse(timeLayout, "2020-11-25")
-		endDate, _ := time.Parse(timeLayout, "2020-11-28")
+		startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
 		projectSpec := models.ProjectSpec{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: projectName,
@@ -1877,7 +1877,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				}),
 		}
 		t.Run("should do replay successfully", func(t *testing.T) {
-			replayWorkerRequest := &models.ReplayRequest{
+			replayWorkerRequest := models.ReplayRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -1972,7 +1972,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when replay process is failed", func(t *testing.T) {
-			replayWorkerRequest := &models.ReplayRequest{
+			replayWorkerRequest := models.ReplayRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -2113,7 +2113,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when replay validation is failed", func(t *testing.T) {
-			replayWorkerRequest := &models.ReplayRequest{
+			replayWorkerRequest := models.ReplayRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -2169,7 +2169,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when request queue is full", func(t *testing.T) {
-			replayWorkerRequest := &models.ReplayRequest{
+			replayWorkerRequest := models.ReplayRequest{
 				Job:     jobSpec,
 				Start:   startDate,
 				End:     endDate,
@@ -2227,16 +2227,19 @@ func TestRuntimeServiceServer(t *testing.T) {
 	})
 
 	t.Run("GetReplayStatus", func(t *testing.T) {
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+		}
+		reqUUID := uuid.Must(uuid.NewRandom())
+		replayRequest := models.ReplayRequest{
+			ID:      reqUUID,
+			Project: projectSpec,
+		}
+
 		t.Run("should get status of each jobs and runs of a replay", func(t *testing.T) {
-			projectName := "a-data-project"
 			jobName := "a-data-job"
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
 			jobSpec := models.JobSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
 				Name: jobName,
@@ -2256,18 +2259,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			replayRequest := &models.ReplayRequest{
-				ID:      uuid.Must(uuid.NewRandom()),
-				Project: projectSpec,
-			}
-
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
 
 			jobStatusList := []models.JobStatus{
 				{
@@ -2284,10 +2275,18 @@ func TestRuntimeServiceServer(t *testing.T) {
 			dagNode.Runs = set.NewTreeSetWith(job.TimeOfJobStatusComparator)
 			dagNode.Runs.Add(jobStatusList[0])
 			dagNode.Runs.Add(jobStatusList[1])
-			replayState := &models.ReplayState{
+			replayState := models.ReplayState{
 				Status: models.ReplayStatusReplayed,
 				Node:   dagNode,
 			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -2312,7 +2311,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, err)
 
 			replayRequestPb := pb.GetReplayStatusRequest{
-				Id:          replayRequest.ID.String(),
+				Id:          reqUUID.String(),
 				ProjectName: projectName,
 			}
 			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(context.Background(), &replayRequestPb)
@@ -2321,90 +2320,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, models.ReplayStatusReplayed, replayStatusResponse.State)
 			assert.Equal(t, expectedReplayStatusNodeResponse.Runs, replayStatusResponse.Response.Runs)
 		})
-		t.Run("should failed when project is not found", func(t *testing.T) {
-			projectName := "a-data-project"
-			jobName := "a-data-job"
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: jobName,
-				Task: models.JobSpecTask{
-					Config: models.JobSpecConfigs{
-						{
-							Name:  "do",
-							Value: "this",
-						},
-					},
-				},
-				Assets: *models.JobAssets{}.New(
-					[]models.JobSpecAsset{
-						{
-							Name:  "query.sql",
-							Value: "select * from 1",
-						},
-					}),
-			}
-			replayRequest := &models.ReplayRequest{
-				ID:      uuid.Must(uuid.NewRandom()),
-				Job:     jobSpec,
-				Project: projectSpec,
-			}
-
-			errMessage := "project not found"
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", projectName).Return(models.ProjectSpec{}, errors.New(errMessage))
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			adapter := v1.NewAdapter(nil, nil)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				"Version",
-				nil, nil,
-				nil,
-				projectRepoFactory,
-				nil,
-				nil,
-				adapter,
-				nil,
-				nil,
-				nil,
-			)
-
-			replayRequestPb := pb.GetReplayStatusRequest{
-				Id:          replayRequest.ID.String(),
-				ProjectName: projectName,
-				JobName:     jobName,
-			}
-			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(context.Background(), &replayRequestPb)
-
-			assert.NotNil(t, err)
-			assert.Contains(t, err.Error(), errMessage)
-			assert.Nil(t, replayStatusResponse)
-		})
 		t.Run("should failed when unable to get status of a replay", func(t *testing.T) {
-			projectName := "a-data-project"
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-			replayRequest := &models.ReplayRequest{
-				ID:      uuid.Must(uuid.NewRandom()),
-				Project: projectSpec,
-			}
-
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
 			defer projectRepository.AssertExpectations(t)
@@ -2416,7 +2332,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			errMessage := "internal error"
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetStatus", context.TODO(), replayRequest).Return(&models.ReplayState{}, errors.New(errMessage))
+			jobService.On("GetStatus", context.TODO(), replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
 
 			adapter := v1.NewAdapter(nil, nil)
 
@@ -2434,7 +2350,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			replayRequestPb := pb.GetReplayStatusRequest{
-				Id:          replayRequest.ID.String(),
+				Id:          reqUUID.String(),
 				ProjectName: projectName,
 			}
 			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(context.Background(), &replayRequestPb)

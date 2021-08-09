@@ -36,13 +36,14 @@ type ReplayRequest struct {
 }
 
 type ReplaySpec struct {
-	ID        uuid.UUID
-	Job       JobSpec
-	StartDate time.Time
-	EndDate   time.Time
-	Status    string
-	Message   ReplayMessage
-	CreatedAt time.Time
+	ID            uuid.UUID
+	Job           JobSpec
+	StartDate     time.Time
+	EndDate       time.Time
+	ExecutionTree *tree.TreeNode
+	Status        string
+	Message       ReplayMessage
+	CreatedAt     time.Time
 }
 
 type ReplayState struct {

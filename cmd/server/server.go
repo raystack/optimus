@@ -79,6 +79,7 @@ func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.Proj
 type replaySpecRepoRepository struct {
 	db             *gorm.DB
 	jobSpecRepoFac jobSpecRepoFactory
+	hash           models.ApplicationKey
 }
 
 func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
@@ -404,13 +405,14 @@ func Initialize(conf config.Provider) error {
 	replaySpecRepoFac := &replaySpecRepoRepository{
 		db:             dbConn,
 		jobSpecRepoFac: jobSpecRepoFac,
+		hash:           appHash,
 	}
 	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
 	replayValidator := job.NewReplayValidator(models.Scheduler)
 	replaySyncer := job.NewReplaySyncer(
-		replaySpecRepoFac, models.Scheduler,
-		dependencyResolver, &projectJobSpecRepoFac,
-		jobSpecAssetDump(), projectRepoFac,
+		replaySpecRepoFac,
+		projectRepoFac,
+		models.Scheduler,
 		func() time.Time {
 			return time.Now().UTC()
 		},

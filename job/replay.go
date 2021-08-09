@@ -18,24 +18,25 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) populateRequestWithJobSpecs(replayRequest *models.ReplayRequest) error {
+func (srv *Service) prepareJobSpecMap(replayRequest models.ReplayRequest) (map[string]models.JobSpec, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
 	jobSpecs, err := srv.GetDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	jobSpecMap := make(map[string]models.JobSpec)
 	for _, currSpec := range jobSpecs {
 		jobSpecMap[currSpec.Name] = currSpec
 	}
-	replayRequest.JobSpecMap = jobSpecMap
-	return nil
+	return jobSpecMap, nil
 }
 
-func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
-	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
+func (srv *Service) ReplayDryRun(replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
+	jobSpecMap, err := srv.prepareJobSpecMap(replayRequest)
+	if err != nil {
 		return nil, err
 	}
+	replayRequest.JobSpecMap = jobSpecMap
 
 	rootInstance, err := prepareReplayExecutionTree(replayRequest)
 	if err != nil {
@@ -45,10 +46,12 @@ func (srv *Service) ReplayDryRun(replayRequest *models.ReplayRequest) (*tree.Tre
 	return rootInstance, nil
 }
 
-func (srv *Service) Replay(ctx context.Context, replayRequest *models.ReplayRequest) (string, error) {
-	if err := srv.populateRequestWithJobSpecs(replayRequest); err != nil {
+func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
+	jobSpecMap, err := srv.prepareJobSpecMap(replayRequest)
+	if err != nil {
 		return "", err
 	}
+	replayRequest.JobSpecMap = jobSpecMap
 
 	replayUUID, err := srv.replayManager.Replay(ctx, replayRequest)
 	if err != nil {
@@ -58,7 +61,7 @@ func (srv *Service) Replay(ctx context.Context, replayRequest *models.ReplayRequ
 }
 
 // prepareReplayExecutionTree creates a execution tree for replay operation
-func prepareReplayExecutionTree(replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
+func prepareReplayExecutionTree(replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
 	replayJobSpec, found := replayRequest.JobSpecMap[replayRequest.Job.Name]
 	if !found {
 		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
@@ -204,28 +207,20 @@ func getRunsBetweenDates(start time.Time, end time.Time, schedule string) ([]tim
 	return runs, nil
 }
 
-func (srv *Service) GetStatus(ctx context.Context, replayRequest *models.ReplayRequest) (*models.ReplayState, error) {
+func (srv *Service) GetStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
 	// Get replay
 	replaySpec, err := srv.replayManager.GetReplay(replayRequest.ID)
 	if err != nil {
-		return nil, err
+		return models.ReplayState{}, err
 	}
 
-	// populate
-	replayRequest.Start = replaySpec.StartDate
-	replayRequest.End = replaySpec.EndDate
-	replayRequest.Job = replaySpec.Job
-	if err = srv.populateRequestWithJobSpecs(replayRequest); err != nil {
-		return nil, err
-	}
-
-	// forming tree with status per run
-	rootInstance, err := srv.prepareReplayStatusTree(ctx, replayRequest)
+	// updating tree with status per run
+	rootInstance, err := srv.prepareReplayStatusTree(ctx, replayRequest, replaySpec)
 	if err != nil {
-		return nil, err
+		return models.ReplayState{}, err
 	}
 
-	return &models.ReplayState{
+	return models.ReplayState{
 		Status: replaySpec.Status,
 		Node:   rootInstance,
 	}, nil
@@ -244,57 +239,35 @@ func TimeOfJobStatusComparator(a, b interface{}) int {
 	}
 }
 
-// prepareReplayStatusTree creates a execution tree with the status per run
-func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
-	replayJobSpec, found := replayRequest.JobSpecMap[replayRequest.Job.Name]
-	if !found {
-		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
-	}
-
-	// compute runs that require replay
-	dagTree := tree.NewMultiRootTree()
-	parentNode := tree.NewTreeNode(replayJobSpec)
-	jobStatusList, err := srv.replayManager.GetRunStatus(ctx, replayRequest, replayRequest.Job.Name)
+// prepareReplayStatusTree update execution tree with the status per run
+func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest models.ReplayRequest, replaySpec models.ReplaySpec) (*tree.TreeNode, error) {
+	runsWithStatus := set.NewTreeSetWith(TimeOfJobStatusComparator)
+	jobStatusList, err := srv.replayManager.GetRunStatus(ctx, replayRequest.Project, replaySpec.StartDate, replaySpec.EndDate, replaySpec.Job.Name)
 	if err != nil {
 		return nil, err
 	}
-	parentNode.Runs = set.NewTreeSetWith(TimeOfJobStatusComparator)
 	for _, jobStatus := range jobStatusList {
-		parentNode.Runs.Add(jobStatus)
+		runsWithStatus.Add(jobStatus)
 	}
-	dagTree.AddNode(parentNode)
-
-	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
-	if err != nil {
-		return nil, err
-	}
-
-	rootInstance, err = srv.populateDownstreamRunsWithStatus(ctx, rootInstance, replayRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	return rootInstance, nil
+	replaySpec.ExecutionTree.Runs = runsWithStatus
+	return srv.populateDownstreamRunsWithStatus(ctx, replayRequest.Project, replaySpec.StartDate, replaySpec.EndDate, replaySpec.ExecutionTree)
 }
 
-func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, parentNode *tree.TreeNode, replayRequest *models.ReplayRequest) (*tree.TreeNode, error) {
-	for idx, childNode := range parentNode.Dependents {
-		childDag := childNode.Data.(models.JobSpec)
-
-		jobStatusList, err := srv.replayManager.GetRunStatus(ctx, replayRequest, childDag.Name)
+func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time, parentNode *tree.TreeNode) (*tree.TreeNode, error) {
+	for _, dependent := range parentNode.Dependents {
+		runsWithStatus := set.NewTreeSetWith(TimeOfJobStatusComparator)
+		jobStatusList, err := srv.replayManager.GetRunStatus(ctx, projectSpec, startDate, endDate, dependent.Data.(models.JobSpec).Name)
 		if err != nil {
 			return nil, err
 		}
-		childNode.Runs = set.NewTreeSetWith(TimeOfJobStatusComparator)
 		for _, jobStatus := range jobStatusList {
-			childNode.Runs.Add(jobStatus)
+			runsWithStatus.Add(jobStatus)
 		}
-
-		updatedChildNode, err := srv.populateDownstreamRunsWithStatus(ctx, childNode, replayRequest)
+		dependent.Runs = runsWithStatus
+		_, err = srv.populateDownstreamRunsWithStatus(ctx, projectSpec, startDate, endDate, dependent)
 		if err != nil {
 			return nil, err
 		}
-		parentNode.Dependents[idx] = updatedChildNode
 	}
 	return parentNode, nil
 }

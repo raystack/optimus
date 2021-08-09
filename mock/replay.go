@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -20,7 +22,15 @@ func (repo *ReplayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
 }
 
 func (repo *ReplayRepository) Insert(replay *models.ReplaySpec) error {
-	return repo.Called(replay).Error(0)
+	return repo.Called(&models.ReplaySpec{
+		ID:        replay.ID,
+		Job:       replay.Job,
+		StartDate: replay.StartDate,
+		EndDate:   replay.EndDate,
+		Status:    replay.Status,
+		Message:   replay.Message,
+		CreatedAt: replay.CreatedAt,
+	}).Error(0)
 }
 
 func (repo *ReplayRepository) UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error {
@@ -37,6 +47,11 @@ func (repo *ReplayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []stri
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
+func (repo *ReplayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+	args := repo.Called(projectID, status)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
+}
+
 type ReplaySpecRepoFactory struct {
 	mock.Mock
 }
@@ -49,7 +64,7 @@ type ReplayManager struct {
 	mock.Mock
 }
 
-func (rm *ReplayManager) Replay(ctx context.Context, reqInput *models.ReplayRequest) (string, error) {
+func (rm *ReplayManager) Replay(ctx context.Context, reqInput models.ReplayRequest) (string, error) {
 	args := rm.Called(ctx, reqInput)
 	return args.Get(0).(string), args.Error(1)
 }
@@ -59,13 +74,14 @@ func (rm *ReplayManager) Init() {
 	return
 }
 
-func (rm *ReplayManager) GetReplay(uuid uuid.UUID) (*models.ReplaySpec, error) {
+func (rm *ReplayManager) GetReplay(uuid uuid.UUID) (models.ReplaySpec, error) {
 	args := rm.Called(uuid)
-	return args.Get(0).(*models.ReplaySpec), args.Error(1)
+	return args.Get(0).(models.ReplaySpec), args.Error(1)
 }
 
-func (rm *ReplayManager) GetRunStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error) {
-	args := rm.Called(ctx, reqInput, jobName)
+func (rm *ReplayManager) GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time,
+	endDate time.Time, jobName string) ([]models.JobStatus, error) {
+	args := rm.Called(ctx, projectSpec, startDate, endDate, jobName)
 	return args.Get(0).([]models.JobStatus), args.Error(1)
 }
 
@@ -73,7 +89,7 @@ type ReplayWorker struct {
 	mock.Mock
 }
 
-func (rm *ReplayWorker) Process(ctx context.Context, replayRequest *models.ReplayRequest) error {
+func (rm *ReplayWorker) Process(ctx context.Context, replayRequest models.ReplayRequest) error {
 	args := rm.Called(ctx, replayRequest)
 	return args.Error(0)
 }
@@ -82,8 +98,9 @@ type ReplayValidator struct {
 	mock.Mock
 }
 
-func (rv *ReplayValidator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository, replayRequest *models.ReplayRequest) error {
-	args := rv.Called(ctx, replaySpecRepo, replayRequest)
+func (rv *ReplayValidator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository,
+	replayRequest models.ReplayRequest, replayTree *tree.TreeNode) error {
+	args := rv.Called(ctx, replaySpecRepo, replayRequest, replayTree)
 	return args.Error(0)
 }
 

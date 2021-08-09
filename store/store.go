@@ -95,4 +95,5 @@ type ReplaySpecRepository interface {
 	UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error
 	GetByStatus(status []string) ([]models.ReplaySpec, error)
 	GetByJobIDAndStatus(jobID uuid.UUID, status []string) ([]models.ReplaySpec, error)
+	GetByProjectIDAndStatus(projectID uuid.UUID, status []string) ([]models.ReplaySpec, error)
 }

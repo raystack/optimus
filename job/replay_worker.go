@@ -16,7 +16,7 @@ const (
 )
 
 type ReplayWorker interface {
-	Process(context.Context, *models.ReplayRequest) error
+	Process(context.Context, models.ReplayRequest) error
 }
 
 type replayWorker struct {
@@ -24,19 +24,19 @@ type replayWorker struct {
 	scheduler         models.SchedulerUnit
 }
 
-func (w *replayWorker) Process(ctx context.Context, input *models.ReplayRequest) (err error) {
+func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) (err error) {
 	replaySpecRepo := w.replaySpecRepoFac.New()
 	// mark replay request in progress
 	if inProgressErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusInProgress, models.ReplayMessage{}); inProgressErr != nil {
 		return inProgressErr
 	}
 
-	replayTree, err := prepareReplayExecutionTree(input)
+	replaySpec, err := replaySpecRepo.GetByID(input.ID)
 	if err != nil {
 		return err
 	}
 
-	replayDagsMap := replayTree.GetAllNodes()
+	replayDagsMap := replaySpec.ExecutionTree.GetAllNodes()
 	for _, treeNode := range replayDagsMap {
 		runTimes := treeNode.Runs.Values()
 		startTime := runTimes[0].(time.Time)

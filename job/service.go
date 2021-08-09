@@ -65,9 +65,10 @@ type ProjectRepoFactory interface {
 
 type ReplayManager interface {
 	Init()
-	Replay(context.Context, *models.ReplayRequest) (string, error)
-	GetReplay(uuid uuid.UUID) (*models.ReplaySpec, error)
-	GetRunStatus(ctx context.Context, reqInput *models.ReplayRequest, jobName string) ([]models.JobStatus, error)
+	Replay(context.Context, models.ReplayRequest) (string, error)
+	GetReplay(uuid.UUID) (models.ReplaySpec, error)
+	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time,
+		jobName string) ([]models.JobStatus, error)
 }
 
 // Service compiles all jobs with its dependencies, priority and

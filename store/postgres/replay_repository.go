@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+
 	"gorm.io/datatypes"
 
 	"github.com/google/uuid"
@@ -19,28 +21,99 @@ type Replay struct {
 	JobID uuid.UUID `gorm:"not null"`
 	Job   Job       `gorm:"foreignKey:JobID"`
 
-	StartDate time.Time `gorm:"not null"`
-	EndDate   time.Time `gorm:"not null"`
-	Status    string    `gorm:"not null"`
-	Message   datatypes.JSON
+	StartDate     time.Time `gorm:"not null"`
+	EndDate       time.Time `gorm:"not null"`
+	Status        string    `gorm:"not null"`
+	Message       datatypes.JSON
+	ExecutionTree datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
 
+type ExecutionTree struct {
+	JobSpec    Job
+	Dependents []*ExecutionTree
+	Runs       []time.Time
+}
+
+func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
+	//only store necessary job spec data in tree
+	treeNodeJob := treeNode.Data.(models.JobSpec)
+	jobSpec := Job{
+		ID:          treeNodeJob.ID,
+		Version:     treeNodeJob.Version,
+		Name:        treeNodeJob.Name,
+		Owner:       treeNodeJob.Owner,
+		Description: treeNodeJob.Description,
+		StartDate:   treeNodeJob.Schedule.StartDate,
+		EndDate:     treeNodeJob.Schedule.EndDate,
+		Interval:    treeNodeJob.Schedule.Interval,
+	}
+
+	var dependents []*ExecutionTree
+	for _, dependent := range treeNode.Dependents {
+		dependents = append(dependents, fromTreeNode(dependent))
+	}
+
+	var runs []time.Time
+	for _, run := range treeNode.Runs.Values() {
+		runs = append(runs, run.(time.Time))
+	}
+
+	return &ExecutionTree{
+		JobSpec:    jobSpec,
+		Dependents: dependents,
+		Runs:       runs,
+	}
+}
+
 func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
-	jsonBytes, err := json.Marshal(spec.Message)
+	message, err := json.Marshal(spec.Message)
 	if err != nil {
 		return Replay{}, nil
 	}
+
+	var executionTree []byte
+	if spec.ExecutionTree != nil {
+		executionTree, err = json.Marshal(fromTreeNode(spec.ExecutionTree))
+		if err != nil {
+			return Replay{}, err
+		}
+	}
+
 	return Replay{
-		ID:        spec.ID,
-		JobID:     spec.Job.ID,
-		StartDate: spec.StartDate.UTC(),
-		EndDate:   spec.EndDate.UTC(),
-		Status:    spec.Status,
-		Message:   jsonBytes,
+		ID:            spec.ID,
+		JobID:         spec.Job.ID,
+		StartDate:     spec.StartDate.UTC(),
+		EndDate:       spec.EndDate.UTC(),
+		Status:        spec.Status,
+		Message:       message,
+		ExecutionTree: executionTree,
 	}, nil
+}
+
+func toTreeNode(executionTree *ExecutionTree) *tree.TreeNode {
+	jobSpec := models.JobSpec{
+		ID:          executionTree.JobSpec.ID,
+		Version:     executionTree.JobSpec.Version,
+		Name:        executionTree.JobSpec.Name,
+		Owner:       executionTree.JobSpec.Owner,
+		Description: executionTree.JobSpec.Description,
+		Schedule: models.JobSpecSchedule{
+			StartDate: executionTree.JobSpec.StartDate,
+			EndDate:   executionTree.JobSpec.EndDate,
+			Interval:  executionTree.JobSpec.Interval,
+		},
+	}
+	treeNode := tree.NewTreeNode(jobSpec)
+	for _, dependent := range executionTree.Dependents {
+		treeNode.AddDependent(toTreeNode(dependent))
+	}
+	for _, run := range executionTree.Runs {
+		treeNode.Runs.Add(run)
+	}
+	return treeNode
 }
 
 func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
@@ -48,14 +121,25 @@ func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
 	if err := json.Unmarshal(p.Message, &message); err != nil {
 		return models.ReplaySpec{}, nil
 	}
+
+	var treeNode *tree.TreeNode
+	if p.ExecutionTree != nil {
+		jobTree := ExecutionTree{}
+		if err := json.Unmarshal(p.ExecutionTree, &jobTree); err != nil {
+			return models.ReplaySpec{}, err
+		}
+		treeNode = toTreeNode(&jobTree)
+	}
+
 	return models.ReplaySpec{
-		ID:        p.ID,
-		Job:       jobSpec,
-		Status:    p.Status,
-		StartDate: p.StartDate,
-		EndDate:   p.EndDate,
-		Message:   message,
-		CreatedAt: p.CreatedAt,
+		ID:            p.ID,
+		Job:           jobSpec,
+		Status:        p.Status,
+		StartDate:     p.StartDate,
+		EndDate:       p.EndDate,
+		Message:       message,
+		ExecutionTree: treeNode,
+		CreatedAt:     p.CreatedAt,
 	}, nil
 }
 
@@ -110,7 +194,7 @@ func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, me
 
 func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.Where("status in (?)", status).Preload("Job").Preload("Job.Project").Find(&replays).Error; err != nil {
+	if err := repo.DB.Where("status in (?)", status).Preload("Job").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -123,11 +207,6 @@ func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec,
 		if err != nil {
 			return []models.ReplaySpec{}, err
 		}
-		projectSpec, err := r.Job.Project.ToSpec()
-		if err != nil {
-			return []models.ReplaySpec{}, err
-		}
-		jobSpec.Project = projectSpec
 
 		replaySpec, err := r.ToSpec(jobSpec)
 		if err != nil {
@@ -141,6 +220,31 @@ func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec,
 func (repo *replayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
 	if err := repo.DB.Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Find(&replays).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []models.ReplaySpec{}, store.ErrResourceNotFound
+		}
+		return []models.ReplaySpec{}, err
+	}
+
+	var replaySpecs []models.ReplaySpec
+	for _, r := range replays {
+		jobSpec, err := repo.adapter.ToSpec(r.Job)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpec, err := r.ToSpec(jobSpec)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpecs = append(replaySpecs, replaySpec)
+	}
+	return replaySpecs, nil
+}
+
+func (repo *replayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+	var replays []Replay
+	if err := repo.DB.Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
+		Where("job.project_id = ? and status in (?)", projectID, status).Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}

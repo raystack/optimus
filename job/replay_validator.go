@@ -16,7 +16,7 @@ var (
 )
 
 type ReplayValidator interface {
-	Validate(context.Context, store.ReplaySpecRepository, *models.ReplayRequest) error
+	Validate(context.Context, store.ReplaySpecRepository, models.ReplayRequest, *tree.TreeNode) error
 }
 
 type Validator struct {
@@ -27,18 +27,13 @@ func NewReplayValidator(scheduler models.SchedulerUnit) *Validator {
 	return &Validator{scheduler: scheduler}
 }
 
-func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayRequest) error {
-	reqReplayTree, err := prepareReplayExecutionTree(reqInput)
-	if err != nil {
-		return err
-	}
-
+func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository,
+	reqInput models.ReplayRequest, replayTree *tree.TreeNode) error {
 	if !reqInput.Force {
-		reqReplayNodes := reqReplayTree.GetAllNodes()
+		reqReplayNodes := replayTree.GetAllNodes()
 
 		//check if this dag have running instance in the scheduler
-		err = v.validateRunningInstance(ctx, reqReplayNodes, reqInput)
-		if err != nil {
+		if err := v.validateRunningInstance(ctx, reqReplayNodes, reqInput); err != nil {
 			return err
 		}
 
@@ -56,7 +51,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 	return cancelConflictedReplays(replaySpecRepo, reqInput)
 }
 
-func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput *models.ReplayRequest) error {
+func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput models.ReplayRequest) error {
 	duplicatedReplaySpecs, err := replaySpecRepo.GetByJobIDAndStatus(reqInput.Job.ID, ReplayStatusToValidate)
 	if err != nil {
 		if err == store.ErrResourceNotFound {
@@ -75,10 +70,10 @@ func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput
 	return nil
 }
 
-func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes []*tree.TreeNode, reqInput *models.ReplayRequest) error {
+func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes []*tree.TreeNode, reqInput models.ReplayRequest) error {
 	for _, reqReplayNode := range reqReplayNodes {
 		batchEndDate := reqInput.End.AddDate(0, 0, 1).Add(time.Second * -1)
-		jobStatusAllRuns, err := v.scheduler.GetDagRunStatus(ctx, reqInput.Project, reqInput.Job.Name, reqInput.Start, batchEndDate, schedulerBatchSize)
+		jobStatusAllRuns, err := v.scheduler.GetDagRunStatus(ctx, reqInput.Project, reqReplayNode.Data.(models.JobSpec).Name, reqInput.Start, batchEndDate, schedulerBatchSize)
 		if err != nil {
 			return err
 		}
@@ -91,10 +86,10 @@ func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes 
 	return nil
 }
 
-func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput *models.ReplayRequest,
+func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput models.ReplayRequest,
 	reqReplayNodes []*tree.TreeNode) error {
 	for _, activeSpec := range activeReplaySpecs {
-		activeReplayWorkerRequest := &models.ReplayRequest{
+		activeReplayWorkerRequest := models.ReplayRequest{
 			ID:         activeSpec.ID,
 			Job:        activeSpec.Job,
 			Start:      activeSpec.StartDate,

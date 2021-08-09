@@ -58,7 +58,6 @@ type JobSpec struct {
 	Dependencies map[string]JobSpecDependency // job name to dependency
 	Assets       JobAssets
 	Hooks        []JobSpecHook
-	Project      ProjectSpec
 }
 
 func (js JobSpec) GetName() string {
@@ -315,11 +314,11 @@ type JobService interface {
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(NamespaceSpec, []JobSpec, progress.Observer) error
 	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
-	ReplayDryRun(*ReplayRequest) (*tree.TreeNode, error)
+	ReplayDryRun(ReplayRequest) (*tree.TreeNode, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(context.Context, *ReplayRequest) (string, error)
+	Replay(context.Context, ReplayRequest) (string, error)
 	// GetStatus of a replay using its ID
-	GetStatus(context.Context, *ReplayRequest) (*ReplayState, error)
+	GetStatus(context.Context, ReplayRequest) (ReplayState, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
