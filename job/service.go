@@ -47,11 +47,6 @@ type NamespaceRepoFactory interface {
 	New(spec models.ProjectSpec) store.NamespaceRepository
 }
 
-// JobRepoFactory is used to store compiled jobs
-type JobRepoFactory interface {
-	New(context.Context, models.ProjectSpec) (store.JobRepository, error)
-}
-
 // ReplaySpecRepoFactory is used to manage replay spec objects from store
 type ReplaySpecRepoFactory interface {
 	New() store.ReplaySpecRepository
@@ -75,13 +70,17 @@ type ReplayManager interface {
 // store
 type Service struct {
 	jobSpecRepoFactory        SpecRepoFactory
-	compiler                  models.JobCompiler
-	jobRepoFactory            JobRepoFactory
 	dependencyResolver        DependencyResolver
 	priorityResolver          PriorityResolver
 	metaSvcFactory            meta.MetaSvcFactory
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	replayManager             ReplayManager
+
+	// scheduler for managing batch scheduled jobs
+	batchScheduler models.SchedulerUnit
+
+	// scheduler for managing one time executable jobs
+	manualScheduler models.SchedulerUnit
 
 	Now           func() time.Time
 	assetCompiler AssetCompiler
@@ -122,41 +121,8 @@ func (srv *Service) GetAll(namespace models.NamespaceSpec) ([]models.JobSpec, er
 	return jobSpecs, nil
 }
 
-// Dump takes a jobSpec of a project, resolves dependencies, priorities and returns the compiled Job
-func (srv *Service) Dump(namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.Job, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.GetDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, nil)
-	if err != nil {
-		return models.Job{}, err
-	}
-
-	// resolve priority of all jobSpecs
-	jobSpecs, err = srv.priorityResolver.Resolve(jobSpecs)
-	if err != nil {
-		return models.Job{}, err
-	}
-
-	// get our input job from the request. since a job name is unique at a project level,
-	// we can simply do the comparison by name
-	var resolvedJobSpec models.JobSpec
-	for _, jSpec := range jobSpecs {
-		if jSpec.Name == jobSpec.Name {
-			resolvedJobSpec = jSpec
-		}
-	}
-	if resolvedJobSpec.Name == "" {
-		return models.Job{}, errors.Errorf("missing job during compile %s", jobSpec.Name)
-	}
-
-	compiledJob, err := srv.compiler.Compile(namespace, resolvedJobSpec)
-	if err != nil {
-		return models.Job{}, errors.Wrapf(err, "failed to compile %s", resolvedJobSpec.Name)
-	}
-	return compiledJob, nil
-}
-
 // Check if job specifications are valid
-func (srv *Service) Check(namespace models.NamespaceSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
+func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
 	for i, jSpec := range jobSpecs {
 		// compile assets
 		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
@@ -189,7 +155,7 @@ func (srv *Service) Check(namespace models.NamespaceSpec, jobSpecs []models.JobS
 				}
 
 				// check compilation
-				if _, err := srv.compiler.Compile(namespace, currentSpec); err != nil {
+				if err := srv.batchScheduler.VerifyJob(ctx, namespace, currentSpec); err != nil {
 					if obs != nil {
 						obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
 					}
@@ -216,22 +182,22 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	if err := srv.isJobDeletable(namespace.ProjectSpec, jobSpec); err != nil {
 		return err
 	}
-
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
+
+	// delete from internal store
 	if err := jobSpecRepo.Delete(jobSpec.Name); err != nil {
 		return errors.Wrapf(err, "failed to delete spec: %s", jobSpec.Name)
 	}
 
-	if err := srv.Sync(ctx, namespace, nil); err != nil {
-		return err
-	}
-
-	return nil
+	// delete from batch scheduler
+	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
 }
 
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
 // assign proper priority weights, compiles it and uploads it to the destination
-// store
+// store.
+// It syncs the internal store state with destination batch batchScheduler by deleting
+// what is not needed anymore
 func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, progressObserver progress.Observer) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
 	jobSpecs, err := srv.GetDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
@@ -251,12 +217,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		return err
 	}
 
-	jobRepo, err := srv.jobRepoFactory.New(ctx, namespace.ProjectSpec)
-	if err != nil {
-		return err
-	}
-
-	if err = srv.uploadSpecs(ctx, jobSpecs, jobRepo, namespace, progressObserver); err != nil {
+	if err = srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
 		return err
 	}
 
@@ -264,10 +225,14 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		return err
 	}
 
-	// get all the stored job names
-	destJobNames, err := jobRepo.ListNames(ctx, namespace)
+	// get all stored job names
+	schedulerJobs, err := srv.batchScheduler.ListJobs(ctx, namespace, models.SchedulerListOptions{OnlyName: true})
 	if err != nil {
 		return err
+	}
+	var destJobNames []string
+	for _, j := range schedulerJobs {
+		destJobNames = append(destJobNames, j.Name)
 	}
 
 	// filter what we need to keep/delete
@@ -275,14 +240,12 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	for _, jobSpec := range jobSpecs {
 		sourceJobNames = append(sourceJobNames, jobSpec.Name)
 	}
-	jobsToDelete := setSubstract(destJobNames, sourceJobNames)
+	jobsToDelete := setSubtract(destJobNames, sourceJobNames)
 	jobsToDelete = jobDeletionFilter(jobsToDelete)
-	for _, dagName := range jobsToDelete {
-		// delete compiled spec
-		if err := jobRepo.Delete(ctx, namespace, dagName); err != nil {
+	if len(jobsToDelete) > 0 {
+		if err := srv.batchScheduler.DeleteJobs(ctx, namespace, jobsToDelete, progressObserver); err != nil {
 			return err
 		}
-		srv.notifyProgress(progressObserver, &EventJobRemoteDelete{dagName})
 	}
 	return nil
 }
@@ -305,7 +268,7 @@ func (srv *Service) KeepOnly(namespace models.NamespaceSpec, specsToKeep []model
 	}
 
 	// filter what we need to keep/delete
-	jobsToDelete := setSubstract(specsPresentNames, specsToKeepNames)
+	jobsToDelete := setSubtract(specsPresentNames, specsToKeepNames)
 	jobsToDelete = jobDeletionFilter(jobsToDelete)
 
 	for _, jobName := range jobsToDelete {
@@ -380,38 +343,6 @@ func (srv *Service) GetDependencyResolvedSpecs(proj models.ProjectSpec, projectJ
 	return resolvedSpecs, resolvedErrors
 }
 
-// uploadSpecs compiles a Job and uploads it to the destination store
-func (srv *Service) uploadSpecs(ctx context.Context, jobSpecs []models.JobSpec, jobRepo store.JobRepository,
-	namespace models.NamespaceSpec, progressObserver progress.Observer) error {
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, jobSpec := range jobSpecs {
-		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				compiledJob, err := srv.compiler.Compile(namespace, currentSpec)
-				if err != nil {
-					return nil, err
-				}
-				srv.notifyProgress(progressObserver, &EventJobSpecCompile{
-					Name: currentSpec.Name,
-				})
-
-				if err = jobRepo.Save(ctx, compiledJob); err != nil {
-					return nil, err
-				}
-				return nil, nil
-			}
-		}(jobSpec))
-	}
-
-	for runIdx, state := range runner.Run() {
-		srv.notifyProgress(progressObserver, &EventJobUpload{
-			Job: jobSpecs[runIdx],
-			Err: state.Err,
-		})
-	}
-	return nil
-}
-
 func (srv *Service) publishMetadata(namespace models.NamespaceSpec, jobSpecs []models.JobSpec,
 	progressObserver progress.Observer) error {
 	if srv.metaSvcFactory == nil {
@@ -453,7 +384,7 @@ func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 }
 
 // remove items present in from
-func setSubstract(from []string, remove []string) []string {
+func setSubtract(from []string, remove []string) []string {
 	removeMap := make(map[string]bool)
 	for _, item := range remove {
 		removeMap[item] = true
@@ -492,18 +423,27 @@ func jobDeletionFilter(dagNames []string) []string {
 	return filtered
 }
 
+func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
+	jobSpecs []models.JobSpec, observer progress.Observer) error {
+	// Note(kush.sharma): ideally we should resolve dependencies & priorities
+	// before passing it to be deployed but as the used scheduler doesn't support
+	// it yet to use them appropriately, I am not doing it to avoid unnecessary
+	// processing
+	return srv.manualScheduler.DeployJobs(ctx, nsSpec, jobSpecs, observer)
+}
+
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(jobSpecRepoFactory SpecRepoFactory, jobRepoFact JobRepoFactory,
-	compiler models.JobCompiler, assetCompiler AssetCompiler, dependencyResolver DependencyResolver,
-	priorityResolver PriorityResolver, metaSvcFactory meta.MetaSvcFactory,
-	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.SchedulerUnit,
+	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
+	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
+	metaSvcFactory meta.MetaSvcFactory, projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
-		jobRepoFactory:            jobRepoFact,
-		compiler:                  compiler,
+		batchScheduler:            batchScheduler,
+		manualScheduler:           manualScheduler,
 		dependencyResolver:        dependencyResolver,
 		priorityResolver:          priorityResolver,
 		metaSvcFactory:            metaSvcFactory,
@@ -531,21 +471,6 @@ type (
 		Dependency string
 	}
 
-	// EventJobSpecCompile represents a specification
-	// being compiled to a Job
-	EventJobSpecCompile struct{ Name string }
-
-	// EventJobUpload represents the compiled Job
-	// being uploaded
-	EventJobUpload struct {
-		Job models.JobSpec
-		Err error
-	}
-
-	// EventJobRemoteDelete signifies that a
-	// compiled job from a remote repository is being deleted
-	EventJobRemoteDelete struct{ Name string }
-
 	// EventSavedJobDelete signifies that a raw
 	// job from a repository is being deleted
 	EventSavedJobDelete struct{ Name string }
@@ -566,21 +491,6 @@ type (
 
 func (e *EventJobSpecFetch) String() string {
 	return fmt.Sprintf("fetching job specs")
-}
-
-func (e *EventJobSpecCompile) String() string {
-	return fmt.Sprintf("compiling: %s", e.Name)
-}
-
-func (e *EventJobUpload) String() string {
-	if e.Err != nil {
-		return fmt.Sprintf("uploading: %s, failed with error: %s", e.Job.Name, e.Err.Error())
-	}
-	return fmt.Sprintf("uploaded: %s", e.Job.Name)
-}
-
-func (e *EventJobRemoteDelete) String() string {
-	return fmt.Sprintf("deleting: %s", e.Name)
 }
 
 func (e *EventSavedJobDelete) String() string {

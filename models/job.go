@@ -299,8 +299,6 @@ type JobService interface {
 	Create(NamespaceSpec, JobSpec) error
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(string, NamespaceSpec) (JobSpec, error)
-	// Dump returns the compiled Job
-	Dump(NamespaceSpec, JobSpec) (Job, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
 	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
@@ -308,11 +306,14 @@ type JobService interface {
 	// Delete deletes a job spec from all repos
 	Delete(context.Context, NamespaceSpec, JobSpec) error
 
-	// following methods are executed at a project level, instead of a client
+	// Run creates a new job run for provided job spec and schedules it to execute
+	// immediately
+	Run(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(string, ProjectSpec) (JobSpec, NamespaceSpec, error)
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
-	Check(NamespaceSpec, []JobSpec, progress.Observer) error
+	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
 	ReplayDryRun(ReplayRequest) (*tree.TreeNode, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
@@ -324,15 +325,14 @@ type JobService interface {
 // JobCompiler takes template file of a scheduler and after applying
 // variables generates a executable input for scheduler.
 type JobCompiler interface {
-	Compile(NamespaceSpec, JobSpec) (Job, error)
+	Compile([]byte, NamespaceSpec, JobSpec) (Job, error)
 }
 
 // Job represents a compiled consumable item for scheduler
 // this is generated from JobSpec
 type Job struct {
-	Name        string
-	NamespaceID string
-	Contents    []byte
+	Name     string
+	Contents []byte
 }
 
 type JobEventType string

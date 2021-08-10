@@ -350,11 +350,11 @@ func TestReplayManager(t *testing.T) {
 			jobStatusList := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 20, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 21, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 			}
 			startDate := time.Date(2020, time.Month(8), 20, 0, 0, 0, 0, time.UTC)
@@ -369,7 +369,7 @@ func TestReplayManager(t *testing.T) {
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, 100).Return(jobStatusList, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, 100).Return(jobStatusList, nil)
 
 			replayManager := job.NewManager(log, nil, nil, nil, job.ReplayManagerConfig{}, scheduler, nil, nil)
 			jobStatusMap, err := replayManager.GetRunStatus(context.TODO(), projectSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec.Name)

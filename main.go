@@ -77,6 +77,7 @@ func main() {
 	)
 	if err := command.Execute(); err != nil {
 		hPlugin.CleanupClients()
+		fmt.Printf("%+v\n", err)
 		fmt.Println(errRequestFail)
 		os.Exit(1)
 	}

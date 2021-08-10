@@ -6,13 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
-
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	testMock "github.com/stretchr/testify/mock"
 )
 
 func TestService(t *testing.T) {
@@ -114,12 +112,13 @@ func TestService(t *testing.T) {
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 			}
-			compiler := new(mock.Compiler)
-			compiler.On("Compile", namespaceSpec, currentSpec).Return(models.Job{}, nil)
-			defer compiler.AssertExpectations(t)
 
-			service := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, nil)
-			err := service.Check(namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			batchScheduler := new(mock.Scheduler)
+			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
+			defer batchScheduler.AssertExpectations(t)
+
+			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
+			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should check for successful dependency resolution for task that does support this mod", func(t *testing.T) {
@@ -138,7 +137,7 @@ func TestService(t *testing.T) {
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 			}
-			depMode.On("GenerateDependencies", context.TODO(), models.GenerateDependenciesRequest{
+			depMode.On("GenerateDependencies", context.Background(), models.GenerateDependenciesRequest{
 				Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
 				Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
 				Project: namespaceSpec.ProjectSpec,
@@ -147,12 +146,12 @@ func TestService(t *testing.T) {
 				},
 			}).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			compiler := new(mock.Compiler)
-			compiler.On("Compile", namespaceSpec, currentSpec).Return(models.Job{}, nil)
-			defer compiler.AssertExpectations(t)
+			batchScheduler := new(mock.Scheduler)
+			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
+			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, nil)
-			err := service.Check(namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
+			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
 	})
@@ -210,9 +209,7 @@ func TestService(t *testing.T) {
 
 			jobs := []models.Job{
 				{
-					Name:        "test",
-					Contents:    []byte(`come string`),
-					NamespaceID: namespaceSpec.Name,
+					Name: "test",
 				},
 			}
 
@@ -232,15 +229,6 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			// used to store compiled job specs
-			jobRepo := new(mock.JobRepository)
-			jobRepo.On("ListNames", ctx, namespaceSpec).Return([]string{"test"}, nil)
-			defer jobRepo.AssertExpectations(t)
-
-			jobRepoFac := new(mock.JobRepoFactory)
-			jobRepoFac.On("New", context.Background(), projSpec).Return(jobRepo, nil)
-			defer jobRepoFac.AssertExpectations(t)
-
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
@@ -251,16 +239,12 @@ func TestService(t *testing.T) {
 			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
+			batchScheduler := new(mock.Scheduler)
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
+			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
+			defer batchScheduler.AssertExpectations(t)
 
-			// compile to dag and save
-			for idx, compiledJob := range jobs {
-				compiler.On("Compile", namespaceSpec, jobSpecsAfterPriorityResolve[idx]).Return(compiledJob, nil)
-				jobRepo.On("Save", ctx, compiledJob).Return(nil)
-			}
-
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -307,14 +291,10 @@ func TestService(t *testing.T) {
 
 			jobs := []models.Job{
 				{
-					Name:        "test",
-					Contents:    []byte(`some string`),
-					NamespaceID: namespaceSpec.Name,
+					Name: "test",
 				},
 				{
-					Name:        "test2",
-					Contents:    []byte(`some string`),
-					NamespaceID: namespaceSpec.Name,
+					Name: "test2",
 				},
 			}
 
@@ -335,15 +315,6 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			// used to store compiled job specs
-			jobRepo := new(mock.JobRepository)
-			jobRepo.On("ListNames", ctx, namespaceSpec).Return([]string{"test", "test2"}, nil)
-			defer jobRepo.AssertExpectations(t)
-
-			jobRepoFac := new(mock.JobRepoFactory)
-			jobRepoFac.On("New", testMock.Anything, projSpec).Return(jobRepo, nil)
-			defer jobRepoFac.AssertExpectations(t)
-
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
@@ -354,29 +325,16 @@ func TestService(t *testing.T) {
 			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			jobRepo.On("ListNames", ctx, namespaceSpec).Return([]string{"test", "test2"}, nil)
-
-			// resolve dependencies
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
-
-			// resolve priority
-			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
-			jobRepoFac.On("New", context.Background(), projSpec).Return(jobRepo, nil)
-
-			// compile to dag and save the first one
-			compiler.On("Compile", namespaceSpec, jobSpecsAfterPriorityResolve[0]).Return(jobs[0], nil)
-			jobRepo.On("Save", ctx, jobs[0]).Return(nil)
-
 			// fetch currently stored
 			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
 
-			// delete unwanted
-			jobRepo.On("Delete", ctx, namespaceSpec, jobs[1].Name).Return(nil)
+			batchScheduler := new(mock.Scheduler)
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
+			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
+			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[1].Name}, nil).Return(nil)
+			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -474,9 +432,7 @@ func TestService(t *testing.T) {
 
 			jobs := []models.Job{
 				{
-					Name:        "test",
-					Contents:    []byte(`come string`),
-					NamespaceID: namespaceSpec.Name,
+					Name: "test",
 				},
 			}
 
@@ -496,15 +452,6 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			// used to store compiled job specs
-			jobRepo := new(mock.JobRepository)
-			jobRepo.On("ListNames", ctx, namespaceSpec).Return([]string{"test"}, nil)
-			defer jobRepo.AssertExpectations(t)
-
-			jobRepoFac := new(mock.JobRepoFactory)
-			jobRepoFac.On("New", context.Background(), projSpec).Return(jobRepo, nil)
-			defer jobRepoFac.AssertExpectations(t)
-
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
@@ -515,9 +462,6 @@ func TestService(t *testing.T) {
 			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
 			metaSvc := new(mock.MetaService)
 			metaSvc.On("Publish", namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
 			defer metaSvc.AssertExpectations(t)
@@ -526,13 +470,12 @@ func TestService(t *testing.T) {
 			metaSvcFact.On("New").Return(metaSvc)
 			defer metaSvcFact.AssertExpectations(t)
 
-			// compile to dag and save
-			for idx, compiledJob := range jobs {
-				compiler.On("Compile", namespaceSpec, jobSpecsAfterPriorityResolve[idx]).Return(compiledJob, nil)
-				jobRepo.On("Save", ctx, compiledJob).Return(nil)
-			}
+			batchScheduler := new(mock.Scheduler)
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
+			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
+			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, metaSvcFact, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, metaSvcFact, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -612,113 +555,6 @@ func TestService(t *testing.T) {
 		})
 	})
 
-	t.Run("Dump", func(t *testing.T) {
-		projSpec := models.ProjectSpec{
-			Name: "proj",
-		}
-
-		namespaceSpec := models.NamespaceSpec{
-			ID:          uuid.Must(uuid.NewRandom()),
-			Name:        "dev-team-1",
-			ProjectSpec: projSpec,
-		}
-
-		t.Run("should successfully generate compiled job", func(t *testing.T) {
-			jobSpecsBase := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
-
-			jobs := []models.Job{
-				{
-					Name:        "test",
-					Contents:    []byte(`come string`),
-					NamespaceID: namespaceSpec.Name,
-				},
-			}
-
-			// used to store raw job specs
-			jobSpecRepo := new(mock.JobSpecRepository)
-			defer jobSpecRepo.AssertExpectations(t)
-
-			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFac.AssertExpectations(t)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// used to store compiled job specs
-			jobRepo := new(mock.JobRepository)
-			defer jobRepo.AssertExpectations(t)
-
-			jobRepoFac := new(mock.JobRepoFactory)
-			defer jobRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
-			defer depenResolver.AssertExpectations(t)
-
-			// resolve priority
-			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
-			defer priorityResolver.AssertExpectations(t)
-
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			// compile to dag and save
-			for idx, compiledJob := range jobs {
-				compiler.On("Compile", namespaceSpec, jobSpecsAfterPriorityResolve[idx]).Return(compiledJob, nil)
-			}
-
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
-			compiledJob, err := svc.Dump(namespaceSpec, jobSpecsBase[0])
-			assert.Nil(t, err)
-			assert.Equal(t, "come string", string(compiledJob.Contents))
-			assert.Equal(t, "test", compiledJob.Name)
-		})
-	})
-
 	t.Run("Delete", func(t *testing.T) {
 		projSpec := models.ProjectSpec{
 			Name: "proj",
@@ -755,32 +591,15 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
 
 			jobs := []models.Job{
 				{
-					Name:        "test",
-					Contents:    []byte(`come string`),
-					NamespaceID: namespaceSpec.Name,
+					Name: "test",
 				},
 			}
 
 			jobSpecRepo := new(mock.JobSpecRepository)
 			jobSpecRepo.On("Delete", "test").Return(nil)
-			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -795,35 +614,16 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			// used to store compiled job specs
-			jobRepo := new(mock.JobRepository)
-			jobRepo.On("ListNames", ctx, namespaceSpec).Return([]string{"test"}, nil)
-			defer jobRepo.AssertExpectations(t)
-
-			jobRepoFac := new(mock.JobRepoFactory)
-			jobRepoFac.On("New", context.Background(), projSpec).Return(jobRepo, nil)
-			defer jobRepoFac.AssertExpectations(t)
-
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			// resolve priority
-			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
-			defer priorityResolver.AssertExpectations(t)
+			batchScheduler := new(mock.Scheduler)
+			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[0].Name}, nil).Return(nil)
+			defer batchScheduler.AssertExpectations(t)
 
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			// compile to dag and save
-			for idx, compiledJob := range jobs {
-				compiler.On("Compile", namespaceSpec, jobSpecsAfterPriorityResolve[idx]).Return(compiledJob, nil)
-				jobRepo.On("Save", ctx, compiledJob).Return(nil)
-			}
-
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 		})
@@ -892,27 +692,16 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			// used to store compiled job specs
-			jobRepo := new(mock.JobRepository)
-			defer jobRepo.AssertExpectations(t)
-
-			jobRepoFac := new(mock.JobRepoFactory)
-			defer jobRepoFac.AssertExpectations(t)
-
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpecsBase[1], nil).Return(jobSpecsAfterDepenResolve[1], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			// resolve priority
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
+			batchScheduler := new(mock.Scheduler)
+			defer batchScheduler.AssertExpectations(t)
 
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			svc := job.NewService(jobSpecRepoFac, jobRepoFac, compiler, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.NotNil(t, err)
 			assert.Equal(t, "cannot delete job test since it's dependency of job downstream-test", err.Error())

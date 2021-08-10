@@ -98,46 +98,6 @@ func (repo *JobSpecRepository) GetByDestination(dest string) (models.JobSpec, mo
 	return models.JobSpec{}, models.ProjectSpec{}, args.Error(2)
 }
 
-// JobRepoFactory to store compiled specs
-type JobRepoFactory struct {
-	mock.Mock
-}
-
-func (repo *JobRepoFactory) New(ctx context.Context, proj models.ProjectSpec) (store.JobRepository, error) {
-	args := repo.Called(ctx, proj)
-	return args.Get(0).(store.JobRepository), args.Error(1)
-}
-
-// JobRepository to store compiled specs
-
-type JobRepository struct {
-	mock.Mock
-}
-
-func (repo *JobRepository) Save(ctx context.Context, t models.Job) error {
-	return repo.Called(ctx, t).Error(0)
-}
-
-func (repo *JobRepository) GetByName(ctx context.Context, name string) (models.Job, error) {
-	args := repo.Called(ctx, name)
-	return args.Get(0).(models.Job), args.Error(1)
-}
-
-func (repo *JobRepository) GetAll(ctx context.Context) ([]models.Job, error) {
-	args := repo.Called(ctx)
-	return args.Get(0).([]models.Job), args.Error(1)
-}
-
-func (repo *JobRepository) ListNames(ctx context.Context, namespace models.NamespaceSpec) ([]string, error) {
-	args := repo.Called(ctx, namespace)
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (repo *JobRepository) Delete(ctx context.Context, namespace models.NamespaceSpec, name string) error {
-	args := repo.Called(ctx, namespace, name)
-	return args.Error(0)
-}
-
 type JobConfigLocalFactory struct {
 	mock.Mock
 }
@@ -161,11 +121,6 @@ func (srv *JobService) GetByName(s string, spec models.NamespaceSpec) (models.Jo
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Dump(spec2 models.NamespaceSpec, spec3 models.JobSpec) (models.Job, error) {
-	args := srv.Called(spec2, spec3)
-	return args.Get(0).(models.Job), args.Error(1)
-}
-
 func (srv *JobService) KeepOnly(spec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
 	args := srv.Called(spec, specs)
 	return args.Error(0)
@@ -186,8 +141,8 @@ func (srv *JobService) Sync(ctx context.Context, spec models.NamespaceSpec, obse
 	return args.Error(0)
 }
 
-func (j *JobService) Check(namespaceSpec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
-	args := j.Called(namespaceSpec, specs, observer)
+func (j *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
+	args := j.Called(ctx, namespaceSpec, specs, observer)
 	return args.Error(0)
 }
 
@@ -211,13 +166,9 @@ func (j *JobService) GetStatus(ctx context.Context, replayRequest models.ReplayR
 	return args.Get(0).(models.ReplayState), args.Error(1)
 }
 
-type Compiler struct {
-	mock.Mock
-}
-
-func (srv *Compiler) Compile(namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.Job, error) {
-	args := srv.Called(namespace, jobSpec)
-	return args.Get(0).(models.Job), args.Error(1)
+func (j *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {
+	args := j.Called(ctx, ns, js, obs)
+	return args.Error(0)
 }
 
 type DependencyResolver struct {

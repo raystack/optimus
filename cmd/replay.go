@@ -160,14 +160,14 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
-	replayRequest := &pb.ReplayRequest{
+	replayRequest := &pb.DryRunReplayRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 		Namespace:   namespace,
 		StartDate:   startDate,
 		EndDate:     endDate,
 	}
-	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
+	replayDryRunResponse, err := runtime.DryRunReplay(replayRequestTimeout, replayRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Info("replay dry run took too long, timing out")
@@ -179,8 +179,8 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	return nil
 }
 
-func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
-	l.Info(fmt.Sprintf("For %s project and %s namespace", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace)))
+func printReplayDryRunResponse(l log.Logger, replayRequest *pb.DryRunReplayRequest, replayDryRunResponse *pb.DryRunReplayResponse) {
+	l.Info(fmt.Sprintf("For %s project and %s namespace\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace)))
 	l.Info(coloredNotice("REPLAY RUNS"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
@@ -333,7 +333,7 @@ func printReplayStatusResponse(l log.Logger, replayStatusResponse *pb.GetReplayS
 	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
 		l.Info(fmt.Sprintf("\nThis replay has been marked as %s", coloredSuccess(models.ReplayStatusSuccess)))
 	}
-	l.Info(coloredNotice("Latest Instances State"))
+	l.Info(coloredNotice("Latest Instances Status"))
 	l.Info(fmt.Sprintf("%s", printStatusTree(replayStatusResponse.Response, treeprint.New())))
 }
 

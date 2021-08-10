@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -30,8 +31,9 @@ var (
 	coloredShow    = fmt.Sprint
 	coloredPrint   = fmt.Sprint
 
-	GRPCMaxClientSendSize = 45 << 20 // 45MB
-	GRPCMaxClientRecvSize = 45 << 20 // 45MB
+	GRPCMaxClientSendSize      = 45 << 20 // 45MB
+	GRPCMaxClientRecvSize      = 45 << 20 // 45MB
+	GRPCMaxRetry          uint = 3
 
 	OptimusDialTimeout = time.Second * 2
 )
@@ -89,6 +91,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 	cmd.AddCommand(validateCommand(plainLog, conf.GetHost(), pluginRepo, jobSpecRepo))
 	cmd.AddCommand(serveCommand(jsonLog, conf))
 	cmd.AddCommand(replayCommand(plainLog, conf))
+	cmd.AddCommand(runCommand(plainLog, conf.GetHost(), jobSpecRepo, pluginRepo))
 
 	// admin specific commands
 	if conf.GetAdmin().Enabled {
@@ -99,6 +102,10 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 }
 
 func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
+	retryOpts := []grpc_retry.CallOption{
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
+		grpc_retry.WithMax(GRPCMaxRetry),
+	}
 	var opts []grpc.DialOption
 	opts = append(opts,
 		grpc.WithInsecure(),
@@ -107,12 +114,8 @@ func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error
 			grpc.MaxCallSendMsgSize(GRPCMaxClientSendSize),
 			grpc.MaxCallRecvMsgSize(GRPCMaxClientRecvSize),
 		),
+		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)),
 	)
 
-	conn, err := grpc.DialContext(ctx, host, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn, nil
+	return grpc.DialContext(ctx, host, opts...)
 }

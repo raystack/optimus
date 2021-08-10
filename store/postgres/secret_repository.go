@@ -96,7 +96,7 @@ func (repo *secretRepository) Save(spec models.ProjectSecretItem) error {
 	if err == nil {
 		resource.ID = existingResource.ID
 	}
-	return repo.db.Model(resource).Updates(resource).Error
+	return repo.db.Model(&resource).Updates(&resource).Error
 }
 
 func (repo *secretRepository) GetByName(name string) (models.ProjectSecretItem, error) {
@@ -122,8 +122,8 @@ func (repo *secretRepository) GetByID(id uuid.UUID) (models.ProjectSecretItem, e
 }
 
 func (repo *secretRepository) GetAll() ([]models.ProjectSecretItem, error) {
-	specs := []models.ProjectSecretItem{}
-	resources := []Secret{}
+	var specs []models.ProjectSecretItem
+	var resources []Secret
 	if err := repo.db.Find(&resources).Error; err != nil {
 		return specs, err
 	}

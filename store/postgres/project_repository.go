@@ -99,7 +99,7 @@ func (repo *ProjectRepository) Save(spec models.ProjectSpec) error {
 		return err
 	}
 	project.ID = existingResource.ID
-	return repo.db.Model(project).Updates(project).Error
+	return repo.db.Model(&project).Updates(&project).Error
 }
 
 func (repo *ProjectRepository) GetByName(name string) (models.ProjectSpec, error) {

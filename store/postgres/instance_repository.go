@@ -16,124 +16,138 @@ import (
 type Instance struct {
 	ID uuid.UUID `gorm:"primary_key;type:uuid;"`
 
-	JobID uuid.UUID `gorm:"not null"`
-	Job   Job       `gorm:"foreignKey:JobID;association_autoupdate:false"`
+	JobRunID uuid.UUID `gorm:"type:uuid"`
+	JobRun   JobRun    `gorm:"foreignKey:JobRunID"`
 
-	ScheduledAt *time.Time `gorm:"not null"`
-	State       string
-	Data        datatypes.JSON
+	Name string `gorm:"column:instance_name;not null"`
+	Type string `gorm:"column:instance_type;not null"`
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt *time.Time
+	ExecutedAt *time.Time
+	Status     string
+	Data       datatypes.JSON
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-func (j Instance) ToSpec(job models.JobSpec) (models.InstanceSpec, error) {
-	data := []models.InstanceSpecData{}
+func (j Instance) ToSpec() (models.InstanceSpec, error) {
+	var data []models.InstanceSpecData
 	if j.Data != nil {
 		if err := json.Unmarshal(j.Data, &data); err != nil {
 			return models.InstanceSpec{}, err
 		}
 	}
 
-	var schdAt time.Time
-	if j.ScheduledAt != nil {
-		schdAt = *j.ScheduledAt
+	var execAt time.Time
+	if j.ExecutedAt != nil {
+		execAt = *j.ExecutedAt
 	}
 
 	return models.InstanceSpec{
-		ID:          j.ID,
-		ScheduledAt: schdAt,
-		State:       j.State,
-		Data:        data,
-		Job:         job,
+		ID:         j.ID,
+		Name:       j.Name,
+		Type:       models.InstanceType(j.Type),
+		ExecutedAt: execAt,
+		Status:     models.JobRunState(j.Status),
+		Data:       data,
+		UpdatedAt:  j.UpdatedAt,
 	}, nil
 }
 
-func (j Instance) FromSpec(spec models.InstanceSpec, job Job) (Instance, error) {
+func (j Instance) FromSpec(spec models.InstanceSpec, jobRunID uuid.UUID) (Instance, error) {
 	dataJSON, err := spec.DataToJSON()
 	if err != nil {
 		return Instance{}, err
 	}
 
-	var schdAt *time.Time = nil
-	if !spec.ScheduledAt.IsZero() {
-		schdAt = &spec.ScheduledAt
+	var execAt *time.Time = nil
+	if !spec.ExecutedAt.IsZero() {
+		execAt = &spec.ExecutedAt
 	}
 	return Instance{
-		ID:          spec.ID,
-		ScheduledAt: schdAt,
-		State:       spec.State,
-		Data:        dataJSON,
-		JobID:       job.ID,
+		ID:         spec.ID,
+		JobRunID:   jobRunID,
+		Name:       spec.Name,
+		Type:       spec.Type.String(),
+		ExecutedAt: execAt,
+		Status:     spec.Status.String(),
+		Data:       dataJSON,
 	}, nil
 }
 
-type instanceRepository struct {
+type InstanceRepository struct {
 	db         *gorm.DB
-	job        models.JobSpec
 	jobAdapter *JobSpecAdapter
 
 	Now func()
 }
 
-func (repo *instanceRepository) Insert(spec models.InstanceSpec) error {
-	job, err := repo.jobAdapter.FromSpec(repo.job)
+func (repo *InstanceRepository) Insert(run models.JobRun, spec models.InstanceSpec) error {
+	resource, err := Instance{}.FromSpec(spec, run.ID)
 	if err != nil {
 		return err
 	}
-	resource, err := Instance{}.FromSpec(spec, job)
-	if err != nil {
-		return err
-	}
-	return repo.db.Create(&resource).Error
+	return repo.db.Omit("JobRun").Create(&resource).Error
 }
 
-func (repo *instanceRepository) Save(spec models.InstanceSpec) error {
-	existingResource, err := repo.GetByScheduledAt(spec.ScheduledAt)
+func (repo *InstanceRepository) Save(run models.JobRun, spec models.InstanceSpec) error {
+	existingResource, err := repo.GetByName(run.ID, spec.Name, spec.Type.String())
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(spec)
+		return repo.Insert(run, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find instance by schedule")
 	}
 
-	job, err := repo.jobAdapter.FromSpec(repo.job)
+	resource, err := Instance{}.FromSpec(spec, run.ID)
 	if err != nil {
 		return err
 	}
-	resource, err := Instance{}.FromSpec(spec, job)
-	if err == nil {
-		resource.ID = existingResource.ID
-	}
-
-	return repo.db.Model(resource).Updates(resource).Error
+	resource.ID = existingResource.ID
+	return repo.db.Debug().Omit("JobRun").Model(&resource).Updates(&resource).Error
 }
 
-func (repo *instanceRepository) Clear(scheduled time.Time) error {
-	existingJobSpecRun, err := repo.GetByScheduledAt(scheduled)
-	if err != nil && err != gorm.ErrRecordNotFound {
+func (repo *InstanceRepository) UpdateStatus(id uuid.UUID, status models.JobRunState) error {
+	var r Instance
+	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
 		return err
 	}
-	var r Instance
-	r.ID = existingJobSpecRun.ID
-	return repo.db.Model(&r).Update(map[string]interface{}{"data": nil}).Error
+	r.Status = status.String()
+	return repo.db.Omit("JobRun").Save(&r).Error
 }
 
-func (repo *instanceRepository) GetByScheduledAt(scheduled time.Time) (models.InstanceSpec, error) {
+func (repo *InstanceRepository) GetByName(runID uuid.UUID, instanceName, instanceType string) (models.InstanceSpec, error) {
 	var r Instance
-	if err := repo.db.Preload("Job").Where("job_id = ? AND scheduled_at = ?", repo.job.ID, scheduled).Find(&r).Error; err != nil {
+	if err := repo.db.Preload("JobRun").Where("job_run_id = ? AND instance_name = ? AND instance_type = ?", runID, instanceName, instanceType).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.InstanceSpec{}, store.ErrResourceNotFound
 		}
 		return models.InstanceSpec{}, err
 	}
-	return r.ToSpec(repo.job)
+	return r.ToSpec()
 }
 
-func NewInstanceRepository(db *gorm.DB, job models.JobSpec, jobAdapter *JobSpecAdapter) *instanceRepository {
-	return &instanceRepository{
+func (repo *InstanceRepository) GetByID(id uuid.UUID) (models.InstanceSpec, error) {
+	var r Instance
+	if err := repo.db.Preload("JobRun").Where("id = ?", id).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.InstanceSpec{}, store.ErrResourceNotFound
+		}
+		return models.InstanceSpec{}, err
+	}
+	return r.ToSpec()
+}
+
+func (repo *InstanceRepository) Delete(id uuid.UUID) error {
+	return repo.db.Where("id = ?", id).Delete(&Instance{}).Error
+}
+
+func (repo *InstanceRepository) DeleteByJobRun(runID uuid.UUID) error {
+	return repo.db.Where("job_run_id = ?", runID).Delete(&Instance{}).Error
+}
+
+func NewInstanceRepository(db *gorm.DB, jobAdapter *JobSpecAdapter) *InstanceRepository {
+	return &InstanceRepository{
 		db:         db,
-		job:        job,
 		jobAdapter: jobAdapter,
 	}
 }

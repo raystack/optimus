@@ -1,4 +1,4 @@
-package instance
+package run
 
 import (
 	"context"
@@ -31,22 +31,19 @@ var (
 // Raw task assets may not be executable in there default state and needs to be
 // transformed before they can work as inputs. Input could be through
 // environment variables or as a file.
-// It exposes .proj, .inst, .task variable names containing configs that can be
+// It exposes .proj, .inst, .task template variable names containing configs that can be
 // used in job specification
 type ContextManager struct {
 	namespace models.NamespaceSpec
-	jobSpec   models.JobSpec
+	jobRun    models.JobRun
 	engine    models.TemplateEngine
 }
 
 // Generate fetches and compiles all config data related to an instance and
 // returns a map of env variables and a map[fileName]fileContent
 // It compiles any templates/macros present in the config.
-func (fm *ContextManager) Generate(
-	instanceSpec models.InstanceSpec,
-	runType models.InstanceType,
-	runName string,
-) (envMap map[string]string, fileMap map[string]string, err error) {
+func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (
+	envMap map[string]string, fileMap map[string]string, err error) {
 	projectPrefixedConfig, projRawConfig := fm.projectEnvs()
 
 	// instance env will be used for templating
@@ -58,7 +55,7 @@ func (fm *ContextManager) Generate(
 	projectInstanceContext["inst"] = instanceEnvMap
 
 	// prepare configs
-	envMap, err = fm.generateEnvs(runName, runType, projectInstanceContext)
+	envMap, err = fm.generateEnvs(instanceSpec.Name, instanceSpec.Type, projectInstanceContext)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -72,11 +69,11 @@ func (fm *ContextManager) Generate(
 
 	// do the same for asset files
 	// check if task needs to override the compilation behaviour
-	compiledAssetResponse, err := fm.jobSpec.Task.Unit.CLIMod.CompileAssets(context.Background(), models.CompileAssetsRequest{
-		Window:           fm.jobSpec.Task.Window,
-		Config:           models.PluginConfigs{}.FromJobSpec(fm.jobSpec.Task.Config),
-		Assets:           models.PluginAssets{}.FromJobSpec(fm.jobSpec.Assets),
-		InstanceSchedule: instanceSpec.ScheduledAt,
+	compiledAssetResponse, err := fm.jobRun.Spec.Task.Unit.CLIMod.CompileAssets(context.Background(), models.CompileAssetsRequest{
+		Window:           fm.jobRun.Spec.Task.Window,
+		Config:           models.PluginConfigs{}.FromJobSpec(fm.jobRun.Spec.Task.Config),
+		Assets:           models.PluginAssets{}.FromJobSpec(fm.jobRun.Spec.Assets),
+		InstanceSchedule: fm.jobRun.ScheduledAt,
 		InstanceData:     instanceSpec.Data,
 	})
 	if err != nil {
@@ -112,7 +109,7 @@ func (fm *ContextManager) projectEnvs() (map[string]interface{}, map[string]inte
 
 func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceType,
 	projectInstanceContext map[string]interface{}) (map[string]string, error) {
-	transformationConfigs, hookConfigs, err := fm.getConfigMaps(fm.jobSpec, runName, runType)
+	transformationConfigs, hookConfigs, err := fm.getConfigMaps(fm.jobRun.Spec, runName, runType)
 	if err != nil {
 		return nil, err
 	}
@@ -213,10 +210,10 @@ func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 	return transformationMap, hookMap, nil
 }
 
-func NewContextManager(namespace models.NamespaceSpec, jobSpec models.JobSpec, engine models.TemplateEngine) *ContextManager {
+func NewContextManager(namespace models.NamespaceSpec, jobRun models.JobRun, engine models.TemplateEngine) *ContextManager {
 	return &ContextManager{
 		namespace: namespace,
-		jobSpec:   jobSpec,
+		jobRun:    jobRun,
 		engine:    engine,
 	}
 }

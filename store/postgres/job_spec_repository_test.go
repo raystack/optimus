@@ -227,17 +227,6 @@ func TestJobRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 
-			// insert foreign relations
-			instanceRepo := NewInstanceRepository(db, testModels[0], adapter)
-			err = instanceRepo.Save(models.InstanceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Job:         testModels[0],
-				ScheduledAt: time.Date(2021, 5, 10, 2, 2, 0, 0, time.UTC),
-				State:       "exploded",
-				Data:        nil,
-			})
-			assert.Nil(t, err)
-
 			// soft delete
 			err = repo.Delete(testModels[0].Name)
 			assert.Nil(t, err)

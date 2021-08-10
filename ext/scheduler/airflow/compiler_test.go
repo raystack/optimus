@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
+
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -169,12 +170,11 @@ func TestCompiler(t *testing.T) {
 
 	t.Run("Compile", func(t *testing.T) {
 		t.Run("should compile template without any error", func(t *testing.T) {
-			scheduler := NewScheduler(nil, nil)
-			com := job.NewCompiler(
-				scheduler.GetTemplate(),
+			scheduler := NewScheduler(nil, nil, nil)
+			com := compiler.NewCompiler(
 				"http://airflow.example.io",
 			)
-			job, err := com.Compile(namespaceSpec, spec)
+			job, err := com.Compile(scheduler.GetTemplate(), namespaceSpec, spec)
 			assert.Nil(t, err)
 			assert.Equal(t, string(CompiledTemplate), string(job.Contents))
 		})

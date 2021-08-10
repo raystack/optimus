@@ -1,27 +1,30 @@
 package airflow
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/progress"
+	"gocloud.dev/blob"
+	"gocloud.dev/gcerrors"
+
+	"github.com/odpf/optimus/ext/scheduler/airflow2"
+
 	_ "embed"
 
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
 )
 
 //go:embed resources/__lib.py
-var resSharedLib []byte
+var SharedLib []byte
 
 //go:embed resources/base_dag.py
 var resBaseDAG []byte
@@ -30,25 +33,26 @@ const (
 	baseLibFileName = "__lib.py"
 	dagStatusURL    = "api/experimental/dags/%s/dag_runs"
 	dagRunClearURL  = "clear&dag_id=%s&start_date=%s&end_date=%s"
+
+	JobsDir       = "dags"
+	JobsExtension = ".py"
 )
 
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type ObjectWriterFactory interface {
-	New(ctx context.Context, writerPath, writerSecret string) (store.ObjectWriter, error)
-}
-
 type scheduler struct {
-	objWriterFac ObjectWriterFactory
-	httpClient   HTTPClient
+	bucketFac  airflow2.BucketFactory
+	httpClient HTTPClient
+	compiler   models.JobCompiler
 }
 
-func NewScheduler(ow ObjectWriterFactory, httpClient HTTPClient) *scheduler {
+func NewScheduler(bf airflow2.BucketFactory, httpClient HTTPClient, compiler models.JobCompiler) *scheduler {
 	return &scheduler{
-		objWriterFac: ow,
-		httpClient:   httpClient,
+		bucketFac:  bf,
+		httpClient: httpClient,
+		compiler:   compiler,
 	}
 }
 
@@ -56,57 +60,122 @@ func (a *scheduler) GetName() string {
 	return "airflow"
 }
 
-func (a *scheduler) GetJobsDir() string {
-	return "dags"
-}
-
-func (a *scheduler) GetJobsExtension() string {
-	return ".py"
-}
-
-func (a *scheduler) GetTemplate() []byte {
+func (s *scheduler) GetTemplate() []byte {
 	return resBaseDAG
 }
 
-func (a *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
-	storagePath, ok := proj.Config[models.ProjectStoragePathKey]
-	if !ok {
-		return errors.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, proj.Name)
-	}
-	storageSecret, ok := proj.Secret.GetByName(models.ProjectSecretStorageKey)
-	if !ok {
-		return errors.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, proj.Name)
-	}
-
-	p, err := url.Parse(storagePath)
+func (s *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
+	bucket, err := s.bucketFac.New(ctx, proj)
 	if err != nil {
 		return err
 	}
-	objectWriter, err := a.objWriterFac.New(ctx, storagePath, storageSecret)
-	if err != nil {
-		return errors.Errorf("object writer failed for %s", proj.Name)
-	}
-	return a.migrateLibFileToWriter(ctx, objectWriter, p.Hostname(), filepath.Join(strings.Trim(p.Path, "/"), a.GetJobsDir(), baseLibFileName))
+	defer bucket.Close()
+	return bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
 }
 
-func (a *scheduler) migrateLibFileToWriter(ctx context.Context, objWriter store.ObjectWriter, bucket, objDir string) (err error) {
-	// copy to fs
-	dst, err := objWriter.NewWriter(ctx, bucket, objDir)
+func (s *scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
+	_, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
+	return err
+}
+
+// Note(kush.sharma): optimize this using parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec)
+// if this operation is slow
+func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec,
+	progressObserver progress.Observer) error {
+	var compiledJobs []models.Job
+	for _, job := range jobs {
+		compiled, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
+		if err != nil {
+			return err
+		}
+		compiledJobs = append(compiledJobs, compiled)
+		s.notifyProgress(progressObserver, &models.EventJobSpecCompiled{
+			Name: job.Name,
+		})
+	}
+
+	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if derr := dst.Close(); derr != nil {
-			if err == nil {
-				err = derr
-			} else {
-				err = errors.Wrap(err, derr.Error())
+	defer bucket.Close()
+	for _, j := range compiledJobs {
+		blobKey := airflow2.PathFromJobName(JobsDir, namespace.ID.String(), j.Name, JobsExtension)
+		if err := bucket.WriteAll(ctx, blobKey, j.Contents, nil); err != nil {
+			s.notifyProgress(progressObserver, &models.EventJobUpload{
+				Name: j.Name,
+				Err:  err,
+			})
+			return err
+		}
+		s.notifyProgress(progressObserver, &models.EventJobUpload{
+			Name: j.Name,
+			Err:  nil,
+		})
+	}
+	return nil
+}
+
+func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string,
+	progressObserver progress.Observer) error {
+	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	if err != nil {
+		return err
+	}
+	for _, jobName := range jobNames {
+		if strings.TrimSpace(jobName) == "" {
+			return airflow2.ErrEmptyJobName
+		}
+		blobKey := airflow2.PathFromJobName(JobsDir, namespace.ID.String(), jobName, JobsExtension)
+		if err := bucket.Delete(ctx, blobKey); err != nil {
+			// ignore missing files
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				return err
 			}
 		}
-	}()
+		s.notifyProgress(progressObserver, &models.EventJobRemoteDelete{
+			Name: jobName,
+		})
+	}
+	return nil
+}
 
-	_, err = io.Copy(dst, bytes.NewBuffer(resSharedLib))
-	return
+func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
+	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	if err != nil {
+		return nil, err
+	}
+	defer bucket.Close()
+
+	var jobs []models.Job
+	// get all items
+	it := bucket.List(&blob.ListOptions{})
+	for {
+		obj, err := it.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		if strings.HasSuffix(obj.Key, JobsExtension) {
+			jobs = append(jobs, models.Job{
+				Name: airflow2.JobNameFromPath(obj.Key, JobsExtension),
+			})
+		}
+	}
+
+	if opts.OnlyName {
+		return jobs, nil
+	}
+	for idx, job := range jobs {
+		jobs[idx].Contents, err = bucket.ReadAll(ctx, airflow2.PathFromJobName(JobsDir, namespace.ID.String(), job.Name, JobsExtension))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return jobs, nil
 }
 
 func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
@@ -165,7 +234,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		}
 		jobStatus = append(jobStatus, models.JobStatus{
 			ScheduledAt: schdAt,
-			State:       models.JobStatusState(status["state"].(string)),
+			State:       models.JobRunState(status["state"].(string)),
 		})
 	}
 
@@ -223,7 +292,7 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	return nil
 }
 
-func (a *scheduler) GetDagRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
+func (a *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
 	batchSize int) ([]models.JobStatus, error) {
 	allJobStatus, err := a.GetJobStatus(ctx, projectSpec, jobName)
 	if err != nil {
@@ -238,4 +307,11 @@ func (a *scheduler) GetDagRunStatus(ctx context.Context, projectSpec models.Proj
 	}
 
 	return requestedJobStatus, nil
+}
+
+func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
+	if po == nil {
+		return
+	}
+	po.Notify(event)
 }

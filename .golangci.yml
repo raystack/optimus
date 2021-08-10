@@ -19,5 +19,7 @@ linters-settings:
   revive:
     ignore-generated-header: true
     severity: warning
+  gofmt:
+    simplify: false
 severity:
   default-severity: error

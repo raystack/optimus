@@ -28,7 +28,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 	if !reqInput.Force {
 		reqReplayNodes := replayTree.GetAllNodes()
 
-		//check if this dag have running instance in the scheduler
+		//check if this dag have running instance in the batchScheduler
 		if err := v.validateRunningInstance(ctx, reqReplayNodes, reqInput); err != nil {
 			return err
 		}
@@ -69,12 +69,12 @@ func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput
 func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes []*tree.TreeNode, reqInput models.ReplayRequest) error {
 	for _, reqReplayNode := range reqReplayNodes {
 		batchEndDate := reqInput.End.AddDate(0, 0, 1).Add(time.Second * -1)
-		jobStatusAllRuns, err := v.scheduler.GetDagRunStatus(ctx, reqInput.Project, reqReplayNode.Data.(models.JobSpec).Name, reqInput.Start, batchEndDate, schedulerBatchSize)
+		jobStatusAllRuns, err := v.scheduler.GetJobRunStatus(ctx, reqInput.Project, reqReplayNode.Data.(models.JobSpec).Name, reqInput.Start, batchEndDate, schedulerBatchSize)
 		if err != nil {
 			return err
 		}
 		for _, jobStatus := range jobStatusAllRuns {
-			if reqReplayNode.Runs.Contains(jobStatus.ScheduledAt) && jobStatus.State == models.JobStatusStateRunning {
+			if reqReplayNode.Runs.Contains(jobStatus.ScheduledAt) && jobStatus.State == models.RunStateRunning {
 				return ErrConflictedJobRun
 			}
 		}

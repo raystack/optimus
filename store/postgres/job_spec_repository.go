@@ -120,13 +120,12 @@ func (repo *JobSpecRepository) Save(spec models.JobSpec) error {
 		return errors.New(fmt.Sprintf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name))
 	}
 
-	resource, err := repo.adapter.FromSpec(spec)
+	resource, err := repo.adapter.FromJobSpec(spec)
 	if err != nil {
 		return err
 	}
 	resource.ID = existingJobSpec.ID
-
-	return repo.db.Model(resource).Updates(resource).Error
+	return repo.db.Model(&resource).Updates(&resource).Error
 }
 
 func (repo *JobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
@@ -165,10 +164,6 @@ func (repo *JobSpecRepository) HardDelete(name string) error {
 		return nil
 	} else if err != nil {
 		return errors.Wrap(err, "failed to fetch soft deleted resource")
-	}
-	// cascade delete instances
-	if err := repo.db.Unscoped().Where("job_id = ?", r.ID).Delete(&Instance{}).Error; err != nil {
-		return errors.Wrap(err, "failed to cascade delete instances for the job")
 	}
 	return repo.db.Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
 }

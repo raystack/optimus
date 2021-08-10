@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  db:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -37,4 +37,3 @@ jobs:
         run: make integration-test
         env:
           TEST_OPTIMUS_DB_URL: "postgres://postgres:postgres@localhost:5432/optimus_db?sslmode=disable"
-

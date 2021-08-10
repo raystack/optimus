@@ -37,7 +37,13 @@ var (
 	KeyServeReplayWorkerTimeoutSecs = "serve.replay_worker_timeout_secs"
 	KeyServeReplayRunTimeoutSecs    = "serve.replay_run_timeout_secs"
 
-	KeySchedulerName = "scheduler.name"
+	KeySchedulerName       = "scheduler.name"
+	KeySchedulerSkipInit   = "scheduler.skip_init"
+	KeySchedulerRaftAddr   = "scheduler.raft_addr"
+	KeySchedulerGossipAddr = "scheduler.gossip_addr"
+	KeySchedulerNodeID     = "scheduler.node_id"
+	KeySchedulerDataDir    = "scheduler.data_dir"
+	KeySchedulerPeers      = "scheduler.peers"
 
 	KeyAdminEnabled = "admin.enabled"
 )
@@ -134,55 +140,62 @@ type MetadataConfig struct {
 }
 
 type SchedulerConfig struct {
-	Name string `yaml:"name"`
+	Name     string `yaml:"name"`
+	SkipInit bool   `yaml:"skip_init"`
+
+	RaftAddr   string `yaml:"raft_addr"`
+	GossipAddr string `yaml:"gossip_addr"`
+	NodeID     string `yaml:"node_id"`
+	DataDir    string `yaml:"data_dir"`
+	Peers      string `yaml:"peers"`
 }
 
 type AdminConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-func (o Optimus) GetVersion() string {
-	return o.k.String(KeyVersion)
+func (o *Optimus) GetVersion() string {
+	return o.eKs(KeyVersion)
 }
 
-func (o Optimus) GetProjectConfig() ProjectConfig {
+func (o *Optimus) GetProjectConfig() ProjectConfig {
 	return ProjectConfig{
 		Global: o.k.StringMap(KeyProjectConfigGlobal),
 		Local:  o.k.StringMap(KeyProjectConfigLocal),
 	}
 }
 
-func (o Optimus) GetHost() string {
-	return o.k.String(KeyHost)
+func (o *Optimus) GetHost() string {
+	return o.eKs(KeyHost)
 }
 
-func (o Optimus) GetJob() Job {
+func (o *Optimus) GetJob() Job {
 	return Job{
-		Path: o.k.String(KeyJobPath),
+		Path: o.eKs(KeyJobPath),
 	}
 }
 
-func (o Optimus) GetDatastore() []Datastore {
+func (o *Optimus) GetDatastore() []Datastore {
 	ds := []Datastore{}
 	_ = o.k.Unmarshal("datastore", &ds)
 	return ds
 }
 
-func (o Optimus) GetLog() LogConfig {
+func (o *Optimus) GetLog() LogConfig {
 	return LogConfig{
-		Level:  o.k.String(KeyLogLevel),
-		Format: o.k.String(KeyLogFormat),
+		Level:  o.eKs(KeyLogLevel),
+		Format: o.eKs(KeyLogFormat),
 	}
 }
 
-func (o Optimus) GetServe() ServerConfig {
+func (o *Optimus) GetServe() ServerConfig {
 	return ServerConfig{
-		Port:        o.k.Int(KeyServePort),
-		Host:        o.k.String(KeyServeHost),
+		Port:        o.eKi(KeyServePort),
+		Host:        o.eKs(KeyServeHost),
 		IngressHost: o.eKs(KeyServeIngressHost),
 		AppKey:      o.eKs(KeyServeAppKey),
 		DB: DBConfig{
-			DSN:               o.k.String(KeyServeDBDSN),
+			DSN:               o.eKs(KeyServeDBDSN),
 			MaxIdleConnection: o.eKi(KeyServeDBMaxIdleConnection),
 			MaxOpenConnection: o.eKi(KeyServeDBMaxOpenConnection),
 		},
@@ -192,19 +205,25 @@ func (o Optimus) GetServe() ServerConfig {
 			KafkaBrokers:    o.eKs(KeyServeMetadataKafkaBrokers),
 			KafkaBatchSize:  o.eKi(KeyServeMetadataKafkaBatchSize),
 		},
-		ReplayNumWorkers:        o.k.Int(KeyServeReplayNumWorkers),
-		ReplayWorkerTimeoutSecs: time.Second * time.Duration(o.k.Int(KeyServeReplayWorkerTimeoutSecs)),
-		ReplayRunTimeoutSecs:    time.Second * time.Duration(o.k.Int(KeyServeReplayRunTimeoutSecs)),
+		ReplayNumWorkers:        o.eKi(KeyServeReplayNumWorkers),
+		ReplayWorkerTimeoutSecs: time.Second * time.Duration(o.eKi(KeyServeReplayWorkerTimeoutSecs)),
+		ReplayRunTimeoutSecs:    time.Second * time.Duration(o.eKi(KeyServeReplayRunTimeoutSecs)),
 	}
 }
 
-func (o Optimus) GetScheduler() SchedulerConfig {
+func (o *Optimus) GetScheduler() SchedulerConfig {
 	return SchedulerConfig{
-		Name: o.k.String(KeySchedulerName),
+		Name:       o.eKs(KeySchedulerName),
+		SkipInit:   o.k.Bool(KeySchedulerSkipInit),
+		RaftAddr:   o.eKs(KeySchedulerRaftAddr),
+		GossipAddr: o.eKs(KeySchedulerGossipAddr),
+		NodeID:     o.eKs(KeySchedulerNodeID),
+		DataDir:    o.eKs(KeySchedulerDataDir),
+		Peers:      o.eKs(KeySchedulerPeers),
 	}
 }
 
-func (o Optimus) GetAdmin() AdminConfig {
+func (o *Optimus) GetAdmin() AdminConfig {
 	return AdminConfig{
 		Enabled: o.k.Bool(KeyAdminEnabled),
 	}
@@ -212,7 +231,7 @@ func (o Optimus) GetAdmin() AdminConfig {
 
 // eKs replaces . with _ to support buggy koanf config loader from ENV
 // this should be used in all keys where underscore is used
-func (o Optimus) eKs(e string) string {
+func (o *Optimus) eKs(e string) string {
 	// read with default key - used in config file
 	res := o.k.String(e)
 

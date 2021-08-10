@@ -159,7 +159,7 @@ func (m *Manager) GetReplay(replayUUID uuid.UUID) (models.ReplaySpec, error) {
 func (m *Manager) GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time,
 	endDate time.Time, jobName string) ([]models.JobStatus, error) {
 	batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
-	return m.scheduler.GetDagRunStatus(ctx, projectSpec, jobName, startDate, batchEndDate, schedulerBatchSize)
+	return m.scheduler.GetJobRunStatus(ctx, projectSpec, jobName, startDate, batchEndDate, schedulerBatchSize)
 }
 
 //Close stops consuming any new request

@@ -82,16 +82,26 @@ func TestInstanceRepository(t *testing.T) {
 		},
 	}
 
+	jobRuns := []models.JobRun{
+		{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Spec:        jobConfigs[0],
+			Trigger:     models.TriggerSchedule,
+			Status:      models.RunStateRunning,
+			ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
 	unitData := models.GenerateDestinationRequest{
 		Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 		Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 	}
-	execUnit1.On("GenerateDestination", context.TODO(), unitData).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+	execUnit1.On("GenerateDestination", context.Background(), unitData).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 	unitData2 := models.GenerateDestinationRequest{
 		Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[1].Task.Config),
 		Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[1].Assets),
 	}
-	execUnit2.On("GenerateDestination", context.TODO(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+	execUnit2.On("GenerateDestination", context.Background(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
@@ -121,22 +131,26 @@ func TestInstanceRepository(t *testing.T) {
 		jrepo := NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
 		assert.Nil(t, jrepo.Save(jobConfigs[0]))
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(jobConfigs[1]).Error())
+
+		jobRunRepo := NewJobRunRepository(dbConn, adapter)
+		err = jobRunRepo.Save(namespaceSpec, jobRuns[0])
+		assert.Nil(t, err)
 		return dbConn
 	}
 
 	testSpecs := []models.InstanceSpec{
 		{
-			ID:          uuid.Must(uuid.NewRandom()),
-			Job:         jobConfigs[0],
-			State:       models.InstanceStateSuccess,
-			ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+			ID:         uuid.Must(uuid.NewRandom()),
+			Name:       gTask,
+			Type:       models.InstanceTypeTask,
+			Status:     models.RunStateSuccess,
+			ExecutedAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
 			Data: []models.InstanceSpecData{
 				{Name: "dstart", Value: "2020-01-02", Type: models.InstanceDataTypeEnv},
 			},
 		},
 		{
-			ID:  uuid.Must(uuid.NewRandom()),
-			Job: jobConfigs[1],
+			ID: uuid.Must(uuid.NewRandom()),
 		},
 	}
 
@@ -144,26 +158,17 @@ func TestInstanceRepository(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
 
-		testModels := []models.InstanceSpec{}
+		var testModels []models.InstanceSpec
 		testModels = append(testModels, testSpecs...)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err := jobRepo.Insert(testModels[0].Job)
+		repo := NewInstanceRepository(db, adapter)
+		err := repo.Insert(jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 
-		iRepo1 := NewInstanceRepository(db, testModels[0].Job, adapter)
-		err = iRepo1.Insert(testModels[0])
+		checkModel, err := repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
-
-		checkModel, err := iRepo1.GetByScheduledAt(testModels[0].ScheduledAt)
-		assert.Nil(t, err)
-		assert.Equal(t, testModels[0].Job.Name, checkModel.Job.Name)
+		assert.Equal(t, testModels[0].Name, checkModel.Name)
 		assert.Equal(t, testModels[0].Data, checkModel.Data)
-
-		iRepo2 := NewInstanceRepository(db, testModels[1].Job, adapter)
-		err = iRepo2.Insert(testModels[1])
-		assert.NotNil(t, err)
 	})
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
@@ -172,46 +177,49 @@ func TestInstanceRepository(t *testing.T) {
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
 
-		iRepo1 := NewInstanceRepository(db, testModels[0].Job, adapter)
-		err := iRepo1.Save(testModels[0])
+		repo := NewInstanceRepository(db, adapter)
+		err := repo.Insert(jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := iRepo1.GetByScheduledAt(testModels[0].ScheduledAt)
+		checkModel, err := repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
-		assert.Equal(t, testModels[0].Job.Name, checkModel.Job.Name)
+		assert.Equal(t, testModels[0].Name, checkModel.Name)
 		assert.Equal(t, testModels[0].Data, checkModel.Data)
 
-		err = iRepo1.Clear(testModels[0].ScheduledAt)
+		err = repo.Delete(testModels[0].ID)
 		assert.Nil(t, err)
 
-		err = iRepo1.Save(testModels[0])
+		testModels[0].Name = "updated-name"
+
+		err = repo.Save(jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err = iRepo1.GetByScheduledAt(testModels[0].ScheduledAt)
+		checkModel, err = repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
-		assert.Equal(t, testModels[0].Job.Name, checkModel.Job.Name)
+		assert.Equal(t, "updated-name", checkModel.Name)
 		assert.Equal(t, testModels[0].Data, checkModel.Data)
 	})
-	t.Run("Clear", func(t *testing.T) {
+	t.Run("UpdateStatus", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
 
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
 
-		iRepo1 := NewInstanceRepository(db, testModels[0].Job, adapter)
-		err := iRepo1.Save(testModels[0])
+		repo := NewInstanceRepository(db, adapter)
+		err := repo.Save(jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := iRepo1.GetByScheduledAt(testModels[0].ScheduledAt)
+		checkModel, err := repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
+		assert.Equal(t, testModels[0].Name, checkModel.Name)
 		assert.Equal(t, testModels[0].Data, checkModel.Data)
 
-		err = iRepo1.Clear(testModels[0].ScheduledAt)
+		err = repo.UpdateStatus(testModels[0].ID, models.RunStateFailed)
 		assert.Nil(t, err)
 
-		checkModel, err = iRepo1.GetByScheduledAt(testModels[0].ScheduledAt)
+		checkModel, err = repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
-		assert.Equal(t, []models.InstanceSpecData{}, checkModel.Data)
+		assert.Equal(t, models.RunStateFailed, checkModel.Status)
 	})
 }

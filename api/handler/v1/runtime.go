@@ -69,7 +69,7 @@ type RuntimeServiceServer struct {
 	projectRepoFactory   ProjectRepoFactory
 	namespaceRepoFactory NamespaceRepoFactory
 	secretRepoFactory    SecretRepoFactory
-	instSvc              models.InstanceService
+	runSvc               models.RunService
 	scheduler            models.SchedulerUnit
 	l                    log.Logger
 
@@ -168,29 +168,7 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 }
 
 func (sv *RuntimeServiceServer) DumpJobSpecification(ctx context.Context, req *pb.DumpJobSpecificationRequest) (*pb.DumpJobSpecificationResponse, error) {
-	projectRepo := sv.projectRepoFactory.New()
-	projSpec, err := projectRepo.GetByName(req.GetProjectName())
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
-	}
-
-	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(req.GetNamespace())
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
-	}
-
-	reqJobSpec, err := sv.jobSvc.GetByName(req.GetJobName(), namespaceSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: job %s not found", err.Error(), req.GetJobName())
-	}
-
-	compiledJob, err := sv.jobSvc.Dump(namespaceSpec, reqJobSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to compile %s", err.Error(), reqJobSpec.Name)
-	}
-
-	return &pb.DumpJobSpecificationResponse{Success: true, Content: string(compiledJob.Contents)}, nil
+	return &pb.DumpJobSpecificationResponse{}, status.Error(codes.Unimplemented, "disabled at the moment")
 }
 
 func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
@@ -212,8 +190,8 @@ func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *
 	}
 	reqJobs := []models.JobSpec{j}
 
-	if err = sv.jobSvc.Check(namespaceSpec, reqJobs, nil); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to compile jobs: \n%s", err.Error())
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, reqJobs, nil); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
 	}
 	return &pb.CheckJobSpecificationResponse{Success: true}, nil
 }
@@ -247,8 +225,8 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 		reqJobs = append(reqJobs, j)
 	}
 
-	if err = sv.jobSvc.Check(namespaceSpec, reqJobs, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to compile jobs: \n%s", err.Error())
+	if err = sv.jobSvc.Check(respStream.Context(), namespaceSpec, reqJobs, observers); err != nil {
+		return status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
 	}
 	return nil
 }
@@ -320,8 +298,8 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}
 
 	// validate job spec
-	if err = sv.jobSvc.Check(namespaceSpec, []models.JobSpec{jobSpec}, sv.progressObserver); err != nil {
-		return nil, status.Errorf(codes.Internal, "spec validation failed: \n%s", err.Error())
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, sv.progressObserver); err != nil {
+		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
 	}
 
 	err = sv.jobSvc.Create(namespaceSpec, jobSpec)
@@ -436,43 +414,59 @@ func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *
 }
 
 func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.RegisterInstanceResponse, error) {
-	jobScheduledTime := req.ScheduledAt.AsTime()
-	err := req.ScheduledAt.CheckValid()
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: failed to parse schedule time of job %s", err.Error(), req.GetScheduledAt())
-	}
-
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(req.GetProjectName())
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
 	}
 
-	jobSpec, namespaceSpec, err := sv.jobSvc.GetByNameForProject(req.GetJobName(), projSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: job %s not found", err.Error(), req.GetJobName())
-	}
-	jobProto, err := sv.adapter.ToJobProto(jobSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobSpec.Name)
-	}
-
 	instanceType, err := models.InstanceType("").New(req.InstanceType.String())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: instance type %s not found", err.Error(), req.InstanceType.String())
 	}
-	instance, err := sv.instSvc.Register(jobSpec, jobScheduledTime, instanceType)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of job %s", err.Error(), req.GetJobName())
+
+	var namespaceSpec models.NamespaceSpec
+	var jobRun models.JobRun
+	if req.JobrunId == "" {
+		var jobSpec models.JobSpec
+		// a scheduled trigger instance, extract job run id if already present or create a new run
+		jobSpec, namespaceSpec, err = sv.jobSvc.GetByNameForProject(req.GetJobName(), projSpec)
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "%s: job %s not found", err.Error(), req.GetJobName())
+		}
+
+		jobRun, err = sv.runSvc.GetScheduledRun(namespaceSpec, jobSpec, req.GetScheduledAt().AsTime())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: failed to initialize scheduled run of job %s", err.Error(), req.GetJobName())
+		}
+	} else {
+		// must be manual triggered job run
+		jobRunID, err := uuid.Parse(req.JobrunId)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "%s: failed to parse uuid of job %s", err.Error(), req.JobrunId)
+		}
+		jobRun, namespaceSpec, err = sv.runSvc.GetByID(jobRunID)
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "%s: failed to find scheduled run of job %s", err.Error(), req.JobrunId)
+		}
 	}
-	envMap, fileMap, err := sv.instSvc.Compile(namespaceSpec, jobSpec, instance, instanceType, req.InstanceName)
+
+	instance, err := sv.runSvc.Register(namespaceSpec, jobRun, instanceType, req.GetInstanceName())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of jobrun %s", err.Error(), jobRun)
+	}
+	envMap, fileMap, err := sv.runSvc.Compile(namespaceSpec, jobRun, instance)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
 
+	jobProto, err := sv.adapter.ToJobProto(jobRun.Spec)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobRun.Spec.Name)
+	}
 	instanceProto, err := sv.adapter.ToInstanceProto(instance)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt instance for job %s", err.Error(), jobSpec.Name)
+		return nil, status.Errorf(codes.Internal, "%s: cannot adapt instance for job %s", err.Error(), jobRun.Spec.Name)
 	}
 	return &pb.RegisterInstanceResponse{
 		Project:   sv.adapter.ToProjectProto(projSpec),
@@ -759,7 +753,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayDryRunResponse, error) {
+func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayRequest) (*pb.DryRunReplayResponse, error) {
 	replayWorkerRequest, err := sv.parseReplayRequest(req)
 	if err != nil {
 		return nil, err
@@ -774,7 +768,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while preparing replay dry run response: %v", err)
 	}
-	return &pb.ReplayDryRunResponse{
+	return &pb.DryRunReplayResponse{
 		Success:  true,
 		Response: node,
 	}, nil
@@ -900,6 +894,33 @@ func (sv *RuntimeServiceServer) getJobSpec(projSpec models.ProjectSpec, namespac
 	return jobSpec, nil
 }
 
+func (sv *RuntimeServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest) (*pb.RunJobResponse, error) {
+	// create job run in db
+	projSpec, err := sv.projectRepoFactory.New().GetByName(req.ProjectName)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.ProjectName)
+	}
+
+	namespaceSpec, err := sv.namespaceRepoFactory.New(projSpec).GetByName(req.Namespace)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.Namespace)
+	}
+
+	var jobSpecs []models.JobSpec
+	for _, jobSpecProto := range req.Specifications {
+		jobSpec, err := sv.adapter.FromJobProto(jobSpecProto)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobSpecProto.GetName())
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+	if err := sv.jobSvc.Run(ctx, namespaceSpec, jobSpecs, nil); err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to queue job for execution %s", err.Error(), req.ProjectName)
+	}
+
+	return &pb.RunJobResponse{}, nil
+}
+
 func NewRuntimeServiceServer(
 	l log.Logger,
 	version string,
@@ -911,7 +932,7 @@ func NewRuntimeServiceServer(
 	secretRepoFactory SecretRepoFactory,
 	adapter ProtoAdapter,
 	progressObserver progress.Observer,
-	instSvc models.InstanceService,
+	instSvc models.RunService,
 	scheduler models.SchedulerUnit,
 ) *RuntimeServiceServer {
 	return &RuntimeServiceServer{
@@ -924,7 +945,7 @@ func NewRuntimeServiceServer(
 		projectRepoFactory:   projectRepoFactory,
 		namespaceRepoFactory: namespaceRepoFactory,
 		progressObserver:     progressObserver,
-		instSvc:              instSvc,
+		runSvc:               instSvc,
 		scheduler:            scheduler,
 		secretRepoFactory:    secretRepoFactory,
 	}
@@ -937,11 +958,11 @@ type jobSyncObserver struct {
 
 func (obs *jobSyncObserver) Notify(e progress.Event) {
 	switch evt := e.(type) {
-	case *job.EventJobUpload:
+	case *models.EventJobUpload:
 		resp := &pb.DeployJobSpecificationResponse{
 			Success: true,
 			Ack:     true,
-			JobName: evt.Job.Name,
+			JobName: evt.Name,
 		}
 		if evt.Err != nil {
 			resp.Success = false
@@ -949,9 +970,9 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 		}
 
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "job name", evt.Job.Name, "error", err)
+			obs.log.Error("failed to send deploy spec ack", "job name", evt.Name, "error", err)
 		}
-	case *job.EventJobRemoteDelete:
+	case *models.EventJobRemoteDelete:
 		resp := &pb.DeployJobSpecificationResponse{
 			JobName: evt.Name,
 			Message: evt.String(),

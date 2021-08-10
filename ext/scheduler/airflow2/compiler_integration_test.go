@@ -1,11 +1,13 @@
-package airflow2
+package airflow2_test
 
 import (
 	_ "embed"
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/ext/scheduler/airflow2"
+	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
+
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +16,7 @@ import (
 //go:embed resources/expected_compiled_template.py
 var CompiledTemplate []byte
 
-func TestCompiler(t *testing.T) {
+func TestCompilerIntegration(t *testing.T) {
 	execUnit := new(mock.BasePlugin)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       "bq",
@@ -182,12 +184,11 @@ func TestCompiler(t *testing.T) {
 
 	t.Run("Compile", func(t *testing.T) {
 		t.Run("should compile basic template without any error", func(t *testing.T) {
-			scheduler := NewScheduler(nil, nil)
-			com := job.NewCompiler(
-				scheduler.GetTemplate(),
+			scheduler := airflow2.NewScheduler(nil, nil, nil)
+			com := compiler.NewCompiler(
 				"http://airflow.example.io",
 			)
-			job, err := com.Compile(namespaceSpec, spec)
+			job, err := com.Compile(scheduler.GetTemplate(), namespaceSpec, spec)
 			assert.Nil(t, err)
 			assert.Equal(t, string(CompiledTemplate), string(job.Contents))
 		})

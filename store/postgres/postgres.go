@@ -1,3 +1,9 @@
+// postgres implementation relies on gorm for queries which is very very
+// inefficient at the moment, we are trading convenience with performance
+// for example in lot of select stmts, we pull all related relations as well
+// even when we don't really need to, most of the times these relation
+// queries even in update gets executed for no reason even if user didn't
+// intend to update them.
 package postgres
 
 import (

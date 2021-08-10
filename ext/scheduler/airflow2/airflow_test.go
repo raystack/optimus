@@ -10,13 +10,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
+	"gocloud.dev/blob"
+
+	"gocloud.dev/blob/memblob"
+
 	"github.com/odpf/optimus/job"
 
-	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
-	mocked "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,70 +37,235 @@ func (m *MockHttpClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{}, nil
 }
 
-type MockedObjectWriterFactory struct {
+type MockedBucketFactory struct {
 	mock.Mock
 }
 
-func (m *MockedObjectWriterFactory) New(ctx context.Context, path, writerSecret string) (store.ObjectWriter, error) {
-	args := m.Called(ctx, path, writerSecret)
-	return args.Get(0).(store.ObjectWriter), args.Error(1)
+func (m *MockedBucketFactory) New(ctx context.Context, proj models.ProjectSpec) (airflow2.Bucket, error) {
+	args := m.Called(ctx, proj)
+	return args.Get(0).(airflow2.Bucket), args.Error(1)
+}
+
+type MockedBucket struct {
+	mock.Mock
+	// inmemory
+	bucket *blob.Bucket
+}
+
+func (m *MockedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error {
+	_ = m.Called(ctx, key, p, opts)
+	return m.bucket.WriteAll(ctx, key, p, opts)
+}
+
+func (m *MockedBucket) ReadAll(ctx context.Context, key string) ([]byte, error) {
+	_ = m.Called(ctx, key)
+	return m.bucket.ReadAll(ctx, key)
+}
+
+func (m *MockedBucket) List(opts *blob.ListOptions) *blob.ListIterator {
+	_ = m.Called(opts)
+	return m.bucket.List(opts)
+}
+
+func (m *MockedBucket) Delete(ctx context.Context, key string) error {
+	_ = m.Called(ctx, key)
+	return m.bucket.Delete(ctx, key)
+}
+
+func (m *MockedBucket) Close() error {
+	return nil
+}
+
+type MockedCompiler struct {
+	mock.Mock
+}
+
+func (srv *MockedCompiler) Compile(template []byte, namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.Job, error) {
+	args := srv.Called(template, namespace, jobSpec)
+	return args.Get(0).(models.Job), args.Error(1)
 }
 
 func TestAirflow2(t *testing.T) {
 	ctx := context.Background()
+	proj := models.ProjectSpec{
+		Name: "proj-name",
+		Config: map[string]string{
+			models.ProjectStoragePathKey: "gs://mybucket/hello",
+		},
+		Secret: []models.ProjectSecretItem{
+			{
+				Name:  models.ProjectSecretStorageKey,
+				Value: "test-secret",
+			},
+		},
+	}
+	nsUUID := uuid.Must(uuid.NewRandom())
+	ns := models.NamespaceSpec{
+		ID:          nsUUID,
+		Name:        "local-namespace",
+		ProjectSpec: proj,
+	}
+	jobSpecs := []models.JobSpec{
+		{
+			Name: "job-1",
+		},
+	}
 	t.Run("Bootstrap", func(t *testing.T) {
 		t.Run("should successfully bootstrap for gcs buckets", func(t *testing.T) {
-			var out bytes.Buffer
-			wc := new(mocked.WriteCloser)
-			defer wc.AssertExpectations(t)
-			wc.On("Write").Return(&out, nil)
-			wc.On("Close").Return(nil)
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			defer mockBucket.AssertExpectations(t)
 
-			ow := new(mocked.ObjectWriter)
-			defer ow.AssertExpectations(t)
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
 
-			owf := new(MockedObjectWriterFactory)
-			owf.On("New", ctx, "gs://mybucket/hello", "test-secret").Return(ow, nil)
-			defer owf.AssertExpectations(t)
-
-			bucket := "mybucket"
-			objectPath := fmt.Sprintf("hello/%s/%s", "dags", "__lib.py")
-			ow.On("NewWriter", ctx, bucket, objectPath).Return(wc, nil)
-
-			air := airflow2.NewScheduler(owf, nil)
-			err := air.Bootstrap(context.Background(), models.ProjectSpec{
-				Name: "proj-name",
-				Config: map[string]string{
-					models.ProjectStoragePathKey: "gs://mybucket/hello",
-				},
-				Secret: []models.ProjectSecretItem{
-					{
-						Name:  models.ProjectSecretStorageKey,
-						Value: "test-secret",
-					},
-				},
-			})
+			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
+			mockBucket.On("WriteAll", ctx, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
+			err := air.Bootstrap(ctx, proj)
 			assert.Nil(t, err)
-		})
-		t.Run("should fail if no storage config is set", func(t *testing.T) {
-			air := airflow2.NewScheduler(nil, nil)
-			err := air.Bootstrap(ctx, models.ProjectSpec{
-				Name:   "proj-name",
-				Config: map[string]string{},
-			})
-			assert.NotNil(t, err)
-		})
-		t.Run("should fail for unsupported storage interfaces", func(t *testing.T) {
-			air := airflow2.NewScheduler(nil, nil)
-			err := air.Bootstrap(ctx, models.ProjectSpec{
-				Name: "proj-name",
-				Config: map[string]string{
-					models.ProjectStoragePathKey: "xxx://mybucket/dags",
-				},
-			})
-			assert.NotNil(t, err)
+
+			storedBytes, err := inMemBlob.ReadAll(ctx, "dags/__lib.py")
+			assert.Nil(t, err)
+			assert.Equal(t, airflow2.SharedLib, storedBytes)
 		})
 	})
+	t.Run("DeployJobs", func(t *testing.T) {
+		t.Run("should successfully deploy jobs to blob buckets", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
+
+			compiler := new(MockedCompiler)
+			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
+			defer compiler.AssertExpectations(t)
+
+			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{
+				Name:     jobSpecs[0].Name,
+				Contents: []byte("job-1-compiled"),
+			}, nil)
+
+			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			err := air.DeployJobs(ctx, ns, jobSpecs, nil)
+			assert.Nil(t, err)
+
+			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name))
+			assert.Nil(t, err)
+			assert.Equal(t, []byte("job-1-compiled"), storedBytes)
+		})
+	})
+	t.Run("DeleteJobs", func(t *testing.T) {
+		t.Run("should successfully delete jobs from blob buckets", func(t *testing.T) {
+			jobKey := fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)
+
+			inMemBlob := memblob.OpenBucket(nil)
+			_ = inMemBlob.WriteAll(ctx, jobKey, []byte("hello"), nil)
+
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
+			err := air.DeleteJobs(ctx, ns, []string{"job-1"}, nil)
+			assert.Nil(t, err)
+
+			jobStillExist, err := inMemBlob.Exists(ctx, jobKey)
+			assert.Nil(t, err)
+			assert.Equal(t, false, jobStillExist)
+		})
+		t.Run("should silently ignore delete operation on missing job from blob buckets", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
+			err := air.DeleteJobs(ctx, ns, []string{"job-1"}, nil)
+			assert.Nil(t, err)
+		})
+	})
+	t.Run("ListJobs", func(t *testing.T) {
+		t.Run("should only list item names if asked to skip content", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			_ = inMemBlob.WriteAll(ctx, "file1.py", []byte("test1"), nil)
+			_ = inMemBlob.WriteAll(ctx, "file2.py", []byte("test2"), nil)
+			mockBucket.On("List", &blob.ListOptions{})
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
+			respJobs, err := air.ListJobs(ctx, ns, models.SchedulerListOptions{OnlyName: true})
+			assert.Nil(t, err)
+			assert.Equal(t, 2, len(respJobs))
+		})
+		t.Run("should only list item names if extension matches requested job", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			_ = inMemBlob.WriteAll(ctx, "file1.py", []byte("test1"), nil)
+			_ = inMemBlob.WriteAll(ctx, "file2.json", []byte("test2"), nil)
+			mockBucket.On("List", &blob.ListOptions{})
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
+			respJobs, err := air.ListJobs(ctx, ns, models.SchedulerListOptions{OnlyName: true})
+			assert.Nil(t, err)
+			assert.Equal(t, 1, len(respJobs))
+		})
+		t.Run("should list item with name and content correctly", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			_ = inMemBlob.WriteAll(ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension), []byte("test1"), nil)
+			_ = inMemBlob.WriteAll(ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension), []byte("test2"), nil)
+			mockBucket.On("List", &blob.ListOptions{})
+			mockBucket.On("ReadAll", ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension))
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			defer mockBucketFac.AssertExpectations(t)
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
+			respJobs, err := air.ListJobs(ctx, ns, models.SchedulerListOptions{})
+			assert.Nil(t, err)
+			assert.Equal(t, 2, len(respJobs))
+		})
+	})
+
 	t.Run("GetJobStatus", func(t *testing.T) {
 		host := "http://airflow.example.io"
 
@@ -136,7 +305,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
+			air := airflow2.NewScheduler(nil, client, nil)
 			status, err := air.GetJobStatus(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -166,7 +335,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
+			air := airflow2.NewScheduler(nil, client, nil)
 			status, err := air.GetJobStatus(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -184,7 +353,7 @@ func TestAirflow2(t *testing.T) {
 			assert.Len(t, status, 0)
 		})
 		t.Run("should fail if not scheduler secret registered", func(t *testing.T) {
-			air := airflow2.NewScheduler(nil, nil)
+			air := airflow2.NewScheduler(nil, nil, nil)
 			_, err := air.GetJobStatus(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -213,7 +382,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
+			air := airflow2.NewScheduler(nil, client, nil)
 			err := air.Clear(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -241,7 +410,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
+			air := airflow2.NewScheduler(nil, client, nil)
 			err := air.Clear(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -258,7 +427,7 @@ func TestAirflow2(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 		t.Run("should fail if not scheduler secret registered", func(t *testing.T) {
-			air := airflow2.NewScheduler(nil, nil)
+			air := airflow2.NewScheduler(nil, nil, nil)
 			err := air.Clear(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
@@ -268,7 +437,7 @@ func TestAirflow2(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	})
-	t.Run("GetDagRunStatus", func(t *testing.T) {
+	t.Run("GetJobRunStatus", func(t *testing.T) {
 		host := "http://airflow.example.io"
 		dagStatusBatchUrl := "api/v1/dags/~/dagRuns/list"
 		startDate := "2021-05-20"
@@ -322,11 +491,11 @@ func TestAirflow2(t *testing.T) {
 			expectedStatus := []models.JobStatus{
 				{
 					ScheduledAt: expectedExecutionTime0,
-					State:       models.JobStatusStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: expectedExecutionTime1,
-					State:       models.JobStatusStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 			}
 
@@ -340,8 +509,8 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
-			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.Nil(t, err)
 			assert.Equal(t, expectedStatus, status)
@@ -393,15 +562,15 @@ func TestAirflow2(t *testing.T) {
 			expectedStatus := []models.JobStatus{
 				{
 					ScheduledAt: expectedExecutionTime0,
-					State:       models.JobStatusStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: expectedExecutionTime1,
-					State:       models.JobStatusStateFailed,
+					State:       models.RunStateFailed,
 				},
 				{
 					ScheduledAt: expectedExecutionTime2,
-					State:       models.JobStatusStateRunning,
+					State:       models.RunStateRunning,
 				},
 			}
 
@@ -420,8 +589,8 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
-			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.Nil(t, err)
 			assert.Equal(t, expectedStatus, status)
@@ -438,8 +607,8 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			air := airflow2.NewScheduler(nil, client)
-			status, err := air.GetDagRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), fmt.Sprintf("failed to fetch airflow dag runs from %s", dagStatusBatchUrl))
