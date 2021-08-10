@@ -30,6 +30,7 @@ module.exports = {
         "guides/create-bigquery-dataset",
         "guides/create-bigquery-table",
         "guides/create-bigquery-view",
+        "guides/create-bigquery-external-table",
         "guides/organising-specifications",
         "guides/optimus-serve",
         "guides/task-bq2bq"
