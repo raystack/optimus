@@ -1,6 +1,12 @@
 # Optimus
 
-Optimus is an easy-to-use and fast workflow orchestrator with data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform their data by writing SQL queries and YAML configuration while Optimus handles dependency management, scheduling, and all other aspects of running transformation jobs at scale.
+[![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)](https://github.com/odpf/optimus/actions/workflows/test.yml)
+[![build workflow](https://github.com/odpf/optimus/actions/workflows/build.yml/badge.svg)](https://github.com/odpf/optimus/actions/workflows/build.yml)
+[![Coverage Status](https://coveralls.io/repos/github/odpf/optimus/badge.svg?branch=main)](https://coveralls.io/github/odpf/optimus?branch=main)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](https://github.com/odpf/optimus/blob/main/LICENSE)
+[![Version](https://img.shields.io/github/v/release/odpf/optimus?logo=semantic-release)](https://github.com/odpf/optimus/releases)
+
+Optimus is an easy-to-use, reliable, and performant workflow orchestrator for data transformation, data modeling, pipelines, and data quality management. It enables data analysts and engineers to transform their data by writing simple SQL queries and YAML configuration while Optimus handles dependency management, scheduling and all other aspects of running transformation jobs at scale.
 
 <p align="center" class="mt-5" style="margin-top:30px"><img src="https://github.com/odpf/optimus/raw/main/docs/static/img/optimus.svg" /></p>
 
@@ -59,10 +65,10 @@ Use "optimus [command] --help" for more information about a command.
 ## Documentation
 Explore the following resources to get started with Optimus:
 
-* [Guides](https://odpf.github.io/optimus/guides/create-job/)
-* [Concepts](https://odpf.github.io/optimus/concepts/overview/)
-* [Reference](https://odpf.github.io/optimus/reference/api/)
-* [Contribute](https://odpf.github.io/optimus/contribute/contributing/)
+* [Guides](https://odpf.github.io/optimus/guides/create-job/) that provides guidance on using Optimus.
+* [Concepts](https://odpf.github.io/optimus/concepts/overview/) describes all important Optimus concepts.
+* [Reference](https://odpf.github.io/optimus/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
+* [Contribute](https://odpf.github.io/optimus/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
 
 ## Running locally 
 
@@ -95,9 +101,11 @@ in `.optimus.yaml` file or set as environment variable. Read more about it in [g
 Optimus is currently undergoing heavy development with frequent, breaking API changes. The current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs is appreciated). The public API could change without a major version update before the v1.0.0 release.
 
 ## Contribute
-
 Development of Optimus happens in the open on GitHub, and we are grateful to the community for contributing bug fixes and improvements. Read below to learn how you can take part in improving Optimus.
 
-Read our [contributing guide](https://github.com/odpf/optimus/blob/main/CONTRIBUTING.md) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
+Read our [contributing guide](https://github.com/odpf/optimus/blob/main/CONTRIBUTING.md to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
 
-To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs that have a relatively limited scope. This is a great place to get started.
+To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs which have a relatively limited scope. This is a great place to get started.
+
+## License
+Optimus is [Apache 2.0](LICENSE) licensed
