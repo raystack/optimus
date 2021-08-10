@@ -22,10 +22,10 @@ Optimus is an easy-to-use, reliable, and performant workflow orchestrator for da
 
 - **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc, Allowing users to write complex transformation logic.
 
-* **Cross tenant dependency:** Optimus is a multi-tenant service. If there are two tenants registered, service A and service B, then service B can write queries referencing service A as a source and, Optimus will handle this dependency as well.
-* **Hooks:** Optimus provides hooks for post-transformation logic. e,g. You can sink BigQuery tables to Kafka.
-* **Extensibility:** Optimus supports Python transformation and allows for writing custom plugins. 
-* **Workflows:** Optimus provides industry-proven workflows using git-based specification management and REST/GRPC based specification management for data warehouse management.
+- **Cross tenant dependency:** Optimus is a multi-tenant service. If there are two tenants registered, service A and service B, then service B can write queries referencing service A as a source and, Optimus will handle this dependency as well.
+- **Hooks:** Optimus provides hooks for post-transformation logic. e,g. You can sink BigQuery tables to Kafka.
+- **Extensibility:** Optimus supports Python transformation and allows for writing custom plugins. 
+- **Workflows:** Optimus provides industry-proven workflows using git-based specification management and REST/GRPC based specification management for data warehouse management.
 
 ## Usage
 
