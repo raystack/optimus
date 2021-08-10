@@ -12,15 +12,15 @@ Optimus is an easy-to-use, reliable, and performant workflow orchestrator for da
 
 ## Benefits
 
-- [ ] **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML-based configuration. 
+- **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML-based configuration. 
 
-- [ ] **Scheduling:** Optimus provides an efficient way to schedule your SQL transformation through a YAML-based configuration.
+- **Scheduling:** Optimus provides an efficient way to schedule your SQL transformation through a YAML-based configuration.
 
-- [ ] **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graph automatically instead of users defining their source and target dependencies in DAGs.
+- **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graph automatically instead of users defining their source and target dependencies in DAGs.
 
-- [ ] **Dry runs:** Before a SQL query is scheduled for transformation, during deployment, the query will be dry-run to make sure it passes basic sanity checks.
+- **Dry runs:** Before a SQL query is scheduled for transformation, during deployment, the query will be dry-run to make sure it passes basic sanity checks.
 
-- [ ] **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc, Allowing users to write complex transformation logic.
+- **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc, Allowing users to write complex transformation logic.
 
 * **Cross tenant dependency:** Optimus is a multi-tenant service. If there are two tenants registered, service A and service B, then service B can write queries referencing service A as a source and, Optimus will handle this dependency as well.
 * **Hooks:** Optimus provides hooks for post-transformation logic. e,g. You can sink BigQuery tables to Kafka.
