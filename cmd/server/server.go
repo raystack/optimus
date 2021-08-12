@@ -79,11 +79,19 @@ func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.Proj
 type replaySpecRepoRepository struct {
 	db             *gorm.DB
 	jobSpecRepoFac jobSpecRepoFactory
-	hash           models.ApplicationKey
 }
 
 func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
 	return postgres.NewReplayRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
+}
+
+type replayWorkerFact struct {
+	replaySpecRepoFac job.ReplaySpecRepoFactory
+	scheduler         models.SchedulerUnit
+}
+
+func (fac *replayWorkerFact) New() job.ReplayWorker {
+	return job.NewReplayWorker(fac.replaySpecRepoFac, fac.scheduler)
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -405,9 +413,11 @@ func Initialize(conf config.Provider) error {
 	replaySpecRepoFac := &replaySpecRepoRepository{
 		db:             dbConn,
 		jobSpecRepoFac: jobSpecRepoFac,
-		hash:           appHash,
 	}
-	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
+	replayWorkerFactory := &replayWorkerFact{
+		replaySpecRepoFac: replaySpecRepoFac,
+		scheduler:         models.Scheduler,
+	}
 	replayValidator := job.NewReplayValidator(models.Scheduler)
 	replaySyncer := job.NewReplaySyncer(
 		replaySpecRepoFac,
@@ -417,7 +427,7 @@ func Initialize(conf config.Provider) error {
 			return time.Now().UTC()
 		},
 	)
-	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+	replayManager := job.NewManager(replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
 		RunTimeout:    conf.GetServe().ReplayRunTimeoutSecs,

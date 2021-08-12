@@ -26,7 +26,11 @@ func TestReplayManager(t *testing.T) {
 			WorkerTimeout: 1000,
 		}
 
-		manager := job.NewManager(nil, nil, nil, replayManagerConfig, nil, nil, nil)
+		replayWorkerFact := new(mock.ReplayWorkerFactory)
+		replayWorkerFact.On("New").Return(new(mock.ReplayWorker))
+		defer replayWorkerFact.AssertExpectations(t)
+
+		manager := job.NewManager(replayWorkerFact, nil, nil, replayManagerConfig, nil, nil, nil)
 		err := manager.Close()
 		assert.Nil(t, err)
 	})
@@ -83,7 +87,11 @@ func TestReplayManager(t *testing.T) {
 			errMessage := "error while generating uuid"
 			uuidProvider.On("NewUUID").Return(objUUID, errors.New(errMessage))
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(new(mock.ReplayWorker))
+			defer replayWorkerFact.AssertExpectations(t)
+
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -118,13 +126,11 @@ func TestReplayManager(t *testing.T) {
 			}
 			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			replayWorker := new(mock.ReplayWorker)
-			defer replayValidator.AssertExpectations(t)
-			replayRequestToProcess := replayRequest
-			replayRequestToProcess.ID = objUUID
-			replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil)
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(new(mock.ReplayWorker))
+			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorker, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -144,7 +150,11 @@ func TestReplayManager(t *testing.T) {
 			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(job.ErrConflictedJobRun)
 			defer replayValidator.AssertExpectations(t)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, nil, replayValidator, nil)
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(new(mock.ReplayWorker))
+			defer replayWorkerFact.AssertExpectations(t)
+
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, nil, replayManagerConfig, nil, replayValidator, nil)
 
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Equal(t, err, job.ErrConflictedJobRun)
@@ -179,12 +189,16 @@ func TestReplayManager(t *testing.T) {
 			replayRepository.On("Insert", toInsertReplaySpec).Return(nil)
 
 			replayWorker := new(mock.ReplayWorker)
-			defer replayValidator.AssertExpectations(t)
 			replayRequestToProcess := replayRequest
 			replayRequestToProcess.ID = objUUID
 			replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil)
+			defer replayWorker.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorker, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(replayWorker)
+			defer replayWorkerFact.AssertExpectations(t)
+
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
 
