@@ -198,7 +198,13 @@ func TestReplayManager(t *testing.T) {
 			replayWorkerFact.On("New").Return(replayWorker)
 			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			syncer := new(mock.ReplaySyncer)
+			scheduler := new(mock.Scheduler)
+
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, job.ReplayManagerConfig{
+				NumWorkers:    1,
+				WorkerTimeout: time.Second * 5,
+			}, scheduler, replayValidator, syncer)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
 

@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	airflowSyncInterval = "@every 5m"
+	syncInterval = "@every 5m"
 )
 
 type ReplayManagerConfig struct {
@@ -57,14 +57,12 @@ type Manager struct {
 	// request queue, used by workers
 	requestQ chan models.ReplayRequest
 
-	//request worker
 	replayWorkerFactory ReplayWorkerFactory
-
-	replaySpecRepoFac ReplaySpecRepoFactory
-	scheduler         models.SchedulerUnit
-	replayValidator   ReplayValidator
-	replaySyncer      ReplaySyncer
-	syncerScheduler   *cron.Cron
+	replaySpecRepoFac   ReplaySpecRepoFactory
+	scheduler           models.SchedulerUnit
+	replayValidator     ReplayValidator
+	replaySyncer        ReplaySyncer
+	syncerScheduler     *cron.Cron
 
 	numBusyWorkers int32
 }
@@ -78,7 +76,6 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 	if err != nil {
 		return "", err
 	}
-
 	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayTree); err != nil {
 		return "", err
 	}
@@ -108,15 +105,8 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 		return "", err
 	}
 
-	// try sending the job request down the request queue
-	// if full return error indicating that we don't have capacity
-	// to process this request at the moment
-	select {
-	case m.requestQ <- reqInput:
-		return reqInput.ID.String(), nil
-	default:
-		return "", ErrRequestQueueFull
-	}
+	m.requestQ <- reqInput
+	return reqInput.ID.String(), nil
 }
 
 // start a worker goroutine that runs the replay in background
@@ -130,7 +120,6 @@ func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := worker.Process(ctx, reqInput); err != nil {
 			logger.E(errors.Wrap(err, "worker failed to process"))
-			cancelCtx()
 		}
 		cancelCtx()
 
@@ -140,6 +129,10 @@ func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 
 // SchedulerSyncer to sync for latest replay status
 func (m *Manager) SchedulerSyncer() {
+	if m.replaySyncer == nil {
+		return
+	}
+
 	logger.D("start synchronizing replays...")
 	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 	defer cancelCtx()
@@ -151,13 +144,7 @@ func (m *Manager) SchedulerSyncer() {
 
 // GetReplay using UUID
 func (m *Manager) GetReplay(replayUUID uuid.UUID) (models.ReplaySpec, error) {
-	replaySpecRepo := m.replaySpecRepoFac.New()
-	replaySpec, err := replaySpecRepo.GetByID(replayUUID)
-	if err != nil {
-		return models.ReplaySpec{}, err
-	}
-
-	return replaySpec, nil
+	return m.replaySpecRepoFac.New().GetByID(replayUUID)
 }
 
 // GetRunsStatus
@@ -185,7 +172,10 @@ func (m *Manager) Close() error {
 }
 
 func (m *Manager) Init() {
-	m.syncerScheduler.AddFunc(airflowSyncInterval, m.SchedulerSyncer)
+	_, err := m.syncerScheduler.AddFunc(syncInterval, m.SchedulerSyncer)
+	if err != nil {
+		logger.F(err)
+	}
 	m.syncerScheduler.Start()
 
 	logger.I("starting replay workers")
@@ -208,6 +198,7 @@ func NewManager(workerFact ReplayWorkerFactory, replaySpecRepoFac ReplaySpecRepo
 		scheduler:           scheduler,
 		replayValidator:     validator,
 		replaySyncer:        syncer,
+		numBusyWorkers:      0,
 		syncerScheduler: cron.New(cron.WithChain(
 			cron.SkipIfStillRunning(cron.DefaultLogger),
 		)),
