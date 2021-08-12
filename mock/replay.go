@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/job"
+
 	"github.com/odpf/optimus/core/tree"
 
 	"github.com/google/uuid"
@@ -83,6 +85,15 @@ func (rm *ReplayManager) GetRunStatus(ctx context.Context, projectSpec models.Pr
 	endDate time.Time, jobName string) ([]models.JobStatus, error) {
 	args := rm.Called(ctx, projectSpec, startDate, endDate, jobName)
 	return args.Get(0).([]models.JobStatus), args.Error(1)
+}
+
+type ReplayWorkerFactory struct {
+	mock.Mock
+}
+
+func (rm *ReplayWorkerFactory) New() job.ReplayWorker {
+	args := rm.Called()
+	return args.Get(0).(job.ReplayWorker)
 }
 
 type ReplayWorker struct {
