@@ -15,10 +15,6 @@ var (
 	ReplayStatusToValidate = []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted, models.ReplayStatusReplayed}
 )
 
-type ReplayValidator interface {
-	Validate(context.Context, store.ReplaySpecRepository, models.ReplayRequest, *tree.TreeNode) error
-}
-
 type Validator struct {
 	scheduler models.SchedulerUnit
 }
@@ -102,7 +98,9 @@ func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput 
 			return err
 		}
 		activeNodes := activeTree.GetAllNodes()
-		return checkAnyConflictedDags(activeNodes, reqReplayNodes)
+		if err = checkAnyConflictedDags(activeNodes, reqReplayNodes); err != nil {
+			return err
+		}
 	}
 	return nil
 }

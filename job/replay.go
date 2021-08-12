@@ -38,12 +38,7 @@ func (srv *Service) ReplayDryRun(replayRequest models.ReplayRequest) (*tree.Tree
 	}
 	replayRequest.JobSpecMap = jobSpecMap
 
-	rootInstance, err := prepareReplayExecutionTree(replayRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	return rootInstance, nil
+	return prepareReplayExecutionTree(replayRequest)
 }
 
 func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {

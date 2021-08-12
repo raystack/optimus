@@ -17,10 +17,6 @@ var (
 	ReplayMessageFailed  = "instance run failure found"
 )
 
-type ReplaySyncer interface {
-	Sync(context.Context, time.Duration) error
-}
-
 type Syncer struct {
 	replaySpecFactory  ReplaySpecRepoFactory
 	projectRepoFactory ProjectRepoFactory
@@ -79,7 +75,7 @@ func (s Syncer) syncTimedOutReplay(replaySpecRepo store.ReplaySpecRepository, re
 			Type:    ReplayRunTimeout,
 			Message: fmt.Sprintf("replay has been running since %s", replaySpec.CreatedAt.UTC().Format(TimestampLogFormat)),
 		}); updateStatusErr != nil {
-			logger.I(fmt.Sprintf("marking long running replay jobs as failed: %s", updateStatusErr))
+			logger.E(fmt.Sprintf("marking long running replay jobs as failed: %s", updateStatusErr))
 			return updateStatusErr
 		}
 	}
@@ -120,7 +116,7 @@ func updateCompletedReplays(stateSummary map[string]int, replaySpecRepo store.Re
 			Type:    models.ReplayStatusFailed,
 			Message: ReplayMessageFailed,
 		}); updateStatusErr != nil {
-			logger.I(fmt.Sprintf("marking replay as failed error: %s", updateStatusErr))
+			logger.E(fmt.Sprintf("marking replay as failed error: %s", updateStatusErr))
 			return updateStatusErr
 		}
 	} else if stateSummary[models.InstanceStateRunning] == 0 && stateSummary[models.InstanceStateFailed] == 0 && stateSummary[models.InstanceStateSuccess] > 0 {
@@ -128,9 +124,10 @@ func updateCompletedReplays(stateSummary map[string]int, replaySpecRepo store.Re
 			Type:    models.ReplayStatusSuccess,
 			Message: ReplayMessageSuccess,
 		}); updateStatusErr != nil {
-			logger.I(fmt.Sprintf("marking replay as success error: %s", updateStatusErr))
+			logger.E(fmt.Sprintf("marking replay as success error: %s", updateStatusErr))
 			return updateStatusErr
 		}
+		logger.I(fmt.Sprintf("successfully marked replay %s as success", replayID))
 	}
 	return nil
 }

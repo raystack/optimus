@@ -6,6 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/store"
+
 	"github.com/robfig/cron/v3"
 
 	"github.com/google/uuid"
@@ -41,6 +44,14 @@ type ReplayManagerConfig struct {
 
 type ReplayWorkerFactory interface {
 	New() ReplayWorker
+}
+
+type ReplaySyncer interface {
+	Sync(context.Context, time.Duration) error
+}
+
+type ReplayValidator interface {
+	Validate(context.Context, store.ReplaySpecRepository, models.ReplayRequest, *tree.TreeNode) error
 }
 
 // Manager for replaying operation(s).
@@ -97,7 +108,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 	}
 
 	// no need to save this request if all workers are busy
-	if int(m.numBusyWorkers) == m.config.NumWorkers {
+	if int(atomic.LoadInt32(&m.numBusyWorkers)) == m.config.NumWorkers {
 		return "", ErrRequestQueueFull
 	}
 
@@ -116,7 +127,7 @@ func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 	for reqInput := range m.requestQ {
 		atomic.AddInt32(&m.numBusyWorkers, 1)
 
-		logger.I("worker picked up the request for ", reqInput)
+		logger.I("worker picked up the request for ", reqInput.ID)
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := worker.Process(ctx, reqInput); err != nil {
 			logger.E(errors.Wrap(err, "worker failed to process"))
@@ -139,7 +150,7 @@ func (m *Manager) SchedulerSyncer() {
 	if err := m.replaySyncer.Sync(ctx, m.config.RunTimeout); err != nil {
 		logger.E(errors.Wrap(err, "syncer failed to process"))
 	}
-	logger.I("replays synced")
+	logger.D("replays synced")
 }
 
 // GetReplay using UUID

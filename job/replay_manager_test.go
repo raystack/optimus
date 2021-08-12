@@ -36,7 +36,7 @@ func TestReplayManager(t *testing.T) {
 	})
 	t.Run("Replay", func(t *testing.T) {
 		replayManagerConfig := job.ReplayManagerConfig{
-			NumWorkers:    5,
+			NumWorkers:    3,
 			WorkerTimeout: 1000,
 		}
 		dagStartTime := time.Date(2020, time.Month(4), 5, 0, 0, 0, 0, time.UTC)
@@ -207,6 +207,61 @@ func TestReplayManager(t *testing.T) {
 			}, scheduler, replayValidator, syncer)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+		t.Run("should throw an error if workers are busy", func(t *testing.T) {
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayValidator := new(mock.ReplayValidator)
+			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(nil).Times(4)
+			defer replayValidator.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+			objUUID := uuid.Must(uuid.NewRandom())
+			uuidProvider.On("NewUUID").Return(objUUID, nil).Times(4)
+
+			toInsertReplaySpec := &models.ReplaySpec{
+				ID:        objUUID,
+				Job:       jobSpec,
+				StartDate: startDate,
+				EndDate:   endDate,
+				Status:    models.ReplayStatusAccepted,
+			}
+			replayRepository.On("Insert", toInsertReplaySpec).Return(nil).Times(3)
+
+			replayWorker := new(mock.ReplayWorker)
+			replayRequestToProcess := replayRequest
+			replayRequestToProcess.ID = objUUID
+			replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil).Times(3)
+			defer replayWorker.AssertExpectations(t)
+
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(replayWorker).Times(replayManagerConfig.NumWorkers)
+			defer replayWorkerFact.AssertExpectations(t)
+
+			syncer := new(mock.ReplaySyncer)
+			scheduler := new(mock.Scheduler)
+
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, scheduler, replayValidator, syncer)
+			_, err := replayManager.Replay(ctx, replayRequest)
+			assert.Nil(t, err)
+
+			_, err = replayManager.Replay(ctx, replayRequest)
+			assert.Nil(t, err)
+
+			_, err = replayManager.Replay(ctx, replayRequest)
+			assert.Nil(t, err)
+
+			_, err = replayManager.Replay(ctx, replayRequest)
+			assert.Equal(t, job.ErrRequestQueueFull, err)
 
 			err = replayManager.Close()
 			assert.Nil(t, err)

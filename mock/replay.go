@@ -101,6 +101,8 @@ type ReplayWorker struct {
 }
 
 func (rm *ReplayWorker) Process(ctx context.Context, replayRequest models.ReplayRequest) error {
+	//mock processing time for concurrent replay call testing
+	time.Sleep(200 * time.Millisecond)
 	args := rm.Called(ctx, replayRequest)
 	return args.Error(0)
 }

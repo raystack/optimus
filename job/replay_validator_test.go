@@ -75,17 +75,45 @@ func TestReplayValidator(t *testing.T) {
 			assert.Contains(t, err.Error(), errMessage)
 		})
 		t.Run("should throw an error if conflicting replays found", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeJobUUID := uuid.Must(uuid.NewRandom())
-			activeJobSpec := models.JobSpec{
-				ID:       activeJobUUID,
-				Name:     "job-name",
-				Schedule: schedule,
-			}
 			activeReplaySpec := []models.ReplaySpec{
 				{
-					ID:        activeReplayUUID,
-					Job:       activeJobSpec,
+					ID: uuid.Must(uuid.NewRandom()),
+					Job: models.JobSpec{
+						ID:       uuid.Must(uuid.NewRandom()),
+						Name:     "job-name",
+						Schedule: schedule,
+					},
+					StartDate: startDate,
+					EndDate:   endDate,
+					Status:    models.ReplayStatusInProgress,
+				},
+			}
+
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+
+			scheduler := new(mock.Scheduler)
+			defer scheduler.AssertExpectations(t)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+
+			replayValidator := job.NewReplayValidator(scheduler)
+			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
+
+			assert.Equal(t, err, job.ErrConflictedJobRun)
+		})
+		t.Run("should throw an error if multiple replays are active and conflicting replays found", func(t *testing.T) {
+			activeReplaySpec := []models.ReplaySpec{
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       jobSpec2,
+					StartDate: startDate,
+					EndDate:   endDate,
+					Status:    models.ReplayStatusInProgress,
+				},
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       jobSpec,
 					StartDate: startDate,
 					EndDate:   endDate,
 					Status:    models.ReplayStatusInProgress,
