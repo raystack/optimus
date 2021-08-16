@@ -111,24 +111,24 @@ func (rm *ReplayWorkerFactory) New() job.ReplayWorker {
 
 type ReplayWorker struct {
 	mock.Mock
-	Finish chan bool
+	finish chan bool
 }
 
 func NewReplayWorker() *ReplayWorker {
 	return &ReplayWorker{
-		Finish: make(chan bool, 0),
+		finish: make(chan bool, 0),
 	}
 }
 
 func (rm *ReplayWorker) Process(ctx context.Context, replayRequest models.ReplayRequest) error {
 	//mock processing time for concurrent replay call testing
 	args := rm.Called(ctx, replayRequest)
-	<-rm.Finish
+	<-rm.finish
 	return args.Error(0)
 }
 
 func (rm *ReplayWorker) Close() error {
-	close(rm.Finish)
+	close(rm.finish)
 	return nil
 }
 

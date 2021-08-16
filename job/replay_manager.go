@@ -75,7 +75,7 @@ type Manager struct {
 	replaySyncer        ReplaySyncer
 	syncerScheduler     *cron.Cron
 
-	numBusyWorkers int32
+	workerCapacity int32
 }
 
 // Replay a request asynchronously, returns a replay id that can
@@ -90,16 +90,13 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayTree); err != nil {
 		return "", err
 	}
-
-	uuidOb, err := m.uuidProvider.NewUUID()
-	if err != nil {
+	if reqInput.ID, err = m.uuidProvider.NewUUID(); err != nil {
 		return "", err
 	}
-	reqInput.ID = uuidOb
 
 	// save replay request and mark status as accepted
 	replay := models.ReplaySpec{
-		ID:            uuidOb,
+		ID:            reqInput.ID,
 		Job:           reqInput.Job,
 		StartDate:     reqInput.Start,
 		EndDate:       reqInput.End,
@@ -107,25 +104,30 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 		ExecutionTree: replayTree,
 	}
 
-	// no need to save this request if all workers are busy
-	if int(atomic.LoadInt32(&m.numBusyWorkers)) == m.config.NumWorkers {
-		return "", ErrRequestQueueFull
-	}
-
+	// could get cancelled later if queue is full
 	if err = replaySpecRepo.Insert(&replay); err != nil {
 		return "", err
 	}
 
-	m.requestQ <- reqInput
-	return reqInput.ID.String(), nil
+	select {
+	case m.requestQ <- reqInput:
+		return reqInput.ID.String(), nil
+	default:
+		// all workers busy, mark the inserted request as cancelled
+		_ = replaySpecRepo.UpdateStatus(reqInput.ID, models.ReplayStatusCancelled, models.ReplayMessage{
+			Type:    models.ReplayStatusCancelled,
+			Message: ErrRequestQueueFull.Error(),
+		})
+		return "", ErrRequestQueueFull
+	}
 }
 
 // start a worker goroutine that runs the replay in background
 func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 	defer m.wg.Done()
-
+	atomic.AddInt32(&m.workerCapacity, 1)
 	for reqInput := range m.requestQ {
-		atomic.AddInt32(&m.numBusyWorkers, 1)
+		atomic.AddInt32(&m.workerCapacity, -1)
 
 		logger.I("worker picked up the request for ", reqInput.ID)
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
@@ -134,16 +136,12 @@ func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 		}
 		cancelCtx()
 
-		atomic.AddInt32(&m.numBusyWorkers, -1)
+		atomic.AddInt32(&m.workerCapacity, 1)
 	}
 }
 
 // SchedulerSyncer to sync for latest replay status
 func (m *Manager) SchedulerSyncer() {
-	if m.replaySyncer == nil {
-		return
-	}
-
 	logger.D("start synchronizing replays...")
 	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 	defer cancelCtx()
@@ -171,7 +169,6 @@ func (m *Manager) Close() error {
 		//stop accepting any more requests
 		close(m.requestQ)
 	}
-
 	//wait for request worker to finish
 	m.wg.Wait()
 
@@ -183,17 +180,27 @@ func (m *Manager) Close() error {
 }
 
 func (m *Manager) Init() {
-	_, err := m.syncerScheduler.AddFunc(syncInterval, m.SchedulerSyncer)
-	if err != nil {
-		logger.F(err)
+	if m.replaySyncer != nil {
+		_, err := m.syncerScheduler.AddFunc(syncInterval, m.SchedulerSyncer)
+		if err != nil {
+			logger.F(err)
+		}
+		m.syncerScheduler.Start()
 	}
-	m.syncerScheduler.Start()
 
-	logger.I("starting replay workers")
+	logger.I("starting replay workers ", m.config.NumWorkers)
 	for i := 0; i < m.config.NumWorkers; i++ {
 		m.wg.Add(1)
 		worker := m.replayWorkerFactory.New()
 		go m.spawnServiceWorker(worker)
+	}
+
+	// wait until all workers are ready
+	for {
+		if int(atomic.LoadInt32(&m.workerCapacity)) == m.config.NumWorkers {
+			break
+		}
+		time.Sleep(time.Millisecond * 50)
 	}
 }
 
@@ -203,13 +210,13 @@ func NewManager(workerFact ReplayWorkerFactory, replaySpecRepoFac ReplaySpecRepo
 	mgr := &Manager{
 		replayWorkerFactory: workerFact,
 		config:              config,
-		requestQ:            make(chan models.ReplayRequest, 0),
+		requestQ:            make(chan models.ReplayRequest),
 		replaySpecRepoFac:   replaySpecRepoFac,
 		uuidProvider:        uuidProvider,
 		scheduler:           scheduler,
 		replayValidator:     validator,
 		replaySyncer:        syncer,
-		numBusyWorkers:      0,
+		workerCapacity:      0,
 		syncerScheduler: cron.New(cron.WithChain(
 			cron.SkipIfStillRunning(cron.DefaultLogger),
 		)),
