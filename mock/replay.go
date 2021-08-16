@@ -87,6 +87,19 @@ func (rm *ReplayManager) GetRunStatus(ctx context.Context, projectSpec models.Pr
 	return args.Get(0).([]models.JobStatus), args.Error(1)
 }
 
+type ReplayWorkerFactoryIndexed struct {
+	mock.Mock
+	Workers []interface{}
+	times   int
+}
+
+func (rm *ReplayWorkerFactoryIndexed) New() job.ReplayWorker {
+	w := rm.Workers[rm.times]
+	rm.times++
+	rm.Called()
+	return w.(job.ReplayWorker)
+}
+
 type ReplayWorkerFactory struct {
 	mock.Mock
 }
@@ -98,13 +111,25 @@ func (rm *ReplayWorkerFactory) New() job.ReplayWorker {
 
 type ReplayWorker struct {
 	mock.Mock
+	Finish chan bool
+}
+
+func NewReplayWorker() *ReplayWorker {
+	return &ReplayWorker{
+		Finish: make(chan bool, 0),
+	}
 }
 
 func (rm *ReplayWorker) Process(ctx context.Context, replayRequest models.ReplayRequest) error {
 	//mock processing time for concurrent replay call testing
-	time.Sleep(200 * time.Millisecond)
 	args := rm.Called(ctx, replayRequest)
+	<-rm.Finish
 	return args.Error(0)
+}
+
+func (rm *ReplayWorker) Close() error {
+	close(rm.Finish)
+	return nil
 }
 
 type ReplayValidator struct {
