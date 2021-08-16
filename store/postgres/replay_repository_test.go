@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/mock"
@@ -15,12 +17,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func treeIsEqual(treeNode *tree.TreeNode, treeNodeComparator *tree.TreeNode) bool {
+	if treeNode.Data.GetName() != treeNodeComparator.Data.GetName() {
+		return false
+	}
+	for idx, dependent := range treeNode.Dependents {
+		if !treeIsEqual(dependent, treeNodeComparator.Dependents[idx]) {
+			return false
+		}
+	}
+	for idx, run := range treeNode.Runs.Values() {
+		if run.(time.Time) != treeNodeComparator.Runs.Values()[idx].(time.Time) {
+			return false
+		}
+	}
+	return true
+}
+
 func TestReplayRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
+		},
+		Secret: []models.ProjectSecretItem{
+			{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "k1",
+				Value: "v1",
+			},
 		},
 	}
 	namespaceSpec := models.NamespaceSpec{
@@ -46,12 +72,46 @@ func TestReplayRepository(t *testing.T) {
 	}
 	startTime := time.Date(2021, 1, 15, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2021, 1, 20, 0, 0, 0, 0, time.UTC)
+	run1 := time.Date(2021, 1, 15, 2, 0, 0, 0, time.UTC)
+	run2 := time.Date(2021, 1, 16, 2, 0, 0, 0, time.UTC)
+	run3 := time.Date(2021, 1, 17, 2, 0, 0, 0, time.UTC)
+	run4 := time.Date(2021, 1, 18, 2, 0, 0, 0, time.UTC)
+	run5 := time.Date(2021, 1, 19, 2, 0, 0, 0, time.UTC)
+	run6 := time.Date(2021, 1, 20, 2, 0, 0, 0, time.UTC)
+
+	treeNode3 := tree.NewTreeNode(jobConfigs[2])
+	treeNode3.Runs.Add(run1)
+	treeNode3.Runs.Add(run2)
+	treeNode3.Runs.Add(run3)
+	treeNode3.Runs.Add(run4)
+	treeNode3.Runs.Add(run5)
+	treeNode3.Runs.Add(run6)
+
+	treeNode2 := tree.NewTreeNode(jobConfigs[1])
+	treeNode2.Runs.Add(run1)
+	treeNode2.Runs.Add(run2)
+	treeNode2.Runs.Add(run3)
+	treeNode2.Runs.Add(run4)
+	treeNode2.Runs.Add(run5)
+	treeNode2.Runs.Add(run6)
+	treeNode2.AddDependent(treeNode3)
+
+	treeNode1 := tree.NewTreeNode(jobConfigs[0])
+	treeNode1.Runs.Add(run1)
+	treeNode1.Runs.Add(run2)
+	treeNode1.Runs.Add(run3)
+	treeNode1.Runs.Add(run4)
+	treeNode1.Runs.Add(run5)
+	treeNode1.Runs.Add(run6)
+	treeNode1.AddDependent(treeNode2)
+
 	testConfigs := []*models.ReplaySpec{
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
-			StartDate: startTime,
-			EndDate:   endTime,
-			Status:    models.ReplayStatusAccepted,
+			ID:            uuid.Must(uuid.NewRandom()),
+			StartDate:     startTime,
+			EndDate:       endTime,
+			Status:        models.ReplayStatusAccepted,
+			ExecutionTree: treeNode1,
 		},
 		{
 			ID:        uuid.Must(uuid.NewRandom()),
@@ -89,6 +149,7 @@ func TestReplayRepository(t *testing.T) {
 
 		return dbConn
 	}
+	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
 	t.Run("Insert and GetByID", func(t *testing.T) {
 		db := DBSetup()
@@ -96,26 +157,37 @@ func TestReplayRepository(t *testing.T) {
 
 		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
-
-		for idx, jobConfig := range jobConfigs {
-			jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
-			testConfigs[idx].Job = jobConfig
-		}
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: gTask,
+		}, nil)
+		depMod1 := new(mock.DependencyResolverMod)
+		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := new(mock.SupportedPluginRepo)
 		defer pluginRepo.AssertExpectations(t)
+		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := NewAdapter(pluginRepo)
 
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewReplayRepository(db, jobConfigs[0], adapter)
-		err := repo.Insert(testModels[0])
+		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
+		testConfigs[0].Job = jobConfigs[0]
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
+		err := jobRepo.Insert(jobConfigs[0])
+		assert.Nil(t, err)
+
+		repo := NewReplayRepository(db, adapter)
+		err = repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByID(testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, testModels[0].ID, checkModel.ID)
+		assert.True(t, treeIsEqual(testModels[0].ExecutionTree, checkModel.ExecutionTree))
 	})
 
 	t.Run("UpdateStatus", func(t *testing.T) {
@@ -126,18 +198,27 @@ func TestReplayRepository(t *testing.T) {
 
 		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
-
-		for idx, jobConfig := range jobConfigs {
-			jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
-			testConfigs[idx].Job = jobConfig
-		}
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: gTask,
+		}, nil)
+		depMod1 := new(mock.DependencyResolverMod)
+		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := new(mock.SupportedPluginRepo)
 		defer pluginRepo.AssertExpectations(t)
-
+		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := NewAdapter(pluginRepo)
-		repo := NewReplayRepository(db, jobConfigs[0], adapter)
-		err := repo.Insert(testModels[0])
+
+		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
+		testConfigs[0].Job = jobConfigs[0]
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		err := jobRepo.Insert(jobConfigs[0])
+		assert.Nil(t, err)
+
+		repo := NewReplayRepository(db, adapter)
+		err = repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
 		errMessage := "failed to execute"
@@ -154,7 +235,7 @@ func TestReplayRepository(t *testing.T) {
 		assert.Equal(t, errMessage, checkModel.Message.Message)
 	})
 
-	t.Run("GetJobByStatus", func(t *testing.T) {
+	t.Run("GetByStatus", func(t *testing.T) {
 		t.Run("should return list of job specs given list of status", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
@@ -187,6 +268,7 @@ func TestReplayRepository(t *testing.T) {
 
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
 			err := jobRepo.Insert(testModels[0].Job)
 			assert.Nil(t, err)
 			err = jobRepo.Insert(testModels[1].Job)
@@ -194,7 +276,7 @@ func TestReplayRepository(t *testing.T) {
 			err = jobRepo.Insert(testModels[2].Job)
 			assert.Nil(t, err)
 
-			repo := NewReplayRepository(db, jobConfigs[0], adapter)
+			repo := NewReplayRepository(db, adapter)
 			err = repo.Insert(testModels[0])
 			assert.Nil(t, err)
 			err = repo.Insert(testModels[1])
@@ -210,8 +292,8 @@ func TestReplayRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetJobByIDAndStatus", func(t *testing.T) {
-		t.Run("should return list of job specs given job_id and list of status", func(t *testing.T) {
+	t.Run("GetByJobIDAndStatus", func(t *testing.T) {
+		t.Run("should return list of replay specs given job_id and list of status", func(t *testing.T) {
 			db := DBSetup()
 			defer db.Close()
 			var testModels []*models.ReplaySpec
@@ -249,7 +331,7 @@ func TestReplayRepository(t *testing.T) {
 			err = jobRepo.Insert(testModels[2].Job)
 			assert.Nil(t, err)
 
-			repo := NewReplayRepository(db, jobConfigs[0], adapter)
+			repo := NewReplayRepository(db, adapter)
 			err = repo.Insert(testModels[0])
 			assert.Nil(t, err)
 			err = repo.Insert(testModels[1])
@@ -261,6 +343,63 @@ func TestReplayRepository(t *testing.T) {
 			replays, err := repo.GetByJobIDAndStatus(testModels[2].Job.ID, statusList)
 			assert.Nil(t, err)
 			assert.Equal(t, jobConfigs[2].ID, replays[0].Job.ID)
+		})
+	})
+	t.Run("GetByProjectIDAndStatus", func(t *testing.T) {
+		t.Run("should return list of replay specs given project_id and list of status", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			var testModels []*models.ReplaySpec
+			testModels = append(testModels, testConfigs...)
+
+			execUnit1 := new(mock.BasePlugin)
+			defer execUnit1.AssertExpectations(t)
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name: gTask,
+			}, nil)
+			depMod1 := new(mock.DependencyResolverMod)
+			defer depMod1.AssertExpectations(t)
+			for idx, jobConfig := range jobConfigs {
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				testConfigs[idx].Job = jobConfig
+			}
+
+			pluginRepo := new(mock.SupportedPluginRepo)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			adapter := NewAdapter(pluginRepo)
+
+			unitData := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			}
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectRepo := NewProjectRepository(db, hash)
+
+			err := projectRepo.Insert(projectSpec)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[0].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[1].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[2].Job)
+			assert.Nil(t, err)
+
+			repo := NewReplayRepository(db, adapter)
+			err = repo.Insert(testModels[0])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[1])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[2])
+			assert.Nil(t, err)
+
+			statusList := []string{models.ReplayStatusAccepted, models.ReplayStatusInProgress}
+			replays, err := repo.GetByProjectIDAndStatus(projectSpec.ID, statusList)
+			assert.Nil(t, err)
+			assert.ElementsMatch(t, []uuid.UUID{testModels[0].ID, testModels[2].ID}, []uuid.UUID{replays[0].ID, replays[1].ID})
 		})
 	})
 }

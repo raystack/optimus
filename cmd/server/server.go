@@ -81,8 +81,17 @@ type replaySpecRepoRepository struct {
 	jobSpecRepoFac jobSpecRepoFactory
 }
 
-func (fac *replaySpecRepoRepository) New(job models.JobSpec) store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, job, postgres.NewAdapter(models.PluginRegistry))
+func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
+	return postgres.NewReplayRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
+}
+
+type replayWorkerFact struct {
+	replaySpecRepoFac job.ReplaySpecRepoFactory
+	scheduler         models.SchedulerUnit
+}
+
+func (fac *replayWorkerFact) New() job.ReplayWorker {
+	return job.NewReplayWorker(fac.replaySpecRepoFac, fac.scheduler)
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -405,12 +414,24 @@ func Initialize(conf config.Provider) error {
 		db:             dbConn,
 		jobSpecRepoFac: jobSpecRepoFac,
 	}
-	replayWorker := job.NewReplayWorker(replaySpecRepoFac, models.Scheduler)
-	replayManager := job.NewManager(replayWorker, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+	replayWorkerFactory := &replayWorkerFact{
+		replaySpecRepoFac: replaySpecRepoFac,
+		scheduler:         models.Scheduler,
+	}
+	replayValidator := job.NewReplayValidator(models.Scheduler)
+	replaySyncer := job.NewReplaySyncer(
+		replaySpecRepoFac,
+		projectRepoFac,
+		models.Scheduler,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+	)
+	replayManager := job.NewManager(replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
 		RunTimeout:    conf.GetServe().ReplayRunTimeoutSecs,
-	}, models.Scheduler)
+	}, models.Scheduler, replayValidator, replaySyncer)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	defer cancelNotifiers()

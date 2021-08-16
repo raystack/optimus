@@ -449,6 +449,28 @@ func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayE
 	return response, nil
 }
 
+func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error) {
+	response := &pb.ReplayStatusTreeNode{
+		JobName: res.GetName(),
+	}
+	for _, run := range res.Runs.Values() {
+		runStatus := run.(models.JobStatus)
+		runStatusPb := &pb.ReplayStatusRun{
+			Run:   timestamppb.New(runStatus.ScheduledAt),
+			State: runStatus.State.String(),
+		}
+		response.Runs = append(response.Runs, runStatusPb)
+	}
+	for _, dep := range res.Dependents {
+		parsedDep, err := adapt.ToReplayStatusTreeNode(dep)
+		if err != nil {
+			return nil, err
+		}
+		response.Dependents = append(response.Dependents, parsedDep)
+	}
+	return response, nil
+}
+
 func NewAdapter(pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *Adapter {
 	return &Adapter{
 		pluginRepo:             pluginRepo,

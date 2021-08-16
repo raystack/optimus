@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	mocklib "github.com/stretchr/testify/mock"
 )
 
 func TestReplayManager(t *testing.T) {
@@ -26,76 +26,25 @@ func TestReplayManager(t *testing.T) {
 			WorkerTimeout: 1000,
 		}
 
-		replayRepository := new(mock.ReplayRepository)
-		defer replayRepository.AssertExpectations(t)
-		replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, nil)
+		worker := mock.NewReplayWorker()
+		replayWorkerFact := new(mock.ReplayWorkerFactory)
+		replayWorkerFact.On("New").Return(worker)
+		defer replayWorkerFact.AssertExpectations(t)
 
-		replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-		defer replaySpecRepoFac.AssertExpectations(t)
-		replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
+		manager := job.NewManager(replayWorkerFact, nil, nil, replayManagerConfig, nil, nil, nil)
+		worker.Close()
 
-		manager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, nil)
 		err := manager.Close()
 		assert.Nil(t, err)
 	})
-	t.Run("Init", func(t *testing.T) {
-		replayManagerConfig := job.ReplayManagerConfig{
-			NumWorkers:    0,
-			WorkerTimeout: 1000,
-			RunTimeout:    time.Hour * 8,
-		}
-		dagStartTime, _ := time.Parse(job.ReplayDateFormat, "2020-04-05")
-		startDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-22")
-		endDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-26")
-		schedule := models.JobSpecSchedule{
-			StartDate: dagStartTime,
-			Interval:  "0 2 * * *",
-		}
-		jobSpec := models.JobSpec{
-			Name:     "job-name",
-			Schedule: schedule,
-		}
-		t.Run("should mark long running replay as failed", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			currentTime := time.Now()
-			activeReplaySpecs := []models.ReplaySpec{
-				{
-					ID:        activeReplayUUID,
-					Job:       jobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
-					CreatedAt: currentTime.Add(time.Hour * -10),
-				},
-			}
-			failedReplayMessage := models.ReplayMessage{
-				Type:    job.ReplayRunTimeout,
-				Message: fmt.Sprintf("replay has been running since %s", activeReplaySpecs[0].CreatedAt.UTC().Format(job.TimestampLogFormat)),
-			}
-
-			replayRepository := new(mock.ReplayRepository)
-			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpecs, nil)
-			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, nil)
-			replayManager.Init()
-		})
-	})
 	t.Run("Replay", func(t *testing.T) {
 		replayManagerConfig := job.ReplayManagerConfig{
-			NumWorkers:    5,
+			NumWorkers:    3,
 			WorkerTimeout: 1000,
 		}
-		dagStartTime, _ := time.Parse(job.ReplayDateFormat, "2020-04-05")
-		startDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-22")
-		endDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-26")
-		reqBatchEndDate := endDate.AddDate(0, 0, 1)
-		reqBatchSize := 100
+		dagStartTime := time.Date(2020, time.Month(4), 5, 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(2020, time.Month(8), 22, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2020, time.Month(8), 26, 0, 0, 0, 0, time.UTC)
 		schedule := models.JobSpecSchedule{
 			StartDate: dagStartTime,
 			Interval:  "0 2 * * *",
@@ -110,7 +59,7 @@ func TestReplayManager(t *testing.T) {
 			Name:     "job-name-2",
 			Schedule: schedule,
 		}
-		replayRequest := &models.ReplayWorkerRequest{
+		replayRequest := models.ReplayRequest{
 			Job:   jobSpec,
 			Start: startDate,
 			End:   endDate,
@@ -126,12 +75,14 @@ func TestReplayManager(t *testing.T) {
 		t.Run("should throw error if uuid provider returns failure", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Twice()
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayValidator := new(mock.ReplayValidator)
+			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(nil)
+			defer replayValidator.AssertExpectations(t)
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
@@ -139,25 +90,31 @@ func TestReplayManager(t *testing.T) {
 			errMessage := "error while generating uuid"
 			uuidProvider.On("NewUUID").Return(objUUID, errors.New(errMessage))
 
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			worker := mock.NewReplayWorker()
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(worker)
+			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig, scheduler)
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
+
+			worker.Close()
+			err = replayManager.Close()
+			assert.Nil(t, err)
 		})
 		t.Run("should throw an error if replay repo throws error", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			// worker init
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Twice()
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayValidator := new(mock.ReplayValidator)
+			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(nil)
+			defer replayValidator.AssertExpectations(t)
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
@@ -174,149 +131,62 @@ func TestReplayManager(t *testing.T) {
 			}
 			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			worker := mock.NewReplayWorker()
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(worker)
+			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig, scheduler)
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
-		})
-		t.Run("should throw an error if unable to fetch active replays", func(t *testing.T) {
-			replayRepository := new(mock.ReplayRepository)
-			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
-			errMessage := "error checking other replays"
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, errors.New(errMessage))
 
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
-
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
-
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, scheduler)
-			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.NotNil(t, err)
-			assert.Contains(t, err.Error(), errMessage)
+			worker.Close()
+			err = replayManager.Close()
+			assert.Nil(t, err)
 		})
 		t.Run("should throw an error if conflicting replays found", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeJobUUID := uuid.Must(uuid.NewRandom())
-			activeJobSpec := models.JobSpec{
-				ID:       activeJobUUID,
-				Name:     "job-name",
-				Schedule: schedule,
-			}
-			activeReplaySpec := []models.ReplaySpec{
-				{
-					ID:        activeReplayUUID,
-					Job:       activeJobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
-				},
-			}
-
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			replayValidator := new(mock.ReplayValidator)
+			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(job.ErrConflictedJobRun)
+			defer replayValidator.AssertExpectations(t)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, scheduler)
+			worker := mock.NewReplayWorker()
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(worker)
+			defer replayWorkerFact.AssertExpectations(t)
+
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, nil, replayManagerConfig, nil, replayValidator, nil)
 
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Equal(t, err, job.ErrConflictedJobRun)
-		})
-		t.Run("should pass replay validation when no conflicting dag found", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeJobSpec := jobSpec2
-			activeReplaySpec := []models.ReplaySpec{
-				{
-					ID:        activeReplayUUID,
-					Job:       activeJobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
-				},
-			}
 
+			worker.Close()
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+		t.Run("should not throw validation error when no conflicting replays found", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayValidator := new(mock.ReplayValidator)
+			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(nil)
+			defer replayValidator.AssertExpectations(t)
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 			objUUID := uuid.Must(uuid.NewRandom())
 			uuidProvider.On("NewUUID").Return(objUUID, nil)
-
-			errMessage := "error with replay repo"
-			toInsertReplaySpec := &models.ReplaySpec{
-				ID:        objUUID,
-				Job:       jobSpec,
-				StartDate: startDate,
-				EndDate:   endDate,
-				Status:    models.ReplayStatusAccepted,
-			}
-			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
-
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
-
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig, scheduler)
-			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.Equal(t, errMessage, err.Error())
-		})
-		t.Run("should pass replay validation when no conflicting runs found", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeStartDate, _ := time.Parse(job.ReplayDateFormat, "2021-01-01")
-			activeEndDate, _ := time.Parse(job.ReplayDateFormat, "2021-02-01")
-			activeReplaySpec := []models.ReplaySpec{
-				{
-					ID:        activeReplayUUID,
-					Job:       jobSpec,
-					StartDate: activeStartDate,
-					EndDate:   activeEndDate,
-					Status:    models.ReplayStatusInProgress,
-				},
-			}
-
-			replayRepository := new(mock.ReplayRepository)
-			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
-
-			uuidProvider := new(mock.UUIDProvider)
-			defer uuidProvider.AssertExpectations(t)
-			objUUID := uuid.Must(uuid.NewRandom())
-			uuidProvider.On("NewUUID").Return(objUUID, nil)
-
-			errMessage := "error with replay repo"
 
 			toInsertReplaySpec := &models.ReplaySpec{
 				ID:        objUUID,
@@ -325,153 +195,192 @@ func TestReplayManager(t *testing.T) {
 				EndDate:   endDate,
 				Status:    models.ReplayStatusAccepted,
 			}
-			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
+			replayRepository.On("Insert", toInsertReplaySpec).Return(nil)
 
+			worker := mock.NewReplayWorker()
+			replayRequestToProcess := replayRequest
+			replayRequestToProcess.ID = objUUID
+			worker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil)
+			defer worker.AssertExpectations(t)
+
+			replayWorkerFact := new(mock.ReplayWorkerFactory)
+			replayWorkerFact.On("New").Return(worker)
+			defer replayWorkerFact.AssertExpectations(t)
+
+			syncer := new(mock.ReplaySyncer)
 			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig, scheduler)
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, job.ReplayManagerConfig{
+				NumWorkers:    1,
+				WorkerTimeout: time.Second * 5,
+			}, scheduler, replayValidator, syncer)
 			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.Equal(t, errMessage, err.Error())
+			assert.Nil(t, err)
+
+			worker.Close()
+			err = replayManager.Close()
+			assert.Nil(t, err)
 		})
-		t.Run("should return error when unable to get status from scheduler", func(t *testing.T) {
+		t.Run("should throw an error if workers are busy", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
+			replayValidator := new(mock.ReplayValidator)
+			replayValidator.On("Validate", mocklib.Anything, replayRepository, replayRequest, mocklib.Anything).Return(nil).Times(4)
+			defer replayValidator.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+			objUUID := uuid.Must(uuid.NewRandom())
+			uuidProvider.On("NewUUID").Return(objUUID, nil).Times(4)
+
+			toInsertReplaySpec := &models.ReplaySpec{
+				ID:        objUUID,
+				Job:       jobSpec,
+				StartDate: startDate,
+				EndDate:   endDate,
+				Status:    models.ReplayStatusAccepted,
+			}
+			replayRepository.On("Insert", toInsertReplaySpec).Return(nil).Times(3)
+
+			var replayWorkers []interface{}
+			for i := 0; i < 3; i++ {
+				replayWorker := mock.NewReplayWorker()
+				replayRequestToProcess := replayRequest
+				replayRequestToProcess.ID = objUUID
+				replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil).Times(1)
+				replayWorkers = append(replayWorkers, replayWorker)
+			}
+			replayWorkerFact := &mock.ReplayWorkerFactoryIndexed{
+				Workers: replayWorkers,
+			}
+			replayWorkerFact.On("New").Times(replayManagerConfig.NumWorkers)
+			defer replayWorkerFact.AssertExpectations(t)
+
+			syncer := new(mock.ReplaySyncer)
 			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			errMessage := "unable to get status"
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errMessage))
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, scheduler)
-
+			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, scheduler, replayValidator, syncer)
 			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.Equal(t, errMessage, err.Error())
+			assert.Nil(t, err)
+
+			_, err = replayManager.Replay(ctx, replayRequest)
+			assert.Nil(t, err)
+
+			_, err = replayManager.Replay(ctx, replayRequest)
+			assert.Nil(t, err)
+
+			_, err = replayManager.Replay(ctx, replayRequest)
+			assert.Equal(t, job.ErrRequestQueueFull, err)
+
+			for _, w := range replayWorkers {
+				rw := w.(*mock.ReplayWorker)
+				rw.Close()
+				rw.AssertExpectations(t)
+			}
+			err = replayManager.Close()
+			assert.Nil(t, err)
 		})
-		t.Run("should return error when same job and run in the running state is found", func(t *testing.T) {
+	})
+	t.Run("GetReplay", func(t *testing.T) {
+		t.Run("should return replay given a valid UUID", func(t *testing.T) {
+			replayUUID := uuid.Must(uuid.NewRandom())
+			replayJob := models.JobSpec{
+				Name: "sample-job",
+			}
+			replaySpec := models.ReplaySpec{
+				ID:        replayUUID,
+				Job:       replayJob,
+				StartDate: time.Date(2020, time.Month(8), 20, 2, 0, 0, 0, time.UTC),
+				EndDate:   time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC),
+				Status:    models.ReplayStatusAccepted,
+			}
+
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
+			replayRepository.On("GetByID", replayUUID).Return(replaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
+			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			jobStatus := []models.JobStatus{
+			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayResult, err := replayManager.GetReplay(replayUUID)
+
+			assert.Nil(t, err)
+			assert.Equal(t, replaySpec, replayResult)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+		t.Run("should return error when replay is not found", func(t *testing.T) {
+			replayUUID := uuid.Must(uuid.NewRandom())
+
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			replayRepository.On("GetByID", replayUUID).Return(models.ReplaySpec{}, store.ErrResourceNotFound)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayResult, err := replayManager.GetReplay(replayUUID)
+
+			assert.Equal(t, err, store.ErrResourceNotFound)
+			assert.Equal(t, models.ReplaySpec{}, replayResult)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+	})
+	t.Run("GetRunStatus", func(t *testing.T) {
+		projectSpec := models.ProjectSpec{
+			Name: "project-name",
+		}
+		t.Run("should return status of every runs in every jobs", func(t *testing.T) {
+			replayUUID := uuid.Must(uuid.NewRandom())
+			jobName := "dag1-no-deps"
+			jobSpec := models.JobSpec{
+				Name:         jobName,
+				Dependencies: map[string]models.JobSpecDependency{},
+			}
+			jobStatusList := []models.JobStatus{
 				{
-					ScheduledAt: time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC),
+					ScheduledAt: time.Date(2020, time.Month(8), 20, 2, 0, 0, 0, time.UTC),
 					State:       models.JobStatusStateSuccess,
 				},
 				{
-					ScheduledAt: time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 21, 2, 0, 0, 0, time.UTC),
+					State:       models.JobStatusStateSuccess,
 				},
 			}
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return(jobStatus, nil)
-
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, scheduler)
-			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.Equal(t, job.ErrConflictedJobRun, err)
-		})
-		t.Run("should return error when no running instance found in scheduler but accepted in replay", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeJobUUID := uuid.Must(uuid.NewRandom())
-			activeJobSpec := models.JobSpec{
-				ID:       activeJobUUID,
-				Name:     "job-name",
-				Schedule: schedule,
-			}
-			activeReplaySpec := []models.ReplaySpec{
-				{
-					ID:        activeReplayUUID,
-					Job:       activeJobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
-				},
-			}
-
-			replayRepository := new(mock.ReplayRepository)
-			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
-
-			scheduler := new(mock.Scheduler)
-			defer scheduler.AssertExpectations(t)
-			jobStatus := []models.JobStatus{
-				{
-					ScheduledAt: time.Date(2021, time.Month(1), 1, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateRunning,
-				},
-			}
-			scheduler.On("GetDagRunStatus", ctx, replayRequest.Project, jobSpec.Name, startDate, reqBatchEndDate, reqBatchSize).Return(jobStatus, nil)
-
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, replayManagerConfig, scheduler)
-			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.Equal(t, job.ErrConflictedJobRun, err)
-		})
-		t.Run("should not validate conflicting dags but cancel conflicting replay when force enabled", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeReplaySpec := []models.ReplaySpec{
-				{
-					ID:        activeReplayUUID,
-					Job:       jobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
-				},
-			}
-
-			replayRepository := new(mock.ReplayRepository)
-			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, store.ErrResourceNotFound).Once()
-			replayRepository.On("GetByJobIDAndStatus", activeReplaySpec[0].Job.ID, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
-
-			cancelledReplayMessage := models.ReplayMessage{
-				Type:    job.ErrConflictedJobRun.Error(),
-				Message: fmt.Sprintf("force started replay with ID: %s", replayRequest.ID),
-			}
-			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusCancelled, cancelledReplayMessage).Return(nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New", models.JobSpec{}).Return(replayRepository)
-			replaySpecRepoFac.On("New", replayRequest.Job).Return(replayRepository)
-
-			uuidProvider := new(mock.UUIDProvider)
-			defer uuidProvider.AssertExpectations(t)
-			objUUID := uuid.Must(uuid.NewRandom())
-			uuidProvider.On("NewUUID").Return(objUUID, nil)
-
-			errMessage := "error with replay repo"
-			toInsertReplaySpec := &models.ReplaySpec{
-				ID:        objUUID,
+			startDate := time.Date(2020, time.Month(8), 20, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 22, 0, 0, 0, 0, time.UTC)
+			replaySpec := models.ReplaySpec{
+				ID:        replayUUID,
 				Job:       jobSpec,
 				StartDate: startDate,
 				EndDate:   endDate,
-				Status:    models.ReplayStatusAccepted,
 			}
-			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
 
-			replayRequest.Force = true
-			replayManager := job.NewManager(nil, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil)
-			_, err := replayManager.Replay(ctx, replayRequest)
-			assert.Equal(t, errMessage, err.Error())
+			scheduler := new(mock.Scheduler)
+			defer scheduler.AssertExpectations(t)
+			batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
+			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, 100).Return(jobStatusList, nil)
+
+			replayManager := job.NewManager(nil, nil, nil, job.ReplayManagerConfig{}, scheduler, nil, nil)
+			jobStatusMap, err := replayManager.GetRunStatus(context.TODO(), projectSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec.Name)
+
+			assert.Nil(t, err)
+			assert.Equal(t, jobStatusList, jobStatusMap)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
 		})
 	})
 }

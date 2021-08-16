@@ -77,6 +77,9 @@ func TestReplay(t *testing.T) {
 			Size: time.Hour * 24 * 3,
 		},
 	}
+	projSpec := models.ProjectSpec{
+		Name: "proj",
+	}
 
 	specs[spec1] = models.JobSpec{Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow}
 	dagSpec = append(dagSpec, specs[spec1])
@@ -90,9 +93,6 @@ func TestReplay(t *testing.T) {
 	dagSpec = append(dagSpec, specs[spec5])
 	specs[spec6] = models.JobSpec{Name: spec6, Dependencies: getDependencyObject(specs, spec4, spec5), Schedule: dailySchedule, Task: threeDayTaskWindow}
 	dagSpec = append(dagSpec, specs[spec6])
-	projSpec := models.ProjectSpec{
-		Name: "proj",
-	}
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -142,7 +142,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -185,7 +185,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     cyclicDagSpec[0],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -222,7 +222,7 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -274,7 +274,7 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec4],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -318,7 +318,7 @@ func TestReplay(t *testing.T) {
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:     specs[spec1],
 				Start:   replayStart,
 				End:     replayEnd,
@@ -349,7 +349,7 @@ func TestReplay(t *testing.T) {
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:        specs[spec1],
 				Start:      replayStart,
 				End:        replayEnd,
@@ -389,7 +389,7 @@ func TestReplay(t *testing.T) {
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-			replayRequest := &models.ReplayWorkerRequest{
+			replayRequest := models.ReplayRequest{
 				Job:        specs[spec1],
 				Start:      replayStart,
 				End:        replayEnd,
@@ -407,6 +407,229 @@ func TestReplay(t *testing.T) {
 			replayUUID, err := jobSvc.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, objUUID.String(), replayUUID)
+		})
+	})
+
+	t.Run("GetStatus", func(t *testing.T) {
+		run1 := time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC)
+		run2 := time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC)
+		run3 := time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC)
+
+		jobSpec2 := dagSpec[2]
+		executionTree2 := tree.NewTreeNode(jobSpec2)
+		executionTree2.Runs.Add(run1)
+		executionTree2.Runs.Add(run2)
+		executionTree2.Runs.Add(run3)
+
+		jobSpec1 := dagSpec[1]
+		executionTree1 := tree.NewTreeNode(jobSpec1)
+		executionTree1.Runs.Add(run1)
+		executionTree1.Runs.Add(run2)
+		executionTree1.Runs.Add(run3)
+		executionTree1.AddDependent(executionTree2)
+
+		jobSpec0 := dagSpec[0]
+		executionTree0 := tree.NewTreeNode(jobSpec0)
+		executionTree0.Runs.Add(run1)
+		executionTree0.Runs.Add(run2)
+		executionTree0.Runs.Add(run3)
+		executionTree0.AddDependent(executionTree1)
+
+		t.Run("should fail if unable to fetch replay spec", func(t *testing.T) {
+			ctx := context.TODO()
+			replayID := uuid.Must(uuid.NewRandom())
+
+			replayManager := new(mock.ReplayManager)
+			defer replayManager.AssertExpectations(t)
+			errorMsg := "unable to fetch replay"
+			replayManager.On("GetReplay", replayID).Return(models.ReplaySpec{}, errors.New(errorMsg))
+			replayRequest := models.ReplayRequest{
+				ID:      replayID,
+				Project: projSpec,
+			}
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			_, err := jobSvc.GetStatus(ctx, replayRequest)
+
+			assert.NotNil(t, err)
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should return error when unable to get run status of a job", func(t *testing.T) {
+			ctx := context.TODO()
+			replayID := uuid.Must(uuid.NewRandom())
+
+			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
+			replaySpec := models.ReplaySpec{
+				ID:        replayID,
+				Job:       specs[spec1],
+				StartDate: startDate,
+				EndDate:   endDate,
+				Status:    models.ReplayStatusReplayed,
+			}
+
+			replayManager := new(mock.ReplayManager)
+			defer replayManager.AssertExpectations(t)
+			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
+			errorMsg := "unable to get status of a job run"
+			replayManager.On("GetRunStatus", ctx, projSpec, startDate, endDate, specs[spec1].Name).
+				Return([]models.JobStatus{}, errors.New(errorMsg))
+
+			compiler := new(mock.Compiler)
+			defer compiler.AssertExpectations(t)
+
+			replayRequest := models.ReplayRequest{
+				ID:      replayID,
+				Project: projSpec,
+				Start:   startDate,
+				End:     endDate,
+				Job:     jobSpec1,
+			}
+
+			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, replayManager)
+			_, err := jobSvc.GetStatus(ctx, replayRequest)
+
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should return error when unable to get run status of a dependent job", func(t *testing.T) {
+			ctx := context.TODO()
+			replayID := uuid.Must(uuid.NewRandom())
+
+			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
+
+			replaySpec := models.ReplaySpec{
+				ID:            replayID,
+				Job:           specs[spec1],
+				StartDate:     startDate,
+				EndDate:       endDate,
+				Status:        models.ReplayStatusReplayed,
+				ExecutionTree: executionTree0,
+			}
+
+			jobStatusList := []models.JobStatus{
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 8, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 9, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 10, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 11, 2, 0, 0, 0, time.UTC),
+				},
+			}
+
+			replayManager := new(mock.ReplayManager)
+			defer replayManager.AssertExpectations(t)
+			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			errorMsg := "unable to get status of a run"
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{}, errors.New(errorMsg))
+
+			compiler := new(mock.Compiler)
+			defer compiler.AssertExpectations(t)
+
+			replayRequest := models.ReplayRequest{
+				ID:      replayID,
+				Project: projSpec,
+				Start:   startDate,
+				End:     endDate,
+				Job:     jobSpec0,
+			}
+
+			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, replayManager)
+			_, err := jobSvc.GetStatus(ctx, replayRequest)
+
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should return error when unable to get run status of a dependent's dependent job", func(t *testing.T) {
+			ctx := context.TODO()
+			replayID := uuid.Must(uuid.NewRandom())
+
+			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
+			replaySpec := models.ReplaySpec{
+				ID:            replayID,
+				Job:           specs[spec1],
+				StartDate:     startDate,
+				EndDate:       endDate,
+				Status:        models.ReplayStatusReplayed,
+				ExecutionTree: executionTree0,
+			}
+
+			jobStatusList := []models.JobStatus{
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 8, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 9, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 10, 2, 0, 0, 0, time.UTC),
+				},
+				{
+					State:       models.InstanceStateRunning,
+					ScheduledAt: time.Date(2020, time.Month(8), 11, 2, 0, 0, 0, time.UTC),
+				},
+			}
+
+			replayManager := new(mock.ReplayManager)
+			defer replayManager.AssertExpectations(t)
+			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			errorMsg := "unable to get status of a run"
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec2.Name).Return([]models.JobStatus{}, errors.New(errorMsg))
+
+			compiler := new(mock.Compiler)
+			defer compiler.AssertExpectations(t)
+
+			replayRequest := models.ReplayRequest{
+				ID:      replayID,
+				Project: projSpec,
+				Start:   startDate,
+				End:     endDate,
+				Job:     jobSpec0,
+			}
+
+			jobSvc := job.NewService(nil, nil, compiler, dumpAssets, nil, nil, nil, nil, replayManager)
+			_, err := jobSvc.GetStatus(ctx, replayRequest)
+
+			assert.Equal(t, errorMsg, err.Error())
 		})
 	})
 }

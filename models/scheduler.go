@@ -43,8 +43,8 @@ type SchedulerUnit interface {
 	Clear(ctx context.Context, projSpec ProjectSpec, jobName string, startDate, endDate time.Time) error
 
 	// GetDagRunStatus should return batch of runs of a job
-	GetDagRunStatus(ctx context.Context, projSpec ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
-		batchSize int) ([]JobStatus, error)
+	GetDagRunStatus(ctx context.Context, projectSpec ProjectSpec, jobName string, startDate time.Time,
+		endDate time.Time, batchSize int) ([]JobStatus, error)
 }
 
 type JobStatusState string

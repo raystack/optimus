@@ -207,15 +207,15 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	return nil
 }
 
-func (a *scheduler) GetDagRunStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate time.Time,
+func (a *scheduler) GetDagRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
 	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
-	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
+	schdHost, ok := projectSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
-		return nil, errors.Errorf("scheduler host not set for %s", projSpec.Name)
+		return nil, errors.Errorf("scheduler host not set for %s", projectSpec.Name)
 	}
-	authToken, ok := projSpec.Secret.GetByName(models.ProjectSchedulerAuth)
+	authToken, ok := projectSpec.Secret.GetByName(models.ProjectSchedulerAuth)
 	if !ok {
-		return []models.JobStatus{}, errors.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projSpec.Name)
+		return []models.JobStatus{}, errors.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projectSpec.Name)
 	}
 	schdHost = strings.Trim(schdHost, "/")
 	postURL := fmt.Sprintf("%s/%s", schdHost, dagStatusBatchUrl)

@@ -34,7 +34,7 @@ generate-proto: ## regenerate protos
 	@echo " > protobuf compilation finished"
 
 unit-test:
-	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m -tags=unit_test
+	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 5 -cover -race -timeout 1m -tags=unit_test
 
 smoke-test: build
 	@bash ./scripts/smoke-test.sh
