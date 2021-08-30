@@ -128,5 +128,6 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 	}
 	return &models.CompileAssetsResponse{
 		Assets: AdaptAssetsFromProto(resp.Assets),
+		SkipCompile: resp.SkipCompile,
 	}, nil
 }

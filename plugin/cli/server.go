@@ -124,5 +124,6 @@ func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRe
 	}
 	return &pbp.CompileAssetsResponse{
 		Assets: AdaptAssetsToProto(resp.Assets),
+		SkipCompile: resp.SkipCompile,
 	}, nil
 }

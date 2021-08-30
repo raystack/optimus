@@ -291,6 +291,7 @@ type CompileAssetsRequest struct {
 
 type CompileAssetsResponse struct {
 	Assets PluginAssets
+	SkipCompile bool
 }
 
 type GenerateDestinationRequest struct {

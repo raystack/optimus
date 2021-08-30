@@ -85,8 +85,11 @@ func (fm *ContextManager) Generate(
 
 	// append job spec assets to list of files need to write
 	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
-	if fileMap, err = fm.engine.CompileFiles(fileMap, projectInstanceContext); err != nil {
-		return
+
+	if !compiledAssetResponse.SkipCompile {
+		if fileMap, err = fm.engine.CompileFiles(fileMap, projectInstanceContext); err != nil {
+			return
+		}
 	}
 	return envMap, fileMap, nil
 }
@@ -279,6 +282,7 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 
 	assetsToDump := jobSpec.Assets.ToMap()
 
+	skipCompile := false
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
 		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(context.TODO(), models.CompileAssetsRequest{
@@ -301,18 +305,22 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 			return nil, err
 		}
 		assetsToDump = compiledAssetResponse.Assets.ToJobSpec().ToMap()
+		skipCompile = compiledAssetResponse.SkipCompile
 	}
 
 	// compile again if needed
-	templates, err := engine.CompileFiles(assetsToDump, map[string]interface{}{
-		ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-		ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-		ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
-		ConfigKeyDestination:   jobDestination,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to compile templates")
+	if !skipCompile {
+		var err error
+		assetsToDump, err = engine.CompileFiles(assetsToDump, map[string]interface{}{
+			ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+			ConfigKeyDestination:   jobDestination,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to compile templates")
+		}
 	}
 
-	return templates, nil
+	return assetsToDump, nil
 }
