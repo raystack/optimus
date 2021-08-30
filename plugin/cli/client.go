@@ -127,7 +127,7 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 		return nil, err
 	}
 	return &models.CompileAssetsResponse{
-		Assets: AdaptAssetsFromProto(resp.Assets),
+		Assets:      AdaptAssetsFromProto(resp.Assets),
 		SkipCompile: resp.SkipCompile,
 	}, nil
 }

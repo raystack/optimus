@@ -123,7 +123,7 @@ func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRe
 		return nil, err
 	}
 	return &pbp.CompileAssetsResponse{
-		Assets: AdaptAssetsToProto(resp.Assets),
+		Assets:      AdaptAssetsToProto(resp.Assets),
 		SkipCompile: resp.SkipCompile,
 	}, nil
 }
