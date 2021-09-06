@@ -1,4 +1,0 @@
-version: v1beta1
-build:
-  roots:
-    - proton

@@ -1,4 +1,4 @@
-version: v1beta1
+version: v1
 plugins:
   - name: go
     out: api/proto
@@ -15,4 +15,4 @@ plugins:
     out: api/proto
     opt: paths=source_relative
   - name: openapiv2
-    out: third_party/OpenAPI
+    out: api/third_party/openapi

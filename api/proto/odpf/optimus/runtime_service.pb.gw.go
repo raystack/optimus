@@ -1831,7 +1831,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Version")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Version", runtime.WithHTTPPathPattern("/v1/version"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1854,7 +1854,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateJobSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1877,7 +1877,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadJobSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1900,7 +1900,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DeleteJobSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DeleteJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1923,7 +1923,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListJobSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1946,7 +1946,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DumpJobSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DumpJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/dump"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1969,7 +1969,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CheckJobSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CheckJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/check"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1992,7 +1992,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProject")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProject", runtime.WithHTTPPathPattern("/v1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2015,7 +2015,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProjectNamespace")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProjectNamespace", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2038,7 +2038,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterSecret")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterSecret", runtime.WithHTTPPathPattern("/v1/project/{project_name}/secret/{secret_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2061,7 +2061,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjects")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjects", runtime.WithHTTPPathPattern("/v1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2084,7 +2084,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjectNamespaces")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjectNamespaces", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2107,7 +2107,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterInstance")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterInstance", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/instance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2130,7 +2130,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/JobStatus")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/JobStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2153,7 +2153,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterJobEvent")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterJobEvent", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/event"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2176,7 +2176,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetWindow")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetWindow", runtime.WithHTTPPathPattern("/v1/window"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2199,7 +2199,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListResourceSpecification")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListResourceSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2222,7 +2222,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateResource")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2245,7 +2245,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadResource")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource/{resource_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2268,7 +2268,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/UpdateResource")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/UpdateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2291,7 +2291,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReplayDryRun")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReplayDryRun", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/replay-dry-run"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2314,7 +2314,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Replay")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Replay", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/replay"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2337,7 +2337,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetReplayStatus")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetReplayStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/replay/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2399,7 +2399,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Version")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Version", runtime.WithHTTPPathPattern("/v1/version"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2419,7 +2419,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateJobSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2439,7 +2439,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadJobSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2459,7 +2459,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DeleteJobSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DeleteJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2479,7 +2479,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListJobSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2499,7 +2499,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DumpJobSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/DumpJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/dump"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2519,7 +2519,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CheckJobSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CheckJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/check"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2539,7 +2539,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProject")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProject", runtime.WithHTTPPathPattern("/v1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2559,7 +2559,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProjectNamespace")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterProjectNamespace", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2579,7 +2579,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterSecret")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterSecret", runtime.WithHTTPPathPattern("/v1/project/{project_name}/secret/{secret_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2599,7 +2599,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjects")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjects", runtime.WithHTTPPathPattern("/v1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2619,7 +2619,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjectNamespaces")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListProjectNamespaces", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2639,7 +2639,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterInstance")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterInstance", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/instance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2659,7 +2659,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/JobStatus")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/JobStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2679,7 +2679,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterJobEvent")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/RegisterJobEvent", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/event"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2699,7 +2699,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetWindow")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetWindow", runtime.WithHTTPPathPattern("/v1/window"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2719,7 +2719,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListResourceSpecification")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ListResourceSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2739,7 +2739,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateResource")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2759,7 +2759,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadResource")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReadResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource/{resource_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2779,7 +2779,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/UpdateResource")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/UpdateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2799,7 +2799,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReplayDryRun")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/ReplayDryRun", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/replay-dry-run"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2819,7 +2819,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Replay")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/Replay", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/replay"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2839,7 +2839,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetReplayStatus")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetReplayStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/replay/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
