@@ -22,8 +22,6 @@ __pycache__
 .optimus.yaml
 coverage.txt
 
-# git ignore generate files related to gRPC and proto
-/proton/
 /api/proto/odpf/**/*
 
 !/api/proto/odpf/optimus/
@@ -35,13 +33,6 @@ coverage.txt
 !/api/proto/odpf/metadata/optimus/*
 !/api/proto/odpf/metadata/optimus/**/*
 
-!/api/proto/odpf/third_party/
-!/api/proto/odpf/third_party/googleapis/
-!/api/proto/odpf/third_party/googleapis/*
-!/api/proto/odpf/third_party/googleapis/**/*
-!/api/proto/odpf/third_party/grpc-gateway/
-!/api/proto/odpf/third_party/grpc-gateway/*
-!/api/proto/odpf/third_party/grpc-gateway/**/*
-
-/third_party/*
-!/third_party/OpenAPI/odpf/optimus/runtime_service.swagger.json
+api/third_party/openapi/odpf/**/*
+api/third_party/openapi/odpf/optimus/plugins/*
+!api/third_party/openapi/odpf/optimus/runtime_service.swagger.json

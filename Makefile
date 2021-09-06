@@ -5,6 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
+PROTON_COMMIT := "3d50b5cbb7fe351bee0300a9220759ebfad4130e"
 
 all: build
 
@@ -25,12 +26,9 @@ pack-files:
 	@go generate ./..
 
 generate-proto: ## regenerate protos
-	@echo " > cloning protobuf from odpf/proton"
-	@rm -rf proton/
-	@git -c advice.detachedHead=false clone https://github.com/odpf/proton --depth 1 --quiet --branch main
-	@echo " > generating protobuf"
-	@echo " > info: make sure correct version of dependencies are installed using 'install'"
-	@buf generate
+	@echo " > generating protobuf from odpf/proton"
+	@echo " > [info] make sure correct version of dependencies are installed using 'make install'"
+	@buf generate https://github.com/odpf/proton/archive/${PROTON_COMMIT}.zip#strip_components=1 --template buf.gen.yaml --path odpf/optimus --path odpf/metadata
 	@echo " > protobuf compilation finished"
 
 unit-test:
@@ -56,11 +54,11 @@ clean:
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
-	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.26.0
+	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
 	go get github.com/golang/protobuf/proto@v1.5.2
 	go get github.com/golang/protobuf/protoc-gen-go@v1.5.2
+	go get google.golang.org/grpc@v1.40.0
 	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
-	go get google.golang.org/grpc@v1.38.0
-	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.2.0
-	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.2.0
-	go get github.com/bufbuild/buf/cmd/buf@v0.37.0
+	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.5.0
+	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
+	go get github.com/bufbuild/buf/cmd/buf@v0.54.1

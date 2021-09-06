@@ -220,7 +220,19 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusRegisterInstanceRequest"
+              "type": "object",
+              "properties": {
+                "scheduledAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "instanceName": {
+                  "type": "string"
+                },
+                "instanceType": {
+                  "$ref": "#/definitions/optimusInstanceSpecType"
+                }
+              }
             }
           }
         ],
@@ -264,7 +276,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusReplayRequest"
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string"
+                },
+                "startDate": {
+                  "type": "string"
+                },
+                "endDate": {
+                  "type": "string"
+                },
+                "force": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         ],
@@ -308,7 +334,21 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusReplayRequest"
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string"
+                },
+                "startDate": {
+                  "type": "string"
+                },
+                "endDate": {
+                  "type": "string"
+                },
+                "force": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         ],
@@ -455,7 +495,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusRegisterProjectNamespaceRequest"
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "$ref": "#/definitions/optimusNamespaceSpecification"
+                }
+              }
             }
           }
         ],
@@ -547,7 +592,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusCreateResourceRequest"
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "$ref": "#/definitions/optimusResourceSpecification"
+                }
+              }
             }
           }
         ],
@@ -595,7 +645,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusUpdateResourceRequest"
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "$ref": "#/definitions/optimusResourceSpecification"
+                }
+              }
             }
           }
         ],
@@ -688,7 +743,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusCreateJobSpecificationRequest"
+              "type": "object",
+              "properties": {
+                "spec": {
+                  "$ref": "#/definitions/optimusJobSpecification"
+                }
+              }
             }
           }
         ],
@@ -823,7 +883,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusRegisterJobEventRequest"
+              "type": "object",
+              "properties": {
+                "event": {
+                  "$ref": "#/definitions/optimusJobEvent"
+                }
+              }
             }
           }
         ],
@@ -868,7 +933,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/optimusRegisterSecretRequest"
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           }
         ],
@@ -1050,20 +1120,6 @@
         }
       }
     },
-    "optimusCreateJobSpecificationRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "spec": {
-          "$ref": "#/definitions/optimusJobSpecification"
-        }
-      }
-    },
     "optimusCreateJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -1071,23 +1127,6 @@
           "type": "boolean"
         },
         "message": {
-          "type": "string"
-        }
-      }
-    },
-    "optimusCreateResourceRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "datastoreName": {
-          "type": "string"
-        },
-        "resource": {
-          "$ref": "#/definitions/optimusResourceSpecification"
-        },
-        "namespace": {
           "type": "string"
         }
       }
@@ -1514,27 +1553,6 @@
         }
       }
     },
-    "optimusRegisterInstanceRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
-        },
-        "scheduledAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "instanceName": {
-          "type": "string"
-        },
-        "instanceType": {
-          "$ref": "#/definitions/optimusInstanceSpecType"
-        }
-      }
-    },
     "optimusRegisterInstanceResponse": {
       "type": "object",
       "properties": {
@@ -1555,36 +1573,8 @@
         }
       }
     },
-    "optimusRegisterJobEventRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "event": {
-          "$ref": "#/definitions/optimusJobEvent"
-        }
-      }
-    },
     "optimusRegisterJobEventResponse": {
       "type": "object"
-    },
-    "optimusRegisterProjectNamespaceRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "namespace": {
-          "$ref": "#/definitions/optimusNamespaceSpecification"
-        }
-      }
     },
     "optimusRegisterProjectNamespaceResponse": {
       "type": "object",
@@ -1615,20 +1605,6 @@
           "type": "boolean"
         },
         "message": {
-          "type": "string"
-        }
-      }
-    },
-    "optimusRegisterSecretRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "secretName": {
-          "type": "string"
-        },
-        "value": {
           "type": "string"
         }
       }
@@ -1673,29 +1649,6 @@
             "type": "string",
             "format": "date-time"
           }
-        }
-      }
-    },
-    "optimusReplayRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "startDate": {
-          "type": "string"
-        },
-        "endDate": {
-          "type": "string"
-        },
-        "force": {
-          "type": "boolean"
         }
       }
     },
@@ -1772,23 +1725,6 @@
         }
       },
       "title": "ResourceSpecification are datastore specification representation of a resource"
-    },
-    "optimusUpdateResourceRequest": {
-      "type": "object",
-      "properties": {
-        "projectName": {
-          "type": "string"
-        },
-        "datastoreName": {
-          "type": "string"
-        },
-        "resource": {
-          "$ref": "#/definitions/optimusResourceSpecification"
-        },
-        "namespace": {
-          "type": "string"
-        }
-      }
     },
     "optimusUpdateResourceResponse": {
       "type": "object",
