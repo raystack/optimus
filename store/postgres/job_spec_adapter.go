@@ -233,8 +233,8 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	return job, nil
 }
 
-// FromSpec converts the optimus representation of JobSpec to postgres' Job
-func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
+// FromJobSpec converts the optimus representation of JobSpec to postgres' Job
+func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
@@ -346,7 +346,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 }
 
 func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace models.NamespaceSpec) (Job, error) {
-	adaptJob, err := adapt.FromSpec(spec)
+	adaptJob, err := adapt.FromJobSpec(spec)
 	if err != nil {
 		return adaptJob, err
 	}
@@ -368,4 +368,113 @@ func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace
 	adaptJob.Project = adaptProject
 
 	return adaptJob, nil
+}
+
+type JobRun struct {
+	ID uuid.UUID `gorm:"primary_key;type:uuid;"`
+
+	// could be null for manual/adhoc jobs
+	JobID uuid.UUID `gorm:"type:uuid;"`
+
+	// could be null for scheduled job that belong to a project
+	Spec datatypes.JSON `gorm:"column:specification;"`
+
+	NamespaceID uuid.UUID
+	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
+
+	Trigger     string
+	Status      string
+	ScheduledAt time.Time
+
+	Instances []Instance `gorm:"polymorphic:JobRun;"`
+
+	CreatedAt time.Time `gorm:"not null" json:"created_at"`
+	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+}
+
+func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.NamespaceSpec) (JobRun, error) {
+	adaptedJobSpec, err := adapt.FromJobSpec(jr.Spec)
+	if err != nil {
+		return JobRun{}, err
+	}
+	specBytes, err := json.Marshal(adaptedJobSpec)
+	if err != nil {
+		return JobRun{}, err
+	}
+
+	// namespace
+	adaptNamespace, err := Namespace{}.FromSpecWithProject(nsSpec, nsSpec.ProjectSpec)
+	if err != nil {
+		return JobRun{}, err
+	}
+
+	var instances []Instance
+	for _, instanceSpec := range jr.Instances {
+		instance, err := Instance{}.FromSpec(instanceSpec, jr.ID)
+		if err != nil {
+			return JobRun{}, err
+		}
+		instances = append(instances, instance)
+	}
+
+	return JobRun{
+		ID:    jr.ID,
+		JobID: jr.Spec.ID,
+		Spec:  specBytes,
+
+		NamespaceID: adaptNamespace.ID,
+		Namespace:   adaptNamespace,
+
+		Trigger:     jr.Trigger.String(),
+		Status:      jr.Status.String(),
+		ScheduledAt: jr.ScheduledAt,
+
+		Instances: instances,
+	}, nil
+}
+
+func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.NamespaceSpec, error) {
+	adaptedSpec := Job{}
+	if err := json.Unmarshal(jr.Spec, &adaptedSpec); err != nil {
+		return models.JobRun{}, models.NamespaceSpec{}, err
+	}
+
+	jobSpec, err := adapt.ToSpec(adaptedSpec)
+	if err != nil {
+		return models.JobRun{}, models.NamespaceSpec{}, err
+	}
+
+	var instanceSpecs []models.InstanceSpec
+	for _, instance := range jr.Instances {
+		is, err := instance.ToSpec()
+		if err != nil {
+			return models.JobRun{}, models.NamespaceSpec{}, err
+		}
+		instanceSpecs = append(instanceSpecs, is)
+	}
+
+	var adaptProject models.ProjectSpec
+	var adaptNamespace models.NamespaceSpec
+
+	if jr.Namespace.Name != "" {
+		adaptProject, err = jr.Namespace.Project.ToSpec()
+		if err != nil {
+			return models.JobRun{}, models.NamespaceSpec{}, err
+		}
+
+		// namespace
+		adaptNamespace, err = jr.Namespace.ToSpec(adaptProject)
+		if err != nil {
+			return models.JobRun{}, models.NamespaceSpec{}, err
+		}
+	}
+
+	return models.JobRun{
+		ID:          jr.ID,
+		Spec:        jobSpec,
+		Trigger:     models.JobRunTrigger(jr.Trigger),
+		Status:      models.JobRunState(jr.Status),
+		ScheduledAt: jr.ScheduledAt,
+		Instances:   instanceSpecs,
+	}, adaptNamespace, nil
 }

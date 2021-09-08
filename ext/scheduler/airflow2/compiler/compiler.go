@@ -1,4 +1,4 @@
-package job
+package compiler
 
 import (
 	"bytes"
@@ -18,18 +18,17 @@ var (
 // Compiler converts generic job spec data to scheduler specific file that will
 // be consumed by the target scheduler
 type Compiler struct {
-	schedulerTemplate []byte // template string for dag generation
-	hostname          string
+	hostname string
 }
 
 // Compile use golang template engine to parse and insert job
 // specific details in template file
-func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (job models.Job, err error) {
-	if len(com.schedulerTemplate) == 0 {
+func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (job models.Job, err error) {
+	if len(schedulerTemplate) == 0 {
 		return models.Job{}, ErrEmptyTemplateFile
 	}
 
-	tmpl, err := template.New("compiler").Funcs(sprig.TxtFuncMap()).Parse(string(com.schedulerTemplate))
+	tmpl, err := template.New("compiler").Funcs(sprig.TxtFuncMap()).Parse(string(schedulerTemplate))
 	if err != nil {
 		return models.Job{}, err
 	}
@@ -83,16 +82,14 @@ func (com *Compiler) Compile(namespaceSpec models.NamespaceSpec, jobSpec models.
 	}
 
 	return models.Job{
-		Name:        jobSpec.Name,
-		Contents:    buf.Bytes(),
-		NamespaceID: namespaceSpec.ID.String(),
+		Name:     jobSpec.Name,
+		Contents: buf.Bytes(),
 	}, nil
 }
 
 // NewCompiler constructs a new Compiler that satisfies dag.Compiler
-func NewCompiler(schedulerTemplate []byte, hostname string) *Compiler {
+func NewCompiler(hostname string) *Compiler {
 	return &Compiler{
-		schedulerTemplate: schedulerTemplate,
-		hostname:          hostname,
+		hostname: hostname,
 	}
 }

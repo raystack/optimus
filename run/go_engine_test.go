@@ -1,9 +1,9 @@
-package instance_test
+package run_test
 
 import (
 	"testing"
 
-	"github.com/odpf/optimus/instance"
+	"github.com/odpf/optimus/run"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +47,7 @@ func TestGoEngine(t *testing.T) {
 					"EXECUTION_TIME": "empty val",
 				}
 
-				comp := instance.NewGoEngine()
+				comp := run.NewGoEngine()
 				compiledExpr, err := comp.CompileString(testCase.Input, values)
 
 				assert.Nil(t, err)
@@ -119,7 +119,7 @@ func TestGoEngine(t *testing.T) {
 					"EXECUTION_TIME": "empty val",
 				}
 
-				comp := instance.NewGoEngine()
+				comp := run.NewGoEngine()
 				compiledExpr, err := comp.CompileFiles(testCase.Input, values)
 
 				if err != nil {

@@ -1,10 +1,11 @@
-package job_test
+package compiler_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
+
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -57,11 +58,10 @@ func TestCompiler(t *testing.T) {
 
 	t.Run("Compile", func(t *testing.T) {
 		t.Run("should compile template without any error", func(t *testing.T) {
-			com := job.NewCompiler(
-				[]byte("content = {{.Job.Name}}"),
+			com := compiler.NewCompiler(
 				"",
 			)
-			dag, err := com.Compile(namespaceSpec, spec)
+			dag, err := com.Compile([]byte("content = {{.Job.Name}}"), namespaceSpec, spec)
 
 			assert.Equal(t, dag.Contents, []byte("content = foo"))
 			assert.Nil(t, err)
@@ -69,29 +69,26 @@ func TestCompiler(t *testing.T) {
 		t.Run("should compile template without any error without notify channels", func(t *testing.T) {
 			tempSpec := spec
 			tempSpec.Behavior.Notify = []models.JobSpecNotifier{}
-			com := job.NewCompiler(
-				[]byte("content = {{.Job.Name}}"),
+			com := compiler.NewCompiler(
 				"",
 			)
-			dag, err := com.Compile(namespaceSpec, tempSpec)
+			dag, err := com.Compile([]byte("content = {{.Job.Name}}"), namespaceSpec, tempSpec)
 
 			assert.Equal(t, dag.Contents, []byte("content = foo"))
 			assert.Nil(t, err)
 		})
 		t.Run("should return error if failed to read template", func(t *testing.T) {
-			com := job.NewCompiler(
-				[]byte(""),
+			com := compiler.NewCompiler(
 				"",
 			)
-			_, err := com.Compile(namespaceSpec, spec)
-			assert.Equal(t, err, job.ErrEmptyTemplateFile)
+			_, err := com.Compile([]byte(""), namespaceSpec, spec)
+			assert.Equal(t, err, compiler.ErrEmptyTemplateFile)
 		})
 		t.Run("should return error if failed to parse template", func(t *testing.T) {
-			com := job.NewCompiler(
-				[]byte("content = {{.Tob.Name}}"),
+			com := compiler.NewCompiler(
 				"",
 			)
-			_, err := com.Compile(namespaceSpec, spec)
+			_, err := com.Compile([]byte("content = {{.Tob.Name}}"), namespaceSpec, spec)
 			assert.Error(t, err)
 		})
 	})

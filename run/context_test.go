@@ -1,4 +1,4 @@
-package instance_test
+package run_test
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/run"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,35 +92,43 @@ func TestContextManager(t *testing.T) {
 			}
 			mockedTimeNow := time.Now()
 
-			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			jobRun := models.JobRun{
+				Spec:        jobSpec,
+				Trigger:     models.TriggerSchedule,
+				Status:      models.RunStateAccepted,
+				Instances:   nil,
+				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+			}
 			instanceSpec := models.InstanceSpec{
-				Job:         jobSpec,
-				ScheduledAt: scheduledAt,
-				State:       models.InstanceStateRunning,
+				Name:   "bq",
+				Type:   models.InstanceTypeTask,
+				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  instance.ConfigKeyExecutionTime,
+						Name:  run.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  instance.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Name:  run.ConfigKeyDstart,
+						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  instance.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Name:  run.ConfigKeyDend,
+						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
+				ExecutedAt: time.Time{},
+				UpdatedAt:  time.Time{},
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
+				InstanceSchedule: jobRun.ScheduledAt,
 				InstanceData:     instanceSpec.Data,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
@@ -129,8 +137,8 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec,
-				instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTask, "bq")
+			envMap, fileMap, err := run.NewContextManager(namespaceSpec, jobRun,
+				run.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
@@ -247,25 +255,31 @@ func TestContextManager(t *testing.T) {
 			}
 			mockedTimeNow := time.Now()
 
-			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			jobRun := models.JobRun{
+				Spec:        jobSpec,
+				Trigger:     models.TriggerSchedule,
+				Status:      models.RunStateAccepted,
+				Instances:   nil,
+				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+			}
 			instanceSpec := models.InstanceSpec{
-				Job:         jobSpec,
-				ScheduledAt: scheduledAt,
-				State:       models.InstanceStateRunning,
+				Name:   transporterHook,
+				Type:   models.InstanceTypeHook,
+				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  instance.ConfigKeyExecutionTime,
+						Name:  run.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  instance.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Name:  run.ConfigKeyDstart,
+						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  instance.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Name:  run.ConfigKeyDend,
+						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -274,7 +288,7 @@ func TestContextManager(t *testing.T) {
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
+				InstanceSchedule: jobRun.ScheduledAt,
 				InstanceData:     instanceSpec.Data,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
@@ -283,8 +297,8 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, instance.NewGoEngine()).Generate(
-				instanceSpec, models.InstanceTypeHook, transporterHook)
+			envMap, fileMap, err := run.NewContextManager(namespaceSpec, jobRun, run.NewGoEngine()).Generate(
+				instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
@@ -381,25 +395,31 @@ func TestContextManager(t *testing.T) {
 			}
 			mockedTimeNow := time.Now()
 
-			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			jobRun := models.JobRun{
+				Spec:        jobSpec,
+				Trigger:     models.TriggerSchedule,
+				Status:      models.RunStateAccepted,
+				Instances:   nil,
+				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+			}
 			instanceSpec := models.InstanceSpec{
-				Job:         jobSpec,
-				ScheduledAt: scheduledAt,
-				State:       models.InstanceStateRunning,
+				Name:   "bq",
+				Type:   models.InstanceTypeTask,
+				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  instance.ConfigKeyExecutionTime,
+						Name:  run.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  instance.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Name:  run.ConfigKeyDstart,
+						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  instance.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Name:  run.ConfigKeyDend,
+						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -409,7 +429,7 @@ func TestContextManager(t *testing.T) {
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
+				InstanceSchedule: jobRun.ScheduledAt,
 				InstanceData:     instanceSpec.Data,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
@@ -418,7 +438,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := instance.NewContextManager(namespaceSpec, jobSpec, instance.NewGoEngine()).Generate(instanceSpec, models.InstanceTypeTask, "bq")
+			envMap, fileMap, err := run.NewContextManager(namespaceSpec, jobRun, run.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])

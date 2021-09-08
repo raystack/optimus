@@ -44,17 +44,17 @@ func versionCommand(l log.Logger, host string, pluginRepo models.PluginRepositor
 			l.Info(fmt.Sprintf(coloredShow("\nDiscovered plugins: %d"), len(plugins)))
 			for taskIdx, tasks := range plugins {
 				schema := tasks.Info()
-				l.Info(fmt.Sprintf(coloredPrint("%d %s"), taskIdx+1, schema.Name))
-				l.Info(fmt.Sprintf(coloredShow("Description: %s"), coloredPrint(schema.Description)))
+				l.Info(fmt.Sprintf(coloredPrint("\n%d. %s"), taskIdx+1, schema.Name))
+				l.Info(fmt.Sprintf(coloredShow("Description: %s"), schema.Description))
 				l.Info(fmt.Sprintf(coloredShow("Image: %s"), schema.Image))
-				l.Info(fmt.Sprintf(coloredShow("Type: %s"), coloredPrint(schema.PluginType)))
+				l.Info(fmt.Sprintf(coloredShow("Type: %s"), schema.PluginType))
 				l.Info(fmt.Sprintf(coloredShow("Plugin version: %s"), schema.PluginVersion))
 				l.Info(fmt.Sprintf(coloredShow("Plugin mods: %v"), schema.PluginMods))
 				if schema.HookType != "" {
-					l.Info(fmt.Sprintf(coloredShow("Hook type: %s"), coloredPrint(schema.HookType)))
+					l.Info(fmt.Sprintf(coloredShow("Hook type: %s"), schema.HookType))
 				}
 				if len(schema.DependsOn) != 0 {
-					l.Info(fmt.Sprintf(coloredShow("Depends on: %v"), coloredPrint(schema.DependsOn)))
+					l.Info(fmt.Sprintf(coloredShow("Depends on: %v"), schema.DependsOn))
 				}
 			}
 			return nil

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/core/progress"
+
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/mock"
 )
@@ -12,20 +14,28 @@ type Scheduler struct {
 	mock.Mock
 }
 
+func (ms *Scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
+	args := ms.Called(ctx, namespace, job)
+	return args.Error(0)
+}
+
+func (ms *Scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
+	args := ms.Called(ctx, namespace, opts)
+	return args.Get(0).([]models.Job), args.Error(1)
+}
+
+func (ms *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec, obs progress.Observer) error {
+	args := ms.Called(ctx, namespace, jobs, obs)
+	return args.Error(0)
+}
+
+func (ms *Scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, obs progress.Observer) error {
+	args := ms.Called(ctx, namespace, jobNames, obs)
+	return args.Error(0)
+}
+
 func (ms *Scheduler) GetName() string {
-	return ""
-}
-
-func (ms *Scheduler) GetTemplate() []byte {
-	return []byte{}
-}
-
-func (ms *Scheduler) GetJobsDir() string {
-	return ""
-}
-
-func (ms *Scheduler) GetJobsExtension() string {
-	return ""
+	return "mocked"
 }
 
 func (ms *Scheduler) Bootstrap(ctx context.Context, projectSpec models.ProjectSpec) error {
@@ -42,7 +52,7 @@ func (ms *Scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, job
 	return args.Error(0)
 }
 
-func (ms *Scheduler) GetDagRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
+func (ms *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
 	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
 	args := ms.Called(ctx, projectSpec, jobName, startDate, endDate, batchSize)
 	return args.Get(0).([]models.JobStatus), args.Error(1)

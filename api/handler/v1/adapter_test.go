@@ -35,7 +35,7 @@ func TestAdapter(t *testing.T) {
 		treeNode.Dependents = append(treeNode.Dependents, nestedTreeNode)
 		timeRun := time.Date(2021, 11, 8, 0, 0, 0, 0, time.UTC)
 		jobStatus := models.JobStatus{
-			State:       models.InstanceStateRunning,
+			State:       models.RunStateRunning,
 			ScheduledAt: timeRun,
 		}
 		treeNode.Runs = set.NewTreeSetWith(job.TimeOfJobStatusComparator)

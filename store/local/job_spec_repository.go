@@ -45,7 +45,7 @@ type jobRepository struct {
 func (repo *jobRepository) SaveAt(job models.JobSpec, rootDir string) error {
 	config, err := repo.adapter.FromSpec(job)
 	if err != nil {
-		return errors.Wrapf(err, "repo.adapter.FromSpec: %s", config.Name)
+		return errors.Wrapf(err, "repo.adapter.FromJobSpec: %s", config.Name)
 	}
 
 	if err := validator.Validate(config); err != nil {

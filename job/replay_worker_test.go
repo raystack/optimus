@@ -74,12 +74,12 @@ func TestReplayWorker(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, errMessage, err.Error())
 		})
-		t.Run("should throw an error when scheduler throws an error", func(t *testing.T) {
+		t.Run("should throw an error when batchScheduler throws an error", func(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
-			errMessage := "error while clearing dag runs for job job-name: scheduler clear error"
+			errMessage := "error while clearing dag runs for job job-name: batchScheduler clear error"
 			failedReplayMessage := models.ReplayMessage{
 				Type:    job.AirflowClearDagRunFailed,
 				Message: errMessage,
@@ -93,7 +93,7 @@ func TestReplayWorker(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			errorMessage := "scheduler clear error"
+			errorMessage := "batchScheduler clear error"
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
 
 			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
@@ -106,7 +106,7 @@ func TestReplayWorker(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
-			errMessage := "error while clearing dag runs for job job-name: scheduler clear error"
+			errMessage := "error while clearing dag runs for job job-name: batchScheduler clear error"
 			failedReplayMessage := models.ReplayMessage{
 				Type:    job.AirflowClearDagRunFailed,
 				Message: errMessage,
@@ -121,7 +121,7 @@ func TestReplayWorker(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			errorMessage := "scheduler clear error"
+			errorMessage := "batchScheduler clear error"
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
 
 			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)

@@ -225,7 +225,7 @@ func (repo *resourceSpecRepository) Save(spec models.ResourceSpec) error {
 	}
 	resource.ID = existingResource.ID
 
-	return repo.db.Model(resource).Updates(resource).Error
+	return repo.db.Model(&resource).Updates(&resource).Error
 }
 
 func (repo *resourceSpecRepository) GetByName(name string) (models.ResourceSpec, error) {

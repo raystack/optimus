@@ -8,28 +8,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/core/set"
+	"github.com/odpf/optimus/run"
+
+	"github.com/odpf/optimus/job"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/odpf/optimus/core/tree"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/core/set"
-	"github.com/odpf/optimus/core/tree"
-	"github.com/odpf/optimus/instance"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
 	log := log.NewNoop()
+	ctx := context.Background()
 
 	t.Run("Version", func(t *testing.T) {
 		t.Run("should save specs and return with data", func(t *testing.T) {
@@ -56,85 +62,93 @@ func TestRuntimeServiceServer(t *testing.T) {
 	})
 
 	t.Run("RegisterInstance", func(t *testing.T) {
-		t.Run("should register a job instance", func(t *testing.T) {
-			Version := "1.0.1"
+		Version := "1.0.1"
 
-			projectName := "a-data-project"
-			jobName := "a-data-job"
-			taskName := "a-data-task"
+		projectName := "a-data-project"
+		jobName := "a-data-job"
+		taskName := "a-data-task"
 
-			mockedTimeNow := time.Now()
-			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
-			scheduledAtTimestamp := timestamppb.New(scheduledAt)
+		mockedTimeNow := time.Now()
+		scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+		scheduledAtTimestamp := timestamppb.New(scheduledAt)
 
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+
+		namespaceSpec := models.NamespaceSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "namespace-124",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+
+		basePlugin1 := new(mock.BasePlugin)
+		basePlugin1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: taskName,
+		}, nil)
+		defer basePlugin1.AssertExpectations(t)
+
+		jobSpec := models.JobSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: jobName,
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{
+					Base: basePlugin1,
 				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: "namespace-124",
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-
-			basePlugin1 := new(mock.BasePlugin)
-			basePlugin1.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: taskName,
-			}, nil)
-			defer basePlugin1.AssertExpectations(t)
-
-			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: jobName,
-				Task: models.JobSpecTask{
-					Unit: &models.Plugin{
-						Base: basePlugin1,
-					},
-					Config: models.JobSpecConfigs{
-						{
-							Name:  "do",
-							Value: "this",
-						},
-					},
-				},
-				Assets: *models.JobAssets{}.New(
-					[]models.JobSpecAsset{
-						{
-							Name:  "query.sql",
-							Value: "select * from 1",
-						},
-					}),
-			}
-
-			instanceSpec := models.InstanceSpec{
-				Job:         jobSpec,
-				ScheduledAt: scheduledAt,
-				State:       models.InstanceStateRunning,
-				Data: []models.InstanceSpecData{
+				Config: models.JobSpecConfigs{
 					{
-						Name:  instance.ConfigKeyExecutionTime,
-						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  instance.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  instance.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
+						Name:  "do",
+						Value: "this",
 					},
 				},
-			}
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				}),
+		}
 
+		instanceSpec := models.InstanceSpec{
+			Name:   "do-this",
+			Type:   models.InstanceTypeTask,
+			Status: models.RunStateRunning,
+			Data: []models.InstanceSpecData{
+				{
+					Name:  run.ConfigKeyExecutionTime,
+					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  run.ConfigKeyDstart,
+					Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  run.ConfigKeyDend,
+					Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+			},
+			ExecutedAt: scheduledAt,
+		}
+
+		jobRun := models.JobRun{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Spec:        jobSpec,
+			Trigger:     models.TriggerManual,
+			Status:      models.RunStateAccepted,
+			ScheduledAt: scheduledAt,
+		}
+		t.Run("should register a new job instance with run for scheduled triggers", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
 			defer projectRepository.AssertExpectations(t)
@@ -147,13 +161,14 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetByNameForProject", jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
-			instanceService := new(mock.InstanceService)
-			instanceService.On("Register", jobSpec, scheduledAt, models.InstanceTypeTask).Return(instanceSpec, nil)
-			instanceService.On("Compile", namespaceSpec, jobSpec, instanceSpec, models.InstanceTypeTask, "test").Return(
+			instanceService := new(mock.RunService)
+			instanceService.On("GetScheduledRun", namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
+			instanceService.On("Register", namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
+			instanceService.On("Compile", namespaceSpec, jobRun, instanceSpec).Return(
 				map[string]string{
-					instance.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-					instance.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-					instance.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+					run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 				},
 				map[string]string{
 					"query.sql": "select * from 1",
@@ -177,7 +192,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName,
 				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(string(models.InstanceTypeTask))]),
 				ScheduledAt:  scheduledAtTimestamp,
-				InstanceName: "test",
+				InstanceName: instanceSpec.Name,
 			}
 			resp, err := runtimeServiceServer.RegisterInstance(context.Background(), &versionRequest)
 			assert.Nil(t, err)
@@ -191,9 +206,78 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project: projectSpecProto,
 				Context: &pb.InstanceContext{
 					Envs: map[string]string{
-						instance.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						instance.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						instance.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					},
+					Files: map[string]string{
+						"query.sql": "select * from 1",
+					},
+				},
+				Namespace: adapter.ToNamespaceProto(namespaceSpec),
+			}
+
+			assert.Equal(t, expectedResponse, resp)
+		})
+		t.Run("should find the existing job run if manually triggered", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			instanceService := new(mock.RunService)
+			instanceService.On("GetByID", jobRun.ID).Return(jobRun, namespaceSpec, nil)
+			instanceService.On("Register", namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
+			instanceService.On("Compile", namespaceSpec, jobRun, instanceSpec).Return(
+				map[string]string{
+					run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+					run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				},
+				map[string]string{
+					"query.sql": "select * from 1",
+				}, nil)
+			defer instanceService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"",
+				nil,
+				nil,
+				nil,
+				projectRepoFactory,
+				nil,
+				nil,
+				v1.NewAdapter(nil, nil),
+				nil,
+				instanceService,
+				nil,
+			)
+
+			versionRequest := pb.RegisterInstanceRequest{
+				ProjectName:  projectName,
+				JobrunId:     jobRun.ID.String(),
+				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(string(models.InstanceTypeTask))]),
+				InstanceName: instanceSpec.Name,
+			}
+			resp, err := runtimeServiceServer.RegisterInstance(context.Background(), &versionRequest)
+			assert.Nil(t, err)
+
+			adapter := v1.NewAdapter(nil, nil)
+			projectSpecProto := adapter.ToProjectProto(projectSpec)
+			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
+			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
+			expectedResponse := &pb.RegisterInstanceResponse{
+				Job: jobSpecProto, Instance: instanceSpecProto,
+				Project: projectSpecProto,
+				Context: &pb.InstanceContext{
+					Envs: map[string]string{
+						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
@@ -544,7 +628,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobSvc := new(mock.JobService)
 			jobSvc.On("Create", jobSpec, namespaceSpec).Return(nil)
-			jobSvc.On("Check", namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
+			jobSvc.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
 			jobSvc.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
 			defer jobSvc.AssertExpectations(t)
 
@@ -1316,130 +1400,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			_, err := runtimeServiceServer.GetWindow(context.Background(), &req)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
-		})
-	})
-
-	t.Run("DumpJobSpecification", func(t *testing.T) {
-		t.Run("should dump specification of a job", func(t *testing.T) {
-			Version := "1.0.1"
-
-			projectName := "a-data-project"
-			jobName := "a-data-job"
-
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: "dev-test-namespace-1",
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-				ProjectSpec: projectSpec,
-			}
-
-			compiledJob := models.Job{
-				Name:        jobName,
-				NamespaceID: namespaceSpec.ID.String(),
-				Contents:    []byte("content-of-dag"),
-			}
-
-			baseUnit := new(mock.BasePlugin)
-			defer baseUnit.AssertExpectations(t)
-
-			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: jobName,
-				Task: models.JobSpecTask{
-					Unit: &models.Plugin{
-						Base: baseUnit,
-					},
-					Config: models.JobSpecConfigs{
-						{
-							Name:  "do",
-							Value: "this",
-						},
-					},
-				},
-				Assets: *models.JobAssets{}.New(
-					[]models.JobSpecAsset{
-						{
-							Name:  "query.sql",
-							Value: "select * from 1",
-						},
-					}),
-			}
-
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			jobService.On("GetByName", jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Dump", namespaceSpec, jobSpec).Return(compiledJob, nil)
-			defer jobService.AssertExpectations(t)
-
-			jobSpecRepository := new(mock.JobSpecRepository)
-			defer jobSpecRepository.AssertExpectations(t)
-
-			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFactory.AssertExpectations(t)
-
-			compiler := new(mock.Compiler)
-			defer compiler.AssertExpectations(t)
-
-			dependencyResolver := new(mock.DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
-
-			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepository.AssertExpectations(t)
-
-			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
-			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				Version,
-				jobService,
-				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
-				nil,
-				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
-			)
-
-			req := pb.DumpJobSpecificationRequest{
-				ProjectName: projectName,
-				JobName:     jobName,
-				Namespace:   namespaceSpec.Name,
-			}
-			resp, err := runtimeServiceServer.DumpJobSpecification(context.Background(), &req)
-			assert.Nil(t, err)
-			assert.Equal(t, true, resp.GetSuccess())
-			assert.Equal(t, "content-of-dag", resp.GetContent())
 		})
 	})
 
@@ -2286,11 +2246,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobStatusList := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateRunning,
+					State:       models.RunStateRunning,
 				},
 				{
 					ScheduledAt: time.Date(2020, 11, 12, 0, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateRunning,
+					State:       models.RunStateRunning,
 				},
 			}
 

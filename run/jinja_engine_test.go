@@ -1,11 +1,12 @@
-package instance_test
+package run_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/run"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -65,7 +66,7 @@ func TestJinjaCompiler(t *testing.T) {
 					},
 				}
 
-				comp := instance.NewJinjaEngine()
+				comp := run.NewJinjaEngine()
 				compiledExpr, err := comp.CompileString(testCase.Input, values)
 
 				if err != nil {
@@ -145,7 +146,7 @@ event_timestamp > \"2021-02-10T10:00:00+00:00\" AND event_timestamp <= \"2021-02
 					},
 				}
 
-				comp := instance.NewJinjaEngine()
+				comp := run.NewJinjaEngine()
 				compiledExpr, err := comp.CompileFiles(testCase.Input, values)
 
 				if err != nil {

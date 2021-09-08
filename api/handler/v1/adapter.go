@@ -305,7 +305,7 @@ func (adapt *Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models
 }
 
 func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpec, error) {
-	data := []*pb.InstanceSpecData{}
+	var data []*pb.InstanceSpecData
 	for _, asset := range spec.Data {
 		data = append(data, &pb.InstanceSpecData{
 			Name:  asset.Name,
@@ -313,17 +313,17 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[strings.ToUpper(asset.Type)]),
 		})
 	}
-	schdAt := timestamppb.New(spec.ScheduledAt)
 	return &pb.InstanceSpec{
-		JobName:     spec.Job.Name,
-		ScheduledAt: schdAt,
-		Data:        data,
-		State:       spec.State,
+		State:      spec.Status.String(),
+		Data:       data,
+		ExecutedAt: timestamppb.New(spec.ExecutedAt),
+		Name:       spec.Name,
+		Type:       pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(spec.Type.String())]),
 	}, nil
 }
 
 func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
-	data := []models.InstanceSpecData{}
+	var data []models.InstanceSpecData
 	for _, asset := range conf.GetData() {
 		assetType := models.InstanceDataTypeEnv
 		switch asset.Type {
@@ -336,18 +336,16 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 			Type:  assetType,
 		})
 	}
-	schdAt := conf.ScheduledAt.AsTime()
-	err := conf.ScheduledAt.CheckValid()
+	instanceType, err := models.InstanceType("").New(conf.Type.String())
 	if err != nil {
 		return models.InstanceSpec{}, err
 	}
 	return models.InstanceSpec{
-		Job: models.JobSpec{
-			Name: conf.JobName,
-		},
-		ScheduledAt: schdAt,
-		Data:        data,
-		State:       conf.State,
+		Name:       conf.Name,
+		Type:       instanceType,
+		ExecutedAt: conf.ExecutedAt.AsTime(),
+		Status:     models.JobRunState(conf.State),
+		Data:       data,
 	}, nil
 }
 

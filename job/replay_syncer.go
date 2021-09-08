@@ -93,27 +93,27 @@ func (s Syncer) syncRunningReplay(context context.Context, projectSpec models.Pr
 	return updateCompletedReplays(s.l, stateSummary, replaySpecRepo, replaySpec.ID)
 }
 
-func (s Syncer) checkInstanceState(ctx context.Context, projectSpec models.ProjectSpec, replaySpec models.ReplaySpec) (map[string]int, error) {
-	stateSummary := make(map[string]int)
-	stateSummary[models.InstanceStateRunning] = 0
-	stateSummary[models.InstanceStateFailed] = 0
-	stateSummary[models.InstanceStateSuccess] = 0
+func (s Syncer) checkInstanceState(ctx context.Context, projectSpec models.ProjectSpec, replaySpec models.ReplaySpec) (map[models.JobRunState]int, error) {
+	stateSummary := make(map[models.JobRunState]int)
+	stateSummary[models.RunStateRunning] = 0
+	stateSummary[models.RunStateFailed] = 0
+	stateSummary[models.RunStateSuccess] = 0
 
 	for _, node := range replaySpec.ExecutionTree.GetAllNodes() {
 		batchEndDate := replaySpec.EndDate.AddDate(0, 0, 1).Add(time.Second * -1)
-		jobStatusAllRuns, err := s.scheduler.GetDagRunStatus(ctx, projectSpec, node.Data.(models.JobSpec).Name, replaySpec.StartDate, batchEndDate, schedulerBatchSize)
+		jobStatusAllRuns, err := s.scheduler.GetJobRunStatus(ctx, projectSpec, node.Data.(models.JobSpec).Name, replaySpec.StartDate, batchEndDate, schedulerBatchSize)
 		if err != nil {
 			return nil, err
 		}
 		for _, jobStatus := range jobStatusAllRuns {
-			stateSummary[jobStatus.State.String()]++
+			stateSummary[jobStatus.State]++
 		}
 	}
 	return stateSummary, nil
 }
 
-func updateCompletedReplays(l log.Logger, stateSummary map[string]int, replaySpecRepo store.ReplaySpecRepository, replayID uuid.UUID) error {
-	if stateSummary[models.InstanceStateRunning] == 0 && stateSummary[models.InstanceStateFailed] > 0 {
+func updateCompletedReplays(l log.Logger, stateSummary map[models.JobRunState]int, replaySpecRepo store.ReplaySpecRepository, replayID uuid.UUID) error {
+	if stateSummary[models.RunStateRunning] == 0 && stateSummary[models.RunStateFailed] > 0 {
 		if updateStatusErr := replaySpecRepo.UpdateStatus(replayID, models.ReplayStatusFailed, models.ReplayMessage{
 			Type:    models.ReplayStatusFailed,
 			Message: ReplayMessageFailed,
@@ -121,7 +121,7 @@ func updateCompletedReplays(l log.Logger, stateSummary map[string]int, replaySpe
 			l.Error("marking replay as failed error", "status error", updateStatusErr)
 			return updateStatusErr
 		}
-	} else if stateSummary[models.InstanceStateRunning] == 0 && stateSummary[models.InstanceStateFailed] == 0 && stateSummary[models.InstanceStateSuccess] > 0 {
+	} else if stateSummary[models.RunStateRunning] == 0 && stateSummary[models.RunStateFailed] == 0 && stateSummary[models.RunStateSuccess] > 0 {
 		if updateStatusErr := replaySpecRepo.UpdateStatus(replayID, models.ReplayStatusSuccess, models.ReplayMessage{
 			Type:    models.ReplayStatusSuccess,
 			Message: ReplayMessageSuccess,

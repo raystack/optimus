@@ -144,17 +144,17 @@ func TestReplaySyncer(t *testing.T) {
 			jobStatus := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 			}
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 
 			successReplayMessage := models.ReplayMessage{
 				Type:    models.ReplayStatusSuccess,
@@ -187,17 +187,17 @@ func TestReplaySyncer(t *testing.T) {
 			jobStatus := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateFailed,
+					State:       models.RunStateFailed,
 				},
 			}
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 
 			failedReplayMessage := models.ReplayMessage{
 				Type:    models.ReplayStatusFailed,
@@ -230,17 +230,17 @@ func TestReplaySyncer(t *testing.T) {
 			jobStatus := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC),
-					State:       models.InstanceStateRunning,
+					State:       models.RunStateRunning,
 				},
 			}
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec2].Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil).Once()
 
 			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
@@ -287,7 +287,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			assert.Nil(t, err)
 		})
-		t.Run("should return error when unable to get dag run status from scheduler", func(t *testing.T) {
+		t.Run("should return error when unable to get dag run status from batchScheduler", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetAll").Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
@@ -306,8 +306,8 @@ func TestReplaySyncer(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			errorMsg := "fetch dag run status from scheduler failed"
-			scheduler.On("GetDagRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errorMsg)).Once()
+			errorMsg := "fetch dag run status from batchScheduler failed"
+			scheduler.On("GetJobRunStatus", ctx, projectSpecs[0], specs[spec1].Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errorMsg)).Once()
 
 			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)

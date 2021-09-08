@@ -70,9 +70,13 @@ type RuntimeServiceClient interface {
 	CreateResource(ctx context.Context, in *CreateResourceRequest, opts ...grpc.CallOption) (*CreateResourceResponse, error)
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	UpdateResource(ctx context.Context, in *UpdateResourceRequest, opts ...grpc.CallOption) (*UpdateResourceResponse, error)
-	ReplayDryRun(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error)
+	DryRunReplay(ctx context.Context, in *DryRunReplayRequest, opts ...grpc.CallOption) (*DryRunReplayResponse, error)
 	Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error)
 	GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error)
+	ListReplays(ctx context.Context, in *ListReplaysRequest, opts ...grpc.CallOption) (*ListReplaysResponse, error)
+	// RunJob creates a job run and executes all included tasks/hooks instantly
+	// this doesn't necessarily deploy the job in db first
+	RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error)
 }
 
 type runtimeServiceClient struct {
@@ -359,9 +363,9 @@ func (c *runtimeServiceClient) UpdateResource(ctx context.Context, in *UpdateRes
 	return out, nil
 }
 
-func (c *runtimeServiceClient) ReplayDryRun(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error) {
-	out := new(ReplayDryRunResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/ReplayDryRun", in, out, opts...)
+func (c *runtimeServiceClient) DryRunReplay(ctx context.Context, in *DryRunReplayRequest, opts ...grpc.CallOption) (*DryRunReplayResponse, error) {
+	out := new(DryRunReplayResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/DryRunReplay", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -380,6 +384,24 @@ func (c *runtimeServiceClient) Replay(ctx context.Context, in *ReplayRequest, op
 func (c *runtimeServiceClient) GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error) {
 	out := new(GetReplayStatusResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/GetReplayStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runtimeServiceClient) ListReplays(ctx context.Context, in *ListReplaysRequest, opts ...grpc.CallOption) (*ListReplaysResponse, error) {
+	out := new(ListReplaysResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/ListReplays", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runtimeServiceClient) RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error) {
+	out := new(RunJobResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/RunJob", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -442,9 +464,13 @@ type RuntimeServiceServer interface {
 	CreateResource(context.Context, *CreateResourceRequest) (*CreateResourceResponse, error)
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error)
-	ReplayDryRun(context.Context, *ReplayRequest) (*ReplayDryRunResponse, error)
+	DryRunReplay(context.Context, *DryRunReplayRequest) (*DryRunReplayResponse, error)
 	Replay(context.Context, *ReplayRequest) (*ReplayResponse, error)
 	GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error)
+	ListReplays(context.Context, *ListReplaysRequest) (*ListReplaysResponse, error)
+	// RunJob creates a job run and executes all included tasks/hooks instantly
+	// this doesn't necessarily deploy the job in db first
+	RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -521,14 +547,20 @@ func (UnimplementedRuntimeServiceServer) ReadResource(context.Context, *ReadReso
 func (UnimplementedRuntimeServiceServer) UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResource not implemented")
 }
-func (UnimplementedRuntimeServiceServer) ReplayDryRun(context.Context, *ReplayRequest) (*ReplayDryRunResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplayDryRun not implemented")
+func (UnimplementedRuntimeServiceServer) DryRunReplay(context.Context, *DryRunReplayRequest) (*DryRunReplayResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DryRunReplay not implemented")
 }
 func (UnimplementedRuntimeServiceServer) Replay(context.Context, *ReplayRequest) (*ReplayResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Replay not implemented")
 }
 func (UnimplementedRuntimeServiceServer) GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetReplayStatus not implemented")
+}
+func (UnimplementedRuntimeServiceServer) ListReplays(context.Context, *ListReplaysRequest) (*ListReplaysResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListReplays not implemented")
+}
+func (UnimplementedRuntimeServiceServer) RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunJob not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
 
@@ -966,20 +998,20 @@ func _RuntimeService_UpdateResource_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_ReplayDryRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplayRequest)
+func _RuntimeService_DryRunReplay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DryRunReplayRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuntimeServiceServer).ReplayDryRun(ctx, in)
+		return srv.(RuntimeServiceServer).DryRunReplay(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.RuntimeService/ReplayDryRun",
+		FullMethod: "/odpf.optimus.RuntimeService/DryRunReplay",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).ReplayDryRun(ctx, req.(*ReplayRequest))
+		return srv.(RuntimeServiceServer).DryRunReplay(ctx, req.(*DryRunReplayRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1016,6 +1048,42 @@ func _RuntimeService_GetReplayStatus_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuntimeServiceServer).GetReplayStatus(ctx, req.(*GetReplayStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuntimeService_ListReplays_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListReplaysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).ListReplays(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.RuntimeService/ListReplays",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).ListReplays(ctx, req.(*ListReplaysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuntimeService_RunJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).RunJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.RuntimeService/RunJob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).RunJob(ctx, req.(*RunJobRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1108,8 +1176,8 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RuntimeService_UpdateResource_Handler,
 		},
 		{
-			MethodName: "ReplayDryRun",
-			Handler:    _RuntimeService_ReplayDryRun_Handler,
+			MethodName: "DryRunReplay",
+			Handler:    _RuntimeService_DryRunReplay_Handler,
 		},
 		{
 			MethodName: "Replay",
@@ -1118,6 +1186,14 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetReplayStatus",
 			Handler:    _RuntimeService_GetReplayStatus_Handler,
+		},
+		{
+			MethodName: "ListReplays",
+			Handler:    _RuntimeService_ListReplays_Handler,
+		},
+		{
+			MethodName: "RunJob",
+			Handler:    _RuntimeService_RunJob_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

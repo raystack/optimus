@@ -66,7 +66,7 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
@@ -95,7 +95,7 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
@@ -126,7 +126,7 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
@@ -152,7 +152,7 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
@@ -179,21 +179,21 @@ func TestReplayValidator(t *testing.T) {
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Nil(t, err)
 		})
-		t.Run("should return error when unable to get status from scheduler", func(t *testing.T) {
+		t.Run("should return error when unable to get status from batchScheduler", func(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			errMessage := "unable to get status"
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errMessage))
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return([]models.JobStatus{}, errors.New(errMessage))
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
@@ -209,21 +209,21 @@ func TestReplayValidator(t *testing.T) {
 			jobStatus := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateSuccess,
+					State:       models.RunStateSuccess,
 				},
 				{
 					ScheduledAt: time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateRunning,
+					State:       models.RunStateRunning,
 				},
 			}
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
 
 			assert.Equal(t, job.ErrConflictedJobRun, err)
 		})
-		t.Run("should return error when no running instance found in scheduler but accepted in replay", func(t *testing.T) {
+		t.Run("should return error when no running instance found in batchScheduler but accepted in replay", func(t *testing.T) {
 			activeReplayUUID := uuid.Must(uuid.NewRandom())
 			activeJobUUID := uuid.Must(uuid.NewRandom())
 			activeJobSpec := models.JobSpec{
@@ -250,10 +250,10 @@ func TestReplayValidator(t *testing.T) {
 			jobStatus := []models.JobStatus{
 				{
 					ScheduledAt: time.Date(2021, time.Month(1), 1, 2, 0, 0, 0, time.UTC),
-					State:       models.JobStatusStateRunning,
+					State:       models.RunStateRunning,
 				},
 			}
-			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
+			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, reqBatchSize).Return(jobStatus, nil)
 
 			replayValidator := job.NewReplayValidator(scheduler)
 			err := replayValidator.Validate(ctx, replayRepository, replayRequest, executionTree)
