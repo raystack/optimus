@@ -70,7 +70,7 @@ func (p *Planner) Init(ctx context.Context) error {
 }
 
 func (p *Planner) Close() error {
-	p.wg.Done()
+	p.wg.Wait()
 	return nil
 }
 

@@ -753,8 +753,15 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayRequest) (*pb.DryRunReplayResponse, error) {
-	replayWorkerRequest, err := sv.parseReplayRequest(req)
+func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
+	replayWorkerRequest, err := sv.parseReplayRequest(&pb.ReplayRequest{
+		ProjectName: req.ProjectName,
+		JobName:     req.JobName,
+		Namespace:   req.Namespace,
+		StartDate:   req.StartDate,
+		EndDate:     req.EndDate,
+		Force:       false,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -768,7 +775,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while preparing replay dry run response: %v", err)
 	}
-	return &pb.DryRunReplayResponse{
+	return &pb.ReplayDryRunResponse{
 		Success:  true,
 		Response: node,
 	}, nil
