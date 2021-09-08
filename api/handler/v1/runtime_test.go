@@ -1688,7 +1688,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			replayRequest := pb.ReplayRequest{
+			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName: projectName,
 				Namespace:   namespaceSpec.Name,
 				JobName:     jobName,
@@ -1742,7 +1742,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			replayRequest := pb.ReplayRequest{
+			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName: projectName,
 				Namespace:   namespaceSpec.Name,
 				JobName:     jobName,
@@ -1799,7 +1799,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			replayRequest := pb.ReplayRequest{
+			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName: projectName,
 				Namespace:   namespaceSpec.Name,
 				JobName:     jobName,

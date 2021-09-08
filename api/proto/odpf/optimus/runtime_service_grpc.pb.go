@@ -66,11 +66,14 @@ type RuntimeServiceClient interface {
 	DeployResourceSpecification(ctx context.Context, in *DeployResourceSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployResourceSpecificationClient, error)
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(ctx context.Context, in *ListResourceSpecificationRequest, opts ...grpc.CallOption) (*ListResourceSpecificationResponse, error)
-	// Datastore CRUD
+	// Database CRUD
+	// CreateResource registers a new resource of a namespace which belongs to a project
 	CreateResource(ctx context.Context, in *CreateResourceRequest, opts ...grpc.CallOption) (*CreateResourceResponse, error)
+	// ReadResource reads a provided resource spec of a namespace
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
+	// UpdateResource updates a resource specification of a datastore in project
 	UpdateResource(ctx context.Context, in *UpdateResourceRequest, opts ...grpc.CallOption) (*UpdateResourceResponse, error)
-	DryRunReplay(ctx context.Context, in *DryRunReplayRequest, opts ...grpc.CallOption) (*DryRunReplayResponse, error)
+	ReplayDryRun(ctx context.Context, in *ReplayDryRunRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error)
 	Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error)
 	GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error)
 	ListReplays(ctx context.Context, in *ListReplaysRequest, opts ...grpc.CallOption) (*ListReplaysResponse, error)
@@ -363,9 +366,9 @@ func (c *runtimeServiceClient) UpdateResource(ctx context.Context, in *UpdateRes
 	return out, nil
 }
 
-func (c *runtimeServiceClient) DryRunReplay(ctx context.Context, in *DryRunReplayRequest, opts ...grpc.CallOption) (*DryRunReplayResponse, error) {
-	out := new(DryRunReplayResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/DryRunReplay", in, out, opts...)
+func (c *runtimeServiceClient) ReplayDryRun(ctx context.Context, in *ReplayDryRunRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error) {
+	out := new(ReplayDryRunResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/ReplayDryRun", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -460,11 +463,14 @@ type RuntimeServiceServer interface {
 	DeployResourceSpecification(*DeployResourceSpecificationRequest, RuntimeService_DeployResourceSpecificationServer) error
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(context.Context, *ListResourceSpecificationRequest) (*ListResourceSpecificationResponse, error)
-	// Datastore CRUD
+	// Database CRUD
+	// CreateResource registers a new resource of a namespace which belongs to a project
 	CreateResource(context.Context, *CreateResourceRequest) (*CreateResourceResponse, error)
+	// ReadResource reads a provided resource spec of a namespace
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
+	// UpdateResource updates a resource specification of a datastore in project
 	UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error)
-	DryRunReplay(context.Context, *DryRunReplayRequest) (*DryRunReplayResponse, error)
+	ReplayDryRun(context.Context, *ReplayDryRunRequest) (*ReplayDryRunResponse, error)
 	Replay(context.Context, *ReplayRequest) (*ReplayResponse, error)
 	GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error)
 	ListReplays(context.Context, *ListReplaysRequest) (*ListReplaysResponse, error)
@@ -547,8 +553,8 @@ func (UnimplementedRuntimeServiceServer) ReadResource(context.Context, *ReadReso
 func (UnimplementedRuntimeServiceServer) UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResource not implemented")
 }
-func (UnimplementedRuntimeServiceServer) DryRunReplay(context.Context, *DryRunReplayRequest) (*DryRunReplayResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DryRunReplay not implemented")
+func (UnimplementedRuntimeServiceServer) ReplayDryRun(context.Context, *ReplayDryRunRequest) (*ReplayDryRunResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplayDryRun not implemented")
 }
 func (UnimplementedRuntimeServiceServer) Replay(context.Context, *ReplayRequest) (*ReplayResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Replay not implemented")
@@ -998,20 +1004,20 @@ func _RuntimeService_UpdateResource_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_DryRunReplay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DryRunReplayRequest)
+func _RuntimeService_ReplayDryRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplayDryRunRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuntimeServiceServer).DryRunReplay(ctx, in)
+		return srv.(RuntimeServiceServer).ReplayDryRun(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.RuntimeService/DryRunReplay",
+		FullMethod: "/odpf.optimus.RuntimeService/ReplayDryRun",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).DryRunReplay(ctx, req.(*DryRunReplayRequest))
+		return srv.(RuntimeServiceServer).ReplayDryRun(ctx, req.(*ReplayDryRunRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1176,8 +1182,8 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RuntimeService_UpdateResource_Handler,
 		},
 		{
-			MethodName: "DryRunReplay",
-			Handler:    _RuntimeService_DryRunReplay_Handler,
+			MethodName: "ReplayDryRun",
+			Handler:    _RuntimeService_ReplayDryRun_Handler,
 		},
 		{
 			MethodName: "Replay",

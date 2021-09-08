@@ -35,4 +35,6 @@ coverage.txt
 
 api/third_party/openapi/odpf/**/*
 api/third_party/openapi/odpf/optimus/plugins/*
+api/third_party/openapi/odpf/optimus/cluster/*
+!api/third_party/openapi/odpf/optimus/
 !api/third_party/openapi/odpf/optimus/runtime_service.swagger.json
