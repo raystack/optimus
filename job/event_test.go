@@ -2,28 +2,23 @@ package job_test
 
 import (
 	"context"
-	"io/ioutil"
 	"testing"
-
-	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/structpb"
-
-	"github.com/odpf/optimus/core/logger"
-
-	"github.com/odpf/optimus/mock"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestEventService(t *testing.T) {
-	logger.InitWithWriter("ERROR", ioutil.Discard)
-
+	log := log.NewNoop()
 	eventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
-			"url": "http://example.io",
+			"url": "https://example.io",
 		},
 	)
 	t.Run("should successfully notify registered notifiers on valid event", func(t *testing.T) {
@@ -64,7 +59,7 @@ func TestEventService(t *testing.T) {
 		}).Return(nil)
 		defer notifier.AssertExpectations(t)
 
-		evtService := job.NewEventService(map[string]models.Notifier{
+		evtService := job.NewEventService(log, map[string]models.Notifier{
 			"slacker": notifier,
 		})
 		err := evtService.Register(context.Background(), namespaceSpec, jobSpec, je)
@@ -102,7 +97,7 @@ func TestEventService(t *testing.T) {
 		notifier := new(mock.Notifier)
 		defer notifier.AssertExpectations(t)
 
-		evtService := job.NewEventService(map[string]models.Notifier{
+		evtService := job.NewEventService(log, map[string]models.Notifier{
 			"slacker": notifier,
 		})
 		err := evtService.Register(context.Background(), namespaceSpec, jobSpec, je)
@@ -146,7 +141,7 @@ func TestEventService(t *testing.T) {
 		}).Return(errors.New("failed to notify"))
 		defer notifier.AssertExpectations(t)
 
-		evtService := job.NewEventService(map[string]models.Notifier{
+		evtService := job.NewEventService(log, map[string]models.Notifier{
 			"slacker": notifier,
 		})
 		err := evtService.Register(context.Background(), namespaceSpec, jobSpec, je)

@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -10,17 +9,17 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	mocklib "github.com/stretchr/testify/mock"
 )
 
 func TestReplayManager(t *testing.T) {
 	ctx := context.Background()
-	logger.InitWithWriter(logger.DEBUG, ioutil.Discard)
+	log := log.NewNoop()
 	t.Run("Close", func(t *testing.T) {
 		replayManagerConfig := job.ReplayManagerConfig{
 			NumWorkers:    3,
@@ -32,7 +31,7 @@ func TestReplayManager(t *testing.T) {
 		replayWorkerFact.On("New").Return(worker)
 		defer replayWorkerFact.AssertExpectations(t)
 
-		manager := job.NewManager(replayWorkerFact, nil, nil, replayManagerConfig, nil, nil, nil)
+		manager := job.NewManager(log, replayWorkerFact, nil, nil, replayManagerConfig, nil, nil, nil)
 		worker.Close()
 
 		err := manager.Close()
@@ -96,7 +95,7 @@ func TestReplayManager(t *testing.T) {
 			replayWorkerFact.On("New").Return(worker)
 			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			replayManager := job.NewManager(log, replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -137,7 +136,7 @@ func TestReplayManager(t *testing.T) {
 			replayWorkerFact.On("New").Return(worker)
 			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			replayManager := job.NewManager(log, replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -163,7 +162,8 @@ func TestReplayManager(t *testing.T) {
 			replayWorkerFact.On("New").Return(worker)
 			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, nil, replayManagerConfig, nil, replayValidator, nil)
+			replayManager := job.NewManager(log, replayWorkerFact, replaySpecRepoFac, nil, replayManagerConfig, nil, replayValidator, nil)
+
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Equal(t, err, job.ErrConflictedJobRun)
 
@@ -207,7 +207,8 @@ func TestReplayManager(t *testing.T) {
 			replayWorkerFact.On("New").Return(worker)
 			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, job.ReplayManagerConfig{
+			replayManager := job.NewManager(log, replayWorkerFact, replaySpecRepoFac, uuidProvider, job.ReplayManagerConfig{
+
 				NumWorkers:    1,
 				WorkerTimeout: time.Second * 5,
 			}, nil, replayValidator, nil)
@@ -262,7 +263,7 @@ func TestReplayManager(t *testing.T) {
 			replayWorkerFact.On("New").Times(replayManagerConfig.NumWorkers)
 			defer replayWorkerFact.AssertExpectations(t)
 
-			replayManager := job.NewManager(replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
+			replayManager := job.NewManager(log, replayWorkerFact, replaySpecRepoFac, uuidProvider, replayManagerConfig, nil, replayValidator, nil)
 
 			_, err := replayManager.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
@@ -305,7 +306,7 @@ func TestReplayManager(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
 			replayResult, err := replayManager.GetReplay(replayUUID)
 
 			assert.Nil(t, err)
@@ -325,7 +326,7 @@ func TestReplayManager(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			replayManager := job.NewManager(nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
 			replayResult, err := replayManager.GetReplay(replayUUID)
 
 			assert.Equal(t, err, store.ErrResourceNotFound)
@@ -370,7 +371,7 @@ func TestReplayManager(t *testing.T) {
 			batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
 			scheduler.On("GetDagRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, 100).Return(jobStatusList, nil)
 
-			replayManager := job.NewManager(nil, nil, nil, job.ReplayManagerConfig{}, scheduler, nil, nil)
+			replayManager := job.NewManager(log, nil, nil, nil, job.ReplayManagerConfig{}, scheduler, nil, nil)
 			jobStatusMap, err := replayManager.GetRunStatus(context.TODO(), projectSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec.Name)
 
 			assert.Nil(t, err)

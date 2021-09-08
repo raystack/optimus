@@ -12,58 +12,48 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/odpf/optimus/ext/notify/slack"
-
-	"github.com/odpf/optimus/utils"
-
-	"github.com/odpf/optimus/ext/scheduler/airflow"
-
-	"github.com/odpf/optimus/config"
-
-	"github.com/odpf/optimus/datastore"
-	"github.com/odpf/optimus/meta"
-	"github.com/segmentio/kafka-go"
-
-	"google.golang.org/api/option"
-
 	"cloud.google.com/go/storage"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/gorm"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	slackapi "github.com/slack-go/slack"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/datastore"
 	_ "github.com/odpf/optimus/ext/datastore"
+	"github.com/odpf/optimus/ext/notify/slack"
+	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/models"
 	_ "github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/gcs"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/utils"
+	"github.com/odpf/salt/log"
+	"github.com/pkg/errors"
+	"github.com/segmentio/kafka-go"
+	"github.com/sirupsen/logrus"
+	slackapi "github.com/slack-go/slack"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 var (
 	//listen for sigterm
-	termChan = make(chan os.Signal, 1)
-
-	shutdownWait = 30 * time.Second
-
+	termChan           = make(chan os.Signal, 1)
+	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 45 << 20 // 45MB
 )
 
@@ -88,10 +78,11 @@ func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
 type replayWorkerFact struct {
 	replaySpecRepoFac job.ReplaySpecRepoFactory
 	scheduler         models.SchedulerUnit
+	jsonLog           log.Logger
 }
 
 func (fac *replayWorkerFact) New() job.ReplayWorker {
-	return job.NewReplayWorker(fac.replaySpecRepoFac, fac.scheduler)
+	return job.NewReplayWorker(fac.jsonLog, fac.replaySpecRepoFac, fac.scheduler)
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -109,8 +100,7 @@ func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepos
 	)
 }
 
-// jobRepoFactory stores compiled specifications that will be consumed by a
-// scheduler
+// jobRepoFactory stores compiled specifications that will be consumed by a scheduler
 type jobRepoFactory struct {
 	schd models.SchedulerUnit
 }
@@ -194,8 +184,7 @@ func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds model
 	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
 }
 
-type objectWriterFactory struct {
-}
+type objectWriterFactory struct{}
 
 func (o *objectWriterFactory) New(ctx context.Context, writerPath, writerSecret string) (store.ObjectWriter, error) {
 	p, err := url.Parse(writerPath)
@@ -228,11 +217,11 @@ func (factory *metadataServiceFactory) New() models.MetadataService {
 }
 
 type pipelineLogObserver struct {
-	log logrus.FieldLogger
+	log log.Logger
 }
 
 func (obs *pipelineLogObserver) Notify(evt progress.Event) {
-	obs.log.Info(evt)
+	obs.log.Info("observing pipeline log", "progress event", evt.String(), "reporter", "pipeline")
 }
 
 func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
@@ -267,23 +256,13 @@ func checkRequiredConfigs(conf config.Provider) error {
 	return nil
 }
 
-func Initialize(conf config.Provider) error {
+func Initialize(l log.Logger, conf config.Provider) error {
 	if err := checkRequiredConfigs(conf); err != nil {
 		return err
 	}
-
-	log := logrus.New()
-	if loglevel, err := logrus.ParseLevel(conf.GetLog().Level); err == nil {
-		log.Level = loglevel
-	}
-	log.SetOutput(os.Stdout)
-	logger.Init(conf.GetLog().Level)
-
-	mainLog := log.WithField("reporter", "main")
-	mainLog.Infof("starting optimus %s", config.Version)
-
+	l.Info("starting optimus", "version", config.Version)
 	progressObs := &pipelineLogObserver{
-		log: log.WithField("reporter", "pipeline"),
+		log: l,
 	}
 
 	// setup db
@@ -317,7 +296,7 @@ func Initialize(conf config.Provider) error {
 		return errors.Wrap(err, "NewApplicationSecret")
 	}
 
-	// registered project store repository factory, its a wrapper over a storage
+	// registered project store repository factory, it's a wrapper over a storage
 	// interface
 	projectRepoFac := &projectRepoFactory{
 		db:   dbConn,
@@ -333,13 +312,13 @@ func Initialize(conf config.Provider) error {
 			bootstrapCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
 
-			logger.I("bootstrapping project ", proj.Name)
+			l.Info("bootstrapping project", "project name", proj.Name)
 			if err := models.Scheduler.Bootstrap(bootstrapCtx, proj); err != nil {
 				// Major ERROR, but we can't make this fatal
 				// other projects might be working fine though
-				logger.E(err)
+				l.Error("no bootstrapping project", "error", err)
 			}
-			logger.I("bootstrapped project ", proj.Name)
+			l.Info("bootstrapped project", "project name", proj.Name)
 		}()
 	}
 
@@ -365,7 +344,7 @@ func Initialize(conf config.Provider) error {
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
-	logrusEntry := logrus.NewEntry(log)
+	logrusEntry := logrus.NewEntry(logrus.New())
 	// Shared options for the logger, with a custom gRPC code to log level function.
 	opts := []grpc_logrus.Option{
 		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
@@ -387,19 +366,16 @@ func Initialize(conf config.Provider) error {
 	// prepare factory writer for metadata
 	var metaSvcFactory meta.MetaSvcFactory
 	kafkaWriter := NewKafkaWriter(conf.GetServe().Metadata.KafkaJobTopic, strings.Split(conf.GetServe().Metadata.KafkaBrokers, ","), conf.GetServe().Metadata.KafkaBatchSize)
-	mainLog.WithFields(logrus.Fields{
-		"topic":   conf.GetServe().Metadata.KafkaJobTopic,
-		"brokers": conf.GetServe().Metadata.KafkaBrokers,
-	}).Debug("kafka metadata writer config received")
+	l.Info("kafka metadata writer config received", "topic", conf.GetServe().Metadata.KafkaJobTopic, "brokers", conf.GetServe().Metadata.KafkaBrokers)
 	if kafkaWriter != nil {
-		mainLog.Infof("job metadata publishing is enabled with brokers %s to topic %s", conf.GetServe().Metadata.KafkaBrokers, conf.GetServe().Metadata.KafkaJobTopic)
+		l.Info("job metadata publishing is enabled", "topic", conf.GetServe().Metadata.KafkaJobTopic, "brokers", conf.GetServe().Metadata.KafkaBrokers)
 		metaWriter := meta.NewWriter(kafkaWriter, conf.GetServe().Metadata.WriterBatchSize)
 		defer kafkaWriter.Close()
 		metaSvcFactory = &metadataServiceFactory{
 			writer: metaWriter,
 		}
 	} else {
-		mainLog.Info("job metadata publishing is disabled")
+		l.Info("job metadata publishing is disabled")
 	}
 
 	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
@@ -420,6 +396,7 @@ func Initialize(conf config.Provider) error {
 	}
 	replayValidator := job.NewReplayValidator(models.Scheduler)
 	replaySyncer := job.NewReplaySyncer(
+		l,
 		replaySpecRepoFac,
 		projectRepoFac,
 		models.Scheduler,
@@ -427,7 +404,7 @@ func Initialize(conf config.Provider) error {
 			return time.Now().UTC()
 		},
 	)
-	replayManager := job.NewManager(replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
 		RunTimeout:    conf.GetServe().ReplayRunTimeoutSecs,
@@ -435,17 +412,18 @@ func Initialize(conf config.Provider) error {
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	defer cancelNotifiers()
-	eventService := job.NewEventService(map[string]models.Notifier{
+	eventService := job.NewEventService(l, map[string]models.Notifier{
 		"slack": slack.NewNotifier(notificationContext, slackapi.APIURL,
 			slack.DefaultEventBatchInterval,
 			func(err error) {
-				logger.E(err)
+				l.Error("slack error accumulator", "error", err)
 			},
 		),
 	})
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
+		l,
 		config.Version,
 		job.NewService(
 			&jobSpecRepoFac,
@@ -516,10 +494,10 @@ func Initialize(conf config.Provider) error {
 
 	// run our server in a goroutine so that it doesn't block to wait for termination requests
 	go func() {
-		mainLog.Infoln("starting listening at ", grpcAddr)
+		l.Info("starting listening at", "address", grpcAddr)
 		if err := srv.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
-				mainLog.Fatalf("server error: %v\n", err)
+				l.Fatal("server error", "error", err)
 			}
 		}
 	}()
@@ -531,7 +509,7 @@ func Initialize(conf config.Provider) error {
 
 	// Block until we receive our signal.
 	<-termChan
-	mainLog.Info("termination request received")
+	l.Info("termination request received")
 	var terminalError error
 
 	if err = replayManager.Close(); err != nil {
@@ -555,14 +533,14 @@ func Initialize(conf config.Provider) error {
 		terminalError = multierror.Append(terminalError, errors.Wrap(err, "eventService.Close"))
 	}
 
-	mainLog.Info("bye")
+	l.Info("bye")
 	return terminalError
 }
 
 // grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.
 // Using a single port for proxying both http1 & 2 protocols will degrade http performance
-// but for our usecase the convenience per performance tradeoff is better suited
-// if in future, this does become a bottleneck(which I highly doubt), we can break the service
+// but for our use-case the convenience per performance tradeoff is better suited
+// if in the future, this does become a bottleneck(which I highly doubt), we can break the service
 // into two ports, default port for grpc and default+1 for grpc-gateway proxy.
 // We can also use something like a connection multiplexer
 // https://github.com/soheilhy/cmux to achieve the same.

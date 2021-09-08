@@ -5,10 +5,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/flosch/pongo2"
 	"github.com/odpf/optimus/models"
+	"github.com/pkg/errors"
 )
 
 // JinjaEngine compiles a set of defined macros using the provided context

@@ -13,6 +13,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/protobuf v1.5.2
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
 	github.com/gorilla/mux v1.7.4
@@ -32,16 +33,19 @@ require (
 	github.com/kushsharma/structs v1.1.1
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/odpf/salt v0.0.0-20210818232545-e074f9db34ae
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/segmentio/kafka-go v0.4.12
-	github.com/sirupsen/logrus v1.7.0
+	github.com/segmentio/kafka-go v0.4.17
+	github.com/sirupsen/logrus v1.8.1
 	github.com/slack-go/slack v0.9.1
 	github.com/spf13/afero v1.6.0
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xlab/treeprint v1.1.0
+	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a
 	golang.org/x/oauth2 v0.0.0-20210615190721-d04028783cf1
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect

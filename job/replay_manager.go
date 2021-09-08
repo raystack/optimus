@@ -6,16 +6,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-	"github.com/odpf/optimus/store"
-
-	"github.com/robfig/cron/v3"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron/v3"
 )
 
 var (
@@ -74,6 +72,7 @@ type Manager struct {
 	replayValidator     ReplayValidator
 	replaySyncer        ReplaySyncer
 	syncerScheduler     *cron.Cron
+	l                   log.Logger
 
 	workerCapacity int32
 }
@@ -129,10 +128,10 @@ func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 	for reqInput := range m.requestQ {
 		atomic.AddInt32(&m.workerCapacity, -1)
 
-		logger.I("worker picked up the request for ", reqInput.ID)
+		m.l.Info("worker picked up the request", "request id", reqInput.ID)
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := worker.Process(ctx, reqInput); err != nil {
-			logger.E(errors.Wrap(err, "worker failed to process"))
+			m.l.Error("worker failed to process", "error", err)
 		}
 		cancelCtx()
 
@@ -142,13 +141,13 @@ func (m *Manager) spawnServiceWorker(worker ReplayWorker) {
 
 // SchedulerSyncer to sync for latest replay status
 func (m *Manager) SchedulerSyncer() {
-	logger.D("start synchronizing replays...")
+	m.l.Debug("start synchronizing replays...")
 	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 	defer cancelCtx()
 	if err := m.replaySyncer.Sync(ctx, m.config.RunTimeout); err != nil {
-		logger.E(errors.Wrap(err, "syncer failed to process"))
+		m.l.Error("syncer failed to process", "error", err)
 	}
-	logger.D("replays synced")
+	m.l.Debug("replays synced")
 }
 
 // GetReplay using UUID
@@ -183,12 +182,12 @@ func (m *Manager) Init() {
 	if m.replaySyncer != nil {
 		_, err := m.syncerScheduler.AddFunc(syncInterval, m.SchedulerSyncer)
 		if err != nil {
-			logger.F(err)
+			m.l.Fatal("Failed to sync scheduler", "error", err)
 		}
 		m.syncerScheduler.Start()
 	}
 
-	logger.I("starting replay workers ", m.config.NumWorkers)
+	m.l.Info("starting replay workers", "count", m.config.NumWorkers)
 	for i := 0; i < m.config.NumWorkers; i++ {
 		m.wg.Add(1)
 		worker := m.replayWorkerFactory.New()
@@ -205,9 +204,10 @@ func (m *Manager) Init() {
 }
 
 // NewManager constructs a new instance of Manager
-func NewManager(workerFact ReplayWorkerFactory, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider,
+func NewManager(l log.Logger, workerFact ReplayWorkerFactory, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider,
 	config ReplayManagerConfig, scheduler models.SchedulerUnit, validator ReplayValidator, syncer ReplaySyncer) *Manager {
 	mgr := &Manager{
+		l:                   l,
 		replayWorkerFactory: workerFact,
 		config:              config,
 		requestQ:            make(chan models.ReplayRequest),

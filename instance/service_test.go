@@ -5,16 +5,13 @@ import (
 	"testing"
 	"time"
 
-	mock2 "github.com/stretchr/testify/mock"
-
-	"github.com/odpf/optimus/store"
-
 	"github.com/odpf/optimus/instance"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
 )
 
 func TestService(t *testing.T) {

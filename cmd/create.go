@@ -5,22 +5,19 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
-	petname "github.com/dustinkirkland/golang-petname"
-
-	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/utils"
-
-	"strconv"
-
 	"github.com/AlecAivazis/survey/v2"
+	petname "github.com/dustinkirkland/golang-petname"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
+	"github.com/odpf/optimus/utils"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 )
 
@@ -35,7 +32,7 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func createCommand(l logger, jobSpecFs afero.Fs, datastoreSpecsFs map[string]afero.Fs,
+func createCommand(l log.Logger, jobSpecFs afero.Fs, datastoreSpecsFs map[string]afero.Fs,
 	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "create",
@@ -47,7 +44,7 @@ func createCommand(l logger, jobSpecFs afero.Fs, datastoreSpecsFs map[string]afe
 	return cmd
 }
 
-func createJobSubCommand(l logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
+func createJobSubCommand(l log.Logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
 	return &cli.Command{
 		Use:   "job",
 		Short: "create a new Job",
@@ -81,7 +78,7 @@ func createJobSubCommand(l logger, jobSpecFs afero.Fs, pluginRepo models.PluginR
 			if err := jobSpecRepo.SaveAt(spec, jobDirectory); err != nil {
 				return err
 			}
-			l.Println("job successfully created at", jobDirectory)
+			l.Info(fmt.Sprintf("job successfully created at %s", jobDirectory))
 			return nil
 		},
 	}
@@ -105,7 +102,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 			continue
 		}
 
-		// if it contain job or resource, skip it from valid options
+		// if it contains job or resource, skip it from valid options
 		dirItems, err := afero.ReadDir(jobSpecFs, filepath.Join(root, dir.Name()))
 		if err != nil {
 			return "", err
@@ -137,7 +134,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 		return "", err
 	}
 
-	// check for sub directories
+	// check for sub-directories
 	if selectedDir != currentFolder {
 		return getWorkingDirectory(jobSpecFs, filepath.Join(root, selectedDir))
 	}
@@ -312,7 +309,7 @@ this effects runtime dependencies and template macros`,
 	return jobInput, nil
 }
 
-func createHookSubCommand(l logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
+func createHookSubCommand(l log.Logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "hook",
 		Short: "create a new Hook",
@@ -339,7 +336,7 @@ func createHookSubCommand(l logger, jobSpecFs afero.Fs, pluginRepo models.Plugin
 				return err
 			}
 
-			l.Println("hook successfully added to", selectJobName)
+			l.Info(fmt.Sprintf("hook successfully added to %s", selectJobName))
 			return nil
 		},
 	}
@@ -468,7 +465,7 @@ func IsJobNameUnique(repository JobSpecRepository) survey.Validator {
 	}
 }
 
-func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
 	return &cli.Command{
 		Use:   "resource",
 		Short: "create a new resource",
@@ -548,7 +545,7 @@ func createResourceSubCommand(l logger, datastoreSpecFs map[string]afero.Fs, dat
 				return err
 			}
 
-			l.Println("resource created successfully", resourceName)
+			l.Info(fmt.Sprintf("resource created successfully %s", resourceName))
 			return nil
 		},
 	}

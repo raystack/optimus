@@ -4,14 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/core/progress"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
-
-	"github.com/odpf/optimus/store"
-
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 const (
@@ -175,14 +172,14 @@ type (
 
 func (e *EventResourceUpdated) String() string {
 	if e.Err != nil {
-		return fmt.Sprintf("updating: %s, failed with error): %s", e.Spec.Name, e.Err.Error())
+		return fmt.Sprintf("updating: %s, failed with error: %s", e.Spec.Name, e.Err.Error())
 	}
 	return fmt.Sprintf("updated: %s", e.Spec.Name)
 }
 
 func (e *EventResourceCreated) String() string {
 	if e.Err != nil {
-		return fmt.Sprintf("creating: %s, failed with error): %s", e.Spec.Name, e.Err.Error())
+		return fmt.Sprintf("creating: %s, failed with error: %s", e.Spec.Name, e.Err.Error())
 	}
 	return fmt.Sprintf("created: %s", e.Spec.Name)
 }

@@ -2,12 +2,10 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/core/logger"
-
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 )
 
@@ -22,6 +20,7 @@ type ReplayWorker interface {
 type replayWorker struct {
 	replaySpecRepoFac ReplaySpecRepoFactory
 	scheduler         models.SchedulerUnit
+	log               log.Logger
 }
 
 func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) (err error) {
@@ -43,7 +42,7 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) 
 		endTime := runTimes[treeNode.Runs.Size()-1].(time.Time)
 		if err = w.scheduler.Clear(ctx, input.Project, treeNode.GetName(), startTime, endTime); err != nil {
 			err = errors.Wrapf(err, "error while clearing dag runs for job %s", treeNode.GetName())
-			logger.W(fmt.Sprintf("error while running replay %s: %s", input.ID.String(), err.Error()))
+			w.log.Warn("error while running replay", "replay id", input.ID.String(), "error", err.Error())
 			if updateStatusErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusFailed, models.ReplayMessage{
 				Type:    AirflowClearDagRunFailed,
 				Message: err.Error(),
@@ -57,10 +56,14 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) 
 	if err = replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusReplayed, models.ReplayMessage{}); err != nil {
 		return err
 	}
-	logger.I(fmt.Sprintf("successfully cleared instances of replay id: %s", input.ID.String()))
+	w.log.Info("successfully cleared instances during replay", "replay id", input.ID.String())
 	return nil
 }
 
-func NewReplayWorker(replaySpecRepoFac ReplaySpecRepoFactory, scheduler models.SchedulerUnit) *replayWorker {
-	return &replayWorker{replaySpecRepoFac: replaySpecRepoFac, scheduler: scheduler}
+func NewReplayWorker(l log.Logger, replaySpecRepoFac ReplaySpecRepoFactory, scheduler models.SchedulerUnit) *replayWorker {
+	return &replayWorker{
+		log:               l,
+		replaySpecRepoFac: replaySpecRepoFac,
+		scheduler:         scheduler,
+	}
 }

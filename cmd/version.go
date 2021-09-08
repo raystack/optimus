@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -25,39 +24,38 @@ const (
 	githubReleaseURL = "https://api.github.com/repos/odpf/optimus/releases/latest"
 )
 
-func versionCommand(l logger, host string, pluginRepo models.PluginRepository) *cli.Command {
+func versionCommand(l log.Logger, host string, pluginRepo models.PluginRepository) *cli.Command {
 	var serverVersion bool
 	c := &cli.Command{
 		Use:   "version",
 		Short: "Print the client version information",
 		RunE: func(c *cli.Command, args []string) error {
-			l.Printf(fmt.Sprintf("client: %s-%s", coloredNotice(config.Version), config.BuildCommit))
+			l.Info(fmt.Sprintf(coloredShow("client: %s-%s"), coloredNotice(config.Version), config.BuildCommit))
 			if host != "" && serverVersion {
 				srvVer, err := getVersionRequest(config.Version, host)
 				if err != nil {
 					return err
 				}
-				l.Printf("server: %s", coloredNotice(srvVer))
+				l.Info(fmt.Sprintf("server: %s", coloredNotice(srvVer)))
 			}
 			checkLatestVersion(l)
 
 			plugins := pluginRepo.GetAll()
-			l.Println(fmt.Sprintf("\nDiscovered plugins: %d", len(plugins)))
+			l.Info(fmt.Sprintf(coloredShow("\nDiscovered plugins: %d"), len(plugins)))
 			for taskIdx, tasks := range plugins {
 				schema := tasks.Info()
-				l.Printf("%d. %s\n", taskIdx+1, schema.Name)
-				l.Printf("Description: %s\n", schema.Description)
-				l.Printf("Image: %s\n", schema.Image)
-				l.Printf("Type: %s\n", schema.PluginType)
-				l.Printf("Plugin version: %s\n", schema.PluginVersion)
-				l.Printf("Plugin mods: %v\n", schema.PluginMods)
+				l.Info(fmt.Sprintf(coloredPrint("%d %s"), taskIdx+1, schema.Name))
+				l.Info(fmt.Sprintf(coloredShow("Description: %s"), coloredPrint(schema.Description)))
+				l.Info(fmt.Sprintf(coloredShow("Image: %s"), schema.Image))
+				l.Info(fmt.Sprintf(coloredShow("Type: %s"), coloredPrint(schema.PluginType)))
+				l.Info(fmt.Sprintf(coloredShow("Plugin version: %s"), schema.PluginVersion))
+				l.Info(fmt.Sprintf(coloredShow("Plugin mods: %v"), schema.PluginMods))
 				if schema.HookType != "" {
-					l.Printf("Hook type: %s\n", schema.HookType)
+					l.Info(fmt.Sprintf(coloredShow("Hook type: %s"), coloredPrint(schema.HookType)))
 				}
 				if len(schema.DependsOn) != 0 {
-					l.Printf("Depends on: %v\n", schema.DependsOn)
+					l.Info(fmt.Sprintf(coloredShow("Depends on: %v"), coloredPrint(schema.DependsOn)))
 				}
-				l.Println("")
 			}
 			return nil
 		},
@@ -66,24 +64,24 @@ func versionCommand(l logger, host string, pluginRepo models.PluginRepository) *
 	return c
 }
 
-func checkLatestVersion(l logger) {
+func checkLatestVersion(l log.Logger) {
 	gitClient := http.Client{
 		Timeout: clientVersion,
 	}
 
 	req, err := http.NewRequest(http.MethodGet, githubReleaseURL, nil)
 	if err != nil {
-		l.Println("failed to create request for latest version")
+		l.Info("failed to create request for latest version")
 		return
 	}
 	req.Header.Set("User-Agent", "optimus")
 	res, err := gitClient.Do(req)
 	if err != nil {
-		l.Println("failed to get latest version from github")
+		l.Info("failed to get latest version from github")
 		return
 	}
 	if res.StatusCode != http.StatusOK {
-		l.Println("failed to get latest version from github")
+		l.Info("failed to get latest version from github")
 		return
 	}
 	if res.Body != nil {
@@ -92,7 +90,7 @@ func checkLatestVersion(l logger) {
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		l.Println("failed to read response body")
+		l.Info("failed to read response body")
 		return
 	}
 
@@ -100,27 +98,27 @@ func checkLatestVersion(l logger) {
 		TagName string `json:"tag_name"`
 	}{}
 	if err = json.Unmarshal(body, &authorType); err != nil {
-		l.Println(fmt.Sprintf("failed to parse: %s", string(body)))
+		l.Info(fmt.Sprintf("failed to parse: %s", string(body)))
 		return
 	}
 
 	currentV, err := version.NewVersion(config.Version)
 	if err != nil {
-		l.Println(err, "failed to parse current version")
+		l.Info(fmt.Sprintf("failed to parse current version %s", err))
 		return
 	}
 	latestV, err := version.NewVersion(authorType.TagName)
 	if err != nil {
-		l.Println(err, "failed to parse latest version")
+		l.Info(fmt.Sprintf("failed to parse latest version %s", err))
 		return
 	}
 
 	if currentV.LessThan(latestV) {
-		l.Printf("new version is available: %s, consider updating the client", coloredNotice(latestV))
+		l.Info(fmt.Sprintf("new version is available: %s, consider updating the client", coloredNotice(latestV)))
 	}
 }
 
-// getVersionRequest send a job request to service
+// getVersionRequest send a version request to service
 func getVersionRequest(clientVer string, host string) (ver string, err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()

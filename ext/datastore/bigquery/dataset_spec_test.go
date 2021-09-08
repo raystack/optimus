@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/odpf/optimus/models"
-
 	"github.com/stretchr/testify/assert"
 )
 

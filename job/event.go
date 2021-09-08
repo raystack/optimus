@@ -2,20 +2,19 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	log "github.com/odpf/optimus/core/logger"
-
-	"github.com/pkg/errors"
-
 	"github.com/hashicorp/go-multierror"
-
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
+	"github.com/pkg/errors"
 )
 
 type eventService struct {
 	// scheme -> notifier
 	notifyChannels map[string]models.Notifier
+	log            log.Logger
 }
 
 func (e *eventService) Register(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
@@ -28,7 +27,7 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 				scheme := chanParts[0]
 				route := chanParts[1]
 
-				log.Df("notification event for job %s: %v", jobSpec.Name, evt)
+				e.log.Debug("notification event for job", "job spec name", jobSpec.Name, "event", fmt.Sprintf("%v", evt))
 				if notifyChannel, ok := e.notifyChannels[scheme]; ok {
 					if currErr := notifyChannel.Notify(ctx, models.NotifyAttrs{
 						Namespace: namespace,
@@ -36,7 +35,7 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 						JobEvent:  evt,
 						Route:     route,
 					}); currErr != nil {
-						log.E(currErr)
+						e.log.Error("Error: No notification event for job ", "current error", currErr)
 						err = multierror.Append(err, errors.Wrapf(currErr, "notifyChannel.Notify: %s", channel))
 					}
 				}
@@ -54,8 +53,9 @@ func (e *eventService) Close() error {
 	return err
 }
 
-func NewEventService(notifyChan map[string]models.Notifier) *eventService {
+func NewEventService(lg log.Logger, notifyChan map[string]models.Notifier) *eventService {
 	return &eventService{
+		log:            lg,
 		notifyChannels: notifyChan,
 	}
 }

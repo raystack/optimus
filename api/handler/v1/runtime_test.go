@@ -4,46 +4,39 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/odpf/optimus/core/set"
-
-	"github.com/odpf/optimus/job"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"google.golang.org/protobuf/types/known/structpb"
-
-	"github.com/odpf/optimus/core/tree"
-
-	"github.com/odpf/optimus/instance"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/optimus/core/set"
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/instance"
+	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
-
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
-	logger.InitWithWriter("INFO", ioutil.Discard)
+	log := log.NewNoop()
 
 	t.Run("Version", func(t *testing.T) {
 		t.Run("should save specs and return with data", func(t *testing.T) {
 			Version := "1.0.1"
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				nil, nil, nil,
 				nil,
@@ -168,6 +161,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService,
 				nil, nil,
@@ -236,6 +230,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobService, nil, nil,
 				projectRepoFactory,
@@ -276,6 +271,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobService, nil, nil,
 				projectRepoFactory,
@@ -334,6 +330,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobSvc,
 				nil, nil,
@@ -397,6 +394,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobSvc,
 				nil, nil,
@@ -454,6 +452,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobSvc,
 				nil, nil,
@@ -558,6 +557,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobSvc,
 				nil, nil,
@@ -622,6 +622,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobService, nil, nil,
 				projectRepoFactory,
@@ -680,6 +681,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"someVersion1.0",
 				jobService, nil, nil,
 				projectRepoFactory,
@@ -802,6 +804,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer grpcRespStream.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService,
 				nil, nil,
@@ -905,6 +908,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService,
 				nil, nil,
@@ -970,6 +974,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService,
 				nil, nil,
@@ -1072,6 +1077,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService,
 				nil, nil,
@@ -1139,6 +1145,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer scheduler.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService, nil, nil,
 				projectRepoFactory,
@@ -1218,7 +1225,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			eventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url": "http://example.io",
+					"url": "https://example.io",
 				},
 			)
 			eventSvc := new(mock.EventService)
@@ -1229,6 +1236,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer eventSvc.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService, eventSvc, nil,
 				projectRepoFactory,
@@ -1258,6 +1266,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			Version := "1.0.1"
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				nil, nil, nil,
 				nil,
@@ -1286,6 +1295,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			Version := "1.0.1"
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				nil, nil,
 				nil, nil,
@@ -1408,6 +1418,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				Version,
 				jobService,
 				nil, nil,
@@ -1512,6 +1523,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				nil, nil,
 				resourceSvc,
@@ -1610,6 +1622,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				nil, nil,
 				resourceSvc,
@@ -1703,6 +1716,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService, nil,
 				nil,
@@ -1755,6 +1769,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -1811,6 +1826,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -1907,6 +1923,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -1948,6 +1965,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				nil,
 				nil,
@@ -2003,6 +2021,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -2040,6 +2059,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				nil,
 				nil,
@@ -2088,6 +2108,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -2143,6 +2164,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -2199,6 +2221,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService,
 				nil,
@@ -2295,6 +2318,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			adapter := v1.NewAdapter(nil, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService, nil,
 				nil,
@@ -2337,6 +2361,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			adapter := v1.NewAdapter(nil, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
 				"Version",
 				jobService, nil,
 				nil,

@@ -5,12 +5,11 @@ import (
 	"context"
 	"sync"
 
-	"google.golang.org/api/option"
-
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 )
 
 const (

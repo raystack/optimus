@@ -3,16 +3,16 @@ package cmd
 import (
 	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"
-
+	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 )
 
-func optimusServeCommand(l logger, conf config.Provider) *cli.Command {
+func serveCommand(l log.Logger, conf config.Provider) *cli.Command {
 	c := &cli.Command{
 		Use:   "serve",
 		Short: "Starts optimus service",
 		RunE: func(c *cli.Command, args []string) error {
-			return server.Initialize(conf)
+			return server.Initialize(l, conf)
 		},
 	}
 	return c

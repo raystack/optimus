@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
-
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/meta"
@@ -575,7 +574,7 @@ func (e *EventJobSpecCompile) String() string {
 
 func (e *EventJobUpload) String() string {
 	if e.Err != nil {
-		return fmt.Sprintf("uploading: %s, failed with error): %s", e.Job.Name, e.Err.Error())
+		return fmt.Sprintf("uploading: %s, failed with error: %s", e.Job.Name, e.Err.Error())
 	}
 	return fmt.Sprintf("uploaded: %s", e.Job.Name)
 }

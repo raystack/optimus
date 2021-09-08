@@ -6,16 +6,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/store/local"
-
-	"github.com/odpf/optimus/config"
-
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -25,7 +23,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository,
+func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecRepository,
 	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var projectName string
 	var namespace string
@@ -44,7 +42,7 @@ func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		l.Printf("deploying project %s for namespace %s at %s\nplease wait...\n", projectName, namespace, conf.GetHost())
+		l.Info(fmt.Sprintf("deploying project %s for namespace %s at %s\nplease wait...", projectName, namespace, conf.GetHost()))
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -56,7 +54,7 @@ func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository
 			return err
 		}
 
-		l.Printf("deployment took %v\n", time.Since(start))
+		l.Info(fmt.Sprintf("deployment took %v", time.Since(start)))
 		return nil
 	}
 
@@ -64,7 +62,7 @@ func deployCommand(l logger, conf config.Provider, jobSpecRepo JobSpecRepository
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l logger, projectName string, namespace string, jobSpecRepo JobSpecRepository,
+func postDeploymentRequest(l log.Logger, projectName string, namespace string, jobSpecRepo JobSpecRepository,
 	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -73,7 +71,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service")
+			l.Info("can't reach optimus service")
 		}
 		return err
 	}
@@ -101,7 +99,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
 	}
-	l.Println("updated project configuration")
+	l.Info("updated project configuration")
 
 	if !ignoreResources {
 		// deploy datastore resources
@@ -113,7 +111,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll()
 			if err == models.ErrNoResources {
-				l.Println(coloredNotice("no resource specifications found"))
+				l.Info(coloredNotice("no resource specifications found"))
 				continue
 			}
 			if err != nil {
@@ -139,7 +137,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 			})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
-					l.Println("deployment process took too long, timing out")
+					l.Info("deployment process took too long, timing out")
 				}
 				return errors.Wrapf(err, "deployement failed")
 			}
@@ -161,21 +159,21 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 						return errors.Errorf("unable to deploy: %s %s", resp.GetResourceName(), resp.GetMessage())
 					}
 					deployCounter++
-					l.Printf("%d/%d. %s successfully deployed\n", deployCounter, totalSpecs, resp.GetResourceName())
+					l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", deployCounter, totalSpecs, resp.GetResourceName()))
 				} else {
 					// ordinary progress event
-					l.Printf("info '%s': %s\n", resp.GetResourceName(), resp.GetMessage())
+					l.Info(fmt.Sprintf("info '%s': %s", resp.GetResourceName(), resp.GetMessage()))
 				}
 			}
 		}
-		l.Println("deployed resources")
+		l.Info("deployed resources")
 	} else {
-		l.Println("skipping resource deployment")
+		l.Info("skipping resource deployment")
 	}
 
 	if !ignoreJobDeployment {
 		// deploy job specifications
-		l.Println("deploying jobs")
+		l.Info("deploying jobs")
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
 			return err
@@ -196,7 +194,7 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Println("deployment process took too long, timing out")
+				l.Info("deployment process took too long, timing out")
 			}
 			return errors.Wrapf(err, "deployement failed")
 		}
@@ -217,17 +215,17 @@ func postDeploymentRequest(l logger, projectName string, namespace string, jobSp
 					return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
 				}
 				jobCounter++
-				l.Printf("%d/%d. %s successfully deployed\n", jobCounter, totalJobs, resp.GetJobName())
+				l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", jobCounter, totalJobs, resp.GetJobName()))
 			} else {
 				// ordinary progress event
-				l.Printf("info '%s': %s\n", resp.GetJobName(), resp.GetMessage())
+				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
 			}
 		}
-		l.Println("deployed jobs")
+		l.Info("deployed jobs")
 	} else {
-		l.Println("skipping job deployment")
+		l.Info("skipping job deployment")
 	}
 
-	l.Println("deployment completed successfully")
+	l.Info("deployment completed successfully")
 	return nil
 }

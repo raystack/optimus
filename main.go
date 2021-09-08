@@ -3,29 +3,33 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/hashicorp/go-hclog"
-
-	"github.com/odpf/optimus/plugin"
-
 	hPlugin "github.com/hashicorp/go-plugin"
-
 	"github.com/odpf/optimus/cmd"
 	"github.com/odpf/optimus/config"
-	lg "github.com/odpf/optimus/core/logger"
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin"
 	_ "github.com/odpf/optimus/plugin"
+	"github.com/odpf/salt/log"
 )
 
 var (
 	errRequestFail = errors.New("🔥 unable to complete request successfully")
 )
+
+type PlainFormatter struct{}
+
+func (p *PlainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	return []byte(fmt.Sprintf("%s\n", entry.Message)), nil
+}
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -36,14 +40,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	var jsonLogger log.Logger
+	var plainLogger log.Logger
+
 	pluginLogLevel := hclog.Info
 	if configuration.GetLog().Level != "" {
-		lg.Init(configuration.GetLog().Level)
+		jsonLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level))
+		plainLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level), log.LogrusWithFormatter(new(PlainFormatter)))
 		if strings.ToLower(configuration.GetLog().Level) == "debug" {
 			pluginLogLevel = hclog.Debug
 		}
 	} else {
-		lg.Init(lg.INFO)
+		jsonLogger = log.NewLogrus(log.LogrusWithLevel("INFO"))
+		plainLogger = log.NewLogrus(log.LogrusWithLevel("INFO"), log.LogrusWithFormatter(new(PlainFormatter)))
 	}
 
 	// discover and load plugins
@@ -60,7 +69,8 @@ func main() {
 	defer hPlugin.CleanupClients()
 
 	command := cmd.New(
-		log.New(os.Stderr, "", 0),
+		plainLogger,
+		jsonLogger,
 		configuration,
 		models.PluginRegistry,
 		models.DatastoreRegistry,

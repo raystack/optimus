@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 	adminBuildInstanceTimeout = time.Minute * 1
 )
 
-func adminBuildInstanceCommand(l logger) *cli.Command {
+func adminBuildInstanceCommand(l log.Logger) *cli.Command {
 	var (
 		optimusHost    string
 		projectName    string
@@ -56,8 +56,8 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
-		l.Printf("requesting resources for project %s, job %s at %s\nplease wait...\n", projectName, jobName, optimusHost)
-		l.Printf("run name %s, run type %s, scheduled at %s\n", runName, runType, scheduledAt)
+		l.Info(fmt.Sprintf("requesting resources for project %s, job %s at %s\nplease wait...", projectName, jobName, optimusHost))
+		l.Info(fmt.Sprintf("run name %s, run type %s, scheduled at %s", runName, runType, scheduledAt))
 		// append base path to input file directory
 		inputDirectory := filepath.Join(assetOutputDir, taskInputDirectory)
 
@@ -72,7 +72,7 @@ func adminBuildInstanceCommand(l logger) *cli.Command {
 // getInstanceBuildRequest fetches a JobRun from the store (eg, postgres)
 // Based on the response, it builds assets like query, env and config
 // for the Job Run which is saved into output files.
-func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectName, scheduledAt, runType, runName string) (err error) {
+func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projectName, scheduledAt, runType, runName string) (err error) {
 	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, scheduledAt)
 	if err != nil {
 		return errors.Wrapf(err, "invalid time format, please use %s", models.InstanceScheduledAtTimeLayout)
@@ -85,7 +85,7 @@ func getInstanceBuildRequest(l logger, jobName, inputDirectory, host, projectNam
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("can't reach optimus service, timing out")
+			l.Info("can't reach optimus service, timing out")
 		}
 		return err
 	}

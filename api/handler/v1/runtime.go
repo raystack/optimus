@@ -7,28 +7,20 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/google/uuid"
-
-	"google.golang.org/protobuf/types/known/structpb"
-
-	"github.com/odpf/optimus/core/tree"
-
-	"github.com/odpf/optimus/datastore"
-
-	"github.com/golang/protobuf/ptypes"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
-	"github.com/odpf/optimus/core/logger"
-	log "github.com/odpf/optimus/core/logger"
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type ProjectRepoFactory interface {
@@ -79,6 +71,7 @@ type RuntimeServiceServer struct {
 	secretRepoFactory    SecretRepoFactory
 	instSvc              models.InstanceService
 	scheduler            models.SchedulerUnit
+	l                    log.Logger
 
 	progressObserver progress.Observer
 	Now              func() time.Time
@@ -86,8 +79,8 @@ type RuntimeServiceServer struct {
 	pb.UnimplementedRuntimeServiceServer
 }
 
-func (sv *RuntimeServiceServer) Version(ctx context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) {
-	log.I(fmt.Printf("client with version %s requested for ping ", version.Client))
+func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) {
+	sv.l.Info("client requested for ping", "version", version.Client)
 	response := &pb.VersionResponse{
 		Server: sv.version,
 	}
@@ -127,19 +120,19 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 	observers.Join(sv.progressObserver)
 	observers.Join(&jobSyncObserver{
 		stream: respStream,
-		log:    logrus.New(),
+		log:    sv.l,
 	})
 
 	// delete specs not sent for deployment from internal repository
 	if err := sv.jobSvc.KeepOnly(namespaceSpec, jobsToKeep, observers); err != nil {
-		return status.Errorf(codes.Internal, "%s: failed to delete jobs", err.Error())
+		return status.Errorf(codes.Internal, "failed to delete jobs: \n%s", err.Error())
 	}
 
 	if err := sv.jobSvc.Sync(respStream.Context(), namespaceSpec, observers); err != nil {
-		return status.Errorf(codes.Internal, "%s\nfailed to sync jobs", err.Error())
+		return status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
 	}
 
-	logger.I("finished job deployment in", time.Since(startTime))
+	sv.l.Info("finished job deployment", "time", time.Since(startTime))
 	return nil
 }
 
@@ -215,12 +208,12 @@ func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *
 
 	j, err := sv.adapter.FromJobProto(req.GetJob())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to adapt job %s\n%s", req.GetJob().Name, err.Error())
+		return nil, status.Errorf(codes.Internal, "%s: failed to adapt job %s", err.Error(), req.GetJob().Name)
 	}
 	reqJobs := []models.JobSpec{j}
 
 	if err = sv.jobSvc.Check(namespaceSpec, reqJobs, nil); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
+		return nil, status.Errorf(codes.Internal, "failed to compile jobs: \n%s", err.Error())
 	}
 	return &pb.CheckJobSpecificationResponse{Success: true}, nil
 }
@@ -242,20 +235,20 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	observers.Join(sv.progressObserver)
 	observers.Join(&jobCheckObserver{
 		stream: respStream,
-		log:    logrus.New(),
+		log:    sv.l,
 	})
 
 	reqJobs := []models.JobSpec{}
 	for _, jobProto := range req.GetJobs() {
 		j, err := sv.adapter.FromJobProto(jobProto)
 		if err != nil {
-			return status.Errorf(codes.Internal, "failed to adapt job %s\n%s", jobProto.Name, err.Error())
+			return status.Errorf(codes.Internal, "%s: failed to adapt job %s", err.Error(), jobProto.Name)
 		}
 		reqJobs = append(reqJobs, j)
 	}
 
 	if err = sv.jobSvc.Check(namespaceSpec, reqJobs, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
+		return status.Errorf(codes.Internal, "failed to compile jobs: \n%s", err.Error())
 	}
 	return nil
 }
@@ -323,12 +316,12 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 
 	jobSpec, err := sv.adapter.FromJobProto(req.GetSpec())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot deserialize job", err.Error())
+		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
 	}
 
 	// validate job spec
 	if err = sv.jobSvc.Check(namespaceSpec, []models.JobSpec{jobSpec}, sv.progressObserver); err != nil {
-		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
+		return nil, status.Errorf(codes.Internal, "spec validation failed: \n%s", err.Error())
 	}
 
 	err = sv.jobSvc.Create(namespaceSpec, jobSpec)
@@ -337,7 +330,7 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}
 
 	if err := sv.jobSvc.Sync(ctx, namespaceSpec, sv.progressObserver); err != nil {
-		return nil, status.Errorf(codes.Internal, "%s\nfailed to sync jobs", err.Error())
+		return nil, status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
 	}
 
 	return &pb.CreateJobSpecificationResponse{
@@ -366,7 +359,7 @@ func (sv *RuntimeServiceServer) ReadJobSpecification(ctx context.Context, req *p
 
 	jobSpecAdapt, err := sv.adapter.ToJobProto(jobSpec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot serialize job", err.Error())
+		return nil, status.Errorf(codes.Internal, "cannot serialize job: \n%s", err.Error())
 	}
 
 	return &pb.ReadJobSpecificationResponse{
@@ -406,7 +399,7 @@ func (sv *RuntimeServiceServer) ListProjects(ctx context.Context, req *pb.ListPr
 	projectRepo := sv.projectRepoFactory.New()
 	projects, err := projectRepo.GetAll()
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: failed to retrieve saved projects", err.Error())
+		return nil, status.Errorf(codes.NotFound, "failed to retrieve saved projects: \n%s", err.Error())
 	}
 
 	projSpecsProto := []*pb.ProjectSpecification{}
@@ -429,7 +422,7 @@ func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	namespaceSpecs, err := namespaceRepo.GetAll()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: error while fetching namespaces", err.Error())
+		return nil, status.Errorf(codes.Internal, "error while fetching namespaces: \n%s", err.Error())
 	}
 
 	namespaceSpecsProto := []*pb.NamespaceSpecification{}
@@ -443,7 +436,8 @@ func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *
 }
 
 func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.RegisterInstanceResponse, error) {
-	jobScheduledTime, err := ptypes.Timestamp(req.GetScheduledAt())
+	jobScheduledTime := req.ScheduledAt.AsTime()
+	err := req.ScheduledAt.CheckValid()
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: failed to parse schedule time of job %s", err.Error(), req.GetScheduledAt())
 	}
@@ -501,13 +495,13 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 
 	_, _, err = sv.jobSvc.GetByNameForProject(req.GetJobName(), projSpec)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: failed to find the job %s for project %s", err.Error(),
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to find the job %s for project %s", err.Error(),
 			req.GetJobName(), req.GetProjectName())
 	}
 
 	jobStatuses, err := sv.scheduler.GetJobStatus(ctx, projSpec, req.GetJobName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: failed to fetch jobStatus %s", err.Error(),
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobStatus %s", err.Error(),
 			req.GetJobName())
 	}
 
@@ -555,14 +549,15 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 		Type:  models.JobEventType(strings.ToLower(req.GetEvent().Type.String())),
 		Value: eventValues,
 	}); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to register event: %s", err)
+		return nil, status.Errorf(codes.Internal, "failed to register event: \n%s", err.Error())
 	}
 
 	return &pb.RegisterJobEventResponse{}, nil
 }
 
 func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
-	scheduledTime, err := ptypes.Timestamp(req.GetScheduledAt())
+	scheduledTime := req.ScheduledAt.AsTime()
+	err := req.ScheduledAt.CheckValid()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse schedule time %s", err.Error(), req.GetScheduledAt())
 	}
@@ -592,7 +587,7 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 	// decode base64
 	base64Decoded, err := base64.StdEncoding.DecodeString(req.GetValue())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: failed to decode base64 string", err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "failed to decode base64 string: \n%s", err.Error())
 	}
 
 	projectRepo := sv.projectRepoFactory.New()
@@ -723,13 +718,13 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 	observers.Join(sv.progressObserver)
 	observers.Join(&resourceObserver{
 		stream: respStream,
-		log:    logrus.New(),
+		log:    sv.l,
 	})
 
 	if err := sv.resourceSvc.UpdateResource(respStream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to update resources:\n%s", err.Error())
+		return status.Errorf(codes.Internal, "failed to update resources: \n%s", err.Error())
 	}
-	logger.I("finished resource deployment in", time.Since(startTime))
+	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
 	return nil
 }
 
@@ -906,6 +901,7 @@ func (sv *RuntimeServiceServer) getJobSpec(projSpec models.ProjectSpec, namespac
 }
 
 func NewRuntimeServiceServer(
+	l log.Logger,
 	version string,
 	jobSvc models.JobService,
 	jobEventService JobEventService,
@@ -919,6 +915,7 @@ func NewRuntimeServiceServer(
 	scheduler models.SchedulerUnit,
 ) *RuntimeServiceServer {
 	return &RuntimeServiceServer{
+		l:                    l,
 		version:              version,
 		jobSvc:               jobSvc,
 		jobEventSvc:          jobEventService,
@@ -935,7 +932,7 @@ func NewRuntimeServiceServer(
 
 type jobSyncObserver struct {
 	stream pb.RuntimeService_DeployJobSpecificationServer
-	log    logrus.FieldLogger
+	log    log.Logger
 }
 
 func (obs *jobSyncObserver) Notify(e progress.Event) {
@@ -952,7 +949,7 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 		}
 
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error(errors.Wrapf(err, "failed to send deploy spec ack for: %s", evt.Job.Name))
+			obs.log.Error("failed to send deploy spec ack", "job name", evt.Job.Name, "error", err)
 		}
 	case *job.EventJobRemoteDelete:
 		resp := &pb.DeployJobSpecificationResponse{
@@ -960,7 +957,7 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 			Message: evt.String(),
 		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error(errors.Wrapf(err, "failed to send delete notification for: %s", evt.Name))
+			obs.log.Error("failed to send delete notification", "job name", evt.Name, "error", err)
 		}
 	case *job.EventJobSpecUnknownDependencyUsed:
 		resp := &pb.DeployJobSpecificationResponse{
@@ -968,14 +965,14 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 			Message: evt.String(),
 		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error(errors.Wrapf(err, "failed to send unknown dependency notification for: %s", evt.Job))
+			obs.log.Error("failed to send unknown dependency notification", "job name", evt.Job, "error", err)
 		}
 	}
 }
 
 type resourceObserver struct {
 	stream pb.RuntimeService_DeployResourceSpecificationServer
-	log    logrus.FieldLogger
+	log    log.Logger
 }
 
 func (obs *resourceObserver) Notify(e progress.Event) {
@@ -992,14 +989,14 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 		}
 
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error(errors.Wrapf(err, "failed to send deploy spec ack for: %s", evt.Spec.Name))
+			obs.log.Error("failed to send deploy spec ack", "spec name", evt.Spec.Name, "error", err)
 		}
 	}
 }
 
 type jobCheckObserver struct {
 	stream pb.RuntimeService_CheckJobSpecificationsServer
-	log    logrus.FieldLogger
+	log    log.Logger
 }
 
 func (obs *jobCheckObserver) Notify(e progress.Event) {
@@ -1012,7 +1009,7 @@ func (obs *jobCheckObserver) Notify(e progress.Event) {
 			Message: evt.String(),
 		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error(errors.Wrapf(err, "failed to send check ack for: %s", evt.Name))
+			obs.log.Error("failed to send check ack", "job name", evt.Name, "error", err)
 		}
 	case *job.EventJobCheckSuccess:
 		resp := &pb.CheckJobSpecificationsResponse{
@@ -1021,7 +1018,7 @@ func (obs *jobCheckObserver) Notify(e progress.Event) {
 			JobName: evt.Name,
 		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error(errors.Wrapf(err, "failed to send check ack for: %s", evt.Name))
+			obs.log.Error("failed to send check ack", "job name", evt.Name, "error", err)
 		}
 	}
 }

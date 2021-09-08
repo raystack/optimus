@@ -2,16 +2,16 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/instance"
 	"github.com/odpf/optimus/models"
-
 	"github.com/odpf/optimus/utils"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -22,7 +22,7 @@ var (
 	templateEngine = instance.NewGoEngine()
 )
 
-func renderCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
+func renderCommand(l log.Logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "render",
 		Short: "convert raw representation of specification to consumables",
@@ -34,7 +34,7 @@ func renderCommand(l logger, host string, jobSpecRepo JobSpecRepository) *cli.Co
 	return cmd
 }
 
-func renderTemplateCommand(l logger, jobSpecRepo JobSpecRepository) *cli.Command {
+func renderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "template",
 		Short:   "render templates for a job to current 'render' directory",
@@ -59,10 +59,10 @@ func renderTemplateCommand(l logger, jobSpecRepo JobSpecRepository) *cli.Command
 		// create temporary directory
 		renderedPath := filepath.Join(".", "render", jobSpec.Name)
 		_ = os.MkdirAll(renderedPath, 0770)
-		l.Println("rendering assets in", renderedPath)
+		l.Info(fmt.Sprintf("rendering assets in %s", renderedPath))
 
 		now := time.Now()
-		l.Println("assuming execution time as current time of", now.Format(models.InstanceScheduledAtTimeLayout))
+		l.Info(fmt.Sprintf("assuming execution time as current time of %s", now.Format(models.InstanceScheduledAtTimeLayout)))
 
 		templates, err := instance.DumpAssets(jobSpec, now, templateEngine, true)
 		if err != nil {
@@ -76,14 +76,14 @@ func renderTemplateCommand(l logger, jobSpecRepo JobSpecRepository) *cli.Command
 			}
 		}
 
-		l.Println(coloredSuccess("render complete"))
+		l.Info(coloredSuccess("render complete"))
 		return nil
 	}
 
 	return cmd
 }
 
-func renderJobCommand(l logger, host string) *cli.Command {
+func renderJobCommand(l log.Logger, host string) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
@@ -105,14 +105,14 @@ func renderJobCommand(l logger, host string) *cli.Command {
 	return cmd
 }
 
-func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobName string, host string) (err error) {
+func renderJobSpecificationBuildRequest(l log.Logger, projectName, namespace, jobName string, host string) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println(coloredError("can't reach optimus service"))
+			l.Info(coloredError("can't reach optimus service"))
 		}
 		return err
 	}
@@ -121,7 +121,7 @@ func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobNam
 	dumpTimeoutCtx, dumpCancel := context.WithTimeout(context.Background(), renderTimeout)
 	defer dumpCancel()
 
-	l.Println("please wait...")
+	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	// fetch compiled JobSpec by calling the optimus API
 	jobResponse, err := runtime.DumpJobSpecification(dumpTimeoutCtx, &pb.DumpJobSpecificationRequest{
@@ -131,11 +131,11 @@ func renderJobSpecificationBuildRequest(l logger, projectName, namespace, jobNam
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Println("render process took too long, timing out")
+			l.Info("render process took too long, timing out")
 		}
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 
-	l.Println(jobResponse.GetContent())
+	l.Info(fmt.Sprintf("fetching the jobSpec %s", jobResponse.GetContent()))
 	return nil
 }

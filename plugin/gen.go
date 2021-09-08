@@ -12,7 +12,7 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/salt/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -77,7 +77,7 @@ exec $(eval echo "$@")
 )
 
 // (kush.sharma): deprecated, gonna replace it with(#14)
-func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, optimusDownloadUrl string, skipDockerBuild, skipBinaryBuild bool) error {
+func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, optimusDownloadUrl string, skipDockerBuild, skipBinaryBuild bool) error {
 	inputConfig := BuildConfig{}
 	if err := yaml.Unmarshal(configBytes, &inputConfig); err != nil {
 		return err
@@ -103,7 +103,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 	// parse tasks
 	for _, taskPlugin := range inputConfig.Plugins.Task {
 		var destPath string
-		logger.If("generating docker files at %s", taskPlugin.Path)
+		l.Info("generating docker files", "task plugin path", taskPlugin.Path)
 
 		dockerFile, err := templateEngine.CompileString(DockerTemplate, map[string]interface{}{
 			"Header":             taskPlugin.Docker.Header,
@@ -122,7 +122,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 		pluginName := filepath.Base(taskPlugin.Path)
 		// build binary
 		if !skipBinaryBuild {
-			logger.If("building binary for %s", taskPlugin.Path)
+			l.Info("building binary", "task plugin path", taskPlugin.Path)
 			if len(taskPlugin.Binary.OS) > 0 {
 				for _, binOS := range taskPlugin.Binary.OS {
 					for _, binArch := range taskPlugin.Binary.Arch {
@@ -138,7 +138,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 
 						out, err := ExecuteCmd(taskPlugin.Path, "go", args, envs)
 						if len(out) > 0 {
-							logger.I(string(out))
+							l.Info("building binary", "binary", string(out))
 						}
 						if err != nil {
 							return errors.Wrap(err, "failed to build binary")
@@ -150,7 +150,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 
 		if !skipDockerBuild {
 			// build docker
-			logger.If("building docker image for %s", taskPlugin.Path)
+			l.Info("building docker image", "task plugin path", taskPlugin.Path)
 			if len(taskPlugin.Docker.Tag) > 0 {
 				dockerBuildArgs := []string{"build"}
 				for _, tag := range taskPlugin.Docker.Tag {
@@ -166,14 +166,14 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 				dockerBuildArgs = append(dockerBuildArgs, ".")
 				out, err := ExecuteCmd(taskPlugin.Path, "docker", dockerBuildArgs, nil)
 				if len(out) > 0 {
-					logger.I(string(out))
+					l.Info("building docker image", "image", string(out))
 				}
 				if err != nil {
 					return errors.Wrap(err, "failed to build docker image")
 				}
 			}
 		}
-		logger.If("build complete for %s", taskPlugin.Path)
+		l.Info("build complete for task plugin", "task plugin path", taskPlugin.Path)
 	}
 
 	// parse hooks
@@ -195,7 +195,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 		pluginName := filepath.Base(hookPlugin.Path)
 		if !skipBinaryBuild {
 			// build binary
-			logger.If("building binary for %s", hookPlugin.Path)
+			l.Info("building binary for hook plugin", "hook plugin path", hookPlugin.Path)
 			if len(hookPlugin.Binary.OS) > 0 {
 				for _, binOS := range hookPlugin.Binary.OS {
 					for _, binArch := range hookPlugin.Binary.Arch {
@@ -211,7 +211,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 
 						out, err := ExecuteCmd(hookPlugin.Path, "go", args, envs)
 						if len(out) > 0 {
-							logger.I(string(out))
+							l.Info("building binary", "binary", string(out))
 						}
 						if err != nil {
 							return err
@@ -223,7 +223,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 
 		if !skipDockerBuild {
 			// build docker
-			logger.If("building docker image for %s", hookPlugin.Path)
+			l.Info("building docker image for hook plugin", "hook plugin path", hookPlugin.Path)
 			if len(hookPlugin.Docker.Tag) > 0 {
 				dockerBuildArgs := []string{"build"}
 				for _, tag := range hookPlugin.Docker.Tag {
@@ -239,7 +239,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 				dockerBuildArgs = append(dockerBuildArgs, ".")
 				out, err := ExecuteCmd(hookPlugin.Path, "docker", dockerBuildArgs, nil)
 				if len(out) > 0 {
-					logger.I(string(out))
+					l.Info("building docker image", "image", string(out))
 				}
 				if err != nil {
 					return errors.Wrap(err, "failed to build docker image")
@@ -247,7 +247,7 @@ func BuildHelper(templateEngine models.TemplateEngine, configBytes []byte, binar
 			}
 		}
 
-		logger.If("build complete for %s", hookPlugin.Path)
+		l.Info("build complete for hook plugin", "hook plugin path", hookPlugin.Path)
 	}
 
 	return nil

@@ -81,7 +81,7 @@ func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
 
 func (m *GRPCClient) makeFatal(err error) {
 	if strings.Contains(err.Error(), "connection refused") && strings.Contains(err.Error(), "dial unix") {
-		m.Logger.Error(fmt.Sprintf("Core communication failed with: %s", err.Error()))
+		m.Logger.Error(fmt.Sprintf("Core communication failed with: \n%s", err.Error()))
 	}
 	m.Logger.Error(fmt.Sprintf("Exiting application, plugin crashed %s", m.Name))
 

@@ -2,13 +2,12 @@ package job_test
 
 import (
 	"context"
-	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/odpf/optimus/core/tree"
 
-	"github.com/odpf/optimus/core/logger"
+	"github.com/odpf/salt/log"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
@@ -19,7 +18,7 @@ import (
 )
 
 func TestReplayWorker(t *testing.T) {
-	logger.InitWithWriter(logger.DEBUG, ioutil.Discard)
+	log := log.NewNoop()
 	dagStartTime, _ := time.Parse(job.ReplayDateFormat, "2020-04-05")
 	startDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-22")
 	endDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-26")
@@ -70,7 +69,7 @@ func TestReplayWorker(t *testing.T) {
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
-			worker := job.NewReplayWorker(replaySpecRepoFac, nil)
+			worker := job.NewReplayWorker(log, replaySpecRepoFac, nil)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, errMessage, err.Error())
@@ -97,7 +96,7 @@ func TestReplayWorker(t *testing.T) {
 			errorMessage := "scheduler clear error"
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
 
-			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errorMessage)
@@ -125,7 +124,7 @@ func TestReplayWorker(t *testing.T) {
 			errorMessage := "scheduler clear error"
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
 
-			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), updateStatusErr.Error())
@@ -147,7 +146,7 @@ func TestReplayWorker(t *testing.T) {
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(nil)
 
-			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), updateSuccessStatusErr.Error())
@@ -167,7 +166,7 @@ func TestReplayWorker(t *testing.T) {
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(nil)
 
-			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.Nil(t, err)
 		})
@@ -186,7 +185,7 @@ func TestReplayWorker(t *testing.T) {
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 
-			worker := job.NewReplayWorker(replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.Equal(t, errMessage, err.Error())
 		})

@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/core/set"
-
 	"github.com/odpf/optimus/core/cron"
+	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
