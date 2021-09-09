@@ -169,7 +169,7 @@ func (m *Manager) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, err
 
 	var recentReplays []models.ReplaySpec
 	for _, replay := range replays {
-		if replay.CreatedAt.After(time.Now().Add(replayListWindow)) {
+		if replay.CreatedAt.After(time.Now().UTC().Add(replayListWindow)) {
 			recentReplays = append(recentReplays, replay)
 		}
 	}

@@ -351,7 +351,7 @@ func TestReplayManager(t *testing.T) {
 					StartDate: startDate,
 					EndDate:   endDate,
 					Status:    models.ReplayStatusReplayed,
-					CreatedAt: time.Now().Add(time.Hour * -1),
+					CreatedAt: time.Now().UTC().Add(time.Hour * -1),
 				},
 			}
 
@@ -386,7 +386,7 @@ func TestReplayManager(t *testing.T) {
 					StartDate: startDate,
 					EndDate:   endDate,
 					Status:    models.ReplayStatusReplayed,
-					CreatedAt: time.Now().Add(time.Hour * -1),
+					CreatedAt: time.Now().UTC().Add(time.Hour * -1),
 				},
 				{
 					ID:        uuid.Must(uuid.NewRandom()),
@@ -394,7 +394,7 @@ func TestReplayManager(t *testing.T) {
 					StartDate: startDate,
 					EndDate:   endDate,
 					Status:    models.ReplayStatusReplayed,
-					CreatedAt: time.Now().Add(time.Hour * -24 * 100),
+					CreatedAt: time.Now().UTC().Add(time.Hour * -24 * 100),
 				},
 			}
 
