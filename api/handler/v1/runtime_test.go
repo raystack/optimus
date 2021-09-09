@@ -2345,4 +2345,148 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayStatusResponse)
 		})
 	})
+
+	t.Run("ListReplays", func(t *testing.T) {
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+		}
+
+		t.Run("should get list of replay for a project", func(t *testing.T) {
+			jobName := "a-data-job"
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+			}
+
+			replaySpecs := []models.ReplaySpec{
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       jobSpec,
+					StartDate: time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC),
+					EndDate:   time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC),
+					Status:    models.ReplayStatusReplayed,
+					CreatedAt: time.Date(2021, 8, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       jobSpec,
+					StartDate: time.Date(2020, 12, 25, 0, 0, 0, 0, time.UTC),
+					EndDate:   time.Date(2020, 12, 28, 0, 0, 0, 0, time.UTC),
+					Status:    models.ReplayStatusInProgress,
+					CreatedAt: time.Date(2021, 8, 2, 0, 0, 0, 0, time.UTC),
+				},
+			}
+			expectedReplayList := &pb.ListReplaysResponse{
+				ReplayList: []*pb.ReplaySpec{
+					{
+						Id:        replaySpecs[0].ID.String(),
+						JobName:   jobSpec.Name,
+						StartDate: timestamppb.New(time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)),
+						EndDate:   timestamppb.New(time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)),
+						State:     models.ReplayStatusReplayed,
+						CreatedAt: timestamppb.New(time.Date(2021, 8, 1, 0, 0, 0, 0, time.UTC)),
+					},
+					{
+						Id:        replaySpecs[1].ID.String(),
+						JobName:   jobSpec.Name,
+						StartDate: timestamppb.New(time.Date(2020, 12, 25, 0, 0, 0, 0, time.UTC)),
+						EndDate:   timestamppb.New(time.Date(2020, 12, 28, 0, 0, 0, 0, time.UTC)),
+						State:     models.ReplayStatusInProgress,
+						CreatedAt: timestamppb.New(time.Date(2021, 8, 2, 0, 0, 0, 0, time.UTC)),
+					},
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			jobService.On("GetList", projectSpec.ID).Return(replaySpecs, nil)
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				nil,
+				projectRepoFactory,
+				nil,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.ListReplaysRequest{
+				ProjectName: projectName,
+			}
+			replayStatusResponse, err := runtimeServiceServer.ListReplays(context.Background(), &replayRequestPb)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedReplayList, replayStatusResponse)
+		})
+		t.Run("should failed when unable to get status of a replay", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			errMessage := "internal error"
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			jobService.On("GetList", projectSpec.ID).Return([]models.ReplaySpec{}, errors.New(errMessage))
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				nil,
+				projectRepoFactory,
+				nil,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.ListReplaysRequest{
+				ProjectName: projectName,
+			}
+			replayListResponse, err := runtimeServiceServer.ListReplays(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errMessage)
+			assert.Nil(t, replayListResponse)
+		})
+	})
 }

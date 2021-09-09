@@ -3,6 +3,8 @@ package mock
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/core/tree"
@@ -164,6 +166,11 @@ func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequ
 func (j *JobService) GetStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
 	args := j.Called(ctx, replayRequest)
 	return args.Get(0).(models.ReplayState), args.Error(1)
+}
+
+func (j *JobService) GetList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := j.Called(projectUUID)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
 func (j *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {

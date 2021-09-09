@@ -67,6 +67,7 @@ func replayCommand(l log.Logger, conf config.Provider) *cli.Command {
 	}
 	cmd.AddCommand(replayRunSubCommand(l, conf))
 	cmd.AddCommand(replayStatusSubCommand(l, conf))
+	cmd.AddCommand(replayListSubCommand(l, conf))
 	return cmd
 }
 
@@ -348,4 +349,78 @@ func printStatusTree(instance *pb.ReplayStatusTreeNode, tree treeprint.Tree) tre
 		printStatusTree(childInstance, subtree)
 	}
 	return tree
+}
+
+func replayListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
+	var (
+		replayProject string
+	)
+
+	reCmd := &cli.Command{
+		Use:     "list",
+		Short:   "get list of a replay using project ID",
+		Example: "optimus replay status replay-id",
+		Long: `
+The list command is used to fetch the recent replay in one project. 
+		`,
+	}
+	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
+	reCmd.MarkFlagRequired("project")
+	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+		defer dialCancel()
+
+		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Info("can't reach optimus service")
+			}
+			return err
+		}
+		defer conn.Close()
+
+		replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
+		defer replayRequestCancel()
+
+		runtime := pb.NewRuntimeServiceClient(conn)
+		replayStatusRequest := &pb.ListReplaysRequest{
+			ProjectName: replayProject,
+		}
+		replayResponse, err := runtime.ListReplays(replayRequestTimeout, replayStatusRequest)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Info("replay request took too long, timing out")
+			}
+			return errors.Wrapf(err, "failed to get replay requests")
+		}
+		if len(replayResponse.ReplayList) == 0 {
+			l.Info(fmt.Sprintf("no replays were found in %s project.", replayProject))
+		} else {
+			printReplayListResponse(l, replayResponse)
+		}
+		return nil
+	}
+	return reCmd
+}
+
+func printReplayListResponse(l log.Logger, replayListResponse *pb.ListReplaysResponse) {
+	l.Info(coloredNotice("LATEST REPLAY"))
+	table := tablewriter.NewWriter(l.Writer())
+	table.SetBorder(false)
+	table.SetHeader([]string{
+		"ID",
+		"Job",
+		"Start Date",
+		"End Date",
+		"Requested At",
+		"Status",
+	})
+
+	for _, replaySpec := range replayListResponse.ReplayList {
+		table.Append([]string{replaySpec.Id, replaySpec.JobName, replaySpec.StartDate.AsTime().Format(models.JobDatetimeLayout),
+			replaySpec.EndDate.AsTime().Format(models.JobDatetimeLayout), replaySpec.CreatedAt.AsTime().Format(time.RFC3339),
+			replaySpec.State})
+	}
+
+	table.Render()
 }

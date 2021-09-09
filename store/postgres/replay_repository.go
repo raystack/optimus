@@ -265,3 +265,29 @@ func (repo *replayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, statu
 	}
 	return replaySpecs, nil
 }
+
+func (repo *replayRepository) GetByProjectID(projectID uuid.UUID) ([]models.ReplaySpec, error) {
+	var replays []Replay
+	if err := repo.DB.Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
+		Where("job.project_id = ?", projectID).Order("created_at DESC").Find(&replays).Error; err != nil {
+		return []models.ReplaySpec{}, err
+	}
+
+	if len(replays) == 0 {
+		return []models.ReplaySpec{}, store.ErrResourceNotFound
+	}
+
+	var replaySpecs []models.ReplaySpec
+	for _, r := range replays {
+		jobSpec, err := repo.adapter.ToSpec(r.Job)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpec, err := r.ToSpec(jobSpec)
+		if err != nil {
+			return []models.ReplaySpec{}, err
+		}
+		replaySpecs = append(replaySpecs, replaySpec)
+	}
+	return replaySpecs, nil
+}

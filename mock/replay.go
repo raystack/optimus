@@ -54,6 +54,11 @@ func (repo *ReplayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, statu
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
+func (repo *ReplayRepository) GetByProjectID(projectID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := repo.Called(projectID)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
+}
+
 type ReplaySpecRepoFactory struct {
 	mock.Mock
 }
@@ -79,6 +84,11 @@ func (rm *ReplayManager) Init() {
 func (rm *ReplayManager) GetReplay(uuid uuid.UUID) (models.ReplaySpec, error) {
 	args := rm.Called(uuid)
 	return args.Get(0).(models.ReplaySpec), args.Error(1)
+}
+
+func (rm *ReplayManager) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := rm.Called(projectUUID)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
 func (rm *ReplayManager) GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time,
