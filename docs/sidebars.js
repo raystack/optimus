@@ -51,11 +51,11 @@ module.exports = {
       label: "Contribute",
       items: ["contribute/contributing"],
     },
+    'roadmap',
     {
       type: "category",
       label: "Reference",
       items: ["reference/api", "reference/faq", "reference/shell-autocompletion"],
     },
   ],
-
 };
