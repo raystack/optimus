@@ -36,7 +36,7 @@ func main() {
 
 	configuration, err := config.InitOptimus()
 	if err != nil {
-		fmt.Printf("ERROR: %s\n", err.Error())
+		fmt.Printf("ERROR: %s", err.Error())
 		os.Exit(1)
 	}
 
@@ -77,7 +77,7 @@ func main() {
 	)
 	if err := command.Execute(); err != nil {
 		hPlugin.CleanupClients()
-		fmt.Printf("%+v\n", err)
+		// no need to print err here, `command` does that already
 		fmt.Println(errRequestFail)
 		os.Exit(1)
 	}
