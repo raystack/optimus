@@ -313,11 +313,12 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 			return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", dagStatusBatchUrl)
 		}
 		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
 			return nil, errors.Errorf("failed to fetch airflow dag runs from %s", dagStatusBatchUrl)
 		}
-		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to read airflow response")
 		}

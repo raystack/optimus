@@ -50,7 +50,7 @@ dist: generate
 	@bash ./scripts/build-distributables.sh
 
 clean:
-	rm -rf ./optimus ./dist ./proton ./api/proto/*
+	rm -rf ./optimus ./dist ./api/proto/* ./api/third_party/odpf/*
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
