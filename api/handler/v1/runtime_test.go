@@ -2273,7 +2273,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetStatus", context.TODO(), replayRequest).Return(replayState, nil)
+			jobService.On("GetReplayStatus", context.TODO(), replayRequest).Return(replayState, nil)
 
 			adapter := v1.NewAdapter(nil, nil)
 
@@ -2316,7 +2316,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			errMessage := "internal error"
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetStatus", context.TODO(), replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
+			jobService.On("GetReplayStatus", context.TODO(), replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
 
 			adapter := v1.NewAdapter(nil, nil)
 
@@ -2424,7 +2424,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetList", projectSpec.ID).Return(replaySpecs, nil)
+			jobService.On("GetReplayList", projectSpec.ID).Return(replaySpecs, nil)
 
 			adapter := v1.NewAdapter(nil, nil)
 
@@ -2462,7 +2462,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			errMessage := "internal error"
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetList", projectSpec.ID).Return([]models.ReplaySpec{}, errors.New(errMessage))
+			jobService.On("GetReplayList", projectSpec.ID).Return([]models.ReplaySpec{}, errors.New(errMessage))
 
 			adapter := v1.NewAdapter(nil, nil)
 

@@ -163,12 +163,12 @@ func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequ
 	return args.Get(0).(string), args.Error(1)
 }
 
-func (j *JobService) GetStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
+func (j *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
 	args := j.Called(ctx, replayRequest)
 	return args.Get(0).(models.ReplayState), args.Error(1)
 }
 
-func (j *JobService) GetList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (j *JobService) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
 	args := j.Called(projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }

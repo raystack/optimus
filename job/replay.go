@@ -202,7 +202,7 @@ func getRunsBetweenDates(start time.Time, end time.Time, schedule string) ([]tim
 	return runs, nil
 }
 
-func (srv *Service) GetStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
+func (srv *Service) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
 	// Get replay
 	replaySpec, err := srv.replayManager.GetReplay(replayRequest.ID)
 	if err != nil {
@@ -267,6 +267,6 @@ func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projec
 	return parentNode, nil
 }
 
-func (srv *Service) GetList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (srv *Service) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
 	return srv.replayManager.GetReplayList(projectUUID)
 }

@@ -29,7 +29,7 @@ var (
 	// schedulerBatchSize number of run instances to be checked per request
 	schedulerBatchSize = 100
 	//replayListWindow window interval to fetch recent replays
-	replayListWindow = -30 * 24 * time.Hour
+	replayListWindow = -3 * 30 * 24 * time.Hour
 )
 
 const (

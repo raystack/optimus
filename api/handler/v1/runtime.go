@@ -801,7 +801,7 @@ func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.Get
 		return nil, err
 	}
 
-	replayState, err := sv.jobSvc.GetStatus(ctx, replayRequest)
+	replayState, err := sv.jobSvc.GetReplayStatus(ctx, replayRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting replay: %v", err)
 	}
@@ -841,7 +841,7 @@ func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListRep
 		return nil, err
 	}
 
-	replays, err := sv.jobSvc.GetList(projSpec.ID)
+	replays, err := sv.jobSvc.GetReplayList(projSpec.ID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting replay list: %v", err)
 	}

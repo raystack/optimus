@@ -394,7 +394,7 @@ func TestReplayManager(t *testing.T) {
 					StartDate: startDate,
 					EndDate:   endDate,
 					Status:    models.ReplayStatusReplayed,
-					CreatedAt: time.Now().Add(time.Hour * -24 * 50),
+					CreatedAt: time.Now().Add(time.Hour * -24 * 100),
 				},
 			}
 

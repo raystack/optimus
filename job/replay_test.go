@@ -443,7 +443,7 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, errorMsg, err.Error())
@@ -478,7 +478,7 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -545,7 +545,7 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -612,13 +612,13 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
 	})
 
-	t.Run("GetList", func(t *testing.T) {
+	t.Run("GetReplayList", func(t *testing.T) {
 		t.Run("should return list of replay given project id", func(t *testing.T) {
 			replayID := uuid.Must(uuid.NewRandom())
 			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
@@ -638,7 +638,7 @@ func TestReplay(t *testing.T) {
 			replayManager.On("GetReplayList", projSpec.ID).Return(replaySpecs, nil)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			replayList, err := jobSvc.GetList(projSpec.ID)
+			replayList, err := jobSvc.GetReplayList(projSpec.ID)
 
 			assert.Nil(t, err)
 			assert.Equal(t, replaySpecs, replayList)
@@ -650,7 +650,7 @@ func TestReplay(t *testing.T) {
 			replayManager.On("GetReplayList", projSpec.ID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			replayList, err := jobSvc.GetList(projSpec.ID)
+			replayList, err := jobSvc.GetReplayList(projSpec.ID)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.ReplaySpec{}, replayList)
