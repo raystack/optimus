@@ -754,19 +754,12 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 }
 
 func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
-	replayWorkerRequest, err := sv.parseReplayRequest(&pb.ReplayRequest{
-		ProjectName: req.ProjectName,
-		JobName:     req.JobName,
-		Namespace:   req.Namespace,
-		StartDate:   req.StartDate,
-		EndDate:     req.EndDate,
-		Force:       false,
-	})
+	replayRequest, err := sv.parseReplayRequest(req.ProjectName, req.Namespace, req.JobName, req.StartDate, req.EndDate, false)
 	if err != nil {
 		return nil, err
 	}
 
-	rootNode, err := sv.jobSvc.ReplayDryRun(replayWorkerRequest)
+	rootNode, err := sv.jobSvc.ReplayDryRun(replayRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while processing replay dry run: %v", err)
 	}
@@ -782,7 +775,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 }
 
 func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
-	replayWorkerRequest, err := sv.parseReplayRequest(req)
+	replayWorkerRequest, err := sv.parseReplayRequest(req.ProjectName, req.Namespace, req.JobName, req.StartDate, req.EndDate, req.Force)
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +801,7 @@ func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.Get
 		return nil, err
 	}
 
-	replayState, err := sv.jobSvc.GetStatus(ctx, replayRequest)
+	replayState, err := sv.jobSvc.GetReplayStatus(ctx, replayRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting replay: %v", err)
 	}
@@ -842,37 +835,66 @@ func (sv *RuntimeServiceServer) parseReplayStatusRequest(req *pb.GetReplayStatus
 	return replayRequest, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayRequest(req *pb.ReplayRequest) (models.ReplayRequest, error) {
+func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListReplaysRequest) (*pb.ListReplaysResponse, error) {
 	projSpec, err := sv.getProjectSpec(req.ProjectName)
 	if err != nil {
-		return models.ReplayRequest{}, err
+		return nil, err
 	}
 
-	jobSpec, err := sv.getJobSpec(projSpec, req.Namespace, req.JobName)
+	replays, err := sv.jobSvc.GetReplayList(projSpec.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error while getting replay list: %v", err)
+	}
+
+	var replaySpecs []*pb.ReplaySpec
+	for _, replaySpec := range replays {
+		replaySpecs = append(replaySpecs, &pb.ReplaySpec{
+			Id:        replaySpec.ID.String(),
+			JobName:   replaySpec.Job.GetName(),
+			StartDate: timestamppb.New(replaySpec.StartDate),
+			EndDate:   timestamppb.New(replaySpec.EndDate),
+			State:     replaySpec.Status,
+			CreatedAt: timestamppb.New(replaySpec.CreatedAt),
+		})
+	}
+
+	return &pb.ListReplaysResponse{
+		ReplayList: replaySpecs,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) parseReplayRequest(projectName string, namespace string, jobName string, startDate string,
+	endDate string, forceFlag bool) (models.ReplayRequest, error) {
+	projSpec, err := sv.getProjectSpec(projectName)
 	if err != nil {
 		return models.ReplayRequest{}, err
 	}
 
-	startDate, err := time.Parse(job.ReplayDateFormat, req.StartDate)
+	jobSpec, err := sv.getJobSpec(projSpec, namespace, jobName)
+	if err != nil {
+		return models.ReplayRequest{}, err
+	}
+
+	windowStart, err := time.Parse(job.ReplayDateFormat, startDate)
 	if err != nil {
 		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "unable to parse replay start date(e.g. %s): %v", job.ReplayDateFormat, err)
 	}
 
-	endDate := startDate
-	if req.EndDate != "" {
-		if endDate, err = time.Parse(job.ReplayDateFormat, req.EndDate); err != nil {
+	windowEnd := windowStart
+	if endDate != "" {
+		if windowEnd, err = time.Parse(job.ReplayDateFormat, endDate); err != nil {
 			return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "unable to parse replay end date(e.g. %s): %v", job.ReplayDateFormat, err)
 		}
 	}
-	if endDate.Before(startDate) {
+	if windowEnd.Before(windowStart) {
 		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "replay end date cannot be before start date")
 	}
 	replayRequest := models.ReplayRequest{
 		Job:     jobSpec,
-		Start:   startDate,
-		End:     endDate,
+		Start:   windowStart,
+		End:     windowEnd,
 		Project: projSpec,
-		Force:   req.Force,
+		Force:   forceFlag,
 	}
 	return replayRequest, nil
 }

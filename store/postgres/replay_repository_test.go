@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/store"
+
 	"github.com/odpf/optimus/core/tree"
 
 	"github.com/google/uuid"
@@ -400,6 +402,116 @@ func TestReplayRepository(t *testing.T) {
 			replays, err := repo.GetByProjectIDAndStatus(projectSpec.ID, statusList)
 			assert.Nil(t, err)
 			assert.ElementsMatch(t, []uuid.UUID{testModels[0].ID, testModels[2].ID}, []uuid.UUID{replays[0].ID, replays[1].ID})
+		})
+	})
+	t.Run("GetByProjectID", func(t *testing.T) {
+		t.Run("should return list of replay specs given project_id", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			var testModels []*models.ReplaySpec
+			testModels = append(testModels, testConfigs...)
+			expectedUUIDs := []uuid.UUID{testModels[0].ID, testModels[1].ID, testModels[2].ID}
+
+			execUnit1 := new(mock.BasePlugin)
+			defer execUnit1.AssertExpectations(t)
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name: gTask,
+			}, nil)
+			depMod1 := new(mock.DependencyResolverMod)
+			defer depMod1.AssertExpectations(t)
+			for idx, jobConfig := range jobConfigs {
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				testConfigs[idx].Job = jobConfig
+			}
+
+			pluginRepo := new(mock.SupportedPluginRepo)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			adapter := NewAdapter(pluginRepo)
+
+			unitData := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			}
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectRepo := NewProjectRepository(db, hash)
+
+			err := projectRepo.Insert(projectSpec)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[0].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[1].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[2].Job)
+			assert.Nil(t, err)
+
+			repo := NewReplayRepository(db, adapter)
+			err = repo.Insert(testModels[0])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[1])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[2])
+			assert.Nil(t, err)
+
+			replays, err := repo.GetByProjectID(projectSpec.ID)
+			assert.Nil(t, err)
+			assert.ElementsMatch(t, expectedUUIDs, []uuid.UUID{replays[0].ID, replays[1].ID, replays[2].ID})
+		})
+		t.Run("should return not found if no recent replay is found", func(t *testing.T) {
+			db := DBSetup()
+			defer db.Close()
+			var testModels []*models.ReplaySpec
+			testModels = append(testModels, testConfigs...)
+
+			execUnit1 := new(mock.BasePlugin)
+			defer execUnit1.AssertExpectations(t)
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name: gTask,
+			}, nil)
+			depMod1 := new(mock.DependencyResolverMod)
+			defer depMod1.AssertExpectations(t)
+			for idx, jobConfig := range jobConfigs {
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				testConfigs[idx].Job = jobConfig
+			}
+
+			pluginRepo := new(mock.SupportedPluginRepo)
+			defer pluginRepo.AssertExpectations(t)
+			adapter := NewAdapter(pluginRepo)
+
+			unitData := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
+			}
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+
+			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+			jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectRepo := NewProjectRepository(db, hash)
+
+			err := projectRepo.Insert(projectSpec)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[0].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[1].Job)
+			assert.Nil(t, err)
+			err = jobRepo.Insert(testModels[2].Job)
+			assert.Nil(t, err)
+
+			repo := NewReplayRepository(db, adapter)
+			err = repo.Insert(testModels[0])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[1])
+			assert.Nil(t, err)
+			err = repo.Insert(testModels[2])
+			assert.Nil(t, err)
+
+			replays, err := repo.GetByProjectID(uuid.Must(uuid.NewRandom()))
+			assert.Equal(t, store.ErrResourceNotFound, err)
+			assert.Equal(t, []models.ReplaySpec{}, replays)
 		})
 	})
 }

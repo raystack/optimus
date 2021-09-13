@@ -28,6 +28,8 @@ var (
 	TimestampLogFormat = "2006-01-02T15:04:05+00:00"
 	// schedulerBatchSize number of run instances to be checked per request
 	schedulerBatchSize = 100
+	//replayListWindow window interval to fetch recent replays
+	replayListWindow = -3 * 30 * 24 * time.Hour
 )
 
 const (
@@ -153,6 +155,25 @@ func (m *Manager) SchedulerSyncer() {
 // GetReplay using UUID
 func (m *Manager) GetReplay(replayUUID uuid.UUID) (models.ReplaySpec, error) {
 	return m.replaySpecRepoFac.New().GetByID(replayUUID)
+}
+
+// GetReplayList using Project ID
+func (m *Manager) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	replays, err := m.replaySpecRepoFac.New().GetByProjectID(projectUUID)
+	if err != nil {
+		if err == store.ErrResourceNotFound {
+			return []models.ReplaySpec{}, nil
+		}
+		return []models.ReplaySpec{}, err
+	}
+
+	var recentReplays []models.ReplaySpec
+	for _, replay := range replays {
+		if replay.CreatedAt.After(time.Now().UTC().Add(replayListWindow)) {
+			recentReplays = append(recentReplays, replay)
+		}
+	}
+	return recentReplays, nil
 }
 
 // GetRunsStatus

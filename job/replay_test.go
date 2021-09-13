@@ -443,7 +443,7 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, errorMsg, err.Error())
@@ -478,7 +478,7 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -545,7 +545,7 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -612,9 +612,48 @@ func TestReplay(t *testing.T) {
 			}
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			_, err := jobSvc.GetStatus(ctx, replayRequest)
+			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
+		})
+	})
+
+	t.Run("GetReplayList", func(t *testing.T) {
+		t.Run("should return list of replay given project id", func(t *testing.T) {
+			replayID := uuid.Must(uuid.NewRandom())
+			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
+			replaySpecs := []models.ReplaySpec{
+				{
+					ID:        replayID,
+					Job:       specs[spec1],
+					StartDate: startDate,
+					EndDate:   endDate,
+					Status:    models.ReplayStatusReplayed,
+				},
+			}
+
+			replayManager := new(mock.ReplayManager)
+			defer replayManager.AssertExpectations(t)
+			replayManager.On("GetReplayList", projSpec.ID).Return(replaySpecs, nil)
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			replayList, err := jobSvc.GetReplayList(projSpec.ID)
+
+			assert.Nil(t, err)
+			assert.Equal(t, replaySpecs, replayList)
+		})
+		t.Run("should return error when unable to get replay list", func(t *testing.T) {
+			replayManager := new(mock.ReplayManager)
+			defer replayManager.AssertExpectations(t)
+			errorMsg := "unable to get replay list"
+			replayManager.On("GetReplayList", projSpec.ID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			replayList, err := jobSvc.GetReplayList(projSpec.ID)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, []models.ReplaySpec{}, replayList)
 		})
 	})
 }

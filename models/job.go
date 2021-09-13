@@ -318,8 +318,10 @@ type JobService interface {
 	ReplayDryRun(ReplayRequest) (*tree.TreeNode, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
 	Replay(context.Context, ReplayRequest) (string, error)
-	// GetStatus of a replay using its ID
-	GetStatus(context.Context, ReplayRequest) (ReplayState, error)
+	// GetReplayStatus of a replay using its ID
+	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
+	//GetReplayList of a project
+	GetReplayList(projectID uuid.UUID) ([]ReplaySpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

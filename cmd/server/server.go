@@ -84,11 +84,11 @@ func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
 type replayWorkerFact struct {
 	replaySpecRepoFac job.ReplaySpecRepoFactory
 	scheduler         models.SchedulerUnit
-	jsonLog           log.Logger
+	logger            log.Logger
 }
 
 func (fac *replayWorkerFact) New() job.ReplayWorker {
-	return job.NewReplayWorker(fac.jsonLog, fac.replaySpecRepoFac, fac.scheduler)
+	return job.NewReplayWorker(fac.logger, fac.replaySpecRepoFac, fac.scheduler)
 }
 
 // jobSpecRepoFactory stores raw specifications
@@ -414,6 +414,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	replayWorkerFactory := &replayWorkerFact{
 		replaySpecRepoFac: replaySpecRepoFac,
 		scheduler:         models.BatchScheduler,
+		logger:            l,
 	}
 	replayValidator := job.NewReplayValidator(models.BatchScheduler)
 	replaySyncer := job.NewReplaySyncer(

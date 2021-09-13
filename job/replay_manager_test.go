@@ -336,6 +336,128 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("GetReplayList", func(t *testing.T) {
+		t.Run("should return replay list given a valid project UUID", func(t *testing.T) {
+			projectUUID := uuid.Must(uuid.NewRandom())
+			replayJob := models.JobSpec{
+				Name: "sample-job",
+			}
+			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
+			replaySpecs := []models.ReplaySpec{
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       replayJob,
+					StartDate: startDate,
+					EndDate:   endDate,
+					Status:    models.ReplayStatusReplayed,
+					CreatedAt: time.Now().UTC().Add(time.Hour * -1),
+				},
+			}
+
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			replayRepository.On("GetByProjectID", projectUUID).Return(replaySpecs, nil)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayListResult, err := replayManager.GetReplayList(projectUUID)
+
+			assert.Nil(t, err)
+			assert.Equal(t, replaySpecs, replayListResult)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+		t.Run("should only return recent replays given a valid project UUID", func(t *testing.T) {
+			projectUUID := uuid.Must(uuid.NewRandom())
+			replayJob := models.JobSpec{
+				Name: "sample-job",
+			}
+			startDate := time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
+			replaySpecs := []models.ReplaySpec{
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       replayJob,
+					StartDate: startDate,
+					EndDate:   endDate,
+					Status:    models.ReplayStatusReplayed,
+					CreatedAt: time.Now().UTC().Add(time.Hour * -1),
+				},
+				{
+					ID:        uuid.Must(uuid.NewRandom()),
+					Job:       replayJob,
+					StartDate: startDate,
+					EndDate:   endDate,
+					Status:    models.ReplayStatusReplayed,
+					CreatedAt: time.Now().UTC().Add(time.Hour * -24 * 100),
+				},
+			}
+
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			replayRepository.On("GetByProjectID", projectUUID).Return(replaySpecs, nil)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayListResult, err := replayManager.GetReplayList(projectUUID)
+
+			expectedReplaySpecs := []models.ReplaySpec{replaySpecs[0]}
+			assert.Nil(t, err)
+			assert.Equal(t, expectedReplaySpecs, replayListResult)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+		t.Run("should not return error when replay is not found", func(t *testing.T) {
+			projectUUID := uuid.Must(uuid.NewRandom())
+
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			replayRepository.On("GetByProjectID", projectUUID).Return([]models.ReplaySpec{}, store.ErrResourceNotFound)
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayResult, err := replayManager.GetReplayList(projectUUID)
+
+			assert.Nil(t, err)
+			assert.Equal(t, []models.ReplaySpec{}, replayResult)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+		t.Run("should return error when unable to get replay list", func(t *testing.T) {
+			projectUUID := uuid.Must(uuid.NewRandom())
+
+			replayRepository := new(mock.ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+			errorMsg := "unable to get list of replays"
+			replayRepository.On("GetByProjectID", projectUUID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
+
+			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
+			defer replaySpecRepoFac.AssertExpectations(t)
+			replaySpecRepoFac.On("New").Return(replayRepository)
+
+			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
+			replayResult, err := replayManager.GetReplayList(projectUUID)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, []models.ReplaySpec{}, replayResult)
+
+			err = replayManager.Close()
+			assert.Nil(t, err)
+		})
+	})
 	t.Run("GetRunStatus", func(t *testing.T) {
 		projectSpec := models.ProjectSpec{
 			Name: "project-name",
