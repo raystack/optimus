@@ -1,3 +1,4 @@
+//go:build !unit_test
 // +build !unit_test
 
 package postgres
@@ -12,6 +13,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	testMock "github.com/stretchr/testify/mock"
 )
 
 func TestResourceSpecRepository(t *testing.T) {
@@ -72,6 +74,7 @@ func TestResourceSpecRepository(t *testing.T) {
 			Assets: map[string]string{
 				"query.sql": "select * from 1",
 			},
+			URN: "datastore://proj:datas.test",
 		},
 		{
 			Name: "",
@@ -83,6 +86,7 @@ func TestResourceSpecRepository(t *testing.T) {
 			Type:      models.ResourceTypeTable,
 			Datastore: datastorer,
 			Spec:      nil,
+			URN:       "datastore://proj:ttt.test2",
 		},
 	}
 	testConfigWithoutAssets := []models.ResourceSpec{
@@ -93,6 +97,7 @@ func TestResourceSpecRepository(t *testing.T) {
 			Type:      models.ResourceTypeTable,
 			Datastore: datastorer,
 			Spec:      nil,
+			URN:       "datastore://proj:datas.test",
 		},
 	}
 
@@ -119,6 +124,9 @@ func TestResourceSpecRepository(t *testing.T) {
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
+		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
+		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[1].URN, nil).Once()
+
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
@@ -142,6 +150,8 @@ func TestResourceSpecRepository(t *testing.T) {
 
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 			repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+
+			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Once()
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -167,6 +177,8 @@ func TestResourceSpecRepository(t *testing.T) {
 
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 			repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+
+			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
 			//try for create
 			err := repo.Save(testModelA)
@@ -213,6 +225,8 @@ func TestResourceSpecRepository(t *testing.T) {
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorerLocal)
 			repo := NewResourceSpecRepository(db, namespaceSpec, datastorerLocal, projectResourceSpecRepo)
 
+			dsTypeTableControllerLocal.On("GenerateURN", testMock.Anything).Return(resourceSpecWithEmptyUUID.URN, nil).Once()
+
 			//try for create
 			err := repo.Save(resourceSpecWithEmptyUUID)
 			assert.Nil(t, err)
@@ -229,6 +243,8 @@ func TestResourceSpecRepository(t *testing.T) {
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 			resourceSpecNamespace1 := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 			resourceSpecNamespace2 := NewResourceSpecRepository(db, namespaceSpec2, datastorer, projectResourceSpecRepo)
+
+			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
 			//try for create
 			err := resourceSpecNamespace1.Save(testModelA)
@@ -319,6 +335,7 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 			Name:      "proj.datas.test",
 			Type:      models.ResourceTypeTable,
 			Datastore: datastorer,
+			URN:       "datastore:proj.datas.test",
 			Spec:      nil,
 			Assets: map[string]string{
 				"query.sql": "select * from 1",
@@ -332,6 +349,7 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 			Version:   1,
 			Name:      "proj.ttt.test2",
 			Type:      models.ResourceTypeTable,
+			URN:       "datastore:proj.ttt.test2",
 			Datastore: datastorer,
 			Spec:      nil,
 		},
@@ -343,6 +361,7 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 			Name:      "proj.datas.test",
 			Type:      models.ResourceTypeTable,
 			Datastore: datastorer,
+			URN:       "datastore:proj.datas.test",
 			Spec:      nil,
 		},
 	}
@@ -367,6 +386,8 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
+		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
+
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)
 
@@ -382,6 +403,25 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 	})
 
+	t.Run("GetByURN", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+		var testModels []models.ResourceSpec
+		testModels = append(testModels, testConfigs...)
+
+		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+
+		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
+
+		err := repo.Insert(testModels[0])
+		assert.Nil(t, err)
+
+		checkModel, err := repo.GetByURN(testModels[0].URN)
+		assert.Nil(t, err)
+		assert.Equal(t, "proj.datas.test", checkModel.Name)
+	})
+
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()
@@ -390,6 +430,8 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+
+		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 
 		err := repo.Insert(testModels[0])
 		assert.Nil(t, err)

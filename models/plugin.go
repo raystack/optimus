@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,6 +20,10 @@ const (
 	HookTypePre  HookType = "pre"
 	HookTypePost HookType = "post"
 	HookTypeFail HookType = "fail"
+
+	DestinationTypeBigquery DestinationType = "bigquery"
+
+	DestinationURNFormat = "%s://%s"
 )
 
 var (
@@ -306,8 +311,19 @@ type GenerateDestinationRequest struct {
 	PluginOptions
 }
 
+type DestinationType string
+
+func (dt DestinationType) String() string {
+	return string(dt)
+}
+
 type GenerateDestinationResponse struct {
 	Destination string
+	Type        DestinationType
+}
+
+func (gdr GenerateDestinationResponse) URN() string {
+	return fmt.Sprintf(DestinationURNFormat, gdr.Type, gdr.Destination)
 }
 
 type GenerateDependenciesRequest struct {

@@ -29,6 +29,7 @@ type ResourceSpec struct {
 	Name      string
 	Type      ResourceType
 	Datastore Datastorer
+	URN       string
 
 	Spec   interface{}
 	Assets ResourceAssets
@@ -62,11 +63,15 @@ type Datastorer interface {
 
 	// DeleteResource will delete the requested resource if exists
 	DeleteResource(context.Context, DeleteResourceRequest) error
+
+	// BackupResource will backup the requested resource if exists
+	BackupResource(context.Context, BackupResourceRequest) error
 }
 
 type DatastoreTypeController interface {
 	Adapter() DatastoreSpecAdapter
 	Validator() DatastoreSpecValidator
+	GenerateURN(interface{}) (string, error)
 
 	// assets that will be created as templates when the resource is created
 	// for the first time
@@ -116,11 +121,18 @@ type DeleteResourceRequest struct {
 	Project  ProjectSpec
 }
 
+type BackupResourceRequest struct {
+	Resource ResourceSpec
+	Project  ProjectSpec
+	DryRun   bool
+}
+
 var (
 	DatastoreRegistry = &supportedDatastore{
 		data: map[string]Datastorer{},
 	}
 	ErrUnsupportedDatastore = errors.New("unsupported datastore requested")
+	ErrUnsupportedResource  = errors.New("unsupported resource")
 )
 
 type DatastoreRepo interface {
@@ -141,6 +153,14 @@ func (s *supportedDatastore) GetByName(name string) (Datastorer, error) {
 }
 
 func (s *supportedDatastore) GetAll() []Datastorer {
+	list := []Datastorer{}
+	for _, unit := range s.data {
+		list = append(list, unit)
+	}
+	return list
+}
+
+func (s *supportedDatastore) GetDestination() []Datastorer {
 	list := []Datastorer{}
 	for _, unit := range s.data {
 		list = append(list, unit)
@@ -170,4 +190,5 @@ type DatastoreService interface {
 	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	ReadResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) (ResourceSpec, error)
 	DeleteResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) error
+	BackupResourceDryRun(ctx context.Context, projectSpec ProjectSpec, namespaceSpec NamespaceSpec, jobSpecs []JobSpec) ([]string, error)
 }

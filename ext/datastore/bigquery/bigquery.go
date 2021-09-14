@@ -157,6 +157,13 @@ func (b *BigQuery) DeleteResource(ctx context.Context, request models.DeleteReso
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
 
+func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupResourceRequest) error {
+	if request.Resource.Type != models.ResourceTypeTable {
+		return models.ErrUnsupportedResource
+	}
+	return nil
+}
+
 func init() {
 	if err := models.DatastoreRegistry.Add(This); err != nil {
 		panic(err)

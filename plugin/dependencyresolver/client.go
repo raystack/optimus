@@ -42,6 +42,7 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 	}
 	return &models.GenerateDestinationResponse{
 		Destination: resp.Destination,
+		Type:        models.DestinationType(resp.DestinationType),
 	}, nil
 }
 

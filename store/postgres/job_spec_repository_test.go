@@ -1,3 +1,4 @@
+//go:build !unit_test
 // +build !unit_test
 
 package postgres
@@ -206,7 +207,7 @@ func TestJobRepository(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
 			}
 			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(
-				&models.GenerateDestinationResponse{Destination: destination}, nil)
+				&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			defer depMod1.AssertExpectations(t)
 			defer execUnit1.AssertExpectations(t)
 			defer execUnit2.AssertExpectations(t)
@@ -248,7 +249,7 @@ func TestJobRepository(t *testing.T) {
 			testModelB := testConfigs[2]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			defer depMod1.AssertExpectations(t)
 			defer execUnit1.AssertExpectations(t)
 
@@ -256,7 +257,7 @@ func TestJobRepository(t *testing.T) {
 			execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: tTask,
 			}, nil)
-			depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit2.AssertExpectations(t)
 			defer depMod2.AssertExpectations(t)
 
@@ -289,11 +290,11 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
-			depMod2.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod2.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:       tTask,
 				PluginType: models.PluginTypeTask,
@@ -447,7 +448,7 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
@@ -478,7 +479,7 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
@@ -583,6 +584,7 @@ func TestProjectJobRepository(t *testing.T) {
 	gTask := "g-task"
 	tTask := "t-task"
 	destination := "p.d.t"
+	destinationUrn := "bigquery://p.d.t"
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: gTask,
@@ -683,7 +685,7 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels = append(testModels, testConfigs...)
 
 		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 
 		defer depMod.AssertExpectations(t)
 		defer execUnit1.AssertExpectations(t)
@@ -709,13 +711,13 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels = append(testModels, testConfigs...)
 
 		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 
 		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: tTask,
 		}, nil)
 		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
-		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 
 		defer depMod.AssertExpectations(t)
 		defer depMod2.AssertExpectations(t)
@@ -744,7 +746,7 @@ func TestProjectJobRepository(t *testing.T) {
 			Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
 		}
 		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(
-			&models.GenerateDestinationResponse{Destination: destination}, nil)
+			&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 		defer depMod.AssertExpectations(t)
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
@@ -757,7 +759,7 @@ func TestProjectJobRepository(t *testing.T) {
 		err := jobRepo.Insert(testModels[0])
 		assert.Nil(t, err)
 
-		j, p, err := projectJobSpecRepo.GetByDestination(destination)
+		j, p, err := projectJobSpecRepo.GetByDestination(destinationUrn)
 		assert.Nil(t, err)
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)

@@ -2489,4 +2489,549 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayListResponse)
 		})
 	})
+
+	t.Run("BackupDryRun", func(t *testing.T) {
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "dev-test-namespace-1",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+			ProjectSpec: projectSpec,
+		}
+		resourceName := "a-data-project:dataset.table"
+		resourceUrn := "bigquery://a-data-project:dataset.table"
+
+		t.Run("should return list of resources for backup ignoring downstream", func(t *testing.T) {
+			jobName := "a-data-job"
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			resourceSpec := models.ResourceSpec{
+				Name: resourceName,
+				URN:  resourceUrn,
+			}
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+
+			resourceSvc.On("BackupResourceDryRun", context.Background(), projectSpec, namespaceSpec, []models.JobSpec{jobSpec}).Return([]string{resourceName}, nil)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:      projectName,
+				DatastoreName:    models.DestinationTypeBigquery.String(),
+				ResourceName:     resourceName,
+				Namespace:        namespaceSpec.Name,
+				IgnoreDownstream: true,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Nil(t, err)
+			assert.Equal(t, []string{resourceName}, replayStatusResponse.ResourceName)
+		})
+		t.Run("should return list of resources for backup with downstream", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-job",
+			}
+			jobSpecDownstreams := []models.JobSpec{
+				{
+					ID:   uuid.Must(uuid.NewRandom()),
+					Name: "b-data-job",
+					Task: models.JobSpecTask{
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+				},
+				{
+					ID:   uuid.Must(uuid.NewRandom()),
+					Name: "c-data-job",
+					Task: models.JobSpecTask{
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			resourceSpec := models.ResourceSpec{
+				Name: resourceName,
+				URN:  resourceUrn,
+			}
+
+			resourceDownstream1Urn := "bigquery://a-data-project:dataset.downstream1"
+			resourceDownstream2Urn := "bigquery://a-data-project:dataset.downstream2"
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetDownstream", projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+
+			resourceSvc.On("BackupResourceDryRun", context.Background(), projectSpec, namespaceSpec, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return([]string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, nil)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:      projectName,
+				DatastoreName:    models.DestinationTypeBigquery.String(),
+				ResourceName:     resourceName,
+				Namespace:        namespaceSpec.Name,
+				IgnoreDownstream: false,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Nil(t, err)
+			assert.Equal(t, []string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, replayStatusResponse.ResourceName)
+		})
+		t.Run("should return error when project is not found", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			errorMsg := "unable to fetch project"
+			projectRepository.On("GetByName", projectName).Return(models.ProjectSpec{}, errors.New(errorMsg))
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, replayStatusResponse)
+		})
+		t.Run("should return error when namespace is not found", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			errorMsg := "unable to get namespace"
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				nil,
+				nil,
+				nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, replayStatusResponse)
+		})
+		t.Run("should return error when unable to read resource", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			resourceSpec := models.ResourceSpec{
+				Name: resourceName,
+				URN:  resourceUrn,
+			}
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+			errorMsg := "unable to read resource"
+			resourceSvc.On("ReadResource", context.Background(), namespaceSpec,
+				models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, errors.New(errorMsg))
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				nil, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, replayStatusResponse)
+		})
+		t.Run("should return error when unable to get jobSpec", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			resourceSpec := models.ResourceSpec{
+				Name: resourceName,
+				URN:  resourceUrn,
+			}
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			errorMsg := "unable to get jobspec"
+			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, replayStatusResponse)
+		})
+		t.Run("should return error when unable to get jobSpec downstream", func(t *testing.T) {
+			jobName := "a-data-job"
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			resourceSpec := models.ResourceSpec{
+				Name: resourceName,
+				URN:  resourceUrn,
+			}
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			errorMsg := "unable to get jobspec downstream"
+			jobService.On("GetDownstream", projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, replayStatusResponse)
+		})
+		t.Run("should return error when unable to do backup dry run", func(t *testing.T) {
+			jobName := "a-data-job"
+			jobSpec := models.JobSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+			projectRepoFactory.On("New").Return(projectRepository)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			defer namespaceRepository.AssertExpectations(t)
+			namespaceRepository.On("GetByName", namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+
+			resourceSpec := models.ResourceSpec{
+				Name: resourceName,
+				URN:  resourceUrn,
+			}
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetDownstream", projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
+
+			errorMsg := "unable to get jobspec"
+			resourceSvc.On("BackupResourceDryRun", context.Background(), projectSpec, namespaceSpec, []models.JobSpec{jobSpec}).Return([]string{}, errors.New(errorMsg))
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				jobService, nil,
+				resourceSvc,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			replayRequestPb := pb.BackupDryRunRequest{
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
+			}
+			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, replayStatusResponse)
+		})
+	})
 }

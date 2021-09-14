@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/tree"
+
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
@@ -375,6 +377,91 @@ func (srv *Service) isJobDeletable(projectSpec models.ProjectSpec, jobSpec model
 	}
 
 	return nil
+}
+
+func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, jobSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
+	for _, childSpec := range jobSpecMap {
+		childNode := findOrCreateDAGNode(dagTree, childSpec)
+		for _, depDAG := range childSpec.Dependencies {
+			var isExternal = false
+			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
+			if !ok {
+				if depDAG.Type == models.JobSpecDependencyTypeIntra {
+					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
+				}
+				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
+				// be available in jobSpecs []models.JobSpec object (which is tenant specific)
+				// so we'll add a dummy JobSpec for that cross tenant/external dependency.
+				parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
+				isExternal = true
+			}
+			parentNode := findOrCreateDAGNode(dagTree, parentSpec)
+			parentNode.AddDependent(childNode)
+			dagTree.AddNode(parentNode)
+
+			if isExternal {
+				// dependency that are outside current project will be considered as root because
+				// optimus don't know dependencies of those external parents
+				dagTree.MarkRoot(parentNode)
+			}
+		}
+
+		if len(childSpec.Dependencies) == 0 {
+			dagTree.MarkRoot(childNode)
+		}
+	}
+
+	if err := dagTree.IsCyclic(); err != nil {
+		return nil, err
+	}
+
+	// since we are adding the rootNode at start, it will always be present
+	rootNode, _ := dagTree.GetNodeByName(jobSpec.Name)
+
+	return rootNode, nil
+}
+
+func (srv *Service) GetByDestination(projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpec, _, err := projectJobSpecRepo.GetByDestination(destination)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+	return jobSpec, nil
+}
+
+func (srv *Service) GetDownstream(projectSpec models.ProjectSpec, rootJobName string) ([]models.JobSpec, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+	dependencyResolvedSpecs, err := srv.GetDependencyResolvedSpecs(projectSpec, projectJobSpecRepo, nil)
+	if err != nil {
+		return nil, err
+	}
+	jobSpecMap := make(map[string]models.JobSpec)
+	for _, currSpec := range dependencyResolvedSpecs {
+		jobSpecMap[currSpec.Name] = currSpec
+	}
+
+	rootJobSpec, found := jobSpecMap[rootJobName]
+	if !found {
+		return nil, fmt.Errorf("couldn't find any job with name %s", rootJobName)
+	}
+
+	dagTree := tree.NewMultiRootTree()
+	dagTree.AddNode(tree.NewTreeNode(rootJobSpec))
+	rootInstance, err := populateDownstreamDAGs(dagTree, rootJobSpec, jobSpecMap)
+	if err != nil {
+		return nil, err
+	}
+
+	var jobSpecs []models.JobSpec
+	for _, node := range rootInstance.GetAllNodes() {
+		//ignore the root
+		if node.GetName() != rootInstance.GetName() {
+			jobSpecs = append(jobSpecs, node.Data.(models.JobSpec))
+		}
+	}
+	return jobSpecs, nil
 }
 
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {

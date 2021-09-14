@@ -404,7 +404,7 @@ func TestReplay(t *testing.T) {
 		})
 	})
 
-	t.Run("GetStatus", func(t *testing.T) {
+	t.Run("GetReplayStatus", func(t *testing.T) {
 		run1 := time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC)
 		run2 := time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC)
 		run3 := time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC)

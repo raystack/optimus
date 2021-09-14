@@ -1,6 +1,7 @@
 package bigquery
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,6 +43,14 @@ func (s externalTableSpec) Validator() models.DatastoreSpecValidator {
 		}
 		return nil
 	}
+}
+
+func (s externalTableSpec) GenerateURN(tableConfig interface{}) (string, error) {
+	bqTable, ok := tableConfig.(BQTable)
+	if !ok {
+		return "", errors.New("failed to read external table spec for bigquery")
+	}
+	return fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), bqTable.Project, bqTable.Dataset, bqTable.Table), nil
 }
 
 func (s externalTableSpec) DefaultAssets() map[string]string {

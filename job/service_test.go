@@ -707,4 +707,134 @@ func TestService(t *testing.T) {
 			assert.Equal(t, "cannot delete job test since it's dependency of job downstream-test", err.Error())
 		})
 	})
+
+	t.Run("GetByDestination", func(t *testing.T) {
+		t.Run("should return job spec given a destination", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			destination := "resource-urn"
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo.On("GetByDestination", destination).Return(jobSpec1, models.ProjectSpec{}, nil)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetByDestination(projSpec, destination)
+			assert.Nil(t, err)
+			assert.Equal(t, jobSpec1, jobSpecsResult)
+		})
+		t.Run("should return error when unable to fetch jobspec using destination", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			destination := "resource-urn"
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			errorMsg := "unable to fetch jobspec"
+			projectJobSpecRepo.On("GetByDestination", destination).Return(models.JobSpec{}, models.ProjectSpec{}, errors.New(errorMsg))
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetByDestination(projSpec, destination)
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Equal(t, models.JobSpec{}, jobSpecsResult)
+		})
+	})
+	t.Run("GetDownstream", func(t *testing.T) {
+		t.Run("should return downstream job specs", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpecsMap := make(map[string]models.JobSpec)
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
+			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo.On("GetAll").Return(jobSpecs, nil)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpec1, nil).Return(jobSpec1, nil)
+			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpec2, nil).Return(jobSpec2, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetDownstream(projSpec, jobSpec1.Name)
+			assert.Nil(t, err)
+			assert.Equal(t, []models.JobSpec{jobSpec2}, jobSpecsResult)
+		})
+		t.Run("should return error when unable to get all job specs to resolve dependency", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			destination := "resource-urn"
+			jobSpecsMap := make(map[string]models.JobSpec)
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
+			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpecsMap[jobSpec2.GetName()] = jobSpec2
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			errorMsg := "unable to get all job specs of a project"
+			projectJobSpecRepo.On("GetAll").Return([]models.JobSpec{}, errors.New(errorMsg))
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetDownstream(projSpec, destination)
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, jobSpecsResult)
+		})
+		t.Run("should return error when unable to resolve dependency", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			destination := "resource-urn"
+			jobSpecsMap := make(map[string]models.JobSpec)
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
+			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpecsMap[jobSpec2.GetName()] = jobSpec2
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo.On("GetAll").Return(jobSpecs, nil)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+			errorMsg := "unable to resolve dependency"
+			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpec1, nil).Return(models.JobSpec{}, errors.New(errorMsg))
+			depenResolver.On("Resolve", projSpec, projectJobSpecRepo, jobSpec2, nil).Return(models.JobSpec{}, errors.New(errorMsg))
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetDownstream(projSpec, destination)
+			assert := assert.New(t)
+			assert.Contains(err.Error(), errorMsg)
+			assert.Nil(jobSpecsResult)
+		})
+	})
 }

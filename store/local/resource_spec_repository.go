@@ -134,6 +134,27 @@ func (repo *resourceRepository) GetByName(jobName string) (models.ResourceSpec, 
 	return blob.item.(models.ResourceSpec), nil
 }
 
+// GetByURN returns a job requested by URN
+func (repo *resourceRepository) GetByURN(urn string) (models.ResourceSpec, error) {
+	if strings.TrimSpace(urn) == "" {
+		return models.ResourceSpec{}, errors.Errorf("resource urn cannot be an empty string")
+	}
+
+	// refresh local cache if needed
+	if repo.cache.dirty {
+		if err := repo.refreshCache(); err != nil {
+			return models.ResourceSpec{}, err
+		}
+	}
+
+	// check if available in cache
+	blob, ok := repo.cache.data[urn]
+	if !ok {
+		return models.ResourceSpec{}, models.ErrNoSuchSpec
+	}
+	return blob.item.(models.ResourceSpec), nil
+}
+
 // Delete deletes a requested job by name
 func (repo *resourceRepository) Delete(jobName string) error {
 	panic("unimplemented")

@@ -142,6 +142,47 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	return repo.Delete(name)
 }
 
+func (srv Service) BackupResourceDryRun(ctx context.Context, projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec) ([]string, error) {
+	var resourcesToBackup []string
+	for _, jobSpec := range jobSpecs {
+		destination, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+			Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		ds, err := srv.dsRepo.GetByName(destination.Type.String())
+		if err != nil {
+			return nil, err
+		}
+
+		repo := srv.resourceRepoFactory.New(namespaceSpec, ds)
+		resourceSpec, err := repo.GetByURN(destination.URN())
+		if err != nil {
+			if err == store.ErrResourceNotFound {
+				continue
+			}
+			return nil, err
+		}
+
+		backupReq := models.BackupResourceRequest{
+			Resource: resourceSpec,
+			Project:  projectSpec,
+			DryRun:   true,
+		}
+		if err := ds.BackupResource(ctx, backupReq); err != nil {
+			if err == models.ErrUnsupportedResource {
+				continue
+			}
+			return nil, err
+		}
+		resourcesToBackup = append(resourcesToBackup, destination.Destination)
+	}
+	return resourcesToBackup, nil
+}
+
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return

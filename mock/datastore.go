@@ -37,6 +37,9 @@ func (d *Datastorer) ReadResource(ctx context.Context, inp models.ReadResourceRe
 func (d *Datastorer) DeleteResource(ctx context.Context, inp models.DeleteResourceRequest) error {
 	return d.Called(ctx, inp).Error(0)
 }
+func (d *Datastorer) BackupResource(ctx context.Context, inp models.BackupResourceRequest) error {
+	return d.Called(ctx, inp).Error(0)
+}
 
 type DatastoreTypeController struct {
 	mock.Mock
@@ -48,6 +51,11 @@ func (d *DatastoreTypeController) Adapter() models.DatastoreSpecAdapter {
 
 func (d *DatastoreTypeController) Validator() models.DatastoreSpecValidator {
 	return d.Called().Get(0).(models.DatastoreSpecValidator)
+}
+
+func (d *DatastoreTypeController) GenerateURN(spec interface{}) (string, error) {
+	args := d.Called(spec)
+	return args.Get(0).(string), args.Error(1)
 }
 
 func (d *DatastoreTypeController) DefaultAssets() map[string]string {
@@ -104,6 +112,11 @@ func (d *DatastoreService) DeleteResource(ctx context.Context, namespace models.
 	return d.Called(ctx, namespace, datastoreName, name).Error(1)
 }
 
+func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec) ([]string, error) {
+	args := d.Called(ctx, projectSpec, namespaceSpec, jobSpecs)
+	return args.Get(0).([]string), args.Error(1)
+}
+
 type SupportedDatastoreRepo struct {
 	mock.Mock
 }
@@ -139,6 +152,11 @@ func (r *ResourceSpecRepository) Save(spec models.ResourceSpec) error {
 }
 
 func (r *ResourceSpecRepository) GetByName(s string) (models.ResourceSpec, error) {
+	args := r.Called(s)
+	return args.Get(0).(models.ResourceSpec), args.Error(1)
+}
+
+func (r *ResourceSpecRepository) GetByURN(s string) (models.ResourceSpec, error) {
 	args := r.Called(s)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }

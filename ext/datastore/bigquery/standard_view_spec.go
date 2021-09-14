@@ -1,6 +1,7 @@
 package bigquery
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/odpf/optimus/models"
@@ -27,6 +28,14 @@ func (s standardViewSpec) Validator() models.DatastoreSpecValidator {
 		}
 		return nil
 	}
+}
+
+func (s standardViewSpec) GenerateURN(tableConfig interface{}) (string, error) {
+	bqTable, ok := tableConfig.(BQTable)
+	if !ok {
+		return "", errors.New("failed to read standard view spec for bigquery")
+	}
+	return fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), bqTable.Project, bqTable.Dataset, bqTable.Table), nil
 }
 
 func (s standardViewSpec) DefaultAssets() map[string]string {
