@@ -29,14 +29,14 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		Short: "backup a resource",
 	}
 
-	dryRun := false
 	var (
 		project   string
 		namespace string
+		dryRun    bool
 	)
 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
-	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed ocean repository")
+	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
 	backupCmd.MarkFlagRequired("project")
 	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of the requester")
 	backupCmd.MarkFlagRequired("namespace")
@@ -68,10 +68,9 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 				Name: "description",
 				Prompt: &survey.Input{
 					Message: "Why is this backup needed?",
-					Help:    "Describe backup intention to help you identify backup",
+					Help:    "Describe intention to help identify the backup",
 				},
-				Validate: survey.ComposeValidators(validateNoSlash, survey.MinLength(3),
-					survey.MaxLength(1024)),
+				Validate: survey.ComposeValidators(survey.MinLength(3)),
 			},
 			{
 				Name: "backupDownstream",
@@ -115,13 +114,13 @@ func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *p
 	}
 	defer conn.Close()
 
-	requestTimeout, requestCancel := context.WithTimeout(context.Background(), replayTimeout)
+	requestTimeoutCtx, requestCancel := context.WithTimeout(context.Background(), replayTimeout)
 	defer requestCancel()
 
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 
-	backupDryRunResponse, err := runtime.BackupDryRun(requestTimeout, backupRequest)
+	backupDryRunResponse, err := runtime.BackupDryRun(requestTimeoutCtx, backupRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Info("backup dry run took too long, timing out")

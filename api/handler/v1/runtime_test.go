@@ -2574,17 +2574,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:      projectName,
 				DatastoreName:    models.DestinationTypeBigquery.String(),
 				ResourceName:     resourceName,
 				Namespace:        namespaceSpec.Name,
 				IgnoreDownstream: true,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resourceName}, replayStatusResponse.ResourceName)
+			assert.Equal(t, []string{resourceName}, backupResponse.ResourceName)
 		})
 		t.Run("should return list of resources for backup with downstream", func(t *testing.T) {
 			jobSpec := models.JobSpec{
@@ -2667,17 +2667,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:      projectName,
 				DatastoreName:    models.DestinationTypeBigquery.String(),
 				ResourceName:     resourceName,
 				Namespace:        namespaceSpec.Name,
 				IgnoreDownstream: false,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, replayStatusResponse.ResourceName)
+			assert.Equal(t, []string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, backupResponse.ResourceName)
 		})
 		t.Run("should return error when project is not found", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -2712,15 +2712,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, replayStatusResponse)
+			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when namespace is not found", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -2755,16 +2755,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, replayStatusResponse)
+			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to read resource", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -2808,16 +2808,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, replayStatusResponse)
+			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get jobSpec", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -2864,16 +2864,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, replayStatusResponse)
+			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get jobSpec downstream", func(t *testing.T) {
 			jobName := "a-data-job"
@@ -2942,16 +2942,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, replayStatusResponse)
+			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to do backup dry run", func(t *testing.T) {
 			jobName := "a-data-job"
@@ -3022,16 +3022,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			replayRequestPb := pb.BackupDryRunRequest{
+			backupRequestPb := pb.BackupDryRunRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			replayStatusResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &replayRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, replayStatusResponse)
+			assert.Nil(t, backupResponse)
 		})
 	})
 }

@@ -145,7 +145,7 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 func (srv Service) BackupResourceDryRun(ctx context.Context, projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec) ([]string, error) {
 	var resourcesToBackup []string
 	for _, jobSpec := range jobSpecs {
-		destination, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+		destination, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 		})
