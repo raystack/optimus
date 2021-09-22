@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
@@ -133,8 +134,14 @@ func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *p
 }
 
 func printBackupDryRunResponse(l log.Logger, backupRequest *pb.BackupDryRunRequest, backupResponse *pb.BackupDryRunResponse) {
-	l.Info("Backup list for %s\n\n", coloredNotice(backupRequest.ResourceName))
+	if backupRequest.IgnoreDownstream {
+		l.Info(coloredPrint(fmt.Sprintf("Backup list for %s. Downstreams will be ignored.", backupRequest.ResourceName)))
+	} else {
+		l.Info(coloredPrint(fmt.Sprintf("Backup list for %s. Supported downstreams will be included.", backupRequest.ResourceName)))
+	}
+	counter := 1
 	for _, resource := range backupResponse.ResourceName {
-		l.Info(resource)
+		l.Info(fmt.Sprintf("%d. %s", counter, resource))
+		counter++
 	}
 }
