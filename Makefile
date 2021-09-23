@@ -54,6 +54,7 @@ clean:
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
+	go mod tidy
 	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
 	go get github.com/golang/protobuf/proto@v1.5.2
 	go get github.com/golang/protobuf/protoc-gen-go@v1.5.2

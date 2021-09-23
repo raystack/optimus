@@ -27,7 +27,10 @@ log:
 #  global:
 #    environment: integration
 #    scheduler_host: http://example.io/
-#    storage_path: file://temp
+#    # storage_path is used for storing compiled job specifications that can be
+#    # consumed by schedulers like Airflow
+#    # it supports multiple schemes like: file://, gcs://
+#    storage_path: file://absolute_path_to_a_directory
 #  local: {}
 
 #

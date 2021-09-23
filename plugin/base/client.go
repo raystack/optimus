@@ -24,7 +24,7 @@ type GRPCClient struct {
 func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
 	resp, err := m.Client.PluginInfo(context.Background(), &pbp.PluginInfoRequest{})
 	if err != nil {
-		m.makeFatal(err)
+		m.MakeFatalOnConnErr(err)
 		return nil, err
 	}
 	m.Name = resp.Name
@@ -79,13 +79,13 @@ func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
 	}, nil
 }
 
-func (m *GRPCClient) makeFatal(err error) {
+func (m *GRPCClient) MakeFatalOnConnErr(err error) {
 	if strings.Contains(err.Error(), "connection refused") && strings.Contains(err.Error(), "dial unix") {
 		m.Logger.Error(fmt.Sprintf("Core communication failed with: \n%s", err.Error()))
 	}
 	m.Logger.Error(fmt.Sprintf("Exiting application, plugin crashed %s", m.Name))
 
-	// TODO(kush.sharma): once plugins are more stable and we have strict checks
-	// we can remove this fail
+	// TODO(kush.sharma): once plugins are more stable and we have strict health
+	// checks we can remove this fail
 	os.Exit(1)
 }

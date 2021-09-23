@@ -20,10 +20,14 @@ var (
 type dependencyResolver struct{}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
-func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error) {
+	if ctx.Err() != nil {
+		return models.JobSpec{}, ctx.Err()
+	}
+
 	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := r.resolveInferredDependencies(jobSpec, projectSpec, projectJobSpecRepo, observer)
+	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -43,12 +47,12 @@ func (r *dependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobS
 	return jobSpec, nil
 }
 
-func (r *dependencyResolver) resolveInferredDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies, assets should be dependent on
 	var jobDependencies []string
 	if jobSpec.Task.Unit.DependencyMod != nil {
-		resp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
+		resp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
 			Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			Project: projectSpec,

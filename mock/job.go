@@ -153,7 +153,7 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 	return args.Error(0)
 }
 
-func (j *JobService) ReplayDryRun(replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
+func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
 	args := j.Called(replayRequest)
 	return args.Get(0).(*tree.TreeNode), args.Error(1)
 }
@@ -183,7 +183,7 @@ func (j *JobService) GetByDestination(projectSpec models.ProjectSpec, destinatio
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (j *JobService) GetDownstream(projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
+func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
 	args := j.Called(projectSpec, jobName)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
@@ -192,9 +192,9 @@ type DependencyResolver struct {
 	mock.Mock
 }
 
-func (srv *DependencyResolver) Resolve(projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	jobSpec models.JobSpec, obs progress.Observer) (models.JobSpec, error) {
-	args := srv.Called(projectSpec, projectJobSpecRepo, jobSpec, obs)
+	args := srv.Called(ctx, projectSpec, projectJobSpecRepo, jobSpec, obs)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
@@ -202,8 +202,8 @@ type PriorityResolver struct {
 	mock.Mock
 }
 
-func (srv *PriorityResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	args := srv.Called(jobSpecs)
+func (srv *PriorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, jobSpecs)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
