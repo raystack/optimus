@@ -174,8 +174,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
         # calculate windows
         execution_date = context['execution_date']
-        window_start, window_end = self.generate_window(execution_date, self.window_size, self.window_offset,
-                                                        self.window_truncate_to)
+        window_start, window_end = self.generate_window(execution_date, self.window_size)
         self.log.info(
             "consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
         self.log.info("upstream interval: {}".format(dag_to_wait.schedule_interval))
@@ -208,7 +207,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
         return True
 
-    def generate_window(self, execution_date, window_size, window_offset, window_truncate_to):
+    def generate_window(self, execution_date, window_size):
         format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
         execution_date_str = execution_date.strftime(format_rfc3339)
         # ignore offset & truncateto
@@ -322,12 +321,14 @@ class CrossTenantDependencySensor(BaseSensorOperator):
     def __init__(
             self,
             optimus_hostname: str,
-            optimus_project: str,
-            optimus_job: str,
+            upstream_optimus_project: str,
+            upstream_optimus_job: str,
+            window_size: str,
             **kwargs) -> None:
         super().__init__(**kwargs)
-        self.optimus_project = optimus_project
-        self.optimus_job = optimus_job
+        self.optimus_project = upstream_optimus_project
+        self.optimus_job = upstream_optimus_job
+        self.window_size = window_size
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def execute(self, context):
@@ -338,11 +339,9 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         job_metadata = self._optimus_client.get_job_metadata(execution_date_str, self.optimus_project, self.optimus_job)
         cron_schedule = lookup_non_standard_cron_expression(job_metadata['job']['interval'])
 
-        # ignore offset
-        task_window = JobSpecTaskWindow(job_metadata['job']['windowSize'], 0, job_metadata['job']['windowTruncateTo'],
-                                        self._optimus_client)
-        window_start, window_end = task_window.get(execution_date_str)
-
+        window_start, window_end = self.generate_window(execution_date, self.window_size)
+        self.log.info(
+            "consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
         expected_upstream_executions = self._get_expected_upstream_executions(cron_schedule, window_start, window_end)
         self.log.info("expected upstream executions ({}): {}".format(len(expected_upstream_executions),
                                                                      expected_upstream_executions))
@@ -385,6 +384,13 @@ class CrossTenantDependencySensor(BaseSensorOperator):
             return datetime.strptime(timestamp, self.TIMESTAMP_FORMAT)
         except ValueError:
             return datetime.strptime(timestamp, self.TIMESTAMP_MS_FORMAT)
+
+    def generate_window(self, execution_date, window_size):
+        format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
+        execution_date_str = execution_date.strftime(format_rfc3339)
+        # ignore offset & truncate to
+        task_window = JobSpecTaskWindow(window_size, 0, "m", self._optimus_client)
+        return task_window.get(execution_date_str)
 
 
 def optimus_failure_notify(context):
