@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/kushsharma/parallel"
+
 	"github.com/odpf/optimus/core/progress"
 
 	"gocloud.dev/gcerrors"
@@ -44,6 +47,9 @@ const (
 
 	JobsDir       = "dags"
 	JobsExtension = ".py"
+
+	ConcurrentTicketPerSec = 40
+	ConcurrentLimit        = 600
 )
 
 type HttpClient interface {
@@ -90,42 +96,48 @@ func (s *scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpe
 	return err
 }
 
-// Note(kush.sharma): optimize this using parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec)
-// if this operation is slow
 func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec,
 	progressObserver progress.Observer) error {
-	var compiledJobs []models.Job
-	for _, job := range jobs {
-		compiled, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
-		if err != nil {
-			return err
-		}
-		compiledJobs = append(compiledJobs, compiled)
-		s.notifyProgress(progressObserver, &models.EventJobSpecCompiled{
-			Name: job.Name,
-		})
-	}
-
 	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
 	if err != nil {
 		return err
 	}
 	defer bucket.Close()
-	for _, j := range compiledJobs {
-		blobKey := PathFromJobName(JobsDir, namespace.ID.String(), j.Name, JobsExtension)
-		if err := bucket.WriteAll(ctx, blobKey, j.Contents, nil); err != nil {
-			s.notifyProgress(progressObserver, &models.EventJobUpload{
-				Name: j.Name,
-				Err:  err,
-			})
-			return err
-		}
-		s.notifyProgress(progressObserver, &models.EventJobUpload{
-			Name: j.Name,
-			Err:  nil,
-		})
+
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, j := range jobs {
+		runner.Add(func(currentJobSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				compiledJob, err := s.compiler.Compile(s.GetTemplate(), namespace, currentJobSpec)
+				if err != nil {
+					return nil, err
+				}
+				s.notifyProgress(progressObserver, &models.EventJobSpecCompiled{
+					Name: compiledJob.Name,
+				})
+
+				blobKey := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+				if err := bucket.WriteAll(ctx, blobKey, compiledJob.Contents, nil); err != nil {
+					s.notifyProgress(progressObserver, &models.EventJobUpload{
+						Name: compiledJob.Name,
+						Err:  err,
+					})
+					return nil, err
+				}
+				s.notifyProgress(progressObserver, &models.EventJobUpload{
+					Name: compiledJob.Name,
+					Err:  nil,
+				})
+				return nil, nil
+			}
+		}(j))
 	}
-	return nil
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			err = multierror.Append(err, result.Err)
+		}
+	}
+	return err
 }
 
 func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string,
