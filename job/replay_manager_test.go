@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -243,18 +244,31 @@ func TestReplayManager(t *testing.T) {
 				EndDate:   endDate,
 				Status:    models.ReplayStatusAccepted,
 			}
+
 			replayRepository.On("Insert", toInsertReplaySpec).Return(nil).Times(4)
-			replayRepository.On("UpdateStatus", objUUID, models.ReplayStatusCancelled, models.ReplayMessage{
+
+			// other workers should not be closed before encounter full state.
+			// replay will be cancelled when workers are full.
+			var wg sync.WaitGroup
+			wg.Add(1)
+			cancelledMsg := models.ReplayMessage{
 				Type:    models.ReplayStatusCancelled,
 				Message: job.ErrRequestQueueFull.Error(),
-			}).Return(nil).Times(1)
+			}
+			replayRepository.On("UpdateStatus", objUUID, models.ReplayStatusCancelled, cancelledMsg).
+				Return(nil).Once().Run(func(args mocklib.Arguments) {
+				wg.Done()
+			})
 
 			var replayWorkers []interface{}
+			waitChannel := make(chan time.Time)
 			for i := 0; i < 3; i++ {
 				replayWorker := mock.NewReplayWorker()
 				replayRequestToProcess := replayRequest
 				replayRequestToProcess.ID = objUUID
-				replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil).Times(1)
+				// worker will not finish process immediately
+				replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil).
+					Times(1).WaitUntil(waitChannel)
 				replayWorkers = append(replayWorkers, replayWorker)
 			}
 			replayWorkerFact := &mock.ReplayWorkerFactoryIndexed{
@@ -275,11 +289,14 @@ func TestReplayManager(t *testing.T) {
 			_, err = replayManager.Replay(ctx, replayRequest)
 			assert.Equal(t, job.ErrRequestQueueFull, err)
 
+			wg.Wait()
 			for _, w := range replayWorkers {
+				waitChannel <- time.Now()
 				rw := w.(*mock.ReplayWorker)
 				rw.Close()
 				rw.AssertExpectations(t)
 			}
+
 			err = replayManager.Close()
 			assert.Nil(t, err)
 		})
