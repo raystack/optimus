@@ -97,3 +97,9 @@ type ReplaySpecRepository interface {
 	GetByProjectIDAndStatus(projectID uuid.UUID, status []string) ([]models.ReplaySpec, error)
 	GetByProjectID(projectID uuid.UUID) ([]models.ReplaySpec, error)
 }
+
+// BackupRepository represents a storage interface for backup objects
+type BackupRepository interface {
+	Save(spec models.BackupSpec) error
+	GetAll() ([]models.BackupSpec, error)
+}

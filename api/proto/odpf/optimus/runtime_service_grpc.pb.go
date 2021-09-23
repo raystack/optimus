@@ -78,6 +78,7 @@ type RuntimeServiceClient interface {
 	GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error)
 	ListReplays(ctx context.Context, in *ListReplaysRequest, opts ...grpc.CallOption) (*ListReplaysResponse, error)
 	BackupDryRun(ctx context.Context, in *BackupDryRunRequest, opts ...grpc.CallOption) (*BackupDryRunResponse, error)
+	Backup(ctx context.Context, in *BackupRequest, opts ...grpc.CallOption) (*BackupResponse, error)
 	// RunJob creates a job run and executes all included tasks/hooks instantly
 	// this doesn't necessarily deploy the job in db first
 	RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error)
@@ -412,6 +413,15 @@ func (c *runtimeServiceClient) BackupDryRun(ctx context.Context, in *BackupDryRu
 	return out, nil
 }
 
+func (c *runtimeServiceClient) Backup(ctx context.Context, in *BackupRequest, opts ...grpc.CallOption) (*BackupResponse, error) {
+	out := new(BackupResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/Backup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *runtimeServiceClient) RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error) {
 	out := new(RunJobResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/RunJob", in, out, opts...)
@@ -485,6 +495,7 @@ type RuntimeServiceServer interface {
 	GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error)
 	ListReplays(context.Context, *ListReplaysRequest) (*ListReplaysResponse, error)
 	BackupDryRun(context.Context, *BackupDryRunRequest) (*BackupDryRunResponse, error)
+	Backup(context.Context, *BackupRequest) (*BackupResponse, error)
 	// RunJob creates a job run and executes all included tasks/hooks instantly
 	// this doesn't necessarily deploy the job in db first
 	RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error)
@@ -578,6 +589,9 @@ func (UnimplementedRuntimeServiceServer) ListReplays(context.Context, *ListRepla
 }
 func (UnimplementedRuntimeServiceServer) BackupDryRun(context.Context, *BackupDryRunRequest) (*BackupDryRunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BackupDryRun not implemented")
+}
+func (UnimplementedRuntimeServiceServer) Backup(context.Context, *BackupRequest) (*BackupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
 }
 func (UnimplementedRuntimeServiceServer) RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunJob not implemented")
@@ -1108,6 +1122,24 @@ func _RuntimeService_BackupDryRun_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeService_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BackupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).Backup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.RuntimeService/Backup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).Backup(ctx, req.(*BackupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RuntimeService_RunJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RunJobRequest)
 	if err := dec(in); err != nil {
@@ -1232,6 +1264,10 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BackupDryRun",
 			Handler:    _RuntimeService_BackupDryRun_Handler,
+		},
+		{
+			MethodName: "Backup",
+			Handler:    _RuntimeService_Backup_Handler,
 		},
 		{
 			MethodName: "RunJob",

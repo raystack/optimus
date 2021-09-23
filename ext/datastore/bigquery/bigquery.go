@@ -157,11 +157,26 @@ func (b *BigQuery) DeleteResource(ctx context.Context, request models.DeleteReso
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
 
-func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupResourceRequest) error {
+func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupResourceRequest) (models.BackupResourceResponse, error) {
 	if request.Resource.Type != models.ResourceTypeTable {
-		return models.ErrUnsupportedResource
+		return models.BackupResourceResponse{}, models.ErrUnsupportedResource
 	}
-	return nil
+
+	if request.BackupSpec.DryRun {
+		return models.BackupResourceResponse{}, nil
+	}
+
+	svcAcc, ok := request.BackupSpec.Project.Secret.GetByName(SecretName)
+	if !ok || len(svcAcc) == 0 {
+		return models.BackupResourceResponse{}, errors.New(fmt.Sprintf(errSecretNotFoundStr, SecretName, b.Name()))
+	}
+
+	client, err := b.ClientFac.New(ctx, svcAcc)
+	if err != nil {
+		return models.BackupResourceResponse{}, err
+	}
+
+	return backupTable(ctx, request, client)
 }
 
 func init() {

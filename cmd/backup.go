@@ -88,7 +88,8 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		resourceName := inputs["name"].(string)
 		description := inputs["description"].(string)
 		backupDownstream := inputs["backupDownstream"].(bool)
-		backupRequest := &pb.BackupDryRunRequest{
+
+		backupDryRunRequest := &pb.BackupDryRunRequest{
 			ProjectName:      project,
 			Namespace:        namespace,
 			ResourceName:     resourceName,
@@ -97,7 +98,50 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 			IgnoreDownstream: !backupDownstream,
 		}
 
-		return runBackupDryRunRequest(l, conf, backupRequest)
+		err := runBackupDryRunRequest(l, conf, backupDryRunRequest)
+		if err != nil {
+			l.Info("unable to run backup dry run")
+		}
+
+		if dryRun {
+			//if only dry run, exit now
+			return nil
+		}
+
+		proceedWithBackup := "Yes"
+		if err := survey.AskOne(&survey.Select{
+			Message: "Proceed the backup?",
+			Options: []string{"Yes", "No"},
+			Default: "Yes",
+		}, &proceedWithBackup); err != nil {
+			return err
+		}
+
+		if proceedWithBackup == "No" {
+			l.Info("aborting...")
+			return nil
+		}
+
+		backupRequest := &pb.BackupRequest{
+			ProjectName:      project,
+			Namespace:        namespace,
+			ResourceName:     resourceName,
+			DatastoreName:    storerName,
+			Description:      description,
+			IgnoreDownstream: !backupDownstream,
+		}
+
+		for _, ds := range conf.GetDatastore() {
+			if ds.Type == storerName {
+				backupRequest.BackupConfig = &pb.BackupConfig{
+					Dataset: ds.Backup.Dataset,
+					Prefix:  ds.Backup.Prefix,
+					Ttl:     int32(ds.Backup.TTL),
+				}
+			}
+		}
+
+		return runBackupRequest(l, conf, backupRequest)
 	}
 	return backupCmd
 }
@@ -131,6 +175,47 @@ func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *p
 
 	printBackupDryRunResponse(l, backupRequest, backupDryRunResponse)
 	return nil
+}
+
+func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.BackupRequest) (err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	var conn *grpc.ClientConn
+	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Info("can't reach optimus service")
+		}
+		return err
+	}
+	defer conn.Close()
+
+	requestTimeout, requestCancel := context.WithTimeout(context.Background(), replayTimeout)
+	defer requestCancel()
+
+	l.Info("please wait...")
+	runtime := pb.NewRuntimeServiceClient(conn)
+
+	backupResponse, err := runtime.Backup(requestTimeout, backupRequest)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Info("backup took too long, timing out")
+		}
+		return errors.Wrapf(err, "request failed to backup job %s", backupRequest.ResourceName)
+	}
+
+	printBackupResponse(l, backupResponse)
+	return nil
+}
+
+func printBackupResponse(l log.Logger, backupResponse *pb.BackupResponse) {
+	l.Info(coloredSuccess("\nBackup Finished"))
+	l.Info("Your resources have been backed up in below location:")
+	counter := 1
+	for _, result := range backupResponse.Urn {
+		l.Info(fmt.Sprintf("%d. %s", counter, result))
+		counter++
+	}
 }
 
 func printBackupDryRunResponse(l log.Logger, backupRequest *pb.BackupDryRunRequest, backupResponse *pb.BackupDryRunResponse) {

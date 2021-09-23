@@ -189,3 +189,59 @@ func (b *BigQueryMock) ReadResource(ctx context.Context, request models.ReadReso
 func (b *BigQueryMock) DeleteResource(ctx context.Context, request models.DeleteResourceRequest) error {
 	panic("not implemented")
 }
+
+type BqCopierMock struct {
+	mock.Mock
+	bqiface.Copier
+}
+
+func (copier *BqCopierMock) JobIDConfig() *bigquery.JobIDConfig {
+	panic("not implemented")
+}
+
+func (copier *BqCopierMock) SetCopyConfig(c bqiface.CopyConfig) {
+	panic("not implemented")
+}
+
+func (copier *BqCopierMock) Run(ctx context.Context) (bqiface.Job, error) {
+	args := copier.Called(ctx)
+	return args.Get(0).(bqiface.Job), args.Error(1)
+}
+
+type BqJobMock struct {
+	mock.Mock
+	bqiface.Job
+}
+
+func (job *BqJobMock) ID() string {
+	panic("not implemented")
+}
+
+func (job *BqJobMock) Location() string {
+	panic("not implemented")
+}
+
+func (job *BqJobMock) Config() (bigquery.JobConfig, error) {
+	panic("not implemented")
+}
+
+func (job *BqJobMock) Status(ctx context.Context) (*bigquery.JobStatus, error) {
+	panic("not implemented")
+}
+
+func (job *BqJobMock) LastStatus() *bigquery.JobStatus {
+	panic("not implemented")
+}
+
+func (job *BqJobMock) Cancel(ctx context.Context) error {
+	panic("not implemented")
+}
+
+func (job *BqJobMock) Wait(ctx context.Context) (*bigquery.JobStatus, error) {
+	args := job.Called(ctx)
+	return args.Get(0).(*bigquery.JobStatus), args.Error(1)
+}
+
+func (job *BqJobMock) Read(ctx context.Context) (bqiface.RowIterator, error) {
+	panic("not implemented")
+}

@@ -71,6 +71,19 @@ type Datastore struct {
 
 	// directory to find specifications
 	Path string `yaml:"path" koanf:"path"`
+
+	Backup Backup `yaml:"backup"`
+}
+
+type Backup struct {
+	// dataset of the backup destination
+	Dataset string `yaml:"dataset"`
+
+	// backup expiry time in days
+	TTL int `yaml:"ttl"`
+
+	// prefix of backup destination resource name
+	Prefix string `yaml:"prefix"`
 }
 
 type Job struct {
