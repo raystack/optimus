@@ -175,7 +175,6 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 	if !ok {
 		return nil, errors.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
 	}
-
 	parsedURL, err := url.Parse(storagePath)
 	if err != nil {
 		return nil, err
@@ -203,6 +202,9 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 			return nil, err
 		}
 		// create a *blob.Bucket
+		if parsedURL.Path == "" {
+			return gcsBucket, nil
+		}
 		prefix := fmt.Sprintf("%s/", strings.Trim(parsedURL.Path, "/\\"))
 		return blob.PrefixedBucket(gcsBucket, prefix), nil
 	case "file":
