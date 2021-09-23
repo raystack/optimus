@@ -322,6 +322,10 @@ type JobService interface {
 	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
 	//GetReplayList of a project
 	GetReplayList(projectID uuid.UUID) ([]ReplaySpec, error)
+	// GetByDestination fetches a Job by destination for a specific project
+	GetByDestination(projectSpec ProjectSpec, destination string) (JobSpec, error)
+	// GetDownstream fetches downstream jobspecs
+	GetDownstream(projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

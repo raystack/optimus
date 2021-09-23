@@ -92,6 +92,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 	cmd.AddCommand(serveCommand(jsonLog, conf))
 	cmd.AddCommand(replayCommand(plainLog, conf))
 	cmd.AddCommand(runCommand(plainLog, conf.GetHost(), jobSpecRepo, pluginRepo))
+	cmd.AddCommand(backupCommand(plainLog, dsRepo, conf))
 
 	// admin specific commands
 	if conf.GetAdmin().Enabled {

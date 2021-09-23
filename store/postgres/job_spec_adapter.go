@@ -319,7 +319,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		if err != nil {
 			return Job{}, err
 		}
-		jobDestination = jobDestinationResponse.Destination
+		jobDestination = jobDestinationResponse.URN()
 	}
 
 	return Job{

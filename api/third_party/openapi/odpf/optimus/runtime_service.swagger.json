@@ -557,6 +557,70 @@
         ]
       }
     },
+    "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource/{resourceName}/backup/dryrun": {
+      "post": {
+        "operationId": "RuntimeService_BackupDryRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusBackupDryRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "ignoreDownstream": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/v1/project/{projectName}/namespace/{namespace}/job": {
       "post": {
         "summary": "CreateJobSpecification registers a new job for a namespace which belongs to a project",
@@ -1172,6 +1236,17 @@
         },
         "value": {
           "type": "string"
+        }
+      }
+    },
+    "optimusBackupDryRunResponse": {
+      "type": "object",
+      "properties": {
+        "resourceName": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

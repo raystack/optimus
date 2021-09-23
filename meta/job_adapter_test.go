@@ -102,7 +102,7 @@ func TestJobAdapter(t *testing.T) {
 	depMod.On("GenerateDestination", context.TODO(), models.GenerateDestinationRequest{
 		Config: models.PluginConfigs{}.FromJobSpec(jobSpecs[0].Task.Config),
 		Assets: models.PluginAssets{}.FromJobSpec(jobSpecs[0].Assets),
-	}).Return(&models.GenerateDestinationResponse{Destination: "destination_table"}, nil)
+	}).Return(&models.GenerateDestinationResponse{Destination: "destination_table", Type: models.DestinationTypeBigquery}, nil)
 
 	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:        "transporter",
@@ -127,7 +127,7 @@ func TestJobAdapter(t *testing.T) {
 				Name:        "bq2bq",
 				Image:       "image",
 				Description: "description",
-				Destination: "destination_table",
+				Destination: "bigquery://destination_table",
 				Config: []models.JobSpecConfigItem{{
 					Name:  "do",
 					Value: "this",

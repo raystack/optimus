@@ -76,4 +76,19 @@ spec:
 		assert.Nil(t, err)
 		assert.Equal(t, originalRes, resBack)
 	})
+
+	t.Run("should generate urn successfully", func(t *testing.T) {
+		project := "sample-project"
+		dataset := "sample-dataset"
+		table := "sample-table"
+
+		urn, err := tableSpec{}.GenerateURN(BQTable{
+			Project: project,
+			Dataset: dataset,
+			Table:   table,
+		})
+
+		assert.Nil(t, err)
+		assert.Equal(t, "bigquery://sample-project:sample-dataset.sample-table", urn)
+	})
 }

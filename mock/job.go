@@ -178,6 +178,16 @@ func (j *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []mode
 	return args.Error(0)
 }
 
+func (j *JobService) GetByDestination(projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+	args := j.Called(projectSpec, destination)
+	return args.Get(0).(models.JobSpec), args.Error(1)
+}
+
+func (j *JobService) GetDownstream(projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
+	args := j.Called(projectSpec, jobName)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
+}
+
 type DependencyResolver struct {
 	mock.Mock
 }

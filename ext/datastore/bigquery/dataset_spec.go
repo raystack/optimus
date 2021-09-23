@@ -15,6 +15,7 @@ import (
 
 var (
 	datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)
+	datasetURNFormat      = "%s://%s:%s"
 )
 
 // DatasetResourceSpec is how dataset should be represented in yaml
@@ -171,6 +172,14 @@ func (s datasetSpec) Validator() models.DatastoreSpecValidator {
 		}
 		return nil
 	}
+}
+
+func (s datasetSpec) GenerateURN(tableConfig interface{}) (string, error) {
+	bqDataset, ok := tableConfig.(BQDataset)
+	if !ok {
+		return "", errors.New("failed to read dataset spec for bigquery")
+	}
+	return fmt.Sprintf(datasetURNFormat, BigQuery{}.Name(), bqDataset.Project, bqDataset.Dataset), nil
 }
 
 func (s datasetSpec) DefaultAssets() map[string]string {

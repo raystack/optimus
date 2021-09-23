@@ -100,7 +100,7 @@ ReplayDryRun date ranges are inclusive.
 		},
 	}
 	reCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
-	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
+	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed repository")
 	reCmd.MarkFlagRequired("project")
 	reCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of deployee")
 	reCmd.MarkFlagRequired("namespace")
@@ -290,7 +290,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			return nil
 		},
 	}
-	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
+	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed repository")
 	reCmd.MarkFlagRequired("project")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -364,7 +364,7 @@ func replayListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 The list command is used to fetch the recent replay in one project. 
 		`,
 	}
-	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed ocean repository")
+	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed repository")
 	reCmd.MarkFlagRequired("project")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)

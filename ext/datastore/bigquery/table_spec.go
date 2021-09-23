@@ -17,6 +17,7 @@ var (
 	validProjectName = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
 	validDatasetName = regexp.MustCompile(`^[\w]{3,1000}`) // golang's regex engine only let's you restrict maximum repetitions to 1000 ¯\_(ツ)_/¯
 	validTableName   = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	tableURNFormat   = "%s://%s:%s.%s"
 )
 
 // TableResourceSpec is how resource will be represented in yaml
@@ -355,6 +356,14 @@ func (s tableSpec) Validator() models.DatastoreSpecValidator {
 		}
 		return nil
 	}
+}
+
+func (s tableSpec) GenerateURN(tableConfig interface{}) (string, error) {
+	bqTable, ok := tableConfig.(BQTable)
+	if !ok {
+		return "", errors.New("failed to read table spec for bigquery")
+	}
+	return fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), bqTable.Project, bqTable.Dataset, bqTable.Table), nil
 }
 
 func (s tableSpec) DefaultAssets() map[string]string {

@@ -44,7 +44,7 @@ func (a JobAdapter) FromJobSpec(namespaceSpec models.NamespaceSpec, jobSpec mode
 		if err != nil {
 			return nil, err
 		}
-		jobDestination = jobDestinationResponse.Destination
+		jobDestination = jobDestinationResponse.URN()
 	}
 
 	taskMetadata := models.JobTaskMetadata{

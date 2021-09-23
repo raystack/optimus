@@ -448,4 +448,46 @@ func TestBigquery(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	})
+	t.Run("BackupResource", func(t *testing.T) {
+		t.Run("should not return error when resource supported", func(t *testing.T) {
+			resourceSpec := models.ResourceSpec{
+				Name: "project:dataset.table",
+				Spec: BQTable{
+					Project: "project",
+					Dataset: "dataset",
+					Table:   "table",
+				},
+				Type: models.ResourceTypeTable,
+			}
+			resourceRequest := models.BackupResourceRequest{
+				Resource: resourceSpec,
+				Project:  projectSpec,
+			}
+
+			bq := BigQuery{}
+			err := bq.BackupResource(testingContext, resourceRequest)
+
+			assert.Nil(t, err)
+		})
+		t.Run("should return error when resource is not supported", func(t *testing.T) {
+			resourceSpec := models.ResourceSpec{
+				Name: "project:dataset.table",
+				Spec: BQTable{
+					Project: "project",
+					Dataset: "dataset",
+					Table:   "table",
+				},
+				Type: models.ResourceTypeView,
+			}
+			resourceRequest := models.BackupResourceRequest{
+				Resource: resourceSpec,
+				Project:  projectSpec,
+			}
+
+			bq := BigQuery{}
+			err := bq.BackupResource(testingContext, resourceRequest)
+
+			assert.Equal(t, models.ErrUnsupportedResource, err)
+		})
+	})
 }

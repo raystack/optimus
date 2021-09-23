@@ -76,10 +76,11 @@ type ProjectResourceSpecRepository interface {
 	GetAll() ([]models.ResourceSpec, error)
 }
 
-// ResourceSpecRepository represents a storage interface for Respource specifications at namespace level
+// ResourceSpecRepository represents a storage interface for Resource specifications at namespace level
 type ResourceSpecRepository interface {
 	Save(models.ResourceSpec) error
 	GetByName(string) (models.ResourceSpec, error)
+	GetByURN(string) (models.ResourceSpec, error)
 	GetAll() ([]models.ResourceSpec, error)
 	Delete(string) error
 }

@@ -28,6 +28,7 @@ type Resource struct {
 	Name      string `gorm:"not null"`
 	Type      string `gorm:"not null"`
 	Datastore string `gorm:"not null"`
+	URN       string `gorm:"not null"`
 
 	Spec   []byte
 	Assets datatypes.JSON
@@ -62,12 +63,18 @@ func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 		return Resource{}, errors.Wrapf(err, "controller.Adapter().ToYaml: %v", binaryReadySpec)
 	}
 
+	urn, err := controller.GenerateURN(resourceSpec.Spec)
+	if err != nil {
+		return Resource{}, err
+	}
+
 	return Resource{
 		ID:        resourceSpec.ID,
 		Version:   resourceSpec.Version,
 		Name:      resourceSpec.Name,
 		Type:      resourceSpec.Type.String(),
 		Datastore: resourceSpec.Datastore.Name(),
+		URN:       urn,
 		Spec:      serializedSpec,
 		Assets:    assetBytes,
 		Labels:    labelBytes,
@@ -127,6 +134,7 @@ func (r Resource) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
 		Name:      r.Name,
 		Type:      resourceType,
 		Datastore: ds,
+		URN:       r.URN,
 		Spec:      deserializedSpec.Spec,
 		Assets:    assets,
 		Labels:    labels,
@@ -242,6 +250,17 @@ func (repo *resourceSpecRepository) GetByName(name string) (models.ResourceSpec,
 func (repo *resourceSpecRepository) GetByID(id uuid.UUID) (models.ResourceSpec, error) {
 	var r Resource
 	if err := repo.db.Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.ResourceSpec{}, store.ErrResourceNotFound
+		}
+		return models.ResourceSpec{}, err
+	}
+	return r.ToSpec(repo.datastore)
+}
+
+func (repo *resourceSpecRepository) GetByURN(urn string) (models.ResourceSpec, error) {
+	var r Resource
+	if err := repo.db.Where("namespace_id = ? AND datastore = ? AND urn = ?", repo.namespace.ID, repo.datastore.Name(), urn).Find(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ResourceSpec{}, store.ErrResourceNotFound
 		}

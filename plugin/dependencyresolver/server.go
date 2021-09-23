@@ -29,7 +29,7 @@ func (s *GRPCServer) GenerateDestination(ctx context.Context, req *pbp.GenerateD
 	if err != nil {
 		return nil, err
 	}
-	return &pbp.GenerateDestinationResponse{Destination: resp.Destination}, nil
+	return &pbp.GenerateDestinationResponse{Destination: resp.Destination, DestinationType: resp.Type.String()}, nil
 }
 
 func (s *GRPCServer) GenerateDependencies(ctx context.Context, req *pbp.GenerateDependenciesRequest) (*pbp.GenerateDependenciesResponse, error) {
