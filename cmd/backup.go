@@ -133,11 +133,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 
 		for _, ds := range conf.GetDatastore() {
 			if ds.Type == storerName {
-				backupRequest.BackupConfig = &pb.BackupConfig{
-					Dataset: ds.Backup.Dataset,
-					Prefix:  ds.Backup.Prefix,
-					Ttl:     int32(ds.Backup.TTL),
-				}
+				backupRequest.Config = ds.Backup
 			}
 		}
 

@@ -1125,7 +1125,6 @@ func TestService(t *testing.T) {
 				Resource:    resourceSpec,
 				Result:      map[string]interface{}{resourceSpec.Name: backupResult},
 				Description: "",
-				Config:      models.DestinationConfig{},
 			}
 
 			depMod.On("GenerateDestination", context.TODO(), unitData).Return(destination, nil)
@@ -1264,7 +1263,6 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
-				Config:      models.DestinationConfig{},
 			}
 
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
@@ -1686,7 +1684,6 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
-				Config:      models.DestinationConfig{},
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
@@ -1817,7 +1814,6 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
-				Config:      models.DestinationConfig{},
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)

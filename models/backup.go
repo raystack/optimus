@@ -24,7 +24,7 @@ type BackupRequest struct {
 	Datastore        string
 	Description      string
 	IgnoreDownstream bool
-	Config           DestinationConfig
+	Config           map[string]string
 	DryRun           bool
 	BackupTime       time.Time
 }
@@ -39,16 +39,10 @@ type BackupResponse struct {
 	Result      BackupResult
 }
 
-type DestinationConfig struct {
-	TTLInDays   int
-	Dataset     string
-	TablePrefix string
-}
-
 type BackupSpec struct {
 	ID          uuid.UUID
 	Resource    ResourceSpec
 	Result      map[string]interface{}
 	Description string
-	Config      DestinationConfig
+	Config      map[string]string
 }

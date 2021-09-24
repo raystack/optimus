@@ -3121,16 +3121,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:     resourceName,
 				Namespace:        namespaceSpec.Name,
 				IgnoreDownstream: true,
-				BackupConfig: &pb.BackupConfig{
-					Ttl: 30,
+				Config: map[string]string{
+					"TTL": "30",
 				},
 			}
 			backupReq := models.BackupRequest{
 				ResourceName: resourceName,
 				Project:      projectSpec,
 				Namespace:    namespaceSpec,
-				Config: models.DestinationConfig{
-					TTLInDays: 30,
+				Config: map[string]string{
+					"TTL": "30",
 				},
 				DryRun:           false,
 				IgnoreDownstream: true,
@@ -3228,16 +3228,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:     resourceName,
 				Namespace:        namespaceSpec.Name,
 				IgnoreDownstream: false,
-				BackupConfig: &pb.BackupConfig{
-					Ttl: 30,
+				Config: map[string]string{
+					"TTL": "30",
 				},
 			}
 			backupReq := models.BackupRequest{
 				ResourceName: resourceName,
 				Project:      projectSpec,
 				Namespace:    namespaceSpec,
-				Config: models.DestinationConfig{
-					TTLInDays: 30,
+				Config: map[string]string{
+					"TTL": "30",
 				},
 				DryRun:           false,
 				IgnoreDownstream: false,
@@ -3593,8 +3593,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName: resourceName,
 				Project:      projectSpec,
 				Namespace:    namespaceSpec,
-				Config: models.DestinationConfig{
-					TTLInDays: 30,
+				Config: map[string]string{
+					"TTL": "30",
 				},
 				DryRun:           false,
 				IgnoreDownstream: false,
@@ -3608,7 +3608,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
-				BackupConfig:  &pb.BackupConfig{Ttl: 30},
+				Config: map[string]string{
+					"TTL": "30",
+				},
 			}
 
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)

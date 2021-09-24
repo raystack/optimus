@@ -1019,12 +1019,8 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 		Description:      req.Description,
 		IgnoreDownstream: req.IgnoreDownstream,
 		DryRun:           false,
-		Config: models.DestinationConfig{
-			TTLInDays:   int(req.BackupConfig.Ttl),
-			Dataset:     req.BackupConfig.Dataset,
-			TablePrefix: req.BackupConfig.Prefix,
-		},
-		BackupTime: time.Now(),
+		Config:           req.Config,
+		BackupTime:       time.Now(),
 	}
 	results, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
 	if err != nil {

@@ -498,10 +498,10 @@ func TestBigquery(t *testing.T) {
 				Resource: resourceSpec,
 				BackupSpec: models.BackupRequest{
 					Project: projectSpec,
-					Config: models.DestinationConfig{
-						TTLInDays:   30,
-						Dataset:     "optimus_backup",
-						TablePrefix: "backup",
+					Config: map[string]string{
+						BackupConfigTTL:     "30",
+						BackupConfigDataset: "optimus_backup",
+						BackupConfigPrefix:  "backup",
 					},
 					ID:         uuid.Must(uuid.NewRandom()),
 					BackupTime: backupTime,
@@ -510,7 +510,7 @@ func TestBigquery(t *testing.T) {
 
 			destinationTable := BQTable{
 				Project: spec.Project,
-				Dataset: resourceRequest.BackupSpec.Config.Dataset,
+				Dataset: resourceRequest.BackupSpec.Config[BackupConfigDataset],
 				Table:   fmt.Sprintf("backup_dataset_table_%s", resourceRequest.BackupSpec.ID),
 			}
 			resultURN := fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), destinationTable.Project, destinationTable.Dataset, destinationTable.Table)

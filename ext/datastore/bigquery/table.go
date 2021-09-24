@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -21,9 +22,12 @@ var (
 )
 
 const (
-	backupDataset = "optimus_backup"
-	prefix        = "backup"
-	ttlInDays     = 30
+	BackupConfigDataset  = "dataset"
+	BackupConfigPrefix   = "prefix"
+	BackupConfigTTL      = "ttl"
+	defaultBackupDataset = "optimus_backup"
+	defaultBackupPrefix  = "backup"
+	defaultBackupTTL     = 30
 )
 
 func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
@@ -149,7 +153,7 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 		return models.BackupResourceResponse{}, err
 	}
 
-	tableDst, err = updateExpiry(ctx, tableDst, request.BackupSpec.Config.TTLInDays, request.BackupSpec.BackupTime)
+	tableDst, err = updateExpiry(ctx, tableDst, request)
 	if err != nil {
 		return models.BackupResourceResponse{}, err
 	}
@@ -170,14 +174,14 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 }
 
 func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest) BQTable {
-	datasetValue := backupSpec.Config.Dataset
-	if datasetValue == "" {
-		datasetValue = backupDataset
+	datasetValue, ok := backupSpec.Config[BackupConfigDataset]
+	if !ok {
+		datasetValue = defaultBackupDataset
 	}
 
-	prefixValue := backupSpec.Config.TablePrefix
-	if prefixValue == "" {
-		prefixValue = prefix
+	prefixValue, ok := backupSpec.Config[BackupConfigPrefix]
+	if !ok {
+		prefixValue = defaultBackupPrefix
 	}
 
 	return BQTable{
@@ -222,18 +226,25 @@ func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc BQ
 	return tableDst, nil
 }
 
-func updateExpiry(ctx context.Context, tableDst bqiface.Table, ttlConfig int, backupTime time.Time) (bqiface.Table, error) {
+func updateExpiry(ctx context.Context, tableDst bqiface.Table, req models.BackupResourceRequest) (bqiface.Table, error) {
 	meta, err := tableDst.Metadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	ttlValue := ttlConfig
-	if ttlValue == 0 {
-		ttlValue = ttlInDays
+	var ttlValue int
+	ttlStr, ok := req.BackupSpec.Config[BackupConfigTTL]
+	if ok {
+		ttlValue, err = strconv.Atoi(ttlStr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ttlValue = defaultBackupTTL
 	}
+
 	update := bigquery.TableMetadataToUpdate{
-		ExpirationTime: backupTime.Add(time.Hour * 24 * time.Duration(ttlValue)),
+		ExpirationTime: req.BackupSpec.BackupTime.Add(time.Hour * 24 * time.Duration(ttlValue)),
 	}
 	if _, err = tableDst.Update(ctx, update, meta.ETag); err != nil {
 		return nil, err

@@ -389,10 +389,10 @@ func TestTable(t *testing.T) {
 			Spec: bQResource,
 			Type: models.ResourceTypeTable,
 		}
-		destinationConfig := models.DestinationConfig{
-			TTLInDays:   30,
-			Dataset:     "optimus_backup",
-			TablePrefix: "backup",
+		destinationConfig := map[string]string{
+			BackupConfigTTL:     "30",
+			BackupConfigDataset: "optimus_backup",
+			BackupConfigPrefix:  "backup",
 		}
 		request := models.BackupResourceRequest{
 			Resource: resourceSpec,
@@ -404,7 +404,7 @@ func TestTable(t *testing.T) {
 		}
 		destinationTable := BQTable{
 			Project: bQResource.Project,
-			Dataset: request.BackupSpec.Config.Dataset,
+			Dataset: request.BackupSpec.Config[BackupConfigDataset],
 			Table:   fmt.Sprintf("backup_dataset_table_%s", request.BackupSpec.ID),
 		}
 

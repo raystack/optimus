@@ -409,8 +409,11 @@
                 "ignoreDownstream": {
                   "type": "boolean"
                 },
-                "backupConfig": {
-                  "$ref": "#/definitions/optimusBackupConfig"
+                "config": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -1297,21 +1300,6 @@
         },
         "value": {
           "type": "string"
-        }
-      }
-    },
-    "optimusBackupConfig": {
-      "type": "object",
-      "properties": {
-        "dataset": {
-          "type": "string"
-        },
-        "prefix": {
-          "type": "string"
-        },
-        "ttl": {
-          "type": "integer",
-          "format": "int32"
         }
       }
     },

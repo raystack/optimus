@@ -15,7 +15,7 @@ import (
 type BackupDetail struct {
 	Result      map[string]interface{}
 	Description string
-	Config      models.DestinationConfig
+	Config      map[string]string
 }
 
 type Backup struct {

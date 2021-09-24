@@ -102,10 +102,10 @@ func TestBackupRepository(t *testing.T) {
 			Resource:    resourceSpec,
 			Result:      backupResult,
 			Description: "description",
-			Config: models.DestinationConfig{
-				TTLInDays:   30,
-				Dataset:     destinationDataset,
-				TablePrefix: "backup",
+			Config: map[string]string{
+				"ttl":     "30",
+				"dataset": destinationDataset,
+				"prefix":  "backup",
 			},
 		}
 
