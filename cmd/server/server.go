@@ -372,7 +372,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	opts := []grpc_logrus.Option{
 		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
 	}
-	// Make sure that log statements internal to gRPC library are logged using the logrus Logger as well.
+	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(logrusEntry)
 
 	grpcAddr := fmt.Sprintf("%s:%d", conf.GetServe().Host, conf.GetServe().Port)

@@ -5,9 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/meta"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
@@ -121,6 +124,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 	observers.Join(&jobSyncObserver{
 		stream: respStream,
 		log:    sv.l,
+		mu:     new(sync.Mutex),
 	})
 
 	// delete specs not sent for deployment from internal repository
@@ -214,6 +218,7 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	observers.Join(&jobCheckObserver{
 		stream: respStream,
 		log:    sv.l,
+		mu:     new(sync.Mutex),
 	})
 
 	reqJobs := []models.JobSpec{}
@@ -713,6 +718,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 	observers.Join(&resourceObserver{
 		stream: respStream,
 		log:    sv.l,
+		mu:     new(sync.Mutex),
 	})
 
 	if err := sv.resourceSvc.UpdateResource(respStream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
@@ -759,7 +765,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 		return nil, err
 	}
 
-	rootNode, err := sv.jobSvc.ReplayDryRun(replayRequest)
+	rootNode, err := sv.jobSvc.ReplayDryRun(ctx, replayRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while processing replay dry run: %v", err)
 	}
@@ -948,7 +954,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	jobSpecs = append(jobSpecs, jobSpec)
 
 	if !req.IgnoreDownstream {
-		downstreamSpecs, err := sv.jobSvc.GetDownstream(projectSpec, jobSpec.Name)
+		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
 		}
@@ -1025,9 +1031,13 @@ func NewRuntimeServiceServer(
 type jobSyncObserver struct {
 	stream pb.RuntimeService_DeployJobSpecificationServer
 	log    log.Logger
+	mu     *sync.Mutex
 }
 
 func (obs *jobSyncObserver) Notify(e progress.Event) {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
 	switch evt := e.(type) {
 	case *models.EventJobUpload:
 		resp := &pb.DeployJobSpecificationResponse{
@@ -1041,7 +1051,7 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 		}
 
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "job name", evt.Name, "error", err)
+			obs.log.Error("failed to send deploy spec ack", "evt", evt.String(), "error", err)
 		}
 	case *models.EventJobRemoteDelete:
 		resp := &pb.DeployJobSpecificationResponse{
@@ -1049,7 +1059,7 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 			Message: evt.String(),
 		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send delete notification", "job name", evt.Name, "error", err)
+			obs.log.Error("failed to send delete notification", "evt", evt.String(), "error", err)
 		}
 	case *job.EventJobSpecUnknownDependencyUsed:
 		resp := &pb.DeployJobSpecificationResponse{
@@ -1057,7 +1067,14 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 			Message: evt.String(),
 		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send unknown dependency notification", "job name", evt.Job, "error", err)
+			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
+		}
+	case *meta.EventPublish:
+		resp := &pb.DeployJobSpecificationResponse{
+			Message: evt.String(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send publish metadata notification", "evt", evt.String(), "error", err)
 		}
 	}
 }
@@ -1065,9 +1082,13 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 type resourceObserver struct {
 	stream pb.RuntimeService_DeployResourceSpecificationServer
 	log    log.Logger
+	mu     *sync.Mutex
 }
 
 func (obs *resourceObserver) Notify(e progress.Event) {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
 	switch evt := e.(type) {
 	case *datastore.EventResourceUpdated:
 		resp := &pb.DeployResourceSpecificationResponse{
@@ -1089,9 +1110,13 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 type jobCheckObserver struct {
 	stream pb.RuntimeService_CheckJobSpecificationsServer
 	log    log.Logger
+	mu     *sync.Mutex
 }
 
 func (obs *jobCheckObserver) Notify(e progress.Event) {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
 	switch evt := e.(type) {
 	case *job.EventJobCheckFailed:
 		resp := &pb.CheckJobSpecificationsResponse{

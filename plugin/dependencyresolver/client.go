@@ -3,12 +3,10 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/odpf/optimus/plugin/base"
-
-	"github.com/odpf/optimus/plugin/cli"
-
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin/base"
+	"github.com/odpf/optimus/plugin/cli"
 )
 
 // GRPCClient will be used by core to talk over grpc with plugins
@@ -38,6 +36,7 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 	})
 	if err != nil {
+		m.baseClient.MakeFatalOnConnErr(err)
 		return nil, err
 	}
 	return &models.GenerateDestinationResponse{
@@ -54,6 +53,7 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 	})
 	if err != nil {
+		m.baseClient.MakeFatalOnConnErr(err)
 		return nil, err
 	}
 	return &models.GenerateDependenciesResponse{

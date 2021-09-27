@@ -30,7 +30,7 @@ type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.J
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
-	Resolve(projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+	Resolve(ctx context.Context, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 		jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 }
 
@@ -182,7 +182,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 
 // Delete deletes a job spec from all spec repos
 func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) error {
-	if err := srv.isJobDeletable(namespace.ProjectSpec, jobSpec); err != nil {
+	if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
 		return err
 	}
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
@@ -203,13 +203,13 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 // what is not needed anymore
 func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, progressObserver progress.Observer) error {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.GetDependencyResolvedSpecs(namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
 	if err != nil {
 		return err
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 
-	jobSpecs, err = srv.priorityResolver.Resolve(jobSpecs)
+	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs)
 	if err != nil {
 		return err
 	}
@@ -305,7 +305,7 @@ func (srv *Service) filterJobSpecForNamespace(jobSpecs []models.JobSpec, namespa
 	return filteredJobSpecs, nil
 }
 
-func (srv *Service) GetDependencyResolvedSpecs(proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
 	jobSpecs, err := projectJobSpecRepo.GetAll()
@@ -326,7 +326,7 @@ func (srv *Service) GetDependencyResolvedSpecs(proj models.ProjectSpec, projectJ
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				resolvedSpec, err := srv.dependencyResolver.Resolve(proj, projectJobSpecRepo, currentSpec, progressObserver)
+				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, projectJobSpecRepo, currentSpec, progressObserver)
 				if err != nil {
 					return nil, errors.Wrapf(err, "failed to resolve dependency for %s", currentSpec.Name)
 				}
@@ -360,10 +360,10 @@ func (srv *Service) publishMetadata(namespace models.NamespaceSpec, jobSpecs []m
 }
 
 // isJobDeletable determines if a given job is deletable or not
-func (srv *Service) isJobDeletable(projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
+func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
 	// check if this job spec is dependency of any other job spec
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	depsResolvedJobSpecs, err := srv.GetDependencyResolvedSpecs(projectSpec, projectJobSpecRepo, nil)
+	depsResolvedJobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
 	if err != nil {
 		return err
 	}
@@ -389,9 +389,9 @@ func (srv *Service) GetByDestination(projectSpec models.ProjectSpec, destination
 	return jobSpec, nil
 }
 
-func (srv *Service) GetDownstream(projectSpec models.ProjectSpec, rootJobName string) ([]models.JobSpec, error) {
+func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string) ([]models.JobSpec, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	dependencyResolvedSpecs, err := srv.GetDependencyResolvedSpecs(projectSpec, projectJobSpecRepo, nil)
+	dependencyResolvedSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
 	if err != nil {
 		return nil, err
 	}

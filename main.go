@@ -28,6 +28,13 @@ var (
 type PlainFormatter struct{}
 
 func (p *PlainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	if len(entry.Data) > 0 {
+		var data string
+		for key, val := range entry.Data {
+			data += fmt.Sprintf("%s: %v ", key, val)
+		}
+		return []byte(fmt.Sprintf("%s %s\n", entry.Message, data)), nil
+	}
 	return []byte(fmt.Sprintf("%s\n", entry.Message)), nil
 }
 

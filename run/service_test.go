@@ -253,9 +253,16 @@ func TestService(t *testing.T) {
 		})
 	})
 	t.Run("GetScheduledRun", func(t *testing.T) {
-		t.Run("should skip saving job run if already exists", func(t *testing.T) {
+		t.Run("should update job run even if already exists", func(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("GetByScheduledAt", jobSpec.ID, scheduledAt).Return(jobRun, namespaceSpec, nil)
+			runRepo.On("Save", namespaceSpec, models.JobRun{
+				ID:          jobRun.ID,
+				Spec:        jobSpec,
+				Trigger:     models.TriggerSchedule,
+				Status:      models.RunStatePending,
+				ScheduledAt: scheduledAt,
+			}).Return(nil)
 			defer runRepo.AssertExpectations(t)
 
 			jobRunSpecRep := new(mock.JobRunRepoFactory)

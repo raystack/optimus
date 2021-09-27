@@ -33,6 +33,7 @@ func (p *Connector) GRPCServer(broker *hplugin.GRPCBroker, s *grpc.Server) error
 func (p *Connector) GRPCClient(ctx context.Context, broker *hplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClient{
 		Client: pbp.NewBaseClient(c),
+		Logger: p.logger,
 	}, nil
 }
 

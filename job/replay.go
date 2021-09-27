@@ -18,9 +18,9 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) prepareJobSpecMap(replayRequest models.ReplayRequest) (map[string]models.JobSpec, error) {
+func (srv *Service) prepareJobSpecMap(ctx context.Context, replayRequest models.ReplayRequest) (map[string]models.JobSpec, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
-	jobSpecs, err := srv.GetDependencyResolvedSpecs(replayRequest.Project, projectJobSpecRepo, nil)
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, replayRequest.Project, projectJobSpecRepo, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +31,8 @@ func (srv *Service) prepareJobSpecMap(replayRequest models.ReplayRequest) (map[s
 	return jobSpecMap, nil
 }
 
-func (srv *Service) ReplayDryRun(replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(replayRequest)
+func (srv *Service) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (srv *Service) ReplayDryRun(replayRequest models.ReplayRequest) (*tree.Tree
 }
 
 func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(replayRequest)
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest)
 	if err != nil {
 		return "", err
 	}

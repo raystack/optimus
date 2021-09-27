@@ -41,26 +41,32 @@ func (s *Service) Compile(namespace models.NamespaceSpec, jobRun models.JobRun, 
 	return NewContextManager(namespace, jobRun, s.templateEngine).Generate(instanceSpec)
 }
 
-func (s *Service) GetScheduledRun(namespace models.NamespaceSpec, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
-	repo := s.repoFac.New()
-	jobRun, _, err := repo.GetByScheduledAt(jobSpec.ID, scheduledAt)
-	if err == nil {
-		return jobRun, nil
-	}
-	// its okay if it doesn't exists yet
-	if err != store.ErrResourceNotFound {
-		return models.JobRun{}, err
-	}
-
-	// create a new instance if not exists already
-	if err := repo.Save(namespace, models.JobRun{
+func (s *Service) GetScheduledRun(namespace models.NamespaceSpec, jobSpec models.JobSpec,
+	scheduledAt time.Time) (models.JobRun, error) {
+	newJobRun := models.JobRun{
 		Spec:        jobSpec,
 		Trigger:     models.TriggerSchedule,
 		Status:      models.RunStatePending,
 		ScheduledAt: scheduledAt,
-	}); err != nil {
+		Instances:   nil,
+	}
+
+	repo := s.repoFac.New()
+	jobRun, _, err := repo.GetByScheduledAt(jobSpec.ID, scheduledAt)
+	if err == store.ErrResourceNotFound || err == nil {
+		// create a new instance if it does not already exists
+		if err == nil {
+			// if already exists, use the same id for in place update
+			newJobRun.ID = jobRun.ID
+			newJobRun.Instances = jobRun.Instances
+		}
+		if err := repo.Save(namespace, newJobRun); err != nil {
+			return models.JobRun{}, err
+		}
+	} else {
 		return models.JobRun{}, err
 	}
+
 	jobRun, _, err = repo.GetByScheduledAt(jobSpec.ID, scheduledAt)
 	return jobRun, err
 }

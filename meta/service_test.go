@@ -63,10 +63,8 @@ func TestService(t *testing.T) {
 		writer.On("Write", protoKey, protoMsg).Return(nil)
 		defer writer.AssertExpectations(t)
 
-		po := new(mock.PipelineLogObserver)
 		service := meta.NewService(writer, builder)
-		err := service.Publish(namespaceSpec, jobSpecs, po)
-
+		err := service.Publish(namespaceSpec, jobSpecs, nil)
 		assert.Nil(t, err)
 	})
 
@@ -86,9 +84,8 @@ func TestService(t *testing.T) {
 		writer.On("Write", protoKey, protoMsg).Return(writerErr)
 		defer writer.AssertExpectations(t)
 
-		po := new(mock.PipelineLogObserver)
 		service := meta.NewService(writer, builder)
-		err := service.Publish(namespaceSpec, jobSpecs, po)
+		err := service.Publish(namespaceSpec, jobSpecs, nil)
 
 		assert.NotNil(t, err)
 		assert.Equal(t, "failed to write metadata message: job-1: kafka is down", err.Error())

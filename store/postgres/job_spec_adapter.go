@@ -373,10 +373,12 @@ func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace
 type JobRun struct {
 	ID uuid.UUID `gorm:"primary_key;type:uuid;"`
 
+	// TODO: I think we can delete this field, its kinda useless
 	// could be null for manual/adhoc jobs
 	JobID uuid.UUID `gorm:"type:uuid;"`
 
-	// could be null for scheduled job that belong to a project
+	// job spec for which this run was created, spec should contain a valid
+	// uuid if it belongs to a saved job and not an adhoc job
 	Spec datatypes.JSON `gorm:"column:specification;"`
 
 	NamespaceID uuid.UUID

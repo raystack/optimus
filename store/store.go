@@ -44,6 +44,7 @@ type NamespaceRepository interface {
 // JobRunSpecRepository represents a storage interface for Job runs generated to
 // represent a job in running state
 type JobRunRepository interface {
+	// Save updates the instance in place if it can else insert new
 	Save(models.NamespaceSpec, models.JobRun) error
 	GetByScheduledAt(jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error)
 	GetByID(uuid.UUID) (models.JobRun, models.NamespaceSpec, error)

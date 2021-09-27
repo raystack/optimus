@@ -192,6 +192,12 @@ dependencies:
 
   # list `job: <jobname>`
   - job: sample_internal_job
+    # provide where the upstream dependency is stored, intra/inter/extra
+    # intra: within this project
+    # inter: within optimus but cross project
+    # extra: outside optimus[not properly supported]
+    # optional, default: intra
+    type: intra
   
 # adhoc operations marked for execution at different hook points
 # accepts a list

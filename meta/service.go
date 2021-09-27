@@ -1,6 +1,8 @@
 package meta
 
 import (
+	"fmt"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -43,6 +45,18 @@ func (service Service) Publish(namespaceSpec models.NamespaceSpec, jobSpecs []mo
 			return errors.Wrapf(err, "failed to write metadata message: %s", resource.Urn)
 		}
 	}
-
+	if po != nil {
+		po.Notify(&EventPublish{SpecCount: len(jobSpecs)})
+	}
 	return nil
+}
+
+// EventPublish represents a specification being published to
+// meta event stream
+type EventPublish struct {
+	SpecCount int
+}
+
+func (e *EventPublish) String() string {
+	return fmt.Sprintf("published %d jobs metadata to event stream", e.SpecCount)
 }

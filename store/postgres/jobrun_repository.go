@@ -130,6 +130,9 @@ func (repo *JobRunRepository) Clear(runID uuid.UUID) error {
 }
 
 func (repo *JobRunRepository) Delete(id uuid.UUID) error {
+	if err := repo.instanceRepo.DeleteByJobRun(id); err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
 	return repo.db.Where("id = ?", id).Delete(&JobRun{}).Error
 }
 

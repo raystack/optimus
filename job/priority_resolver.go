@@ -1,6 +1,8 @@
 package job
 
 import (
+	"context"
+
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -30,7 +32,7 @@ var (
 // PriorityResolver defines an interface that represents getting
 // priority weight of Jobs based on their dependencies
 type PriorityResolver interface {
-	Resolve([]models.JobSpec) ([]models.JobSpec, error)
+	Resolve(context.Context, []models.JobSpec) ([]models.JobSpec, error)
 }
 
 // priorityResolver runs a breadth first traversal on DAG/Job dependencies trees
@@ -51,7 +53,7 @@ func NewPriorityResolver() *priorityResolver {
 }
 
 // Resolve takes jobSpecs and returns them with resolved priorities
-func (a *priorityResolver) Resolve(jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
+func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
 	if err := a.resolvePriorities(jobSpecs); err != nil {
 		return nil, errors.Wrap(err, "error occurred while resolving priority")
 	}
