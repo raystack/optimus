@@ -242,7 +242,7 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 	}
 
 	var (
-		project   string
+		project string
 	)
 
 	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")

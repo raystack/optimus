@@ -1005,7 +1005,7 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 	jobSpecs = append(jobSpecs, jobSpec)
 
 	if !req.IgnoreDownstream {
-		downstreamSpecs, err := sv.jobSvc.GetDownstream(projectSpec, jobSpec.Name)
+		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
 		}

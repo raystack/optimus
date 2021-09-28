@@ -192,7 +192,7 @@ func (j *JobService) GetByDestination(projectSpec models.ProjectSpec, destinatio
 }
 
 func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
-	args := j.Called(projectSpec, jobName)
+	args := j.Called(ctx, projectSpec, jobName)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
