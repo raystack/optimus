@@ -441,18 +441,16 @@ TODO
 ## Replay & Backups
 
 A job might need to be re-run (backfill) due to business requirement changes or other various reasons. Optimus provides 
-an easy way to do this using Replay feature. Replay accepts which job and range of date to be updated, validating it, 
-and clearing the tasks in the scheduler, making the tasks available to be picked up by the scheduler and got re-run. 
-Replay will also figure the dependents of the job and re-run all the downstream jobs within the same project just after 
-the upstream tasks are finished.
+an easy way to do this using Replay. Replay accepts which job and range of date to be updated, validating it, 
+and re-run the job tasks. Replay will also figure the dependents of the job and re-run all the downstream jobs within 
+the same project just after the upstream tasks are finished.
 
 When validating, Optimus checks if replay with same job and date are currently running and also check if the task 
-scheduler instances are still running to avoid any duplication and confusion. Optimus provides several replay workers so 
-several replays can be run in parallel.
+scheduler instances are still running to avoid any duplication and conflicts. 
 
-After the replay worker cleared the task instances in the scheduler, the worker finished its job and let the scheduler do 
-the rest. However, Optimus provides a replay syncer to frequently check the status in the scheduler (every 5 minutes), so 
-the latest state of replay will always be updated.
+After validated, Replay will clear task instances of the requested job in the scheduler, letting the tasks to be picked 
+up and run. Replay will frequently check the status of each task from the scheduler (every 5 minutes) to track if 
+each task is still in progress, failed, or succeed.
 
 Optimus also provides Replay Dry Run to simulate all the impacted tasks without actually re-running the tasks.
 

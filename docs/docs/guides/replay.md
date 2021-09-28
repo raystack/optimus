@@ -11,12 +11,12 @@ various reasons. Optimus provides an easy way to do this using Replay feature. P
 
 In order to run a replay, run the following command
 
-```
+```shell
 $ optimus replay run sample-job 2021-01-01 2021-02-01 --project sample-project --namespace sample-namespace
 ```
 
-Replay accepts three arguments, first is DAG name (required) that used in optimus specification, second is 
-start date (required) of replay, third is end date (optional) of replay.
+Replay accepts three arguments, first is DAG name that used in optimus specification, second is 
+start date of replay, third is end date (optional) of replay.
 
 If the replay request passed the basic validation, you will see all the tasks including the downstream that will be 
 replayed. You can confirm to proceed to run replay if the run simulation is as expected.
@@ -29,7 +29,7 @@ Please wait until the scheduler finished scheduling and running those tasks.
 
 You can check the replay status using the replay ID given previously and use in this command:
 
-```
+```shell
 $ optimus replay status {replay_id} --project sample-project
 ```
 
@@ -40,7 +40,7 @@ You will see the latest replay status including the status of each run of your r
 
 List of recent replay of a project can be checked using this sub command:
 
-```
+```shell
 $ optimus replay list --project sample-project
 ```
 
@@ -52,6 +52,6 @@ replay, please use `status` sub command.
 
 A dry run is also available to simulate all the impacted tasks without actually re-running the tasks. Example of dry run
 usage:
-```
+```shell
 $ optimus replay run sample-job 2021-01-01 2021-02-01 --project sample-project --namespace sample-namespace --dry-run
 ```
