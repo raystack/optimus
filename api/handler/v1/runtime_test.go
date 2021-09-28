@@ -3642,4 +3642,163 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 	})
+
+	t.Run("ListBackups", func(t *testing.T) {
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: projectName,
+		}
+		datastoreName := models.DestinationTypeBigquery.String()
+		namespaceSpec := models.NamespaceSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "dev-test-namespace-1",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+			ProjectSpec: projectSpec,
+		}
+		listBackupsReq := pb.ListBackupsRequest{
+			ProjectName:   projectName,
+			DatastoreName: datastoreName,
+			Namespace:     namespaceSpec.Name,
+		}
+		backupReq := models.BackupRequest{
+			Project:   projectSpec,
+			Datastore: datastoreName,
+		}
+		backupSpecs := []models.BackupSpec{
+			{
+				ID:        uuid.Must(uuid.NewRandom()),
+				CreatedAt: time.Now().Add(time.Hour * 24 * -30),
+				Resource: models.ResourceSpec{
+					Name: "sample resource",
+				},
+				Description: "backup purpose",
+			},
+			{
+				ID:        uuid.Must(uuid.NewRandom()),
+				CreatedAt: time.Now().Add(time.Hour * 24 * -50),
+				Resource: models.ResourceSpec{
+					Name: "sample resource",
+				},
+				Description: "backup purpose",
+			},
+		}
+		t.Run("should return list of backups", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+
+			backupResultPb := &pb.ListBackupsResponse{
+				BackupList: []*pb.BackupSpec{
+					{
+						Id:           backupSpecs[0].ID.String(),
+						ResourceName: backupSpecs[0].Resource.Name,
+						CreatedAt:    timestamppb.New(backupSpecs[0].CreatedAt),
+						Description:  backupSpecs[0].Description,
+					},
+					{
+						Id:           backupSpecs[1].ID.String(),
+						ResourceName: backupSpecs[1].Resource.Name,
+						CreatedAt:    timestamppb.New(backupSpecs[1].CreatedAt),
+						Description:  backupSpecs[1].Description,
+					},
+				},
+			}
+
+			projectRepoFactory.On("New").Return(projectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			resourceSvc.On("ListBackupResources", backupReq).Return(backupSpecs, nil)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				nil, nil,
+				resourceSvc,
+				projectRepoFactory,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			backupResponse, err := runtimeServiceServer.ListBackups(context.Background(), &listBackupsReq)
+
+			assert.Nil(t, err)
+			assert.Equal(t, backupResultPb, backupResponse)
+		})
+		t.Run("should return error when unable to get project spec", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+
+			projectRepoFactory.On("New").Return(projectRepository)
+			errorMsg := "unable to get project spec"
+			projectRepository.On("GetByName", projectName).Return(models.ProjectSpec{},
+				errors.New(errorMsg))
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				nil, nil,
+				resourceSvc,
+				projectRepoFactory,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			backupResponse, err := runtimeServiceServer.ListBackups(context.Background(), &listBackupsReq)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, backupResponse)
+		})
+		t.Run("should return error when unable to get list of backups", func(t *testing.T) {
+			projectRepository := new(mock.ProjectRepository)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			resourceSvc := new(mock.DatastoreService)
+			defer resourceSvc.AssertExpectations(t)
+
+			projectRepoFactory.On("New").Return(projectRepository)
+			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
+			errorMsg := "unable to get list of backups"
+			resourceSvc.On("ListBackupResources", backupReq).Return([]models.BackupSpec{}, errors.New(errorMsg))
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				"Version",
+				nil, nil,
+				resourceSvc,
+				projectRepoFactory,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			backupResponse, err := runtimeServiceServer.ListBackups(context.Background(), &listBackupsReq)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, backupResponse)
+		})
+	})
 }

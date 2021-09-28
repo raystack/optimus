@@ -1032,6 +1032,35 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 	}, nil
 }
 
+func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBackupsRequest) (*pb.ListBackupsResponse, error) {
+	projectSpec, err := sv.getProjectSpec(req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	backupRequest := models.BackupRequest{
+		Project:   projectSpec,
+		Datastore: req.DatastoreName,
+	}
+	results, err := sv.resourceSvc.ListBackupResources(backupRequest)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error while getting backup list: %v", err)
+	}
+
+	var backupList []*pb.BackupSpec
+	for _, result := range results {
+		backupList = append(backupList, &pb.BackupSpec{
+			Id:           result.ID.String(),
+			ResourceName: result.Resource.Name,
+			CreatedAt:    timestamppb.New(result.CreatedAt),
+			Description:  result.Description,
+		})
+	}
+	return &pb.ListBackupsResponse{
+		BackupList: backupList,
+	}, nil
+}
+
 func (sv *RuntimeServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest) (*pb.RunJobResponse, error) {
 	// create job run in db
 	projSpec, err := sv.projectRepoFactory.New().GetByName(req.ProjectName)

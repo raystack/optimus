@@ -358,6 +358,46 @@
       }
     },
     "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/backup": {
+      "get": {
+        "operationId": "RuntimeService_ListBackups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusListBackupsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
       "post": {
         "operationId": "RuntimeService_Backup",
         "responses": {
@@ -1325,6 +1365,24 @@
         }
       }
     },
+    "optimusBackupSpec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "resourceName": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
     "optimusCheckJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -1683,6 +1741,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/optimusJobStatus"
+          }
+        }
+      }
+    },
+    "optimusListBackupsResponse": {
+      "type": "object",
+      "properties": {
+        "backupList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/optimusBackupSpec"
           }
         }
       }

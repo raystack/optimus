@@ -87,6 +87,7 @@ func (b Backup) ToSpec(ds models.Datastorer) (models.BackupSpec, error) {
 		Result:      backupSpec.Result,
 		Description: backupSpec.Description,
 		Config:      backupSpec.Config,
+		CreatedAt:   b.CreatedAt,
 	}, nil
 }
 

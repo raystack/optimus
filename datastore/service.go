@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/odpf/optimus/utils"
 
@@ -16,6 +17,9 @@ import (
 const (
 	ConcurrentTicketPerSec = 5
 	ConcurrentLimit        = 20
+
+	//backupListWindow window interval to fetch recent backups
+	backupListWindow = -3 * 30 * 24 * time.Hour
 )
 
 type ResourceSpecRepoFactory interface {
@@ -258,6 +262,30 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	}
 
 	return backupResult, nil
+}
+
+func (srv Service) ListBackupResources(backupRequest models.BackupRequest) ([]models.BackupSpec, error) {
+	datastorer, err := srv.dsRepo.GetByName(backupRequest.Datastore)
+	if err != nil {
+		return []models.BackupSpec{}, err
+	}
+
+	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, datastorer)
+	backupSpecs, err := backupRepo.GetAll()
+	if err != nil {
+		if err == store.ErrResourceNotFound {
+			return []models.BackupSpec{}, nil
+		}
+		return []models.BackupSpec{}, err
+	}
+
+	var recentBackups []models.BackupSpec
+	for _, backup := range backupSpecs {
+		if backup.CreatedAt.After(time.Now().UTC().Add(backupListWindow)) {
+			recentBackups = append(recentBackups, backup)
+		}
+	}
+	return recentBackups, nil
 }
 
 func (srv Service) prepareBackupSpec(backupRequest models.BackupRequest) (models.BackupSpec, error) {

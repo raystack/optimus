@@ -45,4 +45,5 @@ type BackupSpec struct {
 	Result      map[string]interface{}
 	Description string
 	Config      map[string]string
+	CreatedAt   time.Time
 }

@@ -143,6 +143,11 @@ func (d *DatastoreService) BackupResource(ctx context.Context, req models.Backup
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (d *DatastoreService) ListBackupResources(req models.BackupRequest) ([]models.BackupSpec, error) {
+	args := d.Called(req)
+	return args.Get(0).([]models.BackupSpec), args.Error(1)
+}
+
 type SupportedDatastoreRepo struct {
 	mock.Mock
 }

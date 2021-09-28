@@ -122,6 +122,10 @@ func TestBackupRepository(t *testing.T) {
 		backups, err := backupRepo.GetAll()
 		assert.Nil(t, err)
 
-		assert.Equal(t, backupSpec, backups[0])
+		assert.Equal(t, backupSpec.ID, backups[0].ID)
+		assert.Equal(t, backupSpec.Description, backups[0].Description)
+		assert.Equal(t, backupSpec.Resource, backups[0].Resource)
+		assert.Equal(t, backupSpec.Config, backups[0].Config)
+		assert.Equal(t, backupSpec.Result, backups[0].Result)
 	})
 }

@@ -1838,4 +1838,135 @@ func TestService(t *testing.T) {
 			assert.Equal(t, []string{resultURNRoot}, resp)
 		})
 	})
+	t.Run("ListBackupResources", func(t *testing.T) {
+		datastoreName := models.DestinationTypeBigquery.String()
+		listBackupRequest := models.BackupRequest{
+			Project:   projectSpec,
+			Datastore: datastoreName,
+		}
+		backupSpecs := []models.BackupSpec{
+			{
+				ID:        uuid.Must(uuid.NewRandom()),
+				CreatedAt: time.Now().Add(time.Hour * 24 * -30),
+			},
+			{
+				ID:        uuid.Must(uuid.NewRandom()),
+				CreatedAt: time.Now().Add(time.Hour * 24 * -50),
+			},
+			{
+				ID:        uuid.Must(uuid.NewRandom()),
+				CreatedAt: time.Now().Add(time.Hour * 24 * -100),
+			},
+		}
+		t.Run("should return list of recent backups", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			backupRepo := new(mock.BackupRepo)
+			defer backupRepo.AssertExpectations(t)
+
+			backupRepoFac := new(mock.BackupRepoFactory)
+			defer backupRepoFac.AssertExpectations(t)
+
+			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
+			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
+			backupRepo.On("GetAll").Return(backupSpecs, nil)
+
+			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			resp, err := service.ListBackupResources(listBackupRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, []models.BackupSpec{backupSpecs[0], backupSpecs[1]}, resp)
+		})
+		t.Run("should fail when unable to get datastore", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			errorMsg := "unable to get datastore"
+			dsRepo.On("GetByName", datastoreName).Return(datastorer, errors.New(errorMsg))
+
+			service := datastore.NewService(nil, dsRepo, nil, nil)
+			resp, err := service.ListBackupResources(listBackupRequest)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, []models.BackupSpec{}, resp)
+		})
+		t.Run("should fail when unable to get backups", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			backupRepo := new(mock.BackupRepo)
+			defer backupRepo.AssertExpectations(t)
+
+			backupRepoFac := new(mock.BackupRepoFactory)
+			defer backupRepoFac.AssertExpectations(t)
+
+			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
+			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
+
+			errorMsg := "unable to get backups"
+			backupRepo.On("GetAll").Return([]models.BackupSpec{}, errors.New(errorMsg))
+
+			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			resp, err := service.ListBackupResources(listBackupRequest)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, []models.BackupSpec{}, resp)
+		})
+		t.Run("should not return error when no backups are found", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			backupRepo := new(mock.BackupRepo)
+			defer backupRepo.AssertExpectations(t)
+
+			backupRepoFac := new(mock.BackupRepoFactory)
+			defer backupRepoFac.AssertExpectations(t)
+
+			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
+			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
+			backupRepo.On("GetAll").Return([]models.BackupSpec{}, store.ErrResourceNotFound)
+
+			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			resp, err := service.ListBackupResources(listBackupRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, []models.BackupSpec{}, resp)
+		})
+		t.Run("should not return error when no recent backups are found", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			backupRepo := new(mock.BackupRepo)
+			defer backupRepo.AssertExpectations(t)
+
+			backupRepoFac := new(mock.BackupRepoFactory)
+			defer backupRepoFac.AssertExpectations(t)
+
+			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
+			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
+			backupRepo.On("GetAll").Return([]models.BackupSpec{backupSpecs[2]}, nil)
+
+			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			resp, err := service.ListBackupResources(listBackupRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, 0, len(resp))
+		})
+	})
 }
