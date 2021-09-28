@@ -3,13 +3,18 @@ package base
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
+	"time"
 
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/hashicorp/go-hclog"
 
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins"
 	"github.com/odpf/optimus/models"
+)
+
+const (
+	PluginGRPCMaxRetry = 3
 )
 
 // GRPCClient will be used by core to talk over grpc with plugins
@@ -22,7 +27,10 @@ type GRPCClient struct {
 }
 
 func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
-	resp, err := m.Client.PluginInfo(context.Background(), &pbp.PluginInfoRequest{})
+	resp, err := m.Client.PluginInfo(context.Background(), &pbp.PluginInfoRequest{},
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+		grpc_retry.WithMax(PluginGRPCMaxRetry),
+	)
 	if err != nil {
 		m.MakeFatalOnConnErr(err)
 		return nil, err
@@ -80,12 +88,13 @@ func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
 }
 
 func (m *GRPCClient) MakeFatalOnConnErr(err error) {
-	if strings.Contains(err.Error(), "connection refused") && strings.Contains(err.Error(), "dial unix") {
-		m.Logger.Error(fmt.Sprintf("Core communication failed with: \n%s", err.Error()))
+	if !(strings.Contains(err.Error(), "connection refused") && strings.Contains(err.Error(), "dial unix")) {
+		return
 	}
+	m.Logger.Error(fmt.Sprintf("Core communication failed with plugin: \n%+v", err))
 	m.Logger.Error(fmt.Sprintf("Exiting application, plugin crashed %s", m.Name))
 
 	// TODO(kush.sharma): once plugins are more stable and we have strict health
 	// checks we can remove this fail
-	os.Exit(1)
+	panic(err)
 }

@@ -1,10 +1,11 @@
 package bigquery
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 
-	"github.com/kushsharma/structs"
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -60,31 +61,31 @@ func (t BQTable) Validate() error {
 
 // BQTableMetadata holds configuration for a table
 type BQTableMetadata struct {
-	Schema         BQSchema          `yaml:"schema" structs:"schema"`
-	Description    string            `yaml:",omitempty" structs:"description,omitempty"`
-	Cluster        *BQClusteringInfo `yaml:",omitempty" structs:"cluster,omitempty"`
-	Partition      *BQPartitionInfo  `yaml:",omitempty" structs:"partition,omitempty"`
-	ExpirationTime string            `yaml:"expiration_time,omitempty" structs:"expiration_time,omitempty"`
+	Schema         BQSchema          `yaml:"schema" json:"schema"`
+	Description    string            `yaml:",omitempty" json:"description,omitempty"`
+	Cluster        *BQClusteringInfo `yaml:",omitempty" json:"cluster,omitempty"`
+	Partition      *BQPartitionInfo  `yaml:",omitempty" json:"partition,omitempty"`
+	ExpirationTime string            `yaml:"expiration_time,omitempty" json:"expiration_time,omitempty"`
 
 	// external source options
-	Source *BQExternalSource `yaml:",omitempty" structs:"source,omitempty"`
+	Source *BQExternalSource `yaml:",omitempty" json:"source,omitempty"`
 
 	// regular view query
-	ViewQuery string `yaml:"view_query,omitempty" structs:"view_query,omitempty"`
+	ViewQuery string `yaml:"view_query,omitempty" json:"view_query,omitempty"`
 
-	Location string            `yaml:",omitempty" structs:"location,omitempty"`
-	Labels   map[string]string `yaml:"-" structs:"-"` // inherited
+	Location string            `yaml:",omitempty" json:"location,omitempty"`
+	Labels   map[string]string `yaml:"-" json:"-"` // inherited
 }
 
 // BQField describes an individual field/column in a bigquery schema
 type BQField struct {
-	Name        string `yaml:",omitempty" structs:"name"`
-	Type        string `yaml:",omitempty" structs:"type"`
-	Description string `yaml:",omitempty" structs:"description,omitempty"`
-	Mode        string `yaml:",omitempty" structs:"mode,omitempty"`
+	Name        string `yaml:",omitempty" json:"name"`
+	Type        string `yaml:",omitempty" json:"type"`
+	Description string `yaml:",omitempty" json:"description,omitempty"`
+	Mode        string `yaml:",omitempty" json:"mode,omitempty"`
 
 	// optional sub-schema, if Type is set to Record
-	Schema BQSchema `yaml:",omitempty" structs:"schema,omitempty"`
+	Schema BQSchema `yaml:",omitempty" json:"schema,omitempty"`
 }
 
 // BQSchema describes the schema for a field in a BigQuery table
@@ -92,29 +93,29 @@ type BQSchema []BQField
 
 // BQClusteringInfo describes list of column used in table clustering
 type BQClusteringInfo struct {
-	Using []string `structs:"using"`
+	Using []string `json:"using"`
 }
 
 // BQPartitionInfo specifies the partitioning for a BQTable
 type BQPartitionInfo struct {
-	Field string `yaml:"field,omitempty" structs:"field,omitempty"`
+	Field string `yaml:"field,omitempty" json:"field,omitempty"`
 
 	// time based
-	Type       string `yaml:"type,omitempty" structs:"type,omitempty"`             // default day
-	Expiration int64  `yaml:"expiration,omitempty" structs:"expiration,omitempty"` // in hours
+	Type       string `yaml:"type,omitempty" json:"type,omitempty"`             // default day
+	Expiration int64  `yaml:"expiration,omitempty" json:"expiration,omitempty"` // in hours
 
 	// range based
-	Range *BQPartitioningRange `yaml:",omitempty" structs:"range,omitempty"`
+	Range *BQPartitioningRange `yaml:",omitempty" json:"range,omitempty"`
 }
 
 // BQPartitioningRange defines the boundaries and width of partitioned values.
 type BQPartitioningRange struct {
 	// The start value of defined range of values, inclusive of the specified value.
-	Start int64 `yaml:",omitempty" structs:"start,omitempty"`
+	Start int64 `yaml:",omitempty" json:"start,omitempty"`
 	// The end of the defined range of values, exclusive of the defined value.
-	End int64 `yaml:",omitempty" structs:"end,omitempty"`
+	End int64 `yaml:",omitempty" json:"end,omitempty"`
 	// The width of each interval range.
-	Interval int64 `yaml:",omitempty" structs:"interval,omitempty"`
+	Interval int64 `yaml:",omitempty" json:"interval,omitempty"`
 }
 
 // tableSpecHandler helps serializing/deserializing datastore resource for table
@@ -178,7 +179,7 @@ func (s tableSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, e
 	if !ok {
 		return nil, errors.New("failed to convert resource, malformed spec")
 	}
-	bqResourceProtoSpec, err := structpb.NewStruct(structs.Map(bqResource.Metadata))
+	bqResourceProtoSpec, err := convertToStructPB(bqResource.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -217,12 +218,12 @@ func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 
 		var description string
 		if protoSpecField, ok := protoSpec.Spec.Fields["description"]; ok {
-			description = protoSpecField.GetStringValue()
+			description = strings.TrimSpace(protoSpecField.GetStringValue())
 		}
 
 		var location string
 		if protoSpecField, ok := protoSpec.Spec.Fields["location"]; ok {
-			location = protoSpecField.GetStringValue()
+			location = strings.TrimSpace(protoSpecField.GetStringValue())
 		}
 
 		var viewQuery string
@@ -244,7 +245,7 @@ func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 		}
 
 		if protoSpecField, ok := protoSpec.Spec.Fields["expiration_time"]; ok {
-			bqTable.Metadata.ExpirationTime = protoSpecField.GetStringValue()
+			bqTable.Metadata.ExpirationTime = strings.TrimSpace(protoSpecField.GetStringValue())
 		}
 
 		if protoSpecField, ok := protoSpec.Spec.Fields["cluster"]; ok {
@@ -295,13 +296,13 @@ func extractTableSchemaFieldFromProto(schemaListValues *structpb.Value) BQField 
 	for schemaAttr, schemaAttrVal := range schemaListValues.GetStructValue().Fields {
 		switch schemaAttr {
 		case "name":
-			bqField.Name = schemaAttrVal.GetStringValue()
+			bqField.Name = strings.TrimSpace(schemaAttrVal.GetStringValue())
 		case "type":
-			bqField.Type = schemaAttrVal.GetStringValue()
+			bqField.Type = strings.TrimSpace(schemaAttrVal.GetStringValue())
 		case "description":
-			bqField.Description = schemaAttrVal.GetStringValue()
+			bqField.Description = strings.TrimSpace(schemaAttrVal.GetStringValue())
 		case "mode":
-			bqField.Mode = schemaAttrVal.GetStringValue()
+			bqField.Mode = strings.TrimSpace(schemaAttrVal.GetStringValue())
 		case "schema":
 			bqField.Schema = extractTableSchemaFromProtoStruct(schemaAttrVal)
 		}
@@ -315,10 +316,10 @@ func extractTablePartitionFromProtoStruct(protoVal *structpb.Value) *BQPartition
 		return pInfo
 	}
 	if f, ok := protoVal.GetStructValue().Fields["field"]; ok {
-		pInfo.Field = f.GetStringValue()
+		pInfo.Field = strings.TrimSpace(f.GetStringValue())
 	}
 	if f, ok := protoVal.GetStructValue().Fields["type"]; ok {
-		pInfo.Type = f.GetStringValue()
+		pInfo.Type = strings.TrimSpace(f.GetStringValue())
 	}
 	if f, ok := protoVal.GetStructValue().Fields["expiration"]; ok {
 		pInfo.Expiration = int64(f.GetNumberValue())
@@ -368,4 +369,20 @@ func (s tableSpec) GenerateURN(tableConfig interface{}) (string, error) {
 
 func (s tableSpec) DefaultAssets() map[string]string {
 	return map[string]string{}
+}
+
+func convertToStructPB(val interface{}) (*structpb.Struct, error) {
+	var mapGeneric map[string]interface{}
+	rawBytes, err := json.Marshal(val)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("json.Marshal: %v", val))
+	}
+	if err := json.Unmarshal(rawBytes, &mapGeneric); err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("json.Unmarshal: %v", mapGeneric))
+	}
+	protoStruct, err := structpb.NewStruct(mapGeneric)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("structpb.NewStruct(): %v", mapGeneric))
+	}
+	return protoStruct, nil
 }

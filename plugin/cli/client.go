@@ -3,6 +3,9 @@ package cli
 import (
 	"context"
 	"strings"
+	"time"
+
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins"
@@ -10,6 +13,10 @@ import (
 	"github.com/odpf/optimus/plugin/base"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+const (
+	PluginGRPCMaxRetry = 3
 )
 
 // GRPCClient will be used by core to talk over grpc with plugins
@@ -119,7 +126,8 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 		InstanceSchedule: schdAt,
 		InstanceData:     instanceData,
 		Options:          &pbp.PluginOptions{DryRun: request.DryRun},
-	})
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
 		m.baseClient.MakeFatalOnConnErr(err)
 		return nil, err

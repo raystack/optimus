@@ -221,7 +221,7 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 		mu:     new(sync.Mutex),
 	})
 
-	reqJobs := []models.JobSpec{}
+	var reqJobs []models.JobSpec
 	for _, jobProto := range req.GetJobs() {
 		j, err := sv.adapter.FromJobProto(jobProto)
 		if err != nil {
@@ -750,7 +750,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	for _, resourceSpec := range resourceSpecs {
 		resourceProto, err := sv.adapter.ToResourceProto(resourceSpec)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to parse job spec %s", err.Error(), resourceSpec.Name)
+			return nil, status.Errorf(codes.Internal, "%s: failed to parse resource spec %s", err.Error(), resourceSpec.Name)
 		}
 		resourceProtos = append(resourceProtos, resourceProto)
 	}

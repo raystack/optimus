@@ -3,13 +3,12 @@ package bigquery
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
-	"github.com/kushsharma/structs"
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,11 +35,11 @@ type BQDataset struct {
 }
 
 type BQDatasetMetadata struct {
-	Description            string            `yaml:",omitempty" structs:"description,omitempty"`
-	DefaultTableExpiration int64             `yaml:"table_expiration,omitempty" structs:"table_expiration,omitempty"`
-	Labels                 map[string]string `yaml:"-" structs:"-"` // will be inherited by base resource
+	Description            string            `yaml:",omitempty" json:"description,omitempty"`
+	DefaultTableExpiration int64             `yaml:"table_expiration,omitempty" json:"table_expiration,omitempty"`
+	Labels                 map[string]string `yaml:"-" json:"-"` // will be inherited by base resource
 
-	Location string `yaml:",omitempty" structs:"location,omitempty"`
+	Location string `yaml:",omitempty" json:"location,omitempty"`
 }
 
 // datasetSpecHandler helps serializing/deserializing datastore resource for dataset
@@ -98,7 +97,12 @@ func (s datasetSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte,
 	if !ok {
 		return nil, errors.New("failed to convert resource, malformed spec")
 	}
-	bqResourceProtoSpec, err := structpb.NewStruct(structs.Map(bqResource.Metadata))
+
+	// json to and from serialization is needed to get correct map[string]interface
+	bqResourceProtoSpec, err := convertToStructPB(bqResource.Metadata)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -127,11 +131,11 @@ func (s datasetSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) 
 	bqMeta := BQDatasetMetadata{}
 	if baseSpec.Spec != nil {
 		if protoSpecField, ok := baseSpec.Spec.Fields["description"]; ok {
-			bqMeta.Description = protoSpecField.GetStringValue()
+			bqMeta.Description = strings.TrimSpace(protoSpecField.GetStringValue())
 		}
 
 		if protoSpecField, ok := baseSpec.Spec.Fields["location"]; ok {
-			bqMeta.Location = protoSpecField.GetStringValue()
+			bqMeta.Location = strings.TrimSpace(protoSpecField.GetStringValue())
 		}
 
 		if protoSpecField, ok := baseSpec.Spec.Fields["table_expiration"]; ok {

@@ -57,10 +57,11 @@ import (
 )
 
 var (
-	//listen for sigterm
+	// termChan listen for sigterm
 	termChan           = make(chan os.Signal, 1)
 	shutdownWait       = 30 * time.Second
-	GRPCMaxRecvMsgSize = 45 << 20 // 45MB
+	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
+	GRPCMaxSendMsgSize = 64 << 20 // 64MB
 )
 
 // projectJobSpecRepoFactory stores raw specifications
@@ -382,6 +383,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			grpc_logrus.UnaryServerInterceptor(logrusEntry, opts...),
 		),
 		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
+		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
@@ -487,6 +489,10 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	// gRPC dialup options to proxy http connections
 	grpcConn, err := grpc.DialContext(timeoutGrpcDialCtx, grpcAddr, []grpc.DialOption{
 		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(GRPCMaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(GRPCMaxSendMsgSize),
+		),
 	}...)
 	if err != nil {
 		return errors.Wrap(err, "grpc.DialContext")
@@ -547,9 +553,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt)
-	signal.Notify(termChan, os.Kill)
-	signal.Notify(termChan, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	// Block until we receive our signal.
 	<-termChan
@@ -573,7 +577,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 
 	// gracefully shutdown event service, e.g. slack notifiers flush in memory batches
 	cancelNotifiers()
-	if err := eventService.Close(); err != nil && len(err.Error()) != 0 {
+	if err := eventService.Close(); err != nil {
 		terminalError = multierror.Append(terminalError, errors.Wrap(err, "eventService.Close"))
 	}
 

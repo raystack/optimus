@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	validateTimeout = time.Minute * 3
+	validateTimeout = time.Minute * 5
 )
 
 func validateCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
@@ -105,19 +105,21 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 
 	jobCounter := 0
 	totalJobs := len(jobSpecs)
-	totalErrors := []string{}
+	var validateErrors []string
+	var streamError error
 	for {
 		resp, err := respStream.Recv()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			return errors.Wrapf(err, "failed to receive check ack")
+			streamError = err
+			break
 		}
 		if resp.Ack {
 			// ack for the job spec
 			if !resp.GetSuccess() {
-				totalErrors = append(totalErrors, fmt.Sprintf("unable to check: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
+				validateErrors = append(validateErrors, fmt.Sprintf("unable to check: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
 			}
 			jobCounter++
 			l.Info(fmt.Sprintf("%d/%d. %s successfully checked", jobCounter, totalJobs, resp.GetJobName()))
@@ -126,11 +128,15 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 			l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
 		}
 	}
-	if len(totalErrors) > 0 {
-		l.Info("errors:")
-		for i, reqErr := range totalErrors {
-			l.Info(fmt.Sprintf("%d. %s", i, reqErr))
+	if len(validateErrors) > 0 {
+		for i, reqErr := range validateErrors {
+			l.Error(fmt.Sprintf("%d. %s", i+1, reqErr))
 		}
+	} else if streamError != nil && jobCounter == totalJobs {
+		// if we have uploaded all jobs successfully, further steps in pipeline
+		// should not cause errors to fail and should end with warnings if any.
+		l.Warn(coloredNotice("requested ended with warning"), "err", streamError)
+		return nil
 	}
-	return nil
+	return streamError
 }

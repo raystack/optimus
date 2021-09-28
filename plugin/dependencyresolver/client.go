@@ -2,11 +2,18 @@ package dependencyresolver
 
 import (
 	"context"
+	"time"
+
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/base"
 	"github.com/odpf/optimus/plugin/cli"
+)
+
+const (
+	PluginGRPCMaxRetry = 3
 )
 
 // GRPCClient will be used by core to talk over grpc with plugins
@@ -34,7 +41,8 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
-	})
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
 		m.baseClient.MakeFatalOnConnErr(err)
 		return nil, err
@@ -51,7 +59,8 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
-	})
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
 		m.baseClient.MakeFatalOnConnErr(err)
 		return nil, err
