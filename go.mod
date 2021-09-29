@@ -29,7 +29,6 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/knadh/koanf v1.1.0
 	github.com/kushsharma/parallel v0.2.1
-	github.com/kushsharma/structs v1.1.1
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/odpf/salt v0.0.0-20210919015538-3fd8ab22acea

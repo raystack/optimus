@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/fatih/color"
@@ -118,5 +120,44 @@ func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)),
 	)
 
+	// pass rpc credentials
+	if token := os.Getenv("OPTIMUS_AUTH_BASIC_TOKEN"); token != "" {
+		base64Token := base64.StdEncoding.EncodeToString([]byte(token))
+		opts = append(opts, grpc.WithPerRPCCredentials(&BasicAuthentication{
+			Token: base64Token,
+		}))
+	} else if token := os.Getenv("OPTIMUS_AUTH_BEARER_TOKEN"); token != "" {
+		opts = append(opts, grpc.WithPerRPCCredentials(&BearerAuthentication{
+			Token: token,
+		}))
+	}
 	return grpc.DialContext(ctx, host, opts...)
+}
+
+type BearerAuthentication struct {
+	Token string
+}
+
+func (a *BearerAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", a.Token),
+	}, nil
+}
+
+func (a *BearerAuthentication) RequireTransportSecurity() bool {
+	return false
+}
+
+type BasicAuthentication struct {
+	Token string
+}
+
+func (a *BasicAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{
+		"Authorization": fmt.Sprintf("Basic %s", a.Token),
+	}, nil
+}
+
+func (a *BasicAuthentication) RequireTransportSecurity() bool {
+	return false
 }

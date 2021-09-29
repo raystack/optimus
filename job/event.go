@@ -48,7 +48,9 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 func (e *eventService) Close() error {
 	var err error
 	for _, notify := range e.notifyChannels {
-		err = multierror.Append(err, notify.Close())
+		if cerr := notify.Close(); cerr != nil {
+			err = multierror.Append(err, cerr)
+		}
 	}
 	return err
 }

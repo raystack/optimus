@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	deploymentTimeout = time.Minute * 10
+	deploymentTimeout = time.Minute * 15
 )
 
 // deployCommand pushes current repo to optimus service
@@ -201,14 +201,14 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 
 		jobCounter := 0
 		totalJobs := len(jobSpecs)
-		var jobDeployError error
+		var streamError error
 		for {
 			resp, err := respStream.Recv()
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
-				jobDeployError = err
+				streamError = err
 				break
 			}
 			if resp.Ack {
@@ -228,12 +228,11 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 			}
 		}
 
-		if jobDeployError != nil {
+		if streamError != nil {
 			if jobCounter == totalJobs {
-				// if we have uploaded all jobs successfully,
-				// further steps in pipeline should cause it to fail and should
-				// end with warnings if any error occurs.
-				l.Warn(coloredNotice("jobs deployed with warning"), "err", jobDeployError)
+				// if we have uploaded all jobs successfully, further steps in pipeline
+				// should not cause errors to fail and should end with warnings if any.
+				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
 			} else {
 				return errors.Wrapf(err, "failed to receive deployment ack")
 			}

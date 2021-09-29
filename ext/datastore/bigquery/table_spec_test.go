@@ -43,7 +43,6 @@ spec:
 				Dataset: "datas",
 				Table:   "tab",
 				Metadata: BQTableMetadata{
-					Description: "test table",
 					Schema: BQSchema{
 						{
 							Name:        "col1",
@@ -52,8 +51,14 @@ spec:
 							Schema:      nil,
 						},
 					},
+					Description: "test table",
 					Cluster: &BQClusteringInfo{
 						Using: []string{"col1"},
+					},
+					Partition: &BQPartitionInfo{
+						Field:      "this",
+						Type:       "that",
+						Expiration: 999,
 					},
 					Source: &BQExternalSource{
 						SourceType: string(ExternalTableTypeGoogleSheets),
@@ -63,7 +68,7 @@ spec:
 				},
 			},
 			Assets: map[string]string{
-				"view.sql": ("-- some sql query"),
+				"view.sql": "-- some sql query",
 			},
 			Labels: map[string]string{
 				"key": "val",

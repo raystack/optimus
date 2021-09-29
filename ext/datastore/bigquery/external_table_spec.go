@@ -17,13 +17,13 @@ type ExternalTableType string
 
 // BQExternalSource specifies table source information for external data source
 type BQExternalSource struct {
-	SourceType string `yaml:"type,omitempty" structs:"type"`
+	SourceType string `yaml:"type,omitempty" json:"type"`
 
 	// External Table URI string for the referenced spreadsheets
-	SourceURIs []string `yaml:"uris,omitempty" structs:"uris,omitempty"`
+	SourceURIs []string `yaml:"uris,omitempty" json:"uris,omitempty"`
 
 	// Additional configs for CSV, GoogleSheets, Bigtable, and Parquet formats.
-	Config map[string]interface{} `yaml:"config,omitempty" structs:"config"`
+	Config map[string]interface{} `yaml:"config,omitempty" json:"config"`
 }
 
 type externalTableSpec struct{}
