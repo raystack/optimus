@@ -261,14 +261,13 @@ func TestReplayManager(t *testing.T) {
 			})
 
 			var replayWorkers []interface{}
-			waitChannel := make(chan time.Time)
 			for i := 0; i < 3; i++ {
 				replayWorker := mock.NewReplayWorker()
 				replayRequestToProcess := replayRequest
 				replayRequestToProcess.ID = objUUID
 				// worker will not finish process immediately
 				replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil).
-					Times(1).WaitUntil(waitChannel)
+					Times(1).After(time.Second)
 				replayWorkers = append(replayWorkers, replayWorker)
 			}
 			replayWorkerFact := &mock.ReplayWorkerFactoryIndexed{
@@ -291,7 +290,6 @@ func TestReplayManager(t *testing.T) {
 
 			wg.Wait()
 			for _, w := range replayWorkers {
-				waitChannel <- time.Now()
 				rw := w.(*mock.ReplayWorker)
 				rw.Close()
 				rw.AssertExpectations(t)
