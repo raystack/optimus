@@ -103,7 +103,8 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 		return errors.Wrapf(err, "validate request failed")
 	}
 
-	jobCounter := 0
+	ackCounter := 0
+	failedCounter := 0
 	totalJobs := len(jobSpecs)
 	var validateErrors []string
 	var streamError error
@@ -119,10 +120,11 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 		if resp.Ack {
 			// ack for the job spec
 			if !resp.GetSuccess() {
+				failedCounter++
 				validateErrors = append(validateErrors, fmt.Sprintf("unable to check: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
 			}
-			jobCounter++
-			l.Info(fmt.Sprintf("%d/%d. %s successfully checked", jobCounter, totalJobs, resp.GetJobName()))
+			ackCounter++
+			l.Info(fmt.Sprintf("%d/%d. %s successfully checked", ackCounter, totalJobs, resp.GetJobName()))
 		} else {
 			// ordinary progress event
 			l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
@@ -132,7 +134,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 		for i, reqErr := range validateErrors {
 			l.Error(fmt.Sprintf("%d. %s", i+1, reqErr))
 		}
-	} else if streamError != nil && jobCounter == totalJobs {
+	} else if streamError != nil && ackCounter == totalJobs && failedCounter == 0 {
 		// if we have uploaded all jobs successfully, further steps in pipeline
 		// should not cause errors to fail and should end with warnings if any.
 		l.Warn(coloredNotice("requested ended with warning"), "err", streamError)

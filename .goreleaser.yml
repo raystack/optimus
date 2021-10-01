@@ -44,9 +44,10 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^build:'
+      - '^docs'
+      - '^test'
+      - '^build'
+      - '^chore'
 dockers:
   -
     goos: linux
