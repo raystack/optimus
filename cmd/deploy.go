@@ -199,7 +199,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 			return errors.Wrapf(err, "deployement failed")
 		}
 
-		jobCounter := 0
+		ackCounter := 0
 		totalJobs := len(jobSpecs)
 		var streamError error
 		for {
@@ -216,8 +216,8 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 				if !resp.GetSuccess() {
 					return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
 				}
-				jobCounter++
-				l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", jobCounter, totalJobs, resp.GetJobName()))
+				ackCounter++
+				l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", ackCounter, totalJobs, resp.GetJobName()))
 			} else {
 				// ordinary progress event
 				if resp.GetJobName() != "" {
@@ -229,15 +229,15 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 		}
 
 		if streamError != nil {
-			if jobCounter == totalJobs {
+			if ackCounter == totalJobs {
 				// if we have uploaded all jobs successfully, further steps in pipeline
 				// should not cause errors to fail and should end with warnings if any.
 				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
 			} else {
-				return errors.Wrapf(err, "failed to receive deployment ack")
+				return errors.Wrapf(err, "failed to receive success deployment ack")
 			}
 		}
-		l.Info(fmt.Sprintf("successfully deployed %d/%d jobs", jobCounter, totalJobs))
+		l.Info(fmt.Sprintf("successfully deployed %d/%d jobs", ackCounter, totalJobs))
 	} else {
 		l.Info("skipping job deployment")
 	}
