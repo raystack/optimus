@@ -83,6 +83,10 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 	runtime := pb.NewRuntimeServiceClient(conn)
 	adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 
+	if len(conf.GetProjectConfig().Global) == 0 {
+		return errors.New("global config should not be empty")
+	}
+
 	// update project config if needed
 	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
 		Project: &pb.ProjectSpecification{
@@ -234,7 +238,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 				// should not cause errors to fail and should end with warnings if any.
 				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
 			} else {
-				return errors.Wrapf(err, "failed to receive success deployment ack")
+				return errors.Wrapf(streamError, "failed to receive success deployment ack")
 			}
 		}
 		l.Info(fmt.Sprintf("successfully deployed %d/%d jobs", ackCounter, totalJobs))
