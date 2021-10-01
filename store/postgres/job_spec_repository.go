@@ -63,6 +63,35 @@ func (repo *ProjectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return specs, nil
 }
 
+func (repo *ProjectJobSpecRepository) GetByNameForProject(projName string, jobName string) (models.JobSpec, models.ProjectSpec, error) {
+	var r Job
+	var p Project
+	if err := repo.db.Where("name = ?", projName).Find(&p).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, models.ProjectSpec{}, errors.Wrap(store.ErrResourceNotFound, "project not found")
+		}
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+	if err := repo.db.Where("project_id = ? AND name = ?", p.ID, jobName).Find(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, models.ProjectSpec{}, errors.Wrap(store.ErrResourceNotFound, "job spec not found")
+		}
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+
+	jSpec, err := repo.adapter.ToSpec(r)
+	if err != nil {
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+
+	pSpec, err := p.ToSpec()
+	if err != nil {
+		return models.JobSpec{}, models.ProjectSpec{}, err
+	}
+
+	return jSpec, pSpec, err
+}
+
 func (repo *ProjectJobSpecRepository) GetByDestination(destination string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
 	if err := repo.db.Preload("Project").Where("destination = ?", destination).Find(&r).Error; err != nil {

@@ -355,16 +355,16 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		db:   dbConn,
 		hash: appHash,
 	}
-	projectJobSpecRepoFac := projectJobSpecRepoFactory{
+	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: dbConn,
 	}
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{
 		db:                    dbConn,
-		projectJobSpecRepoFac: projectJobSpecRepoFac,
+		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
-	dependencyResolver := job.NewDependencyResolver()
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
@@ -459,7 +459,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			dependencyResolver,
 			priorityResolver,
 			metaSvcFactory,
-			&projectJobSpecRepoFac,
+			projectJobSpecRepoFac,
 			replayManager,
 		),
 		eventService,
