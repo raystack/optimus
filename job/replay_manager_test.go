@@ -267,7 +267,7 @@ func TestReplayManager(t *testing.T) {
 				replayRequestToProcess.ID = objUUID
 				// worker will not finish process immediately
 				replayWorker.On("Process", mocklib.Anything, replayRequestToProcess).Return(nil).
-					Times(1).After(time.Second)
+					Times(1).After(time.Second * 2)
 				replayWorkers = append(replayWorkers, replayWorker)
 			}
 			replayWorkerFact := &mock.ReplayWorkerFactoryIndexed{
