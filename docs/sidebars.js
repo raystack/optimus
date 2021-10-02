@@ -18,7 +18,10 @@ module.exports = {
     {
       type: "category",
       label: "Getting Started",
-      items: ["getting-started/installation", "getting-started/configuration"],
+      items: [
+        "getting-started/installation",
+        "getting-started/configuration"
+      ],
       collapsed: false,
     },
     {
@@ -39,7 +42,12 @@ module.exports = {
     {
       type: "category",
       label: "Concepts",
-      items: ["concepts/overview", "concepts/architecture", "concepts/intervals-and-windows"],
+      items: [
+        "concepts/overview",
+        "concepts/architecture",
+        "concepts/intervals-and-windows",
+        "concepts/v1-to-v2",
+      ],
     },
     {
       type: "category",

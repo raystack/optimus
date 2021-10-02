@@ -1,9 +1,7 @@
----
-id: architecture
-title: Architecture
----
+# Architecture
 
 Basic building blocks of Optimus are
+
 - Optimus CLI
 - Optimus Service
 - Optimus Database
@@ -17,8 +15,9 @@ Basic building blocks of Optimus are
 ### Optimus CLI
 
 `optimus` is a command line tool used to interact with the main optimus service and basic scaffolding job
-specifications. It can be used to 
-- Generate jobs based on user inputs 
+specifications. It can be used to
+
+- Generate jobs based on user inputs
 - Add hooks to existing jobs
 - Dump a compiled specification for the consumption of a scheduler
 - Deployment of specifications to `Optimus Service`
@@ -32,7 +31,7 @@ execution.
 ### Optimus Service
 
 Optimus cli can start a service that controls and orchestrates all that Optimus has to
-offer. Optimus cli uses GRPC to communicate with the optimus service for almost all the 
+offer. Optimus cli uses GRPC to communicate with the optimus service for almost all the
 operations that takes `host` as the flag. Service also exposes few REST endpoints
 that can be used with simple curl request for registering a new project or checking
 the status of a job, etc.
@@ -60,7 +59,7 @@ to understand what all this task can do and help in doing it.
 
 ### Scheduler
 
-Job adapters consumes job specifications which eventually needs to be scheduled and 
+Job adapters consumes job specifications which eventually needs to be scheduled and
 executed via a execution engine. This execution engine is termed here as Scheduler.
 Optimus by default recommends using `Airflow` but is extensible enough to support any
 other scheduler that satisfies some basic requirements, one of the most important

@@ -1,4 +1,5 @@
 # Optimus
+
 [![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)](test)
 [![build workflow](https://github.com/odpf/optimus/actions/workflows/build.yml/badge.svg)](build)
 [![Coverage Status](https://coveralls.io/repos/github/odpf/optimus/badge.svg?branch=main)](https://coveralls.io/github/odpf/optimus?branch=main)
@@ -10,17 +11,18 @@ Optimus is an easy-to-use, reliable, and performant workflow orchestrator for da
 <p align="center" style="margin-top:30px"><img src="./docs/static/img/optimus.svg" /></p>
 
 ## Key Features
+
 Discover why users choose Optimus as their main data transformation tool.
 
-* **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML based configuration. 
-* **Scheduling:** Optimus provides an easy way to schedule your SQL transformation through a YAML based configuration.
-* **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graphs automaticaly instead of users defining their source and taget dependencies in DAGs.
-* **Dry runs:** Before SQL query is scheduled for transformation, during deployment query will be dry-run to make sure it passes basic sanity checks.
-* **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc for allowing users to write complex tranformation logic.
-* **Cross tenant dependency:** Optimus is a multi-tenant service, if there are two tenants registered, serviceA and serviceB then service B can write queries eferencing serviceA as source and Optimus will handle this dependency as well.
-* **Hooks:** Optimus provides hooks for post tranformation logic. e,g. You can sink BigQuery tables to Kafka.
-* **Extensibility:** Optimus support Python transformation and allows for writing custom plugins. 
-* **Workflows:** Optimus provides industry proven workflows using git based specification management and REST/GRPC based specification management for data warehouse management.
+- **Warehouse management:** Optimus allows you to create and manage your data warehouse tables and views through YAML based configuration.
+- **Scheduling:** Optimus provides an easy way to schedule your SQL transformation through a YAML based configuration.
+- **Automatic dependency resolution:** Optimus parses your data transformation queries and builds a dependency graphs automaticaly instead of users defining their source and taget dependencies in DAGs.
+- **Dry runs:** Before SQL query is scheduled for transformation, during deployment query will be dry-run to make sure it passes basic sanity checks.
+- **Powerful templating:** Optimus provides query compile time templating with variables, loop, if statements, macros, etc for allowing users to write complex tranformation logic.
+- **Cross tenant dependency:** Optimus is a multi-tenant service, if there are two tenants registered, serviceA and serviceB then service B can write queries referencing serviceA as source and Optimus will handle this dependency as well.
+- **Hooks:** Optimus provides hooks for post tranformation logic. e,g. You can sink BigQuery tables to Kafka.
+- **Extensibility:** Optimus support Python transformation and allows for writing custom plugins.
+- **Workflows:** Optimus provides industry proven workflows using git based specification management and REST/GRPC based specification management for data warehouse management.
 
 ## Usage
 
@@ -58,31 +60,37 @@ Use "optimus [command] --help" for more information about a command.
 ```
 
 ## Documentation
+
 Explore the following resources to get started with Optimus:
 
-* [Guides](https://odpf.github.io/optimus/guides/create-job/) provides guidance on using Optimus.
-* [Concepts](https://odpf.github.io/optimus/concepts/overview/) describes all important Optimus concepts.
-* [Reference](https://odpf.github.io/optimus/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
-* [Contribute](https://odpf.github.io/optimus/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
+- [Guides](https://odpf.github.io/optimus/guides/create-job/) provides guidance on using Optimus.
+- [Concepts](https://odpf.github.io/optimus/concepts/overview/) describes all important Optimus concepts.
+- [Reference](https://odpf.github.io/optimus/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
+- [Contribute](https://odpf.github.io/optimus/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
 
-## Running locally 
+## Running locally
 
 Optimus requires the following dependencies:
-* Golang (version 1.16 or above)
-* Git
+
+- Golang (version 1.16 or above)
+- Git
 
 Run the following commands to compile `optimus` from source
+
 ```shell
 $ git clone git@github.com:odpf/optimus.git
 $ cd optimus
 $ make build
 ```
+
 Use the following command to run
+
 ```shell
 $ ./optimus version
 ```
 
 Optimus service can be started with
+
 ```shell
 $ ./optimus serve
 ```
@@ -90,8 +98,8 @@ $ ./optimus serve
 `serve` command has few required configurations that needs to be set for it to start. Configuration can either be stored
 in `.optimus.yaml` file or set as environment variable. Read more about it in [getting started](https://odpf.github.io/optimus/getting-started/configuration/).
 
-
 ## Compatibility
+
 Optimus is currently undergoing heavy development with frequent, breaking API changes. Current major version is zero (v0.x.x) to accommodate rapid development and fast iteration while getting early feedback from users (feedback on APIs are appreciated). The public API could change without a major version update before v1.0.0 release.
 
 ## Contribute
@@ -102,6 +110,6 @@ Read our [contributing guide](https://odpf.github.io/optimus/contribute/contribu
 
 To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs which have a relatively limited scope. This is a great place to get started.
 
-
 ## License
+
 Optimus is [Apache 2.0](LICENSE) licensed.
