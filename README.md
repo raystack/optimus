@@ -63,10 +63,10 @@ Use "optimus [command] --help" for more information about a command.
 
 Explore the following resources to get started with Optimus:
 
-- [Guides](https://odpf.github.io/optimus/guides/create-job/) provides guidance on using Optimus.
-- [Concepts](https://odpf.github.io/optimus/concepts/overview/) describes all important Optimus concepts.
-- [Reference](https://odpf.github.io/optimus/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
-- [Contribute](https://odpf.github.io/optimus/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
+- [Guides](https://odpf.github.io/optimus/docs/guides/create-job/) provides guidance on using Optimus.
+- [Concepts](https://odpf.github.io/optimus/docs/concepts/overview/) describes all important Optimus concepts.
+- [Reference](https://odpf.github.io/optimus/docs/reference/api/) contains details about configurations, metrics and other aspects of Optimus.
+- [Contribute](https://odpf.github.io/optimus/docs/contribute/contributing/) contains resources for anyone who wants to contribute to Optimus.
 
 ## Running locally
 
