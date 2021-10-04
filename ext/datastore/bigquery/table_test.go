@@ -357,6 +357,7 @@ func TestTable(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	})
+
 	t.Run("backupTable", func(t *testing.T) {
 		eTag := "uniqueID"
 		tableMetadata := &bigquery.TableMetadata{
@@ -390,17 +391,17 @@ func TestTable(t *testing.T) {
 			Type: models.ResourceTypeTable,
 		}
 		destinationConfig := map[string]string{
-			BackupConfigTTL:     "30",
+			BackupConfigTTL:     "720h",
 			BackupConfigDataset: "optimus_backup",
 			BackupConfigPrefix:  "backup",
 		}
 		request := models.BackupResourceRequest{
 			Resource: resourceSpec,
 			BackupSpec: models.BackupRequest{
-				ID:         uuid.Must(uuid.NewRandom()),
-				Config:     destinationConfig,
-				BackupTime: time.Now(),
+				ID:     uuid.Must(uuid.NewRandom()),
+				Config: destinationConfig,
 			},
+			BackupTime: time.Now(),
 		}
 		destinationTable := BQTable{
 			Project: bQResource.Project,
@@ -414,7 +415,7 @@ func TestTable(t *testing.T) {
 			},
 		}
 		toUpdate := bigquery.TableMetadataToUpdate{
-			ExpirationTime: request.BackupSpec.BackupTime.Add(time.Hour * 24 * 30),
+			ExpirationTime: request.BackupTime.Add(time.Hour * 24 * 30),
 		}
 		resultURN := fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), destinationTable.Project, destinationTable.Dataset, destinationTable.Table)
 		t.Run("should able to backup table if given valid input", func(t *testing.T) {
@@ -464,10 +465,10 @@ func TestTable(t *testing.T) {
 			invalidRequest := models.BackupResourceRequest{
 				Resource: invalidResourceSpec,
 				BackupSpec: models.BackupRequest{
-					ID:         uuid.Must(uuid.NewRandom()),
-					Config:     destinationConfig,
-					BackupTime: time.Now(),
+					ID:     uuid.Must(uuid.NewRandom()),
+					Config: destinationConfig,
 				},
+				BackupTime: time.Now(),
 			}
 
 			bQClient := new(BqClientMock)

@@ -57,7 +57,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		}
 		var storerName string
 		if err := survey.AskOne(&survey.Select{
-			Message: "Select supported datastores?",
+			Message: "Select supported datastore?",
 			Options: availableStorer,
 		}, &storerName); err != nil {
 			return err
@@ -106,9 +106,9 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 			IgnoreDownstream: !backupDownstream,
 		}
 
-		err := runBackupDryRunRequest(l, conf, backupDryRunRequest)
-		if err != nil {
+		if err := runBackupDryRunRequest(l, conf, backupDryRunRequest); err != nil {
 			l.Info("unable to run backup dry run")
+			return err
 		}
 
 		if dryRun {
@@ -214,7 +214,7 @@ func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.Back
 
 func printBackupResponse(l log.Logger, backupResponse *pb.BackupResponse) {
 	l.Info(coloredSuccess("\nBackup Finished"))
-	l.Info("Your resources have been backed up in below location:")
+	l.Info("Resource backup completed successfully:")
 	counter := 1
 	for _, result := range backupResponse.Urn {
 		l.Info(fmt.Sprintf("%d. %s", counter, result))
@@ -255,7 +255,7 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 		}
 		var storerName string
 		if err := survey.AskOne(&survey.Select{
-			Message: "Select supported datastores?",
+			Message: "Select supported datastore?",
 			Options: availableStorer,
 		}, &storerName); err != nil {
 			return err
@@ -292,7 +292,7 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 			return errors.Wrapf(err, "request failed to get list backups")
 		}
 
-		if len(listBackupsResponse.BackupList) == 0 {
+		if len(listBackupsResponse.Backups) == 0 {
 			l.Info(fmt.Sprintf("no backups were found in %s project.", project))
 		} else {
 			printBackupListResponse(l, listBackupsResponse)
@@ -303,17 +303,17 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 }
 
 func printBackupListResponse(l log.Logger, listBackupsResponse *pb.ListBackupsResponse) {
-	l.Info(coloredNotice("LATEST BACKUP"))
+	l.Info(coloredNotice("Latest Backups"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
 		"ID",
 		"Resource",
 		"Created",
-		"Purpose",
+		"Description",
 	})
 
-	for _, backupSpec := range listBackupsResponse.BackupList {
+	for _, backupSpec := range listBackupsResponse.Backups {
 		table.Append([]string{backupSpec.Id, backupSpec.ResourceName, backupSpec.CreatedAt.AsTime().Format(time.RFC3339),
 			backupSpec.Description})
 	}

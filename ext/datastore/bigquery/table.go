@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strconv"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -27,7 +26,7 @@ const (
 	BackupConfigTTL      = "ttl"
 	defaultBackupDataset = "optimus_backup"
 	defaultBackupPrefix  = "backup"
-	defaultBackupTTL     = 30
+	defaultBackupTTL     = time.Hour * 720
 )
 
 func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
@@ -232,19 +231,19 @@ func updateExpiry(ctx context.Context, tableDst bqiface.Table, req models.Backup
 		return nil, err
 	}
 
-	var ttlValue int
+	var ttl time.Duration
 	ttlStr, ok := req.BackupSpec.Config[BackupConfigTTL]
 	if ok {
-		ttlValue, err = strconv.Atoi(ttlStr)
+		ttl, err = time.ParseDuration(ttlStr)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to parse bigquery backup TTL %s", ttlStr)
 		}
 	} else {
-		ttlValue = defaultBackupTTL
+		ttl = defaultBackupTTL
 	}
 
 	update := bigquery.TableMetadataToUpdate{
-		ExpirationTime: req.BackupSpec.BackupTime.Add(time.Hour * 24 * time.Duration(ttlValue)),
+		ExpirationTime: req.BackupTime.Add(ttl),
 	}
 	if _, err = tableDst.Update(ctx, update, meta.ETag); err != nil {
 		return nil, err

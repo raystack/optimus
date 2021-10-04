@@ -235,6 +235,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		backupResp, err := datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
+			BackupTime: time.Now(),
 		})
 		if err != nil {
 			if err == models.ErrUnsupportedResource {
@@ -264,13 +265,13 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	return backupResult, nil
 }
 
-func (srv Service) ListBackupResources(backupRequest models.BackupRequest) ([]models.BackupSpec, error) {
-	datastorer, err := srv.dsRepo.GetByName(backupRequest.Datastore)
+func (srv Service) ListBackupResources(projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+	datastorer, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return []models.BackupSpec{}, err
 	}
 
-	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, datastorer)
+	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
 	backupSpecs, err := backupRepo.GetAll()
 	if err != nil {
 		if err == store.ErrResourceNotFound {

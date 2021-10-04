@@ -1020,7 +1020,6 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 		IgnoreDownstream: req.IgnoreDownstream,
 		DryRun:           false,
 		Config:           req.Config,
-		BackupTime:       time.Now(),
 	}
 	results, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
 	if err != nil {
@@ -1038,11 +1037,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 		return nil, err
 	}
 
-	backupRequest := models.BackupRequest{
-		Project:   projectSpec,
-		Datastore: req.DatastoreName,
-	}
-	results, err := sv.resourceSvc.ListBackupResources(backupRequest)
+	results, err := sv.resourceSvc.ListBackupResources(projectSpec, req.DatastoreName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting backup list: %v", err)
 	}
@@ -1057,7 +1052,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 		})
 	}
 	return &pb.ListBackupsResponse{
-		BackupList: backupList,
+		Backups: backupList,
 	}, nil
 }
 

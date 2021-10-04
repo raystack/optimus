@@ -9,6 +9,7 @@ import (
 type BackupResourceRequest struct {
 	Resource   ResourceSpec
 	BackupSpec BackupRequest
+	BackupTime time.Time
 }
 
 type BackupResourceResponse struct {
@@ -26,7 +27,6 @@ type BackupRequest struct {
 	IgnoreDownstream bool
 	Config           map[string]string
 	DryRun           bool
-	BackupTime       time.Time
 }
 
 type BackupResult struct {

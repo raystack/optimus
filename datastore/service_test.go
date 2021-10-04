@@ -399,7 +399,6 @@ func TestService(t *testing.T) {
 					Value: "select * from 1",
 				},
 			})
-		backupTime := time.Now()
 		destination := &models.GenerateDestinationResponse{
 			Destination: "project.dataset.table",
 			Type:        models.DestinationTypeBigquery,
@@ -447,7 +446,6 @@ func TestService(t *testing.T) {
 				Namespace:        namespaceSpec,
 				IgnoreDownstream: false,
 				DryRun:           true,
-				BackupTime:       backupTime,
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -523,7 +521,6 @@ func TestService(t *testing.T) {
 				Namespace:        namespaceSpec,
 				IgnoreDownstream: false,
 				DryRun:           true,
-				BackupTime:       backupTime,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1049,7 +1046,6 @@ func TestService(t *testing.T) {
 					Value: "select * from 1",
 				},
 			})
-		backupTime := time.Now()
 		destination := &models.GenerateDestinationResponse{
 			Destination: "project.dataset.table",
 			Type:        models.DestinationTypeBigquery,
@@ -1108,7 +1104,6 @@ func TestService(t *testing.T) {
 				Namespace:        namespaceSpec,
 				IgnoreDownstream: false,
 				DryRun:           true,
-				BackupTime:       backupTime,
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -1211,7 +1206,6 @@ func TestService(t *testing.T) {
 				Namespace:        namespaceSpec,
 				IgnoreDownstream: false,
 				DryRun:           true,
-				BackupTime:       backupTime,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1840,10 +1834,6 @@ func TestService(t *testing.T) {
 	})
 	t.Run("ListBackupResources", func(t *testing.T) {
 		datastoreName := models.DestinationTypeBigquery.String()
-		listBackupRequest := models.BackupRequest{
-			Project:   projectSpec,
-			Datastore: datastoreName,
-		}
 		backupSpecs := []models.BackupSpec{
 			{
 				ID:        uuid.Must(uuid.NewRandom()),
@@ -1876,7 +1866,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll").Return(backupSpecs, nil)
 
 			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(listBackupRequest)
+			resp, err := service.ListBackupResources(projectSpec, datastoreName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []models.BackupSpec{backupSpecs[0], backupSpecs[1]}, resp)
@@ -1892,7 +1882,7 @@ func TestService(t *testing.T) {
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, errors.New(errorMsg))
 
 			service := datastore.NewService(nil, dsRepo, nil, nil)
-			resp, err := service.ListBackupResources(listBackupRequest)
+			resp, err := service.ListBackupResources(projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.BackupSpec{}, resp)
@@ -1917,7 +1907,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll").Return([]models.BackupSpec{}, errors.New(errorMsg))
 
 			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(listBackupRequest)
+			resp, err := service.ListBackupResources(projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.BackupSpec{}, resp)
@@ -1940,7 +1930,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll").Return([]models.BackupSpec{}, store.ErrResourceNotFound)
 
 			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(listBackupRequest)
+			resp, err := service.ListBackupResources(projectSpec, datastoreName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []models.BackupSpec{}, resp)
@@ -1963,7 +1953,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll").Return([]models.BackupSpec{backupSpecs[2]}, nil)
 
 			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(listBackupRequest)
+			resp, err := service.ListBackupResources(projectSpec, datastoreName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, 0, len(resp))

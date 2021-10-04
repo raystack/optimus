@@ -38,7 +38,10 @@ func (d *Datastorer) DeleteResource(ctx context.Context, inp models.DeleteResour
 	return d.Called(ctx, inp).Error(0)
 }
 func (d *Datastorer) BackupResource(ctx context.Context, inp models.BackupResourceRequest) (models.BackupResourceResponse, error) {
-	args := d.Called(ctx, inp)
+	args := d.Called(ctx, models.BackupResourceRequest{
+		Resource:   inp.Resource,
+		BackupSpec: inp.BackupSpec,
+	})
 	return args.Get(0).(models.BackupResourceResponse), args.Error(1)
 }
 
@@ -114,37 +117,17 @@ func (d *DatastoreService) DeleteResource(ctx context.Context, namespace models.
 }
 
 func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
-	args := d.Called(ctx, models.BackupRequest{
-		ID:               req.ID,
-		ResourceName:     req.ResourceName,
-		Project:          req.Project,
-		Namespace:        req.Namespace,
-		Datastore:        req.Datastore,
-		Description:      req.Description,
-		IgnoreDownstream: req.IgnoreDownstream,
-		Config:           req.Config,
-		DryRun:           req.DryRun,
-	}, jobSpecs)
+	args := d.Called(ctx, req, jobSpecs)
 	return args.Get(0).([]string), args.Error(1)
 }
 
 func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
-	args := d.Called(ctx, models.BackupRequest{
-		ID:               req.ID,
-		ResourceName:     req.ResourceName,
-		Project:          req.Project,
-		Namespace:        req.Namespace,
-		Datastore:        req.Datastore,
-		Description:      req.Description,
-		IgnoreDownstream: req.IgnoreDownstream,
-		Config:           req.Config,
-		DryRun:           req.DryRun,
-	}, jobSpecs)
+	args := d.Called(ctx, req, jobSpecs)
 	return args.Get(0).([]string), args.Error(1)
 }
 
-func (d *DatastoreService) ListBackupResources(req models.BackupRequest) ([]models.BackupSpec, error) {
-	args := d.Called(req)
+func (d *DatastoreService) ListBackupResources(projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+	args := d.Called(projectSpec, datastoreName)
 	return args.Get(0).([]models.BackupSpec), args.Error(1)
 }
 

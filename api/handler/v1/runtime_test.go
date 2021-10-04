@@ -3663,10 +3663,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 			DatastoreName: datastoreName,
 			Namespace:     namespaceSpec.Name,
 		}
-		backupReq := models.BackupRequest{
-			Project:   projectSpec,
-			Datastore: datastoreName,
-		}
 		backupSpecs := []models.BackupSpec{
 			{
 				ID:        uuid.Must(uuid.NewRandom()),
@@ -3696,7 +3692,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer resourceSvc.AssertExpectations(t)
 
 			backupResultPb := &pb.ListBackupsResponse{
-				BackupList: []*pb.BackupSpec{
+				Backups: []*pb.BackupSpec{
 					{
 						Id:           backupSpecs[0].ID.String(),
 						ResourceName: backupSpecs[0].Resource.Name,
@@ -3714,7 +3710,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			projectRepoFactory.On("New").Return(projectRepository)
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
-			resourceSvc.On("ListBackupResources", backupReq).Return(backupSpecs, nil)
+			resourceSvc.On("ListBackupResources", projectSpec, datastoreName).Return(backupSpecs, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3780,7 +3776,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectRepoFactory.On("New").Return(projectRepository)
 			projectRepository.On("GetByName", projectName).Return(projectSpec, nil)
 			errorMsg := "unable to get list of backups"
-			resourceSvc.On("ListBackupResources", backupReq).Return([]models.BackupSpec{}, errors.New(errorMsg))
+			resourceSvc.On("ListBackupResources", projectSpec, datastoreName).Return([]models.BackupSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,

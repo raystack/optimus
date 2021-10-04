@@ -1748,7 +1748,7 @@
     "optimusListBackupsResponse": {
       "type": "object",
       "properties": {
-        "backupList": {
+        "backups": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/optimusBackupSpec"

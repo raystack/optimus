@@ -499,13 +499,13 @@ func TestBigquery(t *testing.T) {
 				BackupSpec: models.BackupRequest{
 					Project: projectSpec,
 					Config: map[string]string{
-						BackupConfigTTL:     "30",
+						BackupConfigTTL:     "720h",
 						BackupConfigDataset: "optimus_backup",
 						BackupConfigPrefix:  "backup",
 					},
-					ID:         uuid.Must(uuid.NewRandom()),
-					BackupTime: backupTime,
+					ID: uuid.Must(uuid.NewRandom()),
 				},
+				BackupTime: backupTime,
 			}
 
 			destinationTable := BQTable{
@@ -522,7 +522,7 @@ func TestBigquery(t *testing.T) {
 			}
 
 			toUpdate := bigquery.TableMetadataToUpdate{
-				ExpirationTime: resourceRequest.BackupSpec.BackupTime.Add(time.Hour * 24 * 30),
+				ExpirationTime: resourceRequest.BackupTime.Add(time.Hour * 24 * 30),
 			}
 
 			bQClient := new(BqClientMock)
