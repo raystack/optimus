@@ -192,7 +192,12 @@ dependencies:
     # extra: outside optimus[not properly supported]
     # optional, default: intra
     type: intra
-
+    
+  - # inter dependencies should prefix job name with project name divided by
+    # a forward slash <external_project_name>/<external_job_name>
+    job: cross_project/sample_external_job
+    type: inter
+  
 # adhoc operations marked for execution at different hook points
 # accepts a list
 hooks:

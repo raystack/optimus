@@ -38,6 +38,14 @@ func (repo *ProjectJobSpecRepository) GetByName(name string) (models.JobSpec, mo
 	return models.JobSpec{}, models.NamespaceSpec{}, args.Error(1)
 }
 
+func (repo *ProjectJobSpecRepository) GetByNameForProject(job, project string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(job, project)
+	if args.Get(0) != nil {
+		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
+	}
+	return models.JobSpec{}, models.ProjectSpec{}, args.Error(1)
+}
+
 func (repo *ProjectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	args := repo.Called()
 	if args.Get(0) != nil {
@@ -192,9 +200,9 @@ type DependencyResolver struct {
 	mock.Mock
 }
 
-func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpec models.JobSpec, obs progress.Observer) (models.JobSpec, error) {
-	args := srv.Called(ctx, projectSpec, projectJobSpecRepo, jobSpec, obs)
+	args := srv.Called(ctx, projectSpec, jobSpec, obs)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 

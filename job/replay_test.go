@@ -130,12 +130,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(models.JobSpec{}, errors.New("error while fetching dag1"))
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(models.JobSpec{}, errors.New("error while fetching dag3"))
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(models.JobSpec{}, errors.New("error while fetching dag4"))
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[0], nil).Return(models.JobSpec{}, errors.New("error while fetching dag1"))
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[1], nil).Return(dagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[2], nil).Return(dagSpec[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[3], nil).Return(models.JobSpec{}, errors.New("error while fetching dag3"))
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[4], nil).Return(models.JobSpec{}, errors.New("error while fetching dag4"))
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[5], nil).Return(dagSpec[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -177,8 +177,8 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, cyclicDagSpec[0], nil).Return(cyclicDagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, cyclicDagSpec[1], nil).Return(cyclicDagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[0], nil).Return(cyclicDagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[1], nil).Return(cyclicDagSpec[1], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -208,12 +208,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[0], nil).Return(dagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[1], nil).Return(dagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[2], nil).Return(dagSpec[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[3], nil).Return(dagSpec[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[4], nil).Return(dagSpec[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[5], nil).Return(dagSpec[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
@@ -257,12 +257,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[0], nil).Return(dagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[1], nil).Return(dagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[2], nil).Return(dagSpec[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[3], nil).Return(dagSpec[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[4], nil).Return(dagSpec[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[5], nil).Return(dagSpec[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
@@ -333,12 +333,12 @@ func TestReplay(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[0], nil).Return(dagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[1], nil).Return(dagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[2], nil).Return(dagSpec[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[3], nil).Return(dagSpec[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[4], nil).Return(dagSpec[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[5], nil).Return(dagSpec[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -373,12 +373,12 @@ func TestReplay(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[0], nil).Return(dagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[1], nil).Return(dagSpec[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[2], nil).Return(dagSpec[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[3], nil).Return(dagSpec[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[4], nil).Return(dagSpec[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, projectJobSpecRepo, dagSpec[5], nil).Return(dagSpec[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[0], nil).Return(dagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[1], nil).Return(dagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[2], nil).Return(dagSpec[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[3], nil).Return(dagSpec[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[4], nil).Return(dagSpec[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, dagSpec[5], nil).Return(dagSpec[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")

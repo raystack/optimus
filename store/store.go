@@ -16,6 +16,7 @@ var (
 // ProjectJobSpecRepository represents a storage interface for Job specifications at a project level
 type ProjectJobSpecRepository interface {
 	GetByName(string) (models.JobSpec, models.NamespaceSpec, error)
+	GetByNameForProject(projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
 	GetAll() ([]models.JobSpec, error)
 	GetByDestination(string) (models.JobSpec, models.ProjectSpec, error)
 }

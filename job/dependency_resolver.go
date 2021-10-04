@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"strings"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -10,22 +11,26 @@ import (
 )
 
 var (
-	ErrUnknownDependency            = errors.New("unknown local dependency")
-	UnknownRuntimeDependencyMessage = "could not find registered destination '%s' during compiling dependencies for the provided job '%s', " +
+	ErrUnknownLocalDependency        = errors.New("unknown local dependency")
+	ErrUnknownCrossProjectDependency = errors.New("unknown cross project dependency")
+	UnknownRuntimeDependencyMessage  = "could not find registered destination '%s' during compiling dependencies for the provided job '%s', " +
 		"please check if the source is correct, " +
 		"if it is and want this to be ignored as dependency, " +
 		"check docs how this can be done in used transformation task"
 )
 
-type dependencyResolver struct{}
+type dependencyResolver struct {
+	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+}
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
-func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
-	jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error) {
+func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec,
+	observer progress.Observer) (models.JobSpec, error) {
 	if ctx.Err() != nil {
 		return models.JobSpec{}, ctx.Err()
 	}
 
+	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
 	// resolve inter/intra dependencies inferred by optimus
 	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
 	if err != nil {
@@ -93,17 +98,42 @@ func (r *dependencyResolver) getJobSpecDependencyType(dependency models.JobSpecD
 
 // update named (explicit/static) dependencies if unresolved with its spec model
 // this can normally happen when reading specs from a store[local/postgres]
-func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
+func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model
 	for depName, depSpec := range jobSpec.Dependencies {
 		if depSpec.Job == nil {
-			job, _, err := projectJobSpecRepo.GetByName(depName)
-			if err != nil {
-				return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownDependency, depName)
+			switch depSpec.Type {
+			case models.JobSpecDependencyTypeIntra:
+				{
+					job, _, err := projectJobSpecRepo.GetByName(depName)
+					if err != nil {
+						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownLocalDependency, depName)
+					}
+					depSpec.Job = &job
+					depSpec.Project = &projectSpec
+					jobSpec.Dependencies[depName] = depSpec
+				}
+			case models.JobSpecDependencyTypeInter:
+				{
+					// extract project name
+					depParts := strings.SplitN(depName, "/", 2)
+					if len(depParts) != 2 {
+						return models.JobSpec{}, errors.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
+					}
+					projectName := depParts[0]
+					jobName := depParts[1]
+					job, proj, err := projectJobSpecRepo.GetByNameForProject(projectName, jobName)
+					if err != nil {
+						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownCrossProjectDependency, depName)
+					}
+					depSpec.Job = &job
+					depSpec.Project = &proj
+					jobSpec.Dependencies[depName] = depSpec
+				}
+			default:
+				return models.JobSpec{}, errors.Errorf("unsupported dependency type: %s", depSpec.Type)
 			}
-			depSpec.Job = &job
-			depSpec.Project = &projectSpec
-			jobSpec.Dependencies[depName] = depSpec
 		}
 	}
 
@@ -134,6 +164,8 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 }
 
 // NewDependencyResolver creates a new instance of Resolver
-func NewDependencyResolver() *dependencyResolver {
-	return &dependencyResolver{}
+func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory) *dependencyResolver {
+	return &dependencyResolver{
+		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+	}
 }

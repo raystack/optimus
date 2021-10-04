@@ -670,7 +670,7 @@ func TestProjectJobRepository(t *testing.T) {
 			},
 		},
 	}
-
+	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	namespaceSpec := models.NamespaceSpec{
 		ID:          uuid.Must(uuid.NewRandom()),
 		Name:        "dev-team-1",
@@ -759,6 +759,35 @@ func TestProjectJobRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		j, p, err := projectJobSpecRepo.GetByDestination(destinationUrn)
+		assert.Nil(t, err)
+		assert.Equal(t, testConfigs[0].Name, j.Name)
+		assert.Equal(t, projectSpec.Name, p.Name)
+	})
+	t.Run("GetByNameForProject", func(t *testing.T) {
+		db := DBSetup()
+		defer db.Close()
+
+		unitData1 := models.GenerateDestinationRequest{
+			Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
+			Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
+		}
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(
+			&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		defer depMod.AssertExpectations(t)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		assert.Nil(t, NewProjectRepository(db, hash).Save(projectSpec))
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		err := jobRepo.Insert(testModels[0])
+		assert.Nil(t, err)
+
+		j, p, err := projectJobSpecRepo.GetByNameForProject(projectSpec.Name, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)
