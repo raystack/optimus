@@ -33,7 +33,8 @@ export default function Home() {
   return (
     <Layout
       title={siteConfig.tagline}
-      description="Meteor is an easy-to-use, plugin-driven metadata collection framework to extract data from different sources and sink to any data catalog or store.">
+      description="Optimus is an easy-to-use, reliable, and performant workflow orchestrator
+        for data transformation, data modeling, pipelines, and data quality management.">
       <Hero />
       <main>
         <Container className="textSection wrapper" background="light">
