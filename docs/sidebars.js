@@ -36,7 +36,8 @@ module.exports = {
         "guides/create-bigquery-external-table",
         "guides/organising-specifications",
         "guides/optimus-serve",
-        "guides/task-bq2bq"
+        "guides/task-bq2bq",
+        "guides/replay"
       ],
     },
     {
