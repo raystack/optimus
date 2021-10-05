@@ -171,9 +171,12 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	}
 	defer bucket.Close()
 
+	namespaceID := namespace.ID.String()
 	var jobs []models.Job
-	// get all items
-	it := bucket.List(&blob.ListOptions{})
+	// get all items under namespace directory
+	it := bucket.List(&blob.ListOptions{
+		Prefix: PathForJobDirectory(JobsDir, namespaceID),
+	})
 	for {
 		obj, err := it.Next(ctx)
 		if err != nil {
@@ -194,7 +197,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 		return jobs, nil
 	}
 	for idx, job := range jobs {
-		jobs[idx].Contents, err = bucket.ReadAll(ctx, PathFromJobName(JobsDir, namespace.ID.String(), job.Name, JobsExtension))
+		jobs[idx].Contents, err = bucket.ReadAll(ctx, PathFromJobName(JobsDir, namespaceID, job.Name, JobsExtension))
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +213,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	}
 
 	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
-	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchURL)
 	}
@@ -269,7 +272,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
 		jobName)
 
-	request, err := http.NewRequest(http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return errors.Wrapf(err, "failed to build http request for %s", postURL)
 	}
@@ -313,7 +316,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		"execution_date_lte": "%s"
 		}`, pageOffset, batchSize, jobName, startDate.UTC().Format(airflowDateFormat), endDate.UTC().Format(airflowDateFormat))
 		var jsonStr = []byte(dagRunBatchReq)
-		request, err := http.NewRequest(http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to build http request for %s", dagStatusBatchUrl)
 		}
@@ -391,6 +394,13 @@ func toJobStatus(dagRuns []map[string]interface{}, jobName string) ([]models.Job
 		})
 	}
 	return jobStatus, nil
+}
+
+func PathForJobDirectory(prefix, namespace string) string {
+	if len(prefix) > 0 && prefix[0] == '/' {
+		prefix = prefix[1:]
+	}
+	return path.Join(prefix, namespace)
 }
 
 func PathFromJobName(prefix, namespace, jobName, suffix string) string {
