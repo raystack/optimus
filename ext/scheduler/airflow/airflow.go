@@ -156,9 +156,12 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	}
 	defer bucket.Close()
 
+	namespaceID := namespace.ID.String()
 	var jobs []models.Job
-	// get all items
-	it := bucket.List(&blob.ListOptions{})
+	// get all items under namespace directory
+	it := bucket.List(&blob.ListOptions{
+		Prefix: airflow2.PathForJobDirectory(JobsDir, namespaceID),
+	})
 	for {
 		obj, err := it.Next(ctx)
 		if err != nil {
@@ -179,7 +182,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 		return jobs, nil
 	}
 	for idx, job := range jobs {
-		jobs[idx].Contents, err = bucket.ReadAll(ctx, airflow2.PathFromJobName(JobsDir, namespace.ID.String(), job.Name, JobsExtension))
+		jobs[idx].Contents, err = bucket.ReadAll(ctx, airflow2.PathFromJobName(JobsDir, namespaceID, job.Name, JobsExtension))
 		if err != nil {
 			return nil, err
 		}
