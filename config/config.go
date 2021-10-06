@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -73,7 +74,7 @@ type Datastore struct {
 	Path string `yaml:"path" koanf:"path"`
 
 	// backup configuration
-	Backup map[string]string `yaml:"backup"`
+	Backup map[string]string `yaml:"backup" koanf:"backup"`
 }
 
 type Job struct {
@@ -180,7 +181,13 @@ func (o *Optimus) GetJob() Job {
 
 func (o *Optimus) GetDatastore() []Datastore {
 	ds := []Datastore{}
-	_ = o.k.Unmarshal("datastore", &ds)
+	if o.k.Get("datastore") != nil {
+		err := o.k.Unmarshal("datastore", &ds)
+		if err != nil {
+			// env var loaded config is in string
+			json.Unmarshal(o.k.Bytes("datastore"), &ds)
+		}
+	}
 	return ds
 }
 
