@@ -53,10 +53,11 @@ func (s *Service) GetScheduledRun(namespace models.NamespaceSpec, jobSpec models
 
 	repo := s.repoFac.New()
 	jobRun, _, err := repo.GetByScheduledAt(jobSpec.ID, scheduledAt)
-	if err == store.ErrResourceNotFound || err == nil {
+	if err == nil || err == store.ErrResourceNotFound {
 		// create a new instance if it does not already exists
 		if err == nil {
 			// if already exists, use the same id for in place update
+			// because job spec might have changed by now, status needs to be reset
 			newJobRun.ID = jobRun.ID
 			newJobRun.Instances = jobRun.Instances
 		}
@@ -73,17 +74,26 @@ func (s *Service) GetScheduledRun(namespace models.NamespaceSpec, jobSpec models
 
 func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
 	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
-	jobRunRepo := s.repoFac.New()
-	instanceToSave, err := s.PrepInstance(jobRun, instanceType, instanceName)
+	executedAt := s.Now()
+	if len(jobRun.Instances) > 0 {
+		// Extract execution time which will be shared across all job run instances.
+		// Note(kushsharma): This is not the best way to do this, a better inter task communication
+		// mechanism should be in place at job run level which each instance can use
+		// at least as a key/value map for temporary storage. This kv map will be
+		// available to all the instances
+		executedAt = jobRun.Instances[0].ExecutedAt
+	}
+	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, executedAt)
 	if err != nil {
-		return models.InstanceSpec{}, errors.Wrap(err, "failed to register instance")
+		return models.InstanceSpec{}, errors.Wrap(err, "Register: failed to prepare instance")
 	}
 
+	jobRunRepo := s.repoFac.New()
 	switch instanceType {
 	case models.InstanceTypeTask:
 		// clear and save fresh
 		if err := jobRunRepo.ClearInstance(jobRun.ID, instanceType, instanceName); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-			return models.InstanceSpec{}, errors.Wrapf(err, "failed to clear instance of job %s", jobRun)
+			return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
 		}
 		if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
 			return models.InstanceSpec{}, err
@@ -114,8 +124,8 @@ func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *Service) PrepInstance(jobRun models.JobRun, instanceType models.InstanceType,
-	instanceName string) (models.InstanceSpec, error) {
+func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
+	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {
 		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
@@ -131,13 +141,13 @@ func (s *Service) PrepInstance(jobRun models.JobRun, instanceType models.Instanc
 	return models.InstanceSpec{
 		Name:       instanceName,
 		Type:       instanceType,
-		ExecutedAt: s.Now(),
+		ExecutedAt: executedAt,
 		Status:     models.RunStateRunning,
 		// append optimus configs based on the values of a specific JobRun eg, jobScheduledTime
 		Data: []models.InstanceSpecData{
 			{
 				Name:  ConfigKeyExecutionTime,
-				Value: s.Now().Format(models.InstanceScheduledAtTimeLayout),
+				Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
