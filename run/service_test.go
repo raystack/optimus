@@ -206,6 +206,51 @@ func TestService(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, returnedInstanceSpec, instanceSpec)
 		})
+		t.Run("for instance, should reuse the existing EXECUTION_TIME config if job run contains one", func(t *testing.T) {
+			instanceSpec := models.InstanceSpec{
+				Name:       "bq",
+				Type:       models.InstanceTypeHook,
+				ExecutedAt: mockedTimeNow,
+				Status:     models.RunStateRunning,
+				Data: []models.InstanceSpecData{
+					{
+						Name:  run.ConfigKeyExecutionTime,
+						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  run.ConfigKeyDstart,
+						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  run.ConfigKeyDend,
+						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  run.ConfigKeyDestination,
+						Value: "proj.data.tab",
+						Type:  models.InstanceDataTypeEnv,
+					},
+				},
+			}
+
+			runRepo := new(mock.JobRunRepository)
+			localRun := jobRun
+			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			runRepo.On("GetByID", jobRun.ID).Return(localRun, namespaceSpec, nil)
+			defer runRepo.AssertExpectations(t)
+
+			jobRunSpecRep := new(mock.JobRunRepoFactory)
+			jobRunSpecRep.On("New").Return(runRepo, nil)
+			defer jobRunSpecRep.AssertExpectations(t)
+
+			runService := run.NewService(jobRunSpecRep, time.Now().UTC, nil)
+			returnedInstanceSpec, err := runService.Register(namespaceSpec, localRun, instanceSpec.Type, instanceSpec.Name)
+			assert.Nil(t, err)
+			assert.Equal(t, returnedInstanceSpec, instanceSpec)
+		})
 		t.Run("should return empty Instance Spec if there was any error while saving spec", func(t *testing.T) {
 			instanceSpec := models.InstanceSpec{
 				Name:       "bq",
@@ -305,20 +350,6 @@ func TestService(t *testing.T) {
 			returnedSpec, err := runService.GetScheduledRun(namespaceSpec, jobSpec, scheduledAt)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.JobRun{}, returnedSpec)
-		})
-	})
-
-	t.Run("PrepInstance", func(t *testing.T) {
-		t.Run("while preparing instance execution time should be correct", func(t *testing.T) {
-			srv := run.NewService(nil, func() time.Time {
-				return time.Now().UTC()
-			}, nil)
-			prep1, err := srv.PrepInstance(jobRun, models.InstanceTypeTask, "bq")
-			assert.Nil(t, err)
-			time.Sleep(time.Second)
-			prep2, err := srv.PrepInstance(jobRun, models.InstanceTypeTask, "bq")
-			assert.Nil(t, err)
-			assert.NotEqual(t, prep1.Data, prep2.Data)
 		})
 	})
 }
