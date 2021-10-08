@@ -169,6 +169,15 @@ func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds model
 	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
 }
 
+// backupRepoFactory stores backup specifications
+type backupRepoFactory struct {
+	db *gorm.DB
+}
+
+func (fac *backupRepoFactory) New(projectSpec models.ProjectSpec, storer models.Datastorer) store.BackupRepository {
+	return postgres.NewBackupRepository(fac.db, projectSpec, storer)
+}
+
 type airflowBucketFactory struct{}
 
 func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
@@ -435,6 +444,9 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
 		RunTimeout:    conf.GetServe().ReplayRunTimeoutSecs,
 	}, models.BatchScheduler, replayValidator, replaySyncer)
+	backupRepoFac := backupRepoFactory{
+		db: dbConn,
+	}
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	defer cancelNotifiers()
@@ -463,7 +475,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			replayManager,
 		),
 		eventService,
-		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry),
+		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
 		projectRepoFac,
 		namespaceSpecRepoFac,
 		projectSecretRepoFac,

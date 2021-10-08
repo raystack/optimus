@@ -37,8 +37,12 @@ func (d *Datastorer) ReadResource(ctx context.Context, inp models.ReadResourceRe
 func (d *Datastorer) DeleteResource(ctx context.Context, inp models.DeleteResourceRequest) error {
 	return d.Called(ctx, inp).Error(0)
 }
-func (d *Datastorer) BackupResource(ctx context.Context, inp models.BackupResourceRequest) error {
-	return d.Called(ctx, inp).Error(0)
+func (d *Datastorer) BackupResource(ctx context.Context, inp models.BackupResourceRequest) (models.BackupResourceResponse, error) {
+	args := d.Called(ctx, models.BackupResourceRequest{
+		Resource:   inp.Resource,
+		BackupSpec: inp.BackupSpec,
+	})
+	return args.Get(0).(models.BackupResourceResponse), args.Error(1)
 }
 
 type DatastoreTypeController struct {
@@ -112,9 +116,19 @@ func (d *DatastoreService) DeleteResource(ctx context.Context, namespace models.
 	return d.Called(ctx, namespace, datastoreName, name).Error(1)
 }
 
-func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec) ([]string, error) {
-	args := d.Called(ctx, projectSpec, namespaceSpec, jobSpecs)
+func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+	args := d.Called(ctx, req, jobSpecs)
 	return args.Get(0).([]string), args.Error(1)
+}
+
+func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+	args := d.Called(ctx, req, jobSpecs)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (d *DatastoreService) ListBackupResources(projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+	args := d.Called(projectSpec, datastoreName)
+	return args.Get(0).([]models.BackupSpec), args.Error(1)
 }
 
 type SupportedDatastoreRepo struct {

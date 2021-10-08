@@ -2,7 +2,11 @@ package bigquery
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
@@ -351,6 +355,349 @@ func TestTable(t *testing.T) {
 
 			err := deleteTable(testingContext, resourceSpec, bQClient)
 			assert.NotNil(t, err)
+		})
+	})
+
+	t.Run("backupTable", func(t *testing.T) {
+		eTag := "uniqueID"
+		tableMetadata := &bigquery.TableMetadata{
+			Name: bQResource.Table,
+			Schema: bigquery.Schema{
+				{
+					Name: "message",
+					Type: "STRING",
+				},
+				{
+					Name: "message_type",
+					Type: "STRING",
+				},
+				{
+					Name:     "recipient",
+					Type:     "STRING",
+					Repeated: true,
+				},
+				{
+					Name: "time",
+					Type: "TIME",
+				},
+			},
+			Clustering: &bigquery.Clustering{
+				Fields: []string{"message_type"},
+			},
+			ETag: eTag,
+		}
+		resourceSpec := models.ResourceSpec{
+			Spec: bQResource,
+			Type: models.ResourceTypeTable,
+		}
+		destinationConfig := map[string]string{
+			BackupConfigTTL:     "720h",
+			BackupConfigDataset: "optimus_backup",
+			BackupConfigPrefix:  "backup",
+		}
+		request := models.BackupResourceRequest{
+			Resource: resourceSpec,
+			BackupSpec: models.BackupRequest{
+				ID:     uuid.Must(uuid.NewRandom()),
+				Config: destinationConfig,
+			},
+			BackupTime: time.Now(),
+		}
+		destinationTable := BQTable{
+			Project: bQResource.Project,
+			Dataset: request.BackupSpec.Config[BackupConfigDataset],
+			Table:   fmt.Sprintf("backup_dataset_table_%s", request.BackupSpec.ID),
+		}
+
+		datasetMetadata := bqiface.DatasetMetadata{
+			DatasetMetadata: bigquery.DatasetMetadata{
+				ETag: eTag,
+			},
+		}
+		toUpdate := bigquery.TableMetadataToUpdate{
+			ExpirationTime: request.BackupTime.Add(time.Hour * 24 * 30),
+		}
+		resultURN := fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), destinationTable.Project, destinationTable.Dataset, destinationTable.Table)
+		t.Run("should able to backup table if given valid input", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			bQTable := new(BqTableMock)
+			defer bQTable.AssertExpectations(t)
+
+			bQCopier := new(BqCopierMock)
+			defer bQCopier.AssertExpectations(t)
+
+			bQJob := new(BqJobMock)
+			defer bQJob.AssertExpectations(t)
+
+			//duplicate table
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
+			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
+			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
+			bQCopier.On("Run", testingContext).Return(bQJob, nil)
+			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+
+			//update expiry
+			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
+
+			//verify
+			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Nil(t, err)
+			assert.Equal(t, resultURN, resp.ResultURN)
+			assert.Equal(t, destinationTable, resp.ResultSpec)
+		})
+		t.Run("should fail when unable to read resource spec", func(t *testing.T) {
+			invalidResourceSpec := models.ResourceSpec{
+				Spec: "invalid spec",
+				Type: models.ResourceTypeTable,
+			}
+			invalidRequest := models.BackupResourceRequest{
+				Resource: invalidResourceSpec,
+				BackupSpec: models.BackupRequest{
+					ID:     uuid.Must(uuid.NewRandom()),
+					Config: destinationConfig,
+				},
+				BackupTime: time.Now(),
+			}
+
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			resp, err := backupTable(testingContext, invalidRequest, bQClient)
+
+			assert.Equal(t, errorReadTableSpec, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when destination dataset is not available and cannot be created", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			errorMsg := "unable to get dataset metadata"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&bqiface.DatasetMetadata{}, errors.New(errorMsg))
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when unable to get source dataset metadata", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			errorMsg := "unable to get dataset metadata"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, errors.New(errorMsg)).Once()
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when unable to copy source table", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			bQTable := new(BqTableMock)
+			defer bQTable.AssertExpectations(t)
+
+			bQCopier := new(BqCopierMock)
+			defer bQCopier.AssertExpectations(t)
+
+			bQJob := new(BqJobMock)
+			defer bQJob.AssertExpectations(t)
+
+			errorMsg := "unable to copy table"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
+			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
+			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
+			bQCopier.On("Run", testingContext).Return(bQJob, errors.New(errorMsg))
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when unable to get status of copy table process", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			bQTable := new(BqTableMock)
+			defer bQTable.AssertExpectations(t)
+
+			bQCopier := new(BqCopierMock)
+			defer bQCopier.AssertExpectations(t)
+
+			bQJob := new(BqJobMock)
+			defer bQJob.AssertExpectations(t)
+
+			errorMsg := "unable to get status of copy table"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
+			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
+			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
+			bQCopier.On("Run", testingContext).Return(bQJob, nil)
+			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, errors.New(errorMsg))
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when unable to get metadata of the backup table", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			bQTable := new(BqTableMock)
+			defer bQTable.AssertExpectations(t)
+
+			bQCopier := new(BqCopierMock)
+			defer bQCopier.AssertExpectations(t)
+
+			bQJob := new(BqJobMock)
+			defer bQJob.AssertExpectations(t)
+
+			errorMsg := "unable to get metadata of backup table"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
+			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
+			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
+			bQCopier.On("Run", testingContext).Return(bQJob, nil)
+			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+
+			//update expiry
+			bQTable.On("Metadata", testingContext).Return(tableMetadata, errors.New(errorMsg)).Once()
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when unable to update expiration of the backup table", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			bQTable := new(BqTableMock)
+			defer bQTable.AssertExpectations(t)
+
+			bQCopier := new(BqCopierMock)
+			defer bQCopier.AssertExpectations(t)
+
+			bQJob := new(BqJobMock)
+			defer bQJob.AssertExpectations(t)
+
+			errorMsg := "unable to update expiration of backup table"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
+			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
+			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
+			bQCopier.On("Run", testingContext).Return(bQJob, nil)
+			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+
+			//update expiry
+			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, errors.New(errorMsg))
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
+		})
+		t.Run("should fail when unable to ensure the backup table", func(t *testing.T) {
+			bQClient := new(BqClientMock)
+			defer bQClient.AssertExpectations(t)
+
+			bQDatasetHandle := new(BqDatasetMock)
+			defer bQDatasetHandle.AssertExpectations(t)
+
+			bQTable := new(BqTableMock)
+			defer bQTable.AssertExpectations(t)
+
+			bQCopier := new(BqCopierMock)
+			defer bQCopier.AssertExpectations(t)
+
+			bQJob := new(BqJobMock)
+			defer bQJob.AssertExpectations(t)
+
+			errorMsg := "unable to ensure the backup table"
+
+			//duplicate table
+			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
+			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
+			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
+			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
+			bQCopier.On("Run", testingContext).Return(bQJob, nil)
+			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+
+			//update expiry
+			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
+
+			//verify
+			bQTable.On("Metadata", testingContext).Return(tableMetadata, errors.New(errorMsg)).Once()
+
+			resp, err := backupTable(testingContext, request, bQClient)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.BackupResourceResponse{}, resp)
 		})
 	})
 }

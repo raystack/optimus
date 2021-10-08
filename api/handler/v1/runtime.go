@@ -961,13 +961,98 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 		jobSpecs = append(jobSpecs, downstreamSpecs...)
 	}
 
-	resourcesToBackup, err := sv.resourceSvc.BackupResourceDryRun(ctx, projectSpec, namespaceSpec, jobSpecs)
+	//should add config
+	backupRequest := models.BackupRequest{
+		ResourceName:     req.ResourceName,
+		Project:          projectSpec,
+		Namespace:        namespaceSpec,
+		Description:      req.Description,
+		IgnoreDownstream: req.IgnoreDownstream,
+		DryRun:           true,
+	}
+	resourcesToBackup, err := sv.resourceSvc.BackupResourceDryRun(ctx, backupRequest, jobSpecs)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while doing backup dry run: %v", err)
 	}
 
 	return &pb.BackupDryRunResponse{
 		ResourceName: resourcesToBackup,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupRequest) (*pb.BackupResponse, error) {
+	projectSpec, err := sv.getProjectSpec(req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	namespaceRepo := sv.namespaceRepoFactory.New(projectSpec)
+	namespaceSpec, err := namespaceRepo.GetByName(req.Namespace)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.Namespace)
+	}
+
+	resourceSpec, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to read resource %s", err.Error(), req.ResourceName)
+	}
+
+	var jobSpecs []models.JobSpec
+	jobSpec, err := sv.jobSvc.GetByDestination(projectSpec, resourceSpec.URN)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error while getting job: %v", err)
+	}
+	jobSpecs = append(jobSpecs, jobSpec)
+
+	if !req.IgnoreDownstream {
+		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
+		}
+		jobSpecs = append(jobSpecs, downstreamSpecs...)
+	}
+
+	backupRequest := models.BackupRequest{
+		ResourceName:     req.ResourceName,
+		Project:          projectSpec,
+		Namespace:        namespaceSpec,
+		Description:      req.Description,
+		IgnoreDownstream: req.IgnoreDownstream,
+		DryRun:           false,
+		Config:           req.Config,
+	}
+	results, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error while doing backup: %v", err)
+	}
+
+	return &pb.BackupResponse{
+		Urn: results,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBackupsRequest) (*pb.ListBackupsResponse, error) {
+	projectSpec, err := sv.getProjectSpec(req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := sv.resourceSvc.ListBackupResources(projectSpec, req.DatastoreName)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error while getting backup list: %v", err)
+	}
+
+	var backupList []*pb.BackupSpec
+	for _, result := range results {
+		backupList = append(backupList, &pb.BackupSpec{
+			Id:           result.ID.String(),
+			ResourceName: result.Resource.Name,
+			CreatedAt:    timestamppb.New(result.CreatedAt),
+			Description:  result.Description,
+		})
+	}
+	return &pb.ListBackupsResponse{
+		Backups: backupList,
 	}, nil
 }
 

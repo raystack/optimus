@@ -65,7 +65,7 @@ type Datastorer interface {
 	DeleteResource(context.Context, DeleteResourceRequest) error
 
 	// BackupResource will backup the requested resource if exists
-	BackupResource(context.Context, BackupResourceRequest) error
+	BackupResource(context.Context, BackupResourceRequest) (BackupResourceResponse, error)
 }
 
 type DatastoreTypeController interface {
@@ -119,12 +119,6 @@ type ReadResourceResponse struct {
 type DeleteResourceRequest struct {
 	Resource ResourceSpec
 	Project  ProjectSpec
-}
-
-type BackupResourceRequest struct {
-	Resource ResourceSpec
-	Project  ProjectSpec
-	DryRun   bool
 }
 
 var (
@@ -190,5 +184,7 @@ type DatastoreService interface {
 	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	ReadResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) (ResourceSpec, error)
 	DeleteResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) error
-	BackupResourceDryRun(ctx context.Context, projectSpec ProjectSpec, namespaceSpec NamespaceSpec, jobSpecs []JobSpec) ([]string, error)
+	BackupResourceDryRun(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) ([]string, error)
+	BackupResource(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) ([]string, error)
+	ListBackupResources(projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
 }
