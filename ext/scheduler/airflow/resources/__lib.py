@@ -333,7 +333,7 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         self.window_size = window_size
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
-    def execute(self, context):
+    def poke(self, context):
         execution_date = context['execution_date']
         execution_date_str = execution_date.strftime(self.TIMESTAMP_FORMAT)
 
