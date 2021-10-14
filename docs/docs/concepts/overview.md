@@ -457,7 +457,13 @@ After passing the validation, Replay will clear task instances of the requested 
 up and run. Replay will frequently check the status of each task from the scheduler (every 5 minutes) to track if 
 each task is still in progress, failed, or succeeded.
 
-Optimus also provides Replay Dry Run to simulate all the impacted tasks without actually re-running the tasks.
+Optimus also provides Backup to duplicate a resource that can be perfectly used before running Replay. Optimus accepts 
+which datastore and resource that needs to be backed up and users have a choice to also back up the downstream resources 
+within the same project. Where the backup result will be located, and the expiry detail can be configured in the project 
+configuration.
+
+Both Replay and Backup are provided with Dry Run to simulate all the impacted tasks or resources without actually re-running 
+the tasks or backing up the resources.
 
 ## Monitoring & Alerting
 
