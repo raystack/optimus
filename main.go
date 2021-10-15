@@ -10,6 +10,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	_ "net/http/pprof"
+
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/optimus/cmd"

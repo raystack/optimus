@@ -287,21 +287,21 @@ func TestJobRunRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(checkModel.Instances))
 	})
-	t.Run("GetByStatus", func(t *testing.T) {
-		db := DBSetup()
-		defer db.Close()
-
-		var testModels []models.JobRun
-		testModels = append(testModels, testSpecs...)
-
-		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[0])
-		assert.Nil(t, err)
-
-		runs, err := repo.GetByStatus(models.RunStateRunning)
-		assert.Nil(t, err)
-		assert.Equal(t, 1, len(runs))
-	})
+	//t.Run("GetByStatus", func(t *testing.T) {
+	//	db := DBSetup()
+	//	defer db.Close()
+	//
+	//	var testModels []models.JobRun
+	//	testModels = append(testModels, testSpecs...)
+	//
+	//	repo := NewJobRunRepository(db, adapter)
+	//	err := repo.Insert(namespaceSpec, testModels[0])
+	//	assert.Nil(t, err)
+	//
+	//	runs, err := repo.GetByStatus(models.RunStateRunning)
+	//	assert.Nil(t, err)
+	//	assert.Equal(t, 1, len(runs))
+	//})
 	t.Run("AddInstance", func(t *testing.T) {
 		db := DBSetup()
 		defer db.Close()

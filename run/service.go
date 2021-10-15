@@ -88,40 +88,42 @@ func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
 		return models.InstanceSpec{}, errors.Wrap(err, "Register: failed to prepare instance")
 	}
 
-	jobRunRepo := s.repoFac.New()
-	switch instanceType {
-	case models.InstanceTypeTask:
-		// clear and save fresh
-		if err := jobRunRepo.ClearInstance(jobRun.ID, instanceType, instanceName); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-			return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
-		}
-		if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
-			return models.InstanceSpec{}, err
-		}
-	case models.InstanceTypeHook:
-		exists := false
-		// store only if not already exists
-		for _, instance := range jobRun.Instances {
-			if instance.Name == instanceName && instance.Type == instanceType {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
-				return models.InstanceSpec{}, err
-			}
-		}
-	default:
-		return models.InstanceSpec{}, errors.Errorf("invalid instance type: %s", instanceType)
-	}
+	return instanceToSave, nil
 
-	// get whatever is saved, querying again ensures it was saved correctly
-	if jobRun, _, err = jobRunRepo.GetByID(jobRun.ID); err != nil {
-		return models.InstanceSpec{}, errors.Wrapf(err, "failed to save instance for %s of %s:%s",
-			jobRun, instanceName, instanceType)
-	}
-	return jobRun.GetInstance(instanceName, instanceType)
+	//jobRunRepo := s.repoFac.New()
+	//switch instanceType {
+	//case models.InstanceTypeTask:
+	//	// clear and save fresh
+	//	if err := jobRunRepo.ClearInstance(jobRun.ID, instanceType, instanceName); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+	//		return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
+	//	}
+	//	if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
+	//		return models.InstanceSpec{}, err
+	//	}
+	//case models.InstanceTypeHook:
+	//	exists := false
+	//	// store only if not already exists
+	//	for _, instance := range jobRun.Instances {
+	//		if instance.Name == instanceName && instance.Type == instanceType {
+	//			exists = true
+	//			break
+	//		}
+	//	}
+	//	if !exists {
+	//		if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
+	//			return models.InstanceSpec{}, err
+	//		}
+	//	}
+	//default:
+	//	return models.InstanceSpec{}, errors.Errorf("invalid instance type: %s", instanceType)
+	//}
+	//
+	//// get whatever is saved, querying again ensures it was saved correctly
+	//if jobRun, _, err = jobRunRepo.GetByID(jobRun.ID); err != nil {
+	//	return models.InstanceSpec{}, errors.Wrapf(err, "failed to save instance for %s of %s:%s",
+	//		jobRun, instanceName, instanceType)
+	//}
+	//return jobRun.GetInstance(instanceName, instanceType)
 }
 
 func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,

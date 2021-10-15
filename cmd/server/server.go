@@ -520,13 +520,14 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	baseMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
 	})
+	baseMux.Handle("/debug/pprof/", http.DefaultServeMux)
 	baseMux.Handle("/api/", http.StripPrefix("/api", gwmux))
 
 	srv := &http.Server{
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 

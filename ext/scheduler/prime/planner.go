@@ -141,46 +141,46 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 // temporary approach and ideally we should timeout jobs which are assigned
 // to jobs which went down and move them back to the pending state list.
 func (p *Planner) getJobAllocations() (mostCapNodeID string, runIDs []uuid.UUID, err error) {
-	pendingJobRuns, err := p.jobRunRepoFac.New().GetByTrigger(models.TriggerManual, models.RunStatePending)
-	if err != nil {
-		return
-	}
-
-	// find which node has most capacity
-	peerUtilization := map[string]int{}
-	for _, mem := range p.clusterManager.GetClusterMembers() {
-		// it is possible that the allocation state is empty so we need to initialize
-		// the map with 0 for all cluster members first
-		peerUtilization[mem.Name] = 0
-	}
-	currentState := p.clusterManager.GetState()
-	for nodeID, allocationSet := range currentState.Allocation {
-		for _, rawAlloc := range allocationSet.Values() {
-			alloc := rawAlloc.(gossip.StateJob)
-			if alloc.Status == models.RunStateAccepted.String() ||
-				alloc.Status == models.RunStateRunning.String() {
-				peerUtilization[nodeID]++
-			}
-		}
-	}
-	var mostCapSize = PeerPoolSize
-	for nodeID, utilization := range peerUtilization {
-		if utilization < mostCapSize {
-			mostCapNodeID = nodeID
-			mostCapSize = utilization
-		}
-	}
-	// cluster is full at the moment
-	if mostCapNodeID == "" {
-		return
-	}
-
-	for idx, pendingRun := range pendingJobRuns {
-		runIDs = append(runIDs, pendingRun.ID)
-		if idx+mostCapSize > PeerPoolSize {
-			break
-		}
-	}
+	//pendingJobRuns, err := p.jobRunRepoFac.New().GetByTrigger(models.TriggerManual, models.RunStatePending)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//// find which node has most capacity
+	//peerUtilization := map[string]int{}
+	//for _, mem := range p.clusterManager.GetClusterMembers() {
+	//	// it is possible that the allocation state is empty so we need to initialize
+	//	// the map with 0 for all cluster members first
+	//	peerUtilization[mem.Name] = 0
+	//}
+	//currentState := p.clusterManager.GetState()
+	//for nodeID, allocationSet := range currentState.Allocation {
+	//	for _, rawAlloc := range allocationSet.Values() {
+	//		alloc := rawAlloc.(gossip.StateJob)
+	//		if alloc.Status == models.RunStateAccepted.String() ||
+	//			alloc.Status == models.RunStateRunning.String() {
+	//			peerUtilization[nodeID]++
+	//		}
+	//	}
+	//}
+	//var mostCapSize = PeerPoolSize
+	//for nodeID, utilization := range peerUtilization {
+	//	if utilization < mostCapSize {
+	//		mostCapNodeID = nodeID
+	//		mostCapSize = utilization
+	//	}
+	//}
+	//// cluster is full at the moment
+	//if mostCapNodeID == "" {
+	//	return
+	//}
+	//
+	//for idx, pendingRun := range pendingJobRuns {
+	//	runIDs = append(runIDs, pendingRun.ID)
+	//	if idx+mostCapSize > PeerPoolSize {
+	//		break
+	//	}
+	//}
 	return
 }
 
@@ -188,102 +188,102 @@ func (p *Planner) getJobAllocations() (mostCapNodeID string, runIDs []uuid.UUID,
 // terminating state like success/failed once all of the child instances
 // are done executing and commit to cluster WAL
 func (p *Planner) leaderJobReconcile(ctx context.Context) {
-	p.wg.Add(1)
-	defer p.wg.Done()
-	loopIdx := 0
-	for {
-		if !p.clusterManager.IsLeader() {
-			time.Sleep(SleepTime)
-			continue
-		}
-
-		runRepo := p.jobRunRepoFac.New()
-		// check for non assignment, non terminating states
-		waitingJobs, err := runRepo.GetByTrigger(models.TriggerManual, models.RunStateAccepted, models.RunStateRunning)
-		if err != nil {
-			p.errChan <- err
-			continue
-		}
-		for _, currentRun := range waitingJobs {
-			// check if this run is assigned to a node
-			// if the job is in non terminating, non assignment state and its not
-			// assigned to a node, we must have lost our WAL, mark it to be rescheduled
-			var allocatedNode string
-			for nodeID, allocSet := range p.clusterManager.GetState().Allocation {
-				if allocatedNode != "" {
-					break
-				}
-				for _, rawAlloc := range allocSet.Values() {
-					alloc := rawAlloc.(gossip.StateJob)
-					if alloc.UUID == currentRun.ID.String() {
-						allocatedNode = nodeID
-						break
-					}
-				}
-			}
-			if allocatedNode == "" {
-				// move it back to assignment
-				if err := runRepo.Clear(currentRun.ID); err != nil {
-					p.errChan <- err
-				}
-				p.l.Debug("cleared orphaned run for reassignment", "run id", currentRun.ID)
-				continue
-			}
-
-			// check if we need to update the run state inferred from instance states
-			finalState := currentRun.Status
-			instanceStates := map[models.JobRunState]int{}
-			for _, instance := range currentRun.Instances {
-				instanceStates[instance.Status]++
-			}
-
-			if instanceStates[models.RunStateFailed] > 0 {
-				finalState = models.RunStateFailed
-			} else if instanceStates[models.RunStateSuccess] == len(currentRun.Instances) && len(currentRun.Instances) > 0 {
-				finalState = models.RunStateSuccess
-			} else if instanceStates[models.RunStateRunning] > 0 || len(currentRun.Instances) > 0 {
-				// if anyone is in running or no instances created so far for this job run
-				// we should be in running or no node has picked this run yet
-				finalState = models.RunStateRunning
-			}
-
-			if finalState != currentRun.Status {
-				// propagate this message to whole cluster
-				payload, err := proto.Marshal(&pb.CommandUpdateJob{
-					Patches: []*pb.CommandUpdateJob_Patch{
-						{
-							RunId:  currentRun.ID.String(),
-							Status: finalState.String(),
-						},
-					},
-					PeerId: allocatedNode,
-				})
-				if err != nil {
-					p.errChan <- err
-					continue
-				}
-				if err := p.clusterManager.ApplyCommand(&pb.CommandLog{
-					Type:    pb.CommandLog_COMMAND_TYPE_UPDATE_JOB,
-					Payload: payload,
-				}); err != nil {
-					p.errChan <- err
-					continue
-				}
-				if err := runRepo.UpdateStatus(currentRun.ID, finalState); err != nil {
-					p.errChan <- err
-					continue
-				}
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			loopIdx++
-			time.Sleep(SleepTime)
-		}
-	}
+	//p.wg.Add(1)
+	//defer p.wg.Done()
+	//loopIdx := 0
+	//for {
+	//	if !p.clusterManager.IsLeader() {
+	//		time.Sleep(SleepTime)
+	//		continue
+	//	}
+	//
+	//	runRepo := p.jobRunRepoFac.New()
+	//	// check for non assignment, non terminating states
+	//	waitingJobs, err := runRepo.GetByTrigger(models.TriggerManual, models.RunStateAccepted, models.RunStateRunning)
+	//	if err != nil {
+	//		p.errChan <- err
+	//		continue
+	//	}
+	//	for _, currentRun := range waitingJobs {
+	//		// check if this run is assigned to a node
+	//		// if the job is in non terminating, non assignment state and its not
+	//		// assigned to a node, we must have lost our WAL, mark it to be rescheduled
+	//		var allocatedNode string
+	//		for nodeID, allocSet := range p.clusterManager.GetState().Allocation {
+	//			if allocatedNode != "" {
+	//				break
+	//			}
+	//			for _, rawAlloc := range allocSet.Values() {
+	//				alloc := rawAlloc.(gossip.StateJob)
+	//				if alloc.UUID == currentRun.ID.String() {
+	//					allocatedNode = nodeID
+	//					break
+	//				}
+	//			}
+	//		}
+	//		if allocatedNode == "" {
+	//			// move it back to assignment
+	//			if err := runRepo.Clear(currentRun.ID); err != nil {
+	//				p.errChan <- err
+	//			}
+	//			p.l.Debug("cleared orphaned run for reassignment", "run id", currentRun.ID)
+	//			continue
+	//		}
+	//
+	//		// check if we need to update the run state inferred from instance states
+	//		finalState := currentRun.Status
+	//		instanceStates := map[models.JobRunState]int{}
+	//		for _, instance := range currentRun.Instances {
+	//			instanceStates[instance.Status]++
+	//		}
+	//
+	//		if instanceStates[models.RunStateFailed] > 0 {
+	//			finalState = models.RunStateFailed
+	//		} else if instanceStates[models.RunStateSuccess] == len(currentRun.Instances) && len(currentRun.Instances) > 0 {
+	//			finalState = models.RunStateSuccess
+	//		} else if instanceStates[models.RunStateRunning] > 0 || len(currentRun.Instances) > 0 {
+	//			// if anyone is in running or no instances created so far for this job run
+	//			// we should be in running or no node has picked this run yet
+	//			finalState = models.RunStateRunning
+	//		}
+	//
+	//		if finalState != currentRun.Status {
+	//			// propagate this message to whole cluster
+	//			payload, err := proto.Marshal(&pb.CommandUpdateJob{
+	//				Patches: []*pb.CommandUpdateJob_Patch{
+	//					{
+	//						RunId:  currentRun.ID.String(),
+	//						Status: finalState.String(),
+	//					},
+	//				},
+	//				PeerId: allocatedNode,
+	//			})
+	//			if err != nil {
+	//				p.errChan <- err
+	//				continue
+	//			}
+	//			if err := p.clusterManager.ApplyCommand(&pb.CommandLog{
+	//				Type:    pb.CommandLog_COMMAND_TYPE_UPDATE_JOB,
+	//				Payload: payload,
+	//			}); err != nil {
+	//				p.errChan <- err
+	//				continue
+	//			}
+	//			if err := runRepo.UpdateStatus(currentRun.ID, finalState); err != nil {
+	//				p.errChan <- err
+	//				continue
+	//			}
+	//		}
+	//	}
+	//
+	//	select {
+	//	case <-ctx.Done():
+	//		return
+	//	default:
+	//		loopIdx++
+	//		time.Sleep(SleepTime)
+	//	}
+	//}
 }
 
 // peerJobExecution looks for job assigned to this node and executes them

@@ -50,9 +50,10 @@ type JobRunRepository interface {
 	GetByScheduledAt(jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error)
 	GetByID(uuid.UUID) (models.JobRun, models.NamespaceSpec, error)
 	UpdateStatus(uuid.UUID, models.JobRunState) error
-	GetByStatus(state ...models.JobRunState) ([]models.JobRun, error)
-	GetByTrigger(trigger models.JobRunTrigger, state ...models.JobRunState) ([]models.JobRun, error)
 	Delete(uuid.UUID) error
+
+	//GetByStatus(state ...models.JobRunState) ([]models.JobRun, error)
+	//GetByTrigger(trigger models.JobRunTrigger, state ...models.JobRunState) ([]models.JobRun, error)
 
 	AddInstance(namespace models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error
 

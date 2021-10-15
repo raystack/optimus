@@ -432,6 +432,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 
 	var namespaceSpec models.NamespaceSpec
 	var jobRun models.JobRun
+
 	if req.JobrunId == "" {
 		var jobSpec models.JobSpec
 		// a scheduled trigger instance, extract job run id if already present or create a new run
@@ -440,10 +441,14 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 			return nil, status.Errorf(codes.NotFound, "%s: job %s not found", err.Error(), req.GetJobName())
 		}
 
-		jobRun, err = sv.runSvc.GetScheduledRun(namespaceSpec, jobSpec, req.GetScheduledAt().AsTime())
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to initialize scheduled run of job %s", err.Error(), req.GetJobName())
-		}
+		jobRun.ScheduledAt = req.ScheduledAt.AsTime()
+		jobRun.Spec = jobSpec
+		jobRun.Trigger = models.TriggerSchedule
+
+		//jobRun, err = sv.runSvc.GetScheduledRun(namespaceSpec, jobSpec, req.GetScheduledAt().AsTime())
+		//if err != nil {
+		//	return nil, status.Errorf(codes.Internal, "%s: failed to initialize scheduled run of job %s", err.Error(), req.GetJobName())
+		//}
 	} else {
 		// must be manual triggered job run
 		jobRunID, err := uuid.Parse(req.JobrunId)
@@ -460,6 +465,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of jobrun %s", err.Error(), jobRun)
 	}
+
 	envMap, fileMap, err := sv.runSvc.Compile(namespaceSpec, jobRun, instance)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())

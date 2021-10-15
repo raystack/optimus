@@ -53,7 +53,14 @@ func (repo *JobRunRepository) GetByID(id uuid.UUID) (models.JobRun, models.Names
 		}
 		return models.JobRun{}, models.NamespaceSpec{}, err
 	}
-	return repo.adapter.ToJobRun(r)
+	var job Job
+	if err := repo.db.Where("id = ?", r.JobID).Find(&job).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobRun{}, models.NamespaceSpec{}, store.ErrResourceNotFound
+		}
+		return models.JobRun{}, models.NamespaceSpec{}, err
+	}
+	return repo.adapter.ToJobRun(r, job)
 }
 
 func (repo *JobRunRepository) GetByScheduledAt(jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error) {
@@ -64,7 +71,14 @@ func (repo *JobRunRepository) GetByScheduledAt(jobID uuid.UUID, scheduledAt time
 		}
 		return models.JobRun{}, models.NamespaceSpec{}, err
 	}
-	return repo.adapter.ToJobRun(r)
+	var job Job
+	if err := repo.db.Where("id = ?", r.JobID).Find(&job).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobRun{}, models.NamespaceSpec{}, store.ErrResourceNotFound
+		}
+		return models.JobRun{}, models.NamespaceSpec{}, err
+	}
+	return repo.adapter.ToJobRun(r, job)
 }
 
 // AddInstance associate instance details
@@ -145,45 +159,45 @@ func (repo *JobRunRepository) UpdateStatus(id uuid.UUID, status models.JobRunSta
 	return repo.db.Omit("Namespace").Save(jr).Error
 }
 
-func (repo *JobRunRepository) GetByStatus(statuses ...models.JobRunState) ([]models.JobRun, error) {
-	var specs []models.JobRun
-	var runs []JobRun
-	if err := repo.db.Preload("Instances").Where("status IN (?)", statuses).Find(&runs).Error; err != nil {
-		return specs, err
-	}
+//func (repo *JobRunRepository) GetByStatus(statuses ...models.JobRunState) ([]models.JobRun, error) {
+//	var specs []models.JobRun
+//	var runs []JobRun
+//	if err := repo.db.Preload("Instances").Where("status IN (?)", statuses).Find(&runs).Error; err != nil {
+//		return specs, err
+//	}
+//
+//	for _, run := range runs {
+//		adapt, _, err := repo.adapter.ToJobRun(run)
+//		if err != nil {
+//			return specs, err
+//		}
+//		specs = append(specs, adapt)
+//	}
+//	return specs, nil
+//}
 
-	for _, run := range runs {
-		adapt, _, err := repo.adapter.ToJobRun(run)
-		if err != nil {
-			return specs, err
-		}
-		specs = append(specs, adapt)
-	}
-	return specs, nil
-}
-
-func (repo *JobRunRepository) GetByTrigger(trigger models.JobRunTrigger, statuses ...models.JobRunState) ([]models.JobRun, error) {
-	var specs []models.JobRun
-	var runs []JobRun
-	if len(statuses) > 0 {
-		if err := repo.db.Preload("Instances").Where("trigger = ? and status IN (?)", trigger, statuses).Find(&runs).Error; err != nil {
-			return specs, err
-		}
-	} else {
-		if err := repo.db.Preload("Instances").Where("trigger = ?", trigger).Find(&runs).Error; err != nil {
-			return specs, err
-		}
-	}
-
-	for _, run := range runs {
-		adapt, _, err := repo.adapter.ToJobRun(run)
-		if err != nil {
-			return specs, err
-		}
-		specs = append(specs, adapt)
-	}
-	return specs, nil
-}
+//func (repo *JobRunRepository) GetByTrigger(trigger models.JobRunTrigger, statuses ...models.JobRunState) ([]models.JobRun, error) {
+//	var specs []models.JobRun
+//	var runs []JobRun
+//	if len(statuses) > 0 {
+//		if err := repo.db.Preload("Instances").Where("trigger = ? and status IN (?)", trigger, statuses).Find(&runs).Error; err != nil {
+//			return specs, err
+//		}
+//	} else {
+//		if err := repo.db.Preload("Instances").Where("trigger = ?", trigger).Find(&runs).Error; err != nil {
+//			return specs, err
+//		}
+//	}
+//
+//	for _, run := range runs {
+//		adapt, _, err := repo.adapter.ToJobRun(run)
+//		if err != nil {
+//			return specs, err
+//		}
+//		specs = append(specs, adapt)
+//	}
+//	return specs, nil
+//}
 
 func NewJobRunRepository(db *gorm.DB, adapter *JobSpecAdapter) *JobRunRepository {
 	return &JobRunRepository{

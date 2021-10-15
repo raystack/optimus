@@ -379,7 +379,8 @@ type JobRun struct {
 
 	// job spec for which this run was created, spec should contain a valid
 	// uuid if it belongs to a saved job and not an adhoc job
-	Spec datatypes.JSON `gorm:"column:specification;"`
+	//TODO disabling this for now to save db query time
+	//Spec datatypes.JSON `gorm:"column:specification;"`
 
 	NamespaceID uuid.UUID
 	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
@@ -395,14 +396,14 @@ type JobRun struct {
 }
 
 func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.NamespaceSpec) (JobRun, error) {
-	adaptedJobSpec, err := adapt.FromJobSpec(jr.Spec)
-	if err != nil {
-		return JobRun{}, err
-	}
-	specBytes, err := json.Marshal(adaptedJobSpec)
-	if err != nil {
-		return JobRun{}, err
-	}
+	//adaptedJobSpec, err := adapt.FromJobSpec(jr.Spec)
+	//if err != nil {
+	//	return JobRun{}, err
+	//}
+	//specBytes, err := json.Marshal(adaptedJobSpec)
+	//if err != nil {
+	//	return JobRun{}, err
+	//}
 
 	// namespace
 	adaptNamespace, err := Namespace{}.FromSpecWithProject(nsSpec, nsSpec.ProjectSpec)
@@ -422,7 +423,7 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 	return JobRun{
 		ID:    jr.ID,
 		JobID: jr.Spec.ID,
-		Spec:  specBytes,
+		//Spec:  specBytes,
 
 		NamespaceID: adaptNamespace.ID,
 		Namespace:   adaptNamespace,
@@ -435,13 +436,8 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 	}, nil
 }
 
-func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.NamespaceSpec, error) {
-	adaptedSpec := Job{}
-	if err := json.Unmarshal(jr.Spec, &adaptedSpec); err != nil {
-		return models.JobRun{}, models.NamespaceSpec{}, err
-	}
-
-	jobSpec, err := adapt.ToSpec(adaptedSpec)
+func (adapt JobSpecAdapter) ToJobRun(jr JobRun, job Job) (models.JobRun, models.NamespaceSpec, error) {
+	jobSpec, err := adapt.ToSpec(job)
 	if err != nil {
 		return models.JobRun{}, models.NamespaceSpec{}, err
 	}
