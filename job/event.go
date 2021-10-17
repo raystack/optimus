@@ -5,10 +5,24 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
+)
+
+var (
+	jobFailureCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "job_event_failure",
+		Help: "Event received for job failures by scheduler",
+	})
+	jobSLAMissCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "job_event_slamiss",
+		Help: "Event received for SLA miss by scheduler",
+	})
 )
 
 type eventService struct {
@@ -41,6 +55,11 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 				}
 			}
 		}
+	}
+	if evt.Type == models.JobEventTypeFailure {
+		jobFailureCounter.Inc()
+	} else if evt.Type == models.JobEventTypeSLAMiss {
+		jobSLAMissCounter.Inc()
 	}
 	return err
 }

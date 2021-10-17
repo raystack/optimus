@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS instance_job_run_id_idx;

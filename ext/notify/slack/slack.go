@@ -8,17 +8,33 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	api "github.com/slack-go/slack"
 )
 
 const (
-	OAuthTokenSecretName = "NOTIFY_SLACK"
-
+	OAuthTokenSecretName      = "NOTIFY_SLACK"
 	DefaultEventBatchInterval = time.Second * 10
+	MaxSLAEventsToProcess     = 6
+)
 
-	MaxSLAEventsToProcess = 6
+var (
+	slackQueueCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "notify_slack_queue",
+		Help: "Items queued in slack notification channel",
+	})
+	slackWorkerBatchCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "notify_slack_worker_batch",
+		Help: "Worker execution count in slack notification channel",
+	})
+	slackWorkerSendErrCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "notify_slack_worker_send_err",
+		Help: "Failure of messages in slack notification channel worker",
+	})
 )
 
 type Notifier struct {
@@ -122,6 +138,7 @@ func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, a
 		}
 		s.routeMsgBatch[rt] = append(s.routeMsgBatch[rt], evt)
 	}
+	slackQueueCounter.Inc()
 }
 
 // accumulate messages
@@ -253,6 +270,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 		}
 		s.mu.Unlock()
 
+		slackWorkerBatchCounter.Inc()
 		select {
 		case <-ctx.Done():
 			close(s.workerErrChan)
@@ -282,6 +300,7 @@ func NewNotifier(ctx context.Context, slackUrl string, eventBatchInterval time.D
 	go func() {
 		for err := range this.workerErrChan {
 			errHandler(err)
+			slackWorkerSendErrCounter.Inc()
 		}
 		this.wg.Done()
 	}()

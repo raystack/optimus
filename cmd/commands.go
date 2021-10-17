@@ -7,6 +7,11 @@ import (
 	"os"
 	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
 	"github.com/fatih/color"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/odpf/optimus/config"
@@ -117,7 +122,15 @@ func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error
 			grpc.MaxCallSendMsgSize(GRPCMaxClientSendSize),
 			grpc.MaxCallRecvMsgSize(GRPCMaxClientRecvSize),
 		),
-		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)),
+		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
+			grpc_retry.UnaryClientInterceptor(retryOpts...),
+			otelgrpc.UnaryClientInterceptor(),
+			grpc_prometheus.UnaryClientInterceptor,
+		)),
+		grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
+			otelgrpc.StreamClientInterceptor(),
+			grpc_prometheus.StreamClientInterceptor,
+		)),
 	)
 
 	// pass rpc credentials

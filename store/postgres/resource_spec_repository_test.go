@@ -45,7 +45,7 @@ func TestResourceSpecRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1)
+		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
@@ -317,7 +317,7 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1)
+		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}

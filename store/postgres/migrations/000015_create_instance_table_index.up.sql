@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS instance_job_run_id_idx ON instance (job_run_id);

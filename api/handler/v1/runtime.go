@@ -8,6 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/meta"
 
@@ -24,6 +27,17 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+var (
+	runtimeDeployJobSpecificationCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "runtime_deploy_jobspec",
+		Help: "Number of jobs requested for deployment by runtime",
+	})
+	runtimeDeployResourceSpecificationCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "runtime_deploy_resourcespec",
+		Help: "Number of resources requested for deployment by runtime",
+	})
 )
 
 type ProjectRepoFactory interface {
@@ -136,6 +150,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 		return status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
 	}
 
+	runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))
 	return nil
 }
@@ -316,6 +331,7 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
 	}
 
+	runtimeDeployJobSpecificationCounter.Inc()
 	return &pb.CreateJobSpecificationResponse{
 		Success: true,
 		Message: fmt.Sprintf("job %s is created and deployed successfully on project %s", jobSpec.Name, req.GetProjectName()),
@@ -418,6 +434,13 @@ func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *
 	}, nil
 }
 
+// RegisterInstance creates a new job run and a running instance in persistent
+// store then returns the config/assets attached to the job spec used in running
+// the instance.
+// Keep in mind, this whole operation should be in a single transaction
+// if we expect multiple request coming for the same instance at the
+// same time but that should never be the case in our use cases that's why
+// for performance reasons we are choosing not to do so.
 func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.RegisterInstanceResponse, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(ctx, req.GetProjectName())
@@ -629,6 +652,7 @@ func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.Crea
 	if err := sv.resourceSvc.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}, sv.progressObserver); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to create resource %s", err.Error(), req.Resource.GetName())
 	}
+	runtimeDeployResourceSpecificationCounter.Inc()
 	return &pb.CreateResourceResponse{
 		Success: true,
 	}, nil
@@ -655,6 +679,7 @@ func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.Upda
 	if err := sv.resourceSvc.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}, sv.progressObserver); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to create resource %s", err.Error(), req.Resource.GetName())
 	}
+	runtimeDeployResourceSpecificationCounter.Inc()
 	return &pb.UpdateResourceResponse{
 		Success: true,
 	}, nil
@@ -724,6 +749,8 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 	if err := sv.resourceSvc.UpdateResource(respStream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
 		return status.Errorf(codes.Internal, "failed to update resources: \n%s", err.Error())
 	}
+
+	runtimeDeployResourceSpecificationCounter.Add(float64(len(req.Resources)))
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
 	return nil
 }

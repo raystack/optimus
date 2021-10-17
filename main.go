@@ -10,6 +10,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	_ "net/http/pprof"
+
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/optimus/cmd"
@@ -49,7 +51,6 @@ func main() {
 
 	var jsonLogger log.Logger
 	var plainLogger log.Logger
-
 	pluginLogLevel := hclog.Info
 	if configuration.GetLog().Level != "" {
 		jsonLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level))
@@ -61,6 +62,14 @@ func main() {
 		jsonLogger = log.NewLogrus(log.LogrusWithLevel("INFO"))
 		plainLogger = log.NewLogrus(log.LogrusWithLevel("INFO"), log.LogrusWithFormatter(new(PlainFormatter)))
 	}
+
+	// init telemetry
+	teleShutdown, err := config.InitTelemetry(jsonLogger, configuration)
+	if err != nil {
+		fmt.Printf("ERROR: %s\n", err.Error())
+		os.Exit(1)
+	}
+	defer teleShutdown()
 
 	// discover and load plugins
 	if err := plugin.Initialize(hclog.New(&hclog.LoggerOptions{

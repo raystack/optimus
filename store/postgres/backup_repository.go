@@ -20,7 +20,7 @@ type BackupDetail struct {
 }
 
 type Backup struct {
-	ID uuid.UUID `gorm:"primary_key;type:uuid"`
+	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	ResourceID uuid.UUID
 	Resource   Resource `gorm:"foreignKey:ResourceID"`

@@ -9,14 +9,21 @@ package postgres
 import (
 	"embed"
 	"fmt"
+	"io"
+	stdlog "log"
 	"net/http"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for postgres migrate driver
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 )
 
@@ -24,7 +31,12 @@ import (
 var migrationFs embed.FS
 
 const (
-	resourcePath = "migrations"
+	resourcePath   = "migrations"
+	tracingSpanKey = "otel:span"
+)
+
+var (
+	tracer = otel.Tracer("optimus/store/postgres")
 )
 
 // NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
@@ -37,8 +49,17 @@ func NewHTTPFSMigrator(DBConnURL string) (*migrate.Migrate, error) {
 }
 
 // Connect connect to the DB with custom configuration.
-func Connect(connURL string, maxIdleConnections, maxOpenConnections int) (*gorm.DB, error) {
+func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer io.Writer) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(connURL), &gorm.Config{
+		Logger: logger.New(
+			stdlog.New(writer, "\r\n", stdlog.LstdFlags), // io writer
+			logger.Config{
+				SlowThreshold:             time.Second,
+				LogLevel:                  logger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
@@ -46,6 +67,11 @@ func Connect(connURL string, maxIdleConnections, maxOpenConnections int) (*gorm.
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize postgres db connection")
 	}
+
+	if err := InitTrace(db); err != nil {
+		return nil, errors.Wrap(err, "failed to initialize tracing for postgresql")
+	}
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -67,4 +93,91 @@ func Migrate(connURL string) error {
 		return errors.Wrap(err, "db migrator")
 	}
 	return nil
+}
+
+func InitTrace(db *gorm.DB) error {
+	// create
+	if err := db.Callback().Create().Before("gorm:create").Register("otel:before_create", beforeCallback("db:create")); err != nil {
+		return err
+	}
+	if err := db.Callback().Create().After("gorm:create").Register("otel:after_create", afterCallback); err != nil {
+		return err
+	}
+
+	// query
+	if err := db.Callback().Query().Before("gorm:query").Register("otel:before_query", beforeCallback("db:query")); err != nil {
+		return err
+	}
+	if err := db.Callback().Query().After("gorm:query").Register("otel:after_query", afterCallback); err != nil {
+		return err
+	}
+
+	// update
+	if err := db.Callback().Update().Before("gorm:update").Register("otel:before_update", beforeCallback("db:update")); err != nil {
+		return err
+	}
+	if err := db.Callback().Update().After("gorm:update").Register("otel:after_update", afterCallback); err != nil {
+		return err
+	}
+
+	// delete
+	if err := db.Callback().Delete().Before("gorm:delete").Register("otel:before_delete", beforeCallback("db:delete")); err != nil {
+		return err
+	}
+	if err := db.Callback().Delete().After("gorm:delete").Register("otel:after_delete", afterCallback); err != nil {
+		return err
+	}
+
+	// row
+	if err := db.Callback().Row().Before("gorm:row").Register("otel:before_row", beforeCallback("db:row")); err != nil {
+		return err
+	}
+	if err := db.Callback().Row().After("gorm:row").Register("otel:after_row", afterCallback); err != nil {
+		return err
+	}
+
+	// raw
+	if err := db.Callback().Raw().Before("gorm:raw").Register("otel:before_raw", beforeCallback("db:raw")); err != nil {
+		return err
+	}
+	if err := db.Callback().Raw().After("gorm:raw").Register("otel:after_raw", afterCallback); err != nil {
+		return err
+	}
+	return nil
+}
+
+func beforeCallback(operation string) func(db *gorm.DB) {
+	return func(db *gorm.DB) {
+		if db == nil || db.Statement == nil || db.Statement.Context == nil {
+			return
+		}
+		// if not tracing
+		if !trace.SpanFromContext(db.Statement.Context).IsRecording() {
+			return
+		}
+		_, span := tracer.Start(db.Statement.Context, operation)
+		db.InstanceSet(tracingSpanKey, span)
+	}
+}
+
+func afterCallback(db *gorm.DB) {
+	if db == nil || db.Statement == nil || db.Statement.Context == nil {
+		return
+	}
+	// extract sp from db context
+	v, ok := db.InstanceGet(tracingSpanKey)
+	if !ok || v == nil {
+		return
+	}
+	sp, ok := v.(trace.Span)
+	if !ok || sp == nil {
+		return
+	}
+	defer sp.End()
+
+	sp.SetAttributes(
+		attribute.String("table", db.Statement.Table),
+		attribute.Int64("rows_affected", db.Statement.RowsAffected),
+		attribute.String("sql", db.Statement.SQL.String()),
+	)
 }

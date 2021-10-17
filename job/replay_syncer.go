@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -15,6 +18,10 @@ var (
 	ReplayStatusToSynced = []string{models.ReplayStatusReplayed, models.ReplayStatusInProgress, models.ReplayStatusAccepted}
 	ReplayMessageSuccess = "all instances for this replay are successfully run"
 	ReplayMessageFailed  = "instance run failure found"
+	replaySyncerCounter  = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "replay_synced",
+		Help: "Number of times replay syncer finished syncing",
+	})
 )
 
 type Syncer struct {
@@ -67,6 +74,8 @@ func (s Syncer) Sync(ctx context.Context, runTimeout time.Duration) error {
 			}
 		}
 	}
+
+	replaySyncerCounter.Inc()
 	return nil
 }
 

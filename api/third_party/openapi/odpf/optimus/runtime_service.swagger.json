@@ -75,43 +75,6 @@
         ]
       }
     },
-    "/v1/project/{projectName}/job": {
-      "get": {
-        "summary": "ListJobSpecification returns list of jobs created in a project",
-        "operationId": "RuntimeService_ListJobSpecification",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/optimusListJobSpecificationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespace",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      }
-    },
     "/v1/project/{projectName}/job/check": {
       "post": {
         "summary": "CheckJobSpecification checks if a job specification is valid",
@@ -726,6 +689,41 @@
       }
     },
     "/v1/project/{projectName}/namespace/{namespace}/job": {
+      "get": {
+        "summary": "ListJobSpecification returns list of jobs created in a project",
+        "operationId": "RuntimeService_ListJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusListJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
       "post": {
         "summary": "CreateJobSpecification registers a new job for a namespace which belongs to a project",
         "operationId": "RuntimeService_CreateJobSpecification",
