@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/mock"
@@ -10,12 +12,12 @@ type BackupRepo struct {
 	mock.Mock
 }
 
-func (repo *BackupRepo) Save(spec models.BackupSpec) error {
-	return repo.Called(spec).Error(0)
+func (repo *BackupRepo) Save(ctx context.Context, spec models.BackupSpec) error {
+	return repo.Called(ctx, spec).Error(0)
 }
 
-func (repo *BackupRepo) GetAll() ([]models.BackupSpec, error) {
-	args := repo.Called()
+func (repo *BackupRepo) GetAll(ctx context.Context) ([]models.BackupSpec, error) {
+	args := repo.Called(ctx)
 	return args.Get(0).([]models.BackupSpec), args.Error(1)
 }
 

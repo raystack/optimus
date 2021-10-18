@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestJobRepository(t *testing.T) {
@@ -37,6 +37,7 @@ func TestJobRepository(t *testing.T) {
 		}
 		return dbConn
 	}
+	ctx := context.Background()
 
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
@@ -159,7 +160,8 @@ func TestJobRepository(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
 			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
@@ -175,13 +177,13 @@ func TestJobRepository(t *testing.T) {
 
 			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err := repo.Insert(testModels[0])
+			err := repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
-			err = repo.Insert(testModels[1])
+			err = repo.Insert(ctx, testModels[1])
 			assert.NotNil(t, err)
 
-			checkModel, err := repo.GetByID(testModels[0].ID)
+			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -199,7 +201,8 @@ func TestJobRepository(t *testing.T) {
 		})
 		t.Run("insert when previously soft deleted should hard delete first along with foreign key cascade", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 
 			unitData1 := models.GenerateDestinationRequest{
 				Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
@@ -220,22 +223,22 @@ func TestJobRepository(t *testing.T) {
 			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// first insert
-			err := repo.Insert(testModels[0])
+			err := repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModels[0].ID)
+			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 
 			// soft delete
-			err = repo.Delete(testModels[0].Name)
+			err = repo.Delete(ctx, testModels[0].Name)
 			assert.Nil(t, err)
 
 			// insert back again
-			err = repo.Insert(testModels[0])
+			err = repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModels[0].ID)
+			checkModel, err = repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 		})
@@ -243,7 +246,8 @@ func TestJobRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
@@ -264,20 +268,20 @@ func TestJobRepository(t *testing.T) {
 			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
 			assert.Equal(t, gTask, taskSchema.Name)
 
 			//try for update
-			err = repo.Save(testModelB)
+			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelB.ID)
+			checkModel, err = repo.GetByID(ctx, testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema = checkModel.Task.Unit.Info()
@@ -285,7 +289,8 @@ func TestJobRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
@@ -306,10 +311,10 @@ func TestJobRepository(t *testing.T) {
 
 			//try for create
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit1, DependencyMod: depMod1}
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -320,10 +325,10 @@ func TestJobRepository(t *testing.T) {
 
 			//try for update
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit2, DependencyMod: depMod2}
-			err = repo.Save(testModelA)
+			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelA.ID)
+			checkModel, err = repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			taskSchema = checkModel.Task.Unit.Info()
 			assert.Equal(t, tTask, taskSchema.Name)
@@ -332,7 +337,8 @@ func TestJobRepository(t *testing.T) {
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
@@ -340,16 +346,17 @@ func TestJobRepository(t *testing.T) {
 			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 		})
 		t.Run("should update same job with hooks when provided separately", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModel := testConfigs[2]
 			testModel.Task.Unit.DependencyMod = nil
 			execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
@@ -360,9 +367,9 @@ func TestJobRepository(t *testing.T) {
 			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err := repo.Insert(testModel)
+			err := repo.Insert(ctx, testModel)
 			assert.Nil(t, err)
-			checkModel, err := repo.GetByID(testModel.ID)
+			checkModel, err := repo.GetByID(ctx, testModel.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -382,9 +389,9 @@ func TestJobRepository(t *testing.T) {
 					Unit: &models.Plugin{Base: hookUnit1},
 				},
 			}
-			err = repo.Save(testModel)
+			err = repo.Save(ctx, testModel)
 			assert.Nil(t, err)
-			checkModel, err = repo.GetByID(testModel.ID)
+			checkModel, err = repo.GetByID(ctx, testModel.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema = checkModel.Task.Unit.Info()
@@ -414,9 +421,9 @@ func TestJobRepository(t *testing.T) {
 				},
 				Unit: &models.Plugin{Base: hookUnit2},
 			})
-			err = repo.Save(testModel)
+			err = repo.Save(ctx, testModel)
 			assert.Nil(t, err)
-			checkModel, err = repo.GetByID(testModel.ID)
+			checkModel, err = repo.GetByID(ctx, testModel.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema = checkModel.Task.Unit.Info()
@@ -443,7 +450,8 @@ func TestJobRepository(t *testing.T) {
 		})
 		t.Run("should fail if job is already registered for a project with different namespace", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
@@ -456,10 +464,10 @@ func TestJobRepository(t *testing.T) {
 			jobRepoNamespace2 := NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
 
 			// try to create with first namespace
-			err := jobRepoNamespace1.Save(testModelA)
+			err := jobRepoNamespace1.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(testModelA.Name)
+			checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkJob.Name)
 			schema := checkJob.Task.Unit.Info()
@@ -468,13 +476,14 @@ func TestJobRepository(t *testing.T) {
 			assert.Equal(t, namespaceSpec.ProjectSpec.ID, checkNamespace.ProjectSpec.ID)
 
 			// try to create same job with second namespace and it should fail.
-			err = jobRepoNamespace2.Save(testModelA)
+			err = jobRepoNamespace2.Save(ctx, testModelA)
 			assert.NotNil(t, err)
 			assert.Equal(t, "job g-optimus-id already exists for the project t-optimus-id", err.Error())
 		})
 		t.Run("should properly insert spec behavior, reading and writing", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
@@ -486,10 +495,10 @@ func TestJobRepository(t *testing.T) {
 			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			assert.Equal(t, true, checkModel.Behavior.CatchUp)
@@ -501,10 +510,10 @@ func TestJobRepository(t *testing.T) {
 			//try for update
 			testModelA.Behavior.CatchUp = false
 			testModelA.Behavior.DependsOnPast = true
-			err = repo.Save(testModelA)
+			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelA.ID)
+			checkModel, err = repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, false, checkModel.Behavior.CatchUp)
 			assert.Equal(t, true, checkModel.Behavior.DependsOnPast)
@@ -513,17 +522,18 @@ func TestJobRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
 		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus-id", checkModel.Name)
 		assert.Equal(t, "this", checkModel.Task.Config[0].Value)
@@ -531,19 +541,20 @@ func TestJobRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
 		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
-		err = repo.Insert(testModels[2])
+		err = repo.Insert(ctx, testModels[2])
 		assert.Nil(t, err)
 
-		checkModels, err := repo.GetAll()
+		checkModels, err := repo.GetAll(ctx)
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModels))
 	})
@@ -571,6 +582,7 @@ func TestProjectJobRepository(t *testing.T) {
 		}
 		return dbConn
 	}
+	ctx := context.Background()
 
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
@@ -679,7 +691,8 @@ func TestProjectJobRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -693,10 +706,10 @@ func TestProjectJobRepository(t *testing.T) {
 		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(testModels[0].Name)
+		checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus-id", checkJob.Name)
 		assert.Equal(t, "this", checkJob.Task.Config[0].Value)
@@ -705,7 +718,8 @@ func TestProjectJobRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -726,19 +740,20 @@ func TestProjectJobRepository(t *testing.T) {
 		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
-		err = repo.Insert(testModels[2])
+		err = repo.Insert(ctx, testModels[2])
 		assert.Nil(t, err)
 
-		checkModels, err := projectJobSpecRepo.GetAll()
+		checkModels, err := projectJobSpecRepo.GetAll(ctx)
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModels))
 	})
 
 	t.Run("GetByDestination", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		unitData1 := models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
@@ -755,17 +770,18 @@ func TestProjectJobRepository(t *testing.T) {
 
 		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err := jobRepo.Insert(testModels[0])
+		err := jobRepo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		j, p, err := projectJobSpecRepo.GetByDestination(destinationUrn)
+		j, p, err := projectJobSpecRepo.GetByDestination(ctx, destinationUrn)
 		assert.Nil(t, err)
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)
 	})
 	t.Run("GetByNameForProject", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		unitData1 := models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
@@ -780,14 +796,14 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		assert.Nil(t, NewProjectRepository(db, hash).Save(projectSpec))
+		assert.Nil(t, NewProjectRepository(db, hash).Save(ctx, projectSpec))
 
 		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err := jobRepo.Insert(testModels[0])
+		err := jobRepo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		j, p, err := projectJobSpecRepo.GetByNameForProject(projectSpec.Name, testModels[0].Name)
+		j, p, err := projectJobSpecRepo.GetByNameForProject(ctx, projectSpec.Name, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)

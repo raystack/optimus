@@ -97,7 +97,7 @@ func TestReplay(t *testing.T) {
 	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(nil, errors.New("error while getting all dags"))
+			projectJobSpecRepo.On("GetAll", ctx).Return(nil, errors.New("error while getting all dags"))
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -121,7 +121,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should fail if unable to resolve jobs using dependency resolver", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(dagSpec, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -168,7 +168,7 @@ func TestReplay(t *testing.T) {
 			cyclicDagSpec = append(cyclicDagSpec, cyclicDag1, cyclicDag2)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(cyclicDagSpec, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(cyclicDagSpec, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -199,7 +199,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("resolve create replay tree for a dag with three day task window and mentioned dependencies", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(dagSpec, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -248,7 +248,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("resolve create replay tree for a dag with three day task window and mentioned dependencies", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(dagSpec, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -301,7 +301,7 @@ func TestReplay(t *testing.T) {
 	t.Run("Replay", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(nil, errors.New("error while getting all dags"))
+			projectJobSpecRepo.On("GetAll", ctx).Return(nil, errors.New("error while getting all dags"))
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -325,7 +325,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should fail if replay manager throws an error", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(dagSpec, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -365,7 +365,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should succeed if replay manager successfully processes request", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(dagSpec, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(dagSpec, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -436,7 +436,7 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			errorMsg := "unable to fetch replay"
-			replayManager.On("GetReplay", replayID).Return(models.ReplaySpec{}, errors.New(errorMsg))
+			replayManager.On("GetReplay", ctx, replayID).Return(models.ReplaySpec{}, errors.New(errorMsg))
 			replayRequest := models.ReplayRequest{
 				ID:      replayID,
 				Project: projSpec,
@@ -464,7 +464,7 @@ func TestReplay(t *testing.T) {
 
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
+			replayManager.On("GetReplay", ctx, replayID).Return(replaySpec, nil)
 			errorMsg := "unable to get status of a job run"
 			replayManager.On("GetRunStatus", ctx, projSpec, startDate, endDate, specs[spec1].Name).
 				Return([]models.JobStatus{}, errors.New(errorMsg))
@@ -531,7 +531,7 @@ func TestReplay(t *testing.T) {
 
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
+			replayManager.On("GetReplay", ctx, replayID).Return(replaySpec, nil)
 			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
 			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{}, errors.New(errorMsg))
@@ -597,7 +597,7 @@ func TestReplay(t *testing.T) {
 
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplay", replayID).Return(replaySpec, nil)
+			replayManager.On("GetReplay", ctx, replayID).Return(replaySpec, nil)
 			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
@@ -635,10 +635,10 @@ func TestReplay(t *testing.T) {
 
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
-			replayManager.On("GetReplayList", projSpec.ID).Return(replaySpecs, nil)
+			replayManager.On("GetReplayList", ctx, projSpec.ID).Return(replaySpecs, nil)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			replayList, err := jobSvc.GetReplayList(projSpec.ID)
+			replayList, err := jobSvc.GetReplayList(ctx, projSpec.ID)
 
 			assert.Nil(t, err)
 			assert.Equal(t, replaySpecs, replayList)
@@ -647,10 +647,10 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			errorMsg := "unable to get replay list"
-			replayManager.On("GetReplayList", projSpec.ID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
+			replayManager.On("GetReplayList", ctx, projSpec.ID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
-			replayList, err := jobSvc.GetReplayList(projSpec.ID)
+			replayList, err := jobSvc.GetReplayList(ctx, projSpec.ID)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.ReplaySpec{}, replayList)

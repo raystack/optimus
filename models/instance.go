@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -130,16 +131,16 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 
 type RunService interface {
 	// GetScheduledRun find if already present or create a new scheduled run
-	GetScheduledRun(namespace NamespaceSpec, JobID JobSpec, scheduledAt time.Time) (JobRun, error)
+	GetScheduledRun(ctx context.Context, namespace NamespaceSpec, JobID JobSpec, scheduledAt time.Time) (JobRun, error)
 
 	// GetByID returns job run, normally gets requested for manual runs
-	GetByID(JobRunID uuid.UUID) (JobRun, NamespaceSpec, error)
+	GetByID(ctx context.Context, JobRunID uuid.UUID) (JobRun, NamespaceSpec, error)
 
 	// Register creates a new instance in provided job run
-	Register(namespace NamespaceSpec, jobRun JobRun, instanceType InstanceType, instanceName string) (InstanceSpec, error)
+	Register(ctx context.Context, namespace NamespaceSpec, jobRun JobRun, instanceType InstanceType, instanceName string) (InstanceSpec, error)
 
 	// Compile prepares instance execution context environment
-	Compile(namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (envMap map[string]string,
+	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (envMap map[string]string,
 		fileMap map[string]string, err error)
 }
 

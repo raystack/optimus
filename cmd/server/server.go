@@ -16,7 +16,6 @@ import (
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-multierror"
-	"github.com/jinzhu/gorm"
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
@@ -54,6 +53,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"gorm.io/gorm"
 )
 
 var (
@@ -338,7 +338,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		hash: appHash,
 	}
 	if !conf.GetScheduler().SkipInit {
-		registeredProjects, err := projectRepoFac.New().GetAll()
+		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
 			return errors.Wrap(err, "projectRepoFactory.GetAll()")
 		}
@@ -597,6 +597,14 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	clusterCancel()
 	clusterPlanner.Close()
 	clusterServer.Shutdown()
+
+	sqlConn, err := dbConn.DB()
+	if err != nil {
+		terminalError = multierror.Append(terminalError, errors.Wrap(err, "dbConn.DB"))
+	}
+	if err := sqlConn.Close(); err != nil {
+		terminalError = multierror.Append(terminalError, errors.Wrap(err, "sqlConn.Close"))
+	}
 
 	l.Info("bye")
 	return terminalError

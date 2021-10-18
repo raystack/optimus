@@ -1,16 +1,17 @@
 package postgres
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
 	"github.com/odpf/optimus/store"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 type Instance struct {
@@ -82,18 +83,18 @@ type InstanceRepository struct {
 	Now func()
 }
 
-func (repo *InstanceRepository) Insert(run models.JobRun, spec models.InstanceSpec) error {
+func (repo *InstanceRepository) Insert(ctx context.Context, run models.JobRun, spec models.InstanceSpec) error {
 	resource, err := Instance{}.FromSpec(spec, run.ID)
 	if err != nil {
 		return err
 	}
-	return repo.db.Omit("JobRun").Create(&resource).Error
+	return repo.db.WithContext(ctx).Omit("JobRun").Create(&resource).Error
 }
 
-func (repo *InstanceRepository) Save(run models.JobRun, spec models.InstanceSpec) error {
-	existingResource, err := repo.GetByName(run.ID, spec.Name, spec.Type.String())
+func (repo *InstanceRepository) Save(ctx context.Context, run models.JobRun, spec models.InstanceSpec) error {
+	existingResource, err := repo.GetByName(ctx, run.ID, spec.Name, spec.Type.String())
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(run, spec)
+		return repo.Insert(ctx, run, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find instance by schedule")
 	}
@@ -103,21 +104,21 @@ func (repo *InstanceRepository) Save(run models.JobRun, spec models.InstanceSpec
 		return err
 	}
 	resource.ID = existingResource.ID
-	return repo.db.Debug().Omit("JobRun").Model(&resource).Updates(&resource).Error
+	return repo.db.WithContext(ctx).Debug().Omit("JobRun").Model(&resource).Updates(&resource).Error
 }
 
-func (repo *InstanceRepository) UpdateStatus(id uuid.UUID, status models.JobRunState) error {
+func (repo *InstanceRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error {
 	var r Instance
-	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("id = ?", id).Find(&r).Error; err != nil {
 		return err
 	}
 	r.Status = status.String()
-	return repo.db.Omit("JobRun").Save(&r).Error
+	return repo.db.WithContext(ctx).Omit("JobRun").Save(&r).Error
 }
 
-func (repo *InstanceRepository) GetByName(runID uuid.UUID, instanceName, instanceType string) (models.InstanceSpec, error) {
+func (repo *InstanceRepository) GetByName(ctx context.Context, runID uuid.UUID, instanceName, instanceType string) (models.InstanceSpec, error) {
 	var r Instance
-	if err := repo.db.Preload("JobRun").Where("job_run_id = ? AND instance_name = ? AND instance_type = ?", runID, instanceName, instanceType).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("JobRun").Where("job_run_id = ? AND instance_name = ? AND instance_type = ?", runID, instanceName, instanceType).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.InstanceSpec{}, store.ErrResourceNotFound
 		}
@@ -126,9 +127,9 @@ func (repo *InstanceRepository) GetByName(runID uuid.UUID, instanceName, instanc
 	return r.ToSpec()
 }
 
-func (repo *InstanceRepository) GetByID(id uuid.UUID) (models.InstanceSpec, error) {
+func (repo *InstanceRepository) GetByID(ctx context.Context, id uuid.UUID) (models.InstanceSpec, error) {
 	var r Instance
-	if err := repo.db.Preload("JobRun").Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("JobRun").Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.InstanceSpec{}, store.ErrResourceNotFound
 		}
@@ -137,12 +138,20 @@ func (repo *InstanceRepository) GetByID(id uuid.UUID) (models.InstanceSpec, erro
 	return r.ToSpec()
 }
 
-func (repo *InstanceRepository) Delete(id uuid.UUID) error {
-	return repo.db.Where("id = ?", id).Delete(&Instance{}).Error
+func (repo *InstanceRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return repo.db.WithContext(ctx).Where("id = ?", id).Delete(&Instance{}).Error
 }
 
-func (repo *InstanceRepository) DeleteByJobRun(runID uuid.UUID) error {
-	return repo.db.Where("job_run_id = ?", runID).Delete(&Instance{}).Error
+func (repo *InstanceRepository) DeleteByJobRun(ctx context.Context, runID uuid.UUID) error {
+	return repo.db.WithContext(ctx).Where("job_run_id = ?", runID).Delete(&Instance{}).Error
+}
+
+func (repo *InstanceRepository) GetByJobRun(ctx context.Context, runID uuid.UUID) ([]Instance, error) {
+	var r []Instance
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?", runID).Find(&r).Error; err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func NewInstanceRepository(db *gorm.DB, jobAdapter *JobSpecAdapter) *InstanceRepository {

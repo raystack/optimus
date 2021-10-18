@@ -113,7 +113,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 				return fmt.Errorf("unsupported datastore: %s\n", storeName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
-			resourceSpecs, err := resourceSpecRepo.GetAll()
+			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
 			if err == models.ErrNoResources {
 				l.Info(coloredNotice("no resource specifications found"))
 				continue

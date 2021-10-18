@@ -30,32 +30,32 @@ type ProjectJobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo *ProjectJobSpecRepository) GetByName(name string) (models.JobSpec, models.NamespaceSpec, error) {
-	args := repo.Called(name)
+func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, models.NamespaceSpec, error) {
+	args := repo.Called(ctx, name)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 	}
 	return models.JobSpec{}, models.NamespaceSpec{}, args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetByNameForProject(job, project string) (models.JobSpec, models.ProjectSpec, error) {
-	args := repo.Called(job, project)
+func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, job, project string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(ctx, job, project)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
 	}
 	return models.JobSpec{}, models.ProjectSpec{}, args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
-	args := repo.Called()
+func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
+	args := repo.Called(ctx)
 	if args.Get(0) != nil {
 		return args.Get(0).([]models.JobSpec), args.Error(1)
 	}
 	return []models.JobSpec{}, args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetByDestination(dest string) (models.JobSpec, models.ProjectSpec, error) {
-	args := repo.Called(dest)
+func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(ctx, dest)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
 	}
@@ -76,32 +76,32 @@ type JobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepository) Save(t models.JobSpec) error {
-	return repo.Called(t).Error(0)
+func (repo *JobSpecRepository) Save(ctx context.Context, t models.JobSpec) error {
+	return repo.Called(ctx, t).Error(0)
 }
 
-func (repo *JobSpecRepository) GetByName(name string) (models.JobSpec, error) {
-	args := repo.Called(name)
+func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {
+	args := repo.Called(ctx, name)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Error(1)
 	}
 	return models.JobSpec{}, args.Error(1)
 }
 
-func (repo *JobSpecRepository) Delete(name string) error {
-	return repo.Called(name).Error(0)
+func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
+	return repo.Called(ctx, name).Error(0)
 }
 
-func (repo *JobSpecRepository) GetAll() ([]models.JobSpec, error) {
-	args := repo.Called()
+func (repo *JobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
+	args := repo.Called(ctx)
 	if args.Get(0) != nil {
 		return args.Get(0).([]models.JobSpec), args.Error(1)
 	}
 	return []models.JobSpec{}, args.Error(1)
 }
 
-func (repo *JobSpecRepository) GetByDestination(dest string) (models.JobSpec, models.ProjectSpec, error) {
-	args := repo.Called(dest)
+func (repo *JobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(ctx, dest)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
 	}
@@ -121,28 +121,28 @@ type JobService struct {
 	mock.Mock
 }
 
-func (srv *JobService) Create(spec2 models.NamespaceSpec, spec models.JobSpec) error {
-	args := srv.Called(spec, spec2)
+func (srv *JobService) Create(ctx context.Context, spec2 models.NamespaceSpec, spec models.JobSpec) error {
+	args := srv.Called(ctx, spec, spec2)
 	return args.Error(0)
 }
 
-func (srv *JobService) GetByName(s string, spec models.NamespaceSpec) (models.JobSpec, error) {
-	args := srv.Called(s, spec)
+func (srv *JobService) GetByName(ctx context.Context, s string, spec models.NamespaceSpec) (models.JobSpec, error) {
+	args := srv.Called(ctx, s, spec)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) KeepOnly(spec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
-	args := srv.Called(spec, specs)
+func (srv *JobService) KeepOnly(ctx context.Context, spec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
+	args := srv.Called(ctx, spec, specs)
 	return args.Error(0)
 }
 
-func (srv *JobService) GetAll(spec models.NamespaceSpec) ([]models.JobSpec, error) {
-	args := srv.Called(spec)
+func (srv *JobService) GetAll(ctx context.Context, spec models.NamespaceSpec) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, spec)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) GetByNameForProject(s string, spec models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
-	args := srv.Called(s, spec)
+func (srv *JobService) GetByNameForProject(ctx context.Context, s string, spec models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
+	args := srv.Called(ctx, s, spec)
 	return args.Get(0).(models.JobSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 
@@ -162,7 +162,7 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 }
 
 func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
-	args := j.Called(replayRequest)
+	args := j.Called(ctx, replayRequest)
 	return args.Get(0).(*tree.TreeNode), args.Error(1)
 }
 
@@ -176,8 +176,8 @@ func (j *JobService) GetReplayStatus(ctx context.Context, replayRequest models.R
 	return args.Get(0).(models.ReplayState), args.Error(1)
 }
 
-func (j *JobService) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
-	args := j.Called(projectUUID)
+func (j *JobService) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := j.Called(ctx, projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
@@ -186,7 +186,7 @@ func (j *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []mode
 	return args.Error(0)
 }
 
-func (j *JobService) GetByDestination(projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+func (j *JobService) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	args := j.Called(projectSpec, destination)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }

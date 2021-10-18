@@ -1,6 +1,7 @@
 package local
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -75,7 +76,7 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 	return nil
 }
 
-func (repo *resourceRepository) Save(resourceSpec models.ResourceSpec) error {
+func (repo *resourceRepository) Save(ctx context.Context, resourceSpec models.ResourceSpec) error {
 	if resourceSpec.Name == "" {
 		return errors.New("invalid job name")
 	}
@@ -96,7 +97,7 @@ func (repo *resourceRepository) Save(resourceSpec models.ResourceSpec) error {
 }
 
 // GetAll finds all the resources recursively in current and sub directory
-func (repo *resourceRepository) GetAll() ([]models.ResourceSpec, error) {
+func (repo *resourceRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
 	var resourceSpecs []models.ResourceSpec
 	if repo.cache.dirty {
 		if err := repo.refreshCache(); err != nil {
@@ -114,7 +115,7 @@ func (repo *resourceRepository) GetAll() ([]models.ResourceSpec, error) {
 }
 
 // GetByName returns a job requested by the name
-func (repo *resourceRepository) GetByName(jobName string) (models.ResourceSpec, error) {
+func (repo *resourceRepository) GetByName(ctx context.Context, jobName string) (models.ResourceSpec, error) {
 	if strings.TrimSpace(jobName) == "" {
 		return models.ResourceSpec{}, errors.Errorf("resource name cannot be an empty string")
 	}
@@ -135,7 +136,7 @@ func (repo *resourceRepository) GetByName(jobName string) (models.ResourceSpec, 
 }
 
 // GetByURN returns a job requested by URN
-func (repo *resourceRepository) GetByURN(urn string) (models.ResourceSpec, error) {
+func (repo *resourceRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, error) {
 	if strings.TrimSpace(urn) == "" {
 		return models.ResourceSpec{}, errors.Errorf("resource urn cannot be an empty string")
 	}
@@ -156,7 +157,7 @@ func (repo *resourceRepository) GetByURN(urn string) (models.ResourceSpec, error
 }
 
 // Delete deletes a requested job by name
-func (repo *resourceRepository) Delete(jobName string) error {
+func (repo *resourceRepository) Delete(ctx context.Context, jobName string) error {
 	panic("unimplemented")
 }
 

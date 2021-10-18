@@ -296,13 +296,13 @@ type JobSpecDependency struct {
 // JobService provides a high-level operations on DAGs
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
-	Create(NamespaceSpec, JobSpec) error
+	Create(context.Context, NamespaceSpec, JobSpec) error
 	// GetByName fetches a Job by name for a specific namespace
-	GetByName(string, NamespaceSpec) (JobSpec, error)
+	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
-	KeepOnly(NamespaceSpec, []JobSpec, progress.Observer) error
+	KeepOnly(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
-	GetAll(NamespaceSpec) ([]JobSpec, error)
+	GetAll(context.Context, NamespaceSpec) ([]JobSpec, error)
 	// Delete deletes a job spec from all repos
 	Delete(context.Context, NamespaceSpec, JobSpec) error
 
@@ -311,7 +311,7 @@ type JobService interface {
 	Run(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 
 	// GetByNameForProject fetches a Job by name for a specific project
-	GetByNameForProject(string, ProjectSpec) (JobSpec, NamespaceSpec, error)
+	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
@@ -321,9 +321,9 @@ type JobService interface {
 	// GetReplayStatus of a replay using its ID
 	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
 	//GetReplayList of a project
-	GetReplayList(projectID uuid.UUID) ([]ReplaySpec, error)
+	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]ReplaySpec, error)
 	// GetByDestination fetches a Job by destination for a specific project
-	GetByDestination(projectSpec ProjectSpec, destination string) (JobSpec, error)
+	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 }

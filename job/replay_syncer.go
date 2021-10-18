@@ -36,15 +36,15 @@ func NewReplaySyncer(log log.Logger, replaySpecFactory ReplaySpecRepoFactory, pr
 	}
 }
 
-func (s Syncer) Sync(context context.Context, runTimeout time.Duration) error {
+func (s Syncer) Sync(ctx context.Context, runTimeout time.Duration) error {
 	replaySpecRepo := s.replaySpecFactory.New()
 
-	projectSpecs, err := s.projectRepoFactory.New().GetAll()
+	projectSpecs, err := s.projectRepoFactory.New().GetAll(ctx)
 	if err != nil {
 		return err
 	}
 	for _, projectSpec := range projectSpecs {
-		replaySpecs, err := replaySpecRepo.GetByProjectIDAndStatus(projectSpec.ID, ReplayStatusToSynced)
+		replaySpecs, err := replaySpecRepo.GetByProjectIDAndStatus(ctx, projectSpec.ID, ReplayStatusToSynced)
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				return nil
@@ -55,14 +55,14 @@ func (s Syncer) Sync(context context.Context, runTimeout time.Duration) error {
 		for _, replaySpec := range replaySpecs {
 			// sync end state of replayed replays
 			if replaySpec.Status == models.ReplayStatusReplayed {
-				if err := s.syncRunningReplay(context, projectSpec, replaySpec, replaySpecRepo); err != nil {
+				if err := s.syncRunningReplay(ctx, projectSpec, replaySpec, replaySpecRepo); err != nil {
 					return err
 				}
 				continue
 			}
 
 			// sync timed out replays for accepted and in progress replays
-			if err := s.syncTimedOutReplay(replaySpecRepo, replaySpec, runTimeout); err != nil {
+			if err := s.syncTimedOutReplay(ctx, replaySpecRepo, replaySpec, runTimeout); err != nil {
 				return err
 			}
 		}
@@ -70,10 +70,10 @@ func (s Syncer) Sync(context context.Context, runTimeout time.Duration) error {
 	return nil
 }
 
-func (s Syncer) syncTimedOutReplay(replaySpecRepo store.ReplaySpecRepository, replaySpec models.ReplaySpec, runTimeout time.Duration) error {
+func (s Syncer) syncTimedOutReplay(ctx context.Context, replaySpecRepo store.ReplaySpecRepository, replaySpec models.ReplaySpec, runTimeout time.Duration) error {
 	runningTime := s.Now().Sub(replaySpec.CreatedAt)
 	if runningTime > runTimeout {
-		if updateStatusErr := replaySpecRepo.UpdateStatus(replaySpec.ID, models.ReplayStatusFailed, models.ReplayMessage{
+		if updateStatusErr := replaySpecRepo.UpdateStatus(ctx, replaySpec.ID, models.ReplayStatusFailed, models.ReplayMessage{
 			Type:    ReplayRunTimeout,
 			Message: fmt.Sprintf("replay has been running since %s", replaySpec.CreatedAt.UTC().Format(TimestampLogFormat)),
 		}); updateStatusErr != nil {
@@ -84,13 +84,13 @@ func (s Syncer) syncTimedOutReplay(replaySpecRepo store.ReplaySpecRepository, re
 	return nil
 }
 
-func (s Syncer) syncRunningReplay(context context.Context, projectSpec models.ProjectSpec, replaySpec models.ReplaySpec, replaySpecRepo store.ReplaySpecRepository) error {
-	stateSummary, err := s.checkInstanceState(context, projectSpec, replaySpec)
+func (s Syncer) syncRunningReplay(ctx context.Context, projectSpec models.ProjectSpec, replaySpec models.ReplaySpec, replaySpecRepo store.ReplaySpecRepository) error {
+	stateSummary, err := s.checkInstanceState(ctx, projectSpec, replaySpec)
 	if err != nil {
 		return err
 	}
 
-	return updateCompletedReplays(s.l, stateSummary, replaySpecRepo, replaySpec.ID)
+	return updateCompletedReplays(ctx, s.l, stateSummary, replaySpecRepo, replaySpec.ID)
 }
 
 func (s Syncer) checkInstanceState(ctx context.Context, projectSpec models.ProjectSpec, replaySpec models.ReplaySpec) (map[models.JobRunState]int, error) {
@@ -112,9 +112,9 @@ func (s Syncer) checkInstanceState(ctx context.Context, projectSpec models.Proje
 	return stateSummary, nil
 }
 
-func updateCompletedReplays(l log.Logger, stateSummary map[models.JobRunState]int, replaySpecRepo store.ReplaySpecRepository, replayID uuid.UUID) error {
+func updateCompletedReplays(ctx context.Context, l log.Logger, stateSummary map[models.JobRunState]int, replaySpecRepo store.ReplaySpecRepository, replayID uuid.UUID) error {
 	if stateSummary[models.RunStateRunning] == 0 && stateSummary[models.RunStateFailed] > 0 {
-		if updateStatusErr := replaySpecRepo.UpdateStatus(replayID, models.ReplayStatusFailed, models.ReplayMessage{
+		if updateStatusErr := replaySpecRepo.UpdateStatus(ctx, replayID, models.ReplayStatusFailed, models.ReplayMessage{
 			Type:    models.ReplayStatusFailed,
 			Message: ReplayMessageFailed,
 		}); updateStatusErr != nil {
@@ -122,7 +122,7 @@ func updateCompletedReplays(l log.Logger, stateSummary map[models.JobRunState]in
 			return updateStatusErr
 		}
 	} else if stateSummary[models.RunStateRunning] == 0 && stateSummary[models.RunStateFailed] == 0 && stateSummary[models.RunStateSuccess] > 0 {
-		if updateStatusErr := replaySpecRepo.UpdateStatus(replayID, models.ReplayStatusSuccess, models.ReplayMessage{
+		if updateStatusErr := replaySpecRepo.UpdateStatus(ctx, replayID, models.ReplayStatusSuccess, models.ReplayMessage{
 			Type:    models.ReplayStatusSuccess,
 			Message: ReplayMessageSuccess,
 		}); updateStatusErr != nil {

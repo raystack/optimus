@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -10,9 +11,9 @@ import (
 	"gorm.io/datatypes"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"gorm.io/gorm"
 )
 
 type Replay struct {
@@ -155,17 +156,17 @@ func NewReplayRepository(db *gorm.DB, jobAdapter *JobSpecAdapter) *replayReposit
 	}
 }
 
-func (repo *replayRepository) Insert(replay *models.ReplaySpec) error {
+func (repo *replayRepository) Insert(ctx context.Context, replay *models.ReplaySpec) error {
 	r, err := Replay{}.FromSpec(replay)
 	if err != nil {
 		return err
 	}
-	return repo.DB.Create(&r).Error
+	return repo.DB.WithContext(ctx).Create(&r).Error
 }
 
-func (repo *replayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
+func (repo *replayRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ReplaySpec, error) {
 	var r Replay
-	if err := repo.DB.Where("id = ?", id).Preload("Job").Find(&r).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("id = ?", id).Preload("Job").First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -178,9 +179,9 @@ func (repo *replayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
 	return r.ToSpec(jobSpec)
 }
 
-func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error {
+func (repo *replayRepository) UpdateStatus(ctx context.Context, replayID uuid.UUID, status string, message models.ReplayMessage) error {
 	var r Replay
-	if err := repo.DB.Where("id = ?", replayID).Find(&r).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("id = ?", replayID).Find(&r).Error; err != nil {
 		return errors.New("could not update non-existing replay")
 	}
 	jsonBytes, err := json.Marshal(message)
@@ -189,12 +190,12 @@ func (repo *replayRepository) UpdateStatus(replayID uuid.UUID, status string, me
 	}
 	r.Status = status
 	r.Message = jsonBytes
-	return repo.DB.Save(&r).Error
+	return repo.DB.WithContext(ctx).Save(&r).Error
 }
 
-func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByStatus(ctx context.Context, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.Where("status in (?)", status).Preload("Job").Find(&replays).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("status in (?)", status).Preload("Job").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -217,7 +218,7 @@ func (repo *replayRepository) GetByStatus(status []string) ([]models.ReplaySpec,
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
 	if err := repo.DB.Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -241,9 +242,9 @@ func (repo *replayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []stri
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
+	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
 		Where("job.project_id = ? and status in (?)", projectID, status).Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
@@ -266,9 +267,9 @@ func (repo *replayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, statu
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByProjectID(projectID uuid.UUID) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
+	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
 		Where("job.project_id = ?", projectID).Order("created_at DESC").Find(&replays).Error; err != nil {
 		return []models.ReplaySpec{}, err
 	}

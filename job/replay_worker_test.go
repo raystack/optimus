@@ -63,7 +63,7 @@ func TestReplayWorker(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			errMessage := "replay repo error"
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(errors.New(errMessage))
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(errors.New(errMessage))
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -78,18 +78,18 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			errMessage := "error while clearing dag runs for job job-name: batchScheduler clear error"
 			failedReplayMessage := models.ReplayMessage{
 				Type:    job.AirflowClearDagRunFailed,
 				Message: errMessage,
 			}
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
-			replayRepository.On("GetByID", currUUID).Return(replaySpec, nil)
+			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -105,19 +105,19 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			errMessage := "error while clearing dag runs for job job-name: batchScheduler clear error"
 			failedReplayMessage := models.ReplayMessage{
 				Type:    job.AirflowClearDagRunFailed,
 				Message: errMessage,
 			}
 			updateStatusErr := errors.New("error while updating status to failed")
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(updateStatusErr)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(updateStatusErr)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
-			replayRepository.On("GetByID", currUUID).Return(replaySpec, nil)
+			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -133,14 +133,14 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			updateSuccessStatusErr := errors.New("error while updating replay request")
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(updateSuccessStatusErr)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(updateSuccessStatusErr)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
-			replayRepository.On("GetByID", currUUID).Return(replaySpec, nil)
+			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -154,13 +154,13 @@ func TestReplayWorker(t *testing.T) {
 		t.Run("should update replay status if successful", func(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
-			replayRepository.On("GetByID", currUUID).Return(replaySpec, nil)
+			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -174,13 +174,13 @@ func TestReplayWorker(t *testing.T) {
 			ctx := context.Background()
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("UpdateStatus", currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 			errMessage := "fetch replay failed"
-			replayRepository.On("GetByID", currUUID).Return(models.ReplaySpec{}, errors.New(errMessage))
+			replayRepository.On("GetByID", ctx, currUUID).Return(models.ReplaySpec{}, errors.New(errMessage))
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)

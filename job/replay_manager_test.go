@@ -129,7 +129,7 @@ func TestReplayManager(t *testing.T) {
 				EndDate:   endDate,
 				Status:    models.ReplayStatusAccepted,
 			}
-			replayRepository.On("Insert", toInsertReplaySpec).Return(errors.New(errMessage))
+			replayRepository.On("Insert", ctx, toInsertReplaySpec).Return(errors.New(errMessage))
 
 			worker := mock.NewReplayWorker()
 			replayWorkerFact := new(mock.ReplayWorkerFactory)
@@ -195,7 +195,7 @@ func TestReplayManager(t *testing.T) {
 				EndDate:   endDate,
 				Status:    models.ReplayStatusAccepted,
 			}
-			replayRepository.On("Insert", toInsertReplaySpec).Return(nil)
+			replayRepository.On("Insert", ctx, toInsertReplaySpec).Return(nil)
 
 			worker := mock.NewReplayWorker()
 			replayRequestToProcess := replayRequest
@@ -245,7 +245,7 @@ func TestReplayManager(t *testing.T) {
 		//		Status:    models.ReplayStatusAccepted,
 		//	}
 		//
-		//	replayRepository.On("Insert", toInsertReplaySpec).Return(nil).Times(4)
+		//	replayRepository.On("Insert", ctx, toInsertReplaySpec).Return(nil).Times(4)
 		//
 		//	// other workers should not be closed before encounter full state.
 		//	// replay will be cancelled when workers are full.
@@ -315,14 +315,14 @@ func TestReplayManager(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByID", replayUUID).Return(replaySpec, nil)
+			replayRepository.On("GetByID", ctx, replayUUID).Return(replaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
-			replayResult, err := replayManager.GetReplay(replayUUID)
+			replayResult, err := replayManager.GetReplay(ctx, replayUUID)
 
 			assert.Nil(t, err)
 			assert.Equal(t, replaySpec, replayResult)
@@ -335,14 +335,14 @@ func TestReplayManager(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByID", replayUUID).Return(models.ReplaySpec{}, store.ErrResourceNotFound)
+			replayRepository.On("GetByID", ctx, replayUUID).Return(models.ReplaySpec{}, store.ErrResourceNotFound)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
-			replayResult, err := replayManager.GetReplay(replayUUID)
+			replayResult, err := replayManager.GetReplay(ctx, replayUUID)
 
 			assert.Equal(t, err, store.ErrResourceNotFound)
 			assert.Equal(t, models.ReplaySpec{}, replayResult)
@@ -372,14 +372,14 @@ func TestReplayManager(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectID", projectUUID).Return(replaySpecs, nil)
+			replayRepository.On("GetByProjectID", ctx, projectUUID).Return(replaySpecs, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
-			replayListResult, err := replayManager.GetReplayList(projectUUID)
+			replayListResult, err := replayManager.GetReplayList(ctx, projectUUID)
 
 			assert.Nil(t, err)
 			assert.Equal(t, replaySpecs, replayListResult)
@@ -415,14 +415,14 @@ func TestReplayManager(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectID", projectUUID).Return(replaySpecs, nil)
+			replayRepository.On("GetByProjectID", ctx, projectUUID).Return(replaySpecs, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
-			replayListResult, err := replayManager.GetReplayList(projectUUID)
+			replayListResult, err := replayManager.GetReplayList(ctx, projectUUID)
 
 			expectedReplaySpecs := []models.ReplaySpec{replaySpecs[0]}
 			assert.Nil(t, err)
@@ -436,14 +436,14 @@ func TestReplayManager(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectID", projectUUID).Return([]models.ReplaySpec{}, store.ErrResourceNotFound)
+			replayRepository.On("GetByProjectID", ctx, projectUUID).Return([]models.ReplaySpec{}, store.ErrResourceNotFound)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
-			replayResult, err := replayManager.GetReplayList(projectUUID)
+			replayResult, err := replayManager.GetReplayList(ctx, projectUUID)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []models.ReplaySpec{}, replayResult)
@@ -457,14 +457,14 @@ func TestReplayManager(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			errorMsg := "unable to get list of replays"
-			replayRepository.On("GetByProjectID", projectUUID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
+			replayRepository.On("GetByProjectID", ctx, projectUUID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
 			replaySpecRepoFac.On("New").Return(replayRepository)
 
 			replayManager := job.NewManager(log, nil, replaySpecRepoFac, nil, job.ReplayManagerConfig{}, nil, nil, nil)
-			replayResult, err := replayManager.GetReplayList(projectUUID)
+			replayResult, err := replayManager.GetReplayList(ctx, projectUUID)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.ReplaySpec{}, replayResult)

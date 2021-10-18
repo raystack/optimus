@@ -18,13 +18,13 @@ type ReplayRepository struct {
 	mock.Mock
 }
 
-func (repo *ReplayRepository) GetByID(id uuid.UUID) (models.ReplaySpec, error) {
-	args := repo.Called(id)
+func (repo *ReplayRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ReplaySpec, error) {
+	args := repo.Called(ctx, id)
 	return args.Get(0).(models.ReplaySpec), args.Error(1)
 }
 
-func (repo *ReplayRepository) Insert(replay *models.ReplaySpec) error {
-	return repo.Called(&models.ReplaySpec{
+func (repo *ReplayRepository) Insert(ctx context.Context, replay *models.ReplaySpec) error {
+	return repo.Called(ctx, &models.ReplaySpec{
 		ID:        replay.ID,
 		Job:       replay.Job,
 		StartDate: replay.StartDate,
@@ -35,27 +35,27 @@ func (repo *ReplayRepository) Insert(replay *models.ReplaySpec) error {
 	}).Error(0)
 }
 
-func (repo *ReplayRepository) UpdateStatus(replayID uuid.UUID, status string, message models.ReplayMessage) error {
-	return repo.Called(replayID, status, message).Error(0)
+func (repo *ReplayRepository) UpdateStatus(ctx context.Context, replayID uuid.UUID, status string, message models.ReplayMessage) error {
+	return repo.Called(ctx, replayID, status, message).Error(0)
 }
 
-func (repo *ReplayRepository) GetByStatus(status []string) ([]models.ReplaySpec, error) {
-	args := repo.Called(status)
+func (repo *ReplayRepository) GetByStatus(ctx context.Context, status []string) ([]models.ReplaySpec, error) {
+	args := repo.Called(ctx, status)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-func (repo *ReplayRepository) GetByJobIDAndStatus(jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
-	args := repo.Called(jobID, status)
+func (repo *ReplayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+	args := repo.Called(ctx, jobID, status)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-func (repo *ReplayRepository) GetByProjectIDAndStatus(projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
-	args := repo.Called(projectID, status)
+func (repo *ReplayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+	args := repo.Called(ctx, projectID, status)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-func (repo *ReplayRepository) GetByProjectID(projectID uuid.UUID) ([]models.ReplaySpec, error) {
-	args := repo.Called(projectID)
+func (repo *ReplayRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := repo.Called(ctx, projectID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
@@ -81,13 +81,13 @@ func (rm *ReplayManager) Init() {
 	return
 }
 
-func (rm *ReplayManager) GetReplay(uuid uuid.UUID) (models.ReplaySpec, error) {
-	args := rm.Called(uuid)
+func (rm *ReplayManager) GetReplay(ctx context.Context, uuid uuid.UUID) (models.ReplaySpec, error) {
+	args := rm.Called(ctx, uuid)
 	return args.Get(0).(models.ReplaySpec), args.Error(1)
 }
 
-func (rm *ReplayManager) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
-	args := rm.Called(projectUUID)
+func (rm *ReplayManager) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := rm.Called(ctx, projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 

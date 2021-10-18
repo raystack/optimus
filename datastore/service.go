@@ -41,12 +41,12 @@ type Service struct {
 	uuidProvider        utils.UUIDProvider
 }
 
-func (srv Service) GetAll(namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
+func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
 	ds, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return nil, err
 	}
-	return srv.resourceRepoFactory.New(namespace, ds).GetAll()
+	return srv.resourceRepoFactory.New(namespace, ds).GetAll(ctx)
 }
 
 func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
@@ -55,7 +55,7 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 		currentSpec := resourceSpec
 		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			if err := repo.Save(currentSpec); err != nil {
+			if err := repo.Save(ctx, currentSpec); err != nil {
 				return nil, err
 			}
 
@@ -86,7 +86,7 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 		currentSpec := resourceSpec
 		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			if err := repo.Save(currentSpec); err != nil {
+			if err := repo.Save(ctx, currentSpec); err != nil {
 				return nil, err
 			}
 
@@ -117,7 +117,7 @@ func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceS
 		return models.ResourceSpec{}, err
 	}
 	repo := srv.resourceRepoFactory.New(namespace, ds)
-	dbSpec, err := repo.GetByName(name)
+	dbSpec, err := repo.GetByName(ctx, name)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
@@ -138,7 +138,7 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 		return err
 	}
 	repo := srv.resourceRepoFactory.New(namespace, ds)
-	resourceSpec, err := repo.GetByName(name)
+	resourceSpec, err := repo.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 		return err
 	}
 
-	return repo.Delete(name)
+	return repo.Delete(ctx, name)
 }
 
 func generateResourceDestination(ctx context.Context, jobSpec models.JobSpec) (*models.GenerateDestinationResponse, error) {
@@ -161,9 +161,9 @@ func generateResourceDestination(ctx context.Context, jobSpec models.JobSpec) (*
 	})
 }
 
-func (srv Service) getResourceSpec(datastorer models.Datastorer, namespace models.NamespaceSpec, destinationURN string) (models.ResourceSpec, error) {
+func (srv Service) getResourceSpec(ctx context.Context, datastorer models.Datastorer, namespace models.NamespaceSpec, destinationURN string) (models.ResourceSpec, error) {
 	repo := srv.resourceRepoFactory.New(namespace, datastorer)
-	return repo.GetByURN(destinationURN)
+	return repo.GetByURN(ctx, destinationURN)
 }
 
 func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
@@ -179,7 +179,7 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			return nil, err
 		}
 
-		resourceSpec, err := srv.getResourceSpec(datastorer, backupRequest.Namespace, destination.URN())
+		resourceSpec, err := srv.getResourceSpec(ctx, datastorer, backupRequest.Namespace, destination.URN())
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				continue
@@ -223,7 +223,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			return nil, err
 		}
 
-		resourceSpec, err := srv.getResourceSpec(datastorer, backupRequest.Namespace, destination.URN())
+		resourceSpec, err := srv.getResourceSpec(ctx, datastorer, backupRequest.Namespace, destination.URN())
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				continue
@@ -258,21 +258,21 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 
 	//save the backup
 	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
-	if err := backupRepo.Save(backupSpec); err != nil {
+	if err := backupRepo.Save(ctx, backupSpec); err != nil {
 		return nil, err
 	}
 
 	return backupResult, nil
 }
 
-func (srv Service) ListBackupResources(projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+func (srv Service) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
 	datastorer, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return []models.BackupSpec{}, err
 	}
 
 	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
-	backupSpecs, err := backupRepo.GetAll()
+	backupSpecs, err := backupRepo.GetAll(ctx)
 	if err != nil {
 		if err == store.ErrResourceNotFound {
 			return []models.BackupSpec{}, nil

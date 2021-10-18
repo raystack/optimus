@@ -41,7 +41,7 @@ func TestService(t *testing.T) {
 			}
 
 			repo := new(mock.JobSpecRepository)
-			repo.On("Save", jobSpec).Return(nil)
+			repo.On("Save", ctx, jobSpec).Return(nil)
 			defer repo.AssertExpectations(t)
 
 			repoFac := new(mock.JobSpecRepoFactory)
@@ -52,7 +52,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			err := svc.Create(namespaceSpec, jobSpec)
+			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
 
@@ -76,7 +76,7 @@ func TestService(t *testing.T) {
 			}
 
 			repo := new(mock.JobSpecRepository)
-			repo.On("Save", jobSpec).Return(errors.New("unknown error"))
+			repo.On("Save", ctx, jobSpec).Return(errors.New("unknown error"))
 			defer repo.AssertExpectations(t)
 
 			repoFac := new(mock.JobSpecRepoFactory)
@@ -84,7 +84,7 @@ func TestService(t *testing.T) {
 			defer repoFac.AssertExpectations(t)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
-			err := svc.Create(namespaceSpec, jobSpec)
+			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})
 	})
@@ -214,7 +214,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobSpecRepo := new(mock.JobSpecRepository)
-			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -222,7 +222,7 @@ func TestService(t *testing.T) {
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -300,7 +300,7 @@ func TestService(t *testing.T) {
 
 			// used to store raw job specs
 			jobSpecRepo := new(mock.JobSpecRepository)
-			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -308,7 +308,7 @@ func TestService(t *testing.T) {
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -326,7 +326,7 @@ func TestService(t *testing.T) {
 			defer priorityResolver.AssertExpectations(t)
 
 			// fetch currently stored
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			batchScheduler := new(mock.Scheduler)
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
@@ -368,7 +368,7 @@ func TestService(t *testing.T) {
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -437,7 +437,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobSpecRepo := new(mock.JobSpecRepository)
-			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -445,7 +445,7 @@ func TestService(t *testing.T) {
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -531,7 +531,7 @@ func TestService(t *testing.T) {
 
 			// used to store raw job specs
 			jobSpecRepo := new(mock.JobSpecRepository)
-			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -545,12 +545,12 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			// fetch currently stored
-			jobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			// delete unwanted
-			jobSpecRepo.On("Delete", jobSpecsBase[0].Name).Return(nil)
+			jobSpecRepo.On("Delete", ctx, jobSpecsBase[0].Name).Return(nil)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			err := svc.KeepOnly(namespaceSpec, toKeep, nil)
+			err := svc.KeepOnly(ctx, namespaceSpec, toKeep, nil)
 			assert.Nil(t, err)
 		})
 	})
@@ -599,7 +599,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobSpecRepo := new(mock.JobSpecRepository)
-			jobSpecRepo.On("Delete", "test").Return(nil)
+			jobSpecRepo.On("Delete", ctx, "test").Return(nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -607,7 +607,7 @@ func TestService(t *testing.T) {
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -685,7 +685,7 @@ func TestService(t *testing.T) {
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -718,14 +718,14 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
-			projectJobSpecRepo.On("GetByDestination", destination).Return(jobSpec1, models.ProjectSpec{}, nil)
+			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(jobSpec1, models.ProjectSpec{}, nil)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetByDestination(projSpec, destination)
+			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpec1, jobSpecsResult)
 		})
@@ -738,14 +738,14 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 			errorMsg := "unable to fetch jobspec"
-			projectJobSpecRepo.On("GetByDestination", destination).Return(models.JobSpec{}, models.ProjectSpec{}, errors.New(errorMsg))
+			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(models.JobSpec{}, models.ProjectSpec{}, errors.New(errorMsg))
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetByDestination(projSpec, destination)
+			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Equal(t, models.JobSpec{}, jobSpecsResult)
 		})
@@ -763,7 +763,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
@@ -793,7 +793,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 			errorMsg := "unable to get all job specs of a project"
-			projectJobSpecRepo.On("GetAll").Return([]models.JobSpec{}, errors.New(errorMsg))
+			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
@@ -818,7 +818,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
-			projectJobSpecRepo.On("GetAll").Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)

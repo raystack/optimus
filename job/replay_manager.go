@@ -106,7 +106,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 	}
 
 	// could get cancelled later if queue is full
-	if err = replaySpecRepo.Insert(&replay); err != nil {
+	if err = replaySpecRepo.Insert(ctx, &replay); err != nil {
 		return "", err
 	}
 
@@ -115,7 +115,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 		return reqInput.ID.String(), nil
 	default:
 		// all workers busy, mark the inserted request as cancelled
-		_ = replaySpecRepo.UpdateStatus(reqInput.ID, models.ReplayStatusCancelled, models.ReplayMessage{
+		_ = replaySpecRepo.UpdateStatus(ctx, reqInput.ID, models.ReplayStatusCancelled, models.ReplayMessage{
 			Type:    models.ReplayStatusCancelled,
 			Message: ErrRequestQueueFull.Error(),
 		})
@@ -153,13 +153,13 @@ func (m *Manager) SchedulerSyncer() {
 }
 
 // GetReplay using UUID
-func (m *Manager) GetReplay(replayUUID uuid.UUID) (models.ReplaySpec, error) {
-	return m.replaySpecRepoFac.New().GetByID(replayUUID)
+func (m *Manager) GetReplay(ctx context.Context, replayUUID uuid.UUID) (models.ReplaySpec, error) {
+	return m.replaySpecRepoFac.New().GetByID(ctx, replayUUID)
 }
 
 // GetReplayList using Project ID
-func (m *Manager) GetReplayList(projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
-	replays, err := m.replaySpecRepoFac.New().GetByProjectID(projectUUID)
+func (m *Manager) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	replays, err := m.replaySpecRepoFac.New().GetByProjectID(ctx, projectUUID)
 	if err != nil {
 		if err == store.ErrResourceNotFound {
 			return []models.ReplaySpec{}, nil

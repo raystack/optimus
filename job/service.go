@@ -61,8 +61,8 @@ type ProjectRepoFactory interface {
 type ReplayManager interface {
 	Init()
 	Replay(context.Context, models.ReplayRequest) (string, error)
-	GetReplay(uuid.UUID) (models.ReplaySpec, error)
-	GetReplayList(projectID uuid.UUID) ([]models.ReplaySpec, error)
+	GetReplay(context.Context, uuid.UUID) (models.ReplaySpec, error)
+	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
 	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time,
 		jobName string) ([]models.JobStatus, error)
 }
@@ -89,17 +89,17 @@ type Service struct {
 }
 
 // Create constructs a Job for a namespace and commits it to the store
-func (srv *Service) Create(namespace models.NamespaceSpec, spec models.JobSpec) error {
+func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) error {
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
-	if err := jobRepo.Save(spec); err != nil {
+	if err := jobRepo.Save(ctx, spec); err != nil {
 		return errors.Wrapf(err, "failed to save job: %s", spec.Name)
 	}
 	return nil
 }
 
 // GetByName fetches a Job by name for a specific namespace
-func (srv *Service) GetByName(name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
-	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(name)
+func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
+	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(ctx, name)
 	if err != nil {
 		return models.JobSpec{}, errors.Wrapf(err, "failed to retrieve job")
 	}
@@ -107,16 +107,16 @@ func (srv *Service) GetByName(name string, namespace models.NamespaceSpec) (mode
 }
 
 // GetByNameForProject fetches a Job by name for a specific project
-func (srv *Service) GetByNameForProject(name string, proj models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
-	jobSpec, namespace, err := srv.projectJobSpecRepoFactory.New(proj).GetByName(name)
+func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
+	jobSpec, namespace, err := srv.projectJobSpecRepoFactory.New(proj).GetByName(ctx, name)
 	if err != nil {
 		return models.JobSpec{}, models.NamespaceSpec{}, errors.Wrapf(err, "failed to retrieve job")
 	}
 	return jobSpec, namespace, nil
 }
 
-func (srv *Service) GetAll(namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	jobSpecs, err := srv.jobSpecRepoFactory.New(namespace).GetAll()
+func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
+	jobSpecs, err := srv.jobSpecRepoFactory.New(namespace).GetAll(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve jobs")
 	}
@@ -187,7 +187,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
 	// delete from internal store
-	if err := jobSpecRepo.Delete(jobSpec.Name); err != nil {
+	if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
 		return errors.Wrapf(err, "failed to delete spec: %s", jobSpec.Name)
 	}
 
@@ -214,7 +214,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	}
 	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
 
-	jobSpecs, err = srv.filterJobSpecForNamespace(jobSpecs, namespace)
+	jobSpecs, err = srv.filterJobSpecForNamespace(ctx, jobSpecs, namespace)
 	if err != nil {
 		return err
 	}
@@ -253,9 +253,9 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 }
 
 // KeepOnly only keeps the provided jobSpecs in argument and deletes rest from spec repository
-func (srv *Service) KeepOnly(namespace models.NamespaceSpec, specsToKeep []models.JobSpec, progressObserver progress.Observer) error {
+func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec, specsToKeep []models.JobSpec, progressObserver progress.Observer) error {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	jobSpecs, err := jobSpecRepo.GetAll()
+	jobSpecs, err := jobSpecRepo.GetAll(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch specs for namespace %s", namespace.Name)
 	}
@@ -275,7 +275,7 @@ func (srv *Service) KeepOnly(namespace models.NamespaceSpec, specsToKeep []model
 
 	for _, jobName := range jobsToDelete {
 		// delete raw spec
-		if err := jobSpecRepo.Delete(jobName); err != nil {
+		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
 			return errors.Wrapf(err, "failed to delete spec: %s", jobName)
 		}
 		srv.notifyProgress(progressObserver, &EventSavedJobDelete{jobName})
@@ -284,9 +284,9 @@ func (srv *Service) KeepOnly(namespace models.NamespaceSpec, specsToKeep []model
 }
 
 // filterJobSpecForNamespace returns only job specs of a given namespace
-func (srv *Service) filterJobSpecForNamespace(jobSpecs []models.JobSpec, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
+func (srv *Service) filterJobSpecForNamespace(ctx context.Context, jobSpecs []models.JobSpec, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	namespaceJobSpecs, err := jobSpecRepo.GetAll()
+	namespaceJobSpecs, err := jobSpecRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (srv *Service) filterJobSpecForNamespace(jobSpecs []models.JobSpec, namespa
 func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
-	jobSpecs, err := projectJobSpecRepo.GetAll()
+	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve jobs")
 	}
@@ -378,10 +378,10 @@ func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.Proje
 	return nil
 }
 
-func (srv *Service) GetByDestination(projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	jobSpec, _, err := projectJobSpecRepo.GetByDestination(destination)
+	jobSpec, _, err := projectJobSpecRepo.GetByDestination(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
