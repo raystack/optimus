@@ -48,7 +48,7 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 
 	repo := s.jobRunRepoFac.New()
 	for _, runs := range jobRuns {
-		if err := repo.Save(namespace, runs); err != nil {
+		if err := repo.Save(ctx, namespace, runs); err != nil {
 			return err
 		}
 	}

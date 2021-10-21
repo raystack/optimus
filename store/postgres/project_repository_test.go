@@ -3,14 +3,15 @@
 package postgres
 
 import (
+	"context"
 	"os"
 	"sort"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestProjectRepository(t *testing.T) {
@@ -36,6 +37,7 @@ func TestProjectRepository(t *testing.T) {
 
 		return dbConn
 	}
+	ctx := context.Background()
 
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
@@ -68,108 +70,113 @@ func TestProjectRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.ProjectSpec{}
 		testModels = append(testModels, testConfigs...)
 
 		repo := NewProjectRepository(db, hash)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = repo.Insert(testModels[1])
+		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
-		checkModel, err := repo.GetByID(testModels[0].ID)
+		checkModel, err := repo.GetByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
 			repo := NewProjectRepository(db, hash)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
 			//try for update
-			err = repo.Save(testModelB)
+			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelB.ID)
+			checkModel, err = repo.GetByID(ctx, testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
 			repo := NewProjectRepository(db, hash)
 
 			//try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
 			//try for update
 			testModelA.Config["bucket"] = "gs://another_folder"
-			err = repo.Save(testModelA)
+			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelA.ID)
+			checkModel, err = repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://another_folder", checkModel.Config["bucket"])
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
 			repo := NewProjectRepository(db, hash)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 		})
 	})
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.ProjectSpec{}
 		testModels = append(testModels, testConfigs...)
 
 		repo := NewProjectRepository(db, hash)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = NewSecretRepository(db, testModels[0], hash).Save(models.ProjectSecretItem{
+		err = NewSecretRepository(db, testModels[0], hash).Save(ctx, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 
@@ -178,27 +185,28 @@ func TestProjectRepository(t *testing.T) {
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
-		testModels := []models.ProjectSpec{}
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
+		var testModels []models.ProjectSpec
 		testModels = append(testModels, testConfigs...)
 
 		repo := NewProjectRepository(db, hash)
 
-		assert.Nil(t, repo.Insert(testModels[2]))
-		assert.Nil(t, repo.Insert(testModels[3]))
+		assert.Nil(t, repo.Insert(ctx, testModels[2]))
+		assert.Nil(t, repo.Insert(ctx, testModels[3]))
 
-		err := NewSecretRepository(db, testModels[2], hash).Save(models.ProjectSecretItem{
+		err := NewSecretRepository(db, testModels[2], hash).Save(ctx, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
 		assert.Nil(t, err)
-		err = NewSecretRepository(db, testModels[3], hash).Save(models.ProjectSecretItem{
+		err = NewSecretRepository(db, testModels[3], hash).Save(ctx, models.ProjectSecretItem{
 			Name:  "t2",
 			Value: "v2",
 		})
 		assert.Nil(t, err)
 
-		checkModels, err := repo.GetAll()
+		checkModels, err := repo.GetAll(ctx)
 		assert.Nil(t, err)
 		sort.Slice(checkModels, func(i, j int) bool {
 			return checkModels[i].Name < checkModels[j].Name

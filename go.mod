@@ -27,10 +27,8 @@ require (
 	github.com/hashicorp/serf v0.8.2
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/jhump/protoreflect v1.9.1-0.20210817181203-db1a327a393e // indirect
-	github.com/jinzhu/gorm v1.9.16
 	github.com/knadh/koanf v1.1.0
 	github.com/kushsharma/parallel v0.2.1
-	github.com/lib/pq v1.10.2
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/odpf/salt v0.0.0-20210919015538-3fd8ab22acea
 	github.com/olekukonko/tablewriter v0.0.5
@@ -56,6 +54,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gorm.io/datatypes v1.0.0
+	gorm.io/driver/postgres v1.0.5
+	gorm.io/gorm v1.21.16
 )
 
 go 1.16

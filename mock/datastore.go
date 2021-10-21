@@ -94,8 +94,8 @@ type DatastoreService struct {
 	mock.Mock
 }
 
-func (d *DatastoreService) GetAll(spec models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
-	args := d.Called(spec, datastoreName)
+func (d *DatastoreService) GetAll(ctx context.Context, spec models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
+	args := d.Called(ctx, spec, datastoreName)
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
 }
 
@@ -126,8 +126,8 @@ func (d *DatastoreService) BackupResource(ctx context.Context, req models.Backup
 	return args.Get(0).([]string), args.Error(1)
 }
 
-func (d *DatastoreService) ListBackupResources(projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
-	args := d.Called(projectSpec, datastoreName)
+func (d *DatastoreService) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+	args := d.Called(ctx, projectSpec, datastoreName)
 	return args.Get(0).([]models.BackupSpec), args.Error(1)
 }
 
@@ -161,27 +161,27 @@ type ResourceSpecRepository struct {
 	mock.Mock
 }
 
-func (r *ResourceSpecRepository) Save(spec models.ResourceSpec) error {
-	return r.Called(spec).Error(0)
+func (r *ResourceSpecRepository) Save(ctx context.Context, spec models.ResourceSpec) error {
+	return r.Called(ctx, spec).Error(0)
 }
 
-func (r *ResourceSpecRepository) GetByName(s string) (models.ResourceSpec, error) {
-	args := r.Called(s)
+func (r *ResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, error) {
+	args := r.Called(ctx, s)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
 
-func (r *ResourceSpecRepository) GetByURN(s string) (models.ResourceSpec, error) {
-	args := r.Called(s)
+func (r *ResourceSpecRepository) GetByURN(ctx context.Context, s string) (models.ResourceSpec, error) {
+	args := r.Called(ctx, s)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
 
-func (r *ResourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
-	args := r.Called()
+func (r *ResourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
+	args := r.Called(ctx)
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
 }
 
-func (r *ResourceSpecRepository) Delete(s string) error {
-	return r.Called(s).Error(0)
+func (r *ResourceSpecRepository) Delete(ctx context.Context, s string) error {
+	return r.Called(ctx, s).Error(0)
 }
 
 type ProjectResourceSpecRepoFactory struct {
@@ -196,12 +196,12 @@ type ProjectResourceSpecRepository struct {
 	mock.Mock
 }
 
-func (r *ProjectResourceSpecRepository) GetByName(s string) (models.ResourceSpec, error) {
-	args := r.Called(s)
+func (r *ProjectResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, error) {
+	args := r.Called(ctx, s)
 	return args.Get(0).(models.ResourceSpec), args.Error(1)
 }
 
-func (r *ProjectResourceSpecRepository) GetAll() ([]models.ResourceSpec, error) {
-	args := r.Called()
+func (r *ProjectResourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
+	args := r.Called(ctx)
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
 }

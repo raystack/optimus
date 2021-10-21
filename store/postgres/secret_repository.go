@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"encoding/base64"
 	"time"
 
@@ -8,13 +9,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gtank/cryptopasta"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
+	"gorm.io/gorm"
 )
 
 type Secret struct {
-	ID        uuid.UUID `gorm:"primary_key;type:uuid"`
+	ID        uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 	ProjectID uuid.UUID
 	Project   Project `gorm:"foreignKey:ProjectID"`
 
@@ -23,7 +24,7 @@ type Secret struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt *time.Time
+	DeletedAt gorm.DeletedAt
 }
 
 func (p Secret) FromSpec(spec models.ProjectSecretItem, proj models.ProjectSpec, hash models.ApplicationKey) (Secret, error) {
@@ -71,7 +72,7 @@ type secretRepository struct {
 	hash models.ApplicationKey
 }
 
-func (repo *secretRepository) Insert(resource models.ProjectSecretItem) error {
+func (repo *secretRepository) Insert(ctx context.Context, resource models.ProjectSecretItem) error {
 	p, err := Secret{}.FromSpec(resource, repo.project, repo.hash)
 	if err != nil {
 		return err
@@ -79,13 +80,13 @@ func (repo *secretRepository) Insert(resource models.ProjectSecretItem) error {
 	if len(p.Name) == 0 {
 		return errors.New("name cannot be empty")
 	}
-	return repo.db.Create(&p).Error
+	return repo.db.WithContext(ctx).Save(&p).Error
 }
 
-func (repo *secretRepository) Save(spec models.ProjectSecretItem) error {
-	existingResource, err := repo.GetByName(spec.Name)
+func (repo *secretRepository) Save(ctx context.Context, spec models.ProjectSecretItem) error {
+	existingResource, err := repo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(spec)
+		return repo.Insert(ctx, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find secret by name")
 	}
@@ -96,12 +97,12 @@ func (repo *secretRepository) Save(spec models.ProjectSecretItem) error {
 	if err == nil {
 		resource.ID = existingResource.ID
 	}
-	return repo.db.Model(&resource).Updates(&resource).Error
+	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
 }
 
-func (repo *secretRepository) GetByName(name string) (models.ProjectSecretItem, error) {
+func (repo *secretRepository) GetByName(ctx context.Context, name string) (models.ProjectSecretItem, error) {
 	var r Secret
-	if err := repo.db.Where("name = ? AND project_id = ?", name, repo.project.ID).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("name = ? AND project_id = ?", name, repo.project.ID).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSecretItem{}, store.ErrResourceNotFound
 		}
@@ -110,9 +111,9 @@ func (repo *secretRepository) GetByName(name string) (models.ProjectSecretItem, 
 	return r.ToSpec(repo.hash)
 }
 
-func (repo *secretRepository) GetByID(id uuid.UUID) (models.ProjectSecretItem, error) {
+func (repo *secretRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ProjectSecretItem, error) {
 	var r Secret
-	if err := repo.db.Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSecretItem{}, store.ErrResourceNotFound
 		}
@@ -121,10 +122,10 @@ func (repo *secretRepository) GetByID(id uuid.UUID) (models.ProjectSecretItem, e
 	return r.ToSpec(repo.hash)
 }
 
-func (repo *secretRepository) GetAll() ([]models.ProjectSecretItem, error) {
+func (repo *secretRepository) GetAll(ctx context.Context) ([]models.ProjectSecretItem, error) {
 	var specs []models.ProjectSecretItem
 	var resources []Secret
-	if err := repo.db.Find(&resources).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Find(&resources).Error; err != nil {
 		return specs, err
 	}
 	for _, res := range resources {

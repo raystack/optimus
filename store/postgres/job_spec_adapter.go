@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -44,7 +46,7 @@ type Job struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt *time.Time
+	DeletedAt gorm.DeletedAt
 }
 
 type JobBehavior struct {
@@ -373,10 +375,6 @@ func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace
 type JobRun struct {
 	ID uuid.UUID `gorm:"primary_key;type:uuid;"`
 
-	// TODO: I think we can delete this field, its kinda useless
-	// could be null for manual/adhoc jobs
-	JobID uuid.UUID `gorm:"type:uuid;"`
-
 	// job spec for which this run was created, spec should contain a valid
 	// uuid if it belongs to a saved job and not an adhoc job
 	Spec datatypes.JSON `gorm:"column:specification;"`
@@ -388,7 +386,7 @@ type JobRun struct {
 	Status      string
 	ScheduledAt time.Time
 
-	Instances []Instance `gorm:"polymorphic:JobRun;"`
+	Instances []Instance
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -420,9 +418,8 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 	}
 
 	return JobRun{
-		ID:    jr.ID,
-		JobID: jr.Spec.ID,
-		Spec:  specBytes,
+		ID:   jr.ID,
+		Spec: specBytes,
 
 		NamespaceID: adaptNamespace.ID,
 		Namespace:   adaptNamespace,

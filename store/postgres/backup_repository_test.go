@@ -3,6 +3,7 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -11,9 +12,9 @@ import (
 	testMock "github.com/stretchr/testify/mock"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestBackupRepository(t *testing.T) {
@@ -25,6 +26,7 @@ func TestBackupRepository(t *testing.T) {
 		},
 	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
+	ctx := context.Background()
 
 	// prepare mocked datastore
 	dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
@@ -58,7 +60,7 @@ func TestBackupRepository(t *testing.T) {
 		}
 
 		projRepo := NewProjectRepository(dbConn, hash)
-		assert.Nil(t, projRepo.Save(projectSpec))
+		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
 
@@ -70,7 +72,8 @@ func TestBackupRepository(t *testing.T) {
 
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		resourceSpec := models.ResourceSpec{
 			ID:        uuid.Must(uuid.NewRandom()),
@@ -112,14 +115,14 @@ func TestBackupRepository(t *testing.T) {
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 		resourceRepo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
-		err := resourceRepo.Insert(resourceSpec)
+		err := resourceRepo.Insert(ctx, resourceSpec)
 		assert.Nil(t, err)
 
 		backupRepo := NewBackupRepository(db, projectSpec, datastorer)
-		err = backupRepo.Save(backupSpec)
+		err = backupRepo.Save(ctx, backupSpec)
 		assert.Nil(t, err)
 
-		backups, err := backupRepo.GetAll()
+		backups, err := backupRepo.GetAll(ctx)
 		assert.Nil(t, err)
 
 		assert.Equal(t, backupSpec.ID, backups[0].ID)

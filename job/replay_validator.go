@@ -34,7 +34,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 		}
 
 		//check another replay active for this dag
-		activeReplaySpecs, err := replaySpecRepo.GetByStatus(ReplayStatusToValidate)
+		activeReplaySpecs, err := replaySpecRepo.GetByStatus(ctx, ReplayStatusToValidate)
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				return nil
@@ -44,11 +44,11 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 		return validateReplayJobsConflict(activeReplaySpecs, reqInput, reqReplayNodes)
 	}
 	//check and cancel if found conflicted replays for same job ID
-	return cancelConflictedReplays(replaySpecRepo, reqInput)
+	return cancelConflictedReplays(ctx, replaySpecRepo, reqInput)
 }
 
-func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput models.ReplayRequest) error {
-	duplicatedReplaySpecs, err := replaySpecRepo.GetByJobIDAndStatus(reqInput.Job.ID, ReplayStatusToValidate)
+func cancelConflictedReplays(ctx context.Context, replaySpecRepo store.ReplaySpecRepository, reqInput models.ReplayRequest) error {
+	duplicatedReplaySpecs, err := replaySpecRepo.GetByJobIDAndStatus(ctx, reqInput.Job.ID, ReplayStatusToValidate)
 	if err != nil {
 		if err == store.ErrResourceNotFound {
 			return nil
@@ -56,7 +56,7 @@ func cancelConflictedReplays(replaySpecRepo store.ReplaySpecRepository, reqInput
 		return err
 	}
 	for _, replaySpec := range duplicatedReplaySpecs {
-		if err := replaySpecRepo.UpdateStatus(replaySpec.ID, models.ReplayStatusCancelled, models.ReplayMessage{
+		if err := replaySpecRepo.UpdateStatus(ctx, replaySpec.ID, models.ReplayStatusCancelled, models.ReplayMessage{
 			Type:    ErrConflictedJobRun.Error(),
 			Message: fmt.Sprintf("force started replay with ID: %s", reqInput.ID),
 		}); err != nil {

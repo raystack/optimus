@@ -1,11 +1,15 @@
 package job
 
-import "github.com/odpf/optimus/models"
+import (
+	"context"
+
+	"github.com/odpf/optimus/models"
+)
 
 // SpecRepository represents a storage interface for Job specifications at a namespace level
 type SpecRepository interface {
-	Save(models.JobSpec) error
-	GetByName(string) (models.JobSpec, error)
-	GetAll() ([]models.JobSpec, error)
-	Delete(string) error
+	Save(context.Context, models.JobSpec) error
+	GetByName(context.Context, string) (models.JobSpec, error)
+	GetAll(context.Context) ([]models.JobSpec, error)
+	Delete(context.Context, string) error
 }

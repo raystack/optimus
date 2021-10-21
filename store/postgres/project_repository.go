@@ -1,16 +1,17 @@
 package postgres
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
 	"github.com/odpf/optimus/store"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 type Project struct {
@@ -23,7 +24,7 @@ type Project struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt *time.Time
+	DeletedAt gorm.DeletedAt
 }
 
 func (p Project) FromSpec(spec models.ProjectSpec) (Project, error) {
@@ -76,7 +77,7 @@ type ProjectRepository struct {
 	hash models.ApplicationKey
 }
 
-func (repo *ProjectRepository) Insert(resource models.ProjectSpec) error {
+func (repo *ProjectRepository) Insert(ctx context.Context, resource models.ProjectSpec) error {
 	p, err := Project{}.FromSpec(resource)
 	if err != nil {
 		return err
@@ -84,13 +85,13 @@ func (repo *ProjectRepository) Insert(resource models.ProjectSpec) error {
 	if len(p.Name) == 0 {
 		return errors.New("name cannot be empty")
 	}
-	return repo.db.Create(&p).Error
+	return repo.db.WithContext(ctx).Create(&p).Error
 }
 
-func (repo *ProjectRepository) Save(spec models.ProjectSpec) error {
-	existingResource, err := repo.GetByName(spec.Name)
+func (repo *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec) error {
+	existingResource, err := repo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(spec)
+		return repo.Insert(ctx, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find project by name")
 	}
@@ -99,12 +100,12 @@ func (repo *ProjectRepository) Save(spec models.ProjectSpec) error {
 		return err
 	}
 	project.ID = existingResource.ID
-	return repo.db.Model(&project).Updates(&project).Error
+	return repo.db.WithContext(ctx).Omit("Secrets").Model(&project).Update("Config", project.Config).Error
 }
 
-func (repo *ProjectRepository) GetByName(name string) (models.ProjectSpec, error) {
+func (repo *ProjectRepository) GetByName(ctx context.Context, name string) (models.ProjectSpec, error) {
 	var r Project
-	if err := repo.db.Preload("Secrets").Where("name = ?", name).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Secrets").Where("name = ?", name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
@@ -113,9 +114,9 @@ func (repo *ProjectRepository) GetByName(name string) (models.ProjectSpec, error
 	return r.ToSpecWithSecrets(repo.hash)
 }
 
-func (repo *ProjectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error) {
+func (repo *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ProjectSpec, error) {
 	var r Project
-	if err := repo.db.Preload("Secrets").Where("id = ?", id).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Secrets").Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
@@ -124,10 +125,10 @@ func (repo *ProjectRepository) GetByID(id uuid.UUID) (models.ProjectSpec, error)
 	return r.ToSpecWithSecrets(repo.hash)
 }
 
-func (repo *ProjectRepository) GetAll() ([]models.ProjectSpec, error) {
-	specs := []models.ProjectSpec{}
-	projs := []Project{}
-	if err := repo.db.Preload("Secrets").Find(&projs).Error; err != nil {
+func (repo *ProjectRepository) GetAll(ctx context.Context) ([]models.ProjectSpec, error) {
+	var specs []models.ProjectSpec
+	var projs []Project
+	if err := repo.db.WithContext(ctx).Preload("Secrets").Find(&projs).Error; err != nil {
 		return specs, err
 	}
 	for _, proj := range projs {

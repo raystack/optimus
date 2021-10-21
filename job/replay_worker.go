@@ -26,11 +26,11 @@ type replayWorker struct {
 func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) (err error) {
 	replaySpecRepo := w.replaySpecRepoFac.New()
 	// mark replay request in progress
-	if inProgressErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusInProgress, models.ReplayMessage{}); inProgressErr != nil {
+	if inProgressErr := replaySpecRepo.UpdateStatus(ctx, input.ID, models.ReplayStatusInProgress, models.ReplayMessage{}); inProgressErr != nil {
 		return inProgressErr
 	}
 
-	replaySpec, err := replaySpecRepo.GetByID(input.ID)
+	replaySpec, err := replaySpecRepo.GetByID(ctx, input.ID)
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) 
 		if err = w.scheduler.Clear(ctx, input.Project, treeNode.GetName(), startTime, endTime); err != nil {
 			err = errors.Wrapf(err, "error while clearing dag runs for job %s", treeNode.GetName())
 			w.log.Warn("error while running replay", "replay id", input.ID.String(), "error", err.Error())
-			if updateStatusErr := replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusFailed, models.ReplayMessage{
+			if updateStatusErr := replaySpecRepo.UpdateStatus(ctx, input.ID, models.ReplayStatusFailed, models.ReplayMessage{
 				Type:    AirflowClearDagRunFailed,
 				Message: err.Error(),
 			}); updateStatusErr != nil {
@@ -53,7 +53,7 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) 
 		}
 	}
 
-	if err = replaySpecRepo.UpdateStatus(input.ID, models.ReplayStatusReplayed, models.ReplayMessage{}); err != nil {
+	if err = replaySpecRepo.UpdateStatus(ctx, input.ID, models.ReplayStatusReplayed, models.ReplayMessage{}); err != nil {
 		return err
 	}
 	w.log.Info("successfully cleared instances during replay", "replay id", input.ID.String())

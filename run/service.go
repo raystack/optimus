@@ -36,43 +36,41 @@ type Service struct {
 	templateEngine models.TemplateEngine
 }
 
-func (s *Service) Compile(namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
+func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
 	envMap map[string]string, fileMap map[string]string, err error) {
 	return NewContextManager(namespace, jobRun, s.templateEngine).Generate(instanceSpec)
 }
 
-func (s *Service) GetScheduledRun(namespace models.NamespaceSpec, jobSpec models.JobSpec,
+func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
 	scheduledAt time.Time) (models.JobRun, error) {
 	newJobRun := models.JobRun{
 		Spec:        jobSpec,
 		Trigger:     models.TriggerSchedule,
 		Status:      models.RunStatePending,
 		ScheduledAt: scheduledAt,
-		Instances:   nil,
 	}
 
 	repo := s.repoFac.New()
-	jobRun, _, err := repo.GetByScheduledAt(jobSpec.ID, scheduledAt)
+	jobRun, _, err := repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
 	if err == nil || err == store.ErrResourceNotFound {
 		// create a new instance if it does not already exists
 		if err == nil {
 			// if already exists, use the same id for in place update
 			// because job spec might have changed by now, status needs to be reset
 			newJobRun.ID = jobRun.ID
-			newJobRun.Instances = jobRun.Instances
 		}
-		if err := repo.Save(namespace, newJobRun); err != nil {
+		if err := repo.Save(ctx, namespace, newJobRun); err != nil {
 			return models.JobRun{}, err
 		}
 	} else {
 		return models.JobRun{}, err
 	}
 
-	jobRun, _, err = repo.GetByScheduledAt(jobSpec.ID, scheduledAt)
+	jobRun, _, err = repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
 	return jobRun, err
 }
 
-func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
+func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
 	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
 	executedAt := s.Now()
 	if len(jobRun.Instances) > 0 {
@@ -92,10 +90,10 @@ func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
 	switch instanceType {
 	case models.InstanceTypeTask:
 		// clear and save fresh
-		if err := jobRunRepo.ClearInstance(jobRun.ID, instanceType, instanceName); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+		if err := jobRunRepo.ClearInstance(ctx, jobRun.ID, instanceType, instanceName); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 			return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
 		}
-		if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
+		if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
 			return models.InstanceSpec{}, err
 		}
 	case models.InstanceTypeHook:
@@ -108,7 +106,7 @@ func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
 			}
 		}
 		if !exists {
-			if err := jobRunRepo.AddInstance(namespace, jobRun, instanceToSave); err != nil {
+			if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
 				return models.InstanceSpec{}, err
 			}
 		}
@@ -117,7 +115,7 @@ func (s *Service) Register(namespace models.NamespaceSpec, jobRun models.JobRun,
 	}
 
 	// get whatever is saved, querying again ensures it was saved correctly
-	if jobRun, _, err = jobRunRepo.GetByID(jobRun.ID); err != nil {
+	if jobRun, _, err = jobRunRepo.GetByID(ctx, jobRun.ID); err != nil {
 		return models.InstanceSpec{}, errors.Wrapf(err, "failed to save instance for %s of %s:%s",
 			jobRun, instanceName, instanceType)
 	}
@@ -169,8 +167,8 @@ func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.Instanc
 	}, nil
 }
 
-func (s *Service) GetByID(JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	return s.repoFac.New().GetByID(JobRunID)
+func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+	return s.repoFac.New().GetByID(ctx, JobRunID)
 }
 
 func NewService(repoFac SpecRepoFactory, timeFunc func() time.Time, te models.TemplateEngine) *Service {

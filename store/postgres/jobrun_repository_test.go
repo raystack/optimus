@@ -5,18 +5,18 @@ package postgres
 import (
 	"context"
 	"os"
-	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestJobRunRepository(t *testing.T) {
+	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-id",
@@ -116,12 +116,12 @@ func TestJobRunRepository(t *testing.T) {
 
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 		prepo := NewProjectRepository(dbConn, hash)
-		assert.Nil(t, prepo.Save(projectSpec))
+		assert.Nil(t, prepo.Save(ctx, projectSpec))
 
 		projectJobSpecRepo := NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
 		jrepo := NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
-		assert.Nil(t, jrepo.Save(jobConfigs[0]))
-		assert.Equal(t, "task unit cannot be empty", jrepo.Save(jobConfigs[1]).Error())
+		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0]))
+		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1]).Error())
 		return dbConn
 	}
 
@@ -163,78 +163,74 @@ func TestJobRunRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[1])
+		err := repo.Insert(ctx, namespaceSpec, testModels[1])
 		assert.Nil(t, err)
 
-		checkModel, ns, err := repo.GetByID(testModels[1].ID)
+		checkModel, ns, err := repo.GetByID(ctx, testModels[1].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, testModels[1].Spec.Name, checkModel.Spec.Name)
 		assert.Equal(t, testModels[1].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
 		assert.Equal(t, namespaceSpec.ID, ns.ID)
 
-		err = repo.Insert(namespaceSpec, testModels[0])
+		err = repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, ns, err = repo.GetByID(testModels[0].ID)
+		checkModel, ns, err = repo.GetByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
 		assert.Equal(t, testModels[0].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
 		assert.Equal(t, namespaceSpec.ID, ns.ID)
-		assert.Equal(t, len(testModels[0].Instances), len(checkModel.Instances))
-		sort.Slice(testModels[0].Instances, func(i, j int) bool {
-			return testModels[0].Instances[i].ID.String() < testModels[0].Instances[j].ID.String()
-		})
-		sort.Slice(checkModel.Instances, func(i, j int) bool {
-			return checkModel.Instances[i].ID.String() < checkModel.Instances[j].ID.String()
-		})
-		assert.EqualValues(t, testModels[0].Instances[0].ID, checkModel.Instances[0].ID)
+		assert.Equal(t, 0, len(checkModel.Instances))
 	})
 	t.Run("Save", func(t *testing.T) {
 		t.Run("should save and delete fresh runs correctly", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 
 			testModels := []models.JobRun{}
 			testModels = append(testModels, testSpecs...)
 
 			repo := NewJobRunRepository(db, adapter)
-			err := repo.Save(namespaceSpec, testModels[0])
+			err := repo.Save(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, _, err := repo.GetByID(testModels[0].ID)
+			checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
 			assert.Equal(t, testModels[0].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
 
-			err = repo.Delete(testModels[0].ID)
+			err = repo.Delete(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 
-			err = repo.Save(namespaceSpec, testModels[0])
+			err = repo.Save(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, _, err = repo.GetByID(testModels[0].ID)
+			checkModel, _, err = repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
 			assert.Equal(t, testModels[0].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
 		})
 		t.Run("should upsert existing runs correctly", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 
 			testModels := []models.JobRun{}
 			testModels = append(testModels, testSpecs...)
 
 			repo := NewJobRunRepository(db, adapter)
-			err := repo.Save(namespaceSpec, testModels[0])
+			err := repo.Save(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, _, err := repo.GetByID(testModels[0].ID)
+			checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
 			assert.Equal(t, testModels[0].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
@@ -242,99 +238,89 @@ func TestJobRunRepository(t *testing.T) {
 			// update resource
 			testModels[0].ScheduledAt = testModels[0].ScheduledAt.Add(time.Nanosecond)
 
-			err = repo.Save(namespaceSpec, testModels[0])
+			err = repo.Save(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, _, err = repo.GetByID(testModels[0].ID)
+			checkModel, _, err = repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
 			assert.Equal(t, testModels[0].ScheduledAt.Add(time.Nanosecond).Unix(), checkModel.ScheduledAt.Unix())
 		})
 	})
-	t.Run("ClearInstances", func(t *testing.T) {
-		db := DBSetup()
-		defer db.Close()
-
-		var testModels []models.JobRun
-		testModels = append(testModels, testSpecs...)
-
-		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[0])
-		assert.Nil(t, err)
-
-		err = repo.ClearInstances(testModels[0].Spec.ID, testModels[0].ScheduledAt)
-		assert.Nil(t, err)
-
-		checkModel, _, err := repo.GetByID(testModels[0].ID)
-		assert.Nil(t, err)
-		assert.Equal(t, 0, len(checkModel.Instances))
-	})
 	t.Run("ClearInstance", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, namespaceSpec, testModels[0])
+		assert.Nil(t, err)
+		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
+		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[1]))
+
+		err = repo.ClearInstance(ctx, testModels[0].ID, models.InstanceTypeTask, "do-this")
 		assert.Nil(t, err)
 
-		err = repo.ClearInstance(testModels[0].ID, models.InstanceTypeTask, "do-this")
-		assert.Nil(t, err)
-
-		checkModel, _, err := repo.GetByID(testModels[0].ID)
+		checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(checkModel.Instances))
 	})
 	t.Run("GetByStatus", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
 
-		runs, err := repo.GetByStatus(models.RunStateRunning)
+		runs, err := repo.GetByStatus(ctx, models.RunStateRunning)
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(runs))
 	})
 	t.Run("AddInstance", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[1])
+		err := repo.Insert(ctx, namespaceSpec, testModels[1])
 		assert.Nil(t, err)
 
-		err = repo.AddInstance(namespaceSpec, testModels[1], testInstanceSpecs[0])
+		err = repo.AddInstance(ctx, namespaceSpec, testModels[1], testInstanceSpecs[0])
 		assert.Nil(t, err)
 
-		jr, _, err := repo.GetByID(testModels[1].ID)
+		jr, _, err := repo.GetByID(ctx, testModels[1].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(jr.Instances))
 	})
 	t.Run("Clear", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewJobRunRepository(db, adapter)
-		err := repo.Insert(namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, namespaceSpec, testModels[0])
+		assert.Nil(t, err)
+		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
+		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[1]))
+
+		err = repo.Clear(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 
-		err = repo.Clear(testModels[0].ID)
-		assert.Nil(t, err)
-
-		jr, _, err := repo.GetByID(testModels[0].ID)
+		jr, _, err := repo.GetByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, 0, len(jr.Instances))
 		assert.Equal(t, models.RunStatePending, jr.Status)

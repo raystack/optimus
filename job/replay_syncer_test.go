@@ -81,7 +81,7 @@ func TestReplaySyncer(t *testing.T) {
 	t.Run("Sync", func(t *testing.T) {
 		t.Run("should not return error when no replay with sync criteria found", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -90,7 +90,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return([]models.ReplaySpec{}, store.ErrResourceNotFound)
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return([]models.ReplaySpec{}, store.ErrResourceNotFound)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -103,7 +103,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should return error when fetching replays failed", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -113,7 +113,7 @@ func TestReplaySyncer(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			errorMsg := "fetching replay error"
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return([]models.ReplaySpec{}, errors.New(errorMsg))
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return([]models.ReplaySpec{}, errors.New(errorMsg))
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -126,7 +126,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should mark state of running replay to success if all instances are success", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -135,7 +135,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -160,7 +160,7 @@ func TestReplaySyncer(t *testing.T) {
 				Type:    models.ReplayStatusSuccess,
 				Message: job.ReplayMessageSuccess,
 			}
-			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusSuccess, successReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, activeReplayUUID, models.ReplayStatusSuccess, successReplayMessage).Return(nil)
 
 			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
@@ -169,7 +169,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should mark state of running replay to failed if no longer running instance and one of instances is failed", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -178,7 +178,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -203,7 +203,7 @@ func TestReplaySyncer(t *testing.T) {
 				Type:    models.ReplayStatusFailed,
 				Message: job.ReplayMessageFailed,
 			}
-			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
 			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, scheduler, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
@@ -212,7 +212,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should not update replay status if instances are still running", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -221,7 +221,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -249,7 +249,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should mark timeout replay as failed", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -270,7 +270,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return(replaySpec, nil)
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return(replaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)
@@ -280,7 +280,7 @@ func TestReplaySyncer(t *testing.T) {
 				Type:    job.ReplayRunTimeout,
 				Message: fmt.Sprintf("replay has been running since %s", replayCreatedAt.UTC().Format(job.TimestampLogFormat)),
 			}
-			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, activeReplayUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
 
 			replaySyncer := job.NewReplaySyncer(log, replaySpecRepoFac, projectRepoFactory, nil, time.Now)
 			err := replaySyncer.Sync(context.TODO(), runTimeout)
@@ -289,7 +289,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should return error when unable to get dag run status from batchScheduler", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll").Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -298,7 +298,7 @@ func TestReplaySyncer(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByProjectIDAndStatus", projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByProjectIDAndStatus", ctx, projectSpecs[0].ID, job.ReplayStatusToSynced).Return(activeReplaySpec, nil)
 
 			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
 			defer replaySpecRepoFac.AssertExpectations(t)

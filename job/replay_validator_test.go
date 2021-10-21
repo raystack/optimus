@@ -62,7 +62,7 @@ func TestReplayValidator(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			errMessage := "error checking other replays"
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, errors.New(errMessage))
+			replayRepository.On("GetByStatus", ctx, job.ReplayStatusToValidate).Return([]models.ReplaySpec{}, errors.New(errMessage))
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -91,7 +91,7 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByStatus", ctx, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -122,7 +122,7 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByStatus", ctx, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -148,7 +148,7 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByStatus", ctx, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -175,7 +175,7 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByStatus", ctx, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -243,7 +243,7 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByStatus", job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByStatus", ctx, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
@@ -274,13 +274,13 @@ func TestReplayValidator(t *testing.T) {
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
-			replayRepository.On("GetByJobIDAndStatus", activeReplaySpec[0].Job.ID, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
+			replayRepository.On("GetByJobIDAndStatus", ctx, activeReplaySpec[0].Job.ID, job.ReplayStatusToValidate).Return(activeReplaySpec, nil)
 
 			cancelledReplayMessage := models.ReplayMessage{
 				Type:    job.ErrConflictedJobRun.Error(),
 				Message: fmt.Sprintf("force started replay with ID: %s", replayRequest.ID),
 			}
-			replayRepository.On("UpdateStatus", activeReplayUUID, models.ReplayStatusCancelled, cancelledReplayMessage).Return(nil)
+			replayRepository.On("UpdateStatus", ctx, activeReplayUUID, models.ReplayStatusCancelled, cancelledReplayMessage).Return(nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)

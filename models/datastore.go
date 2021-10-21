@@ -178,7 +178,7 @@ func (s *supportedDatastore) Add(newUnit Datastorer) error {
 
 type DatastoreService interface {
 	// does not really fetch resource metadata, just the user provided spec
-	GetAll(namespace NamespaceSpec, datastoreName string) ([]ResourceSpec, error)
+	GetAll(ctx context.Context, namespace NamespaceSpec, datastoreName string) ([]ResourceSpec, error)
 
 	CreateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
@@ -186,5 +186,5 @@ type DatastoreService interface {
 	DeleteResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) error
 	BackupResourceDryRun(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) ([]string, error)
 	BackupResource(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) ([]string, error)
-	ListBackupResources(projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
+	ListBackupResources(ctx context.Context, projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
 }

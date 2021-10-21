@@ -555,7 +555,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 func IsResourceNameUnique(repository store.ResourceSpecRepository) survey.Validator {
 	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
-			if _, err := repository.GetByName(str); err == nil {
+			if _, err := repository.GetByName(context.Background(), str); err == nil {
 				return fmt.Errorf("resource with the provided name already exists")
 			} else if err != models.ErrNoSuchSpec && err != models.ErrNoResources {
 				return err

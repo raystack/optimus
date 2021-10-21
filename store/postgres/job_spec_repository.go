@@ -1,13 +1,14 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
+	"gorm.io/gorm"
 )
 
 type ProjectJobSpecRepository struct {
@@ -24,9 +25,9 @@ func NewProjectJobSpecRepository(db *gorm.DB, project models.ProjectSpec, adapte
 	}
 }
 
-func (repo *ProjectJobSpecRepository) GetByName(name string) (models.JobSpec, models.NamespaceSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, models.NamespaceSpec, error) {
 	var r Job
-	if err := repo.db.Preload("Namespace").Where("project_id = ? AND name = ?", repo.project.ID, name).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND name = ?", repo.project.ID, name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
@@ -46,10 +47,10 @@ func (repo *ProjectJobSpecRepository) GetByName(name string) (models.JobSpec, mo
 	return jobSpec, namespaceSpec, nil
 }
 
-func (repo *ProjectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
+func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 	jobs := []Job{}
-	if err := repo.db.Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
 		return specs, err
 	}
 
@@ -63,16 +64,16 @@ func (repo *ProjectJobSpecRepository) GetAll() ([]models.JobSpec, error) {
 	return specs, nil
 }
 
-func (repo *ProjectJobSpecRepository) GetByNameForProject(projName string, jobName string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, projName string, jobName string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
 	var p Project
-	if err := repo.db.Where("name = ?", projName).Find(&p).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("name = ?", projName).First(&p).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, models.ProjectSpec{}, errors.Wrap(store.ErrResourceNotFound, "project not found")
 		}
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
-	if err := repo.db.Where("project_id = ? AND name = ?", p.ID, jobName).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("project_id = ? AND name = ?", p.ID, jobName).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, models.ProjectSpec{}, errors.Wrap(store.ErrResourceNotFound, "job spec not found")
 		}
@@ -92,9 +93,9 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(projName string, jobNa
 	return jSpec, pSpec, err
 }
 
-func (repo *ProjectJobSpecRepository) GetByDestination(destination string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, destination string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
-	if err := repo.db.Preload("Project").Where("destination = ?", destination).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("destination = ?", destination).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, models.ProjectSpec{}, store.ErrResourceNotFound
 		}
@@ -121,7 +122,7 @@ type JobSpecRepository struct {
 	adapter            *JobSpecAdapter
 }
 
-func (repo *JobSpecRepository) Insert(spec models.JobSpec) error {
+func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec) error {
 	resource, err := repo.adapter.FromSpecWithNamespace(spec, repo.namespace)
 	if err != nil {
 		return err
@@ -130,17 +131,17 @@ func (repo *JobSpecRepository) Insert(spec models.JobSpec) error {
 		return errors.New("name cannot be empty")
 	}
 	// if soft deleted earlier
-	if err := repo.HardDelete(spec.Name); err != nil {
+	if err := repo.HardDelete(ctx, spec.Name); err != nil {
 		return err
 	}
-	return repo.db.Create(&resource).Error
+	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 
-func (repo *JobSpecRepository) Save(spec models.JobSpec) error {
+func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) error {
 	// while saving a JobSpec, we need to ensure that it's name is unique for a project
-	existingJobSpec, namespaceSpec, err := repo.projectJobSpecRepo.GetByName(spec.Name)
+	existingJobSpec, namespaceSpec, err := repo.projectJobSpecRepo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(spec)
+		return repo.Insert(ctx, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to retrieve spec by name")
 	}
@@ -154,12 +155,12 @@ func (repo *JobSpecRepository) Save(spec models.JobSpec) error {
 		return err
 	}
 	resource.ID = existingJobSpec.ID
-	return repo.db.Model(&resource).Updates(&resource).Error
+	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
 }
 
-func (repo *JobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
+func (repo *JobSpecRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobSpec, error) {
 	var r Job
-	if err := repo.db.Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, store.ErrResourceNotFound
 		}
@@ -169,9 +170,9 @@ func (repo *JobSpecRepository) GetByID(id uuid.UUID) (models.JobSpec, error) {
 	return repo.adapter.ToSpec(r)
 }
 
-func (repo *JobSpecRepository) GetByName(name string) (models.JobSpec, error) {
+func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {
 	var r Job
-	if err := repo.db.Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).Find(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, store.ErrResourceNotFound
 		}
@@ -181,26 +182,26 @@ func (repo *JobSpecRepository) GetByName(name string) (models.JobSpec, error) {
 	return repo.adapter.ToSpec(r)
 }
 
-func (repo *JobSpecRepository) Delete(name string) error {
-	return repo.db.Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).Delete(&Job{}).Error
+func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
+	return repo.db.WithContext(ctx).Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).Delete(&Job{}).Error
 }
 
-func (repo *JobSpecRepository) HardDelete(name string) error {
-	//find the base job
+func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) error {
+	// find the base job
 	var r Job
-	if err := repo.db.Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
+	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
 		// no job exists, inserting for the first time
 		return nil
 	} else if err != nil {
 		return errors.Wrap(err, "failed to fetch soft deleted resource")
 	}
-	return repo.db.Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
+	return repo.db.WithContext(ctx).Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
 }
 
-func (repo *JobSpecRepository) GetAll() ([]models.JobSpec, error) {
-	specs := []models.JobSpec{}
-	jobs := []Job{}
-	if err := repo.db.Where("namespace_id = ?", repo.namespace.ID).Find(&jobs).Error; err != nil {
+func (repo *JobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
+	var specs []models.JobSpec
+	var jobs []Job
+	if err := repo.db.WithContext(ctx).Where("namespace_id = ?", repo.namespace.ID).Find(&jobs).Error; err != nil {
 		return specs, err
 	}
 

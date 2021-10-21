@@ -1,6 +1,7 @@
 package local_test
 
 import (
+	"context"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -28,6 +29,7 @@ spec:
 `
 
 func TestResourceSpecRepository(t *testing.T) {
+	ctx := context.Background()
 	// prepare mocked datastore
 	dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
 
@@ -71,7 +73,7 @@ func TestResourceSpecRepository(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			err := repo.Save(specTable)
+			err := repo.Save(ctx, specTable)
 			assert.Nil(t, err)
 
 			buf, err := afero.ReadFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName))
@@ -90,7 +92,7 @@ func TestResourceSpecRepository(t *testing.T) {
 		})
 		t.Run("should return error if name is empty", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(nil, datastorer)
-			err := repo.Save(models.ResourceSpec{})
+			err := repo.Save(ctx, models.ResourceSpec{})
 			assert.NotNil(t, err)
 		})
 	})
@@ -104,7 +106,7 @@ func TestResourceSpecRepository(t *testing.T) {
 			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0644)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			returnedSpec, err := repo.GetByName(specTable.Name)
+			returnedSpec, err := repo.GetByName(ctx, specTable.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, specTable, returnedSpec)
 		})
@@ -116,20 +118,20 @@ func TestResourceSpecRepository(t *testing.T) {
 			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0644)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			returnedSpec, err := repo.GetByName(specTable.Name)
+			returnedSpec, err := repo.GetByName(ctx, specTable.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, specTable, returnedSpec)
 
 			// delete all specs
 			assert.Nil(t, appFS.RemoveAll(specTable.Name))
 
-			returnedSpecAgain, err := repo.GetByName(specTable.Name)
+			returnedSpecAgain, err := repo.GetByName(ctx, specTable.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, specTable, returnedSpecAgain)
 		})
 		t.Run("should return ErrNoSuchSpec in case no job folder exist", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(afero.NewMemMapFs(), datastorer)
-			_, err := repo.GetByName(specTable.Name)
+			_, err := repo.GetByName(ctx, specTable.Name)
 			assert.Equal(t, models.ErrNoSuchSpec, err)
 		})
 		t.Run("should return ErrNoSuchSpec in case the folder exist but no resource file exist", func(t *testing.T) {
@@ -137,12 +139,12 @@ func TestResourceSpecRepository(t *testing.T) {
 			appFS.MkdirAll(specTable.Name, 0755)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			_, err := repo.GetByName(specTable.Name)
+			_, err := repo.GetByName(ctx, specTable.Name)
 			assert.Equal(t, models.ErrNoSuchSpec, err)
 		})
 		t.Run("should return an error if name is empty", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(afero.NewMemMapFs(), nil)
-			_, err := repo.GetByName("")
+			_, err := repo.GetByName(ctx, "")
 			assert.NotNil(t, err)
 		})
 		t.Run("should return error if yaml source is incorrect and failed to validate", func(t *testing.T) {
@@ -153,7 +155,7 @@ func TestResourceSpecRepository(t *testing.T) {
 			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0644)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			_, err := repo.GetByName(specTable.Name)
+			_, err := repo.GetByName(ctx, specTable.Name)
 			assert.NotNil(t, err)
 		})
 	})
@@ -212,7 +214,7 @@ spec:
 			}
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			result, err := repo.GetAll()
+			result, err := repo.GetAll(ctx)
 			assert.Nil(t, err)
 			assert.Equal(t, len(resSpecs), len(result))
 
@@ -222,7 +224,7 @@ spec:
 		})
 		t.Run("should return ErrNoResources if the root directory does not exist", func(t *testing.T) {
 			repo := local.NewResourceSpecRepository(afero.NewMemMapFs(), datastorer)
-			_, err := repo.GetAll()
+			_, err := repo.GetAll(ctx)
 			assert.Equal(t, models.ErrNoResources, err)
 		})
 		t.Run("should return ErrNoResources if the root directory has no files", func(t *testing.T) {
@@ -230,7 +232,7 @@ spec:
 			appFS.MkdirAll("test", 0755)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			_, err := repo.GetAll()
+			_, err := repo.GetAll(ctx)
 			assert.Equal(t, models.ErrNoResources, err)
 		})
 		t.Run("should use cache to return specs if called more than once", func(t *testing.T) {
@@ -242,7 +244,7 @@ spec:
 			}
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
-			result, err := repo.GetAll()
+			result, err := repo.GetAll(ctx)
 			sort.Slice(result, func(i, j int) bool { return result[i].Name > result[j].Name })
 			assert.Nil(t, err)
 			assert.Equal(t, resSpecs, result)
@@ -250,7 +252,7 @@ spec:
 			// clear fs
 			assert.Nil(t, appFS.RemoveAll("."))
 
-			resultAgain, err := repo.GetAll()
+			resultAgain, err := repo.GetAll(ctx)
 			assert.Nil(t, err)
 			assert.Equal(t, len(result), len(resultAgain))
 		})

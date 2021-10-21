@@ -3,19 +3,21 @@
 package postgres
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/odpf/optimus/mock"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	testMock "github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
 func TestResourceSpecRepository(t *testing.T) {
+	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-project",
@@ -59,7 +61,7 @@ func TestResourceSpecRepository(t *testing.T) {
 		}
 
 		projRepo := NewProjectRepository(dbConn, hash)
-		assert.Nil(t, projRepo.Save(projectSpec))
+		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
 	testConfigs := []models.ResourceSpec{
@@ -119,7 +121,8 @@ func TestResourceSpecRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -129,13 +132,13 @@ func TestResourceSpecRepository(t *testing.T) {
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = repo.Insert(testModels[1])
+		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
-		checkModel, err := repo.GetByID(testModels[0].ID)
+		checkModel, err := repo.GetByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 	})
@@ -143,7 +146,8 @@ func TestResourceSpecRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
@@ -153,25 +157,26 @@ func TestResourceSpecRepository(t *testing.T) {
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Once()
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.datas.test", checkModel.Name)
 
 			//try for create
-			err = repo.Save(testModelB)
+			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelB.ID)
+			checkModel, err = repo.GetByID(ctx, testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 			assert.Equal(t, "table", checkModel.Type.String())
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
@@ -180,10 +185,10 @@ func TestResourceSpecRepository(t *testing.T) {
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(testModelA.ID)
+			checkModel, err := repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 
@@ -192,16 +197,17 @@ func TestResourceSpecRepository(t *testing.T) {
 			dsTypeTableAdapter.On("ToYaml", testModelA).Return([]byte("some binary data testModelA"), nil)
 			dsTypeTableAdapter.On("FromYaml", []byte("some binary data testModelA")).Return(testModelA, nil)
 
-			err = repo.Save(testModelA)
+			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(testModelA.ID)
+			checkModel, err = repo.GetByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, 6, checkModel.Version)
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			resourceSpecWithEmptyUUID := testConfigWithoutAssets[0]
 			resourceSpecWithEmptyUUID.ID = uuid.Nil
 
@@ -226,17 +232,18 @@ func TestResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableControllerLocal.On("GenerateURN", testMock.Anything).Return(resourceSpecWithEmptyUUID.URN, nil).Once()
 
-			//try for create
-			err := repo.Save(resourceSpecWithEmptyUUID)
+			// try for create
+			err := repo.Save(ctx, resourceSpecWithEmptyUUID)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(resourceSpecWithEmptyUUID.Name)
+			checkModel, err := repo.GetByName(ctx, resourceSpecWithEmptyUUID.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.datas.test", checkModel.Name)
 		})
 		t.Run("should fail if resource is already registered for a project with different namespace", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
@@ -246,17 +253,17 @@ func TestResourceSpecRepository(t *testing.T) {
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
 			//try for create
-			err := resourceSpecNamespace1.Save(testModelA)
+			err := resourceSpecNamespace1.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, checkNamespace, err := projectResourceSpecRepo.GetByName(testModelA.Name)
+			checkModel, checkNamespace, err := projectResourceSpecRepo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 			assert.Equal(t, namespaceSpec.ID, checkNamespace.ID)
 			assert.Equal(t, namespaceSpec.ProjectSpec.ID, checkNamespace.ProjectSpec.ID)
 
 			// try to create same resource with second client and it should fail.
-			err = resourceSpecNamespace2.Save(testModelA)
+			err = resourceSpecNamespace2.Save(ctx, testModelA)
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource proj.ttt.test2 already exists for the project t-optimus-project", err.Error())
 		})
@@ -264,23 +271,25 @@ func TestResourceSpecRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
 		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 	})
 }
 
 func TestProjectResourceSpecRepository(t *testing.T) {
+	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-project",
@@ -324,7 +333,7 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		}
 
 		projRepo := NewProjectRepository(dbConn, hash)
-		assert.Nil(t, projRepo.Save(projectSpec))
+		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
 	testConfigs := []models.ResourceSpec{
@@ -378,7 +387,8 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -387,24 +397,25 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
 		// validate at project level
-		checkModel, checkClient, err := projectResourceSpecRepo.GetByName(testModels[0].Name)
+		checkModel, checkClient, err := projectResourceSpecRepo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 		assert.Equal(t, namespaceSpec.Name, checkClient.Name)
 
 		// validate at client level
-		checkModel, err = repo.GetByName(testModels[0].Name)
+		checkModel, err = repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 	})
 
 	t.Run("GetByURN", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		var testModels []models.ResourceSpec
 		testModels = append(testModels, testConfigs...)
 
@@ -413,17 +424,18 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByURN(testModels[0].URN)
+		checkModel, err := repo.GetByURN(ctx, testModels[0].URN)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 	})
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -432,17 +444,17 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
 		// validate at project level
-		checkModels, err := projectResourceSpecRepo.GetAll()
+		checkModels, err := projectResourceSpecRepo.GetAll(ctx)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModels[0].Name)
 		assert.Equal(t, 1, len(checkModels))
 
 		// validate at client level
-		checkModels, err = repo.GetAll()
+		checkModels, err = repo.GetAll(ctx)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModels[0].Name)
 		assert.Equal(t, 1, len(checkModels))

@@ -3,13 +3,14 @@
 package postgres
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestNamespaceRepository(t *testing.T) {
@@ -35,6 +36,7 @@ func TestNamespaceRepository(t *testing.T) {
 
 		return dbConn
 	}
+	ctx := context.Background()
 
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
@@ -87,30 +89,31 @@ func TestNamespaceRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
 		// save project
 		projRepo := NewProjectRepository(db, hash)
-		err := projRepo.Save(projectSpec)
+		err := projRepo.Save(ctx, projectSpec)
 		assert.Nil(t, err)
 
 		secretRepo := NewSecretRepository(db, projectSpec, hash)
-		err = secretRepo.Insert(secrets[0])
+		err = secretRepo.Insert(ctx, secrets[0])
 		assert.Nil(t, err)
-		err = secretRepo.Insert(secrets[1])
+		err = secretRepo.Insert(ctx, secrets[1])
 		assert.Nil(t, err)
 
 		repo := NewNamespaceRepository(db, projectSpec, hash)
 
-		err = repo.Insert(testModels[0])
+		err = repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = repo.Insert(testModels[1])
+		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
-		checkModel, err := repo.GetByName(testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 		assert.Equal(t, projectSpec.Name, checkModel.ProjectSpec.Name)
@@ -120,67 +123,70 @@ func TestNamespaceRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := namespaceSpecs[0]
 			testModelB := namespaceSpecs[2]
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
 			//try for update
-			err = repo.Save(testModelB)
+			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByName(testModelB.Name)
+			checkModel, err = repo.GetByName(ctx, testModelB.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := namespaceSpecs[2]
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
 			//try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
 			//try for update
 			testModelA.Config["bucket"] = "gs://another_folder"
-			err = repo.Save(testModelA)
+			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByName(testModelA.Name)
+			checkModel, err = repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://another_folder", checkModel.Config["bucket"])
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			defer db.Close()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
 			testModelA := namespaceSpecs[0]
 			testModelA.ID = uuid.Nil
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
 			//try for create
-			err := repo.Save(testModelA)
+			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 			assert.Equal(t, 36, len(checkModel.ID.String()))
@@ -189,34 +195,36 @@ func TestNamespaceRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
 		repo := NewNamespaceRepository(db, projectSpec, hash)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		defer db.Close()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
 		repo := NewNamespaceRepository(db, projectSpec, hash)
 
-		err := repo.Insert(testModels[0])
+		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
-		err = repo.Insert(testModels[2])
+		err = repo.Insert(ctx, testModels[2])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetAll()
+		checkModel, err := repo.GetAll(ctx)
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModel))
 	})

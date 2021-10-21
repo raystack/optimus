@@ -38,7 +38,7 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	}
 
 	// resolve statically defined dependencies
-	jobSpec, err = r.resolveStaticDependencies(jobSpec, projectSpec, projectJobSpecRepo)
+	jobSpec, err = r.resolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -70,7 +70,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		depSpec, depProj, err := projectJobSpecRepo.GetByDestination(depDestination)
+		depSpec, depProj, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				// should not fail for unknown dependency
@@ -98,7 +98,7 @@ func (r *dependencyResolver) getJobSpecDependencyType(dependency models.JobSpecD
 
 // update named (explicit/static) dependencies if unresolved with its spec model
 // this can normally happen when reading specs from a store[local/postgres]
-func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model
 	for depName, depSpec := range jobSpec.Dependencies {
@@ -106,7 +106,7 @@ func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, p
 			switch depSpec.Type {
 			case models.JobSpecDependencyTypeIntra:
 				{
-					job, _, err := projectJobSpecRepo.GetByName(depName)
+					job, _, err := projectJobSpecRepo.GetByName(ctx, depName)
 					if err != nil {
 						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownLocalDependency, depName)
 					}
@@ -123,7 +123,7 @@ func (r *dependencyResolver) resolveStaticDependencies(jobSpec models.JobSpec, p
 					}
 					projectName := depParts[0]
 					jobName := depParts[1]
-					job, proj, err := projectJobSpecRepo.GetByNameForProject(projectName, jobName)
+					job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
 					if err != nil {
 						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownCrossProjectDependency, depName)
 					}
