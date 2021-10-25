@@ -5,8 +5,9 @@ type Provider interface {
 	GetHost() string
 	GetJob() Job
 	GetDatastore() []Datastore
-	GetProjectConfig() ProjectConfig
 	GetLog() LogConfig
+	GetProject() Project
+	GetNamespace() Namespace
 
 	GetServe() ServerConfig
 	GetScheduler() SchedulerConfig

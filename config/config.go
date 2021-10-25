@@ -12,6 +12,12 @@ var (
 	KeyVersion = "version"
 	KeyHost    = "host"
 
+	KeyProjectName   = "project.name"
+	KeyProjectConfig = "project.config"
+
+	KeyNamespaceName   = "namespace.name"
+	KeyNamespaceConfig = "namespace.config"
+
 	KeyJobPath = "job.path"
 
 	KeyDatastoreName = "datastore.name"
@@ -61,9 +67,11 @@ type Optimus struct {
 	// optimus server host
 	Host string `yaml:"host"`
 
-	Job       Job           `yaml:"job"`
-	Datastore []Datastore   `yaml:"datastore"`
-	Config    ProjectConfig `yaml:"config"`
+	Project   Project   `yaml:"project"`
+	Namespace Namespace `yaml:"namespace"`
+
+	Job       Job         `yaml:"job"`
+	Datastore []Datastore `yaml:"datastore"`
 
 	k      *koanf.Koanf
 	parser koanf.Parser
@@ -91,6 +99,16 @@ type ProjectConfig struct {
 
 	// per namespace
 	Local map[string]string `yaml:"local"`
+}
+
+type Project struct {
+	Name   string            `yaml:"name"`
+	Config map[string]string `yaml:"config"`
+}
+
+type Namespace struct {
+	Name   string            `yaml:"name"`
+	Config map[string]string `yaml:"config"`
 }
 
 type LogConfig struct {
@@ -170,15 +188,22 @@ func (o *Optimus) GetVersion() string {
 	return o.eKs(KeyVersion)
 }
 
-func (o *Optimus) GetProjectConfig() ProjectConfig {
-	return ProjectConfig{
-		Global: o.k.StringMap(KeyProjectConfigGlobal),
-		Local:  o.k.StringMap(KeyProjectConfigLocal),
+func (o *Optimus) GetHost() string {
+	return o.eKs(KeyHost)
+}
+
+func (o *Optimus) GetProject() Project {
+	return Project{
+		Name:   o.eKs(KeyProjectName),
+		Config: o.k.StringMap(KeyProjectConfig),
 	}
 }
 
-func (o *Optimus) GetHost() string {
-	return o.eKs(KeyHost)
+func (o *Optimus) GetNamespace() Namespace {
+	return Namespace{
+		Name:   o.eKs(KeyNamespaceName),
+		Config: o.k.StringMap(KeyNamespaceConfig),
+	}
 }
 
 func (o *Optimus) GetJob() Job {

@@ -38,18 +38,9 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		Short: "backup a resource",
 	}
 
-	var (
-		project   string
-		namespace string
-		dryRun    bool
-	)
+	var dryRun bool
 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
-	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
-	backupCmd.MarkFlagRequired("project")
-	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of the requester")
-	backupCmd.MarkFlagRequired("namespace")
-
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {
@@ -96,6 +87,18 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		resourceName := inputs["name"].(string)
 		description := inputs["description"].(string)
 		backupDownstream := inputs["backupDownstream"].(bool)
+
+		project := conf.GetProject().Name
+		if project == "" {
+			l.Error("project name should not be empty")
+			return nil
+		}
+
+		namespace := conf.GetNamespace().Name
+		if namespace == "" {
+			l.Error("namespace name should not be empty")
+			return nil
+		}
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
 			ProjectName:      project,
@@ -241,13 +244,6 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 		Short: "get list of backup per project and datastore",
 	}
 
-	var (
-		project string
-	)
-
-	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
-	backupCmd.MarkFlagRequired("project")
-
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {
@@ -259,6 +255,12 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 			Options: availableStorer,
 		}, &storerName); err != nil {
 			return err
+		}
+
+		project := conf.GetProject().Name
+		if project == "" {
+			l.Error("project name should not be empty")
+			return nil
 		}
 
 		listBackupsRequest := &pb.ListBackupsRequest{

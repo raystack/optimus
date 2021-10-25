@@ -34,14 +34,21 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 		Use:   "deploy",
 		Short: "Deploy current project to server",
 	}
-	cmd.Flags().StringVar(&projectName, "project", "", "project name of deployee")
-	cmd.MarkFlagRequired("project")
-	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace of deployee")
-	cmd.MarkFlagRequired("namespace")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		projectName = conf.GetProject().Name
+		if projectName == "" {
+			l.Error("project name should not be empty")
+			return nil
+		}
+		namespace = conf.GetNamespace().Name
+		if namespace == "" {
+			l.Error("namespace name should not be empty")
+			return nil
+		}
+
 		l.Info(fmt.Sprintf("deploying project %s for namespace %s at %s\nplease wait...", projectName, namespace, conf.GetHost()))
 		start := time.Now()
 		if jobSpecRepo == nil {
@@ -62,7 +69,7 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l log.Logger, projectName string, namespace string, jobSpecRepo JobSpecRepository,
+func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
 	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -83,27 +90,22 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 	runtime := pb.NewRuntimeServiceClient(conn)
 	adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 
-	if len(conf.GetProjectConfig().Global) == 0 {
-		return errors.New("global config should not be empty")
+	projectSpec := &pb.ProjectSpecification{
+		Name:   projectName,
+		Config: conf.GetProject().Config,
+	}
+	namespaceSpec := &pb.NamespaceSpecification{
+		Name:   namespaceName,
+		Config: conf.GetNamespace().Config,
 	}
 
-	// update project config if needed
-	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
-		Project: &pb.ProjectSpecification{
-			Name:   projectName,
-			Config: conf.GetProjectConfig().Global,
-		},
-		Namespace: &pb.NamespaceSpecification{
-			Name:   namespace,
-			Config: conf.GetProjectConfig().Local,
-		},
-	})
-	if err != nil {
-		return errors.Wrap(err, "failed to update project configurations")
-	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
+	if len(projectSpec.Config) > 0 {
+		// update project and namespace config if needed
+		registerProject(l, runtime, deployTimeoutCtx, projectSpec, namespaceSpec)
+	} else {
+		// update namespace config if needed
+		registerProjectNamespace(l, runtime, deployTimeoutCtx, projectSpec.Name, namespaceSpec)
 	}
-	l.Info("updated project configuration")
 
 	if !ignoreResources {
 		// deploy datastore resources
@@ -135,9 +137,9 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 			// send call
 			respStream, err := runtime.DeployResourceSpecification(deployTimeoutCtx, &pb.DeployResourceSpecificationRequest{
 				Resources:     adaptedSpecs,
-				ProjectName:   projectName,
+				ProjectName:   projectSpec.Name,
 				DatastoreName: storeName,
-				Namespace:     namespace,
+				Namespace:     namespaceSpec.Name,
 			})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
@@ -193,8 +195,8 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 		}
 		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
 			Jobs:        adaptedJobSpecs,
-			ProjectName: projectName,
-			Namespace:   namespace,
+			ProjectName: projectSpec.Name,
+			Namespace:   namespaceSpec.Name,
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
@@ -248,5 +250,35 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 	}
 
 	l.Info("deployment completed")
+	return nil
+}
+
+func registerProject(l log.Logger, runtime pb.RuntimeServiceClient, deployTimeoutCtx context.Context,
+	projectSpec *pb.ProjectSpecification, namespaceSpec *pb.NamespaceSpecification) (err error) {
+	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
+		Project:   projectSpec,
+		Namespace: namespaceSpec,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to update project configurations")
+	} else if !registerResponse.Success {
+		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
+	}
+	l.Info("updated project configuration")
+	return nil
+}
+
+func registerProjectNamespace(l log.Logger, runtime pb.RuntimeServiceClient, deployTimeoutCtx context.Context,
+	projectName string, namespaceSpec *pb.NamespaceSpecification) (err error) {
+	registerResponse, err := runtime.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
+		ProjectName: projectName,
+		Namespace:   namespaceSpec,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to update namespace configurations")
+	} else if !registerResponse.Success {
+		return fmt.Errorf("failed to update namespace configurations, %s", registerResponse.Message)
+	}
+	l.Info("updated namespace configuration")
 	return nil
 }
