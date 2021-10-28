@@ -101,6 +101,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 		cmd.AddCommand(adminCommand(plainLog, pluginRepo))
 	}
 
+	addExtensionCommand(cmd, plainLog)
 	return cmd
 }
 

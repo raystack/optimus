@@ -12,6 +12,8 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/protobuf v1.5.2
+	github.com/google/go-github v17.0.0+incompatible
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
 	github.com/gorilla/mux v1.8.0
