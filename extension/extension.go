@@ -186,7 +186,6 @@ func (e *Extension) Run(name string, args []string) error {
 		}
 	}
 	cmd := exec.Command(path, args...)
-	b, err := cmd.Output()
-	fmt.Println(string(b))
-	return err
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }
