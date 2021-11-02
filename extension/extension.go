@@ -38,17 +38,17 @@ func NewExtension(
 	ctx context.Context, manifest *Manifest,
 	githubClient *github.Client, httpClient *http.Client,
 	reservedCommands ...string,
-) (*Extension, error) {
+) *Extension {
 	return &Extension{
 		ctx:              ctx,
 		githubClient:     githubClient,
 		httpClient:       httpClient,
 		manifest:         manifest,
 		reservedCommands: reservedCommands,
-	}, nil
+	}
 }
 
-// Install installs extension from a Gilthub repository
+// Install installs extension from a Github repository
 func (e *Extension) Install(owner, repo, alias string) error {
 	if err := e.validateInstall(owner, repo, alias); err != nil {
 		return err
@@ -187,5 +187,7 @@ func (e *Extension) Run(name string, args []string) error {
 	}
 	cmd := exec.Command(path, args...)
 	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }

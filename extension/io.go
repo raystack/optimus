@@ -6,7 +6,7 @@ import (
 	"path"
 )
 
-const extensionDirName = ".optimus"
+const extensionDirName = ".optimus/extensions"
 
 func getExtensionDir() (string, error) {
 	dir, err := os.UserHomeDir()

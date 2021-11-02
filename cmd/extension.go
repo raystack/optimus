@@ -23,10 +23,7 @@ func addExtensionCommand(cmd *cli.Command, l log.Logger) {
 		panic(err)
 	}
 	reservedCommands := getUsedCommands(cmd)
-	extension, err := extension.NewExtension(ctx, manifest, githubClient, httpClient, reservedCommands...)
-	if err != nil {
-		panic(err)
-	}
+	extension := extension.NewExtension(ctx, manifest, githubClient, httpClient, reservedCommands...)
 
 	cmd.AddCommand(extensionCommand(extension.Install, l))
 	commands := generateCommands(manifest, extension.Run)
