@@ -374,6 +374,9 @@
                   "additionalProperties": {
                     "type": "string"
                   }
+                },
+                "allowedDownstream": {
+                  "type": "string"
                 }
               }
             }
@@ -435,6 +438,9 @@
                 },
                 "ignoreDownstream": {
                   "type": "boolean"
+                },
+                "allowedDownstream": {
+                  "type": "string"
                 }
               }
             }
@@ -1040,6 +1046,12 @@
                 },
                 "force": {
                   "type": "boolean"
+                },
+                "ignoreDownstream": {
+                  "type": "boolean"
+                },
+                "allowedDownstream": {
+                  "type": "string"
                 }
               }
             }
@@ -1091,6 +1103,12 @@
                   "type": "string"
                 },
                 "endDate": {
+                  "type": "string"
+                },
+                "ignoreDownstream": {
+                  "type": "boolean"
+                },
+                "allowedDownstream": {
                   "type": "string"
                 }
               }

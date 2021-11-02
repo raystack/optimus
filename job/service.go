@@ -453,15 +453,11 @@ func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.Pro
 	return jobSpec, nil
 }
 
-func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string) ([]models.JobSpec, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	dependencyResolvedSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
+func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string,
+	allowedDownstream string) ([]models.JobSpec, error) {
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, projectSpec, allowedDownstream)
 	if err != nil {
 		return nil, err
-	}
-	jobSpecMap := make(map[string]models.JobSpec)
-	for _, currSpec := range dependencyResolvedSpecs {
-		jobSpecMap[currSpec.Name] = currSpec
 	}
 
 	rootJobSpec, found := jobSpecMap[rootJobName]
@@ -484,6 +480,44 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 		}
 	}
 	return jobSpecs, nil
+}
+
+func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec, allowedDownstream string) (map[string]models.JobSpec, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+
+	// resolve dependency of all jobs in given project
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// prepare map of jobs and its namespace
+	jobNamespaceMap := make(map[string]string)
+	namespaceJobSpecMap, err := projectJobSpecRepo.GetAllWithNamespace(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for namespace, specs := range namespaceJobSpecMap {
+		for _, spec := range specs {
+			jobNamespaceMap[spec.Name] = namespace
+		}
+	}
+
+	// filter jobs using the allowed downstream namespace
+	// if allowed namespace is *, then can continue to fetch all downstream
+	// if allowed namespace is not *, then just limit the downstream to the namespace value
+	jobSpecMap := make(map[string]models.JobSpec)
+	for _, currSpec := range jobSpecs {
+		if allowedDownstream != models.AllNamespace {
+			// if the job is not owned by the same namespace as the requested, then skip this job
+			if jobNamespaceMap[currSpec.Name] != allowedDownstream {
+				continue
+			}
+		}
+		jobSpecMap[currSpec.Name] = currSpec
+	}
+
+	return jobSpecMap, nil
 }
 
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {

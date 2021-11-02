@@ -26,24 +26,27 @@ type ReplayMessage struct {
 }
 
 type ReplayRequest struct {
-	ID         uuid.UUID
-	Job        JobSpec
-	Start      time.Time
-	End        time.Time
-	Project    ProjectSpec
-	JobSpecMap map[string]JobSpec
-	Force      bool
+	ID                uuid.UUID
+	Job               JobSpec
+	Start             time.Time
+	End               time.Time
+	Project           ProjectSpec
+	JobSpecMap        map[string]JobSpec
+	Force             bool
+	IgnoreDownstream  bool
+	AllowedDownstream string
 }
 
 type ReplaySpec struct {
-	ID            uuid.UUID
-	Job           JobSpec
-	StartDate     time.Time
-	EndDate       time.Time
-	ExecutionTree *tree.TreeNode
-	Status        string
-	Message       ReplayMessage
-	CreatedAt     time.Time
+	ID               uuid.UUID
+	Job              JobSpec
+	StartDate        time.Time
+	EndDate          time.Time
+	IgnoreDownstream bool
+	ExecutionTree    *tree.TreeNode
+	Status           string
+	Message          ReplayMessage
+	CreatedAt        time.Time
 }
 
 type ReplayState struct {

@@ -42,6 +42,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		project   string
 		namespace string
 		dryRun    bool
+		allDownstream bool
 	)
 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
@@ -95,13 +96,19 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		description := inputs["description"].(string)
 		backupDownstream := inputs["backupDownstream"].(bool)
 
+		var allowedDownstream string
+		if allDownstream {
+			allowedDownstream = "*"
+		}
+
 		backupDryRunRequest := &pb.BackupDryRunRequest{
-			ProjectName:      project,
-			Namespace:        namespace,
-			ResourceName:     resourceName,
-			DatastoreName:    storerName,
-			Description:      description,
-			IgnoreDownstream: !backupDownstream,
+			ProjectName:       project,
+			Namespace:         namespace,
+			ResourceName:      resourceName,
+			DatastoreName:     storerName,
+			Description:       description,
+			IgnoreDownstream:  !backupDownstream,
+			AllowedDownstream: allowedDownstream,
 		}
 
 		if err := runBackupDryRunRequest(l, conf, backupDryRunRequest); err != nil {
@@ -129,12 +136,13 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		}
 
 		backupRequest := &pb.BackupRequest{
-			ProjectName:      project,
-			Namespace:        namespace,
-			ResourceName:     resourceName,
-			DatastoreName:    storerName,
-			Description:      description,
-			IgnoreDownstream: !backupDownstream,
+			ProjectName:       project,
+			Namespace:         namespace,
+			ResourceName:      resourceName,
+			DatastoreName:     storerName,
+			Description:       description,
+			IgnoreDownstream:  !backupDownstream,
+			AllowedDownstream: allowedDownstream,
 		}
 
 		for _, ds := range conf.GetDatastore() {

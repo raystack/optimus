@@ -18,21 +18,8 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) prepareJobSpecMap(ctx context.Context, replayRequest models.ReplayRequest) (map[string]models.JobSpec, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(replayRequest.Project)
-	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, replayRequest.Project, projectJobSpecRepo, nil)
-	if err != nil {
-		return nil, err
-	}
-	jobSpecMap := make(map[string]models.JobSpec)
-	for _, currSpec := range jobSpecs {
-		jobSpecMap[currSpec.Name] = currSpec
-	}
-	return jobSpecMap, nil
-}
-
 func (srv *Service) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest)
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project, replayRequest.AllowedDownstream)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +29,7 @@ func (srv *Service) ReplayDryRun(ctx context.Context, replayRequest models.Repla
 }
 
 func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest)
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project, replayRequest.AllowedDownstream)
 	if err != nil {
 		return "", err
 	}
@@ -72,13 +59,18 @@ func prepareReplayExecutionTree(replayRequest models.ReplayRequest) (*tree.TreeN
 	} else {
 		return nil, err
 	}
-	dagTree.AddNode(parentNode)
 
+	// ignore downstream
+	if replayRequest.IgnoreDownstream {
+		return parentNode, nil
+	}
+
+	// include downstream
+	dagTree.AddNode(parentNode)
 	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
 	if err != nil {
 		return nil, err
 	}
-
 	rootInstance, err = populateDownstreamRuns(rootInstance)
 	if err != nil {
 		return nil, err

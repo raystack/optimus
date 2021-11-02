@@ -54,6 +54,14 @@ func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobS
 	return []models.JobSpec{}, args.Error(1)
 }
 
+func (repo *ProjectJobSpecRepository) GetAllWithNamespace(ctx context.Context) (map[string][]models.JobSpec, error) {
+	args := repo.Called(ctx)
+	if args.Get(0) != nil {
+		return args.Get(0).(map[string][]models.JobSpec), args.Error(1)
+	}
+	return map[string][]models.JobSpec{}, args.Error(1)
+}
+
 func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
 	args := repo.Called(ctx, dest)
 	if args.Get(0) != nil {
@@ -205,8 +213,8 @@ func (j *JobService) GetByDestination(ctx context.Context, projectSpec models.Pr
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
-	args := j.Called(ctx, projectSpec, jobName)
+func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string, allowedDownstream string) ([]models.JobSpec, error) {
+	args := j.Called(ctx, projectSpec, jobName, allowedDownstream)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 

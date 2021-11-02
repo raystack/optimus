@@ -18,15 +18,16 @@ type BackupResourceResponse struct {
 }
 
 type BackupRequest struct {
-	ID               uuid.UUID
-	ResourceName     string
-	Project          ProjectSpec
-	Namespace        NamespaceSpec
-	Datastore        string
-	Description      string
-	IgnoreDownstream bool
-	Config           map[string]string
-	DryRun           bool
+	ID                uuid.UUID
+	ResourceName      string
+	Project           ProjectSpec
+	Namespace         NamespaceSpec
+	Datastore         string
+	Description       string
+	IgnoreDownstream  bool
+	AllowedDownstream string
+	Config            map[string]string
+	DryRun            bool
 }
 
 type BackupResult struct {

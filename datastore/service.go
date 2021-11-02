@@ -34,11 +34,16 @@ type BackupRepoFactory interface {
 	New(spec models.ProjectSpec, storer models.Datastorer) store.BackupRepository
 }
 
+type NamespaceRepoFactory interface {
+	New(spec models.ProjectSpec) store.NamespaceRepository
+}
+
 type Service struct {
-	resourceRepoFactory ResourceSpecRepoFactory
-	dsRepo              models.DatastoreRepo
-	backupRepoFactory   BackupRepoFactory
-	uuidProvider        utils.UUIDProvider
+	resourceRepoFactory        ResourceSpecRepoFactory
+	projectResourceRepoFactory ProjectResourceSpecRepoFactory
+	dsRepo                     models.DatastoreRepo
+	backupRepoFactory          BackupRepoFactory
+	uuidProvider               utils.UUIDProvider
 }
 
 func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
@@ -161,11 +166,6 @@ func generateResourceDestination(ctx context.Context, jobSpec models.JobSpec) (*
 	})
 }
 
-func (srv Service) getResourceSpec(ctx context.Context, datastorer models.Datastorer, namespace models.NamespaceSpec, destinationURN string) (models.ResourceSpec, error) {
-	repo := srv.resourceRepoFactory.New(namespace, datastorer)
-	return repo.GetByURN(ctx, destinationURN)
-}
-
 func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
 	var resourcesToBackup []string
 	for _, jobSpec := range jobSpecs {
@@ -179,12 +179,20 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			return nil, err
 		}
 
-		resourceSpec, err := srv.getResourceSpec(ctx, datastorer, backupRequest.Namespace, destination.URN())
+		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
+		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				continue
 			}
 			return nil, err
+		}
+
+		if backupRequest.AllowedDownstream != models.AllNamespace {
+			// if the resource is not owned by the same namespace as the requested, then skip this resource
+			if namespaceSpec.Name != backupRequest.AllowedDownstream {
+				continue
+			}
 		}
 
 		//do backup in storer
@@ -223,12 +231,20 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			return nil, err
 		}
 
-		resourceSpec, err := srv.getResourceSpec(ctx, datastorer, backupRequest.Namespace, destination.URN())
+		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
+		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				continue
 			}
 			return nil, err
+		}
+
+		if backupRequest.AllowedDownstream != models.AllNamespace {
+			// if the resource is not owned by the same namespace as the requested, then skip this resource
+			if namespaceSpec.Name != backupRequest.AllowedDownstream {
+				continue
+			}
 		}
 
 		//do backup in storer
@@ -309,13 +325,14 @@ func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func NewService(resourceRepoFactory ResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider,
-	backupRepoFactory BackupRepoFactory) *Service {
+func NewService(resourceRepoFactory ResourceSpecRepoFactory, projectResourceRepoFactory ProjectResourceSpecRepoFactory,
+	dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepoFactory BackupRepoFactory) *Service {
 	return &Service{
-		resourceRepoFactory: resourceRepoFactory,
-		dsRepo:              dsRepo,
-		backupRepoFactory:   backupRepoFactory,
-		uuidProvider:        uuidProvider,
+		resourceRepoFactory:        resourceRepoFactory,
+		projectResourceRepoFactory: projectResourceRepoFactory,
+		dsRepo:                     dsRepo,
+		backupRepoFactory:          backupRepoFactory,
+		uuidProvider:               uuidProvider,
 	}
 }
 

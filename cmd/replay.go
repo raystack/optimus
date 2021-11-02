@@ -74,6 +74,9 @@ func replayCommand(l log.Logger, conf config.Provider) *cli.Command {
 func replayRunSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	dryRun := false
 	forceRun := false
+	ignoreDownstream := false
+	allDownstream := false
+
 	var (
 		projectName   string
 		namespaceName string
@@ -103,6 +106,8 @@ ReplayDryRun date ranges are inclusive.
 	reCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.GetNamespace().Name, "namespace of deployee")
 	reCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
 	reCmd.Flags().BoolVarP(&forceRun, "force", "f", forceRun, "run replay even if a previous run is in progress")
+	reCmd.Flags().BoolVarP(&ignoreDownstream, "ignore-downstream", "", ignoreDownstream, "run without replaying downstream jobs")
+	reCmd.Flags().BoolVarP(&allDownstream, "all-downstream", "", allDownstream, "run replay for all downstream across namespaces")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		endDate := args[1]
@@ -110,7 +115,13 @@ ReplayDryRun date ranges are inclusive.
 			endDate = args[2]
 		}
 
-		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, conf); err != nil {
+		var allowedDownstream string
+		if allDownstream {
+			allowedDownstream = "*"
+		}
+
+		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, ignoreDownstream,
+			allowedDownstream, conf); err != nil {
 			return err
 		}
 		if dryRun {
@@ -132,7 +143,8 @@ ReplayDryRun date ranges are inclusive.
 			return nil
 		}
 
-		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, conf, forceRun)
+		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
+			ignoreDownstream, allowedDownstream, conf)
 		if err != nil {
 			return err
 		}
@@ -142,7 +154,8 @@ ReplayDryRun date ranges are inclusive.
 	return reCmd
 }
 
-func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (err error) {
+func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
+	ignoreDownstream bool, allowedDownstream string, conf config.Provider) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -161,11 +174,13 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayDryRunRequest{
-		ProjectName: projectName,
-		JobName:     jobName,
-		Namespace:   namespace,
-		StartDate:   startDate,
-		EndDate:     endDate,
+		ProjectName:       projectName,
+		JobName:           jobName,
+		Namespace:         namespace,
+		StartDate:         startDate,
+		EndDate:           endDate,
+		IgnoreDownstream:  ignoreDownstream,
+		AllowedDownstream: allowedDownstream,
 	}
 	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
 	if err != nil {
@@ -230,7 +245,8 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 	return tree
 }
 
-func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider, forceRun bool) (string, error) {
+func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
+	ignoreDownstream bool, allowedDownstream string, conf config.Provider) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -252,12 +268,14 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 	}
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
-		ProjectName: projectName,
-		JobName:     jobName,
-		Namespace:   namespace,
-		StartDate:   startDate,
-		EndDate:     endDate,
-		Force:       forceRun,
+		ProjectName:       projectName,
+		JobName:           jobName,
+		Namespace:         namespace,
+		StartDate:         startDate,
+		EndDate:           endDate,
+		Force:             forceRun,
+		IgnoreDownstream:  ignoreDownstream,
+		AllowedDownstream: allowedDownstream,
 	}
 	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
 	if err != nil {

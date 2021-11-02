@@ -187,6 +187,29 @@ func (repo *projectResourceSpecRepository) GetAll(ctx context.Context) ([]models
 	return specs, nil
 }
 
+func (repo *projectResourceSpecRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, models.NamespaceSpec, error) {
+	var r Resource
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND datastore = ? AND urn = ?",
+		repo.project.ID, repo.datastore.Name(), urn).First(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound
+		}
+		return models.ResourceSpec{}, models.NamespaceSpec{}, err
+	}
+
+	resourceSpec, err := r.ToSpec(repo.datastore)
+	if err != nil {
+		return models.ResourceSpec{}, models.NamespaceSpec{}, err
+	}
+
+	namespaceSpec, err := r.Namespace.ToSpec(repo.project)
+	if err != nil {
+		return models.ResourceSpec{}, models.NamespaceSpec{}, err
+	}
+
+	return resourceSpec, namespaceSpec, nil
+}
+
 func NewProjectResourceSpecRepository(db *gorm.DB, project models.ProjectSpec, ds models.Datastorer) *projectResourceSpecRepository {
 	return &projectResourceSpecRepository{
 		db:        db,
@@ -254,18 +277,6 @@ func (repo *resourceSpecRepository) GetByID(ctx context.Context, id uuid.UUID) (
 	var r Resource
 	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND id = ?",
 		repo.namespace.ID, id).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ResourceSpec{}, store.ErrResourceNotFound
-		}
-		return models.ResourceSpec{}, err
-	}
-	return r.ToSpec(repo.datastore)
-}
-
-func (repo *resourceSpecRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, error) {
-	var r Resource
-	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND datastore = ? AND urn = ?",
-		repo.namespace.ID, repo.datastore.Name(), urn).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ResourceSpec{}, store.ErrResourceNotFound
 		}

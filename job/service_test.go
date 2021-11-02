@@ -1026,6 +1026,7 @@ func TestService(t *testing.T) {
 			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
 			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
 			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+			allowedDownstream := models.AllNamespace
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
@@ -1045,7 +1046,7 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name, allowedDownstream)
 			assert.Nil(t, err)
 			assert.Equal(t, []models.JobSpec{jobSpec2}, jobSpecsResult)
 		})
@@ -1059,6 +1060,7 @@ func TestService(t *testing.T) {
 			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
 			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
 			jobSpecsMap[jobSpec2.GetName()] = jobSpec2
+			allowedDownstream := models.AllNamespace
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
@@ -1070,7 +1072,7 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination, allowedDownstream)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, jobSpecsResult)
 		})
@@ -1085,6 +1087,7 @@ func TestService(t *testing.T) {
 			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
 			jobSpecsMap[jobSpec2.GetName()] = jobSpec2
 			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+			allowedDownstream := models.AllNamespace
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
@@ -1104,10 +1107,115 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination, allowedDownstream)
 			assert := assert.New(t)
 			assert.Contains(err.Error(), errorMsg)
 			assert.Nil(jobSpecsResult)
+		})
+		t.Run("should return error when unable to prepare namespace jobs map", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpecsMap := make(map[string]models.JobSpec)
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
+			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+			errorMsg := "unable to prepare namespace jobs map"
+			allowedDownstream := models.AllNamespace
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetAllWithNamespace", ctx).Return(nil, errors.New(errorMsg))
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(jobSpec1, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name, allowedDownstream)
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, jobSpecsResult)
+		})
+		t.Run("should exclude downstream if not allowed", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpecsMap := make(map[string]models.JobSpec)
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
+			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpec3 := models.JobSpec{Name: "dag3-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2, jobSpec3}
+			namespaceJobsMap := map[string][]models.JobSpec{
+				"namespace1": {jobSpec1, jobSpec3},
+				"namespace2": {jobSpec2},
+			}
+			allowedDownstream := "namespace1"
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetAllWithNamespace", ctx).Return(namespaceJobsMap, nil)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(jobSpec1, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec3, nil).Return(jobSpec3, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name, allowedDownstream)
+			assert.Nil(t, err)
+			assert.Equal(t, []models.JobSpec{jobSpec3}, jobSpecsResult)
+		})
+		t.Run("should exclude downstream of a same namespace if not directly dependent to the same namespace", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpecsMap := make(map[string]models.JobSpec)
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
+			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpec3 := models.JobSpec{Name: "dag3-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
+			jobSpec4 := models.JobSpec{Name: "dag4-deps-on-dag2", Dependencies: getDependencyObject(jobSpecsMap, jobSpec2.GetName())}
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2, jobSpec3, jobSpec4}
+			namespaceJobsMap := map[string][]models.JobSpec{
+				"namespace1": {jobSpec1, jobSpec3, jobSpec4},
+				"namespace2": {jobSpec2},
+			}
+			allowedDownstream := "namespace1"
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetAllWithNamespace", ctx).Return(namespaceJobsMap, nil)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(jobSpec1, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec3, nil).Return(jobSpec3, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec4, nil).Return(jobSpec4, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name, allowedDownstream)
+			assert.Nil(t, err)
+			assert.Equal(t, []models.JobSpec{jobSpec3}, jobSpecsResult)
 		})
 	})
 }

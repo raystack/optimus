@@ -196,12 +196,17 @@ type ProjectResourceSpecRepository struct {
 	mock.Mock
 }
 
-func (r *ProjectResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, error) {
+func (r *ProjectResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, models.NamespaceSpec, error) {
 	args := r.Called(ctx, s)
-	return args.Get(0).(models.ResourceSpec), args.Error(1)
+	return args.Get(0).(models.ResourceSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 
 func (r *ProjectResourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
 	args := r.Called(ctx)
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
+}
+
+func (r *ProjectResourceSpecRepository) GetByURN(ctx context.Context, s string) (models.ResourceSpec, models.NamespaceSpec, error) {
+	args := r.Called(ctx, s)
+	return args.Get(0).(models.ResourceSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }

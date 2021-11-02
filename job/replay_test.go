@@ -107,12 +107,14 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
+				Job:               specs[spec1],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				AllowedDownstream: models.AllNamespace,
 			}
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
@@ -151,12 +153,14 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
+				Job:               specs[spec1],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				AllowedDownstream: models.AllNamespace,
 			}
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
@@ -204,12 +208,14 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:     cyclicDagSpec[0],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
+				Job:               cyclicDagSpec[0],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				AllowedDownstream: models.AllNamespace,
 			}
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
@@ -246,14 +252,16 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
+				Job:               specs[spec1],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				AllowedDownstream: models.AllNamespace,
 			}
 
 			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -268,9 +276,13 @@ func TestReplay(t *testing.T) {
 				time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC),
 			}
 			expectedRunMap[spec2] = expectedRunMap[spec1]
-			expectedRunMap[spec2] = append(expectedRunMap[spec2], time.Date(2020, time.Month(8), 8, 2, 0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 9, 2, 0, 0, 0, time.UTC))
+			expectedRunMap[spec2] = append(expectedRunMap[spec2], time.Date(2020, time.Month(8), 8, 2,
+				0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 9, 2, 0, 0,
+				0, time.UTC))
 			expectedRunMap[spec3] = expectedRunMap[spec2]
-			expectedRunMap[spec3] = append(expectedRunMap[spec3], time.Date(2020, time.Month(8), 10, 2, 0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 11, 2, 0, 0, 0, time.UTC))
+			expectedRunMap[spec3] = append(expectedRunMap[spec3], time.Date(2020, time.Month(8), 10, 2,
+				0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 11, 2, 0, 0,
+				0, time.UTC))
 			for k, v := range countMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
@@ -305,14 +317,16 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
-				Job:     specs[spec4],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
+				Job:               specs[spec4],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				AllowedDownstream: models.AllNamespace,
 			}
 
 			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -323,7 +337,8 @@ func TestReplay(t *testing.T) {
 			expectedRunMap := map[string][]time.Time{}
 			expectedRunMap[spec4] = []time.Time{}
 			for i := 0; i <= 23; i++ {
-				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i, 0, 0, 0, time.UTC))
+				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+					0, 0, 0, time.UTC))
 			}
 			expectedRunMap[spec5] = []time.Time{
 				time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC),
@@ -331,7 +346,179 @@ func TestReplay(t *testing.T) {
 				time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC),
 				time.Date(2020, time.Month(8), 8, 0, 0, 0, 0, time.UTC),
 			}
-			expectedRunMap[spec6] = append(expectedRunMap[spec5], time.Date(2020, time.Month(8), 9, 0, 0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 10, 0, 0, 0, 0, time.UTC))
+			expectedRunMap[spec6] = append(expectedRunMap[spec5], time.Date(2020, time.Month(8), 9, 0,
+				0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 10, 0, 0, 0,
+				0, time.UTC))
+			for k, v := range countMap {
+				assert.Equal(t, expectedRunMap[k], v)
+			}
+		})
+
+		t.Run("should able to exclude downstream from replay dry run tree if ignored", func(t *testing.T) {
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+				"ns": {
+					jobSpecs[0].Name,
+					jobSpecs[1].Name,
+					jobSpecs[2].Name,
+					jobSpecs[3].Name,
+					jobSpecs[4].Name,
+					jobSpecs[5].Name,
+				},
+			}, nil)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			defer depenResolver.AssertExpectations(t)
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+			replayRequest := models.ReplayRequest{
+				Job:               specs[spec4],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				IgnoreDownstream:  true,
+				AllowedDownstream: models.AllNamespace,
+			}
+
+			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+
+			assert.Nil(t, err)
+			countMap := make(map[string][]time.Time)
+			getRuns(tree, countMap)
+			expectedRunMap := map[string][]time.Time{}
+			expectedRunMap[spec4] = []time.Time{}
+			for i := 0; i <= 23; i++ {
+				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+					0, 0, 0, time.UTC))
+			}
+			for k, v := range countMap {
+				assert.Equal(t, expectedRunMap[k], v)
+			}
+		})
+
+		t.Run("should able to exclude downstream from replay dry run tree if not allowed", func(t *testing.T) {
+			namespaceJobsMap := map[string][]models.JobSpec{
+				"namespace1": {specs[spec4]},
+				"namespace2": {specs[spec5]},
+				"namespace3": {specs[spec6]},
+			}
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetAllWithNamespace", ctx).Return(namespaceJobsMap, nil)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			defer depenResolver.AssertExpectations(t)
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+			replayRequest := models.ReplayRequest{
+				Job:               specs[spec4],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				IgnoreDownstream:  true,
+				AllowedDownstream: "namespace1",
+			}
+
+			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+
+			assert.Nil(t, err)
+			countMap := make(map[string][]time.Time)
+			getRuns(tree, countMap)
+			expectedRunMap := map[string][]time.Time{}
+			expectedRunMap[spec4] = []time.Time{}
+			for i := 0; i <= 23; i++ {
+				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+					0, 0, 0, time.UTC))
+			}
+			for k, v := range countMap {
+				assert.Equal(t, expectedRunMap[k], v)
+			}
+		})
+
+		t.Run("should able to exclude downstream of same namespace from replay dry run tree if not directly "+
+			"dependent to same namespace", func(t *testing.T) {
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+				"namespace1": {
+					jobSpecs[3].Name,
+					jobSpecs[5].Name,
+				},
+				"namespace2": {
+					jobSpecs[4].Name,
+				},
+			}, nil)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			defer depenResolver.AssertExpectations(t)
+
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
+			replayRequest := models.ReplayRequest{
+				Job:               specs[spec4],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				IgnoreDownstream:  true,
+				AllowedDownstream: "namespace1",
+			}
+
+			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+
+			assert.Nil(t, err)
+			countMap := make(map[string][]time.Time)
+			getRuns(tree, countMap)
+			expectedRunMap := map[string][]time.Time{}
+			expectedRunMap[spec4] = []time.Time{}
+			for i := 0; i <= 23; i++ {
+				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+					0, 0, 0, time.UTC))
+			}
 			for k, v := range countMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
@@ -351,12 +538,14 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:     specs[spec1],
-				Start:   replayStart,
-				End:     replayEnd,
-				Project: projSpec,
+				Job:               specs[spec1],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				AllowedDownstream: models.AllNamespace,
 			}
 			_, err := jobSvc.Replay(ctx, replayRequest)
 
@@ -394,11 +583,12 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
-				Job:        specs[spec1],
-				Start:      replayStart,
-				End:        replayEnd,
-				Project:    projSpec,
-				JobSpecMap: specs,
+				Job:               specs[spec1],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				JobSpecMap:        specs,
+				AllowedDownstream: models.AllNamespace,
 			}
 
 			errMessage := "error with replay manager"
@@ -406,7 +596,8 @@ func TestReplay(t *testing.T) {
 			replayManager.On("Replay", ctx, replayRequest).Return("", errors.New(errMessage))
 			defer replayManager.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
 
 			_, err := jobSvc.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
@@ -444,11 +635,12 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
-				Job:        specs[spec1],
-				Start:      replayStart,
-				End:        replayEnd,
-				Project:    projSpec,
-				JobSpecMap: specs,
+				Job:               specs[spec1],
+				Start:             replayStart,
+				End:               replayEnd,
+				Project:           projSpec,
+				JobSpecMap:        specs,
+				AllowedDownstream: models.AllNamespace,
 			}
 
 			replayManager := new(mock.ReplayManager)
@@ -456,7 +648,8 @@ func TestReplay(t *testing.T) {
 			replayManager.On("Replay", ctx, replayRequest).Return(objUUID.String(), nil)
 			defer replayManager.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
 
 			replayUUID, err := jobSvc.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
@@ -502,7 +695,8 @@ func TestReplay(t *testing.T) {
 				Project: projSpec,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.NotNil(t, err)
@@ -537,7 +731,8 @@ func TestReplay(t *testing.T) {
 				Job:     jobSpec1,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -592,9 +787,11 @@ func TestReplay(t *testing.T) {
 			replayManager := new(mock.ReplayManager)
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplay", ctx, replayID).Return(replaySpec, nil)
-			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec0.Name).
+				Return([]models.JobStatus{jobStatusList[0], jobStatusList[1], jobStatusList[2]}, nil)
 			errorMsg := "unable to get status of a run"
-			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).Return([]models.JobStatus{}, errors.New(errorMsg))
+			replayManager.On("GetRunStatus", ctx, projSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec1.Name).
+				Return([]models.JobStatus{}, errors.New(errorMsg))
 
 			replayRequest := models.ReplayRequest{
 				ID:      replayID,
@@ -604,7 +801,8 @@ func TestReplay(t *testing.T) {
 				Job:     jobSpec0,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -671,7 +869,8 @@ func TestReplay(t *testing.T) {
 				Job:     jobSpec0,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, nil, replayManager)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -697,7 +896,8 @@ func TestReplay(t *testing.T) {
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplayList", ctx, projSpec.ID).Return(replaySpecs, nil)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, nil, replayManager)
 			replayList, err := jobSvc.GetReplayList(ctx, projSpec.ID)
 
 			assert.Nil(t, err)
@@ -709,7 +909,8 @@ func TestReplay(t *testing.T) {
 			errorMsg := "unable to get replay list"
 			replayManager.On("GetReplayList", ctx, projSpec.ID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, replayManager)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
+				nil, nil, nil, nil, replayManager)
 			replayList, err := jobSvc.GetReplayList(ctx, projSpec.ID)
 
 			assert.Equal(t, errorMsg, err.Error())

@@ -61,7 +61,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			res, err := service.GetAll(ctx, namespaceSpec, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, []models.ResourceSpec{resourceSpec1}, res)
@@ -109,7 +109,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.Nil(t, err)
 		})
@@ -149,7 +149,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.NotNil(t, err)
 		})
@@ -195,7 +195,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.Nil(t, err)
 		})
@@ -235,7 +235,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
 			assert.NotNil(t, err)
 		})
@@ -271,7 +271,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			resp, err := service.ReadResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, resourceSpec1, resp)
@@ -302,7 +302,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			_, err := service.ReadResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.NotNil(t, err)
 		})
@@ -339,7 +339,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 		})
@@ -373,7 +373,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, nil, dsRepo, nil, nil)
 			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.NotNil(t, err)
 		})
@@ -424,6 +424,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -442,11 +448,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:     resourceSpec.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ResourceName:      resourceSpec.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -455,11 +462,11 @@ func TestService(t *testing.T) {
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, nil)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, namespaceSpec, nil)
 			datastorer.On("BackupResource", ctx, backupResourceReq).Return(models.BackupResourceResponse{}, nil)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 			assert.Nil(t, err)
 			assert.Equal(t, []string{destination.Destination}, resp)
@@ -482,6 +489,12 @@ func TestService(t *testing.T) {
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
@@ -517,11 +530,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -549,17 +563,17 @@ func TestService(t *testing.T) {
 
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
 
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqDownstream).Return(models.BackupResourceResponse{}, nil).Once()
 
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -596,7 +610,7 @@ func TestService(t *testing.T) {
 			errorMsg := "unable to generate destination"
 			depMod.On("GenerateDestination", ctx, unitData).Return(&models.GenerateDestinationResponse{}, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, dsRepo, nil, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -638,7 +652,7 @@ func TestService(t *testing.T) {
 			errorMsg := "unable to get datastorer"
 			dsRepo.On("GetByName", destination.Type.String()).Return(datastorer, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, dsRepo, nil, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -663,6 +677,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -681,11 +701,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:     resourceSpec.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ResourceName:      resourceSpec.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -694,13 +715,13 @@ func TestService(t *testing.T) {
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, namespaceSpec, nil)
 
 			errorMsg := "unable to do backup dry run"
 			datastorer.On("BackupResource", ctx, backupResourceReq).Return(models.BackupResourceResponse{}, errors.New(errorMsg))
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -725,6 +746,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -738,19 +765,20 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				AllowedDownstream: models.AllNamespace,
 			}
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
 
 			errorMsg := "unable to get resource"
-			resourceRepo.On("GetByURN", ctx, destination.URN()).Return(models.ResourceSpec{}, errors.New(errorMsg))
+			projectResourceRepo.On("GetByURN", ctx, destination.URN()).Return(models.ResourceSpec{}, models.NamespaceSpec{}, errors.New(errorMsg))
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -775,6 +803,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -808,11 +842,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -825,14 +860,14 @@ func TestService(t *testing.T) {
 
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
 
 			errorMsg := "unable to generate destination"
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(&models.GenerateDestinationResponse{}, errors.New(errorMsg)).Once()
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -856,6 +891,13 @@ func TestService(t *testing.T) {
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
@@ -892,11 +934,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -913,14 +956,14 @@ func TestService(t *testing.T) {
 			}
 
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
 
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(models.ResourceSpec{}, store.ErrResourceNotFound).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound).Once()
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -945,6 +988,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -978,11 +1027,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1009,16 +1059,124 @@ func TestService(t *testing.T) {
 			}
 
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
 
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqDownstream).Return(models.BackupResourceResponse{}, models.ErrUnsupportedResource).Once()
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, nil, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
+			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
+
+			assert.Nil(t, err)
+			assert.Equal(t, []string{destinationRoot.Destination}, resp)
+		})
+		t.Run("should return list of resources with dependents of only same namespace to be backed up", func(t *testing.T) {
+			execUnit := new(mock.BasePlugin)
+			defer execUnit.AssertExpectations(t)
+
+			depMod := new(mock.DependencyResolverMod)
+			defer depMod.AssertExpectations(t)
+
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
+			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
+			jobDownstream := models.JobSpec{
+				ID:     uuid.Must(uuid.NewRandom()),
+				Name:   "job-2",
+				Task:   jobTask,
+				Assets: jobAssets,
+			}
+			dependencies := make(map[string]models.JobSpecDependency)
+			dependencies[jobDownstream.GetName()] = models.JobSpecDependency{
+				Job: &jobDownstream,
+			}
+
+			jobRoot := models.JobSpec{
+				ID:           uuid.Must(uuid.NewRandom()),
+				Name:         "job-1",
+				Task:         jobTask,
+				Assets:       jobAssets,
+				Dependencies: dependencies,
+			}
+			unitRoot := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobRoot.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobRoot.Assets),
+			}
+			destinationRoot := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.root",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceRoot := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.root",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+			backupReq := models.BackupRequest{
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: namespaceSpec.Name,
+			}
+			backupResourceReqRoot := models.BackupResourceRequest{
+				Resource:   resourceRoot,
+				BackupSpec: backupReq,
+			}
+
+			unitDownstream := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),
+			}
+			destinationDownstream := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.downstream",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceDownstream := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.downstream",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+
+			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
+
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+
+			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
+			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
+
+			otherNamespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-2",
+				ProjectSpec: projectSpec,
+			}
+			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, otherNamespaceSpec, nil).Once()
+
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -1053,7 +1211,7 @@ func TestService(t *testing.T) {
 		}
 		backupUUID := uuid.Must(uuid.NewRandom())
 
-		t.Run("should able to do backup without downstreams", func(t *testing.T) {
+		t.Run("should able to do backup without downstream", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -1081,6 +1239,12 @@ func TestService(t *testing.T) {
 			backupRepoFac := new(mock.BackupRepoFactory)
 			defer backupRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -1099,12 +1263,13 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:               backupUUID,
-				ResourceName:     resourceSpec.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ID:                backupUUID,
+				ResourceName:      resourceSpec.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -1125,20 +1290,20 @@ func TestService(t *testing.T) {
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, nil)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, namespaceSpec, nil)
 			datastorer.On("BackupResource", ctx, backupResourceReq).
 				Return(models.BackupResourceResponse{ResultURN: resultURN, ResultSpec: resultSpec}, nil)
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 			assert.Nil(t, err)
 			assert.Equal(t, []string{resultURN}, resp)
 		})
-		t.Run("should able to do backup with downstreams", func(t *testing.T) {
+		t.Run("should able to do backup with downstream", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
@@ -1165,6 +1330,12 @@ func TestService(t *testing.T) {
 
 			backupRepoFac := new(mock.BackupRepoFactory)
 			defer backupRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
@@ -1201,12 +1372,13 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:               backupUUID,
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ID:                backupUUID,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1263,26 +1435,168 @@ func TestService(t *testing.T) {
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).
 				Return(models.BackupResourceResponse{ResultURN: resultURNRoot, ResultSpec: resultSpecRoot}, nil).Once()
 
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqDownstream).
 				Return(models.BackupResourceResponse{ResultURN: resultURNDownstream, ResultSpec: resultSpecDownstream}, nil).Once()
 
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
 			assert.Equal(t, []string{resultURNRoot, resultURNDownstream}, resp)
+		})
+		t.Run("should able to do backup with only same namespace downstream", func(t *testing.T) {
+			execUnit := new(mock.BasePlugin)
+			defer execUnit.AssertExpectations(t)
+
+			depMod := new(mock.DependencyResolverMod)
+			defer depMod.AssertExpectations(t)
+
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			backupRepo := new(mock.BackupRepo)
+			defer backupRepo.AssertExpectations(t)
+
+			backupRepoFac := new(mock.BackupRepoFactory)
+			defer backupRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
+			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
+			jobDownstream := models.JobSpec{
+				ID:     uuid.Must(uuid.NewRandom()),
+				Name:   "job-2",
+				Task:   jobTask,
+				Assets: jobAssets,
+			}
+			dependencies := make(map[string]models.JobSpecDependency)
+			dependencies[jobDownstream.GetName()] = models.JobSpecDependency{
+				Job: &jobDownstream,
+			}
+
+			//root
+			jobRoot := models.JobSpec{
+				ID:           uuid.Must(uuid.NewRandom()),
+				Name:         "job-1",
+				Task:         jobTask,
+				Assets:       jobAssets,
+				Dependencies: dependencies,
+			}
+			unitRoot := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobRoot.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobRoot.Assets),
+			}
+			destinationRoot := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.root",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceRoot := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.root",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+			backupReq := models.BackupRequest{
+				ID:                backupUUID,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: namespaceSpec.Name,
+			}
+			backupResourceReqRoot := models.BackupResourceRequest{
+				Resource:   resourceRoot,
+				BackupSpec: backupReq,
+			}
+			resultURNRoot := "store://optimus_backup:backupURNRoot"
+			resultSpecRoot := map[string]interface{}{
+				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_root",
+			}
+			backupResultRoot := models.BackupResult{
+				URN:  resultURNRoot,
+				Spec: resultSpecRoot,
+			}
+
+			//downstream
+			unitDownstream := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),
+			}
+			destinationDownstream := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.downstream",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceDownstream := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.downstream",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+
+			backupResult := map[string]interface{}{
+				destinationRoot.Destination: backupResultRoot,
+			}
+			backupSpec := models.BackupSpec{
+				ID:          backupUUID,
+				Resource:    resourceRoot,
+				Result:      backupResult,
+				Description: "",
+			}
+
+			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+
+			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
+			datastorer.On("BackupResource", ctx, backupResourceReqRoot).
+				Return(models.BackupResourceResponse{ResultURN: resultURNRoot, ResultSpec: resultSpecRoot}, nil).Once()
+
+			otherNamespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-2",
+				ProjectSpec: projectSpec,
+			}
+			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, otherNamespaceSpec, nil).Once()
+
+			uuidProvider.On("NewUUID").Return(backupUUID, nil)
+			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
+			backupRepo.On("Save", ctx, backupSpec).Return(nil)
+
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
+			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
+
+			assert.Nil(t, err)
+			assert.Equal(t, []string{resultURNRoot}, resp)
 		})
 		t.Run("should return error when unable to generate destination", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1320,7 +1634,7 @@ func TestService(t *testing.T) {
 			errorMsg := "unable to generate destination"
 			depMod.On("GenerateDestination", ctx, unitData).Return(&models.GenerateDestinationResponse{}, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, dsRepo, uuidProvider, nil)
+			service := datastore.NewService(nil, nil, dsRepo, uuidProvider, nil)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -1366,7 +1680,7 @@ func TestService(t *testing.T) {
 			errorMsg := "unable to get datastorer"
 			dsRepo.On("GetByName", destination.Type.String()).Return(datastorer, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, dsRepo, uuidProvider, nil)
+			service := datastore.NewService(nil, nil, dsRepo, uuidProvider, nil)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -1394,6 +1708,12 @@ func TestService(t *testing.T) {
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -1415,12 +1735,12 @@ func TestService(t *testing.T) {
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
 
 			errorMsg := "unable to get resource"
-			resourceRepo.On("GetByURN", ctx, destination.URN()).Return(models.ResourceSpec{}, errors.New(errorMsg))
+			projectResourceRepo.On("GetByURN", ctx, destination.URN()).Return(models.ResourceSpec{}, models.NamespaceSpec{}, errors.New(errorMsg))
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, nil)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1448,6 +1768,12 @@ func TestService(t *testing.T) {
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -1466,12 +1792,13 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:               backupUUID,
-				ResourceName:     resourceSpec.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           false,
+				ID:                backupUUID,
+				ResourceName:      resourceSpec.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            false,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -1481,13 +1808,13 @@ func TestService(t *testing.T) {
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destination.URN()).Return(resourceSpec, namespaceSpec, nil)
 
 			errorMsg := "unable to do backup"
 			datastorer.On("BackupResource", ctx, backupResourceReq).Return(models.BackupResourceResponse{}, errors.New(errorMsg))
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, nil)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1514,6 +1841,12 @@ func TestService(t *testing.T) {
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
@@ -1548,12 +1881,13 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:               backupUUID,
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ID:                backupUUID,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1567,14 +1901,14 @@ func TestService(t *testing.T) {
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
 
 			errorMsg := "unable to generate destination"
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(&models.GenerateDestinationResponse{}, errors.New(errorMsg)).Once()
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, nil)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, nil)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1608,6 +1942,12 @@ func TestService(t *testing.T) {
 			backupRepoFac := new(mock.BackupRepoFactory)
 			defer backupRepoFac.AssertExpectations(t)
 
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.Must(uuid.NewRandom()),
@@ -1642,12 +1982,13 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:               backupUUID,
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ID:                backupUUID,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1683,19 +2024,19 @@ func TestService(t *testing.T) {
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).
 				Return(models.BackupResourceResponse{ResultURN: resultURNRoot, ResultSpec: resultSpecRoot}, nil).Once()
 
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(models.ResourceSpec{}, store.ErrResourceNotFound).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound).Once()
 
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -1728,6 +2069,12 @@ func TestService(t *testing.T) {
 
 			backupRepoFac := new(mock.BackupRepoFactory)
 			defer backupRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
@@ -1762,12 +2109,13 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:               backupUUID,
-				ResourceName:     resourceRoot.Name,
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				ID:                backupUUID,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  false,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1813,20 +2161,20 @@ func TestService(t *testing.T) {
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
 			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
-			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
-			resourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, nil).Once()
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).
 				Return(models.BackupResourceResponse{ResultURN: resultURNRoot, ResultSpec: resultSpecRoot}, nil).Once()
 
 			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
-			resourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqDownstream).Return(models.BackupResourceResponse{}, models.ErrUnsupportedResource).Once()
 
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -1866,7 +2214,7 @@ func TestService(t *testing.T) {
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("GetAll", ctx).Return(backupSpecs, nil)
 
-			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
 			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
@@ -1882,7 +2230,7 @@ func TestService(t *testing.T) {
 			errorMsg := "unable to get datastore"
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, dsRepo, nil, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, nil)
 			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1907,7 +2255,7 @@ func TestService(t *testing.T) {
 			errorMsg := "unable to get backups"
 			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{}, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
 			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1930,7 +2278,7 @@ func TestService(t *testing.T) {
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{}, store.ErrResourceNotFound)
 
-			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
 			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
@@ -1953,7 +2301,7 @@ func TestService(t *testing.T) {
 			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{backupSpecs[2]}, nil)
 
-			service := datastore.NewService(nil, dsRepo, nil, backupRepoFac)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
 			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
