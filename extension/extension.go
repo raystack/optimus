@@ -19,7 +19,7 @@ import (
 	"github.com/google/go-github/github"
 )
 
-const defaultRepoPrefix = "optimus-extension"
+const defaultRepoPrefix = "optimus-extension-"
 
 // Extension is manager for extension
 type Extension struct {
