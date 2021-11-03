@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 type Project struct {
-	ID     uuid.UUID `gorm:"primary_key;type:uuid"`
+	ID     uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 	Name   string    `gorm:"not null;unique"`
 	Config datatypes.JSON
 

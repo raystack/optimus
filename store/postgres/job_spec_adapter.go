@@ -16,7 +16,7 @@ import (
 // Job are inputs from user to create a job
 // postgres representation of the job
 type Job struct {
-	ID           uuid.UUID `gorm:"primary_key;type:uuid;"`
+	ID           uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 	Version      int
 	Name         string `gorm:"not null" json:"name"`
 	Owner        string
@@ -373,7 +373,9 @@ func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace
 }
 
 type JobRun struct {
-	ID uuid.UUID `gorm:"primary_key;type:uuid;"`
+	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+
+	JobID uuid.UUID
 
 	// job spec for which this run was created, spec should contain a valid
 	// uuid if it belongs to a saved job and not an adhoc job
@@ -418,8 +420,9 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 	}
 
 	return JobRun{
-		ID:   jr.ID,
-		Spec: specBytes,
+		ID:    jr.ID,
+		JobID: jr.Spec.ID,
+		Spec:  specBytes,
 
 		NamespaceID: adaptNamespace.ID,
 		Namespace:   adaptNamespace,

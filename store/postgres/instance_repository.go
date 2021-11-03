@@ -15,7 +15,7 @@ import (
 )
 
 type Instance struct {
-	ID uuid.UUID `gorm:"primary_key;type:uuid;"`
+	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobRunID uuid.UUID `gorm:"type:uuid"`
 	JobRun   JobRun    `gorm:"foreignKey:JobRunID"`

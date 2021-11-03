@@ -68,3 +68,14 @@ log:
 #  # skip bootstrap step of scheduler required for proper functioning
 #  # but can be disabled for local development, default: false
 #  skip_init: true
+
+# application telemetry
+#telemetry:
+#
+#  # configure the host:port used for
+#  # - exposing profiling metrics via pprof over /debug
+#  # - prometheus stats over /metrics
+#  profile_addr: ":9110"
+#
+#  # jaeger collector address to send application traces
+#  jaeger_addr: "http://localhost:14268/api/traces"

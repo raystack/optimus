@@ -16,6 +16,7 @@ require (
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69
 	github.com/hashicorp/go-hclog v0.14.1
@@ -34,6 +35,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.11.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.17
 	github.com/sirupsen/logrus v1.8.1
@@ -42,6 +44,13 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xlab/treeprint v1.1.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.25.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.25.0
+	go.opentelemetry.io/otel v1.0.1
+	go.opentelemetry.io/otel/exporters/jaeger v1.0.1
+	go.opentelemetry.io/otel/sdk v1.0.1
+	go.opentelemetry.io/otel/sdk/metric v0.24.0
+	go.opentelemetry.io/otel/trace v1.0.1
 	gocloud.dev v0.24.0
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f

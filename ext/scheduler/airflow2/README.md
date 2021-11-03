@@ -4,7 +4,8 @@ Currently, allows configuring dags to be loaded from
 - GCS bucket
 - Local filesystem
 - inmemory
-implementation already supports variety of other systems, just need to configure them.
+
+Implementation already supports variety of other systems, just need to configure them.
   
 For using a fs that needs auth, it is required to create a project secret with
 `STORAGE` as key and base64 encoded service account/token as value.

@@ -47,6 +47,9 @@ var (
 	KeySchedulerPeers      = "scheduler.peers"
 
 	KeyAdminEnabled = "admin.enabled"
+
+	KeyTelemetryProfileAddr = "telemetry.profile_addr"
+	KeyTelemetryJaegerAddr  = "telemetry.jaeger_addr"
 )
 
 type Optimus struct {
@@ -158,6 +161,11 @@ type AdminConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
+type TelemetryConfig struct {
+	ProfileAddr string `yaml:"profile_addr"`
+	JaegerAddr  string `yaml:"jaeger_addr"`
+}
+
 func (o *Optimus) GetVersion() string {
 	return o.eKs(KeyVersion)
 }
@@ -236,6 +244,13 @@ func (o *Optimus) GetScheduler() SchedulerConfig {
 func (o *Optimus) GetAdmin() AdminConfig {
 	return AdminConfig{
 		Enabled: o.k.Bool(KeyAdminEnabled),
+	}
+}
+
+func (o *Optimus) GetTelemetry() TelemetryConfig {
+	return TelemetryConfig{
+		ProfileAddr: o.eKs(KeyTelemetryProfileAddr),
+		JaegerAddr:  o.eKs(KeyTelemetryJaegerAddr),
 	}
 }
 

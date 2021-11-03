@@ -11,9 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-multierror"
 	v1 "github.com/odpf/optimus/api/handler/v1"
@@ -43,6 +46,8 @@ import (
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 	slackapi "github.com/slack-go/slack"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
@@ -292,7 +297,8 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	if err := postgres.Migrate(conf.GetServe().DB.DSN); err != nil {
 		return errors.Wrap(err, "postgres.Migrate")
 	}
-	dbConn, err := postgres.Connect(conf.GetServe().DB.DSN, conf.GetServe().DB.MaxIdleConnection, conf.GetServe().DB.MaxOpenConnection)
+	dbConn, err := postgres.Connect(conf.GetServe().DB.DSN, conf.GetServe().DB.MaxIdleConnection,
+		conf.GetServe().DB.MaxOpenConnection, l.Writer())
 	if err != nil {
 		return errors.Wrap(err, "postgres.Connect")
 	}
@@ -377,19 +383,31 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
-	logrusEntry := logrus.NewEntry(logrus.New())
+	grpcLogLevel, err := logrus.ParseLevel(l.Level())
+	if err != nil {
+		return err
+	}
+	grpcLogrus := logrus.New()
+	grpcLogrus.SetLevel(grpcLogLevel)
+	grpcLogrusEntry := logrus.NewEntry(grpcLogrus)
 	// Shared options for the logger, with a custom gRPC code to log level function.
 	opts := []grpc_logrus.Option{
 		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
 	}
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
-	grpc_logrus.ReplaceGrpcLogger(logrusEntry)
+	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
 	grpcAddr := fmt.Sprintf("%s:%d", conf.GetServe().Host, conf.GetServe().Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
-			grpc_logrus.UnaryServerInterceptor(logrusEntry, opts...),
+			grpc_logrus.UnaryServerInterceptor(grpcLogrusEntry, opts...),
+			otelgrpc.UnaryServerInterceptor(),
+			grpc_prometheus.UnaryServerInterceptor,
+		),
+		grpc_middleware.WithStreamServerChain(
+			otelgrpc.StreamServerInterceptor(),
+			grpc_prometheus.StreamServerInterceptor,
 		),
 		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
 		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
@@ -490,6 +508,8 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		),
 		models.BatchScheduler,
 	))
+	grpc_prometheus.Register(grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 
 	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer grpcDialCancel()
@@ -517,16 +537,16 @@ func Initialize(l log.Logger, conf config.Provider) error {
 
 	// base router
 	baseMux := http.NewServeMux()
-	baseMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+	baseMux.HandleFunc("/ping", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
-	})
-	baseMux.Handle("/api/", http.StripPrefix("/api", gwmux))
+	}), "Ping").ServeHTTP)
+	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
 
 	srv := &http.Server{
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 

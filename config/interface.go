@@ -11,4 +11,5 @@ type Provider interface {
 	GetServe() ServerConfig
 	GetScheduler() SchedulerConfig
 	GetAdmin() AdminConfig
+	GetTelemetry() TelemetryConfig
 }
