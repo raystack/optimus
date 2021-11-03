@@ -38,9 +38,16 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		Short: "backup a resource",
 	}
 
-	var dryRun bool
+	var (
+		project   string
+		namespace string
+		dryRun    bool
+	)
 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
+	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
+	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of the requester")
+
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {
@@ -88,16 +95,11 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		description := inputs["description"].(string)
 		backupDownstream := inputs["backupDownstream"].(bool)
 
-		project := conf.GetProject().Name
 		if project == "" {
-			l.Error("project name should not be empty")
-			return nil
+			project = conf.GetProject().Name
 		}
-
-		namespace := conf.GetNamespace().Name
 		if namespace == "" {
-			l.Error("namespace name should not be empty")
-			return nil
+			namespace = conf.GetNamespace().Name
 		}
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
@@ -244,6 +246,12 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 		Short: "get list of backup per project and datastore",
 	}
 
+	var (
+		project string
+	)
+
+	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
+
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {
@@ -257,10 +265,8 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 			return err
 		}
 
-		project := conf.GetProject().Name
 		if project == "" {
-			l.Error("project name should not be empty")
-			return nil
+			project = conf.GetProject().Name
 		}
 
 		listBackupsRequest := &pb.ListBackupsRequest{

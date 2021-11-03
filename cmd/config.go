@@ -36,15 +36,6 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			}
 			questions := []*survey.Question{
 				{
-					Name: "JobPath",
-					Prompt: &survey.Input{
-						Message: "Scheduled jobs directory",
-						Default: "./jobs",
-						Help:    "relative directory path to jobs specification",
-					},
-					Validate: survey.Required,
-				},
-				{
 					Name: "ProjectName",
 					Prompt: &survey.Input{
 						Message: "What is the project name?",
@@ -65,7 +56,6 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := survey.Ask(questions, &answers); err != nil {
 				return err
 			}
-			conf.Job.Path = answers["JobPath"].(string)
 			conf.Project.Name = answers["ProjectName"].(string)
 
 			// for project config
@@ -112,6 +102,15 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			// for datastore
 			questions = []*survey.Question{
 				{
+					Name: "JobPath",
+					Prompt: &survey.Input{
+						Message: "Scheduled jobs directory",
+						Default: "./jobs",
+						Help:    "relative directory path to jobs specification",
+					},
+					Validate: survey.Required,
+				},
+				{
 					Name: "RegisterDatastore",
 					Prompt: &survey.Select{
 						Message: "Register datastore configs?",
@@ -124,6 +123,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := survey.Ask(questions, &answers); err != nil {
 				return err
 			}
+			conf.Namespace.Job.Path = answers["JobPath"].(string)
 			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
 				conf, err = datastoreConfigQuestions(l, conf, dsRepo)
 				if err != nil {
@@ -225,7 +225,7 @@ func datastoreConfigQuestions(l log.Logger, conf config.Optimus, dsRepo models.D
 	for _, ds := range dsRepo.GetAll() {
 		dsOptions = append(dsOptions, ds.Name())
 	}
-	conf.Datastore = []config.Datastore{}
+	conf.Namespace.Datastore = []config.Datastore{}
 
 	configAnswers := map[string]interface{}{}
 	if err := survey.Ask([]*survey.Question{
@@ -246,7 +246,7 @@ func datastoreConfigQuestions(l log.Logger, conf config.Optimus, dsRepo models.D
 	}, &configAnswers); err != nil {
 		return conf, err
 	}
-	conf.Datastore = append(conf.Datastore, config.Datastore{
+	conf.Namespace.Datastore = append(conf.Namespace.Datastore, config.Datastore{
 		Type: configAnswers["Type"].(survey.OptionAnswer).Value,
 		Path: configAnswers["Path"].(string),
 	})

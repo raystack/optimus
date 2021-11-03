@@ -36,12 +36,16 @@ func runCommand(l log.Logger, host string, jobSpecRepo JobSpecRepository, plugin
 
 func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, pluginRepo models.PluginRepository,
 	conf config.Provider) *cli.Command {
+	var projectName string
+	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
 		Args:    cli.MinimumNArgs(1),
 		Example: "optimus beta run job <job_name> --project g-optimus",
 	}
+	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
+	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace under the project")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobSpec, err := jobSpecRepo.GetByName(args[0])
@@ -49,18 +53,13 @@ func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, plu
 			return err
 		}
 
-		projectName := conf.GetProject().Name
 		if projectName == "" {
-			l.Error("project name should not be empty")
-			return nil
+			projectName = conf.GetProject().Name
 		}
-		namespaceName := conf.GetNamespace().Name
-		if namespaceName == "" {
-			l.Error("namespace name should not be empty")
-			return nil
+		if namespace == "" {
+			namespace = conf.GetNamespace().Name
 		}
-
-		return runJobSpecificationRequest(l, projectName, namespaceName, host, jobSpec, pluginRepo)
+		return runJobSpecificationRequest(l, projectName, namespace, host, jobSpec, pluginRepo)
 	}
 	return cmd
 }

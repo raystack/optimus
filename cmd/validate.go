@@ -35,12 +35,16 @@ func validateCommand(l log.Logger, host string, pluginRepo models.PluginReposito
 
 func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
 	conf config.Provider) *cli.Command {
+	var projectName string
+	var namespace string
 	cmd := &cli.Command{
 		Use:     "job",
 		Short:   "run basic checks on all jobs",
 		Example: "optimus validate job",
 	}
 
+	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
+	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		start := time.Now()
 		jobSpecs, err := jobSpecRepo.GetAll()
@@ -48,18 +52,14 @@ func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepos
 			return err
 		}
 
-		projectName := conf.GetProject().Name
 		if projectName == "" {
-			l.Error("project name should not be empty")
-			return nil
+			projectName = conf.GetProject().Name
 		}
-		namespaceName := conf.GetNamespace().Name
-		if namespaceName == "" {
-			l.Error("namespace name should not be empty")
-			return nil
+		if namespace == "" {
+			namespace = conf.GetNamespace().Name
 		}
 
-		if err := validateJobSpecificationRequest(l, projectName, namespaceName, pluginRepo, jobSpecs, host); err != nil {
+		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host); err != nil {
 			return err
 		}
 		l.Info("jobs successfully validated")

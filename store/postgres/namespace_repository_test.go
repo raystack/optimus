@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/odpf/optimus/store"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
@@ -65,6 +67,10 @@ func TestNamespaceRepository(t *testing.T) {
 		{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: "g-optimus",
+			Config: map[string]string{
+				"bucket":                  "gs://some_folder",
+				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
+			},
 		},
 		{
 			Name: "",
@@ -84,6 +90,10 @@ func TestNamespaceRepository(t *testing.T) {
 				"bucket":                  "gs://some_folder-2",
 				transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
 			},
+		},
+		{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "t-optimus-3",
 		},
 	}
 
@@ -189,6 +199,24 @@ func TestNamespaceRepository(t *testing.T) {
 			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
+			assert.Equal(t, 36, len(checkModel.ID.String()))
+		})
+		t.Run("should not update empty config", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			repo := NewNamespaceRepository(db, projectSpec, hash)
+
+			err := repo.Insert(ctx, namespaceSpecs[4])
+			assert.Nil(t, err)
+
+			err = repo.Save(ctx, namespaceSpecs[4])
+			assert.Equal(t, store.ErrEmptyConfig, err)
+
+			checkModel, err := repo.GetByName(ctx, namespaceSpecs[4].Name)
+			assert.Nil(t, err)
+			assert.Equal(t, "t-optimus-3", checkModel.Name)
 			assert.Equal(t, 36, len(checkModel.ID.String()))
 		})
 	})

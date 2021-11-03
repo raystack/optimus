@@ -331,7 +331,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, "rpc error: code = Internal desc = a random error: failed to save project a-data-project", err.Error())
 			assert.Nil(t, resp)
 		})
-		t.Run("should register a project without a namespace", func(t *testing.T) {
+		t.Run("should register a project", func(t *testing.T) {
 			projectName := "a-data-project"
 
 			projectSpec := models.ProjectSpec{
@@ -368,68 +368,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
-			assert.Nil(t, err)
-			assert.Equal(t, &pb.RegisterProjectResponse{
-				Success: true,
-				Message: "saved successfully",
-			}, resp)
-		})
-		t.Run("should register a project with a namespace", func(t *testing.T) {
-			projectName := "a-data-project"
-
-			projectSpec := models.ProjectSpec{
-				Name: projectName,
-				Config: map[string]string{
-					"BUCKET": "gs://some_folder",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				Name:   "dev-test-namespace-1",
-				Config: map[string]string{},
-			}
-
-			adapter := v1.NewAdapter(nil, nil)
-
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("Save", ctx, projectSpec).Return(nil)
-			projectRepository.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			jobSvc := new(mock.JobService)
-			defer jobSvc.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("Save", ctx, namespaceSpec).Return(nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				"someVersion1.0",
-				jobSvc,
-				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
-				nil,
-				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
-			)
-
-			projectRequest := pb.RegisterProjectRequest{
-				Project:   adapter.ToProjectProto(projectSpec),
-				Namespace: adapter.ToNamespaceProto(namespaceSpec),
-			}
 			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{

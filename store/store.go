@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrResourceNotFound = errors.New("resource not found")
+	ErrEmptyConfig      = errors.New("empty config")
 )
 
 // ProjectJobSpecRepository represents a storage interface for Job specifications at a project level

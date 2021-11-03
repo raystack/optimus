@@ -256,22 +256,10 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	projectSpec := sv.adapter.FromProjectProto(req.GetProject())
 
 	if err := projectRepo.Save(ctx, projectSpec); err != nil {
+		if errors.Is(store.ErrEmptyConfig, err) {
+			return nil, status.Errorf(codes.FailedPrecondition, "%s: failed to save project %s", err.Error(), req.GetProject().GetName())
+		}
 		return nil, status.Errorf(codes.Internal, "%s: failed to save project %s", err.Error(), req.GetProject().GetName())
-	}
-
-	if req.GetNamespace() != nil {
-		savedProjectSpec, err := projectRepo.GetByName(ctx, projectSpec.Name)
-		if err != nil {
-			return nil, status.Errorf(codes.NotFound, "%s: failed to find project %s",
-				err.Error(), req.GetProject().GetName())
-		}
-
-		namespaceRepo := sv.namespaceRepoFactory.New(savedProjectSpec)
-		namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
-		if err = namespaceRepo.Save(ctx, namespaceSpec); err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to save project %s with namespace %s",
-				err.Error(), req.GetProject().GetName(), req.GetNamespace().GetName())
-		}
 	}
 
 	return &pb.RegisterProjectResponse{
