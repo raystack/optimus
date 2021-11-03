@@ -19,6 +19,8 @@ datastore:
   type: bigquery
   # path where resource spec for BQ are stored
   path: "bq"
+  # backup configurations of a datastore
+  backup: {}
 
 # project variables usable in specifications
 config:
