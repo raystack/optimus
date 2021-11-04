@@ -82,7 +82,7 @@ module.exports = {
       darkTheme: darkCodeTheme,
     },
     gtag: {
-      trackingID: 'G-T',
+      trackingID: 'G-RSCK0YREFM',
     },
     announcementBar: {
       id: 'star-repo',
