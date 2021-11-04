@@ -22,6 +22,7 @@ type Optimus struct {
 	Log       LogConfig       `mapstructure:"log"`
 	Scheduler SchedulerConfig `mapstructure:"scheduler"`
 	Admin     AdminConfig     `mapstructure:"admin"`
+	Telemetry TelemetryConfig `mapstructure:"telemetry"`
 }
 
 type Datastore struct {
@@ -121,8 +122,8 @@ type AdminConfig struct {
 }
 
 type TelemetryConfig struct {
-	ProfileAddr string `yaml:"profile_addr"`
-	JaegerAddr  string `yaml:"jaeger_addr"`
+	ProfileAddr string `mapstructure:"profile_addr"`
+	JaegerAddr  string `mapstructure:"jaeger_addr"`
 }
 
 func (o *Optimus) GetVersion() string {
@@ -166,8 +167,5 @@ func (o *Optimus) GetAdmin() AdminConfig {
 }
 
 func (o *Optimus) GetTelemetry() TelemetryConfig {
-	return TelemetryConfig{
-		ProfileAddr: o.GetTelemetry().ProfileAddr,
-		JaegerAddr:  o.GetTelemetry().JaegerAddr,
-	}
+	return o.Telemetry
 }

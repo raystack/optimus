@@ -22,15 +22,17 @@ require (
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.4.1
+	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/raft v1.3.1
 	github.com/hashicorp/raft-boltdb v0.0.0-20210422161416-485fa74b0b01 // indirect
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210422161416-485fa74b0b01
 	github.com/hashicorp/serf v0.8.2
+	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/jhump/protoreflect v1.9.1-0.20210817181203-db1a327a393e // indirect
-	github.com/knadh/koanf v1.1.0
 	github.com/kushsharma/parallel v0.2.1
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/odpf/salt v0.0.0-20210919015538-3fd8ab22acea
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
