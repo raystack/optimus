@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	pb "github.com/odpf/optimus/api/proto/odpf/metadata/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/metadata/optimus/v1"
 	"github.com/odpf/optimus/models"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

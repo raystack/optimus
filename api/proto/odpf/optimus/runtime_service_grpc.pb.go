@@ -34,9 +34,8 @@ type RuntimeServiceClient interface {
 	DeleteJobSpecification(ctx context.Context, in *DeleteJobSpecificationRequest, opts ...grpc.CallOption) (*DeleteJobSpecificationResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
 	ListJobSpecification(ctx context.Context, in *ListJobSpecificationRequest, opts ...grpc.CallOption) (*ListJobSpecificationResponse, error)
-	// DumpJobSpecification returns compiled representation of the job in a scheduler
-	// consumable form
-	DumpJobSpecification(ctx context.Context, in *DumpJobSpecificationRequest, opts ...grpc.CallOption) (*DumpJobSpecificationResponse, error)
+	// GetJobTask provides task details specific to plugin used in a job
+	GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error)
 	// CheckJobSpecification checks if a job specification is valid
 	CheckJobSpecification(ctx context.Context, in *CheckJobSpecificationRequest, opts ...grpc.CallOption) (*CheckJobSpecificationResponse, error)
 	// CheckJobSpecifications checks if the job specifications are valid
@@ -170,9 +169,9 @@ func (c *runtimeServiceClient) ListJobSpecification(ctx context.Context, in *Lis
 	return out, nil
 }
 
-func (c *runtimeServiceClient) DumpJobSpecification(ctx context.Context, in *DumpJobSpecificationRequest, opts ...grpc.CallOption) (*DumpJobSpecificationResponse, error) {
-	out := new(DumpJobSpecificationResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/DumpJobSpecification", in, out, opts...)
+func (c *runtimeServiceClient) GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error) {
+	out := new(GetJobTaskResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/GetJobTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -461,9 +460,8 @@ type RuntimeServiceServer interface {
 	DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
 	ListJobSpecification(context.Context, *ListJobSpecificationRequest) (*ListJobSpecificationResponse, error)
-	// DumpJobSpecification returns compiled representation of the job in a scheduler
-	// consumable form
-	DumpJobSpecification(context.Context, *DumpJobSpecificationRequest) (*DumpJobSpecificationResponse, error)
+	// GetJobTask provides task details specific to plugin used in a job
+	GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error)
 	// CheckJobSpecification checks if a job specification is valid
 	CheckJobSpecification(context.Context, *CheckJobSpecificationRequest) (*CheckJobSpecificationResponse, error)
 	// CheckJobSpecifications checks if the job specifications are valid
@@ -535,8 +533,8 @@ func (UnimplementedRuntimeServiceServer) DeleteJobSpecification(context.Context,
 func (UnimplementedRuntimeServiceServer) ListJobSpecification(context.Context, *ListJobSpecificationRequest) (*ListJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListJobSpecification not implemented")
 }
-func (UnimplementedRuntimeServiceServer) DumpJobSpecification(context.Context, *DumpJobSpecificationRequest) (*DumpJobSpecificationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DumpJobSpecification not implemented")
+func (UnimplementedRuntimeServiceServer) GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJobTask not implemented")
 }
 func (UnimplementedRuntimeServiceServer) CheckJobSpecification(context.Context, *CheckJobSpecificationRequest) (*CheckJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckJobSpecification not implemented")
@@ -734,20 +732,20 @@ func _RuntimeService_ListJobSpecification_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_DumpJobSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DumpJobSpecificationRequest)
+func _RuntimeService_GetJobTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuntimeServiceServer).DumpJobSpecification(ctx, in)
+		return srv.(RuntimeServiceServer).GetJobTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.RuntimeService/DumpJobSpecification",
+		FullMethod: "/odpf.optimus.RuntimeService/GetJobTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).DumpJobSpecification(ctx, req.(*DumpJobSpecificationRequest))
+		return srv.(RuntimeServiceServer).GetJobTask(ctx, req.(*GetJobTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1218,8 +1216,8 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RuntimeService_ListJobSpecification_Handler,
 		},
 		{
-			MethodName: "DumpJobSpecification",
-			Handler:    _RuntimeService_DumpJobSpecification_Handler,
+			MethodName: "GetJobTask",
+			Handler:    _RuntimeService_GetJobTask_Handler,
 		},
 		{
 			MethodName: "CheckJobSpecification",

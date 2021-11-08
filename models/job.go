@@ -113,6 +113,13 @@ type JobSpecTask struct {
 	Priority int
 }
 
+type JobSpecTaskDestination struct {
+	Destination string
+	Type        DestinationType
+}
+
+type JobSpecTaskDependencies []string
+
 // using array to keep order, map would be more performant
 type JobSpecConfigs []JobSpecConfigItem
 
@@ -305,6 +312,9 @@ type JobService interface {
 	GetAll(context.Context, NamespaceSpec) ([]JobSpec, error)
 	// Delete deletes a job spec from all repos
 	Delete(context.Context, NamespaceSpec, JobSpec) error
+	// GetTaskDependencies returns job task dependency mod details
+	GetTaskDependencies(context.Context, NamespaceSpec, JobSpec) (JobSpecTaskDestination,
+		JobSpecTaskDependencies, error)
 
 	// Run creates a new job run for provided job spec and schedules it to execute
 	// immediately

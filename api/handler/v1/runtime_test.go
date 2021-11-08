@@ -1011,7 +1011,233 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
 		})
 	})
+	t.Run("GetJobTask", func(t *testing.T) {
+		t.Run("should read a job spec task details", func(t *testing.T) {
+			Version := "1.0.1"
 
+			projectName := "a-data-project"
+			jobName1 := "a-data-job"
+			taskName := "a-data-task"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+
+			execUnit1 := new(mock.DependencyResolverMod)
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:        taskName,
+				Description: "plugin description",
+				Image:       "gcr.io/example/example",
+			}, nil)
+			defer execUnit1.AssertExpectations(t)
+
+			jobSpecs := []models.JobSpec{
+				{
+					Name: jobName1,
+					Task: models.JobSpecTask{
+						Unit: &models.Plugin{
+							Base:          execUnit1,
+							DependencyMod: execUnit1,
+						},
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+					Assets: *models.JobAssets{}.New(
+						[]models.JobSpecAsset{
+							{
+								Name:  "query.sql",
+								Value: "select * from 1",
+							},
+						},
+					),
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			allTasksRepo := new(mock.SupportedPluginRepo)
+			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			adapter := v1.NewAdapter(allTasksRepo, nil)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			jobService.On("GetTaskDependencies", ctx, namespaceSpec, jobSpecs[0]).Return(models.JobSpecTaskDestination{
+				Destination: "project.dataset.table",
+				Type:        "bq",
+			}, models.JobSpecTaskDependencies([]string{"bq://project.dataset.table"}), nil)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService,
+				nil, nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			taskSpecExpected := &pb.JobTask{
+				Name:        taskName,
+				Description: "plugin description",
+				Image:       "gcr.io/example/example",
+				Destination: &pb.JobTask_Destination{
+					Destination: "project.dataset.table",
+					Type:        "bq",
+				},
+				Dependencies: []*pb.JobTask_Dependency{
+					{
+						Dependency: "bq://project.dataset.table",
+					},
+				},
+			}
+			jobTaskRequest := &pb.GetJobTaskRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
+			jobTaskResp, err := runtimeServiceServer.GetJobTask(ctx, jobTaskRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, taskSpecExpected, jobTaskResp.Task)
+		})
+		t.Run("task without dependency mod should skip destination and dependency fields", func(t *testing.T) {
+			Version := "1.0.1"
+
+			projectName := "a-data-project"
+			jobName1 := "a-data-job"
+			taskName := "a-data-task"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+
+			execUnit1 := new(mock.BasePlugin)
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:        taskName,
+				Description: "plugin description",
+				Image:       "gcr.io/example/example",
+			}, nil)
+			defer execUnit1.AssertExpectations(t)
+
+			jobSpecs := []models.JobSpec{
+				{
+					Name: jobName1,
+					Task: models.JobSpecTask{
+						Unit: &models.Plugin{
+							Base: execUnit1,
+						},
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+					Assets: *models.JobAssets{}.New(
+						[]models.JobSpecAsset{
+							{
+								Name:  "query.sql",
+								Value: "select * from 1",
+							},
+						}),
+				},
+			}
+
+			projectRepository := new(mock.ProjectRepository)
+			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
+			defer projectRepository.AssertExpectations(t)
+
+			projectRepoFactory := new(mock.ProjectRepoFactory)
+			projectRepoFactory.On("New").Return(projectRepository)
+			defer projectRepoFactory.AssertExpectations(t)
+
+			allTasksRepo := new(mock.SupportedPluginRepo)
+			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			adapter := v1.NewAdapter(allTasksRepo, nil)
+
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			namespaceRepoFact := new(mock.NamespaceRepoFactory)
+			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			defer namespaceRepoFact.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService,
+				nil, nil,
+				projectRepoFactory,
+				namespaceRepoFact,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			taskSpecExpected := &pb.JobTask{
+				Name:         taskName,
+				Description:  "plugin description",
+				Image:        "gcr.io/example/example",
+				Destination:  nil,
+				Dependencies: nil,
+			}
+			jobTaskRequest := &pb.GetJobTaskRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
+			jobTaskResp, err := runtimeServiceServer.GetJobTask(ctx, jobTaskRequest)
+			assert.Nil(t, err)
+			assert.Equal(t, taskSpecExpected, jobTaskResp.Task)
+		})
+	})
 	t.Run("ListProjectNamespaces", func(t *testing.T) {
 		t.Run("should read namespaces of a project", func(t *testing.T) {
 			Version := "1.0.1"
@@ -1072,7 +1298,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			namespaceAdapted := adapter.ToNamespaceProto(namespaceSpec)
 			request := pb.ListProjectNamespacesRequest{ProjectName: projectName}
-			resp, err := runtimeServiceServer.ListProjectNamespaces(context.Background(), &request)
+			resp, err := runtimeServiceServer.ListProjectNamespaces(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, []*pb.NamespaceSpecification{namespaceAdapted}, resp.GetNamespaces())
 		})
@@ -1174,7 +1400,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, Namespace: namespaceSpec.Name}
-			resp, err := runtimeServiceServer.DeleteJobSpecification(context.Background(), &deployRequest)
+			resp, err := runtimeServiceServer.DeleteJobSpecification(ctx, &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, "job a-data-job has been deleted", resp.GetMessage())
 		})
@@ -1244,7 +1470,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
 			}
-			resp, err := runtimeServiceServer.JobStatus(context.Background(), req)
+			resp, err := runtimeServiceServer.JobStatus(ctx, req)
 			assert.Nil(t, err)
 			assert.Equal(t, len(jobStatuses), len(resp.Statuses))
 			for _, expectedStatus := range jobStatuses {
@@ -1339,7 +1565,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Value: eventValues,
 				},
 			}
-			_, err := runtimeServiceServer.RegisterJobEvent(context.Background(), req)
+			_, err := runtimeServiceServer.RegisterJobEvent(ctx, req)
 			assert.Nil(t, err)
 		})
 	})
@@ -1368,7 +1594,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Offset:      "24h",
 				TruncateTo:  "d",
 			}
-			resp, err := runtimeServiceServer.GetWindow(context.Background(), &req)
+			resp, err := runtimeServiceServer.GetWindow(ctx, &req)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
@@ -1397,7 +1623,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Offset:      "24h",
 				TruncateTo:  "d",
 			}
-			_, err := runtimeServiceServer.GetWindow(context.Background(), &req)
+			_, err := runtimeServiceServer.GetWindow(ctx, &req)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
 		})
 	})
@@ -1470,7 +1696,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("CreateResource", context.Background(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -1495,7 +1721,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			resp, err := runtimeServiceServer.CreateResource(context.Background(), &req)
+			resp, err := runtimeServiceServer.CreateResource(ctx, &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 		})
@@ -1569,7 +1795,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			defer projectRepoFactory.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("UpdateResource", context.Background(), namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("UpdateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -1594,7 +1820,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			resp, err := runtimeServiceServer.UpdateResource(context.Background(), &req)
+			resp, err := runtimeServiceServer.UpdateResource(ctx, &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 		})
@@ -1694,7 +1920,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				StartDate:   startDate.Format(timeLayout),
 				EndDate:     endDate.Format(timeLayout),
 			}
-			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.Background(), &replayRequest)
+			replayResponse, err := runtimeServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
@@ -2297,7 +2523,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Id:          reqUUID.String(),
 				ProjectName: projectName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(context.Background(), &replayRequestPb)
+			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(ctx, &replayRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, models.ReplayStatusReplayed, replayStatusResponse.State)
@@ -2337,7 +2563,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Id:          reqUUID.String(),
 				ProjectName: projectName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(context.Background(), &replayRequestPb)
+			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(ctx, &replayRequestPb)
 
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -2444,7 +2670,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			replayRequestPb := pb.ListReplaysRequest{
 				ProjectName: projectName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.ListReplays(context.Background(), &replayRequestPb)
+			replayStatusResponse, err := runtimeServiceServer.ListReplays(ctx, &replayRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, expectedReplayList, replayStatusResponse)
@@ -2551,7 +2777,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -2564,7 +2790,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				IgnoreDownstream: true,
 				DryRun:           true,
 			}
-			resourceSvc.On("BackupResourceDryRun", context.Background(), backupRequest, []models.JobSpec{jobSpec}).Return([]string{resourceName}, nil)
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).Return([]string{resourceName}, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2587,7 +2813,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Namespace:        namespaceSpec.Name,
 				IgnoreDownstream: true,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []string{resourceName}, backupResponse.ResourceName)
@@ -2650,12 +2876,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName: resourceName,
@@ -2663,7 +2889,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Namespace:    namespaceSpec,
 				DryRun:       true,
 			}
-			resourceSvc.On("BackupResourceDryRun", context.Background(), backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return([]string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, nil)
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return([]string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2686,7 +2912,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Namespace:        namespaceSpec.Name,
 				IgnoreDownstream: false,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, backupResponse.ResourceName)
@@ -2729,7 +2955,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -2773,7 +2999,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -2803,7 +3029,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
 			errorMsg := "unable to read resource"
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec,
+			resourceSvc.On("ReadResource", ctx, namespaceSpec,
 				models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -2826,7 +3052,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -2855,7 +3081,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -2882,7 +3108,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -2932,13 +3158,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			errorMsg := "unable to get jobspec downstream"
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2960,7 +3186,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -3010,12 +3236,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName: resourceName,
@@ -3024,7 +3250,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				DryRun:       true,
 			}
 			errorMsg := "unable to get jobspec"
-			resourceSvc.On("BackupResourceDryRun", context.Background(), backupRequest, []models.JobSpec{jobSpec}).Return([]string{}, errors.New(errorMsg))
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).Return([]string{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3046,7 +3272,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ResourceName:  resourceName,
 				Namespace:     namespaceSpec.Name,
 			}
-			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -3144,9 +3370,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
 			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
 
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec}).Return([]string{backupUrn}, nil)
+			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return([]string{backupUrn}, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3161,7 +3387,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.Backup(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResponsePb, backupResponse)
@@ -3249,10 +3475,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
 			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
 
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResults, nil)
 

@@ -2,6 +2,7 @@ package base
 
 import (
 	hplugin "github.com/hashicorp/go-plugin"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -31,4 +32,6 @@ var (
 		MagicCookieKey:   MagicCookieKey,
 		MagicCookieValue: MagicCookieValue,
 	}
+
+	Tracer = otel.Tracer("optimus/plugin")
 )
