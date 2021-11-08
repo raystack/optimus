@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb/v2"
 	"github.com/hashicorp/serf/serf"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/config"
 	"google.golang.org/protobuf/proto"
 )

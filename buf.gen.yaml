@@ -7,7 +7,7 @@ plugins:
     # proto file should be.
     # This is necessary while importing a proto file foo/a.proto from another
     # directory, e.g. bar/b.proto
-    opt: paths=source_relative,Modpf/optimus/runtime_service.proto=github.com/odpf/optimus/api/proto/odpf/optimus
+    opt: paths=source_relative,Modpf/optimus/core/v1beta1/runtime.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1
   - name: go-grpc
     out: api/proto
     opt: paths=source_relative,require_unimplemented_servers=true

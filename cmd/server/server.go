@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	v1 "github.com/odpf/optimus/api/handler/v1"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/core/progress"
@@ -34,7 +34,6 @@ import (
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/ext/scheduler/prime"
 	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/models"
 	_ "github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/run"
@@ -233,17 +232,6 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 	return nil, errors.Errorf("unsupported storage config %s", storagePath)
 }
 
-type metadataServiceFactory struct {
-	writer *meta.Writer
-}
-
-func (factory *metadataServiceFactory) New() models.MetadataService {
-	return meta.NewService(
-		factory.writer,
-		&meta.JobAdapter{},
-	)
-}
-
 type pipelineLogObserver struct {
 	log log.Logger
 }
@@ -415,21 +403,6 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
 
-	// prepare factory writer for metadata
-	var metaSvcFactory meta.MetaSvcFactory
-	kafkaWriter := NewKafkaWriter(conf.GetServe().Metadata.KafkaJobTopic, strings.Split(conf.GetServe().Metadata.KafkaBrokers, ","), conf.GetServe().Metadata.KafkaBatchSize)
-	l.Info("kafka metadata writer config received", "topic", conf.GetServe().Metadata.KafkaJobTopic, "brokers", conf.GetServe().Metadata.KafkaBrokers)
-	if kafkaWriter != nil {
-		l.Info("job metadata publishing is enabled", "topic", conf.GetServe().Metadata.KafkaJobTopic, "brokers", conf.GetServe().Metadata.KafkaBrokers)
-		metaWriter := meta.NewWriter(kafkaWriter, conf.GetServe().Metadata.WriterBatchSize)
-		defer kafkaWriter.Close()
-		metaSvcFactory = &metadataServiceFactory{
-			writer: metaWriter,
-		}
-	} else {
-		l.Info("job metadata publishing is disabled")
-	}
-
 	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
 		db: dbConn,
 	}
@@ -488,7 +461,6 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			jobSpecAssetDump(),
 			dependencyResolver,
 			priorityResolver,
-			metaSvcFactory,
 			projectJobSpecRepoFac,
 			replayManager,
 		),

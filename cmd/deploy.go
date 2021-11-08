@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"

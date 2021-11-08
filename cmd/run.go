@@ -12,7 +12,7 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	"github.com/odpf/optimus/models"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"

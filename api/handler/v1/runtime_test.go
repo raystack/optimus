@@ -25,7 +25,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
@@ -1501,7 +1501,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				JobName:     jobSpecs[0].Name,
 				Namespace:   namespaceSpec.Name,
 				Event: &pb.JobEvent{
-					Type:  pb.JobEvent_FAILURE,
+					Type:  pb.JobEvent_TYPE_FAILURE,
 					Value: eventValues,
 				},
 			}

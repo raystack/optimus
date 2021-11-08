@@ -12,9 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/meta"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/datastore"
@@ -1277,13 +1276,6 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 		}
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
-		}
-	case *meta.EventPublish:
-		resp := &pb.DeployJobSpecificationResponse{
-			Message: evt.String(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send publish metadata notification", "evt", evt.String(), "error", err)
 		}
 	}
 }

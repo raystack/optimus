@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/serf/serf"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
@@ -106,7 +106,7 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 				return
 			}
 			if err := p.clusterManager.ApplyCommand(&pb.CommandLog{
-				Type:    pb.CommandLog_COMMAND_TYPE_SCHEDULE_JOB,
+				Type:    pb.CommandLogType_COMMAND_LOG_TYPE_SCHEDULE_JOB,
 				Payload: payload,
 			}); err != nil {
 				p.errChan <- err
@@ -263,7 +263,7 @@ func (p *Planner) leaderJobReconcile(ctx context.Context) {
 					continue
 				}
 				if err := p.clusterManager.ApplyCommand(&pb.CommandLog{
-					Type:    pb.CommandLog_COMMAND_TYPE_UPDATE_JOB,
+					Type:    pb.CommandLogType_COMMAND_LOG_TYPE_UPDATE_JOB,
 					Payload: payload,
 				}); err != nil {
 					p.errChan <- err

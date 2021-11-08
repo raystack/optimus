@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/odpf/optimus/plugin/dependencyresolver"
+	"github.com/odpf/optimus/plugin/v1/dependencyresolver"
 
-	"github.com/odpf/optimus/plugin/cli"
+	"github.com/odpf/optimus/plugin/v1/cli"
 
-	"github.com/odpf/optimus/plugin/base"
+	"github.com/odpf/optimus/plugin/v1/base"
 
 	"github.com/pkg/errors"
 

@@ -4,9 +4,10 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -81,7 +82,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 
 		for _, notify := range spec.Behavior.Notify {
 			notifiers = append(notifiers, models.JobSpecNotifier{
-				On:       models.JobEventType(strings.ToLower(notify.On.String())),
+				On:       models.JobEventType(strings.TrimPrefix(strings.ToLower(notify.On.String()), "type_")),
 				Config:   notify.Config,
 				Channels: notify.Channels,
 			})
@@ -156,7 +157,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	var notifyProto []*pb.JobSpecification_Behavior_Notifiers
 	for _, notify := range spec.Behavior.Notify {
 		notifyProto = append(notifyProto, &pb.JobSpecification_Behavior_Notifiers{
-			On:       pb.JobEvent_Type(pb.JobEvent_Type_value[strings.ToUpper(string(notify.On))]),
+			On:       pb.JobEvent_Type(pb.JobEvent_Type_value["TYPE_"+strings.ToUpper(string(notify.On))]),
 			Channels: notify.Channels,
 			Config:   notify.Config,
 		})
@@ -182,7 +183,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		Behavior: &pb.JobSpecification_Behavior{
 			Retry: &pb.JobSpecification_Behavior_Retry{
 				Count:              int32(spec.Behavior.Retry.Count),
-				Delay:              ptypes.DurationProto(spec.Behavior.Retry.Delay),
+				Delay:              durationpb.New(spec.Behavior.Retry.Delay),
 				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
 			},
 			Notify: notifyProto,
@@ -333,7 +334,7 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 	for _, asset := range conf.GetData() {
 		assetType := models.InstanceDataTypeEnv
 		switch asset.Type {
-		case pb.InstanceSpecData_FILE:
+		case pb.InstanceSpecData_TYPE_FILE:
 			assetType = models.InstanceDataTypeFile
 		}
 		data = append(data, models.InstanceSpecData{

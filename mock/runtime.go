@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/metadata"
 )
