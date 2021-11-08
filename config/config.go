@@ -27,13 +27,13 @@ type Optimus struct {
 
 type Datastore struct {
 	// type could be bigquery/postgres/gcs
-	Type string `mapstructure:"type" koanf:"type"`
+	Type string `mapstructure:"type"`
 
 	// directory to find specifications
-	Path string `mapstructure:"path" koanf:"path"`
+	Path string `mapstructure:"path"`
 
 	// backup configuration
-	Backup map[string]string `mapstructure:"backup" koanf:"backup"`
+	Backup map[string]string `mapstructure:"backup"`
 }
 
 type Job struct {
@@ -73,11 +73,11 @@ type ServerConfig struct {
 	// random 32 character hash used for encrypting secrets
 	AppKey string `mapstructure:"app_key"`
 
-	DB                      DBConfig       `mapstructure:"db"`
-	Metadata                MetadataConfig `mapstructure:"metadata"`
-	ReplayNumWorkers        int            `mapstructure:"replay_num_workers" default:"1"`
-	ReplayWorkerTimeoutSecs time.Duration  `mapstructure:"replay_worker_timeout_secs" default:"120s"`
-	ReplayRunTimeoutSecs    time.Duration  `mapstructure:"replay_run_timeout_secs"`
+	DB                  DBConfig       `mapstructure:"db"`
+	Metadata            MetadataConfig `mapstructure:"metadata"`
+	ReplayNumWorkers    int            `mapstructure:"replay_num_workers" default:"1"`
+	ReplayWorkerTimeout time.Duration  `mapstructure:"replay_worker_timeout" default:"120s"`
+	ReplayRunTimeout    time.Duration  `mapstructure:"replay_run_timeout"`
 }
 
 type DBConfig struct {
