@@ -52,12 +52,12 @@ func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobS
 	return []models.JobSpec{}, args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetAllWithNamespace(ctx context.Context) (map[string][]models.JobSpec, error) {
+func (repo *ProjectJobSpecRepository) GetAllWithNamespace(ctx context.Context) (map[string][]string, error) {
 	args := repo.Called(ctx)
 	if args.Get(0) != nil {
-		return args.Get(0).(map[string][]models.JobSpec), args.Error(1)
+		return args.Get(0).(map[string][]string), args.Error(1)
 	}
-	return map[string][]models.JobSpec{}, args.Error(1)
+	return map[string][]string{}, args.Error(1)
 }
 
 func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest string) ([]store.ProjectJobPair, error) {
