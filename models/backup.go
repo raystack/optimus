@@ -30,6 +30,11 @@ type BackupRequest struct {
 	DryRun            bool
 }
 
+type BackupPlan struct {
+	Resources        []string
+	IgnoredResources []string
+}
+
 type BackupResult struct {
 	URN  string
 	Spec interface{}

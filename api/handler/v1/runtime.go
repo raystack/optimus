@@ -831,18 +831,19 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 		return nil, err
 	}
 
-	rootNode, err := sv.jobSvc.ReplayDryRun(ctx, replayRequest)
+	replayPlan, err := sv.jobSvc.ReplayDryRun(ctx, replayRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while processing replay dry run: %v", err)
 	}
 
-	node, err := sv.adapter.ToReplayExecutionTreeNode(rootNode)
+	node, err := sv.adapter.ToReplayExecutionTreeNode(replayPlan.ExecutionTree)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while preparing replay dry run response: %v", err)
 	}
 	return &pb.ReplayDryRunResponse{
-		Success:  true,
-		Response: node,
+		Success:       true,
+		ExecutionTree: node,
+		IgnoredJobs:   replayPlan.IgnoredJobs,
 	}, nil
 }
 
@@ -1050,13 +1051,14 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 		AllowedDownstream: allowedDownstream,
 		DryRun:            true,
 	}
-	resourcesToBackup, err := sv.resourceSvc.BackupResourceDryRun(ctx, backupRequest, jobSpecs)
+	backupPlan, err := sv.resourceSvc.BackupResourceDryRun(ctx, backupRequest, jobSpecs)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while doing backup dry run: %v", err)
 	}
 
 	return &pb.BackupDryRunResponse{
-		ResourceName: resourcesToBackup,
+		ResourceName:     backupPlan.Resources,
+		IgnoredResources: backupPlan.IgnoredResources,
 	}, nil
 }
 

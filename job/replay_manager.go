@@ -84,11 +84,11 @@ type Manager struct {
 func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (string, error) {
 	replaySpecRepo := m.replaySpecRepoFac.New()
 
-	replayTree, err := prepareReplayExecutionTree(reqInput)
+	replayPlan, err := prepareReplayPlan(reqInput)
 	if err != nil {
 		return "", err
 	}
-	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayTree); err != nil {
+	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayPlan.ExecutionTree); err != nil {
 		return "", err
 	}
 	if reqInput.ID, err = m.uuidProvider.NewUUID(); err != nil {
@@ -102,7 +102,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 		StartDate:     reqInput.Start,
 		EndDate:       reqInput.End,
 		Status:        models.ReplayStatusAccepted,
-		ExecutionTree: replayTree,
+		ExecutionTree: replayPlan.ExecutionTree,
 	}
 
 	// could get cancelled later if queue is full

@@ -196,7 +196,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 
 func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
 	l.Info(fmt.Sprintf("For %s project and %s namespace\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace)))
-	l.Info(coloredNotice("REPLAY RUNS"))
+	l.Info(coloredNotice("Replay Runs"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
@@ -205,7 +205,7 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 		"Run",
 	})
 	taskRerunsMap := make(map[string]taskRunBlock)
-	formatRunsPerJobInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
+	formatRunsPerJobInstance(replayDryRunResponse.ExecutionTree, taskRerunsMap, 0)
 
 	//sort run block
 	taskRerunsSorted := set.NewTreeSetWith(taskRunBlockComperator)
@@ -224,8 +224,18 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 	table.Render()
 
 	//print tree
-	l.Info(coloredNotice("\nDEPENDENCY TREE"))
-	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.Response, treeprint.New())))
+	l.Info(coloredNotice("\nDependency Tree"))
+	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New())))
+
+	//ignored jobs
+	if len(replayDryRunResponse.IgnoredJobs) > 0 {
+		l.Info(coloredNotice("Ignored Jobs"))
+		ignoredJobsCount := 0
+		for _, job := range replayDryRunResponse.IgnoredJobs {
+			ignoredJobsCount++
+			l.Info(fmt.Sprintf("%d. %s", ignoredJobsCount, job))
+		}
+	}
 }
 
 // printExecutionTree creates a ascii tree to visually inspect
@@ -419,7 +429,7 @@ The list command is used to fetch the recent replay in one project.
 }
 
 func printReplayListResponse(l log.Logger, replayListResponse *pb.ListReplaysResponse) {
-	l.Info(coloredNotice("LATEST REPLAY"))
+	l.Info(coloredNotice("Latest Replay"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{

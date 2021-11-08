@@ -803,8 +803,8 @@ func TestProjectJobRepository(t *testing.T) {
 
 		checkModels, err := projectJobSpecRepo.GetAllWithNamespace(ctx)
 		assert.Nil(t, err)
-		assert.ElementsMatch(t, []string{testModels[0].Name, testModels[2].Name}, []string{checkModels[namespaceSpec.Name][0].Name, checkModels[namespaceSpec.Name][1].Name})
-		assert.ElementsMatch(t, []string{testModels[3].Name}, []string{checkModels[namespaceSpec2.Name][0].Name})
+		assert.ElementsMatch(t, []string{testModels[0].Name, testModels[2].Name}, []string{checkModels[namespaceSpec.Name][0], checkModels[namespaceSpec.Name][1]})
+		assert.ElementsMatch(t, []string{testModels[3].Name}, []string{checkModels[namespaceSpec2.Name][0]})
 	})
 
 	t.Run("GetByDestination", func(t *testing.T) {

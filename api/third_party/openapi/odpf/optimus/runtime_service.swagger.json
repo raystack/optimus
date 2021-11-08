@@ -1386,6 +1386,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "ignoredResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1996,8 +2002,14 @@
         "success": {
           "type": "boolean"
         },
-        "response": {
+        "executionTree": {
           "$ref": "#/definitions/optimusReplayExecutionTreeNode"
+        },
+        "ignoredJobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

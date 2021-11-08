@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,20 +20,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRuns(root *tree.TreeNode, countMap map[string][]time.Time) {
-	if _, ok := countMap[root.GetName()]; ok {
+func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]time.Time) {
+	key := fmt.Sprintf("%s#%s", parentNodeName, node.GetName())
+	if _, ok := runMap[key]; ok {
 		return
 	}
-	for _, val := range root.Runs.Values() {
+	for _, val := range node.Runs.Values() {
 		run := val.(time.Time)
-		if _, found := countMap[root.GetName()]; !found {
-			countMap[root.GetName()] = []time.Time{run}
+		if _, found := runMap[key]; !found {
+			runMap[key] = []time.Time{run}
 		} else {
-			countMap[root.GetName()] = append(countMap[root.GetName()], run)
+			runMap[key] = append(runMap[key], run)
 		}
 	}
-	for _, dep := range root.Dependents {
-		getRuns(dep, countMap)
+	for _, dep := range node.Dependents {
+		getRuns(dep, node.GetName(), runMap)
 	}
 }
 
@@ -45,6 +47,7 @@ func TestReplay(t *testing.T) {
 	var (
 		specs    = make(map[string]models.JobSpec)
 		jobSpecs = make([]models.JobSpec, 0)
+		namespaceMap = make(map[string]string)
 	)
 
 	dagStartTime, _ := time.Parse(job.ReplayDateFormat, "2020-04-05")
@@ -93,6 +96,11 @@ func TestReplay(t *testing.T) {
 	jobSpecs = append(jobSpecs, specs[spec5])
 	specs[spec6] = models.JobSpec{Name: spec6, Dependencies: getDependencyObject(specs, spec4, spec5), Schedule: dailySchedule, Task: threeDayTaskWindow}
 	jobSpecs = append(jobSpecs, specs[spec6])
+
+	var jobNames []string
+	for _, dag := range jobSpecs {
+		jobNames = append(jobNames, dag.Name)
+	}
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
@@ -264,26 +272,29 @@ func TestReplay(t *testing.T) {
 				AllowedDownstream: models.AllNamespace,
 			}
 
-			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.Nil(t, err)
-			countMap := make(map[string][]time.Time)
-			getRuns(tree, countMap)
+			runMap := make(map[string][]time.Time)
+			getRuns(replayPlan.ExecutionTree, "", runMap)
 			expectedRunMap := map[string][]time.Time{}
-			expectedRunMap[spec1] = []time.Time{
+			keyMapSpec1 := fmt.Sprintf("%s#%s", "", spec1)
+			expectedRunMap[keyMapSpec1] = []time.Time{
 				time.Date(2020, time.Month(8), 5, 2, 0, 0, 0, time.UTC),
 				time.Date(2020, time.Month(8), 6, 2, 0, 0, 0, time.UTC),
 				time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC),
 			}
-			expectedRunMap[spec2] = expectedRunMap[spec1]
-			expectedRunMap[spec2] = append(expectedRunMap[spec2], time.Date(2020, time.Month(8), 8, 2,
+			keyMapSpec2 := fmt.Sprintf("%s#%s", spec1, spec2)
+			expectedRunMap[keyMapSpec2] = expectedRunMap[keyMapSpec1]
+			expectedRunMap[keyMapSpec2] = append(expectedRunMap[keyMapSpec2], time.Date(2020, time.Month(8), 8, 2,
 				0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 9, 2, 0, 0,
 				0, time.UTC))
-			expectedRunMap[spec3] = expectedRunMap[spec2]
-			expectedRunMap[spec3] = append(expectedRunMap[spec3], time.Date(2020, time.Month(8), 10, 2,
+			keyMapSpec3 := fmt.Sprintf("%s#%s", spec2, spec3)
+			expectedRunMap[keyMapSpec3] = expectedRunMap[keyMapSpec2]
+			expectedRunMap[keyMapSpec3] = append(expectedRunMap[keyMapSpec3], time.Date(2020, time.Month(8), 10, 2,
 				0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 11, 2, 0, 0,
 				0, time.UTC))
-			for k, v := range countMap {
+			for k, v := range runMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
 		})
@@ -329,27 +340,39 @@ func TestReplay(t *testing.T) {
 				AllowedDownstream: models.AllNamespace,
 			}
 
-			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.Nil(t, err)
-			countMap := make(map[string][]time.Time)
-			getRuns(tree, countMap)
+			runMap := make(map[string][]time.Time)
+			getRuns(replayPlan.ExecutionTree, "", runMap)
 			expectedRunMap := map[string][]time.Time{}
-			expectedRunMap[spec4] = []time.Time{}
+
+			keyMapSpec4 := fmt.Sprintf("%s#%s", "", spec4)
+			expectedRunMap[keyMapSpec4] = []time.Time{}
 			for i := 0; i <= 23; i++ {
-				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+				expectedRunMap[keyMapSpec4] = append(expectedRunMap[keyMapSpec4], time.Date(2020, time.Month(8), 5, i,
 					0, 0, 0, time.UTC))
 			}
-			expectedRunMap[spec5] = []time.Time{
+			keyMapSpec5 := fmt.Sprintf("%s#%s", spec4, spec5)
+			expectedRunMap[keyMapSpec5] = []time.Time{
 				time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC),
 				time.Date(2020, time.Month(8), 6, 0, 0, 0, 0, time.UTC),
 				time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC),
 				time.Date(2020, time.Month(8), 8, 0, 0, 0, 0, time.UTC),
 			}
-			expectedRunMap[spec6] = append(expectedRunMap[spec5], time.Date(2020, time.Month(8), 9, 0,
-				0, 0, 0, time.UTC), time.Date(2020, time.Month(8), 10, 0, 0, 0,
-				0, time.UTC))
-			for k, v := range countMap {
+			keyMapSpec6 := fmt.Sprintf("%s#%s", spec5, spec6)
+			expectedRunMap[keyMapSpec6] = expectedRunMap[keyMapSpec5]
+			expectedRunMap[keyMapSpec6] = append(expectedRunMap[keyMapSpec6],
+				time.Date(2020, time.Month(8), 9, 0,0, 0, 0, time.UTC),
+				time.Date(2020, time.Month(8), 10, 0, 0, 0,0, time.UTC))
+			keyMapSpec6DepSpec4 := fmt.Sprintf("%s#%s", spec4, spec6)
+			expectedRunMap[keyMapSpec6DepSpec4] = []time.Time{
+				time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC),
+				time.Date(2020, time.Month(8), 6, 0, 0, 0, 0, time.UTC),
+				time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC),
+				time.Date(2020, time.Month(8), 8, 0, 0, 0, 0, time.UTC),
+			}
+			for k, v := range runMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
 		})
@@ -396,27 +419,28 @@ func TestReplay(t *testing.T) {
 				AllowedDownstream: models.AllNamespace,
 			}
 
-			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.Nil(t, err)
-			countMap := make(map[string][]time.Time)
-			getRuns(tree, countMap)
+			runMap := make(map[string][]time.Time)
+			getRuns(replayPlan.ExecutionTree, "", runMap)
 			expectedRunMap := map[string][]time.Time{}
-			expectedRunMap[spec4] = []time.Time{}
+			keyMapSpec4 := fmt.Sprintf("%s#%s", "", spec4)
+			expectedRunMap[keyMapSpec4] = []time.Time{}
 			for i := 0; i <= 23; i++ {
-				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+				expectedRunMap[keyMapSpec4] = append(expectedRunMap[keyMapSpec4], time.Date(2020, time.Month(8), 5, i,
 					0, 0, 0, time.UTC))
 			}
-			for k, v := range countMap {
+			for k, v := range runMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
 		})
 
 		t.Run("should able to exclude downstream from replay dry run tree if not allowed", func(t *testing.T) {
-			namespaceJobsMap := map[string][]models.JobSpec{
-				"namespace1": {specs[spec4]},
-				"namespace2": {specs[spec5]},
-				"namespace3": {specs[spec6]},
+			namespaceJobsMap := map[string][]string{
+				"namespace1": {specs[spec4].Name},
+				"namespace2": {specs[spec5].Name},
+				"namespace3": {specs[spec6].Name},
 			}
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -451,18 +475,19 @@ func TestReplay(t *testing.T) {
 				AllowedDownstream: "namespace1",
 			}
 
-			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.Nil(t, err)
-			countMap := make(map[string][]time.Time)
-			getRuns(tree, countMap)
+			runMap := make(map[string][]time.Time)
+			getRuns(replayPlan.ExecutionTree, "", runMap)
 			expectedRunMap := map[string][]time.Time{}
-			expectedRunMap[spec4] = []time.Time{}
+			keyMapSpec4 := fmt.Sprintf("%s#%s", "", spec4)
+			expectedRunMap[keyMapSpec4] = []time.Time{}
 			for i := 0; i <= 23; i++ {
-				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+				expectedRunMap[keyMapSpec4] = append(expectedRunMap[keyMapSpec4], time.Date(2020, time.Month(8), 5, i,
 					0, 0, 0, time.UTC))
 			}
-			for k, v := range countMap {
+			for k, v := range runMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
 		})
@@ -508,18 +533,19 @@ func TestReplay(t *testing.T) {
 				AllowedDownstream: "namespace1",
 			}
 
-			tree, err := jobSvc.ReplayDryRun(ctx, replayRequest)
+			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.Nil(t, err)
-			countMap := make(map[string][]time.Time)
-			getRuns(tree, countMap)
+			runMap := make(map[string][]time.Time)
+			getRuns(replayPlan.ExecutionTree, "", runMap)
 			expectedRunMap := map[string][]time.Time{}
-			expectedRunMap[spec4] = []time.Time{}
+			keyMapSpec4 := fmt.Sprintf("%s#%s", "", spec4)
+			expectedRunMap[keyMapSpec4] = []time.Time{}
 			for i := 0; i <= 23; i++ {
-				expectedRunMap[spec4] = append(expectedRunMap[spec4], time.Date(2020, time.Month(8), 5, i,
+				expectedRunMap[keyMapSpec4] = append(expectedRunMap[keyMapSpec4], time.Date(2020, time.Month(8), 5, i,
 					0, 0, 0, time.UTC))
 			}
-			for k, v := range countMap {
+			for k, v := range runMap {
 				assert.Equal(t, expectedRunMap[k], v)
 			}
 		})
@@ -553,9 +579,7 @@ func TestReplay(t *testing.T) {
 		})
 
 		t.Run("should fail if replay manager throws an error", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+			namespaceJobsMap := map[string][]string{
 				"ns": {
 					jobSpecs[0].Name,
 					jobSpecs[1].Name,
@@ -564,7 +588,13 @@ func TestReplay(t *testing.T) {
 					jobSpecs[4].Name,
 					jobSpecs[5].Name,
 				},
-			}, nil)
+			}
+			for _, spec := range specs {
+				namespaceMap[spec.Name] = "namespace1"
+			}
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(namespaceJobsMap, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -588,6 +618,7 @@ func TestReplay(t *testing.T) {
 				End:               replayEnd,
 				Project:           projSpec,
 				JobSpecMap:        specs,
+				JobNamespaceMap:   namespaceMap,
 				AllowedDownstream: models.AllNamespace,
 			}
 
@@ -605,9 +636,7 @@ func TestReplay(t *testing.T) {
 		})
 
 		t.Run("should succeed if replay manager successfully processes request", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+			namespaceJobsMap := map[string][]string{
 				"ns": {
 					jobSpecs[0].Name,
 					jobSpecs[1].Name,
@@ -616,7 +645,13 @@ func TestReplay(t *testing.T) {
 					jobSpecs[4].Name,
 					jobSpecs[5].Name,
 				},
-			}, nil)
+			}
+			for _, spec := range specs {
+				namespaceMap[spec.Name] = "namespace1"
+			}
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(namespaceJobsMap, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
@@ -640,6 +675,7 @@ func TestReplay(t *testing.T) {
 				End:               replayEnd,
 				Project:           projSpec,
 				JobSpecMap:        specs,
+				JobNamespaceMap:   namespaceMap,
 				AllowedDownstream: models.AllNamespace,
 			}
 

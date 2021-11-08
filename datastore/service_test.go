@@ -469,7 +469,8 @@ func TestService(t *testing.T) {
 			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 			assert.Nil(t, err)
-			assert.Equal(t, []string{destination.Destination}, resp)
+			assert.Equal(t, []string{destination.Destination}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should return list of resources with dependents to be backed up", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -577,7 +578,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{destinationRoot.Destination, destinationDownstream.Destination}, resp)
+			assert.Equal(t, []string{destinationRoot.Destination, destinationDownstream.Destination}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should return error when unable to generate destination", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -614,7 +616,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to get datastorer", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -656,7 +658,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to do backup dry run", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -725,7 +727,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to get resource", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -782,7 +784,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to generate destination for downstream", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -871,7 +873,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Equal(t, errorMsg, err.Error())
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should not return error when one of the resources is not found", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -967,7 +969,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{destinationRoot.Destination}, resp)
+			assert.Equal(t, []string{destinationRoot.Destination}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should not return error when one of the resources is not supported", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1072,7 +1075,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{destinationRoot.Destination}, resp)
+			assert.Equal(t, []string{destinationRoot.Destination}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should return list of resources with dependents of only same namespace to be backed up", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1180,7 +1184,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{destinationRoot.Destination}, resp)
+			assert.Equal(t, []string{destinationRoot.Destination}, resp.Resources)
+			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
 	})
 	t.Run("BackupResource", func(t *testing.T) {

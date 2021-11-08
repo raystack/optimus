@@ -455,7 +455,7 @@ func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.Pro
 
 func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string,
 	allowedDownstream string) ([]models.JobSpec, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(ctx, projectSpec, allowedDownstream)
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, projectSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -482,7 +482,7 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 	return jobSpecs, nil
 }
 
-func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec, allowedDownstream string) (map[string]models.JobSpec, error) {
+func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]models.JobSpec, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
 
 	// resolve dependency of all jobs in given project
@@ -491,33 +491,66 @@ func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.Pr
 		return nil, err
 	}
 
-	// prepare map of jobs and its namespace
-	jobNamespaceMap := make(map[string]string)
-	namespaceJobSpecMap, err := projectJobSpecRepo.GetAllWithNamespace(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for namespace, specs := range namespaceJobSpecMap {
-		for _, spec := range specs {
-			jobNamespaceMap[spec.Name] = namespace
-		}
-	}
-
-	// filter jobs using the allowed downstream namespace
-	// if allowed namespace is *, then can continue to fetch all downstream
-	// if allowed namespace is not *, then just limit the downstream to the namespace value
 	jobSpecMap := make(map[string]models.JobSpec)
 	for _, currSpec := range jobSpecs {
-		if allowedDownstream != models.AllNamespace {
-			// if the job is not owned by the same namespace as the requested, then skip this job
-			if jobNamespaceMap[currSpec.Name] != allowedDownstream {
-				continue
-			}
-		}
 		jobSpecMap[currSpec.Name] = currSpec
 	}
 
 	return jobSpecMap, nil
+}
+
+func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]string, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+	namespaceJobSpecMap, err := projectJobSpecRepo.GetAllWithNamespace(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	jobNamespaceMap := make(map[string]string)
+	for namespace, jobSpecs := range namespaceJobSpecMap {
+		for _, jobSpec := range jobSpecs {
+			jobNamespaceMap[jobSpec] = namespace
+		}
+	}
+
+	return jobNamespaceMap, err
+}
+
+func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedDownstream string, jobNamespaceMap map[string]string) *tree.TreeNode {
+	for _, dep := range dependents {
+		//if dep is not within namespace, skip this dependency
+		if allowedDownstream != models.AllNamespace {
+			if allowedDownstream != jobNamespaceMap[dep.GetName()] {
+				continue
+			}
+		}
+
+		//if dep is within allowed namespace, add the node to parent
+		depNode := tree.NewTreeNode(dep.Data)
+
+		//check for the dependent
+		depNode = filterNode(depNode, dep.Dependents, allowedDownstream, jobNamespaceMap)
+
+		//add the complete node
+		parentNode.AddDependent(depNode)
+	}
+	return parentNode
+}
+
+func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNode) []string {
+	var ignoredJobs []string
+
+	allowedNodesMap := make(map[string]*tree.TreeNode)
+	for _, allowedNode := range rootFilteredTree.GetAllNodes() {
+		allowedNodesMap[allowedNode.GetName()] = allowedNode
+	}
+
+	for _, node := range rootInstance.GetAllNodes() {
+		if allowedNodesMap[node.GetName()] == nil {
+			ignoredJobs = append(ignoredJobs, node.GetName())
+		}
+	}
+	return ignoredJobs
 }
 
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {

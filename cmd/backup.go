@@ -39,9 +39,9 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 	}
 
 	var (
-		project   string
-		namespace string
-		dryRun    bool
+		project       string
+		namespace     string
+		dryRun        bool
 		allDownstream bool
 	)
 
@@ -237,6 +237,15 @@ func printBackupDryRunResponse(l log.Logger, backupRequest *pb.BackupDryRunReque
 	counter := 1
 	for _, resource := range backupResponse.ResourceName {
 		l.Info(fmt.Sprintf("%d. %s", counter, resource))
+		counter++
+	}
+
+	if len(backupResponse.IgnoredResources) > 0 {
+		l.Info(coloredPrint("\nThese resources will be ignored."))
+	}
+	counter = 1
+	for _, ignoredResource := range backupResponse.IgnoredResources {
+		l.Info(fmt.Sprintf("%d. %s", counter, ignoredResource))
 		counter++
 	}
 }

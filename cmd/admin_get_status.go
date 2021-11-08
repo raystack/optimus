@@ -29,9 +29,7 @@ func adminGetStatusCommand(l log.Logger) *cli.Command {
 		Args:    cli.MinimumNArgs(1),
 	}
 	cmd.Flags().StringVar(&projectName, "project", "", "name of the tenant")
-	cmd.MarkFlagRequired("project")
 	cmd.Flags().StringVar(&optimusHost, "host", "", "optimus service endpoint url")
-	cmd.MarkFlagRequired("host")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]

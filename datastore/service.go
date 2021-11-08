@@ -166,17 +166,18 @@ func generateResourceDestination(ctx context.Context, jobSpec models.JobSpec) (*
 	})
 }
 
-func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupPlan, error) {
 	var resourcesToBackup []string
+	var resourcesToIgnore []string
 	for _, jobSpec := range jobSpecs {
 		destination, err := generateResourceDestination(ctx, jobSpec)
 		if err != nil {
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
 		datastorer, err := srv.dsRepo.GetByName(destination.Type.String())
 		if err != nil {
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
 		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
@@ -185,12 +186,13 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			if err == store.ErrResourceNotFound {
 				continue
 			}
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
 		if backupRequest.AllowedDownstream != models.AllNamespace {
 			// if the resource is not owned by the same namespace as the requested, then skip this resource
 			if namespaceSpec.Name != backupRequest.AllowedDownstream {
+				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
 				continue
 			}
 		}
@@ -204,12 +206,15 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			if err == models.ErrUnsupportedResource {
 				continue
 			}
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
 		resourcesToBackup = append(resourcesToBackup, destination.Destination)
 	}
-	return resourcesToBackup, nil
+	return models.BackupPlan{
+		Resources:        resourcesToBackup,
+		IgnoredResources: resourcesToIgnore,
+	}, nil
 }
 
 func (srv Service) BackupResource(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {

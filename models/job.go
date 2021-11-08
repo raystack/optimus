@@ -10,8 +10,6 @@ import (
 
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/progress"
 )
@@ -324,8 +322,8 @@ type JobService interface {
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
-	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate
-	ReplayDryRun(context.Context, ReplayRequest) (*tree.TreeNode, error)
+	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate, and the ignored jobs
+	ReplayDryRun(context.Context, ReplayRequest) (ReplayPlan, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
 	Replay(context.Context, ReplayRequest) (string, error)
 	// GetReplayStatus of a replay using its ID

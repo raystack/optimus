@@ -32,9 +32,15 @@ type ReplayRequest struct {
 	End               time.Time
 	Project           ProjectSpec
 	JobSpecMap        map[string]JobSpec
+	JobNamespaceMap   map[string]string
 	Force             bool
 	IgnoreDownstream  bool
 	AllowedDownstream string
+}
+
+type ReplayPlan struct {
+	ExecutionTree *tree.TreeNode
+	IgnoredJobs   []string
 }
 
 type ReplaySpec struct {

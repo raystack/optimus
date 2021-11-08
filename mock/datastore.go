@@ -116,9 +116,9 @@ func (d *DatastoreService) DeleteResource(ctx context.Context, namespace models.
 	return d.Called(ctx, namespace, datastoreName, name).Error(1)
 }
 
-func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupPlan, error) {
 	args := d.Called(ctx, req, jobSpecs)
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(models.BackupPlan), args.Error(1)
 }
 
 func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {

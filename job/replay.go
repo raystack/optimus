@@ -18,22 +18,34 @@ const (
 	ReplayDateFormat = "2006-01-02"
 )
 
-func (srv *Service) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project, replayRequest.AllowedDownstream)
+func (srv *Service) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project)
 	if err != nil {
-		return nil, err
+		return models.ReplayPlan{}, err
 	}
 	replayRequest.JobSpecMap = jobSpecMap
 
-	return prepareReplayExecutionTree(replayRequest)
+	jobNamespaceMap, err := srv.prepareNamespaceJobSpecMap(ctx, replayRequest.Project)
+	if err != nil {
+		return models.ReplayPlan{}, err
+	}
+	replayRequest.JobNamespaceMap = jobNamespaceMap
+
+	return prepareReplayPlan(replayRequest)
 }
 
 func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
-	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project, replayRequest.AllowedDownstream)
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project)
 	if err != nil {
 		return "", err
 	}
 	replayRequest.JobSpecMap = jobSpecMap
+
+	jobNamespaceMap, err := srv.prepareNamespaceJobSpecMap(ctx, replayRequest.Project)
+	if err != nil {
+		return "", err
+	}
+	replayRequest.JobNamespaceMap = jobNamespaceMap
 
 	replayUUID, err := srv.replayManager.Replay(ctx, replayRequest)
 	if err != nil {
@@ -42,41 +54,55 @@ func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayReque
 	return replayUUID, nil
 }
 
-// prepareReplayExecutionTree creates a execution tree for replay operation
-func prepareReplayExecutionTree(replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
+// prepareReplayPlan creates an execution tree for replay operation and ignored jobs list
+func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
 	replayJobSpec, found := replayRequest.JobSpecMap[replayRequest.Job.Name]
 	if !found {
-		return nil, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
+		return models.ReplayPlan{}, fmt.Errorf("couldn't find any job with name %s", replayRequest.Job.Name)
 	}
 
 	// compute runs that require replay
 	dagTree := tree.NewMultiRootTree()
-	parentNode := tree.NewTreeNode(replayJobSpec)
-	if runs, err := getRunsBetweenDates(replayRequest.Start, replayRequest.End, replayJobSpec.Schedule.Interval); err == nil {
-		for _, run := range runs {
-			parentNode.Runs.Add(run)
-		}
-	} else {
-		return nil, err
+	rootNode := tree.NewTreeNode(replayJobSpec)
+	rootRuns, err := getRunsBetweenDates(replayRequest.Start, replayRequest.End, replayJobSpec.Schedule.Interval)
+	if err != nil {
+		return models.ReplayPlan{}, err
+	}
+	for _, run := range rootRuns {
+		rootNode.Runs.Add(run)
 	}
 
-	// ignore downstream
 	if replayRequest.IgnoreDownstream {
-		return parentNode, nil
+		return models.ReplayPlan{ExecutionTree: rootNode}, nil
 	}
 
-	// include downstream
-	dagTree.AddNode(parentNode)
-	rootInstance, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
+	// populate node's dependents
+	dagTree.AddNode(rootNode)
+	rootExecutionTree, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
 	if err != nil {
-		return nil, err
-	}
-	rootInstance, err = populateDownstreamRuns(rootInstance)
-	if err != nil {
-		return nil, err
+		return models.ReplayPlan{}, err
 	}
 
-	return rootInstance, nil
+	// form a new rootInstance with only allowed nodes
+	rootFilteredExecutionTree := tree.NewTreeNode(replayJobSpec)
+	for _, run := range rootRuns {
+		rootFilteredExecutionTree.Runs.Add(run)
+	}
+	rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Dependents, replayRequest.AllowedDownstream, replayRequest.JobNamespaceMap)
+
+	// listed down non allowed nodes
+	ignoredJobs := listIgnoredJobs(rootExecutionTree, rootFilteredExecutionTree)
+
+	// enrich nodes with runs
+	rootFilteredExecutionTree, err = populateDownstreamRuns(rootFilteredExecutionTree)
+	if err != nil {
+		return models.ReplayPlan{}, err
+	}
+
+	return models.ReplayPlan{
+		ExecutionTree: rootFilteredExecutionTree,
+		IgnoredJobs:   ignoredJobs,
+	}, nil
 }
 
 func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {

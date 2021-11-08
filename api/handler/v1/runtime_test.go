@@ -1817,10 +1817,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			dagNode.Runs.Add(time.Date(2020, 11, 26, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 27, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 28, 2, 0, 0, 0, time.UTC))
+			replayPlan := models.ReplayPlan{ExecutionTree: dagNode}
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(dagNode, nil)
+			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
 			defer jobService.AssertExpectations(t)
 
 			projectRepository := new(mock.ProjectRepository)
@@ -1866,9 +1867,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
 			assert.Nil(t, err)
-			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.Response.JobName)
-			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.Response.Dependents)
-			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.Response.Runs)
+			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.ExecutionTree.JobName)
+			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.ExecutionTree.Dependents)
+			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.ExecutionTree.Runs)
 		})
 		t.Run("should do replay dry run including only allowed namespace successfully", func(t *testing.T) {
 			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
@@ -1885,10 +1886,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			dagNode.Runs.Add(time.Date(2020, 11, 26, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 27, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 28, 2, 0, 0, 0, time.UTC))
+			replayPlan := models.ReplayPlan{ExecutionTree: dagNode}
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(dagNode, nil)
+			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
 			defer jobService.AssertExpectations(t)
 
 			projectRepository := new(mock.ProjectRepository)
@@ -1933,9 +1935,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
 			assert.Nil(t, err)
-			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.Response.JobName)
-			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.Response.Dependents)
-			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.Response.Runs)
+			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.ExecutionTree.JobName)
+			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.ExecutionTree.Dependents)
+			assert.Equal(t, expectedReplayResponse.Runs, replayResponse.ExecutionTree.Runs)
 		})
 		t.Run("should failed when replay request is invalid", func(t *testing.T) {
 			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
@@ -1996,11 +1998,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:           projectSpec,
 				AllowedDownstream: models.AllNamespace,
 			}
-			dagNode := tree.NewTreeNode(jobSpec)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(dagNode, errors.New("populating jobs spec failed"))
+			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(models.ReplayPlan{}, errors.New("populating jobs spec failed"))
 			defer jobService.AssertExpectations(t)
 
 			projectRepository := new(mock.ProjectRepository)
@@ -2868,7 +2869,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				DryRun:            true,
 				AllowedDownstream: namespaceSpec.Name,
 			}
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).Return([]string{resourceName}, nil)
+			backupPlan := models.BackupPlan{Resources: []string{resourceName}}
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).Return(backupPlan, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2969,7 +2971,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				DryRun:            true,
 				AllowedDownstream: allowedDownstream,
 			}
-			resourceSvc.On("BackupResourceDryRun", context.Background(), backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return([]string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, nil)
+			backupPlan := models.BackupPlan{
+				Resources: []string{
+					resourceUrn,
+					resourceDownstream1Urn,
+					resourceDownstream2Urn,
+				},
+			}
+			resourceSvc.On("BackupResourceDryRun", context.Background(), backupRequest,
+				[]models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupPlan, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3070,7 +3080,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				DryRun:            true,
 				AllowedDownstream: namespaceSpec.Name,
 			}
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return([]string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, nil)
+			backupPlan := models.BackupPlan{
+				Resources: []string{
+					resourceUrn,
+					resourceDownstream1Urn,
+					resourceDownstream2Urn,
+				},
+			}
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest,
+				[]models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupPlan, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3435,7 +3453,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				AllowedDownstream: allowedDownstream,
 			}
 			errorMsg := "unable to get jobspec"
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).Return([]string{}, errors.New(errorMsg))
+
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).
+				Return(models.BackupPlan{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
