@@ -256,7 +256,7 @@ func registerProject(l log.Logger, runtime pb.RuntimeServiceClient, deployTimeou
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(err.Error())
+			l.Warn(coloredNotice(fmt.Sprintf("project not updated: %s", err.Error())))
 			return nil
 		}
 		return errors.Wrap(err, "failed to update project configurations")
@@ -275,7 +275,7 @@ func registerNamespace(l log.Logger, runtime pb.RuntimeServiceClient, deployTime
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(err.Error())
+			l.Warn(coloredNotice(fmt.Sprintf("namespace not updated: %s", err.Error())))
 			return nil
 		}
 		return errors.Wrap(err, "failed to update namespace configurations")

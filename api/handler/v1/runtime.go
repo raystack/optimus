@@ -257,7 +257,7 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 
 	if err := projectRepo.Save(ctx, projectSpec); err != nil {
 		if errors.Is(store.ErrEmptyConfig, err) {
-			return nil, status.Errorf(codes.FailedPrecondition, "%s: failed to save project %s", err.Error(), req.GetProject().GetName())
+			return nil, status.Errorf(codes.FailedPrecondition, "%s", err.Error())
 		}
 		return nil, status.Errorf(codes.Internal, "%s: failed to save project %s", err.Error(), req.GetProject().GetName())
 	}
@@ -278,6 +278,9 @@ func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, re
 	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	if err = namespaceRepo.Save(ctx, namespaceSpec); err != nil {
+		if errors.Is(store.ErrEmptyConfig, err) {
+			return nil, status.Errorf(codes.FailedPrecondition, "%s", err.Error())
+		}
 		return nil, status.Errorf(codes.Internal, "%s: failed to save namespace %s for project %s", err.Error(), namespaceSpec.Name, projSpec.Name)
 	}
 
