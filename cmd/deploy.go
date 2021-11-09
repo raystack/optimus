@@ -238,7 +238,8 @@ func postDeploymentRequest(l log.Logger, projectName string, namespace string, j
 				// should not cause errors to fail and should end with warnings if any.
 				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
 			} else {
-				return errors.Wrapf(streamError, "failed to receive success deployment ack")
+				l.Error("failed to receive success deployment ack", "err", streamError)
+				return errors.Wrap(streamError, "failed to receive success deployment ack")
 			}
 		}
 		l.Info(fmt.Sprintf("successfully deployed %d/%d jobs", ackCounter, totalJobs))

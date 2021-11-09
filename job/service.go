@@ -6,12 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -24,6 +23,10 @@ const (
 
 	ConcurrentTicketPerSec = 40
 	ConcurrentLimit        = 600
+)
+
+var (
+	errDependencyResolution = fmt.Errorf("dependency resolution")
 )
 
 type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
@@ -152,7 +155,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 						if obs != nil {
 							obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
 						}
-						return nil, errors.Wrapf(err, "failed to resolve dependencies %s", currentSpec.Name)
+						return nil, errors.Wrapf(err, "%s %s", errDependencyResolution.Error(), currentSpec.Name)
 					}
 				}
 
@@ -204,7 +207,25 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
 	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
 	if err != nil {
-		return err
+		// if err is caused during dependency resolution in a job spec that belong to
+		// different namespace then the current, on which this operation is being performed,
+		// then don't treat this as error
+		if merrs, ok := err.(*multierror.Error); ok {
+			var newErr error
+			for _, cerr := range merrs.Errors {
+				if errors.Is(cerr, errDependencyResolution) {
+					if !strings.Contains(cerr.Error(), namespace.Name) {
+						continue
+					}
+				}
+				newErr = multierror.Append(newErr, cerr)
+			}
+			if newErr != nil {
+				return newErr
+			}
+		} else {
+			return err
+		}
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 
@@ -214,7 +235,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	}
 	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
 
-	jobSpecs, err = srv.filterJobSpecForNamespace(ctx, jobSpecs, namespace)
+	jobSpecs, err = srv.filterJobSpecForNamespace(ctx, projectJobSpecRepo, jobSpecs, namespace)
 	if err != nil {
 		return err
 	}
@@ -284,20 +305,16 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 }
 
 // filterJobSpecForNamespace returns only job specs of a given namespace
-func (srv *Service) filterJobSpecForNamespace(ctx context.Context, jobSpecs []models.JobSpec, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	namespaceJobSpecs, err := jobSpecRepo.GetAll(ctx)
+func (srv *Service) filterJobSpecForNamespace(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository,
+	jobSpecs []models.JobSpec, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
+	namespaceJobSpecNames, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
 		return nil, err
-	}
-	var namespaceJobSpecNames []string
-	for _, jSpec := range namespaceJobSpecs {
-		namespaceJobSpecNames = append(namespaceJobSpecNames, jSpec.Name)
 	}
 
 	var filteredJobSpecs []models.JobSpec
 	for _, jobSpec := range jobSpecs {
-		if srv.ifPresentInJobSpec(namespaceJobSpecNames, jobSpec.Name) {
+		if srv.ifPresentInNamespace(namespaceJobSpecNames[namespace.Name], jobSpec.Name) {
 			filteredJobSpecs = append(filteredJobSpecs, jobSpec)
 		}
 	}
@@ -320,6 +337,18 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 		}
 	}
 
+	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to retrieve namespace to job mapping")
+	}
+	// generate a reverse map for namespace
+	jobsToNamespace := map[string]string{}
+	for ns, jobNames := range namespaceToJobs {
+		for _, jobName := range jobNames {
+			jobsToNamespace[jobName] = ns
+		}
+	}
+
 	// resolve specs in parallel
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jobSpec := range jobSpecs {
@@ -327,7 +356,8 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 			return func() (interface{}, error) {
 				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
-					return nil, errors.Wrapf(err, "failed to resolve dependency for %s", currentSpec.Name)
+					wrappedErr := errors.Wrap(errDependencyResolution, err.Error())
+					return nil, errors.Wrapf(wrappedErr, "%s/%s", jobsToNamespace[currentSpec.Name], currentSpec.Name)
 				}
 				return resolvedSpec, nil
 			}
@@ -341,7 +371,6 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 			resolvedSpecs = append(resolvedSpecs, state.Val.(models.JobSpec))
 		}
 	}
-
 	return resolvedSpecs, resolvedErrors
 }
 
@@ -445,7 +474,7 @@ func setSubtract(from []string, remove []string) []string {
 	return res
 }
 
-func (srv *Service) ifPresentInJobSpec(jobSpecNames []string, jobSpecToFind string) bool {
+func (srv *Service) ifPresentInNamespace(jobSpecNames []string, jobSpecToFind string) bool {
 	for _, jName := range jobSpecNames {
 		if jName == jobSpecToFind {
 			return true
