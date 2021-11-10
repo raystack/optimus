@@ -62,6 +62,14 @@ func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest
 	return models.JobSpec{}, models.ProjectSpec{}, args.Error(2)
 }
 
+func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map[string][]string, error) {
+	args := repo.Called(ctx)
+	if args.Get(0) != nil {
+		return args.Get(0).(map[string][]string), args.Error(1)
+	}
+	return map[string][]string{}, args.Error(1)
+}
+
 // JobSpecRepoFactory to store raw specs at namespace level
 type JobSpecRepoFactory struct {
 	mock.Mock

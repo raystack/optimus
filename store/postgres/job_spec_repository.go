@@ -3,18 +3,32 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
+)
+
+const (
+	CacheTTL     = time.Hour * 1
+	CacheCleanUp = time.Minute * 15
+
+	// [namespace name] -> []{job name,...} in a project
+	namespaceToJobMappingKey = "namespaceToJobMapping"
 )
 
 type ProjectJobSpecRepository struct {
 	db      *gorm.DB
 	project models.ProjectSpec
 	adapter *JobSpecAdapter
+
+	mu    sync.Mutex
+	cache *cache.Cache
 }
 
 func NewProjectJobSpecRepository(db *gorm.DB, project models.ProjectSpec, adapter *JobSpecAdapter) *ProjectJobSpecRepository {
@@ -22,6 +36,8 @@ func NewProjectJobSpecRepository(db *gorm.DB, project models.ProjectSpec, adapte
 		db:      db,
 		project: project,
 		adapter: adapter,
+		mu:      sync.Mutex{},
+		cache:   cache.New(CacheTTL, CacheCleanUp),
 	}
 }
 
@@ -48,8 +64,8 @@ func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string
 }
 
 func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
-	specs := []models.JobSpec{}
-	jobs := []Job{}
+	var specs []models.JobSpec
+	var jobs []Job
 	if err := repo.db.WithContext(ctx).Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
 		return specs, err
 	}
@@ -113,6 +129,29 @@ func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest
 	}
 
 	return jSpec, pSpec, err
+}
+
+func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map[string][]string, error) {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if raw, ok := repo.cache.Get(namespaceToJobMappingKey); ok {
+		mapping := raw.(map[string][]string)
+		if len(mapping) != 0 {
+			return cloneStringMap(mapping), nil
+		}
+	}
+
+	var jobs []Job
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
+		return nil, err
+	}
+
+	namespaceToJobMapping := map[string][]string{}
+	for _, job := range jobs {
+		namespaceToJobMapping[job.Namespace.Name] = append(namespaceToJobMapping[job.Namespace.Name], job.Name)
+	}
+	repo.cache.Set(namespaceToJobMappingKey, namespaceToJobMapping, cache.DefaultExpiration)
+	return cloneStringMap(namespaceToJobMapping), nil
 }
 
 type JobSpecRepository struct {
@@ -222,4 +261,14 @@ func NewJobSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJo
 		projectJobSpecRepo: projectJobSpecRepo,
 		adapter:            adapter,
 	}
+}
+
+func cloneStringMap(source map[string][]string) map[string][]string {
+	mp := map[string][]string{}
+	for k, v := range source {
+		for _, item := range v {
+			mp[k] = append(mp[k], item)
+		}
+	}
+	return mp
 }

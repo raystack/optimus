@@ -681,11 +681,29 @@ func TestProjectJobRepository(t *testing.T) {
 				},
 			},
 		},
+		{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "p-optimus-id",
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
+				Config: []models.JobSpecConfigItem{
+					{
+						Name:  "do",
+						Value: "this",
+					},
+				},
+			},
+		},
 	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	namespaceSpec := models.NamespaceSpec{
 		ID:          uuid.Must(uuid.NewRandom()),
 		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
+	}
+	namespaceSpec2 := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}
 
@@ -807,5 +825,43 @@ func TestProjectJobRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)
+	})
+	t.Run("GetAllWithNamespace", func(t *testing.T) {
+		db := DBSetup()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+
+		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: tTask,
+		}, nil)
+		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+
+		defer depMod.AssertExpectations(t)
+		defer depMod2.AssertExpectations(t)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repoNamespace1 := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
+		err := repoNamespace1.Insert(ctx, testModels[0])
+		assert.Nil(t, err)
+		err = repoNamespace1.Insert(ctx, testModels[2])
+		assert.Nil(t, err)
+
+		repoNamespace2 := NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
+		err = repoNamespace2.Insert(ctx, testModels[3])
+		assert.Nil(t, err)
+
+		checkModels, err := projectJobSpecRepo.GetJobNamespaces(ctx)
+		assert.Nil(t, err)
+		assert.ElementsMatch(t, []string{testModels[0].Name, testModels[2].Name}, []string{checkModels[namespaceSpec.Name][0], checkModels[namespaceSpec.Name][1]})
+		assert.ElementsMatch(t, []string{testModels[3].Name}, []string{checkModels[namespaceSpec2.Name][0]})
 	})
 }

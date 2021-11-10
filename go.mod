@@ -33,6 +33,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/odpf/salt v0.0.0-20210919015538-3fd8ab22acea
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
@@ -49,7 +50,6 @@ require (
 	go.opentelemetry.io/otel v1.0.1
 	go.opentelemetry.io/otel/exporters/jaeger v1.0.1
 	go.opentelemetry.io/otel/sdk v1.0.1
-	go.opentelemetry.io/otel/sdk/metric v0.24.0
 	go.opentelemetry.io/otel/trace v1.0.1
 	gocloud.dev v0.24.0
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a

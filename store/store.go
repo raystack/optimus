@@ -20,6 +20,9 @@ type ProjectJobSpecRepository interface {
 	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.JobSpec, error)
 	GetByDestination(context.Context, string) (models.JobSpec, models.ProjectSpec, error)
+
+	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
+	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
 
 // ProjectRepository represents a storage interface for registered projects
