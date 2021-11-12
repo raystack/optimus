@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/odpf/optimus/extension"
-	"github.com/odpf/salt/log"
 
 	"github.com/google/go-github/github"
+	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 )
 
@@ -18,14 +18,23 @@ func addExtensionCommand(cmd *cli.Command, l log.Logger) {
 	ctx := context.Background()
 	httpClient := &http.Client{}
 	githubClient := github.NewClient(nil)
-	manifest, err := extension.LoadManifest()
+	extensionDir, err := extension.GetDefaultDir()
+	if err != nil {
+		panic(err)
+	}
+	manifest, err := extension.LoadManifest(extensionDir)
 	if err != nil {
 		panic(err)
 	}
 	reservedCommands := getUsedCommands(cmd)
-	extension := extension.NewExtension(ctx, manifest, githubClient, httpClient, reservedCommands...)
+	extension, _ := extension.NewExtension(
+		manifest,
+		githubClient.Repositories, httpClient,
+		extensionDir,
+		reservedCommands...,
+	)
 
-	cmd.AddCommand(extensionCommand(extension.Install, l))
+	cmd.AddCommand(extensionCommand(ctx, extension.Install, l))
 	commands := generateCommands(manifest, extension.Run)
 	for _, c := range commands {
 		cmd.AddCommand(c)
@@ -59,7 +68,11 @@ func getUsedCommands(cmd *cli.Command) []string {
 	return output
 }
 
-func extensionCommand(installFn func(owner, repo, alias string) error, l log.Logger) *cli.Command {
+func extensionCommand(
+	ctx context.Context,
+	installFn func(ctx context.Context, owner, repo, alias string) error,
+	l log.Logger,
+) *cli.Command {
 	c := &cli.Command{
 		Use:     "extension SUBCOMMAND",
 		Aliases: []string{"ext"},
@@ -67,6 +80,7 @@ func extensionCommand(installFn func(owner, repo, alias string) error, l log.Log
 	}
 	c.AddCommand(
 		func() *cli.Command {
+			var alias string
 			installCmd := &cli.Command{
 				Use:   "install OWNER/REPO",
 				Short: "Install an extension",
@@ -81,10 +95,9 @@ func extensionCommand(installFn func(owner, repo, alias string) error, l log.Log
 
 					owner := splitArg[0]
 					repo := splitArg[1]
-					alias, _ := cmd.Flags().GetString("alias")
 
 					l.Info(fmt.Sprintf("Installing %s/%s ...", owner, repo))
-					err := installFn(owner, repo, alias)
+					err := installFn(ctx, owner, repo, alias)
 					if err != nil {
 						return err
 					}
@@ -92,7 +105,7 @@ func extensionCommand(installFn func(owner, repo, alias string) error, l log.Log
 					return nil
 				},
 			}
-			installCmd.Flags().StringP("alias", "a", "", "alias to be set for the extension")
+			installCmd.Flags().StringVarP(&alias, "alias", "a", "", "alias to be set for the extension")
 			return installCmd
 		}(),
 	)

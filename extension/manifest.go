@@ -28,13 +28,8 @@ type Metadata struct {
 }
 
 // LoadManifest loads manifest from local machine
-func LoadManifest() (*Manifest, error) {
-	extensionDir, err := getExtensionDir()
-	if err != nil {
-		return nil, err
-	}
-	manifestPath := path.Join(extensionDir, manifestFileName)
-
+func LoadManifest(dirPath string) (*Manifest, error) {
+	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &Manifest{}
 	if _, err := os.Stat(manifestPath); err == nil {
 		content, err := ioutil.ReadFile(manifestPath)
@@ -50,19 +45,15 @@ func LoadManifest() (*Manifest, error) {
 }
 
 // FlushManifest flushes manifest into a file in local machine
-func FlushManifest(manifest *Manifest) error {
-	extensionDir, err := getExtensionDir()
-	if err != nil {
-		return err
-	}
+func FlushManifest(manifest *Manifest, dirPath string) error {
 	content, err := yaml.Marshal(manifest)
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %v", err)
 	}
-	if err := os.MkdirAll(extensionDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating dir: %v", err)
 	}
-	manifestPath := path.Join(extensionDir, manifestFileName)
+	manifestPath := path.Join(dirPath, manifestFileName)
 	f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	if err != nil {
 		return fmt.Errorf("error opening file: %v", err)

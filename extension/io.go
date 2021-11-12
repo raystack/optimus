@@ -8,7 +8,8 @@ import (
 
 const extensionDirName = ".optimus/extensions"
 
-func getExtensionDir() (string, error) {
+// GetDefaultDir gets the default extension directory
+func GetDefaultDir() (string, error) {
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("error getting user home dir: %v", err)
