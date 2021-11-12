@@ -21,7 +21,7 @@ import (
 
 const defaultRepoPrefix = "optimus-extension-"
 
-// Installer is a contract to install extension an extension from Github
+// Installer is a contract to install an extension from Github
 type Installer interface {
 	Install(ctx context.Context, owner, repo, alias string) error
 }
@@ -41,7 +41,7 @@ type Extension struct {
 func NewExtension(
 	manifest *Manifest,
 	ghReleaseGetter GithubReleaseGetter,
-	httpDoer HTTPDoer, // change it to function or interface
+	httpDoer HTTPDoer,
 	dirPath string,
 	reservedCommands ...string,
 ) (*Extension, error) {
