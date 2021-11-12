@@ -27,6 +27,7 @@ func addExtensionCommand(cmd *cli.Command, l log.Logger) {
 		panic(err)
 	}
 	reservedCommands := getUsedCommands(cmd)
+
 	extension, _ := extension.NewExtension(
 		manifest,
 		githubClient.Repositories, httpClient,
@@ -34,11 +35,51 @@ func addExtensionCommand(cmd *cli.Command, l log.Logger) {
 		reservedCommands...,
 	)
 
-	cmd.AddCommand(extensionCommand(ctx, extension.Install, l))
+	cmd.AddCommand(extensionCommand(ctx, extension, l))
 	commands := generateCommands(manifest, extension.Run)
 	for _, c := range commands {
 		cmd.AddCommand(c)
 	}
+}
+
+func extensionCommand(ctx context.Context, extension *extension.Extension, l log.Logger) *cli.Command {
+	c := &cli.Command{
+		Use:     "extension SUBCOMMAND",
+		Aliases: []string{"ext"},
+		Short:   "Operate with extension",
+	}
+	c.AddCommand(extensionInstallCommand(ctx, extension, l))
+	return c
+}
+
+func extensionInstallCommand(ctx context.Context, installer extension.Installer, l log.Logger) *cli.Command {
+	var alias string
+	installCmd := &cli.Command{
+		Use:   "install OWNER/REPO",
+		Short: "Install an extension",
+		RunE: func(cmd *cli.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("one argument for [owner/repo] is required")
+			}
+			splitArg := strings.Split(args[0], "/")
+			if len(splitArg) != 2 || splitArg[0] == "" || splitArg[1] == "" {
+				return errors.New("argument should follow pattern [owner/repo]")
+			}
+
+			owner := splitArg[0]
+			repo := splitArg[1]
+
+			l.Info(fmt.Sprintf("Installing %s/%s ...", owner, repo))
+			err := installer.Install(ctx, owner, repo, alias)
+			if err != nil {
+				return err
+			}
+			l.Info("... success")
+			return nil
+		},
+	}
+	installCmd.Flags().StringVarP(&alias, "alias", "a", "", "alias to be set for the extension")
+	return installCmd
 }
 
 func generateCommands(manifest *extension.Manifest, execFn func(string, []string) error) []*cli.Command {
@@ -66,48 +107,4 @@ func getUsedCommands(cmd *cli.Command) []string {
 		output[i] = c.Name()
 	}
 	return output
-}
-
-func extensionCommand(
-	ctx context.Context,
-	installFn func(ctx context.Context, owner, repo, alias string) error,
-	l log.Logger,
-) *cli.Command {
-	c := &cli.Command{
-		Use:     "extension SUBCOMMAND",
-		Aliases: []string{"ext"},
-		Short:   "Operate with extension",
-	}
-	c.AddCommand(
-		func() *cli.Command {
-			var alias string
-			installCmd := &cli.Command{
-				Use:   "install OWNER/REPO",
-				Short: "Install an extension",
-				RunE: func(cmd *cli.Command, args []string) error {
-					if len(args) != 1 {
-						return errors.New("one argument for [owner/repo] is required")
-					}
-					splitArg := strings.Split(args[0], "/")
-					if len(splitArg) != 2 || splitArg[0] == "" || splitArg[1] == "" {
-						return errors.New("argument should follow pattern [owner/repo]")
-					}
-
-					owner := splitArg[0]
-					repo := splitArg[1]
-
-					l.Info(fmt.Sprintf("Installing %s/%s ...", owner, repo))
-					err := installFn(ctx, owner, repo, alias)
-					if err != nil {
-						return err
-					}
-					l.Info("... success")
-					return nil
-				},
-			}
-			installCmd.Flags().StringVarP(&alias, "alias", "a", "", "alias to be set for the extension")
-			return installCmd
-		}(),
-	)
-	return c
 }

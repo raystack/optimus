@@ -21,6 +21,11 @@ import (
 
 const defaultRepoPrefix = "optimus-extension-"
 
+// Installer is a contract to install extension an extension from Github
+type Installer interface {
+	Install(ctx context.Context, owner, repo, alias string) error
+}
+
 // Extension is manager for extension
 type Extension struct {
 	ghReleaseGetter GithubReleaseGetter
