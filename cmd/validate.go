@@ -43,20 +43,13 @@ func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepos
 		Example: "optimus validate job",
 	}
 
-	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
-	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
+	cmd.Flags().StringVar(&projectName, "project", conf.GetProject().Name, "name of the project")
+	cmd.Flags().StringVar(&namespace, "namespace", conf.GetNamespace().Name, "namespace")
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		start := time.Now()
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
 			return err
-		}
-
-		if projectName == "" {
-			projectName = conf.GetProject().Name
-		}
-		if namespace == "" {
-			namespace = conf.GetNamespace().Name
 		}
 
 		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host); err != nil {

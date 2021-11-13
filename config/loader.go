@@ -22,9 +22,19 @@ var (
 func InitOptimus() (*Optimus, error) {
 	var o Optimus
 
-	currPath, _ := os.Getwd()
-	execPath, _ := os.Executable()
-	currentHomeDir, _ := os.UserHomeDir()
+	currPath, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting current work directory path")
+	}
+	execPath, err := os.Executable()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting the executable path")
+	}
+	currentHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting the home directory")
+	}
+
 	configDir := filepath.Join(currentHomeDir, ".config")
 	optimusDir := filepath.Join(currentHomeDir, ".optimus")
 
