@@ -453,8 +453,7 @@ func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.Pro
 	return jobSpec, nil
 }
 
-func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string,
-	allowedDownstream string) ([]models.JobSpec, error) {
+func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string) ([]models.JobSpec, error) {
 	jobSpecMap, err := srv.prepareJobSpecMap(ctx, projectSpec)
 	if err != nil {
 		return nil, err
@@ -501,15 +500,15 @@ func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.Pr
 
 func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]string, error) {
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	namespaceJobSpecMap, err := projectJobSpecRepo.GetAllWithNamespace(ctx)
+	namespaceJobSpecMap, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	jobNamespaceMap := make(map[string]string)
-	for namespace, jobSpecs := range namespaceJobSpecMap {
-		for _, jobSpec := range jobSpecs {
-			jobNamespaceMap[jobSpec] = namespace
+	for namespace, jobNames := range namespaceJobSpecMap {
+		for _, jobName := range jobNames {
+			jobNamespaceMap[jobName] = namespace
 		}
 	}
 

@@ -20,7 +20,6 @@ type ProjectJobSpecRepository interface {
 	GetByName(context.Context, string) (models.JobSpec, models.NamespaceSpec, error)
 	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.JobSpec, error)
-	GetAllWithNamespace(ctx context.Context) (map[string][]string, error)
 	GetByDestination(context.Context, string) (models.JobSpec, models.ProjectSpec, error)
 
 	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project

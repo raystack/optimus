@@ -2962,7 +2962,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name, allowedDownstream).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName:      resourceName,
@@ -3443,7 +3443,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName:      resourceName,
@@ -3689,7 +3689,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name, allowedDownstream).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResults, nil)
 
@@ -3798,7 +3798,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResults, nil)
 
@@ -4077,7 +4077,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			errorMsg := "unable to get jobspec downstream"
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name, allowedDownstream).Return([]models.JobSpec{}, errors.New(errorMsg))
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -4169,7 +4169,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name, allowedDownstream).Return([]models.JobSpec{}, nil)
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 			errorMsg := "unable to get jobspec"
 			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec}).Return([]string{}, errors.New(errorMsg))
 

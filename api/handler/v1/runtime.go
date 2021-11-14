@@ -1034,7 +1034,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 
 	if !req.IgnoreDownstream {
-		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name, allowedDownstream)
+		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
 		}
@@ -1092,7 +1092,7 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 	}
 
 	if !req.IgnoreDownstream {
-		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name, allowedDownstream)
+		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
 		}

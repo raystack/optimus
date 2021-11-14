@@ -45,8 +45,8 @@ func TestReplay(t *testing.T) {
 		return jobSpec.Assets, nil
 	}
 	var (
-		specs    = make(map[string]models.JobSpec)
-		jobSpecs = make([]models.JobSpec, 0)
+		specs        = make(map[string]models.JobSpec)
+		jobSpecs     = make([]models.JobSpec, 0)
 		namespaceMap = make(map[string]string)
 	)
 
@@ -363,8 +363,8 @@ func TestReplay(t *testing.T) {
 			keyMapSpec6 := fmt.Sprintf("%s#%s", spec5, spec6)
 			expectedRunMap[keyMapSpec6] = expectedRunMap[keyMapSpec5]
 			expectedRunMap[keyMapSpec6] = append(expectedRunMap[keyMapSpec6],
-				time.Date(2020, time.Month(8), 9, 0,0, 0, 0, time.UTC),
-				time.Date(2020, time.Month(8), 10, 0, 0, 0,0, time.UTC))
+				time.Date(2020, time.Month(8), 9, 0, 0, 0, 0, time.UTC),
+				time.Date(2020, time.Month(8), 10, 0, 0, 0, 0, time.UTC))
 			keyMapSpec6DepSpec4 := fmt.Sprintf("%s#%s", spec4, spec6)
 			expectedRunMap[keyMapSpec6DepSpec4] = []time.Time{
 				time.Date(2020, time.Month(8), 5, 0, 0, 0, 0, time.UTC),
@@ -417,62 +417,6 @@ func TestReplay(t *testing.T) {
 				Project:           projSpec,
 				IgnoreDownstream:  true,
 				AllowedDownstream: models.AllNamespace,
-			}
-
-			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
-
-			assert.Nil(t, err)
-			runMap := make(map[string][]time.Time)
-			getRuns(replayPlan.ExecutionTree, "", runMap)
-			expectedRunMap := map[string][]time.Time{}
-			keyMapSpec4 := fmt.Sprintf("%s#%s", "", spec4)
-			expectedRunMap[keyMapSpec4] = []time.Time{}
-			for i := 0; i <= 23; i++ {
-				expectedRunMap[keyMapSpec4] = append(expectedRunMap[keyMapSpec4], time.Date(2020, time.Month(8), 5, i,
-					0, 0, 0, time.UTC))
-			}
-			for k, v := range runMap {
-				assert.Equal(t, expectedRunMap[k], v)
-			}
-		})
-
-		t.Run("should able to exclude downstream from replay dry run tree if not allowed", func(t *testing.T) {
-			namespaceJobsMap := map[string][]string{
-				"namespace1": {specs[spec4].Name},
-				"namespace2": {specs[spec5].Name},
-				"namespace3": {specs[spec6].Name},
-			}
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
-			projectJobSpecRepo.On("GetAllWithNamespace", ctx).Return(namespaceJobsMap, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
-			defer depenResolver.AssertExpectations(t)
-
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
-				depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayRequest := models.ReplayRequest{
-				Job:               specs[spec4],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				IgnoreDownstream:  true,
-				AllowedDownstream: "namespace1",
 			}
 
 			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -580,7 +524,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should fail if replay manager throws an error", func(t *testing.T) {
 			namespaceJobsMap := map[string][]string{
-				"ns": {
+				"namespace1": {
 					jobSpecs[0].Name,
 					jobSpecs[1].Name,
 					jobSpecs[2].Name,
@@ -637,7 +581,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should succeed if replay manager successfully processes request", func(t *testing.T) {
 			namespaceJobsMap := map[string][]string{
-				"ns": {
+				"namespace1": {
 					jobSpecs[0].Name,
 					jobSpecs[1].Name,
 					jobSpecs[2].Name,

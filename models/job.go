@@ -333,7 +333,7 @@ type JobService interface {
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs
-	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string, allowedDownstream string) ([]JobSpec, error)
+	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

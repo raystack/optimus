@@ -48,6 +48,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
 	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
 	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "namespace of the requester")
+	backupCmd.Flags().BoolVarP(&allDownstream, "all-downstream", "", allDownstream, "run replay for all downstream across namespaces")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
@@ -230,9 +231,9 @@ func printBackupResponse(l log.Logger, backupResponse *pb.BackupResponse) {
 
 func printBackupDryRunResponse(l log.Logger, backupRequest *pb.BackupDryRunRequest, backupResponse *pb.BackupDryRunResponse) {
 	if backupRequest.IgnoreDownstream {
-		l.Info(coloredPrint(fmt.Sprintf("Backup list for %s. Downstreams will be ignored.", backupRequest.ResourceName)))
+		l.Info(coloredNotice(fmt.Sprintf("Backup list for %s. Downstreams will be ignored.", backupRequest.ResourceName)))
 	} else {
-		l.Info(coloredPrint(fmt.Sprintf("Backup list for %s. Supported downstreams will be included.", backupRequest.ResourceName)))
+		l.Info(coloredNotice(fmt.Sprintf("Backup list for %s. Supported downstreams will be included.", backupRequest.ResourceName)))
 	}
 	counter := 1
 	for _, resource := range backupResponse.ResourceName {

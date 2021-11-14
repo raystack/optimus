@@ -229,12 +229,14 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 
 	//ignored jobs
 	if len(replayDryRunResponse.IgnoredJobs) > 0 {
-		l.Info(coloredNotice("Ignored Jobs"))
+		l.Info(coloredPrint("Ignored Jobs"))
 		ignoredJobsCount := 0
 		for _, job := range replayDryRunResponse.IgnoredJobs {
 			ignoredJobsCount++
 			l.Info(fmt.Sprintf("%d. %s", ignoredJobsCount, job))
 		}
+		//separator
+		l.Info("")
 	}
 }
 

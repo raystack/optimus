@@ -211,8 +211,8 @@ func (j *JobService) GetByDestination(ctx context.Context, projectSpec models.Pr
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string, allowedDownstream string) ([]models.JobSpec, error) {
-	args := j.Called(ctx, projectSpec, jobName, allowedDownstream)
+func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
+	args := j.Called(ctx, projectSpec, jobName)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
