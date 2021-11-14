@@ -1033,7 +1033,6 @@ func TestService(t *testing.T) {
 			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
 			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
 			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
-			allowedDownstream := models.AllNamespace
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
@@ -1053,7 +1052,7 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name, allowedDownstream)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, []models.JobSpec{jobSpec2}, jobSpecsResult)
 		})
@@ -1067,7 +1066,6 @@ func TestService(t *testing.T) {
 			jobSpecsMap[jobSpec1.GetName()] = jobSpec1
 			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
 			jobSpecsMap[jobSpec2.GetName()] = jobSpec2
-			allowedDownstream := models.AllNamespace
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
@@ -1079,7 +1077,7 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination, allowedDownstream)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, jobSpecsResult)
 		})
@@ -1094,7 +1092,6 @@ func TestService(t *testing.T) {
 			jobSpec2 := models.JobSpec{Name: "dag2-deps-on-dag1", Dependencies: getDependencyObject(jobSpecsMap, jobSpec1.GetName())}
 			jobSpecsMap[jobSpec2.GetName()] = jobSpec2
 			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
-			allowedDownstream := models.AllNamespace
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
@@ -1114,7 +1111,7 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
-			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination, allowedDownstream)
+			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
 			assert := assert.New(t)
 			assert.Contains(err.Error(), errorMsg)
 			assert.Nil(jobSpecsResult)
