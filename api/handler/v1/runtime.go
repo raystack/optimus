@@ -262,9 +262,13 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 		return nil, status.Errorf(codes.Internal, "%s: failed to save project %s", err.Error(), req.GetProject().GetName())
 	}
 
+	responseMsg := "project saved successfully."
+	if req.Namespace != nil {
+		responseMsg += " ignoring to save namespace (deprecated). please use register namespace rpc."
+	}
 	return &pb.RegisterProjectResponse{
 		Success: true,
-		Message: "saved successfully",
+		Message: responseMsg,
 	}, nil
 }
 

@@ -55,7 +55,7 @@ type Namespace struct {
 
 type LogConfig struct {
 	// log level - debug, info, warning, error, fatal
-	Level string `mapstructure:"level"`
+	Level string `mapstructure:"level" default:"info"`
 
 	// format strategy - plain, json
 	Format string `mapstructure:"format"`
@@ -86,10 +86,10 @@ type DBConfig struct {
 	DSN string `mapstructure:"dsn"`
 
 	// maximum allowed idle DB connections
-	MaxIdleConnection int `mapstructure:"max_idle_connection" default:"5"`
+	MaxIdleConnection int `mapstructure:"max_idle_connection" default:"10"`
 
 	// maximum allowed open DB connections
-	MaxOpenConnection int `mapstructure:"max_open_connection" default:"10"`
+	MaxOpenConnection int `mapstructure:"max_open_connection" default:"20"`
 }
 
 type MetadataConfig struct {

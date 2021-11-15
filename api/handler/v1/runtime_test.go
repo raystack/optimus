@@ -372,7 +372,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
 				Success: true,
-				Message: "saved successfully",
+				Message: "project saved successfully.",
 			}, resp)
 		})
 	})
