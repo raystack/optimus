@@ -511,7 +511,7 @@ func TestBigquery(t *testing.T) {
 			destinationTable := BQTable{
 				Project: spec.Project,
 				Dataset: resourceRequest.BackupSpec.Config[BackupConfigDataset],
-				Table:   fmt.Sprintf("backup_dataset_table_%s", resourceRequest.BackupSpec.ID),
+				Table:   fmt.Sprintf("backup_dataset_table_%s", backupTime.Format(backupTimePostfixFormat)),
 			}
 			resultURN := fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), destinationTable.Project, destinationTable.Dataset, destinationTable.Table)
 
