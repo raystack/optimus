@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/config"
+
 	"github.com/odpf/salt/log"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
@@ -20,18 +22,20 @@ var (
 	runJobTimeout = time.Minute * 1
 )
 
-func runCommand(l log.Logger, host string, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository) *cli.Command {
+func runCommand(l log.Logger, host string, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
+	conf config.Provider) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "run",
 		Short: "[EXPERIMENTAL]",
 	}
 	if jobSpecRepo != nil {
-		cmd.AddCommand(runJobCommand(l, jobSpecRepo, host, pluginRepo))
+		cmd.AddCommand(runJobCommand(l, jobSpecRepo, host, pluginRepo, conf))
 	}
 	return cmd
 }
 
-func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, pluginRepo models.PluginRepository) *cli.Command {
+func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, pluginRepo models.PluginRepository,
+	conf config.Provider) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
@@ -40,16 +44,15 @@ func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, plu
 		Args:    cli.MinimumNArgs(1),
 		Example: "optimus beta run job <job_name> --project g-optimus",
 	}
-	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
-	cmd.MarkFlagRequired("project")
-	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace under the project")
-	cmd.MarkFlagRequired("namespace")
+	cmd.Flags().StringVar(&projectName, "project", conf.GetProject().Name, "name of the project")
+	cmd.Flags().StringVar(&namespace, "namespace", conf.GetNamespace().Name, "namespace under the project")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobSpec, err := jobSpecRepo.GetByName(args[0])
 		if err != nil {
 			return err
 		}
+
 		return runJobSpecificationRequest(l, projectName, namespace, host, jobSpec, pluginRepo)
 	}
 	return cmd

@@ -95,10 +95,10 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 	cmd.AddCommand(createCommand(plainLog, jobSpecFs, datastoreSpecsFs, pluginRepo, dsRepo))
 	cmd.AddCommand(deployCommand(plainLog, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))
 	cmd.AddCommand(renderCommand(plainLog, conf.GetHost(), jobSpecRepo))
-	cmd.AddCommand(validateCommand(plainLog, conf.GetHost(), pluginRepo, jobSpecRepo))
+	cmd.AddCommand(validateCommand(plainLog, conf.GetHost(), pluginRepo, jobSpecRepo, conf))
 	cmd.AddCommand(serveCommand(jsonLog, conf))
 	cmd.AddCommand(replayCommand(plainLog, conf))
-	cmd.AddCommand(runCommand(plainLog, conf.GetHost(), jobSpecRepo, pluginRepo))
+	cmd.AddCommand(runCommand(plainLog, conf.GetHost(), jobSpecRepo, pluginRepo, conf))
 	cmd.AddCommand(backupCommand(plainLog, dsRepo, conf))
 
 	// admin specific commands

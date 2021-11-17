@@ -256,27 +256,19 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	projectSpec := sv.adapter.FromProjectProto(req.GetProject())
 
 	if err := projectRepo.Save(ctx, projectSpec); err != nil {
+		if errors.Is(err, store.ErrEmptyConfig) {
+			return nil, status.Errorf(codes.FailedPrecondition, "%s", err.Error())
+		}
 		return nil, status.Errorf(codes.Internal, "%s: failed to save project %s", err.Error(), req.GetProject().GetName())
 	}
 
-	if req.GetNamespace() != nil {
-		savedProjectSpec, err := projectRepo.GetByName(ctx, projectSpec.Name)
-		if err != nil {
-			return nil, status.Errorf(codes.NotFound, "%s: failed to find project %s",
-				err.Error(), req.GetProject().GetName())
-		}
-
-		namespaceRepo := sv.namespaceRepoFactory.New(savedProjectSpec)
-		namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
-		if err = namespaceRepo.Save(ctx, namespaceSpec); err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to save project %s with namespace %s",
-				err.Error(), req.GetProject().GetName(), req.GetNamespace().GetName())
-		}
+	responseMsg := "project saved successfully."
+	if req.Namespace != nil {
+		responseMsg += " ignoring to save namespace (deprecated). please use register namespace rpc."
 	}
-
 	return &pb.RegisterProjectResponse{
 		Success: true,
-		Message: "saved successfully",
+		Message: responseMsg,
 	}, nil
 }
 
@@ -290,6 +282,9 @@ func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, re
 	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
 	if err = namespaceRepo.Save(ctx, namespaceSpec); err != nil {
+		if errors.Is(err, store.ErrEmptyConfig) {
+			return nil, status.Errorf(codes.FailedPrecondition, "%s", err.Error())
+		}
 		return nil, status.Errorf(codes.Internal, "%s: failed to save namespace %s for project %s", err.Error(), namespaceSpec.Name, projSpec.Name)
 	}
 

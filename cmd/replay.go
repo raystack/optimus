@@ -75,8 +75,8 @@ func replayRunSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	dryRun := false
 	forceRun := false
 	var (
-		replayProject string
-		namespace     string
+		projectName   string
+		namespaceName string
 	)
 
 	reCmd := &cli.Command{
@@ -99,11 +99,9 @@ ReplayDryRun date ranges are inclusive.
 			return nil
 		},
 	}
+	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.GetNamespace().Name, "namespace of deployee")
 	reCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
-	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed repository")
-	reCmd.MarkFlagRequired("project")
-	reCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of deployee")
-	reCmd.MarkFlagRequired("namespace")
 	reCmd.Flags().BoolVarP(&forceRun, "force", "f", forceRun, "run replay even if a previous run is in progress")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
@@ -111,7 +109,8 @@ ReplayDryRun date ranges are inclusive.
 		if len(args) >= 3 {
 			endDate = args[2]
 		}
-		if err := printReplayExecutionTree(l, replayProject, namespace, args[0], args[1], endDate, conf); err != nil {
+
+		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, conf); err != nil {
 			return err
 		}
 		if dryRun {
@@ -133,7 +132,7 @@ ReplayDryRun date ranges are inclusive.
 			return nil
 		}
 
-		replayId, err := runReplayRequest(l, replayProject, namespace, args[0], args[1], endDate, conf, forceRun)
+		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, conf, forceRun)
 		if err != nil {
 			return err
 		}
@@ -272,7 +271,7 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 
 func replayStatusSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var (
-		replayProject string
+		projectName string
 	)
 
 	reCmd := &cli.Command{
@@ -290,8 +289,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			return nil
 		},
 	}
-	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed repository")
-	reCmd.MarkFlagRequired("project")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
@@ -311,7 +309,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 		runtime := pb.NewRuntimeServiceClient(conn)
 		replayStatusRequest := &pb.GetReplayStatusRequest{
 			Id:          args[0],
-			ProjectName: replayProject,
+			ProjectName: projectName,
 		}
 		replayResponse, err := runtime.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
 		if err != nil {
@@ -353,7 +351,7 @@ func printStatusTree(instance *pb.ReplayStatusTreeNode, tree treeprint.Tree) tre
 
 func replayListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var (
-		replayProject string
+		projectName string
 	)
 
 	reCmd := &cli.Command{
@@ -364,8 +362,7 @@ func replayListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 The list command is used to fetch the recent replay in one project. 
 		`,
 	}
-	reCmd.Flags().StringVarP(&replayProject, "project", "p", "", "project name of optimus managed repository")
-	reCmd.MarkFlagRequired("project")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
@@ -384,7 +381,7 @@ The list command is used to fetch the recent replay in one project.
 
 		runtime := pb.NewRuntimeServiceClient(conn)
 		replayStatusRequest := &pb.ListReplaysRequest{
-			ProjectName: replayProject,
+			ProjectName: projectName,
 		}
 		replayResponse, err := runtime.ListReplays(replayRequestTimeout, replayStatusRequest)
 		if err != nil {
@@ -394,7 +391,7 @@ The list command is used to fetch the recent replay in one project.
 			return errors.Wrapf(err, "failed to get replay requests")
 		}
 		if len(replayResponse.ReplayList) == 0 {
-			l.Info(fmt.Sprintf("no replays were found in %s project.", replayProject))
+			l.Info(fmt.Sprintf("no replays were found in %s project.", projectName))
 		} else {
 			printReplayListResponse(l, replayResponse)
 		}

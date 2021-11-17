@@ -113,6 +113,9 @@ func (repo *namespaceRepository) Save(ctx context.Context, spec models.Namespace
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find namespace by name")
 	}
+	if len(spec.Config) == 0 {
+		return store.ErrEmptyConfig
+	}
 	resource, err := Namespace{}.FromSpec(spec)
 	if err != nil {
 		return err

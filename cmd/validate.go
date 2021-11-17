@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/odpf/optimus/config"
+
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
 	"github.com/odpf/optimus/models"
@@ -19,18 +21,20 @@ const (
 	validateTimeout = time.Minute * 5
 )
 
-func validateCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
+func validateCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
+	conf config.Provider) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "validate",
 		Short: "check if specifications are valid for deployment",
 	}
 	if jobSpecRepo != nil {
-		cmd.AddCommand(validateJobCommand(l, host, pluginRepo, jobSpecRepo))
+		cmd.AddCommand(validateJobCommand(l, host, pluginRepo, jobSpecRepo, conf))
 	}
 	return cmd
 }
 
-func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository) *cli.Command {
+func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
+	conf config.Provider) *cli.Command {
 	var projectName string
 	var namespace string
 	cmd := &cli.Command{
@@ -38,17 +42,16 @@ func validateJobCommand(l log.Logger, host string, pluginRepo models.PluginRepos
 		Short:   "run basic checks on all jobs",
 		Example: "optimus validate job",
 	}
-	cmd.Flags().StringVar(&projectName, "project", "", "name of the project")
-	cmd.MarkFlagRequired("project")
-	cmd.Flags().StringVar(&namespace, "namespace", "", "namespace")
-	cmd.MarkFlagRequired("namespace")
 
+	cmd.Flags().StringVar(&projectName, "project", conf.GetProject().Name, "name of the project")
+	cmd.Flags().StringVar(&namespace, "namespace", conf.GetNamespace().Name, "namespace")
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		start := time.Now()
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
 			return err
 		}
+
 		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host); err != nil {
 			return err
 		}

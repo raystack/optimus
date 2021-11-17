@@ -36,18 +36,17 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			}
 			questions := []*survey.Question{
 				{
-					Name: "JobPath",
+					Name: "ProjectName",
 					Prompt: &survey.Input{
-						Message: "Scheduled jobs directory",
-						Default: "./jobs",
-						Help:    "relative directory path to jobs specification",
+						Message: "What is the project name?",
+						Help:    "project name of the repository",
 					},
 					Validate: survey.Required,
 				},
 				{
-					Name: "RegisterGlobalConfig",
+					Name: "RegisterProjectConfig",
 					Prompt: &survey.Select{
-						Message: "Register global configs?",
+						Message: "Register project configs?",
 						Options: []string{"Yes", "No"},
 						Default: "No",
 					},
@@ -57,22 +56,30 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := survey.Ask(questions, &answers); err != nil {
 				return err
 			}
-			conf.Job.Path = answers["JobPath"].(string)
+			conf.Project.Name = answers["ProjectName"].(string)
 
-			// for global config
-			if option, ok := answers["RegisterGlobalConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf, err = globalConfigQuestions(l, conf)
+			// for project config
+			if option, ok := answers["RegisterProjectConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+				conf, err = projectConfigQuestions(l, conf)
 				if err != nil {
 					return err
 				}
 			}
 
-			// questions for local config
+			// questions for namespace config
 			questions = []*survey.Question{
 				{
-					Name: "RegisterLocalConfig",
+					Name: "NamespaceName",
+					Prompt: &survey.Input{
+						Message: "What is the namespace name?",
+						Help:    "specific namespace name for jobs and resources inside the directory",
+					},
+					Validate: survey.Required,
+				},
+				{
+					Name: "RegisterNamespaceConfig",
 					Prompt: &survey.Select{
-						Message: "Register local configs?",
+						Message: "Register namespace configs?",
 						Options: []string{"Yes", "No"},
 						Default: "No",
 					},
@@ -83,9 +90,10 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 				return err
 			}
 
-			// for local config
-			if option, ok := answers["RegisterLocalConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf, err = localConfigQuestions(l, conf)
+			conf.Namespace.Name = answers["NamespaceName"].(string)
+			// for namespace config
+			if option, ok := answers["RegisterNamespaceConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+				conf, err = namespaceConfigQuestions(l, conf)
 				if err != nil {
 					return err
 				}
@@ -93,6 +101,15 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 
 			// for datastore
 			questions = []*survey.Question{
+				{
+					Name: "JobPath",
+					Prompt: &survey.Input{
+						Message: "Scheduled jobs directory",
+						Default: "./jobs",
+						Help:    "relative directory path to jobs specification",
+					},
+					Validate: survey.Required,
+				},
 				{
 					Name: "RegisterDatastore",
 					Prompt: &survey.Select{
@@ -106,6 +123,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := survey.Ask(questions, &answers); err != nil {
 				return err
 			}
+			conf.Namespace.Job.Path = answers["JobPath"].(string)
 			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
 				conf, err = datastoreConfigQuestions(l, conf, dsRepo)
 				if err != nil {
@@ -128,8 +146,8 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 	return c
 }
 
-func globalConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
-	conf.Config.Global = map[string]string{}
+func projectConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
+	conf.Project.Config = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
 		configAnswers := map[string]interface{}{}
@@ -159,14 +177,14 @@ func globalConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, e
 		}, &registerMore); err != nil {
 			return conf, err
 		}
-		conf.Config.Global[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
+		conf.Project.Config[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
 	}
 
 	return conf, nil
 }
 
-func localConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
-	conf.Config.Local = map[string]string{}
+func namespaceConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
+	conf.Namespace.Config = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
 		configAnswers := map[string]interface{}{}
@@ -196,7 +214,7 @@ func localConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, er
 		}, &registerMore); err != nil {
 			return conf, err
 		}
-		conf.Config.Local[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
+		conf.Namespace.Config[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
 	}
 
 	return conf, nil
@@ -207,7 +225,7 @@ func datastoreConfigQuestions(l log.Logger, conf config.Optimus, dsRepo models.D
 	for _, ds := range dsRepo.GetAll() {
 		dsOptions = append(dsOptions, ds.Name())
 	}
-	conf.Datastore = []config.Datastore{}
+	conf.Namespace.Datastore = []config.Datastore{}
 
 	configAnswers := map[string]interface{}{}
 	if err := survey.Ask([]*survey.Question{
@@ -228,7 +246,7 @@ func datastoreConfigQuestions(l log.Logger, conf config.Optimus, dsRepo models.D
 	}, &configAnswers); err != nil {
 		return conf, err
 	}
-	conf.Datastore = append(conf.Datastore, config.Datastore{
+	conf.Namespace.Datastore = append(conf.Namespace.Datastore, config.Datastore{
 		Type: configAnswers["Type"].(survey.OptionAnswer).Value,
 		Path: configAnswers["Path"].(string),
 	})

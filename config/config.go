@@ -1,281 +1,171 @@
 package config
 
 import (
-	"encoding/json"
-	"strings"
+	"strconv"
 	"time"
-
-	"github.com/knadh/koanf"
 )
 
 var (
-	KeyVersion = "version"
-	KeyHost    = "host"
-
-	KeyJobPath = "job.path"
-
-	KeyDatastoreName = "datastore.name"
-	KeyDatastorePath = "datastore.path"
-
-	KeyProjectConfigGlobal = "config.global"
-	KeyProjectConfigLocal  = "config.local"
-
-	KeyLogLevel  = "log.level"
-	KeyLogFormat = "log.format"
-
-	KeyServeHost                    = "serve.host"
-	KeyServePort                    = "serve.port"
-	KeyServeAppKey                  = "serve.app_key"
-	KeyServeIngressHost             = "serve.ingress_host"
-	KeyServeDBDSN                   = "serve.db.dsn"
-	KeyServeDBMaxIdleConnection     = "serve.db.max_idle_connection"
-	KeyServeDBMaxOpenConnection     = "serve.db.max_open_connection"
-	KeyServeMetadataWriterBatchSize = "serve.metadata.writer_batch_size"
-	KeyServeMetadataKafkaBrokers    = "serve.metadata.kafka_brokers"
-	KeyServeMetadataKafkaJobTopic   = "serve.metadata.kafka_job_topic"
-	KeyServeMetadataKafkaBatchSize  = "serve.metadata.kafka_batch_size"
-	KeyServeReplayNumWorkers        = "serve.replay_num_workers"
-	KeyServeReplayWorkerTimeoutSecs = "serve.replay_worker_timeout_secs"
-	KeyServeReplayRunTimeoutSecs    = "serve.replay_run_timeout_secs"
-
-	KeySchedulerName       = "scheduler.name"
-	KeySchedulerSkipInit   = "scheduler.skip_init"
-	KeySchedulerRaftAddr   = "scheduler.raft_addr"
-	KeySchedulerGossipAddr = "scheduler.gossip_addr"
-	KeySchedulerNodeID     = "scheduler.node_id"
-	KeySchedulerDataDir    = "scheduler.data_dir"
-	KeySchedulerPeers      = "scheduler.peers"
-
-	KeyAdminEnabled = "admin.enabled"
-
-	KeyTelemetryProfileAddr = "telemetry.profile_addr"
-	KeyTelemetryJaegerAddr  = "telemetry.jaeger_addr"
+	KeyServeReplayNumWorkers = "serve.replay_num_workers"
 )
 
 type Optimus struct {
-	// Note: don't access configs using these member variables, instead use methods
-	// they are here to use yaml marshaller and generate basic config file
-
 	// configuration version
-	Version int `yaml:"version"`
+	Version int `mapstructure:"version"`
 	// optimus server host
-	Host string `yaml:"host"`
+	Host string `mapstructure:"host"`
 
-	Job       Job           `yaml:"job"`
-	Datastore []Datastore   `yaml:"datastore"`
-	Config    ProjectConfig `yaml:"config"`
+	Project   Project   `mapstructure:"project"`
+	Namespace Namespace `mapstructure:"namespace"`
 
-	k      *koanf.Koanf
-	parser koanf.Parser
+	Server    ServerConfig    `mapstructure:"serve"`
+	Log       LogConfig       `mapstructure:"log"`
+	Scheduler SchedulerConfig `mapstructure:"scheduler"`
+	Admin     AdminConfig     `mapstructure:"admin"`
+	Telemetry TelemetryConfig `mapstructure:"telemetry"`
 }
 
 type Datastore struct {
 	// type could be bigquery/postgres/gcs
-	Type string `yaml:"type" koanf:"type"`
+	Type string `mapstructure:"type"`
 
 	// directory to find specifications
-	Path string `yaml:"path" koanf:"path"`
+	Path string `mapstructure:"path"`
 
 	// backup configuration
-	Backup map[string]string `yaml:"backup" koanf:"backup"`
+	Backup map[string]string `mapstructure:"backup"`
 }
 
 type Job struct {
 	// directory to find specifications
-	Path string `yaml:"path"`
+	Path string `mapstructure:"path"`
 }
 
-type ProjectConfig struct {
-	// per project
-	Global map[string]string `yaml:"global"`
+type Project struct {
+	Name   string            `mapstructure:"name"`
+	Config map[string]string `mapstructure:"config"`
+}
 
-	// per namespace
-	Local map[string]string `yaml:"local"`
+type Namespace struct {
+	Name      string            `mapstructure:"name"`
+	Config    map[string]string `mapstructure:"config"`
+	Job       Job               `mapstructure:"job"`
+	Datastore []Datastore       `mapstructure:"datastore"`
 }
 
 type LogConfig struct {
 	// log level - debug, info, warning, error, fatal
-	Level string `yaml:"level"`
+	Level string `mapstructure:"level" default:"info"`
 
 	// format strategy - plain, json
-	Format string `yaml:"format"`
+	Format string `mapstructure:"format"`
 }
 
 type ServerConfig struct {
 	// port to listen on
-	Port int `yaml:"port"`
+	Port int `mapstructure:"port" default:"9100"`
 	// the network interface to listen on
-	Host string `yaml:"host"`
+	Host string `mapstructure:"host" default:"0.0.0.0"`
 
 	// service ingress host for jobs to communicate back to optimus
-	IngressHost string `yaml:"ingress_host"`
+	IngressHost string `mapstructure:"ingress_host"`
 
 	// random 32 character hash used for encrypting secrets
-	AppKey string `yaml:"app_key"`
+	AppKey string `mapstructure:"app_key"`
 
-	DB                      DBConfig       `yaml:"db"`
-	Metadata                MetadataConfig `yaml:"metadata"`
-	ReplayNumWorkers        int            `yaml:"replay_num_workers"`
-	ReplayWorkerTimeoutSecs time.Duration  `yaml:"replay_worker_timeout_secs"`
-	ReplayRunTimeoutSecs    time.Duration  `yaml:"replay_run_timeout_secs"`
+	DB                  DBConfig       `mapstructure:"db"`
+	Metadata            MetadataConfig `mapstructure:"metadata"`
+	ReplayNumWorkers    int            `mapstructure:"replay_num_workers" default:"1"`
+	ReplayWorkerTimeout time.Duration  `mapstructure:"replay_worker_timeout" default:"120s"`
+	ReplayRunTimeout    time.Duration  `mapstructure:"replay_run_timeout"`
 }
 
 type DBConfig struct {
 	// database connection string
 	// e.g.: postgres://user:password@host:123/database?sslmode=disable
-	DSN string `yaml:"host"`
+	DSN string `mapstructure:"dsn"`
 
 	// maximum allowed idle DB connections
-	MaxIdleConnection int `yaml:"max_idle_connection"`
+	MaxIdleConnection int `mapstructure:"max_idle_connection" default:"10"`
 
 	// maximum allowed open DB connections
-	MaxOpenConnection int `yaml:"max_open_connection"`
+	MaxOpenConnection int `mapstructure:"max_open_connection" default:"20"`
 }
 
 type MetadataConfig struct {
 	// limit on how many messages will be buffered before being sent to a writer
-	WriterBatchSize int `yaml:"writer_batch_size"`
+	WriterBatchSize int `mapstructure:"writer_batch_size" default:"50"`
 
 	// kafka topic where metadata of optimus Job needs to be published
-	KafkaJobTopic string `yaml:"kafka_job_topic"`
+	KafkaJobTopic string `mapstructure:"kafka_job_topic" default:"resource_optimus_job_log"`
 
 	// comma separated kafka brokers to use for publishing metadata, leave empty to disable metadata publisher
-	KafkaBrokers string `yaml:"kafka_brokers"`
+	KafkaBrokers string `mapstructure:"kafka_brokers"`
 
 	// limit on how many messages will be buffered before being sent to a kafka partition
-	KafkaBatchSize int `yaml:"kafka_batch_size"`
+	KafkaBatchSize int `mapstructure:"kafka_batch_size" default:"50"`
 }
 
 type SchedulerConfig struct {
-	Name     string `yaml:"name"`
-	SkipInit bool   `yaml:"skip_init"`
+	Name     string `mapstructure:"name" default:"airflow2"`
+	SkipInit bool   `mapstructure:"skip_init"`
 
-	RaftAddr   string `yaml:"raft_addr"`
-	GossipAddr string `yaml:"gossip_addr"`
-	NodeID     string `yaml:"node_id"`
-	DataDir    string `yaml:"data_dir"`
-	Peers      string `yaml:"peers"`
+	RaftAddr   string `mapstructure:"raft_addr"`
+	GossipAddr string `mapstructure:"gossip_addr"`
+	NodeID     string `mapstructure:"node_id"`
+	DataDir    string `mapstructure:"data_dir"`
+	Peers      string `mapstructure:"peers"`
 }
 
 type AdminConfig struct {
-	Enabled bool `yaml:"enabled"`
+	Enabled bool `mapstructure:"enabled"`
 }
 
 type TelemetryConfig struct {
-	ProfileAddr string `yaml:"profile_addr"`
-	JaegerAddr  string `yaml:"jaeger_addr"`
+	ProfileAddr string `mapstructure:"profile_addr"`
+	JaegerAddr  string `mapstructure:"jaeger_addr"`
 }
 
 func (o *Optimus) GetVersion() string {
-	return o.eKs(KeyVersion)
-}
-
-func (o *Optimus) GetProjectConfig() ProjectConfig {
-	return ProjectConfig{
-		Global: o.k.StringMap(KeyProjectConfigGlobal),
-		Local:  o.k.StringMap(KeyProjectConfigLocal),
-	}
+	return strconv.Itoa(o.Version)
 }
 
 func (o *Optimus) GetHost() string {
-	return o.eKs(KeyHost)
+	return o.Host
+}
+
+func (o *Optimus) GetProject() Project {
+	return o.Project
+}
+
+func (o *Optimus) GetNamespace() Namespace {
+	return o.Namespace
 }
 
 func (o *Optimus) GetJob() Job {
-	return Job{
-		Path: o.eKs(KeyJobPath),
-	}
+	return o.Namespace.Job
 }
 
 func (o *Optimus) GetDatastore() []Datastore {
-	ds := []Datastore{}
-	if o.k.Get("datastore") != nil {
-		err := o.k.Unmarshal("datastore", &ds)
-		if err != nil {
-			// env var loaded config is in string
-			json.Unmarshal(o.k.Bytes("datastore"), &ds)
-		}
-	}
-	return ds
+	return o.Namespace.Datastore
 }
 
 func (o *Optimus) GetLog() LogConfig {
-	return LogConfig{
-		Level:  o.eKs(KeyLogLevel),
-		Format: o.eKs(KeyLogFormat),
-	}
+	return o.Log
 }
 
 func (o *Optimus) GetServe() ServerConfig {
-	return ServerConfig{
-		Port:        o.eKi(KeyServePort),
-		Host:        o.eKs(KeyServeHost),
-		IngressHost: o.eKs(KeyServeIngressHost),
-		AppKey:      o.eKs(KeyServeAppKey),
-		DB: DBConfig{
-			DSN:               o.eKs(KeyServeDBDSN),
-			MaxIdleConnection: o.eKi(KeyServeDBMaxIdleConnection),
-			MaxOpenConnection: o.eKi(KeyServeDBMaxOpenConnection),
-		},
-		Metadata: MetadataConfig{
-			WriterBatchSize: o.eKi(KeyServeMetadataWriterBatchSize),
-			KafkaJobTopic:   o.eKs(KeyServeMetadataKafkaJobTopic),
-			KafkaBrokers:    o.eKs(KeyServeMetadataKafkaBrokers),
-			KafkaBatchSize:  o.eKi(KeyServeMetadataKafkaBatchSize),
-		},
-		ReplayNumWorkers:        o.eKi(KeyServeReplayNumWorkers),
-		ReplayWorkerTimeoutSecs: time.Second * time.Duration(o.eKi(KeyServeReplayWorkerTimeoutSecs)),
-		ReplayRunTimeoutSecs:    time.Second * time.Duration(o.eKi(KeyServeReplayRunTimeoutSecs)),
-	}
+	return o.Server
 }
 
 func (o *Optimus) GetScheduler() SchedulerConfig {
-	return SchedulerConfig{
-		Name:       o.eKs(KeySchedulerName),
-		SkipInit:   o.k.Bool(KeySchedulerSkipInit),
-		RaftAddr:   o.eKs(KeySchedulerRaftAddr),
-		GossipAddr: o.eKs(KeySchedulerGossipAddr),
-		NodeID:     o.eKs(KeySchedulerNodeID),
-		DataDir:    o.eKs(KeySchedulerDataDir),
-		Peers:      o.eKs(KeySchedulerPeers),
-	}
+	return o.Scheduler
 }
 
 func (o *Optimus) GetAdmin() AdminConfig {
-	return AdminConfig{
-		Enabled: o.k.Bool(KeyAdminEnabled),
-	}
+	return o.Admin
 }
 
 func (o *Optimus) GetTelemetry() TelemetryConfig {
-	return TelemetryConfig{
-		ProfileAddr: o.eKs(KeyTelemetryProfileAddr),
-		JaegerAddr:  o.eKs(KeyTelemetryJaegerAddr),
-	}
-}
-
-// eKs replaces . with _ to support buggy koanf config loader from ENV
-// this should be used in all keys where underscore is used
-func (o *Optimus) eKs(e string) string {
-	// read with default key - used in config file
-	res := o.k.String(e)
-
-	// read with replaced key - used in env
-	if v := o.k.String(strings.Replace(e, "_", ".", -1)); v != "" {
-		res = v
-	}
-	return res
-}
-
-// eKi replaces . with _ to support buggy koanf config loader from ENV
-// this should be used in all keys where underscore is used
-func (o Optimus) eKi(e string) int {
-	// read with default key - used in config file
-	res := o.k.Int(e)
-
-	// read with replaced key - used in env
-	if v := o.k.Int(strings.Replace(e, "_", ".", -1)); v != 0 {
-		res = v
-	}
-	return res
+	return o.Telemetry
 }

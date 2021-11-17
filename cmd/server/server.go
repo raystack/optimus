@@ -459,8 +459,8 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	)
 	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.GetServe().ReplayNumWorkers,
-		WorkerTimeout: conf.GetServe().ReplayWorkerTimeoutSecs,
-		RunTimeout:    conf.GetServe().ReplayRunTimeoutSecs,
+		WorkerTimeout: conf.GetServe().ReplayWorkerTimeout,
+		RunTimeout:    conf.GetServe().ReplayRunTimeout,
 	}, models.BatchScheduler, replayValidator, replaySyncer)
 	backupRepoFac := backupRepoFactory{
 		db: dbConn,
