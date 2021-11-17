@@ -94,6 +94,9 @@ func (repo *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find project by name")
 	}
+	if len(spec.Config) == 0 {
+		return store.ErrEmptyConfig
+	}
 	project, err := Project{}.FromSpec(spec)
 	if err != nil {
 		return err

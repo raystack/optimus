@@ -45,10 +45,8 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 	)
 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
-	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
-	backupCmd.MarkFlagRequired("project")
-	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace of the requester")
-	backupCmd.MarkFlagRequired("namespace")
+	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "namespace of the requester")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
@@ -245,8 +243,7 @@ func backupListSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf
 		project string
 	)
 
-	backupCmd.Flags().StringVarP(&project, "project", "p", "", "project name of optimus managed repository")
-	backupCmd.MarkFlagRequired("project")
+	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
