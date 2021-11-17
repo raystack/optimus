@@ -106,49 +106,6 @@
         ]
       }
     },
-    "/v1/project/{projectName}/job/{jobName}/dump": {
-      "get": {
-        "summary": "DumpJobSpecification returns compiled representation of the job in a scheduler\nconsumable form",
-        "operationId": "RuntimeService_DumpJobSpecification",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/optimusDumpJobSpecificationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespace",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      }
-    },
     "/v1/project/{projectName}/job/{jobName}/instance": {
       "post": {
         "summary": "RegisterInstance is an internal admin command used during task/hook execution\nto pull task/hook compiled configuration and assets.",
@@ -913,6 +870,49 @@
         ]
       }
     },
+    "/v1/project/{projectName}/namespace/{namespace}/job/{jobName}/task": {
+      "get": {
+        "summary": "GetJobTask provides task details specific to plugin used in a job",
+        "operationId": "RuntimeService_GetJobTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusGetJobTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/v1/project/{projectName}/namespace/{namespace}/run": {
       "post": {
         "summary": "RunJob creates a job run and executes all included tasks/hooks instantly\nthis doesn't necessarily deploy the job in db first",
@@ -1330,6 +1330,25 @@
         }
       }
     },
+    "JobTaskDependency": {
+      "type": "object",
+      "properties": {
+        "dependency": {
+          "type": "string"
+        }
+      }
+    },
+    "JobTaskDestination": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
     "ProjectSpecificationProjectSecret": {
       "type": "object",
       "properties": {
@@ -1476,14 +1495,11 @@
         }
       }
     },
-    "optimusDumpJobSpecificationResponse": {
+    "optimusGetJobTaskResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "content": {
-          "type": "string"
+        "task": {
+          "$ref": "#/definitions/optimusJobTask"
         }
       }
     },
@@ -1569,21 +1585,21 @@
     "optimusInstanceSpecDataType": {
       "type": "string",
       "enum": [
-        "UNKNOWN",
+        "UNSPECIFIED",
         "ENV",
         "FILE"
       ],
-      "default": "UNKNOWN",
+      "default": "UNSPECIFIED",
       "title": "type of data, could be an env var or file"
     },
     "optimusInstanceSpecType": {
       "type": "string",
       "enum": [
-        "UNKNOWN",
+        "UNSPECIFIED",
         "TASK",
         "HOOK"
       ],
-      "default": "UNKNOWN"
+      "default": "UNSPECIFIED"
     },
     "optimusJobConfigItem": {
       "type": "object",
@@ -1621,12 +1637,12 @@
     "optimusJobEventType": {
       "type": "string",
       "enum": [
-        "UNKNOWN",
+        "UNSPECIFIED",
         "SLA_MISS",
         "FAILURE",
         "SUCCESS"
       ],
-      "default": "UNKNOWN"
+      "default": "UNSPECIFIED"
     },
     "optimusJobSpecHook": {
       "type": "object",
@@ -1742,6 +1758,30 @@
           }
         }
       }
+    },
+    "optimusJobTask": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "destination": {
+          "$ref": "#/definitions/JobTaskDestination"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobTaskDependency"
+          }
+        }
+      },
+      "title": "JobTask is part of a job that dictates main transformation\neach job has exactly one task"
     },
     "optimusListBackupsResponse": {
       "type": "object",

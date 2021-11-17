@@ -182,6 +182,42 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 	return err
 }
 
+func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpecTaskDestination,
+	models.JobSpecTaskDependencies, error) {
+	destination := models.JobSpecTaskDestination{}
+	dependencies := models.JobSpecTaskDependencies{}
+	if jobSpec.Task.Unit.DependencyMod == nil {
+		return destination, dependencies, errors.New("task doesn't support dependency mod")
+	}
+
+	destinationResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
+		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+		Project: namespace.ProjectSpec,
+	})
+	if err != nil {
+		return destination, dependencies, errors.Wrap(err, "failed to generate destination")
+	}
+	destination.Destination = destinationResp.Destination
+	destination.Type = destinationResp.Type
+
+	// compile assets before generating dependencies
+	if jobSpec.Assets, err = srv.assetCompiler(jobSpec, srv.Now()); err != nil {
+		return destination, dependencies, errors.Wrap(err, "asset compilation")
+	}
+	dependencyResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
+		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+		Project: namespace.ProjectSpec,
+	})
+	if err != nil {
+		return destination, dependencies, errors.Wrap(err, "failed to generate dependencies")
+	}
+	dependencies = dependencyResp.Dependencies
+
+	return destination, dependencies, nil
+}
+
 // Delete deletes a job spec from all spec repos
 func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) error {
 	if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {

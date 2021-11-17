@@ -186,8 +186,51 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) DumpJobSpecification(ctx context.Context, req *pb.DumpJobSpecificationRequest) (*pb.DumpJobSpecificationResponse, error) {
-	return &pb.DumpJobSpecificationResponse{}, status.Error(codes.Unimplemented, "disabled at the moment")
+func (sv *RuntimeServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
+	}
+
+	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespace())
+	}
+
+	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
+	}
+
+	unitInfo := jobSpec.Task.Unit.Info()
+	jobTaskSpec := &pb.JobTask{
+		Name:         unitInfo.Name,
+		Description:  unitInfo.Description,
+		Image:        unitInfo.Image,
+		Dependencies: nil,
+		Destination:  nil,
+	}
+	if jobSpec.Task.Unit.DependencyMod != nil {
+		taskDestination, taskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: GetTaskDependencies", err.Error())
+		}
+		jobTaskSpec.Destination = &pb.JobTask_Destination{
+			Destination: taskDestination.Destination,
+			Type:        taskDestination.Type.String(),
+		}
+		for _, dep := range taskDependencies {
+			jobTaskSpec.Dependencies = append(jobTaskSpec.Dependencies, &pb.JobTask_Dependency{
+				Dependency: dep,
+			})
+		}
+	}
+
+	return &pb.GetJobTaskResponse{
+		Task: jobTaskSpec,
+	}, nil
 }
 
 func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {

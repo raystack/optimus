@@ -159,6 +159,12 @@ func (srv *JobService) Sync(ctx context.Context, spec models.NamespaceSpec, obse
 	return args.Error(0)
 }
 
+func (j *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec models.NamespaceSpec, spec models.JobSpec) (models.JobSpecTaskDestination,
+	models.JobSpecTaskDependencies, error) {
+	args := j.Called(ctx, namespaceSpec, spec)
+	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
+}
+
 func (j *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
 	args := j.Called(ctx, namespaceSpec, specs, observer)
 	return args.Error(0)

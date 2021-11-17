@@ -36,7 +36,9 @@ func (m *GRPCClient) SetName(n string) {
 }
 
 func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
-	resp, err := m.client.GenerateDestination(ctx, &pbp.GenerateDestinationRequest{
+	spanCtx, span := base.Tracer.Start(ctx, "GenerateDestination")
+	defer span.End()
+	resp, err := m.client.GenerateDestination(spanCtx, &pbp.GenerateDestinationRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
@@ -54,7 +56,9 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 }
 
 func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
-	resp, err := m.client.GenerateDependencies(ctx, &pbp.GenerateDependenciesRequest{
+	spanCtx, span := base.Tracer.Start(ctx, "GenerateDependencies")
+	defer span.End()
+	resp, err := m.client.GenerateDependencies(spanCtx, &pbp.GenerateDependenciesRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),

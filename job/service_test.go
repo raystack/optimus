@@ -749,6 +749,71 @@ func TestService(t *testing.T) {
 		})
 	})
 
+	t.Run("GetTaskDependencies", func(t *testing.T) {
+		projectSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Name:        "dev-team-1",
+			ProjectSpec: projectSpec,
+		}
+		t.Run("should successfully generate destination and dependencies for job task", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			jobSpec := models.JobSpec{
+				Version: 1,
+				Name:    "test",
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{
+						Base:          execUnit1,
+						DependencyMod: execUnit1,
+					},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "do",
+							Value: "this",
+						},
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					},
+				),
+			}
+
+			execUnit1.On("GenerateDestination", ctx, models.GenerateDestinationRequest{
+				Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				Project: projectSpec,
+			}).Return(&models.GenerateDestinationResponse{
+				Destination: "project.dataset.table",
+				Type:        "bq",
+			}, nil)
+			execUnit1.On("GenerateDependencies", ctx, models.GenerateDependenciesRequest{
+				Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				Project: projectSpec,
+			}).Return(&models.GenerateDependenciesResponse{
+				Dependencies: []string{"bq://project.dataset.table"},
+			}, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
+			dest, depen, err := svc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+			assert.Nil(t, err)
+			assert.Equal(t, models.JobSpecTaskDestination{
+				Destination: "project.dataset.table",
+				Type:        "bq",
+			}, dest)
+			assert.Equal(t, models.JobSpecTaskDependencies{
+				"bq://project.dataset.table",
+			}, depen)
+		})
+	})
 	t.Run("Delete", func(t *testing.T) {
 		projSpec := models.ProjectSpec{
 			Name: "proj",
