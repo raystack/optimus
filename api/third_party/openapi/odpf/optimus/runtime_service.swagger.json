@@ -2002,6 +2002,9 @@
         "success": {
           "type": "boolean"
         },
+        "response": {
+          "$ref": "#/definitions/optimusReplayExecutionTreeNode"
+        },
         "executionTree": {
           "$ref": "#/definitions/optimusReplayExecutionTreeNode"
         },
