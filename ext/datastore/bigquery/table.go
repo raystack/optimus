@@ -16,9 +16,8 @@ import (
 )
 
 var (
-	tableNameParseRegex     = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
-	errorReadTableSpec      = "failed to read table spec for bigquery"
-	backupTimePostfixFormat = "20060102150405"
+	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
+	errorReadTableSpec  = "failed to read table spec for bigquery"
 )
 
 const (
@@ -146,7 +145,7 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 		return models.BackupResourceResponse{}, errors.New(errorReadTableSpec)
 	}
 
-	bqResourceDst := prepareBQResourceDst(bqResourceSrc, request.BackupSpec, request.BackupTime)
+	bqResourceDst := prepareBQResourceDst(bqResourceSrc, request.BackupSpec)
 
 	tableDst, err := duplicateTable(ctx, client, bqResourceSrc, bqResourceDst)
 	if err != nil {
@@ -173,7 +172,7 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 	}, nil
 }
 
-func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest, backupTime time.Time) BQTable {
+func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest) BQTable {
 	datasetValue, ok := backupSpec.Config[BackupConfigDataset]
 	if !ok {
 		datasetValue = defaultBackupDataset
@@ -187,8 +186,7 @@ func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest
 	return BQTable{
 		Project: bqResourceSrc.Project,
 		Dataset: datasetValue,
-		Table: fmt.Sprintf("%s_%s_%s_%s", prefixValue, bqResourceSrc.Dataset, bqResourceSrc.Table,
-			backupTime.Format(backupTimePostfixFormat)),
+		Table:   fmt.Sprintf("%s_%s_%s_%s", prefixValue, bqResourceSrc.Dataset, bqResourceSrc.Table, backupSpec.ID),
 	}
 }
 
