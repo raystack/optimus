@@ -360,7 +360,6 @@ func TestTable(t *testing.T) {
 
 	t.Run("backupTable", func(t *testing.T) {
 		eTag := "uniqueID"
-		backupTime := time.Now()
 		tableMetadata := &bigquery.TableMetadata{
 			Name: bQResource.Table,
 			Schema: bigquery.Schema{
@@ -402,12 +401,12 @@ func TestTable(t *testing.T) {
 				ID:     uuid.Must(uuid.NewRandom()),
 				Config: destinationConfig,
 			},
-			BackupTime: backupTime,
+			BackupTime: time.Now(),
 		}
 		destinationTable := BQTable{
 			Project: bQResource.Project,
 			Dataset: request.BackupSpec.Config[BackupConfigDataset],
-			Table:   fmt.Sprintf("backup_dataset_table_%s", backupTime.Format(backupTimePostfixFormat)),
+			Table:   fmt.Sprintf("backup_dataset_table_%s", request.BackupSpec.ID),
 		}
 
 		datasetMetadata := bqiface.DatasetMetadata{
