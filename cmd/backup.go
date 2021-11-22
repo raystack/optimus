@@ -328,12 +328,22 @@ func printBackupListResponse(l log.Logger, listBackupsResponse *pb.ListBackupsRe
 		"ID",
 		"Resource",
 		"Created",
+		"Ignore Downstream?",
+		"TTL",
 		"Description",
 	})
 
 	for _, backupSpec := range listBackupsResponse.Backups {
-		table.Append([]string{backupSpec.Id, backupSpec.ResourceName, backupSpec.CreatedAt.AsTime().Format(time.RFC3339),
-			backupSpec.Description})
+		ignoreDownstream := backupSpec.Config[models.ConfigIgnoreDownstream]
+		ttl := backupSpec.Config[models.ConfigTTL]
+		table.Append([]string{
+			backupSpec.Id,
+			backupSpec.ResourceName,
+			backupSpec.CreatedAt.AsTime().Format(time.RFC3339),
+			ignoreDownstream,
+			ttl,
+			backupSpec.Description,
+		})
 	}
 
 	table.Render()

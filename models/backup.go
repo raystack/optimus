@@ -57,3 +57,9 @@ type BackupResult struct {
 	Resources        []string
 	IgnoredResources []string
 }
+
+var (
+	// generic configurations
+	ConfigTTL              = "ttl"
+	ConfigIgnoreDownstream = "ignore_downstream"
+)

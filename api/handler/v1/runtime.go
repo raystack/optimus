@@ -1120,6 +1120,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 			ResourceName: result.Resource.Name,
 			CreatedAt:    timestamppb.New(result.CreatedAt),
 			Description:  result.Description,
+			Config:       result.Config,
 		})
 	}
 	return &pb.ListBackupsResponse{

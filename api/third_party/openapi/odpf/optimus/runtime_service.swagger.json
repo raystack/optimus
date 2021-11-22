@@ -1437,6 +1437,12 @@
         },
         "description": {
           "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

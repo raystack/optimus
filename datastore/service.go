@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/odpf/optimus/utils"
@@ -229,6 +230,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		return models.BackupResult{}, err
 	}
 	backupRequest.ID = backupSpec.ID
+	backupTime := time.Now()
 
 	var resources []string
 	var resourcesToIgnore []string
@@ -270,7 +272,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		backupResp, err := datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
-			BackupTime: time.Now(),
+			BackupTime: backupTime,
 		})
 		if err != nil {
 			if err == models.ErrUnsupportedResource {
@@ -332,6 +334,7 @@ func (srv Service) prepareBackupSpec(backupRequest models.BackupRequest) (models
 	if err != nil {
 		return models.BackupSpec{}, err
 	}
+	backupRequest.Config[models.ConfigIgnoreDownstream] = strconv.FormatBool(backupRequest.IgnoreDownstream)
 	return models.BackupSpec{
 		ID:          backupID,
 		Description: backupRequest.Description,
