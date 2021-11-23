@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/utils"
 
 	"github.com/hashicorp/go-multierror"
@@ -327,6 +329,17 @@ func (srv Service) ListBackupResources(ctx context.Context, projectSpec models.P
 		}
 	}
 	return recentBackups, nil
+}
+
+func (srv Service) GetBackupResourceDetail(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string,
+	id uuid.UUID) (models.BackupSpec, error) {
+	datastorer, err := srv.dsRepo.GetByName(datastoreName)
+	if err != nil {
+		return models.BackupSpec{}, err
+	}
+
+	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
+	return backupRepo.GetByID(ctx, id)
 }
 
 func (srv Service) prepareBackupSpec(backupRequest models.BackupRequest) (models.BackupSpec, error) {

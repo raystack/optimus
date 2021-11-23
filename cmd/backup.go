@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
@@ -29,6 +30,7 @@ func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config
 	}
 	cmd.AddCommand(backupResourceSubCommand(l, datastoreRepo, conf))
 	cmd.AddCommand(backupListSubCommand(l, datastoreRepo, conf))
+	cmd.AddCommand(backupDetailSubCommand(l, datastoreRepo, conf))
 	return cmd
 }
 
@@ -345,6 +347,94 @@ func printBackupListResponse(l log.Logger, listBackupsResponse *pb.ListBackupsRe
 			backupSpec.Description,
 		})
 	}
+
+	table.Render()
+}
+
+func backupDetailSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Provider) *cli.Command {
+	backupCmd := &cli.Command{
+		Use:   "detail",
+		Short: "get backup detail using uuid and datastore",
+	}
+
+	var (
+		project string
+	)
+
+	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+
+	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
+		availableStorer := []string{}
+		for _, s := range datastoreRepo.GetAll() {
+			availableStorer = append(availableStorer, s.Name())
+		}
+		var storerName string
+		if err := survey.AskOne(&survey.Select{
+			Message: "Select supported datastore?",
+			Options: availableStorer,
+		}, &storerName); err != nil {
+			return err
+		}
+
+		listBackupsRequest := &pb.GetBackupDetailRequest{
+			ProjectName:   project,
+			DatastoreName: storerName,
+			Id:            args[0],
+		}
+
+		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+		defer dialCancel()
+
+		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Info("can't reach optimus service")
+			}
+			return err
+		}
+		defer conn.Close()
+
+		requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
+		defer requestCancel()
+
+		l.Info("please wait...")
+		runtime := pb.NewRuntimeServiceClient(conn)
+
+		backupDetailResponse, err := runtime.GetBackupDetail(requestTimeout, listBackupsRequest)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Info("getting backup detail took too long, timing out")
+			}
+			return errors.Wrapf(err, "request failed to get backup detail")
+		}
+
+		printBackupDetailResponse(l, backupDetailResponse)
+		return nil
+	}
+	return backupCmd
+}
+
+func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupDetailResponse) {
+	table := tablewriter.NewWriter(l.Writer())
+	table.SetBorder(false)
+
+	var expiry time.Time
+	ttl := backupDetailResponse.Spec.Config[models.ConfigTTL]
+	if ttl != "" {
+		ttlDuration, err := time.ParseDuration(ttl)
+		if err != nil {
+			l.Info("unable to parse backup TTL")
+		}
+		expiry = backupDetailResponse.Spec.CreatedAt.AsTime().Add(ttlDuration)
+	}
+
+	table.Append([]string{"ID", backupDetailResponse.Spec.Id})
+	table.Append([]string{"Resource", backupDetailResponse.Spec.ResourceName})
+	table.Append([]string{"Created", backupDetailResponse.Spec.CreatedAt.AsTime().Format(time.RFC3339)})
+	table.Append([]string{"Ignore Downstream?", backupDetailResponse.Spec.Config[models.ConfigIgnoreDownstream]})
+	table.Append([]string{"Expired on", expiry.Format(time.RFC3339)})
+	table.Append([]string{"Description", backupDetailResponse.Spec.Description})
+	table.Append([]string{"Result", strings.Join(backupDetailResponse.Urn[:], "\n")})
 
 	table.Render()
 }

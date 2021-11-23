@@ -130,5 +130,14 @@ func TestBackupRepository(t *testing.T) {
 		assert.Equal(t, backupSpec.Resource, backups[0].Resource)
 		assert.Equal(t, backupSpec.Config, backups[0].Config)
 		assert.Equal(t, backupSpec.Result, backups[0].Result)
+
+		backup, err := backupRepo.GetByID(ctx, backupUuid)
+		assert.Nil(t, err)
+
+		assert.Equal(t, backupSpec.ID, backup.ID)
+		assert.Equal(t, backupSpec.Description, backup.Description)
+		assert.Equal(t, backupSpec.Resource, backup.Resource)
+		assert.Equal(t, backupSpec.Config, backup.Config)
+		assert.Equal(t, backupSpec.Result, backup.Result)
 	})
 }

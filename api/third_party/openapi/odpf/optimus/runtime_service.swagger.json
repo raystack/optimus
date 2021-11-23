@@ -459,6 +459,54 @@
         ]
       }
     },
+    "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/backup/{id}": {
+      "get": {
+        "operationId": "RuntimeService_GetBackupDetail",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/optimusGetBackupDetailResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/resource": {
       "get": {
         "summary": "ListResourceSpecification lists all resource specifications of a datastore in project",
@@ -1538,6 +1586,20 @@
         },
         "resourceName": {
           "type": "string"
+        }
+      }
+    },
+    "optimusGetBackupDetailResponse": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "$ref": "#/definitions/optimusBackupSpec"
+        },
+        "urn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

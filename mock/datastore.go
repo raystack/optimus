@@ -3,6 +3,8 @@ package mock
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/store"
 
 	"github.com/odpf/optimus/core/progress"
@@ -129,6 +131,11 @@ func (d *DatastoreService) BackupResource(ctx context.Context, req models.Backup
 func (d *DatastoreService) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
 	args := d.Called(ctx, projectSpec, datastoreName)
 	return args.Get(0).([]models.BackupSpec), args.Error(1)
+}
+
+func (d *DatastoreService) GetBackupResourceDetail(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string, id uuid.UUID) (models.BackupSpec, error) {
+	args := d.Called(ctx, projectSpec, datastoreName, id)
+	return args.Get(0).(models.BackupSpec), args.Error(1)
 }
 
 type SupportedDatastoreRepo struct {

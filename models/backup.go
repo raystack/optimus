@@ -62,4 +62,6 @@ var (
 	// generic configurations
 	ConfigTTL              = "ttl"
 	ConfigIgnoreDownstream = "ignore_downstream"
+
+	BackupSpecKeyURN = "URN"
 )

@@ -1128,6 +1128,46 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 	}, nil
 }
 
+func (sv *RuntimeServiceServer) GetBackupDetail(ctx context.Context, req *pb.GetBackupDetailRequest) (*pb.GetBackupDetailResponse, error) {
+	projectSpec, err := sv.getProjectSpec(ctx, req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	uuid, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "error while parsing backup ID: %v", err)
+	}
+
+	backupDetail, err := sv.resourceSvc.GetBackupResourceDetail(ctx, projectSpec, req.DatastoreName, uuid)
+	if err != nil {
+		if err == store.ErrResourceNotFound {
+			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
+		}
+		return nil, status.Errorf(codes.Internal, "error while getting backup detail: %v", err)
+	}
+
+	var results []string
+	for _, result := range backupDetail.Result {
+		backupResult, ok := result.(map[string]interface{})
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "error while parsing backup result: %v", ok)
+		}
+		results = append(results, backupResult[models.BackupSpecKeyURN].(string))
+	}
+
+	return &pb.GetBackupDetailResponse{
+		Spec: &pb.BackupSpec{
+			Id:           backupDetail.ID.String(),
+			ResourceName: backupDetail.Resource.Name,
+			CreatedAt:    timestamppb.New(backupDetail.CreatedAt),
+			Description:  backupDetail.Description,
+			Config:       backupDetail.Config,
+		},
+		Urn: results,
+	}, nil
+}
+
 func (sv *RuntimeServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest) (*pb.RunJobResponse, error) {
 	// create job run in db
 	projSpec, err := sv.projectRepoFactory.New().GetByName(ctx, req.ProjectName)

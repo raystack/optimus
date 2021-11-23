@@ -187,4 +187,5 @@ type DatastoreService interface {
 	BackupResourceDryRun(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupPlan, error)
 	BackupResource(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupResult, error)
 	ListBackupResources(ctx context.Context, projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
+	GetBackupResourceDetail(ctx context.Context, projectSpec ProjectSpec, datastoreName string, id uuid.UUID) (BackupSpec, error)
 }
