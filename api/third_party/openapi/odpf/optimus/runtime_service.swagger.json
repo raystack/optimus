@@ -2158,6 +2158,12 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

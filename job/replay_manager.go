@@ -97,12 +97,13 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 
 	// save replay request and mark status as accepted
 	replay := models.ReplaySpec{
-		ID:            reqInput.ID,
-		Job:           reqInput.Job,
-		StartDate:     reqInput.Start,
-		EndDate:       reqInput.End,
-		Status:        models.ReplayStatusAccepted,
-		ExecutionTree: replayPlan.ExecutionTree,
+		ID:               reqInput.ID,
+		Job:              reqInput.Job,
+		StartDate:        reqInput.Start,
+		EndDate:          reqInput.End,
+		Status:           models.ReplayStatusAccepted,
+		IgnoreDownstream: reqInput.IgnoreDownstream,
+		ExecutionTree:    replayPlan.ExecutionTree,
 	}
 
 	// could get cancelled later if queue is full
