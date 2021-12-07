@@ -777,7 +777,7 @@ func TestProjectJobRepository(t *testing.T) {
 			Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
 		}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(
+		depMod.On("GenerateDestination", ctx, unitData1).Return(
 			&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
 		defer depMod.AssertExpectations(t)
 		defer execUnit1.AssertExpectations(t)
@@ -791,10 +791,10 @@ func TestProjectJobRepository(t *testing.T) {
 		err := jobRepo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		j, p, err := projectJobSpecRepo.GetByDestination(ctx, destinationUrn)
+		pairs, err := projectJobSpecRepo.GetByDestination(ctx, destinationUrn)
 		assert.Nil(t, err)
-		assert.Equal(t, testConfigs[0].Name, j.Name)
-		assert.Equal(t, projectSpec.Name, p.Name)
+		assert.Equal(t, testConfigs[0].Name, pairs[0].Job.Name)
+		assert.Equal(t, projectSpec.Name, pairs[0].Project.Name)
 	})
 
 	t.Run("GetByNameForProject", func(t *testing.T) {

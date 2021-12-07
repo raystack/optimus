@@ -109,26 +109,31 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 	return jSpec, pSpec, err
 }
 
-func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, destination string) (models.JobSpec, models.ProjectSpec, error) {
-	var r Job
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("destination = ?", destination).First(&r).Error; err != nil {
+func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, destination string) ([]store.ProjectJobPair, error) {
+	var res []Job
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("destination = ?", destination).Find(&res).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, models.ProjectSpec{}, store.ErrResourceNotFound
+			return nil, store.ErrResourceNotFound
 		}
-		return models.JobSpec{}, models.ProjectSpec{}, err
+		return nil, err
 	}
 
-	jSpec, err := repo.adapter.ToSpec(r)
-	if err != nil {
-		return models.JobSpec{}, models.ProjectSpec{}, err
+	var pairs []store.ProjectJobPair
+	for _, job := range res {
+		jSpec, err := repo.adapter.ToSpec(job)
+		if err != nil {
+			return nil, err
+		}
+		pSpec, err := job.Project.ToSpec()
+		if err != nil {
+			return nil, err
+		}
+		pairs = append(pairs, store.ProjectJobPair{
+			Project: pSpec,
+			Job:     jSpec,
+		})
 	}
-
-	pSpec, err := r.Project.ToSpec()
-	if err != nil {
-		return models.JobSpec{}, models.ProjectSpec{}, err
-	}
-
-	return jSpec, pSpec, err
+	return pairs, nil
 }
 
 func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map[string][]string, error) {
