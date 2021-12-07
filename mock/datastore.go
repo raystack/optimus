@@ -121,9 +121,9 @@ func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.
 	return args.Get(0).(models.BackupPlan), args.Error(1)
 }
 
-func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupResult, error) {
 	args := d.Called(ctx, req, jobSpecs)
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(models.BackupResult), args.Error(1)
 }
 
 func (d *DatastoreService) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {

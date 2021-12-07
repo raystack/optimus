@@ -71,9 +71,9 @@ type ReplayManager struct {
 	mock.Mock
 }
 
-func (rm *ReplayManager) Replay(ctx context.Context, reqInput models.ReplayRequest) (string, error) {
+func (rm *ReplayManager) Replay(ctx context.Context, reqInput models.ReplayRequest) (models.ReplayResult, error) {
 	args := rm.Called(ctx, reqInput)
-	return args.Get(0).(string), args.Error(1)
+	return args.Get(0).(models.ReplayResult), args.Error(1)
 }
 
 func (rm *ReplayManager) Init() {

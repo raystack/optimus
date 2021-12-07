@@ -2096,7 +2096,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:           projectSpec,
 				AllowedDownstream: models.AllNamespace,
 			}
-			randomUUID := "random-uuid"
+			randomUUID := uuid.Must(uuid.NewRandom())
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -2108,7 +2108,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(randomUUID, nil)
+			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -2143,7 +2143,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
-			assert.Equal(t, randomUUID, replayResponse.Id)
+			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
 		t.Run("should do replay including only allowed namespace successfully", func(t *testing.T) {
 			replayWorkerRequest := models.ReplayRequest{
@@ -2153,7 +2153,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:           projectSpec,
 				AllowedDownstream: namespaceSpec.Name,
 			}
-			randomUUID := "random-uuid"
+			randomUUID := uuid.Must(uuid.NewRandom())
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -2165,7 +2165,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(randomUUID, nil)
+			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -2199,7 +2199,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
-			assert.Equal(t, randomUUID, replayResponse.Id)
+			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
 		t.Run("should failed when replay request is invalid", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -2252,7 +2252,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:           projectSpec,
 				AllowedDownstream: models.AllNamespace,
 			}
-			emptyUUID := ""
 			errMessage := "internal error"
 
 			projectRepository := new(mock.ProjectRepository)
@@ -2265,7 +2264,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(emptyUUID, errors.New(errMessage))
+			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -2400,7 +2399,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:           projectSpec,
 				AllowedDownstream: models.AllNamespace,
 			}
-			emptyUUID := ""
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -2412,7 +2410,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(emptyUUID, job.ErrConflictedJobRun)
+			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrConflictedJobRun)
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -2459,7 +2457,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:           projectSpec,
 				AllowedDownstream: models.AllNamespace,
 			}
-			emptyUUID := ""
 
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -2471,7 +2468,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(emptyUUID, job.ErrRequestQueueFull)
+			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrRequestQueueFull)
 			defer jobService.AssertExpectations(t)
 
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -2831,6 +2828,20 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
+			jobSpecDownstreams := []models.JobSpec{
+				{
+					ID:   uuid.Must(uuid.NewRandom()),
+					Name: "b-data-job",
+					Task: models.JobSpecTask{
+						Config: models.JobSpecConfigs{
+							{
+								Name:  "do",
+								Value: "this",
+							},
+						},
+					},
+				},
+			}
 
 			projectRepository := new(mock.ProjectRepository)
 			defer projectRepository.AssertExpectations(t)
@@ -2860,6 +2871,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName:      resourceName,
@@ -2870,7 +2882,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				AllowedDownstream: namespaceSpec.Name,
 			}
 			backupPlan := models.BackupPlan{Resources: []string{resourceName}}
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).Return(backupPlan, nil)
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0]}).Return(backupPlan, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3571,6 +3583,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			backupResponsePb := &pb.BackupResponse{
 				Urn: []string{backupUrn},
 			}
+			backupResult := models.BackupResult{
+				Resources: []string{backupUrn},
+			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			projectRepoFactory.On("New").Return(projectRepository)
@@ -3580,7 +3595,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return([]string{backupUrn}, nil)
+			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(backupResult, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3678,7 +3693,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				IgnoreDownstream:  false,
 				AllowedDownstream: allowedDownstream,
 			}
-			backupResults := []string{backupUrn, backupDownstream1Urn, backupDownstream2Urn}
+			urns := []string{backupUrn, backupDownstream1Urn, backupDownstream2Urn}
+			backupResult := models.BackupResult{
+				Resources: urns,
+			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			projectRepoFactory.On("New").Return(projectRepository)
@@ -3691,7 +3709,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResults, nil)
+			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3709,7 +3727,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
 
 			assert.Nil(t, err)
-			assert.Equal(t, backupResults, backupResponse.Urn)
+			assert.Equal(t, backupResult.Resources, backupResponse.Urn)
+			assert.Equal(t, backupResult.IgnoredResources, backupResponse.IgnoredResources)
 		})
 		t.Run("should return list of resources for backup with downstream with only allowed namespace", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -3787,7 +3806,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 				IgnoreDownstream:  false,
 				AllowedDownstream: namespaceSpec.Name,
 			}
-			backupResults := []string{backupUrn, backupDownstream1Urn, backupDownstream2Urn}
+			urns := []string{backupUrn, backupDownstream1Urn, backupDownstream2Urn}
+			backupResult := models.BackupResult{
+				Resources: urns,
+			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			projectRepoFactory.On("New").Return(projectRepository)
@@ -3800,7 +3822,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResults, nil)
+			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3818,7 +3840,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
 
 			assert.Nil(t, err)
-			assert.Equal(t, backupResults, backupResponse.Urn)
+			assert.Equal(t, backupResult.Resources, backupResponse.Urn)
+			assert.Equal(t, backupResult.IgnoredResources, backupResponse.IgnoredResources)
 		})
 		t.Run("should return error when project is not found", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -4171,7 +4194,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 			errorMsg := "unable to get jobspec"
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec}).Return([]string{}, errors.New(errorMsg))
+			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec}).Return(models.BackupResult{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,

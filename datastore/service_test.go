@@ -1187,6 +1187,110 @@ func TestService(t *testing.T) {
 			assert.Equal(t, []string{destinationRoot.Destination}, resp.Resources)
 			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
+		t.Run("should return list of resources without dependents to be backed up if downstream is ignored", func(t *testing.T) {
+			execUnit := new(mock.BasePlugin)
+			defer execUnit.AssertExpectations(t)
+
+			depMod := new(mock.DependencyResolverMod)
+			defer depMod.AssertExpectations(t)
+
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
+			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
+			jobDownstream := models.JobSpec{
+				ID:     uuid.Must(uuid.NewRandom()),
+				Name:   "job-2",
+				Task:   jobTask,
+				Assets: jobAssets,
+			}
+			dependencies := make(map[string]models.JobSpecDependency)
+			dependencies[jobDownstream.GetName()] = models.JobSpecDependency{
+				Job: &jobDownstream,
+			}
+
+			jobRoot := models.JobSpec{
+				ID:           uuid.Must(uuid.NewRandom()),
+				Name:         "job-1",
+				Task:         jobTask,
+				Assets:       jobAssets,
+				Dependencies: dependencies,
+			}
+			unitRoot := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobRoot.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobRoot.Assets),
+			}
+			destinationRoot := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.root",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceRoot := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.root",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+			backupReq := models.BackupRequest{
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  true,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
+			}
+			backupResourceReqRoot := models.BackupResourceRequest{
+				Resource:   resourceRoot,
+				BackupSpec: backupReq,
+			}
+
+			unitDownstream := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),
+			}
+			destinationDownstream := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.downstream",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceDownstream := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.downstream",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+
+			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
+
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+
+			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
+			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
+
+			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
+
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, nil, nil)
+			resp, err := service.BackupResourceDryRun(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
+
+			assert.Nil(t, err)
+			assert.Equal(t, []string{destinationRoot.Destination}, resp.Resources)
+			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
+		})
 	})
 	t.Run("BackupResource", func(t *testing.T) {
 		jobTask := models.JobSpecTask{
@@ -1282,7 +1386,7 @@ func TestService(t *testing.T) {
 			}
 			resultURN := "store://backupURN"
 			resultSpec := map[string]interface{}{"project": projectSpec.Name, "location": "optimus_backup"}
-			backupResult := models.BackupResult{
+			backupResult := models.BackupDetail{
 				URN:  resultURN,
 				Spec: resultSpec,
 			}
@@ -1306,7 +1410,8 @@ func TestService(t *testing.T) {
 			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resultURN}, resp)
+			assert.Equal(t, []string{resultURN}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should able to do backup with downstream", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1393,7 +1498,7 @@ func TestService(t *testing.T) {
 			resultSpecRoot := map[string]interface{}{
 				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_root",
 			}
-			backupResultRoot := models.BackupResult{
+			backupResultRoot := models.BackupDetail{
 				URN:  resultURNRoot,
 				Spec: resultSpecRoot,
 			}
@@ -1421,7 +1526,7 @@ func TestService(t *testing.T) {
 			resultSpecDownstream := map[string]interface{}{
 				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_downstream",
 			}
-			backupResultDownstream := models.BackupResult{
+			backupResultDownstream := models.BackupDetail{
 				URN:  resultURNDownstream,
 				Spec: resultSpecDownstream,
 			}
@@ -1459,7 +1564,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resultURNRoot, resultURNDownstream}, resp)
+			assert.Equal(t, []string{resultURNRoot, resultURNDownstream}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should able to do backup with only same namespace downstream", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1546,7 +1652,7 @@ func TestService(t *testing.T) {
 			resultSpecRoot := map[string]interface{}{
 				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_root",
 			}
-			backupResultRoot := models.BackupResult{
+			backupResultRoot := models.BackupDetail{
 				URN:  resultURNRoot,
 				Spec: resultSpecRoot,
 			}
@@ -1601,7 +1707,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resultURNRoot}, resp)
+			assert.Equal(t, []string{resultURNRoot}, resp.Resources)
+			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
 		t.Run("should return error when unable to generate destination", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1643,7 +1750,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to get datastorer", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1689,7 +1796,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Contains(t, err.Error(), errorMsg)
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to get resource", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1749,7 +1856,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to do backup", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1823,7 +1930,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 
 			assert.Equal(t, errorMsg, err.Error())
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to generate destination for downstream", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -1917,7 +2024,7 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Equal(t, errorMsg, err.Error())
-			assert.Nil(t, resp)
+			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should not return error when one of the resources is not found", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -2003,7 +2110,7 @@ func TestService(t *testing.T) {
 			resultSpecRoot := map[string]interface{}{
 				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_root",
 			}
-			backupResultRoot := models.BackupResult{
+			backupResultRoot := models.BackupDetail{
 				URN:  resultURNRoot,
 				Spec: resultSpecRoot,
 			}
@@ -2045,7 +2152,8 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resultURNRoot}, resp)
+			assert.Equal(t, []string{resultURNRoot}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should not return error when one of the resources is not supported", func(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
@@ -2130,7 +2238,7 @@ func TestService(t *testing.T) {
 			resultSpecRoot := map[string]interface{}{
 				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_root",
 			}
-			backupResultRoot := models.BackupResult{
+			backupResultRoot := models.BackupDetail{
 				URN:  resultURNRoot,
 				Spec: resultSpecRoot,
 			}
@@ -2183,7 +2291,147 @@ func TestService(t *testing.T) {
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
-			assert.Equal(t, []string{resultURNRoot}, resp)
+			assert.Equal(t, []string{resultURNRoot}, resp.Resources)
+			assert.Nil(t, resp.IgnoredResources)
+		})
+		t.Run("should able to do backup without downstream if the downstream is ignored", func(t *testing.T) {
+			execUnit := new(mock.BasePlugin)
+			defer execUnit.AssertExpectations(t)
+
+			depMod := new(mock.DependencyResolverMod)
+			defer depMod.AssertExpectations(t)
+
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			backupRepo := new(mock.BackupRepo)
+			defer backupRepo.AssertExpectations(t)
+
+			backupRepoFac := new(mock.BackupRepoFactory)
+			defer backupRepoFac.AssertExpectations(t)
+
+			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
+			defer resourceRepo.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepo.AssertExpectations(t)
+
+			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
+			jobDownstream := models.JobSpec{
+				ID:     uuid.Must(uuid.NewRandom()),
+				Name:   "job-2",
+				Task:   jobTask,
+				Assets: jobAssets,
+			}
+			dependencies := make(map[string]models.JobSpecDependency)
+			dependencies[jobDownstream.GetName()] = models.JobSpecDependency{
+				Job: &jobDownstream,
+			}
+
+			//root
+			jobRoot := models.JobSpec{
+				ID:           uuid.Must(uuid.NewRandom()),
+				Name:         "job-1",
+				Task:         jobTask,
+				Assets:       jobAssets,
+				Dependencies: dependencies,
+			}
+			unitRoot := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobRoot.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobRoot.Assets),
+			}
+			destinationRoot := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.root",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceRoot := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.root",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+			backupReq := models.BackupRequest{
+				ID:                backupUUID,
+				ResourceName:      resourceRoot.Name,
+				Project:           projectSpec,
+				Namespace:         namespaceSpec,
+				IgnoreDownstream:  true,
+				DryRun:            true,
+				AllowedDownstream: models.AllNamespace,
+			}
+			backupResourceReqRoot := models.BackupResourceRequest{
+				Resource:   resourceRoot,
+				BackupSpec: backupReq,
+			}
+			resultURNRoot := "store://optimus_backup:backupURNRoot"
+			resultSpecRoot := map[string]interface{}{
+				"project": projectSpec.Name, "location": "optimus_backup", "name": "backup_resource_root",
+			}
+			backupResultRoot := models.BackupDetail{
+				URN:  resultURNRoot,
+				Spec: resultSpecRoot,
+			}
+
+			//downstream
+			unitDownstream := models.GenerateDestinationRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
+				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),
+			}
+			destinationDownstream := &models.GenerateDestinationResponse{
+				Destination: "project:dataset.downstream",
+				Type:        models.DestinationTypeBigquery,
+			}
+			resourceDownstream := models.ResourceSpec{
+				Version:   1,
+				Name:      "project.dataset.downstream",
+				Type:      models.ResourceTypeTable,
+				Datastore: datastorer,
+			}
+
+			backupResult := map[string]interface{}{
+				destinationRoot.Destination: backupResultRoot,
+			}
+			backupSpec := models.BackupSpec{
+				ID:          backupUUID,
+				Resource:    resourceRoot,
+				Result:      backupResult,
+				Description: "",
+			}
+
+			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
+
+			depMod.On("GenerateDestination", ctx, unitRoot).Return(destinationRoot, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationRoot.URN()).Return(resourceRoot, namespaceSpec, nil).Once()
+			datastorer.On("BackupResource", ctx, backupResourceReqRoot).
+				Return(models.BackupResourceResponse{ResultURN: resultURNRoot, ResultSpec: resultSpecRoot}, nil).Once()
+
+			depMod.On("GenerateDestination", ctx, unitDownstream).Return(destinationDownstream, nil).Once()
+			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
+
+			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
+
+			uuidProvider.On("NewUUID").Return(backupUUID, nil)
+			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
+			backupRepo.On("Save", ctx, backupSpec).Return(nil)
+
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac)
+			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
+
+			assert.Nil(t, err)
+			assert.Equal(t, []string{resultURNRoot}, resp.Resources)
+			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
 	})
 	t.Run("ListBackupResources", func(t *testing.T) {

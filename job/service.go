@@ -63,7 +63,7 @@ type ProjectRepoFactory interface {
 
 type ReplayManager interface {
 	Init()
-	Replay(context.Context, models.ReplayRequest) (string, error)
+	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
 	GetReplay(context.Context, uuid.UUID) (models.ReplaySpec, error)
 	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
 	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time,
@@ -537,8 +537,7 @@ func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedD
 }
 
 func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNode) []string {
-	var ignoredJobs []string
-
+	ignoredJobsMap := make(map[string]bool)
 	allowedNodesMap := make(map[string]*tree.TreeNode)
 	for _, allowedNode := range rootFilteredTree.GetAllNodes() {
 		allowedNodesMap[allowedNode.GetName()] = allowedNode
@@ -546,9 +545,15 @@ func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNod
 
 	for _, node := range rootInstance.GetAllNodes() {
 		if allowedNodesMap[node.GetName()] == nil {
-			ignoredJobs = append(ignoredJobs, node.GetName())
+			ignoredJobsMap[node.GetName()] = true
 		}
 	}
+
+	var ignoredJobs []string
+	for jobName := range ignoredJobsMap {
+		ignoredJobs = append(ignoredJobs, jobName)
+	}
+
 	return ignoredJobs
 }
 

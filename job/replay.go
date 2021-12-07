@@ -34,24 +34,20 @@ func (srv *Service) ReplayDryRun(ctx context.Context, replayRequest models.Repla
 	return prepareReplayPlan(replayRequest)
 }
 
-func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
+func (srv *Service) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
 	jobSpecMap, err := srv.prepareJobSpecMap(ctx, replayRequest.Project)
 	if err != nil {
-		return "", err
+		return models.ReplayResult{}, err
 	}
 	replayRequest.JobSpecMap = jobSpecMap
 
 	jobNamespaceMap, err := srv.prepareNamespaceJobSpecMap(ctx, replayRequest.Project)
 	if err != nil {
-		return "", err
+		return models.ReplayResult{}, err
 	}
 	replayRequest.JobNamespaceMap = jobNamespaceMap
 
-	replayUUID, err := srv.replayManager.Replay(ctx, replayRequest)
-	if err != nil {
-		return "", err
-	}
-	return replayUUID, nil
+	return srv.replayManager.Replay(ctx, replayRequest)
 }
 
 // prepareReplayPlan creates an execution tree for replay operation and ignored jobs list
@@ -72,10 +68,6 @@ func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, e
 		rootNode.Runs.Add(run)
 	}
 
-	if replayRequest.IgnoreDownstream {
-		return models.ReplayPlan{ExecutionTree: rootNode}, nil
-	}
-
 	// populate node's dependents
 	dagTree.AddNode(rootNode)
 	rootExecutionTree, err := populateDownstreamDAGs(dagTree, replayJobSpec, replayRequest.JobSpecMap)
@@ -88,7 +80,10 @@ func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, e
 	for _, run := range rootRuns {
 		rootFilteredExecutionTree.Runs.Add(run)
 	}
-	rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Dependents, replayRequest.AllowedDownstream, replayRequest.JobNamespaceMap)
+
+	if !replayRequest.IgnoreDownstream {
+		rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Dependents, replayRequest.AllowedDownstream, replayRequest.JobNamespaceMap)
+	}
 
 	// listed down non allowed nodes
 	ignoredJobs := listIgnoredJobs(rootExecutionTree, rootFilteredExecutionTree)

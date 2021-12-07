@@ -1403,6 +1403,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "ignoredResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -2042,6 +2048,12 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "ignoredJobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

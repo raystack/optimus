@@ -59,3 +59,8 @@ type ReplayState struct {
 	Status string
 	Node   *tree.TreeNode
 }
+
+type ReplayResult struct {
+	ID          uuid.UUID
+	IgnoredJobs []string
+}

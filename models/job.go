@@ -325,7 +325,7 @@ type JobService interface {
 	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate, and the ignored jobs
 	ReplayDryRun(context.Context, ReplayRequest) (ReplayPlan, error)
 	// Replay replays the jobSpec and its dependencies between start and endDate
-	Replay(context.Context, ReplayRequest) (string, error)
+	Replay(context.Context, ReplayRequest) (ReplayResult, error)
 	// GetReplayStatus of a replay using its ID
 	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
 	//GetReplayList of a project

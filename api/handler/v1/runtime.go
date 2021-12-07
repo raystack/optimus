@@ -854,7 +854,7 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 		return nil, err
 	}
 
-	replayUUID, err := sv.jobSvc.Replay(ctx, replayWorkerRequest)
+	replayResult, err := sv.jobSvc.Replay(ctx, replayWorkerRequest)
 	if err != nil {
 		if errors.Is(err, job.ErrRequestQueueFull) {
 			return nil, status.Errorf(codes.Unavailable, "error while processing replay: %v", err)
@@ -865,7 +865,8 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 	}
 
 	return &pb.ReplayResponse{
-		Id: replayUUID,
+		Id:          replayResult.ID.String(),
+		IgnoredJobs: replayResult.IgnoredJobs,
 	}, nil
 }
 
@@ -1028,17 +1029,15 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 	jobSpecs = append(jobSpecs, jobSpec)
 
+	downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
+	}
+	jobSpecs = append(jobSpecs, downstreamSpecs...)
+
 	allowedDownstream := req.AllowedDownstream
 	if allowedDownstream == "" {
 		allowedDownstream = namespaceSpec.Name
-	}
-
-	if !req.IgnoreDownstream {
-		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
-		}
-		jobSpecs = append(jobSpecs, downstreamSpecs...)
 	}
 
 	//should add config
@@ -1109,13 +1108,14 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 		DryRun:            false,
 		Config:            req.Config,
 	}
-	results, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
+	result, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while doing backup: %v", err)
 	}
 
 	return &pb.BackupResponse{
-		Urn: results,
+		Urn:              result.Resources,
+		IgnoredResources: result.IgnoredResources,
 	}, nil
 }
 

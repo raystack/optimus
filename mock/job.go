@@ -186,9 +186,9 @@ func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.Repl
 	return args.Get(0).(models.ReplayPlan), args.Error(1)
 }
 
-func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
+func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
 	args := j.Called(ctx, replayRequest)
-	return args.Get(0).(string), args.Error(1)
+	return args.Get(0).(models.ReplayResult), args.Error(1)
 }
 
 func (j *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {

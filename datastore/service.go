@@ -189,8 +189,13 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			return models.BackupPlan{}, err
 		}
 
+		if resourceSpec.Name != backupRequest.ResourceName && backupRequest.IgnoreDownstream {
+			resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
+			continue
+		}
+
+		// if the resource is not owned by the same namespace as the requested, then skip this resource
 		if backupRequest.AllowedDownstream != models.AllNamespace {
-			// if the resource is not owned by the same namespace as the requested, then skip this resource
 			if namespaceSpec.Name != backupRequest.AllowedDownstream {
 				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
 				continue
@@ -217,23 +222,24 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 	}, nil
 }
 
-func (srv Service) BackupResource(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (srv Service) BackupResource(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupResult, error) {
 	backupSpec, err := srv.prepareBackupSpec(backupRequest)
 	if err != nil {
-		return nil, err
+		return models.BackupResult{}, err
 	}
 	backupRequest.ID = backupSpec.ID
 
-	var backupResult []string
+	var resources []string
+	var resourcesToIgnore []string
 	for _, jobSpec := range jobSpecs {
 		destination, err := generateResourceDestination(ctx, jobSpec)
 		if err != nil {
-			return nil, err
+			return models.BackupResult{}, err
 		}
 
 		datastorer, err := srv.dsRepo.GetByName(destination.Type.String())
 		if err != nil {
-			return nil, err
+			return models.BackupResult{}, err
 		}
 
 		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
@@ -242,12 +248,18 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			if err == store.ErrResourceNotFound {
 				continue
 			}
-			return nil, err
+			return models.BackupResult{}, err
 		}
 
+		if resourceSpec.Name != backupRequest.ResourceName && backupRequest.IgnoreDownstream {
+			resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
+			continue
+		}
+
+		// if the resource is not owned by the same namespace as the requested, then skip this resource
 		if backupRequest.AllowedDownstream != models.AllNamespace {
-			// if the resource is not owned by the same namespace as the requested, then skip this resource
 			if namespaceSpec.Name != backupRequest.AllowedDownstream {
+				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
 				continue
 			}
 		}
@@ -262,12 +274,12 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			if err == models.ErrUnsupportedResource {
 				continue
 			}
-			return nil, err
+			return models.BackupResult{}, err
 		}
 		// form slices of result urn to return
-		backupResult = append(backupResult, backupResp.ResultURN)
+		resources = append(resources, backupResp.ResultURN)
 		// enrich backup spec with result detail to be saved
-		backupSpec.Result[destination.Destination] = models.BackupResult{
+		backupSpec.Result[destination.Destination] = models.BackupDetail{
 			URN:  backupResp.ResultURN,
 			Spec: backupResp.ResultSpec,
 		}
@@ -280,10 +292,13 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	//save the backup
 	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
 	if err := backupRepo.Save(ctx, backupSpec); err != nil {
-		return nil, err
+		return models.BackupResult{}, err
 	}
 
-	return backupResult, nil
+	return models.BackupResult{
+		Resources:        resources,
+		IgnoredResources: resourcesToIgnore,
+	}, nil
 }
 
 func (srv Service) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {

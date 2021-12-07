@@ -422,6 +422,8 @@ func TestReplay(t *testing.T) {
 			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.Nil(t, err)
+			assert.ElementsMatch(t, []string{specs[spec5].Name, specs[spec6].Name}, replayPlan.IgnoredJobs)
+
 			runMap := make(map[string][]time.Time)
 			getRuns(replayPlan.ExecutionTree, "", runMap)
 			expectedRunMap := map[string][]time.Time{}
@@ -568,7 +570,7 @@ func TestReplay(t *testing.T) {
 
 			errMessage := "error with replay manager"
 			replayManager := new(mock.ReplayManager)
-			replayManager.On("Replay", ctx, replayRequest).Return("", errors.New(errMessage))
+			replayManager.On("Replay", ctx, replayRequest).Return(models.ReplayResult{}, errors.New(errMessage))
 			defer replayManager.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
@@ -625,15 +627,15 @@ func TestReplay(t *testing.T) {
 
 			replayManager := new(mock.ReplayManager)
 			objUUID := uuid.Must(uuid.NewRandom())
-			replayManager.On("Replay", ctx, replayRequest).Return(objUUID.String(), nil)
+			replayManager.On("Replay", ctx, replayRequest).Return(models.ReplayResult{ID: objUUID}, nil)
 			defer replayManager.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
 				depenResolver, nil, nil, projJobSpecRepoFac, replayManager)
 
-			replayUUID, err := jobSvc.Replay(ctx, replayRequest)
+			replayResult, err := jobSvc.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
-			assert.Equal(t, objUUID.String(), replayUUID)
+			assert.Equal(t, objUUID, replayResult.ID)
 		})
 	})
 

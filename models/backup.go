@@ -35,14 +35,14 @@ type BackupPlan struct {
 	IgnoredResources []string
 }
 
-type BackupResult struct {
+type BackupDetail struct {
 	URN  string
 	Spec interface{}
 }
 
 type BackupResponse struct {
 	ResourceURN string
-	Result      BackupResult
+	Result      BackupDetail
 }
 
 type BackupSpec struct {
@@ -52,4 +52,9 @@ type BackupSpec struct {
 	Description string
 	Config      map[string]string
 	CreatedAt   time.Time
+}
+
+type BackupResult struct {
+	Resources        []string
+	IgnoredResources []string
 }
