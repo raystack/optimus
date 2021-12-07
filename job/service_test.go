@@ -237,7 +237,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -325,7 +325,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -512,7 +512,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			// fetch currently stored
@@ -653,7 +653,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			metaSvc := new(mock.MetaService)

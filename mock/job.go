@@ -224,8 +224,8 @@ type PriorityResolver struct {
 	mock.Mock
 }
 
-func (srv *PriorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	args := srv.Called(ctx, jobSpecs)
+func (srv *PriorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec, po progress.Observer) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, jobSpecs, po)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 

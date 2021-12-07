@@ -91,7 +91,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec11])
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec)
+		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
@@ -161,7 +161,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 			dagSpec = append(dagSpec, specs[spec222])
 
 			assginer := job.NewPriorityResolver()
-			resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec)
+			resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec, nil)
 			assert.Nil(t, err)
 
 			max := job.MaxPriorityWeight
@@ -206,7 +206,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec5])
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec)
+		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
@@ -261,7 +261,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		jobSpecs = append(jobSpecs, models.JobSpec{Name: jobnameWithExternalDep, Dependencies: jobnameWithExternalDepDependencies})
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(ctx, jobSpecs)
+		resolvedJobSpecs, err := assginer.Resolve(ctx, jobSpecs, nil)
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
@@ -306,7 +306,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec3])
 
 		assginer := job.NewPriorityResolver()
-		_, err := assginer.Resolve(ctx, dagSpec)
+		_, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.Contains(t, err.Error(), "error occurred while resolving priority:")
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
@@ -335,7 +335,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec3])
 
 		assginer := job.NewPriorityResolver()
-		_, err := assginer.Resolve(ctx, dagSpec)
+		_, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
@@ -356,7 +356,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec4])
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec)
+		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
@@ -378,7 +378,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec = append(dagSpec, specs[spec1])
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec)
+		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
@@ -404,7 +404,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: getDependencyObject(specs, spec1)}
 
 		assginer := job.NewPriorityResolver()
-		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec)
+		resolvedJobSpecs, err := assginer.Resolve(ctx, dagSpec, nil)
 		assert.Nil(t, err)
 
 		expectedWeights := map[string]int{spec1: job.MaxPriorityWeight, spec2: job.MinPriorityWeight}

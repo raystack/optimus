@@ -265,7 +265,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 
-	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs)
+	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
 		return err
 	}
@@ -588,6 +588,11 @@ type (
 	// EventJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
 	EventJobPriorityWeightAssign struct{}
+	// EventJobPriorityWeightAssignmentFailed signifies that a
+	// job is failed during priority weight assignment
+	EventJobPriorityWeightAssignmentFailed struct {
+		Err error
+	}
 
 	// job check events
 	EventJobCheckFailed struct {
@@ -609,6 +614,10 @@ func (e *EventSavedJobDelete) String() string {
 
 func (e *EventJobPriorityWeightAssign) String() string {
 	return fmt.Sprintf("assigned priority weights")
+}
+
+func (e *EventJobPriorityWeightAssignmentFailed) String() string {
+	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
 }
 
 func (e *EventJobSpecDependencyResolve) String() string {
