@@ -1658,6 +1658,28 @@
         }
       }
     },
+    "optimusJobSpecResource": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "$ref": "#/definitions/optimusJobSpecResourceConfig"
+        },
+        "limit": {
+          "$ref": "#/definitions/optimusJobSpecResourceConfig"
+        }
+      }
+    },
+    "optimusJobSpecResourceConfig": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        }
+      }
+    },
     "optimusJobSpecification": {
       "type": "object",
       "properties": {
@@ -1733,6 +1755,9 @@
         },
         "behavior": {
           "$ref": "#/definitions/JobSpecificationBehavior"
+        },
+        "resource": {
+          "$ref": "#/definitions/optimusJobSpecResource"
         }
       }
     },

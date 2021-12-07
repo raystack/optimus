@@ -42,6 +42,7 @@ type Job struct {
 	Labels       map[string]string `yaml:"labels,omitempty"`
 	Dependencies []JobDependency
 	Hooks        []JobHook
+	Resource     JobResource `yaml:"resource,omitempty"`
 }
 
 type JobSchedule struct {
@@ -104,6 +105,17 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 		Name:   spec.Unit.Info().Name,
 		Config: JobSpecConfigToYamlSlice(spec.Config),
 	}, nil
+}
+
+// JobResource represents the resource management configuration
+type JobResource struct {
+	Request JobResourceConfig `yaml:"request,omitempty"`
+	Limit   JobResourceConfig `yaml:"limit,omitempty"`
+}
+
+type JobResourceConfig struct {
+	Memory string `yaml:"memory,omitempty"`
+	CPU    string `yaml:"cpu,omitempty"`
 }
 
 // MergeFrom merges parent job into this
@@ -285,6 +297,18 @@ func (conf *Job) MergeFrom(parent Job) {
 			})
 		}
 	}
+	if parent.Resource.Request.CPU != "" {
+		conf.Resource.Request.CPU = parent.Resource.Request.CPU
+	}
+	if parent.Resource.Request.Memory != "" {
+		conf.Resource.Request.Memory = parent.Resource.Request.Memory
+	}
+	if parent.Resource.Limit.CPU != "" {
+		conf.Resource.Limit.CPU = parent.Resource.Limit.CPU
+	}
+	if parent.Resource.Limit.Memory != "" {
+		conf.Resource.Limit.Memory = parent.Resource.Limit.Memory
+	}
 }
 
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
@@ -448,6 +472,16 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Assets:       models.JobAssets{}.FromMap(conf.Asset),
 		Dependencies: dependencies,
 		Hooks:        hooks,
+		Resource: models.JobSpecResource{
+			Request: models.JobSpecResourceConfig{
+				Memory: conf.Resource.Request.Memory,
+				CPU:    conf.Resource.Request.CPU,
+			},
+			Limit: models.JobSpecResourceConfig{
+				Memory: conf.Resource.Limit.Memory,
+				CPU:    conf.Resource.Limit.CPU,
+			},
+		},
 	}
 	return job, nil
 }
@@ -516,6 +550,16 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		Asset:        spec.Assets.ToMap(),
 		Dependencies: []JobDependency{},
 		Hooks:        []JobHook{},
+		Resource: JobResource{
+			Request: JobResourceConfig{
+				Memory: spec.Resource.Request.Memory,
+				CPU:    spec.Resource.Request.CPU,
+			},
+			Limit: JobResourceConfig{
+				Memory: spec.Resource.Limit.Memory,
+				CPU:    spec.Resource.Limit.CPU,
+			},
+		},
 	}
 
 	if spec.Schedule.EndDate != nil {
