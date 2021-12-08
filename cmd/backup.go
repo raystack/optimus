@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	backupTimeout = time.Minute * 1
+	backupTimeout = time.Minute * 15
 )
 
 func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Provider) *cli.Command {
