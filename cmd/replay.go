@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	replayTimeout = time.Minute * 1
+	replayTimeout = time.Minute * 15
 )
 
 type taskRunBlock struct {
