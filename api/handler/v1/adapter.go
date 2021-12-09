@@ -116,7 +116,9 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		},
 		Dependencies: dependencies,
 		Hooks:        hooks,
-		Resource:     adapt.FromJobSpecResourceProto(spec.Resource),
+		Metadata: models.JobSpecMetadata{
+			Resource: adapt.FromJobSpecResourceProto(spec.Metadata.Resource),
+		},
 	}, nil
 }
 
@@ -185,7 +187,9 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 			},
 			Notify: notifyProto,
 		},
-		Resource: adapt.ToJobSpecResourceProto(spec.Resource),
+		Metadata: &pb.JobMetadata{
+			Resource: adapt.ToJobSpecResourceProto(spec.Metadata.Resource),
+		},
 	}
 	if spec.Schedule.EndDate != nil {
 		conf.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)

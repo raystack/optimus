@@ -48,9 +48,9 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		}
 	}
 
-	var resource *models.JobSpecResource
-	if jobSpec.Resource != (models.JobSpecResource{}) {
-		resource = &jobSpec.Resource
+	var metadata *models.JobSpecMetadata
+	if jobSpec.Metadata != (models.JobSpecMetadata{}) {
+		metadata = &jobSpec.Metadata
 	}
 
 	var buf bytes.Buffer
@@ -68,7 +68,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		JobSpecDependencyTypeExtra string
 		SLAMissDurationInSec       int64
 		Version                    string
-		Resource                   *models.JobSpecResource
+		Metadata                   *models.JobSpecMetadata
 	}{
 		Namespace:                  namespaceSpec,
 		Job:                        jobSpec,
@@ -83,7 +83,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
 		SLAMissDurationInSec:       slaMissDurationInSec,
 		Version:                    config.Version,
-		Resource:                   resource,
+		Metadata:                   metadata,
 	}); err != nil {
 		return models.Job{}, errors.Wrap(err, "failed to templatize job")
 	}

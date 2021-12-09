@@ -54,22 +54,22 @@ transformation_secret = Secret(
 )
 {{- end }}
 
-{{ if .Resource -}}
+{{ if .Metadata -}}
 resources = k8s.V1ResourceRequirements (
     requests = {
-        {{- if .Resource.Request.Memory }}
-        'memory': '{{ .Resource.Request.Memory }}',
+        {{- if .Metadata.Resource.Request.Memory }}
+        'memory': '{{ .Metadata.Resource.Request.Memory }}',
         {{- end }}
-        {{- if .Resource.Request.CPU }}
-        'cpu': '{{ .Resource.Request.CPU }}',
+        {{- if .Metadata.Resource.Request.CPU }}
+        'cpu': '{{ .Metadata.Resource.Request.CPU }}',
         {{- end }}
     },
     limits={
-        {{- if .Resource.Limit.Memory }}
-        'memory': '{{ .Resource.Limit.Memory }}',
+        {{- if .Metadata.Resource.Limit.Memory }}
+        'memory': '{{ .Metadata.Resource.Limit.Memory }}',
         {{- end }}
-        {{- if .Resource.Limit.CPU }}
-        'cpu': '{{ .Resource.Limit.CPU }}',
+        {{- if .Metadata.Resource.Limit.CPU }}
+        'cpu': '{{ .Metadata.Resource.Limit.CPU }}',
         {{- end }}
     },
 )
@@ -99,7 +99,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
     ],
-{{- if .Resource }}
+{{- if .Metadata }}
     resources=resources,
 {{- end }}
 {{- if gt .SLAMissDurationInSec 0 }}
@@ -146,25 +146,15 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
     ],
-    {{- if .Resource }}
-    resources={
-        {{- if .Resource.Request.Memory }}
-        'request_memory': '{{ .Resource.Request.Memory }}',
-        {{- end }}
-        {{- if .Resource.Request.CPU }}
-        'request_cpu': '{{ .Resource.Request.CPU }}',
-        {{- end }}
-        {{- if .Resource.Limit.Memory }}
-        'limit_memory': '{{ .Resource.Limit.Memory }}',
-        {{- end }}
-        {{- if .Resource.Limit.CPU }}
-        'limit_cpu': '{{ .Resource.Limit.CPU }}',
-        {{- end }}
-    },
-    {{- end }}
-    {{ if eq $hookSchema.HookType $.HookTypeFail -}}
-        trigger_rule="one_failed",
-    {{ end -}}
+{{- if .Metadata }}
+    resources=resources,
+{{- end }}
+{{- if gt .SLAMissDurationInSec 0 }}
+    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+{{- end }}
+{{ if eq $hookSchema.HookType $.HookTypeFail -}}
+    trigger_rule="one_failed",
+{{ end -}}
     reattach_on_restart=True
 )
 {{- end }}

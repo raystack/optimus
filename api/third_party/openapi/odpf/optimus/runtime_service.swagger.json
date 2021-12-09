@@ -1644,6 +1644,14 @@
       ],
       "default": "UNSPECIFIED"
     },
+    "optimusJobMetadata": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "$ref": "#/definitions/optimusJobSpecResource"
+        }
+      }
+    },
     "optimusJobSpecHook": {
       "type": "object",
       "properties": {
@@ -1756,8 +1764,8 @@
         "behavior": {
           "$ref": "#/definitions/JobSpecificationBehavior"
         },
-        "resource": {
-          "$ref": "#/definitions/optimusJobSpecResource"
+        "metadata": {
+          "$ref": "#/definitions/optimusJobMetadata"
         }
       }
     },

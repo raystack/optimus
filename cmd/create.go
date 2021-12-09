@@ -224,7 +224,7 @@ this effects runtime dependencies and template macros`,
 			},
 		},
 		{
-			Name: "resource",
+			Name: "metadata.resource",
 			Prompt: &survey.Confirm{
 				Message: "Do you want to configure resource?",
 				Default: false,
@@ -241,8 +241,8 @@ this effects runtime dependencies and template macros`,
 		return local.Job{}, err
 	}
 
-	var resource local.JobResource
-	if baseInputs["resource"] == "true" {
+	var metadata local.JobSpecMetadata
+	if baseInputs["metadata.resource"] == "true" {
 		help := `Set the value for %s for a job.
 Go to https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container
 for more information.`
@@ -288,10 +288,10 @@ for more information.`
 		if err != nil {
 			return local.Job{}, err
 		}
-		resource.Request.CPU = resourceInput["request.cpu"]
-		resource.Request.Memory = resourceInput["request.memory"]
-		resource.Limit.CPU = resourceInput["limit.cpu"]
-		resource.Limit.Memory = resourceInput["limit.memory"]
+		metadata.Resource.Request.CPU = resourceInput["request.cpu"]
+		metadata.Resource.Request.Memory = resourceInput["request.memory"]
+		metadata.Resource.Limit.CPU = resourceInput["limit.cpu"]
+		metadata.Resource.Limit.Memory = resourceInput["limit.memory"]
 	}
 
 	// define defaults
@@ -317,7 +317,7 @@ for more information.`
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
-		Resource: resource,
+		Metadata: metadata,
 	}
 
 	executionTask, err := pluginRepo.GetByName(jobInput.Task.Name)

@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -44,7 +43,7 @@ type Job struct {
 
 	Assets   datatypes.JSON
 	Hooks    datatypes.JSON
-	Resource datatypes.JSON
+	Metadata datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -210,9 +209,9 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		})
 	}
 
-	var resource models.JobSpecResource
-	if conf.Resource != nil {
-		if err := json.Unmarshal(conf.Resource, &resource); err != nil {
+	var metadata models.JobSpecMetadata
+	if conf.Metadata != nil {
+		if err := json.Unmarshal(conf.Metadata, &metadata); err != nil {
 			return models.JobSpec{}, err
 		}
 	}
@@ -251,7 +250,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Assets:       *(models.JobAssets{}).New(jobAssets),
 		Dependencies: dependencies,
 		Hooks:        jobHooks,
-		Resource:     resource,
+		Metadata:     metadata,
 	}
 	return job, nil
 }
@@ -345,8 +344,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		jobDestination = jobDestinationResponse.URN()
 	}
 
-	resource, err := json.Marshal(spec.Resource)
-	fmt.Println("resource.marhsal", string(resource))
+	metadata, err := json.Marshal(spec.Metadata)
 	if err != nil {
 		return Job{}, err
 	}
@@ -371,7 +369,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		WindowTruncateTo: &spec.Task.Window.TruncateTo,
 		Assets:           assetsJSON,
 		Hooks:            hooksJSON,
-		Resource:         resource,
+		Metadata:         metadata,
 	}, nil
 }
 
