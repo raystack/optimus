@@ -54,26 +54,27 @@ transformation_secret = Secret(
 )
 {{- end }}
 
-{{ if .Metadata -}}
+{{ $jobSpecMetadata := .Metadata }}
+{{- if $jobSpecMetadata -}}
 resources = k8s.V1ResourceRequirements (
     requests = {
-        {{- if .Metadata.Resource.Request.Memory }}
-        'memory': '{{ .Metadata.Resource.Request.Memory }}',
+        {{- if $jobSpecMetadata.Resource.Request.Memory }}
+        'memory': '{{ $jobSpecMetadata.Resource.Request.Memory }}',
         {{- end }}
-        {{- if .Metadata.Resource.Request.CPU }}
-        'cpu': '{{ .Metadata.Resource.Request.CPU }}',
+        {{- if $jobSpecMetadata.Resource.Request.CPU }}
+        'cpu': '{{ $jobSpecMetadata.Resource.Request.CPU }}',
         {{- end }}
     },
-    limits={
-        {{- if .Metadata.Resource.Limit.Memory }}
-        'memory': '{{ .Metadata.Resource.Limit.Memory }}',
+    limits = {
+        {{- if $jobSpecMetadata.Resource.Limit.Memory }}
+        'memory': '{{ $jobSpecMetadata.Resource.Limit.Memory }}',
         {{- end }}
-        {{- if .Metadata.Resource.Limit.CPU }}
-        'cpu': '{{ .Metadata.Resource.Limit.CPU }}',
+        {{- if $jobSpecMetadata.Resource.Limit.CPU }}
+        'cpu': '{{ $jobSpecMetadata.Resource.Limit.CPU }}',
         {{- end }}
     },
 )
-{{- end }}
+{{- end -}}
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
@@ -99,11 +100,11 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
     ],
-{{- if .Metadata }}
-    resources=resources,
-{{- end }}
 {{- if gt .SLAMissDurationInSec 0 }}
     sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+{{- end }}
+{{- if $jobSpecMetadata }}
+    resources = resources,
 {{- end }}
     reattach_on_restart=True
 )
@@ -146,15 +147,12 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
     ],
-{{- if .Metadata }}
-    resources=resources,
-{{- end }}
-{{- if gt .SLAMissDurationInSec 0 }}
-    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
-{{- end }}
-{{ if eq $hookSchema.HookType $.HookTypeFail -}}
+{{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
-{{ end -}}
+{{- end }}
+{{- if $jobSpecMetadata }}
+    resources = resources,
+{{- end }}
     reattach_on_restart=True
 )
 {{- end }}

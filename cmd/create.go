@@ -251,7 +251,7 @@ for more information.`
 				Name: "request.cpu",
 				Prompt: &survey.Input{
 					Message: "Set request.cpu for a job",
-					Default: "200m",
+					Default: "250m",
 					Help:    fmt.Sprintf(help, "request.cpu"),
 				},
 			},
@@ -259,7 +259,7 @@ for more information.`
 				Name: "request.memory",
 				Prompt: &survey.Input{
 					Message: "Set request.memory for a job",
-					Default: "3Gi",
+					Default: "128Mi",
 					Help:    fmt.Sprintf(help, "request.memory"),
 				},
 			},
@@ -267,7 +267,7 @@ for more information.`
 				Name: "limit.cpu",
 				Prompt: &survey.Input{
 					Message: "Set limit.cpu for a job",
-					Default: "2000m",
+					Default: "500m",
 					Help:    fmt.Sprintf(help, "limit.cpu"),
 				},
 			},
@@ -275,7 +275,7 @@ for more information.`
 				Name: "limit.memory",
 				Prompt: &survey.Input{
 					Message: "Set limit.memory for a job",
-					Default: "8Gi",
+					Default: "256Mi",
 					Help:    fmt.Sprintf(help, "limit.memory"),
 				},
 			},
