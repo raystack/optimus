@@ -84,7 +84,7 @@ func (js JobSpec) GetLabelsAsString() string {
 type JobSpecSchedule struct {
 	StartDate time.Time
 	EndDate   *time.Time
-	Interval  string
+	Interval  string // could be empty string for no schedule
 }
 
 type JobSpecBehavior struct {

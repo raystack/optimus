@@ -209,7 +209,8 @@ func createJobSurvey(jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepo
 			Prompt: &survey.Input{
 				Message: "Specify the schedule interval (in crontab notation)",
 				Default: "0 2 * * *",
-				Help:    "0 2 * * * / @daily / @hourly",
+				Help: `0 2 * * * / @daily / @hourly
+Note: remove interval field from job specification for manually triggered jobs`,
 			},
 			Validate: utils.ValidateCronInterval,
 		},
