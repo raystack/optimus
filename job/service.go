@@ -537,14 +537,14 @@ func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedD
 }
 
 func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNode) []string {
-	ignoredJobsMap := make(map[string]bool)
 	allowedNodesMap := make(map[string]*tree.TreeNode)
 	for _, allowedNode := range rootFilteredTree.GetAllNodes() {
 		allowedNodesMap[allowedNode.GetName()] = allowedNode
 	}
 
+	ignoredJobsMap := make(map[string]bool)
 	for _, node := range rootInstance.GetAllNodes() {
-		if allowedNodesMap[node.GetName()] == nil {
+		if _, ok := allowedNodesMap[node.GetName()]; !ok {
 			ignoredJobsMap[node.GetName()] = true
 		}
 	}

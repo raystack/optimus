@@ -1035,9 +1035,9 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 	jobSpecs = append(jobSpecs, downstreamSpecs...)
 
-	allowedDownstream := req.AllowedDownstream
-	if allowedDownstream == "" {
-		allowedDownstream = namespaceSpec.Name
+	allowedDownstream := namespaceSpec.Name
+	if req.AllowedDownstream != "" {
+		allowedDownstream = req.AllowedDownstream
 	}
 
 	//should add config
@@ -1085,9 +1085,9 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 	}
 	jobSpecs = append(jobSpecs, jobSpec)
 
-	allowedDownstream := req.AllowedDownstream
-	if allowedDownstream == "" {
-		allowedDownstream = namespaceSpec.Name
+	allowedDownstream := namespaceSpec.Name
+	if req.AllowedDownstream != "" {
+		allowedDownstream = req.AllowedDownstream
 	}
 
 	if !req.IgnoreDownstream {
