@@ -448,12 +448,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceSpec.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName:                resourceSpec.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -531,12 +530,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -603,10 +601,9 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				Project:   projectSpec,
+				Namespace: namespaceSpec,
+				DryRun:    true,
 			}
 
 			errorMsg := "unable to generate destination"
@@ -643,10 +640,9 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				Project:   projectSpec,
+				Namespace: namespaceSpec,
+				DryRun:    true,
 			}
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
@@ -703,12 +699,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceSpec.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName:                resourceSpec.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -767,10 +762,9 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				AllowedDownstream: models.AllNamespace,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
@@ -844,12 +838,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -936,12 +929,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1030,12 +1022,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1137,12 +1128,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: namespaceSpec.Name,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1246,12 +1236,10 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  true,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ResourceName: resourceRoot.Name,
+				Project:      projectSpec,
+				Namespace:    namespaceSpec,
+				DryRun:       true,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1372,13 +1360,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceSpec.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ID:                          backupUUID,
+				ResourceName:                resourceSpec.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -1482,13 +1469,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ID:                          backupUUID,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1636,13 +1622,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: namespaceSpec.Name,
+				ID:                          backupUUID,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -1735,10 +1720,9 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				Project:   projectSpec,
+				Namespace: namespaceSpec,
+				DryRun:    true,
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
@@ -1780,10 +1764,9 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
-				DryRun:           true,
+				Project:   projectSpec,
+				Namespace: namespaceSpec,
+				DryRun:    true,
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
@@ -1839,9 +1822,8 @@ func TestService(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			}
 			backupReq := models.BackupRequest{
-				Project:          projectSpec,
-				Namespace:        namespaceSpec,
-				IgnoreDownstream: false,
+				Project:   projectSpec,
+				Namespace: namespaceSpec,
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
@@ -1904,13 +1886,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceSpec.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            false,
-				AllowedDownstream: models.AllNamespace,
+				ID:                          backupUUID,
+				ResourceName:                resourceSpec.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      false,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReq := models.BackupResourceRequest{
 				Resource:   resourceSpec,
@@ -1993,13 +1974,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ID:                          backupUUID,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -2094,13 +2074,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ID:                          backupUUID,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -2222,13 +2201,12 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  false,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ID:                          backupUUID,
+				ResourceName:                resourceRoot.Name,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,
@@ -2363,13 +2341,11 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 			backupReq := models.BackupRequest{
-				ID:                backupUUID,
-				ResourceName:      resourceRoot.Name,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  true,
-				DryRun:            true,
-				AllowedDownstream: models.AllNamespace,
+				ID:           backupUUID,
+				ResourceName: resourceRoot.Name,
+				Project:      projectSpec,
+				Namespace:    namespaceSpec,
+				DryRun:       true,
 			}
 			backupResourceReqRoot := models.BackupResourceRequest{
 				Resource:   resourceRoot,

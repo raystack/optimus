@@ -81,8 +81,8 @@ func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, e
 		rootFilteredExecutionTree.Runs.Add(run)
 	}
 
-	if !replayRequest.IgnoreDownstream {
-		rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Dependents, replayRequest.AllowedDownstream, replayRequest.JobNamespaceMap)
+	if len(replayRequest.AllowedDownstreamNamespaces) > 0 {
+		rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Dependents, replayRequest.AllowedDownstreamNamespaces, replayRequest.JobNamespaceMap)
 	}
 
 	// listed down non allowed nodes

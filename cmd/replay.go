@@ -115,13 +115,14 @@ ReplayDryRun date ranges are inclusive.
 			endDate = args[2]
 		}
 
-		var allowedDownstream string
+		var allowedDownstreamNamespaces []string
 		if allDownstream {
-			allowedDownstream = "*"
+			allowedDownstreamNamespaces = []string{"*"}
+		} else {
+			allowedDownstreamNamespaces = []string{namespaceName}
 		}
 
-		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, ignoreDownstream,
-			allowedDownstream, conf); err != nil {
+		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, allowedDownstreamNamespaces, conf); err != nil {
 			return err
 		}
 		if dryRun {
@@ -144,7 +145,7 @@ ReplayDryRun date ranges are inclusive.
 		}
 
 		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
-			ignoreDownstream, allowedDownstream, conf)
+			allowedDownstreamNamespaces, conf)
 		if err != nil {
 			return err
 		}
@@ -155,7 +156,7 @@ ReplayDryRun date ranges are inclusive.
 }
 
 func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
-	ignoreDownstream bool, allowedDownstream string, conf config.Provider) (err error) {
+	allowedDownstreamNamespaces []string, conf config.Provider) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -174,13 +175,12 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayDryRunRequest{
-		ProjectName:       projectName,
-		JobName:           jobName,
-		Namespace:         namespace,
-		StartDate:         startDate,
-		EndDate:           endDate,
-		IgnoreDownstream:  ignoreDownstream,
-		AllowedDownstream: allowedDownstream,
+		ProjectName:                 projectName,
+		JobName:                     jobName,
+		Namespace:                   namespace,
+		StartDate:                   startDate,
+		EndDate:                     endDate,
+		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 	}
 	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
 	if err != nil {
@@ -258,7 +258,7 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 }
 
 func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
-	ignoreDownstream bool, allowedDownstream string, conf config.Provider) (string, error) {
+	allowedDownstreamNamespaces []string, conf config.Provider) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -280,14 +280,13 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 	}
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
-		ProjectName:       projectName,
-		JobName:           jobName,
-		Namespace:         namespace,
-		StartDate:         startDate,
-		EndDate:           endDate,
-		Force:             forceRun,
-		IgnoreDownstream:  ignoreDownstream,
-		AllowedDownstream: allowedDownstream,
+		ProjectName:                 projectName,
+		JobName:                     jobName,
+		Namespace:                   namespace,
+		StartDate:                   startDate,
+		EndDate:                     endDate,
+		Force:                       forceRun,
+		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 	}
 	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
 	if err != nil {

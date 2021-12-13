@@ -515,13 +515,18 @@ func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec 
 	return jobNamespaceMap, err
 }
 
-func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedDownstream string, jobNamespaceMap map[string]string) *tree.TreeNode {
+func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedDownstream []string, jobNamespaceMap map[string]string) *tree.TreeNode {
 	for _, dep := range dependents {
-		//if dep is not within namespace, skip this dependency
-		if allowedDownstream != models.AllNamespace {
-			if allowedDownstream != jobNamespaceMap[dep.GetName()] {
-				continue
+		//if dep is not within allowed namespace, skip this dependency
+		isAuthorized := false
+		for _, namespace := range allowedDownstream {
+			if namespace == models.AllNamespace || namespace == jobNamespaceMap[dep.GetName()] {
+				isAuthorized = true
+				break
 			}
+		}
+		if !isAuthorized {
+			continue
 		}
 
 		//if dep is within allowed namespace, add the node to parent

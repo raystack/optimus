@@ -375,8 +375,12 @@
                     "type": "string"
                   }
                 },
-                "allowedDownstream": {
-                  "type": "string"
+                "allowedDownstreamNamespaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "represents which downstream to be backed up. \npossible values are the namespace names, *, or empty. \n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
                 }
               }
             }
@@ -439,8 +443,12 @@
                 "ignoreDownstream": {
                   "type": "boolean"
                 },
-                "allowedDownstream": {
-                  "type": "string"
+                "allowedDownstreamNamespaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "represents which downstream to be backed up. \npossible values are the namespace names, *, or empty. \n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
                 }
               }
             }
@@ -1047,11 +1055,12 @@
                 "force": {
                   "type": "boolean"
                 },
-                "ignoreDownstream": {
-                  "type": "boolean"
-                },
-                "allowedDownstream": {
-                  "type": "string"
+                "allowedDownstreamNamespaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "represents which downstream to be replayed. \npossible values are the namespace names, *, or empty. \n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
                 }
               }
             }
@@ -1105,11 +1114,12 @@
                 "endDate": {
                   "type": "string"
                 },
-                "ignoreDownstream": {
-                  "type": "boolean"
-                },
-                "allowedDownstream": {
-                  "type": "string"
+                "allowedDownstreamNamespaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "represents which downstream to be replayed. \npossible values are the namespace names, *, or empty. \n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
                 }
               }
             }

@@ -1806,11 +1806,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
 			endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			dagNode := tree.NewTreeNode(jobSpec)
 			dagNode.Runs.Add(time.Date(2020, 11, 25, 2, 0, 0, 0, time.UTC))
@@ -1854,13 +1854,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				IgnoreDownstream:  false,
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.Background(), &replayRequest)
 			assert.Nil(t, err)
@@ -1875,11 +1874,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
 			endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: namespaceSpec.Name,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			dagNode := tree.NewTreeNode(jobSpec)
 			dagNode.Runs.Add(time.Date(2020, 11, 25, 2, 0, 0, 0, time.UTC))
@@ -1923,12 +1922,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
-				ProjectName:      projectName,
-				Namespace:        namespaceSpec.Name,
-				JobName:          jobName,
-				StartDate:        startDate.Format(timeLayout),
-				EndDate:          endDate.Format(timeLayout),
-				IgnoreDownstream: false,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			replayResponse, err := runtimeServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.Nil(t, err)
@@ -1992,11 +1991,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
 			endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			jobService := new(mock.JobService)
@@ -2035,12 +2034,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2090,11 +2089,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 		}
 		t.Run("should do replay successfully", func(t *testing.T) {
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			randomUUID := uuid.Must(uuid.NewRandom())
 
@@ -2134,12 +2133,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
@@ -2147,11 +2146,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 		t.Run("should do replay including only allowed namespace successfully", func(t *testing.T) {
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: namespaceSpec.Name,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			randomUUID := uuid.Must(uuid.NewRandom())
 
@@ -2191,11 +2190,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName: projectName,
-				Namespace:   namespaceSpec.Name,
-				JobName:     jobName,
-				StartDate:   startDate.Format(timeLayout),
-				EndDate:     endDate.Format(timeLayout),
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
@@ -2233,12 +2233,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2246,11 +2246,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 		t.Run("should failed when replay process is failed", func(t *testing.T) {
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			errMessage := "internal error"
 
@@ -2290,12 +2290,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2329,12 +2329,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2379,12 +2379,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2393,11 +2393,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 		t.Run("should failed when replay validation is failed", func(t *testing.T) {
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			projectRepository := new(mock.ProjectRepository)
@@ -2436,12 +2436,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2451,11 +2451,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 		t.Run("should failed when request queue is full", func(t *testing.T) {
 			replayWorkerRequest := models.ReplayRequest{
-				Job:               jobSpec,
-				Start:             startDate,
-				End:               endDate,
-				Project:           projectSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         jobSpec,
+				Start:                       startDate,
+				End:                         endDate,
+				Project:                     projectSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			projectRepository := new(mock.ProjectRepository)
@@ -2494,12 +2494,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
-				ProjectName:       projectName,
-				Namespace:         namespaceSpec.Name,
-				JobName:           jobName,
-				StartDate:         startDate.Format(timeLayout),
-				EndDate:           endDate.Format(timeLayout),
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				Namespace:                   namespaceSpec.Name,
+				JobName:                     jobName,
+				StartDate:                   startDate.Format(timeLayout),
+				EndDate:                     endDate.Format(timeLayout),
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2874,12 +2874,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
-				ResourceName:      resourceName,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				IgnoreDownstream:  true,
-				DryRun:            true,
-				AllowedDownstream: namespaceSpec.Name,
+				ResourceName: resourceName,
+				Project:      projectSpec,
+				Namespace:    namespaceSpec,
+				DryRun:       true,
 			}
 			backupPlan := models.BackupPlan{Resources: []string{resourceName}}
 			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0]}).Return(backupPlan, nil)
@@ -2899,11 +2897,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
-				ProjectName:      projectName,
-				DatastoreName:    models.DestinationTypeBigquery.String(),
-				ResourceName:     resourceName,
-				Namespace:        namespaceSpec.Name,
-				IgnoreDownstream: true,
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -2941,7 +2938,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 				},
 			}
-			allowedDownstream := models.AllNamespace
+			allowedDownstream := []string{models.AllNamespace}
 
 			projectRepository := new(mock.ProjectRepository)
 			defer projectRepository.AssertExpectations(t)
@@ -2977,11 +2974,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
-				ResourceName:      resourceName,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				DryRun:            true,
-				AllowedDownstream: allowedDownstream,
+				ResourceName:                resourceName,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			backupPlan := models.BackupPlan{
 				Resources: []string{
@@ -3008,12 +3005,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
-				ProjectName:       projectName,
-				DatastoreName:     models.DestinationTypeBigquery.String(),
-				ResourceName:      resourceName,
-				Namespace:         namespaceSpec.Name,
-				IgnoreDownstream:  false,
-				AllowedDownstream: models.AllNamespace,
+				ProjectName:                 projectName,
+				DatastoreName:               models.DestinationTypeBigquery.String(),
+				ResourceName:                resourceName,
+				Namespace:                   namespaceSpec.Name,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
 
@@ -3086,11 +3082,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
-				ResourceName:      resourceName,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				DryRun:            true,
-				AllowedDownstream: namespaceSpec.Name,
+				ResourceName:                resourceName,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			backupPlan := models.BackupPlan{
 				Resources: []string{
@@ -3117,11 +3113,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
-				ProjectName:      projectName,
-				DatastoreName:    models.DestinationTypeBigquery.String(),
-				ResourceName:     resourceName,
-				Namespace:        namespaceSpec.Name,
-				IgnoreDownstream: false,
+				ProjectName:                 projectName,
+				DatastoreName:               models.DestinationTypeBigquery.String(),
+				ResourceName:                resourceName,
+				Namespace:                   namespaceSpec.Name,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3345,7 +3341,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			allowedDownstream := models.AllNamespace
+			allowedDownstream := []string{models.AllNamespace}
 
 			projectRepository := new(mock.ProjectRepository)
 			defer projectRepository.AssertExpectations(t)
@@ -3393,11 +3389,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
-				ProjectName:       projectName,
-				DatastoreName:     models.DestinationTypeBigquery.String(),
-				ResourceName:      resourceName,
-				Namespace:         namespaceSpec.Name,
-				AllowedDownstream: allowedDownstream,
+				ProjectName:                 projectName,
+				DatastoreName:               models.DestinationTypeBigquery.String(),
+				ResourceName:                resourceName,
+				Namespace:                   namespaceSpec.Name,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3425,7 +3421,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			allowedDownstream := models.AllNamespace
+			allowedDownstream := []string{models.AllNamespace}
 
 			projectRepository := new(mock.ProjectRepository)
 			defer projectRepository.AssertExpectations(t)
@@ -3458,11 +3454,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 
 			backupRequest := models.BackupRequest{
-				ResourceName:      resourceName,
-				Project:           projectSpec,
-				Namespace:         namespaceSpec,
-				DryRun:            true,
-				AllowedDownstream: allowedDownstream,
+				ResourceName:                resourceName,
+				Project:                     projectSpec,
+				Namespace:                   namespaceSpec,
+				DryRun:                      true,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			errorMsg := "unable to get jobspec"
 
@@ -3484,11 +3480,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
-				ProjectName:       projectName,
-				DatastoreName:     models.DestinationTypeBigquery.String(),
-				ResourceName:      resourceName,
-				Namespace:         namespaceSpec.Name,
-				AllowedDownstream: allowedDownstream,
+				ProjectName:                 projectName,
+				DatastoreName:               models.DestinationTypeBigquery.String(),
+				ResourceName:                resourceName,
+				Namespace:                   namespaceSpec.Name,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3559,15 +3555,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 				URN:  resourceUrn,
 			}
 			backupRequestPb := pb.BackupRequest{
-				ProjectName:      projectName,
-				DatastoreName:    models.DestinationTypeBigquery.String(),
-				ResourceName:     resourceName,
-				Namespace:        namespaceSpec.Name,
-				IgnoreDownstream: true,
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				AllowedDownstream: models.AllNamespace,
 			}
 			backupReq := models.BackupRequest{
 				ResourceName: resourceName,
@@ -3576,9 +3570,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				DryRun:            false,
-				IgnoreDownstream:  true,
-				AllowedDownstream: models.AllNamespace,
+				DryRun: false,
 			}
 			backupResponsePb := &pb.BackupResponse{
 				Urn: []string{backupUrn},
@@ -3664,7 +3656,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 				},
 			}
-			allowedDownstream := models.AllNamespace
+			allowedDownstream := []string{models.AllNamespace}
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
 				URN:  resourceUrn,
@@ -3672,15 +3664,14 @@ func TestRuntimeServiceServer(t *testing.T) {
 			backupDownstream1Urn := "datastore://a-data-project:optimus_backup.downstream1"
 			backupDownstream2Urn := "datastore://a-data-project:optimus_backup.downstream2"
 			backupRequestPb := pb.BackupRequest{
-				ProjectName:      projectName,
-				DatastoreName:    models.DestinationTypeBigquery.String(),
-				ResourceName:     resourceName,
-				Namespace:        namespaceSpec.Name,
-				IgnoreDownstream: false,
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				AllowedDownstream: allowedDownstream,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			backupReq := models.BackupRequest{
 				ResourceName: resourceName,
@@ -3689,9 +3680,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				DryRun:            false,
-				IgnoreDownstream:  false,
-				AllowedDownstream: allowedDownstream,
+				DryRun:                      false,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			urns := []string{backupUrn, backupDownstream1Urn, backupDownstream2Urn}
 			backupResult := models.BackupResult{
@@ -3786,14 +3776,14 @@ func TestRuntimeServiceServer(t *testing.T) {
 			backupDownstream1Urn := "datastore://a-data-project:optimus_backup.downstream1"
 			backupDownstream2Urn := "datastore://a-data-project:optimus_backup.downstream2"
 			backupRequestPb := pb.BackupRequest{
-				ProjectName:      projectName,
-				DatastoreName:    models.DestinationTypeBigquery.String(),
-				ResourceName:     resourceName,
-				Namespace:        namespaceSpec.Name,
-				IgnoreDownstream: false,
+				ProjectName:   projectName,
+				DatastoreName: models.DestinationTypeBigquery.String(),
+				ResourceName:  resourceName,
+				Namespace:     namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			backupReq := models.BackupRequest{
 				ResourceName: resourceName,
@@ -3802,9 +3792,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				DryRun:            false,
-				IgnoreDownstream:  false,
-				AllowedDownstream: namespaceSpec.Name,
+				DryRun:                      false,
+				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			urns := []string{backupUrn, backupDownstream1Urn, backupDownstream2Urn}
 			backupResult := models.BackupResult{
@@ -4080,17 +4069,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			allowedDownstream := models.AllNamespace
+			allowedDownstream := []string{models.AllNamespace}
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
 				URN:  resourceUrn,
 			}
 			backupRequestPb := pb.BackupRequest{
-				ProjectName:       projectName,
-				DatastoreName:     models.DestinationTypeBigquery.String(),
-				ResourceName:      resourceName,
-				Namespace:         namespaceSpec.Name,
-				AllowedDownstream: allowedDownstream,
+				ProjectName:                 projectName,
+				DatastoreName:               models.DestinationTypeBigquery.String(),
+				ResourceName:                resourceName,
+				Namespace:                   namespaceSpec.Name,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -4159,7 +4148,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						},
 					}),
 			}
-			allowedDownstream := models.AllNamespace
+			allowedDownstream := []string{models.AllNamespace}
 			backupReq := models.BackupRequest{
 				ResourceName: resourceName,
 				Project:      projectSpec,
@@ -4167,9 +4156,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				DryRun:            false,
-				IgnoreDownstream:  false,
-				AllowedDownstream: allowedDownstream,
+				DryRun:                      false,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -4183,7 +4171,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Config: map[string]string{
 					"TTL": "30",
 				},
-				AllowedDownstream: allowedDownstream,
+				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)

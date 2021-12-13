@@ -826,7 +826,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 
 func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
 	replayRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.Namespace, req.JobName, req.StartDate,
-		req.EndDate, false, req.IgnoreDownstream, req.AllowedDownstream)
+		req.EndDate, false, req.AllowedDownstreamNamespaces)
 	if err != nil {
 		return nil, err
 	}
@@ -849,7 +849,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 
 func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
 	replayWorkerRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.Namespace, req.JobName, req.StartDate,
-		req.EndDate, req.Force, req.IgnoreDownstream, req.AllowedDownstream)
+		req.EndDate, req.Force, req.AllowedDownstreamNamespaces)
 	if err != nil {
 		return nil, err
 	}
@@ -939,7 +939,7 @@ func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListRep
 }
 
 func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectName string, namespace string,
-	jobName string, startDate string, endDate string, forceFlag bool, ignoreDownstream bool, allowedDownstream string) (models.ReplayRequest, error) {
+	jobName string, startDate string, endDate string, forceFlag bool, allowedDownstreams []string) (models.ReplayRequest, error) {
 	projSpec, err := sv.getProjectSpec(ctx, projectName)
 	if err != nil {
 		return models.ReplayRequest{}, err
@@ -965,18 +965,13 @@ func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectN
 		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "replay end date cannot be before start date")
 	}
 
-	if allowedDownstream == "" {
-		allowedDownstream = namespace
-	}
-
 	replayRequest := models.ReplayRequest{
-		Job:               jobSpec,
-		Start:             windowStart,
-		End:               windowEnd,
-		Project:           projSpec,
-		Force:             forceFlag,
-		IgnoreDownstream:  ignoreDownstream,
-		AllowedDownstream: allowedDownstream,
+		Job:                         jobSpec,
+		Start:                       windowStart,
+		End:                         windowEnd,
+		Project:                     projSpec,
+		Force:                       forceFlag,
+		AllowedDownstreamNamespaces: allowedDownstreams,
 	}
 	return replayRequest, nil
 }
@@ -1035,20 +1030,14 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 	jobSpecs = append(jobSpecs, downstreamSpecs...)
 
-	allowedDownstream := namespaceSpec.Name
-	if req.AllowedDownstream != "" {
-		allowedDownstream = req.AllowedDownstream
-	}
-
 	//should add config
 	backupRequest := models.BackupRequest{
-		ResourceName:      req.ResourceName,
-		Project:           projectSpec,
-		Namespace:         namespaceSpec,
-		Description:       req.Description,
-		IgnoreDownstream:  req.IgnoreDownstream,
-		AllowedDownstream: allowedDownstream,
-		DryRun:            true,
+		ResourceName:                req.ResourceName,
+		Project:                     projectSpec,
+		Namespace:                   namespaceSpec,
+		Description:                 req.Description,
+		AllowedDownstreamNamespaces: req.AllowedDownstreamNamespaces,
+		DryRun:                      true,
 	}
 	backupPlan, err := sv.resourceSvc.BackupResourceDryRun(ctx, backupRequest, jobSpecs)
 	if err != nil {
@@ -1085,12 +1074,7 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 	}
 	jobSpecs = append(jobSpecs, jobSpec)
 
-	allowedDownstream := namespaceSpec.Name
-	if req.AllowedDownstream != "" {
-		allowedDownstream = req.AllowedDownstream
-	}
-
-	if !req.IgnoreDownstream {
+	if len(req.AllowedDownstreamNamespaces) > 0 {
 		downstreamSpecs, err := sv.jobSvc.GetDownstream(ctx, projectSpec, jobSpec.Name)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error while getting job downstream: %v", err)
@@ -1099,14 +1083,13 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 	}
 
 	backupRequest := models.BackupRequest{
-		ResourceName:      req.ResourceName,
-		Project:           projectSpec,
-		Namespace:         namespaceSpec,
-		Description:       req.Description,
-		IgnoreDownstream:  req.IgnoreDownstream,
-		AllowedDownstream: allowedDownstream,
-		DryRun:            false,
-		Config:            req.Config,
+		ResourceName:                req.ResourceName,
+		Project:                     projectSpec,
+		Namespace:                   namespaceSpec,
+		Description:                 req.Description,
+		AllowedDownstreamNamespaces: req.AllowedDownstreamNamespaces,
+		DryRun:                      false,
+		Config:                      req.Config,
 	}
 	result, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
 	if err != nil {

@@ -118,11 +118,11 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
 				nil, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec1],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec1],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
@@ -164,11 +164,11 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
 				depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec1],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec1],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
@@ -219,11 +219,11 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
 				depenResolver, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:               cyclicDagSpec[0],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         cyclicDagSpec[0],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
@@ -265,11 +265,11 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec1],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec1],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -333,11 +333,11 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec4],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec4],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -411,12 +411,10 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec4],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				IgnoreDownstream:  true,
-				AllowedDownstream: models.AllNamespace,
+				Job:     specs[spec4],
+				Start:   replayStart,
+				End:     replayEnd,
+				Project: projSpec,
 			}
 
 			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -471,12 +469,10 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec4],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				IgnoreDownstream:  true,
-				AllowedDownstream: "namespace1",
+				Job:     specs[spec4],
+				Start:   replayStart,
+				End:     replayEnd,
+				Project: projSpec,
 			}
 
 			replayPlan, err := jobSvc.ReplayDryRun(ctx, replayRequest)
@@ -513,11 +509,11 @@ func TestReplay(t *testing.T) {
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
 				nil, nil, nil, projJobSpecRepoFac, nil)
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec1],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec1],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			_, err := jobSvc.Replay(ctx, replayRequest)
 
@@ -559,13 +555,13 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec1],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				JobSpecMap:        specs,
-				JobNamespaceMap:   namespaceMap,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec1],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				JobSpecMap:                  specs,
+				JobNamespaceMap:             namespaceMap,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			errMessage := "error with replay manager"
@@ -616,13 +612,13 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
-				Job:               specs[spec1],
-				Start:             replayStart,
-				End:               replayEnd,
-				Project:           projSpec,
-				JobSpecMap:        specs,
-				JobNamespaceMap:   namespaceMap,
-				AllowedDownstream: models.AllNamespace,
+				Job:                         specs[spec1],
+				Start:                       replayStart,
+				End:                         replayEnd,
+				Project:                     projSpec,
+				JobSpecMap:                  specs,
+				JobNamespaceMap:             namespaceMap,
+				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
 			replayManager := new(mock.ReplayManager)

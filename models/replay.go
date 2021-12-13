@@ -26,16 +26,15 @@ type ReplayMessage struct {
 }
 
 type ReplayRequest struct {
-	ID                uuid.UUID
-	Job               JobSpec
-	Start             time.Time
-	End               time.Time
-	Project           ProjectSpec
-	JobSpecMap        map[string]JobSpec
-	JobNamespaceMap   map[string]string
-	Force             bool
-	IgnoreDownstream  bool
-	AllowedDownstream string
+	ID                          uuid.UUID
+	Job                         JobSpec
+	Start                       time.Time
+	End                         time.Time
+	Project                     ProjectSpec
+	JobSpecMap                  map[string]JobSpec
+	JobNamespaceMap             map[string]string
+	Force                       bool
+	AllowedDownstreamNamespaces []string
 }
 
 type ReplayPlan struct {

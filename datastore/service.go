@@ -189,14 +189,15 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			return models.BackupPlan{}, err
 		}
 
-		if resourceSpec.Name != backupRequest.ResourceName && backupRequest.IgnoreDownstream {
-			resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
-			continue
-		}
-
-		// if the resource is not owned by the same namespace as the requested, then skip this resource
-		if backupRequest.AllowedDownstream != models.AllNamespace {
-			if namespaceSpec.Name != backupRequest.AllowedDownstream {
+		if resourceSpec.Name != backupRequest.ResourceName {
+			isAuthorized := false
+			for _, allowedNamespace := range backupRequest.AllowedDownstreamNamespaces {
+				if allowedNamespace == models.AllNamespace || allowedNamespace == namespaceSpec.Name {
+					isAuthorized = true
+					break
+				}
+			}
+			if !isAuthorized {
 				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
 				continue
 			}
@@ -251,14 +252,15 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			return models.BackupResult{}, err
 		}
 
-		if resourceSpec.Name != backupRequest.ResourceName && backupRequest.IgnoreDownstream {
-			resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
-			continue
-		}
-
-		// if the resource is not owned by the same namespace as the requested, then skip this resource
-		if backupRequest.AllowedDownstream != models.AllNamespace {
-			if namespaceSpec.Name != backupRequest.AllowedDownstream {
+		if resourceSpec.Name != backupRequest.ResourceName {
+			isAuthorized := false
+			for _, allowedDownstream := range backupRequest.AllowedDownstreamNamespaces {
+				if allowedDownstream == models.AllNamespace || allowedDownstream == namespaceSpec.Name {
+					isAuthorized = true
+					break
+				}
+			}
+			if !isAuthorized {
 				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
 				continue
 			}
