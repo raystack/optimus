@@ -1,5 +1,5 @@
 - Feature Name: Secret Management
-- Status: Draft
+- Status: Approved
 - Start Date: 2021-10-02
 - Authors: Kush Sharma & Sravan 
 
@@ -67,8 +67,8 @@ List operation will print a digest of the secret. Digest should be a SHA hash of
 ```
      NAME     |              DIGEST              |  NAMESPACE |  DATE
   SECRET_1    | 6c463e806738046ff3c78a08d8bd2b70 |     *      | 2021-10-06 02:02:02
-  SECRET_2    | 3aa788a21a76651c349ceeee76f1cb76 |   gofood   | 2021-10-06 06:02:02
-  SECRET_2    | 3aa788a21a76651c349ceeee76f1cb76 |   goride   | 2021-10-06 06:02:02
+  SECRET_2    | 3aa788a21a76651c349ceeee76f1cb76 |   finance  | 2021-10-06 06:02:02
+  SECRET_2    | 3aa788a21a76651c349ceeee76f1cb76 |  transport | 2021-10-06 06:02:02
 ```
 
 ### Using secrets without Optimus
