@@ -343,7 +343,7 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 			Type:  assetType,
 		})
 	}
-	instanceType, err := models.InstanceType("").New(conf.Type.String())
+	instanceType, err := models.ToInstanceType(conf.Type.String())
 	if err != nil {
 		return models.InstanceSpec{}, err
 	}

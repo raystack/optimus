@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -485,7 +485,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
 	}
 
-	instanceType, err := models.InstanceType("").New(req.InstanceType.String())
+	instanceType, err := models.ToInstanceType(utils.FromEnumProto(req.InstanceType.String(), "TYPE"))
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: instance type %s not found", err.Error(), req.InstanceType.String())
 	}
@@ -605,7 +605,7 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 		eventValues = req.GetEvent().Value.GetFields()
 	}
 	if err := sv.jobEventSvc.Register(ctx, namespaceSpec, jobSpec, models.JobEvent{
-		Type:  models.JobEventType(strings.ToLower(req.GetEvent().Type.String())),
+		Type:  models.JobEventType(utils.FromEnumProto(req.GetEvent().Type.String(), "TYPE")),
 		Value: eventValues,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to register event: \n%s", err.Error())

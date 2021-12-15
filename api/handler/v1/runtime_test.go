@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/odpf/optimus/run"
 
 	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/utils"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -191,7 +191,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName,
-				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(string(models.InstanceTypeTask))]),
+				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
 				ScheduledAt:  scheduledAtTimestamp,
 				InstanceName: instanceSpec.Name,
 			}
@@ -261,7 +261,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			versionRequest := pb.RegisterInstanceRequest{
 				ProjectName:  projectName,
 				JobrunId:     jobRun.ID.String(),
-				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(string(models.InstanceTypeTask))]),
+				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
 				InstanceName: instanceSpec.Name,
 			}
 			resp, err := runtimeServiceServer.RegisterInstance(context.Background(), &versionRequest)
