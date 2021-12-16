@@ -8,8 +8,8 @@ import (
 
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/plugin/v1/base"
-	"github.com/odpf/optimus/plugin/v1/cli"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
+	"github.com/odpf/optimus/plugin/v1beta1/cli"
 )
 
 const (

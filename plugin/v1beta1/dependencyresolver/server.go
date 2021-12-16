@@ -3,7 +3,7 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/odpf/optimus/plugin/v1/cli"
+	"github.com/odpf/optimus/plugin/v1beta1/cli"
 
 	"github.com/odpf/optimus/models"
 

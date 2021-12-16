@@ -94,14 +94,14 @@ func request_RuntimeService_CreateJobSpecification_0(ctx context.Context, marsha
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	msg, err := client.CreateJobSpecification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -138,14 +138,14 @@ func local_request_RuntimeService_CreateJobSpecification_0(ctx context.Context, 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	msg, err := server.CreateJobSpecification(ctx, &protoReq)
@@ -153,8 +153,8 @@ func local_request_RuntimeService_CreateJobSpecification_0(ctx context.Context, 
 
 }
 
-func request_RuntimeService_ReadJobSpecification_0(ctx context.Context, marshaler runtime.Marshaler, client RuntimeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReadJobSpecificationRequest
+func request_RuntimeService_GetJobSpecification_0(ctx context.Context, marshaler runtime.Marshaler, client RuntimeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetJobSpecificationRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -174,14 +174,14 @@ func request_RuntimeService_ReadJobSpecification_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -194,13 +194,13 @@ func request_RuntimeService_ReadJobSpecification_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "job_name", err)
 	}
 
-	msg, err := client.ReadJobSpecification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetJobSpecification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_RuntimeService_ReadJobSpecification_0(ctx context.Context, marshaler runtime.Marshaler, server RuntimeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReadJobSpecificationRequest
+func local_request_RuntimeService_GetJobSpecification_0(ctx context.Context, marshaler runtime.Marshaler, server RuntimeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetJobSpecificationRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -220,14 +220,14 @@ func local_request_RuntimeService_ReadJobSpecification_0(ctx context.Context, ma
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -240,7 +240,7 @@ func local_request_RuntimeService_ReadJobSpecification_0(ctx context.Context, ma
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "job_name", err)
 	}
 
-	msg, err := server.ReadJobSpecification(ctx, &protoReq)
+	msg, err := server.GetJobSpecification(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -266,14 +266,14 @@ func request_RuntimeService_DeleteJobSpecification_0(ctx context.Context, marsha
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -312,14 +312,14 @@ func local_request_RuntimeService_DeleteJobSpecification_0(ctx context.Context, 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -358,14 +358,14 @@ func request_RuntimeService_ListJobSpecification_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	msg, err := client.ListJobSpecification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -394,14 +394,14 @@ func local_request_RuntimeService_ListJobSpecification_0(ctx context.Context, ma
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	msg, err := server.ListJobSpecification(ctx, &protoReq)
@@ -430,14 +430,14 @@ func request_RuntimeService_GetJobTask_0(ctx context.Context, marshaler runtime.
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -476,14 +476,14 @@ func local_request_RuntimeService_GetJobTask_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -1020,14 +1020,14 @@ func request_RuntimeService_RegisterJobEvent_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -1074,14 +1074,14 @@ func local_request_RuntimeService_RegisterJobEvent_0(ctx context.Context, marsha
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["job_name"]
@@ -1156,14 +1156,14 @@ func request_RuntimeService_ListResourceSpecification_0(ctx context.Context, mar
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1202,14 +1202,14 @@ func local_request_RuntimeService_ListResourceSpecification_0(ctx context.Contex
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1256,14 +1256,14 @@ func request_RuntimeService_CreateResource_0(ctx context.Context, marshaler runt
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1310,14 +1310,14 @@ func local_request_RuntimeService_CreateResource_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1356,14 +1356,14 @@ func request_RuntimeService_ReadResource_0(ctx context.Context, marshaler runtim
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1412,14 +1412,14 @@ func local_request_RuntimeService_ReadResource_0(ctx context.Context, marshaler 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1476,14 +1476,14 @@ func request_RuntimeService_UpdateResource_0(ctx context.Context, marshaler runt
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1530,14 +1530,14 @@ func local_request_RuntimeService_UpdateResource_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1862,14 +1862,14 @@ func request_RuntimeService_BackupDryRun_0(ctx context.Context, marshaler runtim
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1916,14 +1916,14 @@ func local_request_RuntimeService_BackupDryRun_0(ctx context.Context, marshaler 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -1970,14 +1970,14 @@ func request_RuntimeService_CreateBackup_0(ctx context.Context, marshaler runtim
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -2024,14 +2024,14 @@ func local_request_RuntimeService_CreateBackup_0(ctx context.Context, marshaler 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -2070,14 +2070,14 @@ func request_RuntimeService_ListBackups_0(ctx context.Context, marshaler runtime
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -2116,14 +2116,14 @@ func local_request_RuntimeService_ListBackups_0(ctx context.Context, marshaler r
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -2162,14 +2162,14 @@ func request_RuntimeService_GetBackup_0(ctx context.Context, marshaler runtime.M
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -2218,14 +2218,14 @@ func local_request_RuntimeService_GetBackup_0(ctx context.Context, marshaler run
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	val, ok = pathParams["datastore_name"]
@@ -2282,14 +2282,14 @@ func request_RuntimeService_RunJob_0(ctx context.Context, marshaler runtime.Mars
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	msg, err := client.RunJob(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -2326,14 +2326,14 @@ func local_request_RuntimeService_RunJob_0(ctx context.Context, marshaler runtim
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
 	}
 
-	val, ok = pathParams["namespace"]
+	val, ok = pathParams["namespace_name"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
 	}
 
-	protoReq.Namespace, err = runtime.String(val)
+	protoReq.NamespaceName, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
 	}
 
 	msg, err := server.RunJob(ctx, &protoReq)
@@ -2353,7 +2353,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Version", runtime.WithHTTPPathPattern("/v1/version"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Version", runtime.WithHTTPPathPattern("/v1beta1/version"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2376,7 +2376,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2393,18 +2393,18 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 
 	})
 
-	mux.Handle("GET", pattern_RuntimeService_ReadJobSpecification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_RuntimeService_GetJobSpecification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReadJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RuntimeService_ReadJobSpecification_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RuntimeService_GetJobSpecification_0(rctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -2412,7 +2412,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_RuntimeService_ReadJobSpecification_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RuntimeService_GetJobSpecification_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2422,7 +2422,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/DeleteJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/DeleteJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2445,7 +2445,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2468,7 +2468,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobTask", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/task"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobTask", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}/task"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2491,7 +2491,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CheckJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/check"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CheckJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/job/check"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2514,7 +2514,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProject", runtime.WithHTTPPathPattern("/v1/project"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProject", runtime.WithHTTPPathPattern("/v1beta1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2537,7 +2537,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProjectNamespace", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProjectNamespace", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2560,7 +2560,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterSecret", runtime.WithHTTPPathPattern("/v1/project/{project_name}/secret/{secret_name}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterSecret", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/secret/{secret_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2583,7 +2583,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjects", runtime.WithHTTPPathPattern("/v1/project"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjects", runtime.WithHTTPPathPattern("/v1beta1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2606,7 +2606,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjectNamespaces", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjectNamespaces", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2629,7 +2629,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterInstance", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/instance"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterInstance", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/job/{job_name}/instance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2652,7 +2652,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/JobStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/status"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/JobStatus", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/job/{job_name}/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2675,7 +2675,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterJobEvent", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/event"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterJobEvent", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}/event"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2698,7 +2698,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetWindow", runtime.WithHTTPPathPattern("/v1/window"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetWindow", runtime.WithHTTPPathPattern("/v1beta1/window"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2721,7 +2721,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListResourceSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListResourceSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2744,7 +2744,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateResource", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2767,7 +2767,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReadResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource/{resource_name}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReadResource", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource/{resource_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2790,7 +2790,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/UpdateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/UpdateResource", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2813,7 +2813,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReplayDryRun", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay/dryrun"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReplayDryRun", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay/dryrun"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2836,7 +2836,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Replay", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Replay", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2859,7 +2859,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetReplayStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay/{id}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetReplayStatus", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2882,7 +2882,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListReplays", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListReplays", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2905,7 +2905,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/BackupDryRun", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup-dryrun"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/BackupDryRun", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backupDryrun"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2928,7 +2928,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateBackup", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateBackup", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backup"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2951,7 +2951,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListBackups", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListBackups", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backup"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2974,7 +2974,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetBackup", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup/{id}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetBackup", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backup/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2997,7 +2997,7 @@ func RegisterRuntimeServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RunJob", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/run"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RunJob", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/run"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3059,7 +3059,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Version", runtime.WithHTTPPathPattern("/v1/version"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Version", runtime.WithHTTPPathPattern("/v1beta1/version"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3079,7 +3079,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3095,23 +3095,23 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 
 	})
 
-	mux.Handle("GET", pattern_RuntimeService_ReadJobSpecification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_RuntimeService_GetJobSpecification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReadJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RuntimeService_ReadJobSpecification_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RuntimeService_GetJobSpecification_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_RuntimeService_ReadJobSpecification_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RuntimeService_GetJobSpecification_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -3119,7 +3119,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/DeleteJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/DeleteJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3139,7 +3139,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3159,7 +3159,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobTask", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/task"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobTask", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}/task"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3179,7 +3179,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CheckJobSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/check"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CheckJobSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/job/check"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3199,7 +3199,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProject", runtime.WithHTTPPathPattern("/v1/project"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProject", runtime.WithHTTPPathPattern("/v1beta1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3219,7 +3219,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProjectNamespace", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterProjectNamespace", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3239,7 +3239,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterSecret", runtime.WithHTTPPathPattern("/v1/project/{project_name}/secret/{secret_name}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterSecret", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/secret/{secret_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3259,7 +3259,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjects", runtime.WithHTTPPathPattern("/v1/project"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjects", runtime.WithHTTPPathPattern("/v1beta1/project"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3279,7 +3279,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjectNamespaces", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListProjectNamespaces", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3299,7 +3299,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterInstance", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/instance"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterInstance", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/job/{job_name}/instance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3319,7 +3319,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/JobStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/job/{job_name}/status"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/JobStatus", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/job/{job_name}/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3339,7 +3339,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterJobEvent", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/event"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterJobEvent", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}/event"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3359,7 +3359,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetWindow", runtime.WithHTTPPathPattern("/v1/window"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetWindow", runtime.WithHTTPPathPattern("/v1beta1/window"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3379,7 +3379,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListResourceSpecification", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListResourceSpecification", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3399,7 +3399,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateResource", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3419,7 +3419,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReadResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource/{resource_name}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReadResource", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource/{resource_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3439,7 +3439,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/UpdateResource", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/resource"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/UpdateResource", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/resource"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3459,7 +3459,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReplayDryRun", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay/dryrun"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ReplayDryRun", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay/dryrun"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3479,7 +3479,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Replay", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/Replay", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3499,7 +3499,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetReplayStatus", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay/{id}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetReplayStatus", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3519,7 +3519,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListReplays", runtime.WithHTTPPathPattern("/v1/project/{project_name}/replay"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListReplays", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/replay"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3539,7 +3539,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/BackupDryRun", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup-dryrun"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/BackupDryRun", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backupDryrun"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3559,7 +3559,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/CreateBackup", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/CreateBackup", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backup"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3579,7 +3579,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListBackups", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/ListBackups", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backup"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3599,7 +3599,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.RuntimeService/GetBackup", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/datastore/{datastore_name}/backup/{id}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/GetBackup", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backup/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3619,7 +3619,7 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RunJob", runtime.WithHTTPPathPattern("/v1/project/{project_name}/namespace/{namespace}/run"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.RuntimeService/RunJob", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/run"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3639,63 +3639,63 @@ func RegisterRuntimeServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_RuntimeService_Version_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "version"}, ""))
+	pattern_RuntimeService_Version_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1beta1", "version"}, ""))
 
-	pattern_RuntimeService_CreateJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "project", "project_name", "namespace", "job"}, ""))
+	pattern_RuntimeService_CreateJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job"}, ""))
 
-	pattern_RuntimeService_ReadJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "project", "project_name", "namespace", "job", "job_name"}, ""))
+	pattern_RuntimeService_GetJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name"}, ""))
 
-	pattern_RuntimeService_DeleteJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "project", "project_name", "namespace", "job", "job_name"}, ""))
+	pattern_RuntimeService_DeleteJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name"}, ""))
 
-	pattern_RuntimeService_ListJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "project", "project_name", "namespace", "job"}, ""))
+	pattern_RuntimeService_ListJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job"}, ""))
 
-	pattern_RuntimeService_GetJobTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "job", "job_name", "task"}, ""))
+	pattern_RuntimeService_GetJobTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name", "task"}, ""))
 
-	pattern_RuntimeService_CheckJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1", "project", "project_name", "job", "check"}, ""))
+	pattern_RuntimeService_CheckJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1beta1", "project", "project_name", "job", "check"}, ""))
 
-	pattern_RuntimeService_RegisterProject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "project"}, ""))
+	pattern_RuntimeService_RegisterProject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1beta1", "project"}, ""))
 
-	pattern_RuntimeService_RegisterProjectNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "project", "project_name", "namespace"}, ""))
+	pattern_RuntimeService_RegisterProjectNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1beta1", "project", "project_name", "namespace"}, ""))
 
-	pattern_RuntimeService_RegisterSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "project", "project_name", "secret", "secret_name"}, ""))
+	pattern_RuntimeService_RegisterSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1beta1", "project", "project_name", "secret", "secret_name"}, ""))
 
-	pattern_RuntimeService_ListProjects_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "project"}, ""))
+	pattern_RuntimeService_ListProjects_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1beta1", "project"}, ""))
 
-	pattern_RuntimeService_ListProjectNamespaces_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "project", "project_name", "namespace"}, ""))
+	pattern_RuntimeService_ListProjectNamespaces_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1beta1", "project", "project_name", "namespace"}, ""))
 
-	pattern_RuntimeService_RegisterInstance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "project", "project_name", "job", "job_name", "instance"}, ""))
+	pattern_RuntimeService_RegisterInstance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "job", "job_name", "instance"}, ""))
 
-	pattern_RuntimeService_JobStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "project", "project_name", "job", "job_name", "status"}, ""))
+	pattern_RuntimeService_JobStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "job", "job_name", "status"}, ""))
 
-	pattern_RuntimeService_RegisterJobEvent_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "job", "job_name", "event"}, ""))
+	pattern_RuntimeService_RegisterJobEvent_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name", "event"}, ""))
 
-	pattern_RuntimeService_GetWindow_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "window"}, ""))
+	pattern_RuntimeService_GetWindow_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1beta1", "window"}, ""))
 
-	pattern_RuntimeService_ListResourceSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "resource"}, ""))
+	pattern_RuntimeService_ListResourceSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "resource"}, ""))
 
-	pattern_RuntimeService_CreateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "resource"}, ""))
+	pattern_RuntimeService_CreateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "resource"}, ""))
 
-	pattern_RuntimeService_ReadResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "resource", "resource_name"}, ""))
+	pattern_RuntimeService_ReadResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "resource", "resource_name"}, ""))
 
-	pattern_RuntimeService_UpdateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "resource"}, ""))
+	pattern_RuntimeService_UpdateResource_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "resource"}, ""))
 
-	pattern_RuntimeService_ReplayDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1", "project", "project_name", "replay", "dryrun"}, ""))
+	pattern_RuntimeService_ReplayDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1beta1", "project", "project_name", "replay", "dryrun"}, ""))
 
-	pattern_RuntimeService_Replay_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "project", "project_name", "replay"}, ""))
+	pattern_RuntimeService_Replay_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1beta1", "project", "project_name", "replay"}, ""))
 
-	pattern_RuntimeService_GetReplayStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "project", "project_name", "replay", "id"}, ""))
+	pattern_RuntimeService_GetReplayStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1beta1", "project", "project_name", "replay", "id"}, ""))
 
-	pattern_RuntimeService_ListReplays_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "project", "project_name", "replay"}, ""))
+	pattern_RuntimeService_ListReplays_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1beta1", "project", "project_name", "replay"}, ""))
 
-	pattern_RuntimeService_BackupDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "backup-dryrun"}, ""))
+	pattern_RuntimeService_BackupDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backupDryrun"}, ""))
 
-	pattern_RuntimeService_CreateBackup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "backup"}, ""))
+	pattern_RuntimeService_CreateBackup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backup"}, ""))
 
-	pattern_RuntimeService_ListBackups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "backup"}, ""))
+	pattern_RuntimeService_ListBackups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backup"}, ""))
 
-	pattern_RuntimeService_GetBackup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "project", "project_name", "namespace", "datastore", "datastore_name", "backup", "id"}, ""))
+	pattern_RuntimeService_GetBackup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backup", "id"}, ""))
 
-	pattern_RuntimeService_RunJob_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "project", "project_name", "namespace", "run"}, ""))
+	pattern_RuntimeService_RunJob_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "run"}, ""))
 )
 
 var (
@@ -3703,7 +3703,7 @@ var (
 
 	forward_RuntimeService_CreateJobSpecification_0 = runtime.ForwardResponseMessage
 
-	forward_RuntimeService_ReadJobSpecification_0 = runtime.ForwardResponseMessage
+	forward_RuntimeService_GetJobSpecification_0 = runtime.ForwardResponseMessage
 
 	forward_RuntimeService_DeleteJobSpecification_0 = runtime.ForwardResponseMessage
 

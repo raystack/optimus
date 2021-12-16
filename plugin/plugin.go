@@ -9,18 +9,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/odpf/optimus/plugin/v1/dependencyresolver"
-
-	"github.com/odpf/optimus/plugin/v1/cli"
-
-	"github.com/odpf/optimus/plugin/v1/base"
-
-	"github.com/pkg/errors"
-
-	"github.com/odpf/optimus/models"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
+	"github.com/odpf/optimus/plugin/v1beta1/cli"
+	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
+	"github.com/pkg/errors"
 )
 
 func Initialize(pluginLogger hclog.Logger) error {

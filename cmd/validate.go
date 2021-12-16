@@ -95,9 +95,9 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	respStream, err := runtime.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
-		ProjectName: projectName,
-		Jobs:        adaptedJobSpecs,
-		Namespace:   namespace,
+		ProjectName:   projectName,
+		Jobs:          adaptedJobSpecs,
+		NamespaceName: namespace,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

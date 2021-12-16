@@ -73,11 +73,10 @@ type ServerConfig struct {
 	// random 32 character hash used for encrypting secrets
 	AppKey string `mapstructure:"app_key"`
 
-	DB                  DBConfig       `mapstructure:"db"`
-	Metadata            MetadataConfig `mapstructure:"metadata"`
-	ReplayNumWorkers    int            `mapstructure:"replay_num_workers" default:"1"`
-	ReplayWorkerTimeout time.Duration  `mapstructure:"replay_worker_timeout" default:"120s"`
-	ReplayRunTimeout    time.Duration  `mapstructure:"replay_run_timeout"`
+	DB                  DBConfig      `mapstructure:"db"`
+	ReplayNumWorkers    int           `mapstructure:"replay_num_workers" default:"1"`
+	ReplayWorkerTimeout time.Duration `mapstructure:"replay_worker_timeout" default:"120s"`
+	ReplayRunTimeout    time.Duration `mapstructure:"replay_run_timeout"`
 }
 
 type DBConfig struct {
@@ -90,20 +89,6 @@ type DBConfig struct {
 
 	// maximum allowed open DB connections
 	MaxOpenConnection int `mapstructure:"max_open_connection" default:"20"`
-}
-
-type MetadataConfig struct {
-	// limit on how many messages will be buffered before being sent to a writer
-	WriterBatchSize int `mapstructure:"writer_batch_size" default:"50"`
-
-	// kafka topic where metadata of optimus Job needs to be published
-	KafkaJobTopic string `mapstructure:"kafka_job_topic" default:"resource_optimus_job_log"`
-
-	// comma separated kafka brokers to use for publishing metadata, leave empty to disable metadata publisher
-	KafkaBrokers string `mapstructure:"kafka_brokers"`
-
-	// limit on how many messages will be buffered before being sent to a kafka partition
-	KafkaBatchSize int `mapstructure:"kafka_batch_size" default:"50"`
 }
 
 type SchedulerConfig struct {

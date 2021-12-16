@@ -448,7 +448,7 @@ func TestAirflow2(t *testing.T) {
 	})
 	t.Run("GetJobRunStatus", func(t *testing.T) {
 		host := "http://airflow.example.io"
-		dagStatusBatchUrl := "api/v1/dags/~/dagRuns/list"
+		dagStatusBatchUrl := "api/v1beta1/dags/~/dagRuns/list"
 		startDate := "2021-05-20"
 		startDateTime, _ := time.Parse(job.ReplayDateFormat, startDate)
 		endDate := "2021-05-25"

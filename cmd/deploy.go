@@ -132,7 +132,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				Resources:     adaptedSpecs,
 				ProjectName:   projectSpec.Name,
 				DatastoreName: storeName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
@@ -187,9 +187,9 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
 		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
-			Jobs:        adaptedJobSpecs,
-			ProjectName: projectSpec.Name,
-			Namespace:   namespaceSpec.Name,
+			Jobs:          adaptedJobSpecs,
+			ProjectName:   projectSpec.Name,
+			NamespaceName: namespaceSpec.Name,
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

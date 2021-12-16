@@ -10,7 +10,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/plugin/v1/base"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

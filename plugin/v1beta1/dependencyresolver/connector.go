@@ -3,13 +3,13 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/odpf/optimus/plugin/v1/cli"
+	"github.com/odpf/optimus/plugin/v1beta1/cli"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/odpf/optimus/plugin/v1/base"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
 
 	v1 "github.com/odpf/optimus/api/handler/v1"
 

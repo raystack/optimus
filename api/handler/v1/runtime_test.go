@@ -595,9 +595,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			jobProto, _ := adapter.ToJobProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
-				ProjectName: projectName,
-				Namespace:   namespaceSpec.Name,
-				Spec:        jobProto,
+				ProjectName:   projectName,
+				NamespaceName: namespaceSpec.Name,
+				Spec:          jobProto,
 			}
 			resp, err := runtimeServiceServer.CreateJobSpecification(context.Background(), &request)
 			assert.Nil(t, err)
@@ -845,13 +845,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
 				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
 			}
-			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, Namespace: namespaceSpec.Name}
+			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
 			err := runtimeServiceServer.DeployJobSpecification(&deployRequest, grpcRespStream)
 			assert.Nil(t, err)
 		})
 	})
 
-	t.Run("ReadJobSpecification", func(t *testing.T) {
+	t.Run("GetJobSpecification", func(t *testing.T) {
 		t.Run("should read a job spec", func(t *testing.T) {
 			Version := "1.0.1"
 
@@ -945,8 +945,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 
 			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
-			deployRequest := pb.ReadJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
-			jobSpecResp, err := runtimeServiceServer.ReadJobSpecification(context.Background(), &deployRequest)
+			deployRequest := pb.GetJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
+			jobSpecResp, err := runtimeServiceServer.GetJobSpecification(context.Background(), &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
 		})
@@ -1066,7 +1066,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 				},
 			}
-			jobTaskRequest := &pb.GetJobTaskRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
+			jobTaskRequest := &pb.GetJobTaskRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
 			jobTaskResp, err := runtimeServiceServer.GetJobTask(ctx, jobTaskRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, taskSpecExpected, jobTaskResp.Task)
@@ -1172,7 +1172,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Destination:  nil,
 				Dependencies: nil,
 			}
-			jobTaskRequest := &pb.GetJobTaskRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, Namespace: namespaceSpec.Name}
+			jobTaskRequest := &pb.GetJobTaskRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
 			jobTaskResp, err := runtimeServiceServer.GetJobTask(ctx, jobTaskRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, taskSpecExpected, jobTaskResp.Task)
@@ -1339,7 +1339,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, Namespace: namespaceSpec.Name}
+			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, NamespaceName: namespaceSpec.Name}
 			resp, err := runtimeServiceServer.DeleteJobSpecification(ctx, &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, "job a-data-job has been deleted", resp.GetMessage())
@@ -1497,9 +1497,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			req := &pb.RegisterJobEventRequest{
-				ProjectName: projectSpec.Name,
-				JobName:     jobSpecs[0].Name,
-				Namespace:   namespaceSpec.Name,
+				ProjectName:   projectSpec.Name,
+				JobName:       jobSpecs[0].Name,
+				NamespaceName: namespaceSpec.Name,
 				Event: &pb.JobEvent{
 					Type:  pb.JobEvent_TYPE_FAILURE,
 					Value: eventValues,
@@ -1624,7 +1624,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Name:    "proj.datas",
 					Type:    models.ResourceTypeDataset.String(),
 				},
-				Namespace: namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 
 			projectRepository := new(mock.ProjectRepository)
@@ -1723,7 +1723,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Name:    "proj.datas",
 					Type:    models.ResourceTypeDataset.String(),
 				},
-				Namespace: namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 
 			projectRepository := new(mock.ProjectRepository)
@@ -1857,7 +1857,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -1925,7 +1925,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -1979,11 +1979,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
-				ProjectName: projectName,
-				Namespace:   namespaceSpec.Name,
-				JobName:     jobName,
-				StartDate:   startDate.Format(timeLayout),
-				EndDate:     endDate.Format(timeLayout),
+				ProjectName:   projectName,
+				NamespaceName: namespaceSpec.Name,
+				JobName:       jobName,
+				StartDate:     startDate.Format(timeLayout),
+				EndDate:       endDate.Format(timeLayout),
 			}
 			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
@@ -2037,7 +2037,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2136,7 +2136,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2193,7 +2193,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2236,7 +2236,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2293,7 +2293,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2332,7 +2332,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2382,7 +2382,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2439,7 +2439,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2497,7 +2497,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				JobName:                     jobName,
 				StartDate:                   startDate.Format(timeLayout),
 				EndDate:                     endDate.Format(timeLayout),
@@ -2902,7 +2902,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3010,7 +3010,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:                 projectName,
 				DatastoreName:               models.DestinationTypeBigquery.String(),
 				ResourceName:                resourceName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
@@ -3118,7 +3118,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:                 projectName,
 				DatastoreName:               models.DestinationTypeBigquery.String(),
 				ResourceName:                resourceName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
@@ -3206,7 +3206,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3259,7 +3259,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3315,7 +3315,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3394,7 +3394,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:                 projectName,
 				DatastoreName:               models.DestinationTypeBigquery.String(),
 				ResourceName:                resourceName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
@@ -3485,7 +3485,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:                 projectName,
 				DatastoreName:               models.DestinationTypeBigquery.String(),
 				ResourceName:                resourceName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
@@ -3560,7 +3560,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
@@ -3669,7 +3669,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
@@ -3781,7 +3781,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
@@ -3895,7 +3895,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -3947,7 +3947,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -4003,7 +4003,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			}
 
 			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
@@ -4080,7 +4080,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:                 projectName,
 				DatastoreName:               models.DestinationTypeBigquery.String(),
 				ResourceName:                resourceName,
-				Namespace:                   namespaceSpec.Name,
+				NamespaceName:               namespaceSpec.Name,
 				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 
@@ -4169,7 +4169,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 				Config: map[string]string{
 					"TTL": "30",
 				},
@@ -4224,7 +4224,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		listBackupsReq := pb.ListBackupsRequest{
 			ProjectName:   projectName,
 			DatastoreName: datastoreName,
-			Namespace:     namespaceSpec.Name,
+			NamespaceName: namespaceSpec.Name,
 		}
 		backupSpecs := []models.BackupSpec{
 			{
@@ -4380,7 +4380,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		getBackupDetailReq := pb.GetBackupRequest{
 			ProjectName:   projectName,
 			DatastoreName: datastoreName,
-			Namespace:     namespaceSpec.Name,
+			NamespaceName: namespaceSpec.Name,
 			Id:            backupID.String(),
 		}
 		backupSpec := models.BackupSpec{

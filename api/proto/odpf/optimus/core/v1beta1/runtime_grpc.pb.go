@@ -28,8 +28,8 @@ type RuntimeServiceClient interface {
 	DeployJobSpecification(ctx context.Context, in *DeployJobSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployJobSpecificationClient, error)
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error)
-	// ReadJobSpecification reads a provided job spec of a namespace
-	ReadJobSpecification(ctx context.Context, in *ReadJobSpecificationRequest, opts ...grpc.CallOption) (*ReadJobSpecificationResponse, error)
+	// GetJobSpecification reads a provided job spec of a namespace
+	GetJobSpecification(ctx context.Context, in *GetJobSpecificationRequest, opts ...grpc.CallOption) (*GetJobSpecificationResponse, error)
 	// DeleteJobSpecification deletes a job spec of a namespace
 	DeleteJobSpecification(ctx context.Context, in *DeleteJobSpecificationRequest, opts ...grpc.CallOption) (*DeleteJobSpecificationResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
@@ -143,9 +143,9 @@ func (c *runtimeServiceClient) CreateJobSpecification(ctx context.Context, in *C
 	return out, nil
 }
 
-func (c *runtimeServiceClient) ReadJobSpecification(ctx context.Context, in *ReadJobSpecificationRequest, opts ...grpc.CallOption) (*ReadJobSpecificationResponse, error) {
-	out := new(ReadJobSpecificationResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/ReadJobSpecification", in, out, opts...)
+func (c *runtimeServiceClient) GetJobSpecification(ctx context.Context, in *GetJobSpecificationRequest, opts ...grpc.CallOption) (*GetJobSpecificationResponse, error) {
+	out := new(GetJobSpecificationResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/GetJobSpecification", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +416,7 @@ func (c *runtimeServiceClient) BackupDryRun(ctx context.Context, in *BackupDryRu
 
 func (c *runtimeServiceClient) CreateBackup(ctx context.Context, in *CreateBackupRequest, opts ...grpc.CallOption) (*CreateBackupResponse, error) {
 	out := new(CreateBackupResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/CreateBackup", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/CreateBackup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +434,7 @@ func (c *runtimeServiceClient) ListBackups(ctx context.Context, in *ListBackupsR
 
 func (c *runtimeServiceClient) GetBackup(ctx context.Context, in *GetBackupRequest, opts ...grpc.CallOption) (*GetBackupResponse, error) {
 	out := new(GetBackupResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.RuntimeService/GetBackup", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/GetBackup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -464,8 +464,8 @@ type RuntimeServiceServer interface {
 	DeployJobSpecification(*DeployJobSpecificationRequest, RuntimeService_DeployJobSpecificationServer) error
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error)
-	// ReadJobSpecification reads a provided job spec of a namespace
-	ReadJobSpecification(context.Context, *ReadJobSpecificationRequest) (*ReadJobSpecificationResponse, error)
+	// GetJobSpecification reads a provided job spec of a namespace
+	GetJobSpecification(context.Context, *GetJobSpecificationRequest) (*GetJobSpecificationResponse, error)
 	// DeleteJobSpecification deletes a job spec of a namespace
 	DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
@@ -535,8 +535,8 @@ func (UnimplementedRuntimeServiceServer) DeployJobSpecification(*DeployJobSpecif
 func (UnimplementedRuntimeServiceServer) CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateJobSpecification not implemented")
 }
-func (UnimplementedRuntimeServiceServer) ReadJobSpecification(context.Context, *ReadJobSpecificationRequest) (*ReadJobSpecificationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReadJobSpecification not implemented")
+func (UnimplementedRuntimeServiceServer) GetJobSpecification(context.Context, *GetJobSpecificationRequest) (*GetJobSpecificationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJobSpecification not implemented")
 }
 func (UnimplementedRuntimeServiceServer) DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteJobSpecification not implemented")
@@ -692,20 +692,20 @@ func _RuntimeService_CreateJobSpecification_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_ReadJobSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadJobSpecificationRequest)
+func _RuntimeService_GetJobSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobSpecificationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuntimeServiceServer).ReadJobSpecification(ctx, in)
+		return srv.(RuntimeServiceServer).GetJobSpecification(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/ReadJobSpecification",
+		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/GetJobSpecification",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).ReadJobSpecification(ctx, req.(*ReadJobSpecificationRequest))
+		return srv.(RuntimeServiceServer).GetJobSpecification(ctx, req.(*GetJobSpecificationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1158,7 +1158,7 @@ func _RuntimeService_CreateBackup_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.RuntimeService/CreateBackup",
+		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/CreateBackup",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuntimeServiceServer).CreateBackup(ctx, req.(*CreateBackupRequest))
@@ -1194,7 +1194,7 @@ func _RuntimeService_GetBackup_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.RuntimeService/GetBackup",
+		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/GetBackup",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuntimeServiceServer).GetBackup(ctx, req.(*GetBackupRequest))
@@ -1236,8 +1236,8 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RuntimeService_CreateJobSpecification_Handler,
 		},
 		{
-			MethodName: "ReadJobSpecification",
-			Handler:    _RuntimeService_ReadJobSpecification_Handler,
+			MethodName: "GetJobSpecification",
+			Handler:    _RuntimeService_GetJobSpecification_Handler,
 		},
 		{
 			MethodName: "DeleteJobSpecification",

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/utils"
+
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/golang/protobuf/proto"
@@ -82,7 +84,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 
 		for _, notify := range spec.Behavior.Notify {
 			notifiers = append(notifiers, models.JobSpecNotifier{
-				On:       models.JobEventType(strings.TrimPrefix(strings.ToLower(notify.On.String()), "type_")),
+				On:       models.JobEventType(utils.FromEnumProto(notify.On.String(), "type")),
 				Config:   notify.Config,
 				Channels: notify.Channels,
 			})
@@ -157,7 +159,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	var notifyProto []*pb.JobSpecification_Behavior_Notifiers
 	for _, notify := range spec.Behavior.Notify {
 		notifyProto = append(notifyProto, &pb.JobSpecification_Behavior_Notifiers{
-			On:       pb.JobEvent_Type(pb.JobEvent_Type_value["TYPE_"+strings.ToUpper(string(notify.On))]),
+			On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(string(notify.On), "type")]),
 			Channels: notify.Channels,
 			Config:   notify.Config,
 		})

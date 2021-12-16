@@ -110,7 +110,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
 			ProjectName:                 project,
-			Namespace:                   namespace,
+			NamespaceName:               namespace,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
@@ -143,7 +143,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 
 		backupRequest := &pb.CreateBackupRequest{
 			ProjectName:                 project,
-			Namespace:                   namespace,
+			NamespaceName:               namespace,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,

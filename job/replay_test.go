@@ -402,7 +402,7 @@ func TestReplay(t *testing.T) {
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
-				depenResolver, nil, nil, projJobSpecRepoFac, nil)
+				depenResolver, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
@@ -460,7 +460,7 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{

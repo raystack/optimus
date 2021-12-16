@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/odpf/optimus/plugin/v1/base"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
 
 	"github.com/odpf/optimus/models"
 
