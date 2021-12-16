@@ -35,7 +35,13 @@ namespace:
     # path where resource spec for BQ are stored
     path: "bq"
     # backup configurations of a datastore
-    backup: {}
+    backup:
+      # backup result age until expired - default '720h'
+      ttl: 168h
+      # where backup result should be located - default 'optimus_backup'
+      dataset: archive
+      # backup result prefix table name - default 'backup'
+      prefix: archive
     
   # namespace level variables usable in specifications
   config: {}
