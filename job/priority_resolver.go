@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
@@ -32,7 +33,7 @@ var (
 // PriorityResolver defines an interface that represents getting
 // priority weight of Jobs based on their dependencies
 type PriorityResolver interface {
-	Resolve(context.Context, []models.JobSpec) ([]models.JobSpec, error)
+	Resolve(context.Context, []models.JobSpec, progress.Observer) ([]models.JobSpec, error)
 }
 
 // priorityResolver runs a breadth first traversal on DAG/Job dependencies trees
@@ -53,8 +54,9 @@ func NewPriorityResolver() *priorityResolver {
 }
 
 // Resolve takes jobSpecs and returns them with resolved priorities
-func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	if err := a.resolvePriorities(jobSpecs); err != nil {
+func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec,
+	progressObserver progress.Observer) ([]models.JobSpec, error) {
+	if err := a.resolvePriorities(jobSpecs, progressObserver); err != nil {
 		return nil, errors.Wrap(err, "error occurred while resolving priority")
 	}
 
@@ -62,9 +64,9 @@ func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpe
 }
 
 // resolvePriorities resolves priorities of all provided jobs
-func (a *priorityResolver) resolvePriorities(jobSpecs []models.JobSpec) error {
+func (a *priorityResolver) resolvePriorities(jobSpecs []models.JobSpec, progressObserver progress.Observer) error {
 	// build a multi-root tree from all jobs based on their dependencies
-	multiRootTree, err := a.buildMultiRootDependencyTree(jobSpecs)
+	multiRootTree, err := a.buildMultiRootDependencyTree(jobSpecs, progressObserver)
 	if err != nil {
 		return err
 	}
@@ -100,7 +102,7 @@ func (a *priorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, 
 
 // buildMultiRootDependencyTree - converts []JobSpec into a MultiRootTree
 // based on the dependencies of each DAG.
-func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec) (*tree.MultiRootTree, error) {
+func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpec, progressObserver progress.Observer) (*tree.MultiRootTree, error) {
 	// creates map[jobName]jobSpec for faster retrieval
 	jobSpecMap := make(map[string]models.JobSpec)
 	for _, dagSpec := range jobSpecs {
@@ -113,23 +115,26 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	for _, childSpec := range jobSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
-			var isExternal = false
+			var missingParent = false
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
-					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
+					// if its intra dependency, ideally this should not happen but instead of failing
+					// its better to simply soft fail by notifying about this action
+					// this will cause us to treat it as a dummy job with a unique root
+					notify(progressObserver, &EventJobPriorityWeightAssignmentFailed{Err: errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)})
 				}
 
 				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
 				// be available in jobSpecs []models.JobSpec object (which is tenant specific)
 				// so we'll add a dummy JobSpec for that cross tenant/external dependency.
 				parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
-				isExternal = true
+				missingParent = true
 			}
 			parentNode := a.findOrCreateDAGNode(tree, parentSpec)
 			parentNode.AddDependent(childNode)
 			tree.AddNode(parentNode)
-			if isExternal {
+			if missingParent {
 				// dependency that are outside current project will be considered as root because
 				// optimus don't know dependencies of those external parents
 				tree.MarkRoot(parentNode)
@@ -155,4 +160,10 @@ func (a *priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagS
 		dagTree.AddNode(node)
 	}
 	return node
+}
+
+func notify(progressObserver progress.Observer, evt progress.Event) {
+	if progressObserver != nil {
+		progressObserver.Notify(evt)
+	}
 }
