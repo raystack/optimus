@@ -18,6 +18,10 @@ func CronIntervalValidator(val interface{}, param string) error {
 	if !ok {
 		return fmt.Errorf("invalid crontab entry, not a valid string")
 	}
+	// an empty schedule is a valid schedule
+	if value == "" {
+		return nil
+	}
 	if _, err := cron.ParseStandard(value); err != nil {
 		return errors.Wrap(err, "invalid crontab entry")
 	}
