@@ -71,6 +71,9 @@ List operation will print a digest of the secret. Digest should be a SHA hash of
   SECRET_2    | 3aa788a21a76651c349ceeee76f1cb76 |  transport | 2021-10-06 06:02:02
 ```
 
+This command will only shows the user managed secret sets and ignoring the system managed secret, while on the REST response 
+both sets can be shown. An additional field in secret table called 'TYPE' can be added to differentiate the two sets. 
+
 ### Using secrets without Optimus
 
 If someone wants to pass an exclusive secret without registering it with Optimus first, that should also be possible. 
@@ -85,7 +88,8 @@ This step will internally loading all the secrets that belong to a project to me
 
 #### Migration
 
-- This design will be a breaking change compare to how the secrets are handled and will require all of the current secrets to be registered again.
+- This design will be a breaking change compare to how the secrets are handled and will require all the current secrets to be registered again. 
+Current system managed secrets will be re-registered using `_OPTIMUS_` prefix. Plugin secrets will also need to be registered to Optimus.
 
 # Footnotes & References
 
