@@ -39,14 +39,16 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 	}
 
 	var (
-		project   string
-		namespace string
-		dryRun    bool
+		project       string
+		namespace     string
+		dryRun        bool
+		allDownstream bool
 	)
 
 	backupCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
 	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
 	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "namespace of the requester")
+	backupCmd.Flags().BoolVarP(&allDownstream, "all-downstream", "", allDownstream, "run replay for all downstream across namespaces")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
@@ -95,16 +97,25 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		description := inputs["description"].(string)
 		backupDownstream := inputs["backupDownstream"].(bool)
 
-		backupDryRunRequest := &pb.BackupDryRunRequest{
-			ProjectName:      project,
-			Namespace:        namespace,
-			ResourceName:     resourceName,
-			DatastoreName:    storerName,
-			Description:      description,
-			IgnoreDownstream: !backupDownstream,
+		var allowedDownstreamNamespaces []string
+		if backupDownstream {
+			if allDownstream {
+				allowedDownstreamNamespaces = []string{"*"}
+			} else {
+				allowedDownstreamNamespaces = []string{namespace}
+			}
 		}
 
-		if err := runBackupDryRunRequest(l, conf, backupDryRunRequest); err != nil {
+		backupDryRunRequest := &pb.BackupDryRunRequest{
+			ProjectName:                 project,
+			Namespace:                   namespace,
+			ResourceName:                resourceName,
+			DatastoreName:               storerName,
+			Description:                 description,
+			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
+		}
+
+		if err := runBackupDryRunRequest(l, conf, backupDryRunRequest, backupDownstream); err != nil {
 			l.Info("unable to run backup dry run")
 			return err
 		}
@@ -129,12 +140,12 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 		}
 
 		backupRequest := &pb.BackupRequest{
-			ProjectName:      project,
-			Namespace:        namespace,
-			ResourceName:     resourceName,
-			DatastoreName:    storerName,
-			Description:      description,
-			IgnoreDownstream: !backupDownstream,
+			ProjectName:                 project,
+			Namespace:                   namespace,
+			ResourceName:                resourceName,
+			DatastoreName:               storerName,
+			Description:                 description,
+			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 		}
 
 		for _, ds := range conf.GetDatastore() {
@@ -148,7 +159,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 	return backupCmd
 }
 
-func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *pb.BackupDryRunRequest) (err error) {
+func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -175,7 +186,7 @@ func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *p
 		return errors.Wrapf(err, "request failed to backup job %s", backupRequest.ResourceName)
 	}
 
-	printBackupDryRunResponse(l, backupRequest, backupDryRunResponse)
+	printBackupDryRunResponse(l, backupRequest, backupDryRunResponse, backupDownstream)
 	return nil
 }
 
@@ -220,15 +231,25 @@ func printBackupResponse(l log.Logger, backupResponse *pb.BackupResponse) {
 	}
 }
 
-func printBackupDryRunResponse(l log.Logger, backupRequest *pb.BackupDryRunRequest, backupResponse *pb.BackupDryRunResponse) {
-	if backupRequest.IgnoreDownstream {
-		l.Info(coloredPrint(fmt.Sprintf("Backup list for %s. Downstreams will be ignored.", backupRequest.ResourceName)))
+func printBackupDryRunResponse(l log.Logger, backupRequest *pb.BackupDryRunRequest, backupResponse *pb.BackupDryRunResponse,
+	backupDownstream bool) {
+	if !backupDownstream {
+		l.Info(coloredNotice(fmt.Sprintf("Backup list for %s. Downstreams will be ignored.", backupRequest.ResourceName)))
 	} else {
-		l.Info(coloredPrint(fmt.Sprintf("Backup list for %s. Supported downstreams will be included.", backupRequest.ResourceName)))
+		l.Info(coloredNotice(fmt.Sprintf("Backup list for %s. Supported downstreams will be included.", backupRequest.ResourceName)))
 	}
 	counter := 1
 	for _, resource := range backupResponse.ResourceName {
 		l.Info(fmt.Sprintf("%d. %s", counter, resource))
+		counter++
+	}
+
+	if len(backupResponse.IgnoredResources) > 0 {
+		l.Info(coloredPrint("\nThese resources will be ignored."))
+	}
+	counter = 1
+	for _, ignoredResource := range backupResponse.IgnoredResources {
+		l.Info(fmt.Sprintf("%d. %s", counter, ignoredResource))
 		counter++
 	}
 }

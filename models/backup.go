@@ -18,25 +18,30 @@ type BackupResourceResponse struct {
 }
 
 type BackupRequest struct {
-	ID               uuid.UUID
-	ResourceName     string
-	Project          ProjectSpec
-	Namespace        NamespaceSpec
-	Datastore        string
-	Description      string
-	IgnoreDownstream bool
-	Config           map[string]string
-	DryRun           bool
+	ID                          uuid.UUID
+	ResourceName                string
+	Project                     ProjectSpec
+	Namespace                   NamespaceSpec
+	Datastore                   string
+	Description                 string
+	AllowedDownstreamNamespaces []string
+	Config                      map[string]string
+	DryRun                      bool
 }
 
-type BackupResult struct {
+type BackupPlan struct {
+	Resources        []string
+	IgnoredResources []string
+}
+
+type BackupDetail struct {
 	URN  string
 	Spec interface{}
 }
 
 type BackupResponse struct {
 	ResourceURN string
-	Result      BackupResult
+	Result      BackupDetail
 }
 
 type BackupSpec struct {
@@ -46,4 +51,9 @@ type BackupSpec struct {
 	Description string
 	Config      map[string]string
 	CreatedAt   time.Time
+}
+
+type BackupResult struct {
+	Resources        []string
+	IgnoredResources []string
 }

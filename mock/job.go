@@ -7,8 +7,6 @@ import (
 
 	"github.com/odpf/optimus/job"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -52,6 +50,14 @@ func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobS
 		return args.Get(0).([]models.JobSpec), args.Error(1)
 	}
 	return []models.JobSpec{}, args.Error(1)
+}
+
+func (repo *ProjectJobSpecRepository) GetAllWithNamespace(ctx context.Context) (map[string][]string, error) {
+	args := repo.Called(ctx)
+	if args.Get(0) != nil {
+		return args.Get(0).(map[string][]string), args.Error(1)
+	}
+	return map[string][]string{}, args.Error(1)
 }
 
 func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
@@ -175,14 +181,14 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 	return args.Error(0)
 }
 
-func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
+func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
 	args := j.Called(ctx, replayRequest)
-	return args.Get(0).(*tree.TreeNode), args.Error(1)
+	return args.Get(0).(models.ReplayPlan), args.Error(1)
 }
 
-func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
+func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
 	args := j.Called(ctx, replayRequest)
-	return args.Get(0).(string), args.Error(1)
+	return args.Get(0).(models.ReplayResult), args.Error(1)
 }
 
 func (j *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {

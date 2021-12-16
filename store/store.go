@@ -82,6 +82,7 @@ type InstanceRepository interface {
 // ProjectResourceSpecRepository represents a storage interface for Resource specifications at project level
 type ProjectResourceSpecRepository interface {
 	GetByName(context.Context, string) (models.ResourceSpec, models.NamespaceSpec, error)
+	GetByURN(context.Context, string) (models.ResourceSpec, models.NamespaceSpec, error)
 	GetAll(context.Context) ([]models.ResourceSpec, error)
 }
 
@@ -89,7 +90,6 @@ type ProjectResourceSpecRepository interface {
 type ResourceSpecRepository interface {
 	Save(context.Context, models.ResourceSpec) error
 	GetByName(context.Context, string) (models.ResourceSpec, error)
-	GetByURN(context.Context, string) (models.ResourceSpec, error)
 	GetAll(context.Context) ([]models.ResourceSpec, error)
 	Delete(context.Context, string) error
 }

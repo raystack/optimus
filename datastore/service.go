@@ -34,11 +34,16 @@ type BackupRepoFactory interface {
 	New(spec models.ProjectSpec, storer models.Datastorer) store.BackupRepository
 }
 
+type NamespaceRepoFactory interface {
+	New(spec models.ProjectSpec) store.NamespaceRepository
+}
+
 type Service struct {
-	resourceRepoFactory ResourceSpecRepoFactory
-	dsRepo              models.DatastoreRepo
-	backupRepoFactory   BackupRepoFactory
-	uuidProvider        utils.UUIDProvider
+	resourceRepoFactory        ResourceSpecRepoFactory
+	projectResourceRepoFactory ProjectResourceSpecRepoFactory
+	dsRepo                     models.DatastoreRepo
+	backupRepoFactory          BackupRepoFactory
+	uuidProvider               utils.UUIDProvider
 }
 
 func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
@@ -161,30 +166,41 @@ func generateResourceDestination(ctx context.Context, jobSpec models.JobSpec) (*
 	})
 }
 
-func (srv Service) getResourceSpec(ctx context.Context, datastorer models.Datastorer, namespace models.NamespaceSpec, destinationURN string) (models.ResourceSpec, error) {
-	repo := srv.resourceRepoFactory.New(namespace, datastorer)
-	return repo.GetByURN(ctx, destinationURN)
-}
-
-func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupPlan, error) {
 	var resourcesToBackup []string
+	var resourcesToIgnore []string
 	for _, jobSpec := range jobSpecs {
 		destination, err := generateResourceDestination(ctx, jobSpec)
 		if err != nil {
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
 		datastorer, err := srv.dsRepo.GetByName(destination.Type.String())
 		if err != nil {
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
-		resourceSpec, err := srv.getResourceSpec(ctx, datastorer, backupRequest.Namespace, destination.URN())
+		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
+		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				continue
 			}
-			return nil, err
+			return models.BackupPlan{}, err
+		}
+
+		if resourceSpec.Name != backupRequest.ResourceName {
+			isAuthorized := false
+			for _, allowedNamespace := range backupRequest.AllowedDownstreamNamespaces {
+				if allowedNamespace == models.AllNamespace || allowedNamespace == namespaceSpec.Name {
+					isAuthorized = true
+					break
+				}
+			}
+			if !isAuthorized {
+				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
+				continue
+			}
 		}
 
 		//do backup in storer
@@ -196,39 +212,58 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			if err == models.ErrUnsupportedResource {
 				continue
 			}
-			return nil, err
+			return models.BackupPlan{}, err
 		}
 
 		resourcesToBackup = append(resourcesToBackup, destination.Destination)
 	}
-	return resourcesToBackup, nil
+	return models.BackupPlan{
+		Resources:        resourcesToBackup,
+		IgnoredResources: resourcesToIgnore,
+	}, nil
 }
 
-func (srv Service) BackupResource(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (srv Service) BackupResource(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupResult, error) {
 	backupSpec, err := srv.prepareBackupSpec(backupRequest)
 	if err != nil {
-		return nil, err
+		return models.BackupResult{}, err
 	}
 	backupRequest.ID = backupSpec.ID
 
-	var backupResult []string
+	var resources []string
+	var resourcesToIgnore []string
 	for _, jobSpec := range jobSpecs {
 		destination, err := generateResourceDestination(ctx, jobSpec)
 		if err != nil {
-			return nil, err
+			return models.BackupResult{}, err
 		}
 
 		datastorer, err := srv.dsRepo.GetByName(destination.Type.String())
 		if err != nil {
-			return nil, err
+			return models.BackupResult{}, err
 		}
 
-		resourceSpec, err := srv.getResourceSpec(ctx, datastorer, backupRequest.Namespace, destination.URN())
+		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
+		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
 			if err == store.ErrResourceNotFound {
 				continue
 			}
-			return nil, err
+			return models.BackupResult{}, err
+		}
+
+		if resourceSpec.Name != backupRequest.ResourceName {
+			isAuthorized := false
+			for _, allowedDownstream := range backupRequest.AllowedDownstreamNamespaces {
+				if allowedDownstream == models.AllNamespace || allowedDownstream == namespaceSpec.Name {
+					isAuthorized = true
+					break
+				}
+			}
+			if !isAuthorized {
+				resourcesToIgnore = append(resourcesToIgnore, destination.Destination)
+				continue
+			}
 		}
 
 		//do backup in storer
@@ -241,12 +276,12 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			if err == models.ErrUnsupportedResource {
 				continue
 			}
-			return nil, err
+			return models.BackupResult{}, err
 		}
 		// form slices of result urn to return
-		backupResult = append(backupResult, backupResp.ResultURN)
+		resources = append(resources, backupResp.ResultURN)
 		// enrich backup spec with result detail to be saved
-		backupSpec.Result[destination.Destination] = models.BackupResult{
+		backupSpec.Result[destination.Destination] = models.BackupDetail{
 			URN:  backupResp.ResultURN,
 			Spec: backupResp.ResultSpec,
 		}
@@ -259,10 +294,13 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	//save the backup
 	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
 	if err := backupRepo.Save(ctx, backupSpec); err != nil {
-		return nil, err
+		return models.BackupResult{}, err
 	}
 
-	return backupResult, nil
+	return models.BackupResult{
+		Resources:        resources,
+		IgnoredResources: resourcesToIgnore,
+	}, nil
 }
 
 func (srv Service) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
@@ -309,13 +347,14 @@ func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func NewService(resourceRepoFactory ResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider,
-	backupRepoFactory BackupRepoFactory) *Service {
+func NewService(resourceRepoFactory ResourceSpecRepoFactory, projectResourceRepoFactory ProjectResourceSpecRepoFactory,
+	dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepoFactory BackupRepoFactory) *Service {
 	return &Service{
-		resourceRepoFactory: resourceRepoFactory,
-		dsRepo:              dsRepo,
-		backupRepoFactory:   backupRepoFactory,
-		uuidProvider:        uuidProvider,
+		resourceRepoFactory:        resourceRepoFactory,
+		projectResourceRepoFactory: projectResourceRepoFactory,
+		dsRepo:                     dsRepo,
+		backupRepoFactory:          backupRepoFactory,
+		uuidProvider:               uuidProvider,
 	}
 }
 

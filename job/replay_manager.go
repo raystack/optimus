@@ -81,18 +81,18 @@ type Manager struct {
 
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
-func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (string, error) {
+func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (models.ReplayResult, error) {
 	replaySpecRepo := m.replaySpecRepoFac.New()
 
-	replayTree, err := prepareReplayExecutionTree(reqInput)
+	replayPlan, err := prepareReplayPlan(reqInput)
 	if err != nil {
-		return "", err
+		return models.ReplayResult{}, err
 	}
-	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayTree); err != nil {
-		return "", err
+	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayPlan.ExecutionTree); err != nil {
+		return models.ReplayResult{}, err
 	}
 	if reqInput.ID, err = m.uuidProvider.NewUUID(); err != nil {
-		return "", err
+		return models.ReplayResult{}, err
 	}
 
 	// save replay request and mark status as accepted
@@ -102,24 +102,27 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (st
 		StartDate:     reqInput.Start,
 		EndDate:       reqInput.End,
 		Status:        models.ReplayStatusAccepted,
-		ExecutionTree: replayTree,
+		ExecutionTree: replayPlan.ExecutionTree,
 	}
 
 	// could get cancelled later if queue is full
 	if err = replaySpecRepo.Insert(ctx, &replay); err != nil {
-		return "", err
+		return models.ReplayResult{}, err
 	}
 
 	select {
 	case m.requestQ <- reqInput:
-		return reqInput.ID.String(), nil
+		return models.ReplayResult{
+			ID:          reqInput.ID,
+			IgnoredJobs: replayPlan.IgnoredJobs,
+		}, nil
 	default:
 		// all workers busy, mark the inserted request as cancelled
 		_ = replaySpecRepo.UpdateStatus(ctx, reqInput.ID, models.ReplayStatusCancelled, models.ReplayMessage{
 			Type:    models.ReplayStatusCancelled,
 			Message: ErrRequestQueueFull.Error(),
 		})
-		return "", ErrRequestQueueFull
+		return models.ReplayResult{}, ErrRequestQueueFull
 	}
 }
 

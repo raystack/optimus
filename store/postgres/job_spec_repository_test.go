@@ -796,6 +796,7 @@ func TestProjectJobRepository(t *testing.T) {
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)
 	})
+
 	t.Run("GetByNameForProject", func(t *testing.T) {
 		db := DBSetup()
 		sqlDB, _ := db.DB()
@@ -826,7 +827,8 @@ func TestProjectJobRepository(t *testing.T) {
 		assert.Equal(t, testConfigs[0].Name, j.Name)
 		assert.Equal(t, projectSpec.Name, p.Name)
 	})
-	t.Run("GetAllWithNamespace", func(t *testing.T) {
+
+	t.Run("GetJobNamespaces", func(t *testing.T) {
 		db := DBSetup()
 		sqlDB, _ := db.DB()
 		defer sqlDB.Close()
