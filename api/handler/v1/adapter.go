@@ -117,7 +117,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		Dependencies: dependencies,
 		Hooks:        hooks,
 		Metadata: models.JobSpecMetadata{
-			Resource: adapt.FromJobSpecResourceProto(spec.Metadata.Resource),
+			Resource: adapt.FromJobSpecMetadataResourceProto(spec.Metadata.Resource),
 		},
 	}, nil
 }
@@ -188,7 +188,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 			Notify: notifyProto,
 		},
 		Metadata: &pb.JobMetadata{
-			Resource: adapt.ToJobSpecResourceProto(spec.Metadata.Resource),
+			Resource: adapt.ToJobSpecMetadataResourceProto(spec.Metadata.Resource),
 		},
 	}
 	if spec.Schedule.EndDate != nil {
@@ -472,38 +472,38 @@ func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStat
 	return response, nil
 }
 
-func (adapt *Adapter) ToJobSpecResourceProto(resource models.JobSpecResource) *pb.JobSpecResource {
+func (adapt *Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) *pb.JobSpecMetadataResource {
 	if resource.Request.CPU == "" && resource.Request.Memory == "" &&
 		resource.Limit.CPU == "" && resource.Limit.Memory == "" {
 		return nil
 	}
-	output := &pb.JobSpecResource{}
+	output := &pb.JobSpecMetadataResource{}
 	if resource.Request.CPU != "" {
-		output.Request = &pb.JobSpecResourceConfig{
+		output.Request = &pb.JobSpecMetadataResourceConfig{
 			Cpu: resource.Request.CPU,
 		}
 	}
 	if resource.Request.Memory != "" {
 		if output.Request == nil {
-			output.Request = &pb.JobSpecResourceConfig{}
+			output.Request = &pb.JobSpecMetadataResourceConfig{}
 		}
 		output.Request.Memory = resource.Request.Memory
 	}
 	if resource.Limit.CPU != "" {
-		output.Limit = &pb.JobSpecResourceConfig{
+		output.Limit = &pb.JobSpecMetadataResourceConfig{
 			Cpu: resource.Limit.CPU,
 		}
 	}
 	if resource.Limit.Memory != "" {
 		if output.Limit == nil {
-			output.Limit = &pb.JobSpecResourceConfig{}
+			output.Limit = &pb.JobSpecMetadataResourceConfig{}
 		}
 		output.Limit.Memory = resource.Limit.Memory
 	}
 	return output
 }
 
-func (adapt *Adapter) FromJobSpecResourceProto(resource *pb.JobSpecResource) models.JobSpecResource {
+func (adapt *Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
 	var output models.JobSpecResource
 	if resource != nil {
 		if resource.Request != nil {

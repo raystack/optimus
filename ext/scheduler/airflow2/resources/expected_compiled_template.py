@@ -51,6 +51,8 @@ transformation_secret = Secret(
     "auth.json"
 )
 
+
+
 transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),

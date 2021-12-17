@@ -1688,7 +1688,7 @@
       "type": "object",
       "properties": {
         "resource": {
-          "$ref": "#/definitions/optimusJobSpecResource"
+          "$ref": "#/definitions/optimusJobSpecMetadataResource"
         }
       }
     },
@@ -1706,18 +1706,18 @@
         }
       }
     },
-    "optimusJobSpecResource": {
+    "optimusJobSpecMetadataResource": {
       "type": "object",
       "properties": {
         "request": {
-          "$ref": "#/definitions/optimusJobSpecResourceConfig"
+          "$ref": "#/definitions/optimusJobSpecMetadataResourceConfig"
         },
         "limit": {
-          "$ref": "#/definitions/optimusJobSpecResourceConfig"
+          "$ref": "#/definitions/optimusJobSpecMetadataResourceConfig"
         }
       }
     },
-    "optimusJobSpecResourceConfig": {
+    "optimusJobSpecMetadataResourceConfig": {
       "type": "object",
       "properties": {
         "cpu": {
