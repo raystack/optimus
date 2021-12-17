@@ -1260,6 +1260,12 @@
               "properties": {
                 "value": {
                   "type": "string"
+                },
+                "namespaceName": {
+                  "type": "string"
+                },
+                "updateOnly": {
+                  "type": "boolean"
                 }
               }
             }

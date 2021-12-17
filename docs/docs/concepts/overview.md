@@ -463,7 +463,19 @@ At the moment, Optimus supports BigQuery datastore for 3 types of resources:
 
 ## Secret Management
 
-TODO
+A lot of transformation operations require credentials to execute. These credentials (secrets) are needed in some tasks, hooks, and may also be needed in plugin adapters to compute dependencies/compile assets/etc. before the actual transformation even begins. Optimus provides a convenient way to store secrets and make them accessible in containers during the execution.
+
+Optimus has two sets of secrets, User-Defined secrets & System secrets which are needed for server operations.
+
+### User-Defined Secrets
+Users can easily create, update, and delete their own secrets using CLI or REST API. Secrets can be created in a project level which is accessible from all the namespaces in the project, or can just be created in namespace level. These secrets will then can be used as part of the job spec configuration using macros with their names. Only the secrets created at project & namespace the job belongs to can be referenced.
+
+### System Secrets
+System secrets are available for the entire project and are intended to be managed by only the administrator. These system secrets are being used in server operations, for example storage and scheduler access. Each of the system secrets are prefixed by `_OPTIMUS_`, for example:
+```
+_OPTIMUS_someSecret superSecretValue
+```
+
 
 ## Replay & Backups
 

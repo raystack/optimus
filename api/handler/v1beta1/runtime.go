@@ -48,7 +48,7 @@ type NamespaceRepoFactory interface {
 }
 
 type SecretRepoFactory interface {
-	New(spec models.ProjectSpec) store.ProjectSecretRepository
+	New(projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec) store.ProjectSecretRepository
 }
 
 type JobEventService interface {
@@ -655,12 +655,30 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
 	}
 
-	secretRepo := sv.secretRepoFactory.New(projSpec)
-	if err := secretRepo.Save(ctx, models.ProjectSecretItem{
-		Name:  req.GetSecretName(),
-		Value: string(base64Decoded),
-	}); err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to save secret %s", err.Error(), req.GetSecretName())
+	namespaceSpec := models.NamespaceSpec{}
+	if req.GetNamespaceName() != "" {
+		namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
+		namespaceSpec, err = namespaceRepo.GetByName(ctx, req.GetNamespaceName())
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
+		}
+	}
+
+	secretRepo := sv.secretRepoFactory.New(projSpec, namespaceSpec)
+	if req.UpdateOnly {
+		if err := secretRepo.Update(ctx, models.ProjectSecretItem{
+			Name:  req.GetSecretName(),
+			Value: string(base64Decoded),
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: failed to update secret %s", err.Error(), req.GetSecretName())
+		}
+	} else {
+		if err := secretRepo.Save(ctx, models.ProjectSecretItem{
+			Name:  req.GetSecretName(),
+			Value: string(base64Decoded),
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: failed to save secret %s", err.Error(), req.GetSecretName())
+		}
 	}
 
 	return &pb.RegisterSecretResponse{

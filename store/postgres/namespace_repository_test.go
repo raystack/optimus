@@ -109,7 +109,7 @@ func TestNamespaceRepository(t *testing.T) {
 		err := projRepo.Save(ctx, projectSpec)
 		assert.Nil(t, err)
 
-		secretRepo := NewSecretRepository(db, projectSpec, hash)
+		secretRepo := NewSecretRepository(db, projectSpec, namespaceSpecs[0], hash)
 		err = secretRepo.Insert(ctx, secrets[0])
 		assert.Nil(t, err)
 		err = secretRepo.Insert(ctx, secrets[1])
