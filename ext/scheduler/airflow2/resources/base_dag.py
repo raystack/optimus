@@ -54,27 +54,36 @@ transformation_secret = Secret(
 )
 {{- end }}
 
-{{ $jobSpecMetadata := .Metadata }}
-{{- if $jobSpecMetadata -}}
+{{- $setCPURequest := not (empty .Metadata.Resource.Request.CPU) -}}
+{{- $setMemoryRequest := not (empty .Metadata.Resource.Request.Memory) -}}
+{{- $setCPULimit := not (empty .Metadata.Resource.Limit.CPU) -}}
+{{- $setMemoryLimit := not (empty .Metadata.Resource.Limit.Memory) -}}
+{{- $setResourceConfig := or $setCPURequest $setMemoryRequest $setCPULimit $setMemoryLimit }}
+
+{{ if $setResourceConfig -}}
 resources = k8s.V1ResourceRequirements (
+    {{- if or $setCPURequest $setMemoryRequest }}
     requests = {
-        {{- if $jobSpecMetadata.Resource.Request.Memory }}
-        'memory': '{{ $jobSpecMetadata.Resource.Request.Memory }}',
+        {{- if $setMemoryRequest }}
+        'memory': '{{.Metadata.Resource.Request.Memory}}',
         {{- end }}
-        {{- if $jobSpecMetadata.Resource.Request.CPU }}
-        'cpu': '{{ $jobSpecMetadata.Resource.Request.CPU }}',
+        {{- if $setCPURequest }}
+        'cpu': '{{.Metadata.Resource.Request.CPU}}',
         {{- end }}
     },
+    {{- end }}
+    {{- if or $setCPULimit $setMemoryLimit }}
     limits = {
-        {{- if $jobSpecMetadata.Resource.Limit.Memory }}
-        'memory': '{{ $jobSpecMetadata.Resource.Limit.Memory }}',
+        {{- if $setMemoryLimit }}
+        'memory': '{{.Metadata.Resource.Limit.Memory}}',
         {{- end }}
-        {{- if $jobSpecMetadata.Resource.Limit.CPU }}
-        'cpu': '{{ $jobSpecMetadata.Resource.Limit.CPU }}',
+        {{- if $setCPULimit }}
+        'cpu': '{{.Metadata.Resource.Limit.CPU}}',
         {{- end }}
     },
+    {{- end }}
 )
-{{- end -}}
+{{- end }}
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
@@ -103,7 +112,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
 {{- if gt .SLAMissDurationInSec 0 }}
     sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
 {{- end }}
-{{- if $jobSpecMetadata }}
+{{- if $setResourceConfig }}
     resources = resources,
 {{- end }}
     reattach_on_restart=True
@@ -150,7 +159,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
 {{- end }}
-{{- if $jobSpecMetadata }}
+{{- if $setResourceConfig }}
     resources = resources,
 {{- end }}
     reattach_on_restart=True
