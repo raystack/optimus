@@ -49,7 +49,7 @@ func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
 		Description: treeNodeJob.Description,
 		StartDate:   treeNodeJob.Schedule.StartDate,
 		EndDate:     treeNodeJob.Schedule.EndDate,
-		Interval:    treeNodeJob.Schedule.Interval,
+		Interval:    &treeNodeJob.Schedule.Interval,
 	}
 
 	var dependents []*ExecutionTree
@@ -104,7 +104,7 @@ func toTreeNode(executionTree *ExecutionTree) *tree.TreeNode {
 		Schedule: models.JobSpecSchedule{
 			StartDate: executionTree.JobSpec.StartDate,
 			EndDate:   executionTree.JobSpec.EndDate,
-			Interval:  executionTree.JobSpec.Interval,
+			Interval:  *executionTree.JobSpec.Interval,
 		},
 	}
 	treeNode := tree.NewTreeNode(jobSpec)

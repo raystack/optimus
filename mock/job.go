@@ -7,8 +7,6 @@ import (
 
 	"github.com/odpf/optimus/job"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -54,12 +52,12 @@ func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobS
 	return []models.JobSpec{}, args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest string) ([]store.ProjectJobPair, error) {
 	args := repo.Called(ctx, dest)
 	if args.Get(0) != nil {
-		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
+		return args.Get(0).([]store.ProjectJobPair), args.Error(1)
 	}
-	return models.JobSpec{}, models.ProjectSpec{}, args.Error(2)
+	return nil, args.Error(1)
 }
 
 func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map[string][]string, error) {
@@ -175,14 +173,14 @@ func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job mod
 	return args.Error(0)
 }
 
-func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (*tree.TreeNode, error) {
+func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
 	args := j.Called(ctx, replayRequest)
-	return args.Get(0).(*tree.TreeNode), args.Error(1)
+	return args.Get(0).(models.ReplayPlan), args.Error(1)
 }
 
-func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (string, error) {
+func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
 	args := j.Called(ctx, replayRequest)
-	return args.Get(0).(string), args.Error(1)
+	return args.Get(0).(models.ReplayResult), args.Error(1)
 }
 
 func (j *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
@@ -224,8 +222,8 @@ type PriorityResolver struct {
 	mock.Mock
 }
 
-func (srv *PriorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	args := srv.Called(ctx, jobSpecs)
+func (srv *PriorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec, po progress.Observer) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, jobSpecs, po)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 

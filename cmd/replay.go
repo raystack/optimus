@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	replayTimeout = time.Minute * 1
+	replayTimeout = time.Minute * 15
 )
 
 type taskRunBlock struct {
@@ -74,6 +74,9 @@ func replayCommand(l log.Logger, conf config.Provider) *cli.Command {
 func replayRunSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	dryRun := false
 	forceRun := false
+	ignoreDownstream := false
+	allDownstream := false
+
 	var (
 		projectName   string
 		namespaceName string
@@ -103,6 +106,8 @@ ReplayDryRun date ranges are inclusive.
 	reCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.GetNamespace().Name, "namespace of deployee")
 	reCmd.Flags().BoolVarP(&dryRun, "dry-run", "", dryRun, "do a trial run with no permanent changes")
 	reCmd.Flags().BoolVarP(&forceRun, "force", "f", forceRun, "run replay even if a previous run is in progress")
+	reCmd.Flags().BoolVarP(&ignoreDownstream, "ignore-downstream", "", ignoreDownstream, "run without replaying downstream jobs")
+	reCmd.Flags().BoolVarP(&allDownstream, "all-downstream", "", allDownstream, "run replay for all downstream across namespaces")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		endDate := args[1]
@@ -110,7 +115,14 @@ ReplayDryRun date ranges are inclusive.
 			endDate = args[2]
 		}
 
-		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, conf); err != nil {
+		var allowedDownstreamNamespaces []string
+		if allDownstream {
+			allowedDownstreamNamespaces = []string{"*"}
+		} else {
+			allowedDownstreamNamespaces = []string{namespaceName}
+		}
+
+		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, allowedDownstreamNamespaces, conf); err != nil {
 			return err
 		}
 		if dryRun {
@@ -132,7 +144,8 @@ ReplayDryRun date ranges are inclusive.
 			return nil
 		}
 
-		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, conf, forceRun)
+		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
+			allowedDownstreamNamespaces, conf)
 		if err != nil {
 			return err
 		}
@@ -142,7 +155,8 @@ ReplayDryRun date ranges are inclusive.
 	return reCmd
 }
 
-func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider) (err error) {
+func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
+	allowedDownstreamNamespaces []string, conf config.Provider) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -161,11 +175,12 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayDryRunRequest{
-		ProjectName: projectName,
-		JobName:     jobName,
-		Namespace:   namespace,
-		StartDate:   startDate,
-		EndDate:     endDate,
+		ProjectName:                 projectName,
+		JobName:                     jobName,
+		Namespace:                   namespace,
+		StartDate:                   startDate,
+		EndDate:                     endDate,
+		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 	}
 	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
 	if err != nil {
@@ -181,7 +196,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 
 func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
 	l.Info(fmt.Sprintf("For %s project and %s namespace\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace)))
-	l.Info(coloredNotice("REPLAY RUNS"))
+	l.Info(coloredNotice("Replay Runs"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
@@ -190,7 +205,7 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 		"Run",
 	})
 	taskRerunsMap := make(map[string]taskRunBlock)
-	formatRunsPerJobInstance(replayDryRunResponse.Response, taskRerunsMap, 0)
+	formatRunsPerJobInstance(replayDryRunResponse.ExecutionTree, taskRerunsMap, 0)
 
 	//sort run block
 	taskRerunsSorted := set.NewTreeSetWith(taskRunBlockComperator)
@@ -209,8 +224,20 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 	table.Render()
 
 	//print tree
-	l.Info(coloredNotice("\nDEPENDENCY TREE"))
-	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.Response, treeprint.New())))
+	l.Info(coloredNotice("\nDependency Tree"))
+	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New())))
+
+	//ignored jobs
+	if len(replayDryRunResponse.IgnoredJobs) > 0 {
+		l.Info(coloredPrint("Ignored Jobs"))
+		ignoredJobsCount := 0
+		for _, job := range replayDryRunResponse.IgnoredJobs {
+			ignoredJobsCount++
+			l.Info(fmt.Sprintf("%d. %s", ignoredJobsCount, job))
+		}
+		//separator
+		l.Info("")
+	}
 }
 
 // printExecutionTree creates a ascii tree to visually inspect
@@ -230,7 +257,8 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 	return tree
 }
 
-func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, conf config.Provider, forceRun bool) (string, error) {
+func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
+	allowedDownstreamNamespaces []string, conf config.Provider) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -252,12 +280,13 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 	}
 	runtime := pb.NewRuntimeServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
-		ProjectName: projectName,
-		JobName:     jobName,
-		Namespace:   namespace,
-		StartDate:   startDate,
-		EndDate:     endDate,
-		Force:       forceRun,
+		ProjectName:                 projectName,
+		JobName:                     jobName,
+		Namespace:                   namespace,
+		StartDate:                   startDate,
+		EndDate:                     endDate,
+		Force:                       forceRun,
+		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 	}
 	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
 	if err != nil {
@@ -401,7 +430,7 @@ The list command is used to fetch the recent replay in one project.
 }
 
 func printReplayListResponse(l log.Logger, replayListResponse *pb.ListReplaysResponse) {
-	l.Info(coloredNotice("LATEST REPLAY"))
+	l.Info(coloredNotice("Latest Replay"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{

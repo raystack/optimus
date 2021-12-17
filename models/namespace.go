@@ -14,3 +14,5 @@ type NamespaceSpec struct {
 	// ProjectSpec is the project that this namespace belongs to
 	ProjectSpec ProjectSpec
 }
+
+const AllNamespace = "*"

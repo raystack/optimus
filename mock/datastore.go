@@ -116,14 +116,14 @@ func (d *DatastoreService) DeleteResource(ctx context.Context, namespace models.
 	return d.Called(ctx, namespace, datastoreName, name).Error(1)
 }
 
-func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (d *DatastoreService) BackupResourceDryRun(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupPlan, error) {
 	args := d.Called(ctx, req, jobSpecs)
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(models.BackupPlan), args.Error(1)
 }
 
-func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) ([]string, error) {
+func (d *DatastoreService) BackupResource(ctx context.Context, req models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupResult, error) {
 	args := d.Called(ctx, req, jobSpecs)
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(models.BackupResult), args.Error(1)
 }
 
 func (d *DatastoreService) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
@@ -196,12 +196,17 @@ type ProjectResourceSpecRepository struct {
 	mock.Mock
 }
 
-func (r *ProjectResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, error) {
+func (r *ProjectResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, models.NamespaceSpec, error) {
 	args := r.Called(ctx, s)
-	return args.Get(0).(models.ResourceSpec), args.Error(1)
+	return args.Get(0).(models.ResourceSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 
 func (r *ProjectResourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
 	args := r.Called(ctx)
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
+}
+
+func (r *ProjectResourceSpecRepository) GetByURN(ctx context.Context, s string) (models.ResourceSpec, models.NamespaceSpec, error) {
+	args := r.Called(ctx, s)
+	return args.Get(0).(models.ResourceSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }

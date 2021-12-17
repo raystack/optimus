@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/store"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
@@ -237,7 +239,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -325,7 +327,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -512,7 +514,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			// fetch currently stored
@@ -653,7 +655,7 @@ func TestService(t *testing.T) {
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			metaSvc := new(mock.MetaService)
@@ -984,7 +986,12 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
-			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(jobSpec1, models.ProjectSpec{}, nil)
+			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return([]store.ProjectJobPair{
+				{
+					Project: projSpec,
+					Job:     jobSpec1,
+				},
+			}, nil)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
@@ -1004,7 +1011,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 			errorMsg := "unable to fetch jobspec"
-			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(models.JobSpec{}, models.ProjectSpec{}, errors.New(errorMsg))
+			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(nil, errors.New(errorMsg))
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)

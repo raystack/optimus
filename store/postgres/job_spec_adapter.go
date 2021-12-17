@@ -24,7 +24,7 @@ type Job struct {
 	Labels       datatypes.JSON
 	StartDate    time.Time
 	EndDate      *time.Time
-	Interval     string
+	Interval     *string
 	Destination  string
 	Dependencies datatypes.JSON
 	Behavior     datatypes.JSON
@@ -226,7 +226,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Schedule: models.JobSpecSchedule{
 			StartDate: conf.StartDate,
 			EndDate:   conf.EndDate,
-			Interval:  conf.Interval,
+			Interval:  *conf.Interval,
 		},
 		Behavior: models.JobSpecBehavior{
 			DependsOnPast: behavior.DependsOnPast,
@@ -358,7 +358,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		Labels:           labelsJSON,
 		StartDate:        spec.Schedule.StartDate,
 		EndDate:          spec.Schedule.EndDate,
-		Interval:         spec.Schedule.Interval,
+		Interval:         &spec.Schedule.Interval,
 		Behavior:         behaviorJSON,
 		Destination:      jobDestination,
 		Dependencies:     dependenciesJSON,

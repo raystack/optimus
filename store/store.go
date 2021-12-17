@@ -15,12 +15,21 @@ var (
 	ErrEmptyConfig      = errors.New("empty config")
 )
 
+type ProjectJobPair struct {
+	Project models.ProjectSpec
+	Job     models.JobSpec
+}
+
 // ProjectJobSpecRepository represents a storage interface for Job specifications at a project level
 type ProjectJobSpecRepository interface {
 	GetByName(context.Context, string) (models.JobSpec, models.NamespaceSpec, error)
 	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.JobSpec, error)
-	GetByDestination(context.Context, string) (models.JobSpec, models.ProjectSpec, error)
+
+	// GetByDestination returns all the jobs matches with this destination
+	// it can be from current project or from different projects
+	// note: be warned to handle this carefully in multi tenant situations
+	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
 
 	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
@@ -82,6 +91,7 @@ type InstanceRepository interface {
 // ProjectResourceSpecRepository represents a storage interface for Resource specifications at project level
 type ProjectResourceSpecRepository interface {
 	GetByName(context.Context, string) (models.ResourceSpec, models.NamespaceSpec, error)
+	GetByURN(context.Context, string) (models.ResourceSpec, models.NamespaceSpec, error)
 	GetAll(context.Context) ([]models.ResourceSpec, error)
 }
 
@@ -89,7 +99,6 @@ type ProjectResourceSpecRepository interface {
 type ResourceSpecRepository interface {
 	Save(context.Context, models.ResourceSpec) error
 	GetByName(context.Context, string) (models.ResourceSpec, error)
-	GetByURN(context.Context, string) (models.ResourceSpec, error)
 	GetAll(context.Context) ([]models.ResourceSpec, error)
 	Delete(context.Context, string) error
 }

@@ -63,7 +63,7 @@ type ProjectRepoFactory interface {
 
 type ReplayManager interface {
 	Init()
-	Replay(context.Context, models.ReplayRequest) (string, error)
+	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
 	GetReplay(context.Context, uuid.UUID) (models.ReplaySpec, error)
 	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
 	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time,
@@ -265,7 +265,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
 
-	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs)
+	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
 		return err
 	}
@@ -446,22 +446,22 @@ func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.Proje
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	jobSpec, _, err := projectJobSpecRepo.GetByDestination(ctx, destination)
+	projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
-	return jobSpec, nil
+	for _, p := range projectJobPairs {
+		if p.Project.Name == projectSpec.Name {
+			return p.Job, nil
+		}
+	}
+	return models.JobSpec{}, store.ErrResourceNotFound
 }
 
 func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, rootJobName string) ([]models.JobSpec, error) {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	dependencyResolvedSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
+	jobSpecMap, err := srv.prepareJobSpecMap(ctx, projectSpec)
 	if err != nil {
 		return nil, err
-	}
-	jobSpecMap := make(map[string]models.JobSpec)
-	for _, currSpec := range dependencyResolvedSpecs {
-		jobSpecMap[currSpec.Name] = currSpec
 	}
 
 	rootJobSpec, found := jobSpecMap[rootJobName]
@@ -484,6 +484,87 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 		}
 	}
 	return jobSpecs, nil
+}
+
+func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]models.JobSpec, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+
+	// resolve dependency of all jobs in given project
+	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpecMap := make(map[string]models.JobSpec)
+	for _, currSpec := range jobSpecs {
+		jobSpecMap[currSpec.Name] = currSpec
+	}
+
+	return jobSpecMap, nil
+}
+
+func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]string, error) {
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+	namespaceJobSpecMap, err := projectJobSpecRepo.GetJobNamespaces(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	jobNamespaceMap := make(map[string]string)
+	for namespace, jobNames := range namespaceJobSpecMap {
+		for _, jobName := range jobNames {
+			jobNamespaceMap[jobName] = namespace
+		}
+	}
+
+	return jobNamespaceMap, err
+}
+
+func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedDownstream []string, jobNamespaceMap map[string]string) *tree.TreeNode {
+	for _, dep := range dependents {
+		//if dep is not within allowed namespace, skip this dependency
+		isAuthorized := false
+		for _, namespace := range allowedDownstream {
+			if namespace == models.AllNamespace || namespace == jobNamespaceMap[dep.GetName()] {
+				isAuthorized = true
+				break
+			}
+		}
+		if !isAuthorized {
+			continue
+		}
+
+		//if dep is within allowed namespace, add the node to parent
+		depNode := tree.NewTreeNode(dep.Data)
+
+		//check for the dependent
+		depNode = filterNode(depNode, dep.Dependents, allowedDownstream, jobNamespaceMap)
+
+		//add the complete node
+		parentNode.AddDependent(depNode)
+	}
+	return parentNode
+}
+
+func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNode) []string {
+	allowedNodesMap := make(map[string]*tree.TreeNode)
+	for _, allowedNode := range rootFilteredTree.GetAllNodes() {
+		allowedNodesMap[allowedNode.GetName()] = allowedNode
+	}
+
+	ignoredJobsMap := make(map[string]bool)
+	for _, node := range rootInstance.GetAllNodes() {
+		if _, ok := allowedNodesMap[node.GetName()]; !ok {
+			ignoredJobsMap[node.GetName()] = true
+		}
+	}
+
+	var ignoredJobs []string
+	for jobName := range ignoredJobsMap {
+		ignoredJobs = append(ignoredJobs, jobName)
+	}
+
+	return ignoredJobs
 }
 
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
@@ -588,6 +669,11 @@ type (
 	// EventJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
 	EventJobPriorityWeightAssign struct{}
+	// EventJobPriorityWeightAssignmentFailed signifies that a
+	// job is failed during priority weight assignment
+	EventJobPriorityWeightAssignmentFailed struct {
+		Err error
+	}
 
 	// job check events
 	EventJobCheckFailed struct {
@@ -609,6 +695,10 @@ func (e *EventSavedJobDelete) String() string {
 
 func (e *EventJobPriorityWeightAssign) String() string {
 	return fmt.Sprintf("assigned priority weights")
+}
+
+func (e *EventJobPriorityWeightAssignmentFailed) String() string {
+	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
 }
 
 func (e *EventJobSpecDependencyResolve) String() string {

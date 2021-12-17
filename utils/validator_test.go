@@ -55,6 +55,10 @@ func TestValidator(t *testing.T) {
 					TestData: "@daily",
 					IsValid:  true,
 				},
+				{
+					TestData: "",
+					IsValid:  true,
+				},
 			}
 
 			for _, tcase := range cases {

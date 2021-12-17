@@ -493,7 +493,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			replayManager,
 		),
 		eventService,
-		datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
+		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
 		projectRepoFac,
 		namespaceSpecRepoFac,
 		projectSecretRepoFac,

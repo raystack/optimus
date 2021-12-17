@@ -104,6 +104,7 @@ schedule:
   end_date: "2021-02-25"
 
   # supports standard cron notations
+  # leave as empty string for manually triggered jobs
   interval: 0 3 * * *
 
 # extra modifiers to change the behavior of the job

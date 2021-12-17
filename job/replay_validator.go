@@ -41,7 +41,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 			}
 			return err
 		}
-		return validateReplayJobsConflict(activeReplaySpecs, reqInput, reqReplayNodes)
+		return validateReplayJobsConflict(activeReplaySpecs, reqReplayNodes)
 	}
 	//check and cancel if found conflicted replays for same job ID
 	return cancelConflictedReplays(ctx, replaySpecRepo, reqInput)
@@ -82,23 +82,10 @@ func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes 
 	return nil
 }
 
-func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput models.ReplayRequest,
-	reqReplayNodes []*tree.TreeNode) error {
+func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqReplayNodes []*tree.TreeNode) error {
 	for _, activeSpec := range activeReplaySpecs {
-		activeReplayWorkerRequest := models.ReplayRequest{
-			ID:         activeSpec.ID,
-			Job:        activeSpec.Job,
-			Start:      activeSpec.StartDate,
-			End:        activeSpec.EndDate,
-			Project:    reqInput.Project,
-			JobSpecMap: reqInput.JobSpecMap,
-		}
-		activeTree, err := prepareReplayExecutionTree(activeReplayWorkerRequest)
-		if err != nil {
-			return err
-		}
-		activeNodes := activeTree.GetAllNodes()
-		if err = checkAnyConflictedDags(activeNodes, reqReplayNodes); err != nil {
+		activeNodes := activeSpec.ExecutionTree.GetAllNodes()
+		if err := checkAnyConflictedDags(activeNodes, reqReplayNodes); err != nil {
 			return err
 		}
 	}
@@ -107,8 +94,8 @@ func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqInput 
 
 func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree.TreeNode) error {
 	activeNodesMap := make(map[string]*tree.TreeNode)
-	for _, activeNodes := range activeNodes {
-		activeNodesMap[activeNodes.GetName()] = activeNodes
+	for _, activeNode := range activeNodes {
+		activeNodesMap[activeNode.GetName()] = activeNode
 	}
 
 	for _, reqNode := range reqReplayNodes {

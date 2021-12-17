@@ -75,17 +75,17 @@ func TestReplayValidator(t *testing.T) {
 			assert.Contains(t, err.Error(), errMessage)
 		})
 		t.Run("should throw an error if conflicting replays found", func(t *testing.T) {
+			activeExecutionTree := tree.NewTreeNode(jobSpec)
+			activeExecutionTree.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
+
 			activeReplaySpec := []models.ReplaySpec{
 				{
-					ID: uuid.Must(uuid.NewRandom()),
-					Job: models.JobSpec{
-						ID:       uuid.Must(uuid.NewRandom()),
-						Name:     "job-name",
-						Schedule: schedule,
-					},
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
+					ID:            uuid.Must(uuid.NewRandom()),
+					Job:           jobSpec,
+					StartDate:     startDate,
+					EndDate:       endDate,
+					Status:        models.ReplayStatusInProgress,
+					ExecutionTree: activeExecutionTree,
 				},
 			}
 
@@ -103,20 +103,28 @@ func TestReplayValidator(t *testing.T) {
 			assert.Equal(t, err, job.ErrConflictedJobRun)
 		})
 		t.Run("should throw an error if multiple replays are active and conflicting replays found", func(t *testing.T) {
+			activeExecutionTreeJob := tree.NewTreeNode(jobSpec)
+			activeExecutionTreeJob.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
+
+			activeExecutionTreeJob2 := tree.NewTreeNode(jobSpec2)
+			activeExecutionTreeJob2.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
+
 			activeReplaySpec := []models.ReplaySpec{
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
-					Job:       jobSpec2,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
+					ID:            uuid.Must(uuid.NewRandom()),
+					Job:           jobSpec2,
+					StartDate:     startDate,
+					EndDate:       endDate,
+					Status:        models.ReplayStatusInProgress,
+					ExecutionTree: activeExecutionTreeJob2,
 				},
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
-					Job:       jobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
+					ID:            uuid.Must(uuid.NewRandom()),
+					Job:           jobSpec,
+					StartDate:     startDate,
+					EndDate:       endDate,
+					Status:        models.ReplayStatusInProgress,
+					ExecutionTree: activeExecutionTreeJob,
 				},
 			}
 
@@ -134,15 +142,17 @@ func TestReplayValidator(t *testing.T) {
 			assert.Equal(t, err, job.ErrConflictedJobRun)
 		})
 		t.Run("should pass replay validation when no conflicting dag found", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeJobSpec := jobSpec2
+			activeExecutionTreeJob2 := tree.NewTreeNode(jobSpec2)
+			activeExecutionTreeJob2.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
+
 			activeReplaySpec := []models.ReplaySpec{
 				{
-					ID:        activeReplayUUID,
-					Job:       activeJobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
+					ID:            uuid.Must(uuid.NewRandom()),
+					Job:           jobSpec2,
+					StartDate:     startDate,
+					EndDate:       endDate,
+					Status:        models.ReplayStatusInProgress,
+					ExecutionTree: activeExecutionTreeJob2,
 				},
 			}
 
@@ -160,16 +170,21 @@ func TestReplayValidator(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		t.Run("should pass replay validation when no conflicting runs found", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
 			activeStartDate, _ := time.Parse(job.ReplayDateFormat, "2021-01-01")
-			activeEndDate, _ := time.Parse(job.ReplayDateFormat, "2021-02-01")
+			activeEndDate, _ := time.Parse(job.ReplayDateFormat, "2021-01-02")
+
+			activeExecutionTreeJob := tree.NewTreeNode(jobSpec)
+			activeExecutionTreeJob.Runs.Add(time.Date(2021, time.Month(1), 1, 2, 0, 0, 0, time.UTC))
+			activeExecutionTreeJob.Runs.Add(time.Date(2021, time.Month(1), 2, 2, 0, 0, 0, time.UTC))
+
 			activeReplaySpec := []models.ReplaySpec{
 				{
-					ID:        activeReplayUUID,
-					Job:       jobSpec,
-					StartDate: activeStartDate,
-					EndDate:   activeEndDate,
-					Status:    models.ReplayStatusInProgress,
+					ID:            uuid.Must(uuid.NewRandom()),
+					Job:           jobSpec,
+					StartDate:     activeStartDate,
+					EndDate:       activeEndDate,
+					Status:        models.ReplayStatusInProgress,
+					ExecutionTree: activeExecutionTreeJob,
 				},
 			}
 
@@ -224,20 +239,17 @@ func TestReplayValidator(t *testing.T) {
 			assert.Equal(t, job.ErrConflictedJobRun, err)
 		})
 		t.Run("should return error when no running instance found in batchScheduler but accepted in replay", func(t *testing.T) {
-			activeReplayUUID := uuid.Must(uuid.NewRandom())
-			activeJobUUID := uuid.Must(uuid.NewRandom())
-			activeJobSpec := models.JobSpec{
-				ID:       activeJobUUID,
-				Name:     "job-name",
-				Schedule: schedule,
-			}
+			activeExecutionTreeJob := tree.NewTreeNode(jobSpec)
+			activeExecutionTreeJob.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
+
 			activeReplaySpec := []models.ReplaySpec{
 				{
-					ID:        activeReplayUUID,
-					Job:       activeJobSpec,
-					StartDate: startDate,
-					EndDate:   endDate,
-					Status:    models.ReplayStatusInProgress,
+					ID:            uuid.Must(uuid.NewRandom()),
+					Job:           jobSpec,
+					StartDate:     startDate,
+					EndDate:       endDate,
+					Status:        models.ReplayStatusInProgress,
+					ExecutionTree: activeExecutionTreeJob,
 				},
 			}
 

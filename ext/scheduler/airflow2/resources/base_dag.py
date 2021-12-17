@@ -39,7 +39,7 @@ default_args = {
 dag = DAG(
     dag_id={{.Job.Name | quote}},
     default_args=default_args,
-    schedule_interval={{.Job.Schedule.Interval | quote}},
+    schedule_interval={{ if eq .Job.Schedule.Interval "" }}None{{- else -}} {{ .Job.Schedule.Interval | quote}}{{end}},
     sla_miss_callback=optimus_sla_miss_notify,
     catchup = {{ if .Job.Behavior.CatchUp -}} True{{- else -}} False {{- end }}
 )

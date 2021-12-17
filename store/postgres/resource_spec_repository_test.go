@@ -416,7 +416,7 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		db := DBSetup()
 		sqlDB, _ := db.DB()
 		defer sqlDB.Close()
-		var testModels []models.ResourceSpec
+		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
 		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
@@ -427,9 +427,11 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByURN(ctx, testModels[0].URN)
+		// validate at project level
+		checkModel, checkClient, err := projectResourceSpecRepo.GetByURN(ctx, testModels[0].URN)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
+		assert.Equal(t, namespaceSpec.Name, checkClient.Name)
 	})
 
 	t.Run("GetAll", func(t *testing.T) {

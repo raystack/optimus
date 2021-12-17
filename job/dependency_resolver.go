@@ -70,8 +70,8 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		depSpec, depProj, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
-		if err != nil {
+		projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
+		if err != nil || len(projectJobPairs) == 0 {
 			if err == store.ErrResourceNotFound {
 				// should not fail for unknown dependency
 				r.notifyProgress(observer, &EventJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
@@ -79,21 +79,53 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 			}
 			return jobSpec, errors.Wrap(err, "runtime dependency evaluation failed")
 		}
-
-		// determine the type of dependency
-		dep := models.JobSpecDependency{Job: &depSpec, Project: &depProj}
-		dep.Type = r.getJobSpecDependencyType(dep, projectSpec.Name)
-		jobSpec.Dependencies[depSpec.Name] = dep
+		dep := extractDependency(projectJobPairs, projectSpec)
+		jobSpec.Dependencies[dep.Job.Name] = dep
 	}
 
 	return jobSpec, nil
 }
 
-func (r *dependencyResolver) getJobSpecDependencyType(dependency models.JobSpecDependency, currentJobSpecProject string) models.JobSpecDependencyType {
-	if dependency.Project.Name == currentJobSpecProject {
-		return models.JobSpecDependencyTypeIntra
+// extractDependency extracts tries to find the upstream dependency from multiple matches
+// type of dependency is decided based on if the job belongs to same project or other
+// Note(kushsharma): correct way to do this is by creating a unique destination for each job
+// this will require us to either change the database schema or add some kind of
+// unique literal convention
+func extractDependency(projectJobPairs []store.ProjectJobPair, projectSpec models.ProjectSpec) models.JobSpecDependency {
+	var dep models.JobSpecDependency
+	if len(projectJobPairs) == 1 {
+		dep = models.JobSpecDependency{
+			Job:     &projectJobPairs[0].Job,
+			Project: &projectJobPairs[0].Project,
+			Type:    models.JobSpecDependencyTypeIntra,
+		}
+
+		if projectJobPairs[0].Project.Name != projectSpec.Name {
+			// if doesn't belong to same project, this is inter
+			dep.Type = models.JobSpecDependencyTypeInter
+		}
+		return dep
 	}
-	return models.JobSpecDependencyTypeInter
+
+	// multiple projects found, this should not happen ideally and we should make
+	// each destination unique, but now this has happened, give higher priority
+	// to current project if found or choose any from the rest
+	for _, pair := range projectJobPairs {
+		if pair.Project.Name == projectSpec.Name {
+			return models.JobSpecDependency{
+				Job:     &pair.Job,
+				Project: &pair.Project,
+				Type:    models.JobSpecDependencyTypeIntra,
+			}
+		}
+	}
+
+	// dependency doesn't belong to this project, choose any(first)
+	return models.JobSpecDependency{
+		Job:     &projectJobPairs[0].Job,
+		Project: &projectJobPairs[0].Project,
+		Type:    models.JobSpecDependencyTypeInter,
+	}
 }
 
 // update named (explicit/static) dependencies if unresolved with its spec model
