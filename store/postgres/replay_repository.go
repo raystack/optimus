@@ -84,10 +84,7 @@ func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
 		}
 	}
 
-	config := map[string]interface{}{
-		models.ConfigIgnoreDownstream: spec.IgnoreDownstream,
-	}
-	configInBytes, err := json.Marshal(config)
+	configInBytes, err := json.Marshal(spec.Config)
 	if err != nil {
 		return Replay{}, err
 	}
@@ -142,25 +139,22 @@ func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
 		treeNode = toTreeNode(&jobTree)
 	}
 
-	var ignoreDownstream bool
 	if p.Config != nil {
-		config := make(map[string]interface{})
+		config := make(map[string]string)
 		if err := json.Unmarshal(p.Config, &config); err != nil {
 			return models.ReplaySpec{}, err
 		}
-		ignoreDownstream = config[models.ConfigIgnoreDownstream].(bool)
 	}
 
 	return models.ReplaySpec{
-		ID:               p.ID,
-		Job:              jobSpec,
-		Status:           p.Status,
-		StartDate:        p.StartDate,
-		EndDate:          p.EndDate,
-		Message:          message,
-		IgnoreDownstream: ignoreDownstream,
-		ExecutionTree:    treeNode,
-		CreatedAt:        p.CreatedAt,
+		ID:            p.ID,
+		Job:           jobSpec,
+		Status:        p.Status,
+		StartDate:     p.StartDate,
+		EndDate:       p.EndDate,
+		Message:       message,
+		ExecutionTree: treeNode,
+		CreatedAt:     p.CreatedAt,
 	}, nil
 }
 

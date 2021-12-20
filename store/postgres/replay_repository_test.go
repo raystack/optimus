@@ -110,12 +110,12 @@ func TestReplayRepository(t *testing.T) {
 
 	testConfigs := []*models.ReplaySpec{
 		{
-			ID:               uuid.Must(uuid.NewRandom()),
-			StartDate:        startTime,
-			EndDate:          endTime,
-			Status:           models.ReplayStatusAccepted,
-			ExecutionTree:    treeNode1,
-			IgnoreDownstream: true,
+			ID:            uuid.Must(uuid.NewRandom()),
+			StartDate:     startTime,
+			EndDate:       endTime,
+			Status:        models.ReplayStatusAccepted,
+			ExecutionTree: treeNode1,
+			Config:        map[string]string{models.ConfigIgnoreDownstream: "true"},
 		},
 		{
 			ID:        uuid.Must(uuid.NewRandom()),

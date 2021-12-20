@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -924,16 +923,13 @@ func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListRep
 
 	var replaySpecs []*pb.ReplaySpec
 	for _, replaySpec := range replays {
-		config := map[string]string{
-			models.ConfigIgnoreDownstream: strconv.FormatBool(replaySpec.IgnoreDownstream),
-		}
 		replaySpecs = append(replaySpecs, &pb.ReplaySpec{
 			Id:        replaySpec.ID.String(),
 			JobName:   replaySpec.Job.GetName(),
 			StartDate: timestamppb.New(replaySpec.StartDate),
 			EndDate:   timestamppb.New(replaySpec.EndDate),
 			State:     replaySpec.Status,
-			Config:    config,
+			Config:    replaySpec.Config,
 			CreatedAt: timestamppb.New(replaySpec.CreatedAt),
 		})
 	}

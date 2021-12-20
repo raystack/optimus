@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -97,13 +98,13 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 
 	// save replay request and mark status as accepted
 	replay := models.ReplaySpec{
-		ID:               reqInput.ID,
-		Job:              reqInput.Job,
-		StartDate:        reqInput.Start,
-		EndDate:          reqInput.End,
-		Status:           models.ReplayStatusAccepted,
-		IgnoreDownstream: reqInput.IgnoreDownstream,
-		ExecutionTree:    replayPlan.ExecutionTree,
+		ID:            reqInput.ID,
+		Job:           reqInput.Job,
+		StartDate:     reqInput.Start,
+		EndDate:       reqInput.End,
+		Config:        prepareReplayConfig(reqInput.AllowedDownstreamNamespaces),
+		Status:        models.ReplayStatusAccepted,
+		ExecutionTree: replayPlan.ExecutionTree,
 	}
 
 	// could get cancelled later if queue is full
@@ -125,6 +126,18 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 		})
 		return models.ReplayResult{}, ErrRequestQueueFull
 	}
+}
+
+func prepareReplayConfig(allowedDownstreamNamespaces []string) map[string]string {
+	config := make(map[string]string)
+
+	ignoreDownstream := true
+	if len(allowedDownstreamNamespaces) > 0 {
+		ignoreDownstream = false
+	}
+	config[models.ConfigIgnoreDownstream] = strconv.FormatBool(ignoreDownstream)
+
+	return config
 }
 
 // start a worker goroutine that runs the replay in background

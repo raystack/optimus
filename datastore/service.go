@@ -347,13 +347,27 @@ func (srv Service) prepareBackupSpec(backupRequest models.BackupRequest) (models
 	if err != nil {
 		return models.BackupSpec{}, err
 	}
-	backupRequest.Config[models.ConfigIgnoreDownstream] = strconv.FormatBool(backupRequest.IgnoreDownstream)
+	backupRequest.Config = addIgnoreDownstreamConfig(backupRequest.Config, backupRequest.AllowedDownstreamNamespaces)
 	return models.BackupSpec{
 		ID:          backupID,
 		Description: backupRequest.Description,
 		Config:      backupRequest.Config,
 		Result:      make(map[string]interface{}),
 	}, nil
+}
+
+func addIgnoreDownstreamConfig(config map[string]string, allowedDownstreamNamespaces []string) map[string]string {
+	if len(config) == 0 {
+		config = make(map[string]string)
+	}
+
+	ignoreDownstream := true
+	if len(allowedDownstreamNamespaces) > 0 {
+		ignoreDownstream = false
+	}
+
+	config[models.ConfigIgnoreDownstream] = strconv.FormatBool(ignoreDownstream)
+	return config
 }
 
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {

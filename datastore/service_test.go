@@ -1382,6 +1382,7 @@ func TestService(t *testing.T) {
 				Resource:    resourceSpec,
 				Result:      map[string]interface{}{resourceSpec.Name: backupResult},
 				Description: "",
+				Config:      map[string]string{models.ConfigIgnoreDownstream: "false"},
 			}
 
 			depMod.On("GenerateDestination", ctx, unitData).Return(destination, nil)
@@ -1526,6 +1527,7 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
+				Config:      map[string]string{models.ConfigIgnoreDownstream: "false"},
 			}
 
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
@@ -1666,6 +1668,7 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
+				Config:      map[string]string{models.ConfigIgnoreDownstream: "false"},
 			}
 
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
@@ -2111,6 +2114,7 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
+				Config:      map[string]string{models.ConfigIgnoreDownstream: "false"},
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
@@ -2248,6 +2252,7 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
+				Config:      map[string]string{models.ConfigIgnoreDownstream: "false"},
 			}
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
@@ -2384,6 +2389,7 @@ func TestService(t *testing.T) {
 				Resource:    resourceRoot,
 				Result:      backupResult,
 				Description: "",
+				Config:      map[string]string{models.ConfigIgnoreDownstream: "true"},
 			}
 
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
