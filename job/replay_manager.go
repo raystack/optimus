@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -131,11 +130,10 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 func prepareReplayConfig(allowedDownstreamNamespaces []string) map[string]string {
 	config := make(map[string]string)
 
-	ignoreDownstream := true
+	config[models.ConfigIgnoreDownstream] = "true"
 	if len(allowedDownstreamNamespaces) > 0 {
-		ignoreDownstream = false
+		config[models.ConfigIgnoreDownstream] = "false"
 	}
-	config[models.ConfigIgnoreDownstream] = strconv.FormatBool(ignoreDownstream)
 
 	return config
 }

@@ -2416,7 +2416,7 @@ func TestService(t *testing.T) {
 			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
 	})
-	t.Run("ListBackupResources", func(t *testing.T) {
+	t.Run("ListResourceBackups", func(t *testing.T) {
 		datastoreName := models.DestinationTypeBigquery.String()
 		backupSpecs := []models.BackupSpec{
 			{
@@ -2450,7 +2450,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll", ctx).Return(backupSpecs, nil)
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
+			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []models.BackupSpec{backupSpecs[0], backupSpecs[1]}, resp)
@@ -2466,7 +2466,7 @@ func TestService(t *testing.T) {
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, errors.New(errorMsg))
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, nil)
-			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
+			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.BackupSpec{}, resp)
@@ -2491,7 +2491,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{}, errors.New(errorMsg))
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
+			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, []models.BackupSpec{}, resp)
@@ -2514,7 +2514,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{}, store.ErrResourceNotFound)
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
+			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []models.BackupSpec{}, resp)
@@ -2537,14 +2537,14 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{backupSpecs[2]}, nil)
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.ListBackupResources(ctx, projectSpec, datastoreName)
+			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, 0, len(resp))
 		})
 	})
 
-	t.Run("GetBackupResourceDetail", func(t *testing.T) {
+	t.Run("GetResourceBackup", func(t *testing.T) {
 		datastoreName := models.DestinationTypeBigquery.String()
 		backupID := uuid.Must(uuid.NewRandom())
 		backupSpec := models.BackupSpec{
@@ -2569,7 +2569,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetByID", ctx, backupID).Return(backupSpec, nil)
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.GetBackupResourceDetail(ctx, projectSpec, datastoreName, backupID)
+			resp, err := service.GetResourceBackup(ctx, projectSpec, datastoreName, backupID)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupSpec, resp)
@@ -2585,7 +2585,7 @@ func TestService(t *testing.T) {
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, errors.New(errorMsg))
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, nil)
-			resp, err := service.GetBackupResourceDetail(ctx, projectSpec, datastoreName, backupID)
+			resp, err := service.GetResourceBackup(ctx, projectSpec, datastoreName, backupID)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, models.BackupSpec{}, resp)
@@ -2610,7 +2610,7 @@ func TestService(t *testing.T) {
 			backupRepo.On("GetByID", ctx, backupID).Return(models.BackupSpec{}, errors.New(errorMsg))
 
 			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac)
-			resp, err := service.GetBackupResourceDetail(ctx, projectSpec, datastoreName, backupID)
+			resp, err := service.GetResourceBackup(ctx, projectSpec, datastoreName, backupID)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, models.BackupSpec{}, resp)

@@ -186,6 +186,6 @@ type DatastoreService interface {
 	DeleteResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) error
 	BackupResourceDryRun(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupPlan, error)
 	BackupResource(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupResult, error)
-	ListBackupResources(ctx context.Context, projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
-	GetBackupResourceDetail(ctx context.Context, projectSpec ProjectSpec, datastoreName string, id uuid.UUID) (BackupSpec, error)
+	ListResourceBackups(ctx context.Context, projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
+	GetResourceBackup(ctx context.Context, projectSpec ProjectSpec, datastoreName string, id uuid.UUID) (BackupSpec, error)
 }

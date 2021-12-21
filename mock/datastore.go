@@ -128,12 +128,12 @@ func (d *DatastoreService) BackupResource(ctx context.Context, req models.Backup
 	return args.Get(0).(models.BackupResult), args.Error(1)
 }
 
-func (d *DatastoreService) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+func (d *DatastoreService) ListResourceBackups(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
 	args := d.Called(ctx, projectSpec, datastoreName)
 	return args.Get(0).([]models.BackupSpec), args.Error(1)
 }
 
-func (d *DatastoreService) GetBackupResourceDetail(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string, id uuid.UUID) (models.BackupSpec, error) {
+func (d *DatastoreService) GetResourceBackup(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string, id uuid.UUID) (models.BackupSpec, error) {
 	args := d.Called(ctx, projectSpec, datastoreName, id)
 	return args.Get(0).(models.BackupSpec), args.Error(1)
 }

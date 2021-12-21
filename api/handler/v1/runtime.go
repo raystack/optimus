@@ -1109,7 +1109,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 		return nil, err
 	}
 
-	results, err := sv.resourceSvc.ListBackupResources(ctx, projectSpec, req.DatastoreName)
+	results, err := sv.resourceSvc.ListResourceBackups(ctx, projectSpec, req.DatastoreName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting backup list: %v", err)
 	}
@@ -1140,7 +1140,7 @@ func (sv *RuntimeServiceServer) GetBackupDetail(ctx context.Context, req *pb.Get
 		return nil, status.Errorf(codes.InvalidArgument, "error while parsing backup ID: %v", err)
 	}
 
-	backupDetail, err := sv.resourceSvc.GetBackupResourceDetail(ctx, projectSpec, req.DatastoreName, uuid)
+	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
 	if err != nil {
 		if err == store.ErrResourceNotFound {
 			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
@@ -1154,7 +1154,18 @@ func (sv *RuntimeServiceServer) GetBackupDetail(ctx context.Context, req *pb.Get
 		if !ok {
 			return nil, status.Errorf(codes.Internal, "error while parsing backup result: %v", ok)
 		}
-		results = append(results, backupResult[models.BackupSpecKeyURN].(string))
+
+		backupURN, ok := backupResult[models.BackupSpecKeyURN]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "%s is not found in backup result", models.BackupSpecKeyURN)
+		}
+
+		backupURNStr, ok := backupURN.(string)
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "invalid backup URN: %v", backupURN)
+		}
+
+		results = append(results, backupURNStr)
 	}
 
 	return &pb.GetBackupDetailResponse{
