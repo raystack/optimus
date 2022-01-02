@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/config"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
@@ -19,52 +21,46 @@ import (
 )
 
 var (
-	taskInputDirectory = "in"
-
+	taskInputDirectory        = "in"
 	adminBuildInstanceTimeout = time.Minute * 1
 )
 
-func adminBuildInstanceCommand(l log.Logger) *cli.Command {
+func adminBuildInstanceCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var (
-		optimusHost    string
-		projectName    string
-		assetOutputDir string
-		scheduledAt    string
-		runType        string
+		optimusHost    = conf.GetHost()
+		projectName    = conf.GetProject().Name
+		assetOutputDir = "/tmp/"
+		runType        = "task"
 		runName        string
+		scheduledAt    string
+		cmd            = &cli.Command{
+			Use:     "instance",
+			Short:   "Builds a Job instance including the assets for a scheduled execution",
+			Example: "optimus admin build instance <sample_replace> --output-dir </tmp> --scheduled-at <2021-01-14T02:00:00+00:00> --type task --name <bq2bq> [--project \"project-id\"]",
+			Args:    cli.MinimumNArgs(1),
+		}
 	)
-	cmd := &cli.Command{
-		Use:     "instance",
-		Short:   "Builds a Job instance including the assets for a scheduled execution",
-		Example: "optimus admin build instance sample_replace --project \"project-id\" --output-dir /tmp",
-		Args:    cli.MinimumNArgs(1),
-	}
-
-	cmd.Flags().StringVar(&assetOutputDir, "output-dir", "", "output directory for assets")
+	cmd.Flags().StringVar(&assetOutputDir, "output-dir", assetOutputDir, "Output directory for assets")
 	cmd.MarkFlagRequired("output-dir")
-	cmd.Flags().StringVar(&scheduledAt, "scheduled-at", "", "time at which the job was scheduled for execution")
+	cmd.Flags().StringVar(&scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
 	cmd.MarkFlagRequired("scheduled-at")
-	cmd.Flags().StringVar(&runType, "type", "", "type of task, could be base/hook")
+	cmd.Flags().StringVar(&runType, "type", "task", "Type of instance, could be task/hook")
 	cmd.MarkFlagRequired("type")
-	cmd.Flags().StringVar(&runName, "name", "", "name of task, could be bq2bq/transporter/predator")
+	cmd.Flags().StringVar(&runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
 	cmd.MarkFlagRequired("name")
 
-	cmd.Flags().StringVar(&projectName, "project", "", "name of the tenant")
-	cmd.MarkFlagRequired("project")
-	cmd.Flags().StringVar(&optimusHost, "host", "", "optimus service endpoint url")
-	cmd.MarkFlagRequired("host")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Name of the optimus project")
+	cmd.Flags().StringVar(&optimusHost, "host", optimusHost, "Optimus service endpoint url")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
-		l.Info(fmt.Sprintf("requesting resources for project %s, job %s at %s\nplease wait...", projectName, jobName, optimusHost))
-		l.Info(fmt.Sprintf("run name %s, run type %s, scheduled at %s", runName, runType, scheduledAt))
+		l.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", projectName, jobName, optimusHost))
+		l.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", runName, runType, scheduledAt))
+		l.Info("please wait...")
+
 		// append base path to input file directory
 		inputDirectory := filepath.Join(assetOutputDir, taskInputDirectory)
-
-		if err := getInstanceBuildRequest(l, jobName, inputDirectory, optimusHost, projectName, scheduledAt, runType, runName); err != nil {
-			return err
-		}
-		return nil
+		return getInstanceBuildRequest(l, jobName, inputDirectory, optimusHost, projectName, scheduledAt, runType, runName)
 	}
 	return cmd
 }
@@ -85,7 +81,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("can't reach optimus service, timing out")
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}

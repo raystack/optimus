@@ -26,13 +26,13 @@ These values can be set in the project [configuration](../getting-started/config
 To start a backup, run the following command:
 
 ```shell
-$ optimus backup resource --project sample-project --namespace sample-namespace
+$ optimus backup create --resource "resource_name" --project sample-project --namespace sample-namespace
 ```
 
 After you run the command, prompts will be shown. You will need to answer the questions.
 
 ```
-$ optimus backup resource --project sample-project --namespace sample-namespace
+$ optimus backup create --resource "resource_name" --project sample-project --namespace sample-namespace
 ? Select supported datastore? bigquery
 ? Why is this backup needed? backfill due to business logic change
 ? Backup downstream? Yes
@@ -62,5 +62,5 @@ A dry run is also available to simulate all the resources that can be backed up 
 run usage:
 
 ```shell
-$ optimus backup resource --project sample-project --namespace sample-namespace --dry-run
+$ optimus backup create --resource "resource_name" --project sample-project --namespace sample-namespace --dry-run
 ```

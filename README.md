@@ -32,26 +32,28 @@ Optimus has two components, Optimus service that is the core orchestrator instal
 $ brew install odpf/taps/optimus
 $ optimus --help
 
-optimus v0.0.2-alpha.1
-
-optimus is a scaffolding tool for creating transformation job specs
+Optimus is an easy-to-use, reliable, and performant workflow orchestrator for
+data transformation, data modeling, pipelines, and data quality management.
 
 Usage:
   optimus [command]
 
 Available Commands:
+  backup      Backup a resource and its downstream
+  completion  generate the autocompletion script for the specified shell
   config      Manage optimus configuration required to deploy specifications
-  create      Create a new job/resource
-  deploy      Deploy current project to server
+  deploy      Deploy current optimus project to server
+  extension   Operate with extension
   help        Help about any command
-  render      convert raw representation of specification to consumables
-  replay      re-running jobs in order to update data for older dates/partitions
+  job         Interact with schedulable Job
+  replay      Re-running jobs in order to update data for older dates/partitions
+  resource    Interact with data resource
   serve       Starts optimus service
   version     Print the client version information
 
 Flags:
   -h, --help       help for optimus
-      --no-color   disable colored output
+      --no-color   Disable colored output
 
 Additional help topics:
   optimus validate check if specifications are valid for deployment
@@ -80,7 +82,7 @@ Run the following commands to compile `optimus` from source
 ```shell
 $ git clone git@github.com:odpf/optimus.git
 $ cd optimus
-$ make build
+$ make
 ```
 
 Use the following command to run
@@ -96,7 +98,7 @@ $ ./optimus serve
 ```
 
 `serve` command has few required configurations that needs to be set for it to start. Configuration can either be stored
-in `.optimus.yaml` file or set as environment variable. Read more about it in [getting started](https://odpf.github.io/optimus/getting-started/configuration/).
+in `.optimus.yaml` file or set as environment variable. Read more about it in [getting started](https://odpf.github.io/optimus/docs/getting-started/configuration).
 
 ## Compatibility
 
@@ -106,7 +108,7 @@ Optimus is currently undergoing heavy development with frequent, breaking API ch
 
 Development of Optimus happens in the open on GitHub, and we are grateful to the community for contributing bugfixes and improvements. Read below to learn how you can take part in improving Optimus.
 
-Read our [contributing guide](https://odpf.github.io/optimus/contribute/contributing/) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
+Read our [contributing guide](https://odpf.github.io/optimus/docs/contribute/contributing) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to Optimus.
 
 To help you get your feet wet and get you familiar with our contribution process, we have a list of [good first issues](https://github.com/odpf/optimus/labels/good%20first%20issue) that contain bugs which have a relatively limited scope. This is a great place to get started.
 

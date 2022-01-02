@@ -12,7 +12,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
@@ -22,39 +21,21 @@ import (
 )
 
 var (
-	validateDate         = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
-	validateNoSlash      = utils.ValidatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
-	validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
-		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
+	validateDate    = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
+	validateNoSlash = utils.ValidatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
 	validateJobName = survey.ComposeValidators(validateNoSlash, validateResourceName, survey.MinLength(3),
 		survey.MaxLength(220))
 
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func createCommand(l log.Logger, jobSpecFs afero.Fs, datastoreSpecsFs map[string]afero.Fs,
-	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *cli.Command {
-	cmd := &cli.Command{
-		Use:   "create",
-		Short: "Create a new job/resource",
-	}
-	cmd.AddCommand(createJobSubCommand(l, jobSpecFs, pluginRepo))
-	cmd.AddCommand(createHookSubCommand(l, jobSpecFs, pluginRepo))
-	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
-	return cmd
-}
-
-func createJobSubCommand(l log.Logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
+func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepository,
+	pluginRepo models.PluginRepository) *cli.Command {
 	return &cli.Command{
-		Use:   "job",
-		Short: "create a new Job",
+		Use:     "create",
+		Short:   "Create a new Job",
+		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
-			var jobSpecRepo JobSpecRepository
-			jobSpecRepo = local.NewJobSpecRepository(
-				jobSpecFs,
-				local.NewJobSpecAdapter(pluginRepo),
-			)
-
 			jwd, err := getWorkingDirectory(jobSpecFs, "")
 			if err != nil {
 				return err
@@ -78,7 +59,7 @@ func createJobSubCommand(l log.Logger, jobSpecFs afero.Fs, pluginRepo models.Plu
 			if err := jobSpecRepo.SaveAt(spec, jobDirectory); err != nil {
 				return err
 			}
-			l.Info(fmt.Sprintf("job successfully created at %s", jobDirectory))
+			l.Info(coloredSuccess("Job successfully created at %s", jobDirectory))
 			return nil
 		},
 	}
@@ -310,117 +291,6 @@ this effects runtime dependencies and template macros`,
 	return jobInput, nil
 }
 
-func createHookSubCommand(l log.Logger, jobSpecFs afero.Fs, pluginRepo models.PluginRepository) *cli.Command {
-	cmd := &cli.Command{
-		Use:   "hook",
-		Short: "create a new Hook",
-		RunE: func(cmd *cli.Command, args []string) error {
-			var jobSpecRepo JobSpecRepository
-			jobSpecRepo = local.NewJobSpecRepository(
-				jobSpecFs,
-				local.NewJobSpecAdapter(pluginRepo),
-			)
-
-			selectJobName, err := selectJobSurvey(jobSpecRepo)
-			if err != nil {
-				return err
-			}
-			jobSpec, err := jobSpecRepo.GetByName(selectJobName)
-			if err != nil {
-				return err
-			}
-			jobSpec, err = createHookSurvey(jobSpec, pluginRepo)
-			if err != nil {
-				return err
-			}
-			if err := jobSpecRepo.Save(jobSpec); err != nil {
-				return err
-			}
-
-			l.Info(fmt.Sprintf("hook successfully added to %s", selectJobName))
-			return nil
-		},
-	}
-	return cmd
-}
-
-func createHookSurvey(jobSpec models.JobSpec, pluginRepo models.PluginRepository) (models.JobSpec, error) {
-	emptyJobSpec := models.JobSpec{}
-	var availableHooks []string
-	for _, hook := range pluginRepo.GetHooks() {
-		availableHooks = append(availableHooks, hook.Info().Name)
-	}
-	if len(availableHooks) == 0 {
-		return emptyJobSpec, errors.New("no supported hook plugin found")
-	}
-
-	var qs = []*survey.Question{
-		{
-			Name: "hook",
-			Prompt: &survey.Select{
-				Message: "Which hook to run?",
-				Options: availableHooks,
-			},
-			Validate: survey.Required,
-		},
-	}
-	baseInputsRaw := make(map[string]interface{})
-	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
-		return emptyJobSpec, err
-	}
-	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
-	if err != nil {
-		return emptyJobSpec, err
-	}
-
-	selectedHook := baseInputs["hook"]
-	if ifHookAlreadyExistsForJob(jobSpec, selectedHook) {
-		return emptyJobSpec, errors.Errorf("hook %s already exists for this job", selectedHook)
-	}
-
-	executionHook, err := pluginRepo.GetByName(selectedHook)
-	if err != nil {
-		return emptyJobSpec, err
-	}
-
-	var jobSpecConfigs models.JobSpecConfigs
-	cliMod := executionHook.CLIMod
-	if cliMod != nil {
-		taskQuesResponse, err := cliMod.GetQuestions(context.Background(), models.GetQuestionsRequest{
-			JobName: jobSpec.Name,
-		})
-		if err != nil {
-			return emptyJobSpec, err
-		}
-
-		userInputs := models.PluginAnswers{}
-		if taskQuesResponse.Questions != nil {
-			for _, ques := range taskQuesResponse.Questions {
-				responseAnswer, err := AskCLISurveyQuestion(ques, cliMod)
-				if err != nil {
-					return emptyJobSpec, err
-				}
-				userInputs = append(userInputs, responseAnswer...)
-			}
-		}
-
-		generateConfResponse, err := cliMod.DefaultConfig(context.Background(), models.DefaultConfigRequest{
-			Answers: userInputs,
-		})
-		if err != nil {
-			return emptyJobSpec, err
-		}
-		if generateConfResponse.Config != nil {
-			jobSpecConfigs = generateConfResponse.Config.ToJobSpec()
-		}
-	}
-	jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
-		Unit:   executionHook,
-		Config: jobSpecConfigs,
-	})
-	return jobSpec, nil
-}
-
 // selectJobSurvey runs a survey to select a job and returns its name
 func selectJobSurvey(jobSpecRepo JobSpecRepository) (string, error) {
 	var allJobNames []string
@@ -441,15 +311,6 @@ func selectJobSurvey(jobSpecRepo JobSpecRepository) (string, error) {
 	return selectJob, nil
 }
 
-func ifHookAlreadyExistsForJob(jobSpec models.JobSpec, newHookName string) bool {
-	for _, hook := range jobSpec.Hooks {
-		if hook.Unit.Info().Name == newHookName {
-			return true
-		}
-	}
-	return false
-}
-
 // IsJobNameUnique return a validator that checks if the job already exists with the same name
 func IsJobNameUnique(repository JobSpecRepository) survey.Validator {
 	return func(val interface{}) error {
@@ -460,128 +321,6 @@ func IsJobNameUnique(repository JobSpecRepository) survey.Validator {
 		} else {
 			// otherwise we cannot convert the value into a string and cannot find a job name
 			return fmt.Errorf("invalid type of job name %v", reflect.TypeOf(val).Name())
-		}
-		// the input is fine
-		return nil
-	}
-}
-
-func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
-	return &cli.Command{
-		Use:   "resource",
-		Short: "create a new resource",
-		RunE: func(cmd *cli.Command, args []string) error {
-			availableStorer := []string{}
-			for _, s := range datastoreRepo.GetAll() {
-				availableStorer = append(availableStorer, s.Name())
-			}
-			var storerName string
-			if err := survey.AskOne(&survey.Select{
-				Message: "Select supported datastores?",
-				Options: availableStorer,
-			}, &storerName); err != nil {
-				return err
-			}
-			repoFS, ok := datastoreSpecFs[storerName]
-			if !ok {
-				return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
-			}
-
-			// find requested datastore
-			availableTypes := []string{}
-			datastore, _ := datastoreRepo.GetByName(storerName)
-			for dsType := range datastore.Types() {
-				availableTypes = append(availableTypes, dsType.String())
-			}
-			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, datastore)
-
-			// find resource type
-			var resourceType string
-			if err := survey.AskOne(&survey.Select{
-				Message: "Select supported resource type?",
-				Options: availableTypes,
-			}, &resourceType); err != nil {
-				return err
-			}
-			typeController, _ := datastore.Types()[models.ResourceType(resourceType)]
-
-			// find directory to store spec
-			rwd, err := getWorkingDirectory(repoFS, "")
-			if err != nil {
-				return err
-			}
-			newDirName, err := getDirectoryName(rwd)
-			if err != nil {
-				return err
-			}
-
-			resourceDirectory := filepath.Join(rwd, newDirName)
-			resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirectory, "/", "."), "\\", ".")
-
-			var qs = []*survey.Question{
-				{
-					Name: "name",
-					Prompt: &survey.Input{
-						Message: "What is the resource name?(should conform to selected resource type)",
-						Default: resourceNameDefault,
-					},
-					Validate: survey.ComposeValidators(validateNoSlash, survey.MinLength(3),
-						survey.MaxLength(1024), IsValidDatastoreSpec(typeController.Validator()),
-						IsResourceNameUnique(resourceSpecRepo)),
-				},
-			}
-			inputs := map[string]interface{}{}
-			if err := survey.Ask(qs, &inputs); err != nil {
-				return err
-			}
-			resourceName := inputs["name"].(string)
-
-			if err := resourceSpecRepo.SaveAt(models.ResourceSpec{
-				Version:   1,
-				Name:      resourceName,
-				Type:      models.ResourceType(resourceType),
-				Datastore: datastore,
-				Assets:    typeController.DefaultAssets(),
-			}, resourceDirectory); err != nil {
-				return err
-			}
-
-			l.Info(fmt.Sprintf("resource created successfully %s", resourceName))
-			return nil
-		},
-	}
-}
-
-// IsResourceNameUnique return a validator that checks if the resource already exists with the same name
-func IsResourceNameUnique(repository store.ResourceSpecRepository) survey.Validator {
-	return func(val interface{}) error {
-		if str, ok := val.(string); ok {
-			if _, err := repository.GetByName(context.Background(), str); err == nil {
-				return fmt.Errorf("resource with the provided name already exists")
-			} else if err != models.ErrNoSuchSpec && err != models.ErrNoResources {
-				return err
-			}
-		} else {
-			// otherwise we cannot convert the value into a string and cannot find a resource name
-			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
-		}
-		// the input is fine
-		return nil
-	}
-}
-
-// IsValidDatastoreSpec tries to adapt provided resource with datastore
-func IsValidDatastoreSpec(valiFn models.DatastoreSpecValidator) survey.Validator {
-	return func(val interface{}) error {
-		if str, ok := val.(string); ok {
-			if err := valiFn(models.ResourceSpec{
-				Name: str,
-			}); err != nil {
-				return err
-			}
-		} else {
-			// otherwise we cannot convert the value into a string and cannot find a resource name
-			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
 		}
 		// the input is fine
 		return nil

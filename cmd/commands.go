@@ -7,47 +7,53 @@ import (
 	"os"
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-
-	"github.com/fatih/color"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/mattn/go-isatty"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/salt/log"
+	"github.com/odpf/salt/term"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
-var prologueContents = `optimus %s
-
-optimus is a scaffolding tool for creating transformation job specs
-`
-
 var (
+	prologueContents = `Optimus is an easy-to-use, reliable, and performant workflow orchestrator for 
+data transformation, data modeling, pipelines, and data quality management.
+
+For passing authentication header, set one of the following environment
+variables:
+1. OPTIMUS_AUTH_BASIC_TOKEN
+2. OPTIMUS_AUTH_BEARER_TOKEN
+`
 	disableColoredOut = false
 
 	// colored print
-	coloredNotice  = fmt.Sprint
-	coloredError   = fmt.Sprint
-	coloredSuccess = fmt.Sprint
-	coloredShow    = fmt.Sprint
-	coloredPrint   = fmt.Sprint
+	coloredNotice  = fmt.Sprintf
+	coloredError   = fmt.Sprintf
+	coloredSuccess = fmt.Sprintf
 
+	ErrServerNotReachable = func(host string) error {
+		return fmt.Errorf(`Unable to reach optimus server at %s, this can happen due to following reasons:
+1. Check if you are connected to internet
+2. Is the host correctly configured in optimus config
+3. Is OPTIMUS_HOST env incorrectly set
+4. Is Optimus server currently unreachable`, host)
+	}
+)
+
+const (
 	GRPCMaxClientSendSize      = 45 << 20 // 45MB
 	GRPCMaxClientRecvSize      = 45 << 20 // 45MB
 	GRPCMaxRetry          uint = 3
 
 	OptimusDialTimeout = time.Second * 2
 )
-
-func programPrologue(ver string) string {
-	return fmt.Sprintf(prologueContents, ver)
-}
 
 // JobSpecRepository represents a storage interface for Job specifications locally
 type JobSpecRepository interface {
@@ -58,23 +64,32 @@ type JobSpecRepository interface {
 }
 
 // New constructs the 'root' command.It houses all other sub commands
+// default output of logging should go to stdout
+// interactive output like progress bars should go to stderr
+// unless the stdout/err is a tty, colors/progressbar should be disabled
 func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+	disableColoredOut = !isTerminal(os.Stdout)
 	var cmd = &cli.Command{
-		Use:  "optimus",
-		Long: programPrologue(config.Version),
+		Use:  "optimus <command> <subcommand> [flags]",
+		Long: prologueContents,
 		PersistentPreRun: func(cmd *cli.Command, args []string) {
-			//initialise color if not requested to be disabled
+			// initialise color if not requested to be disabled
+			cs := term.NewColorScheme()
 			if !disableColoredOut {
-				coloredNotice = color.New(color.Bold, color.FgCyan).SprintFunc()
-				coloredError = color.New(color.Bold, color.FgHiRed).SprintFunc()
-				coloredSuccess = color.New(color.Bold, color.FgHiGreen).SprintFunc()
-				coloredShow = color.New(color.Bold, color.FgHiWhite).SprintFunc()
-				coloredPrint = color.New(color.Bold, color.FgHiYellow).SprintFunc()
+				coloredNotice = func(s string, a ...interface{}) string {
+					return cs.Yellowf(s, a...)
+				}
+				coloredError = func(s string, a ...interface{}) string {
+					return cs.Redf(s, a...)
+				}
+				coloredSuccess = func(s string, a ...interface{}) string {
+					return cs.Greenf(s, a...)
+				}
 			}
 		},
 		SilenceUsage: true,
 	}
-	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "disable colored output")
+	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
 	//init local specs
 	var jobSpecRepo JobSpecRepository
@@ -92,19 +107,13 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 
 	cmd.AddCommand(versionCommand(plainLog, conf.GetHost(), pluginRepo))
 	cmd.AddCommand(configCommand(plainLog, dsRepo))
-	cmd.AddCommand(createCommand(plainLog, jobSpecFs, datastoreSpecsFs, pluginRepo, dsRepo))
+	cmd.AddCommand(jobCommand(plainLog, jobSpecFs, pluginRepo, conf))
 	cmd.AddCommand(deployCommand(plainLog, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(renderCommand(plainLog, conf.GetHost(), jobSpecRepo))
-	cmd.AddCommand(validateCommand(plainLog, conf.GetHost(), pluginRepo, jobSpecRepo, conf))
+	cmd.AddCommand(resourceCommand(plainLog, datastoreSpecsFs, dsRepo))
 	cmd.AddCommand(serveCommand(jsonLog, conf))
 	cmd.AddCommand(replayCommand(plainLog, conf))
-	cmd.AddCommand(runCommand(plainLog, conf.GetHost(), jobSpecRepo, pluginRepo, conf))
 	cmd.AddCommand(backupCommand(plainLog, dsRepo, conf))
-
-	// admin specific commands
-	if conf.GetAdmin().Enabled {
-		cmd.AddCommand(adminCommand(plainLog, pluginRepo))
-	}
+	cmd.AddCommand(adminCommand(plainLog, conf))
 
 	addExtensionCommand(cmd, plainLog)
 	return cmd
@@ -174,4 +183,8 @@ func (a *BasicAuthentication) GetRequestMetadata(context.Context, ...string) (ma
 
 func (a *BasicAuthentication) RequireTransportSecurity() bool {
 	return false
+}
+
+func isTerminal(f *os.File) bool {
+	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
 }

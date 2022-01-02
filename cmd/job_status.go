@@ -6,6 +6,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/odpf/optimus/config"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
@@ -14,33 +16,29 @@ import (
 )
 
 const (
-	adminStatusTimeout = time.Second * 10
+	jobStatusTimeout = time.Second * 30
 )
 
-func adminGetStatusCommand(l log.Logger) *cli.Command {
+func jobStatusCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var (
-		optimusHost string
-		projectName string
+		optimusHost = conf.GetHost()
+		projectName = conf.GetProject().Name
 	)
 	cmd := &cli.Command{
 		Use:     "status",
 		Short:   "Get current job status",
-		Example: `optimus admin get status sample_replace --project \"project-id\"`,
+		Example: `optimus job status <sample_job_goes_here> [--project \"project-id\"]`,
 		Args:    cli.MinimumNArgs(1),
 	}
-	cmd.Flags().StringVar(&projectName, "project", "", "name of the tenant")
-	cmd.Flags().StringVar(&optimusHost, "host", "", "optimus service endpoint url")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
+	cmd.Flags().StringVar(&optimusHost, "host", optimusHost, "Optimus service endpoint url")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobName := args[0]
-		l.Info(fmt.Sprintf("requesting status for project %s, job %s at %s\nplease wait...",
+		l.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
 			projectName, jobName, optimusHost))
 
-		if err := getJobStatusRequest(l, jobName, optimusHost, projectName); err != nil {
-			return err
-		}
-
-		return nil
+		return getJobStatusRequest(l, jobName, optimusHost, projectName)
 	}
 	return cmd
 }
@@ -59,20 +57,22 @@ func getJobStatusRequest(l log.Logger, jobName, host, projectName string) error 
 	}
 	defer conn.Close()
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), adminStatusTimeout)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), jobStatusTimeout)
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
 	jobStatusResponse, err := runtime.JobStatus(timeoutCtx, &pb.JobStatusRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 	})
+	spinner.Stop()
 	if err != nil {
 		return errors.Wrapf(err, "request failed for job %s", jobName)
 	}
 
 	jobStatuses := jobStatusResponse.GetStatuses()
-
 	sort.Slice(jobStatuses, func(i, j int) bool {
 		return jobStatuses[i].ScheduledAt.Seconds < jobStatuses[j].ScheduledAt.Seconds
 	})
@@ -80,5 +80,6 @@ func getJobStatusRequest(l log.Logger, jobName, host, projectName string) error 
 	for _, status := range jobStatuses {
 		l.Info(fmt.Sprintf("%s - %s", status.GetScheduledAt().AsTime(), status.GetState()))
 	}
+	l.Info(coloredSuccess("\nFound %d run instances.", len(jobStatuses)))
 	return err
 }

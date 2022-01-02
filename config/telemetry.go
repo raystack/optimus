@@ -27,7 +27,7 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 	var tp *tracesdk.TracerProvider
 	var err error
 	if conf.GetTelemetry().JaegerAddr != "" {
-		l.Info("enabling jaeger traces", "addr", conf.GetTelemetry().JaegerAddr)
+		l.Debug("enabling jaeger traces", "addr", conf.GetTelemetry().JaegerAddr)
 		tp, err = tracerProvider(conf.GetTelemetry().JaegerAddr)
 		if err != nil {
 			return nil, err
@@ -48,7 +48,7 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 
 	var metricServer *http.Server
 	if conf.GetTelemetry().ProfileAddr != "" {
-		l.Info("enabling profile metrics", "addr", conf.GetTelemetry().ProfileAddr)
+		l.Debug("enabling profile metrics", "addr", conf.GetTelemetry().ProfileAddr)
 		// custom metric for app uptime
 		go func() {
 			appUptime := promauto.NewGauge(prometheus.GaugeOpts{
@@ -71,19 +71,19 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 		metricServer = MetricsServer(conf.GetTelemetry().ProfileAddr)
 		go func() {
 			if err := metricServer.ListenAndServe(); err != http.ErrServerClosed {
-				l.Error("failed while serving metrics", "err", err)
+				l.Warn("failed while serving metrics", "err", err)
 			}
 		}()
 	}
 	return func() {
 		if tp != nil {
 			if err = tp.Shutdown(context.Background()); err != nil {
-				l.Error("failed to shutdown trace provider", "err", err)
+				l.Warn("failed to shutdown trace provider", "err", err)
 			}
 		}
 		if metricServer != nil {
 			if err := metricServer.Close(); err != nil {
-				l.Error("failed to shutdown metrics http server", "err", errors.Wrap(err, "metricServer.Close"))
+				l.Warn("failed to shutdown metrics http server", "err", errors.Wrap(err, "metricServer.Close"))
 			}
 		}
 	}, nil
@@ -94,7 +94,7 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
 func tracerProvider(url string) (*tracesdk.TracerProvider, error) {
-	// Create the Jaeger exporter
+	// create the Jaeger exporter
 	jaegerExporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
 	if err != nil {
 		return nil, err

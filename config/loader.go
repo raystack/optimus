@@ -17,7 +17,6 @@ var (
 // InitOptimus Load configuration file from following paths
 // ./
 // <exec>/
-// ~/.config/
 // ~/.optimus/
 func InitOptimus() (*Optimus, error) {
 	var o Optimus
@@ -34,8 +33,6 @@ func InitOptimus() (*Optimus, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting the home directory")
 	}
-
-	configDir := filepath.Join(currentHomeDir, ".config")
 	optimusDir := filepath.Join(currentHomeDir, ".optimus")
 
 	l := config.NewLoader(
@@ -43,7 +40,6 @@ func InitOptimus() (*Optimus, error) {
 		config.WithType(FileExtension),
 		config.WithPath(currPath),
 		config.WithPath(filepath.Dir(execPath)),
-		config.WithPath(configDir),
 		config.WithPath(optimusDir),
 		config.WithEnvPrefix("OPTIMUS"),
 		config.WithEnvKeyReplacer(".", "_"),

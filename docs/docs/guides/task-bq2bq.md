@@ -6,7 +6,7 @@ title: Bigquery to bigquery transformation task
 ### Creating Task
 Command to create a task :
 ```
-optimus create job
+optimus job create
 ```
 This command will invoke an interactive cli that contains configurations that 
 need to be filled for the task. The tasks files will be generated at 
