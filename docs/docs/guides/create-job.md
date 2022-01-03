@@ -32,29 +32,10 @@ $ optimus create job
 ? Which task to run? bq2bq
 ? Specify the start date 2021-02-18
 ? Specify the interval (in crontab notation) 0 3 * * *
-? Do you want to configure resource? [? for help] (y/N) 
 ? Project ID: example
 ? Dataset Name: data
 ? Table Name: hello_table
 ? Load method to use on destination? APPEND
-```
-
-For the following question:
-
-```zsh
-? Do you want to configure resource? [? for help] (y/N) 
-```
-
-If choose to configure it, some other prompts will be shown to let the user
-configure the pods resource configuration for the job. For more,
-[this documentation](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container) should help. The following is the list of
-configuration that could be set:
-
-```zsh
-? Set request.cpu for a job 250m
-? Set request.memory for a job 128Mi
-? Set limit.cpu for a job 500m
-? Set limit.memory for a job 256Mi
 ```
 
 Note: The cron schedule of a Job is as per UTC timezone.
@@ -126,17 +107,7 @@ labels:
    orchestrator: optimus
 dependencies: []
 hooks: []
-metadata:
-  resource:
-    request:
-      memory: 128Mi
-      cpu: 250m
-    limit:
-      memory: 256Mi
-      cpu: 500m
 ```
-
-_Note: field `metadata` will only be shown if the user chose to configure it._
 
 Now you can finally push all the files in a git repository. Create a commit and 
 push to repository which will initiate gitlab pipeline and apply all of your changes. 
