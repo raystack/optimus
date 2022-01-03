@@ -7,6 +7,7 @@ from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOp
 from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
+from kubernetes.client import models as k8s
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, CrossTenantDependencySensor
@@ -52,6 +53,38 @@ transformation_secret = Secret(
     {{ base $baseTaskSchema.SecretPath | quote }}
 )
 {{- end }}
+
+{{- $setCPURequest := not (empty .Metadata.Resource.Request.CPU) -}}
+{{- $setMemoryRequest := not (empty .Metadata.Resource.Request.Memory) -}}
+{{- $setCPULimit := not (empty .Metadata.Resource.Limit.CPU) -}}
+{{- $setMemoryLimit := not (empty .Metadata.Resource.Limit.Memory) -}}
+{{- $setResourceConfig := or $setCPURequest $setMemoryRequest $setCPULimit $setMemoryLimit }}
+
+{{- if $setResourceConfig -}}
+resources = k8s.V1ResourceRequirements (
+    {{- if or $setCPURequest $setMemoryRequest }}
+    requests = {
+        {{- if $setMemoryRequest }}
+        'memory': '{{.Metadata.Resource.Request.Memory}}',
+        {{- end }}
+        {{- if $setCPURequest }}
+        'cpu': '{{.Metadata.Resource.Request.CPU}}',
+        {{- end }}
+    },
+    {{- end }}
+    {{- if or $setCPULimit $setMemoryLimit }}
+    limits = {
+        {{- if $setMemoryLimit }}
+        'memory': '{{.Metadata.Resource.Limit.Memory}}',
+        {{- end }}
+        {{- if $setCPULimit }}
+        'cpu': '{{.Metadata.Resource.Limit.CPU}}',
+        {{- end }}
+    },
+    {{- end }}
+)
+{{- end }}
+
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -74,6 +107,9 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     },
 {{ if gt .SLAMissDurationInSec 0 -}}
     sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+{{- end }}
+{{- if $setResourceConfig }}
+    resources = resources,
 {{- end }}
     reattach_on_restart=True
 )
@@ -111,9 +147,12 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
         "SCHEDULED_AT":'{{ "{{ next_execution_date }}" }}',
         # rest of the env vars are pulled from the container by making a GRPC call to optimus
     },
-    {{ if eq $hookSchema.HookType $.HookTypeFail -}}
+{{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
-    {{ end -}}
+{{- end }}
+{{- if $setResourceConfig }}
+    resources = resources,
+{{- end }}
     reattach_on_restart=True
 )
 {{- end }}
