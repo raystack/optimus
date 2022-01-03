@@ -224,14 +224,6 @@ Note: remove interval field from job specification for manually triggered jobs`,
 this effects runtime dependencies and template macros`,
 			},
 		},
-		{
-			Name: "metadata.resource",
-			Prompt: &survey.Confirm{
-				Message: "Do you want to configure resource?",
-				Default: false,
-				Help:    "Set configuration for CPU or Memory for each job",
-			},
-		},
 	}
 	baseInputsRaw := make(map[string]interface{})
 	if err := survey.Ask(qs, &baseInputsRaw); err != nil {
@@ -240,59 +232,6 @@ this effects runtime dependencies and template macros`,
 	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
 	if err != nil {
 		return local.Job{}, err
-	}
-
-	var metadata local.JobSpecMetadata
-	if baseInputs["metadata.resource"] == "true" {
-		help := `Set the value for %s for a job.
-Go to https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container
-for more information.`
-		resourceQuestions := []*survey.Question{
-			{
-				Name: "request.cpu",
-				Prompt: &survey.Input{
-					Message: "Set request.cpu for a job",
-					Default: "250m",
-					Help:    fmt.Sprintf(help, "request.cpu"),
-				},
-			},
-			{
-				Name: "request.memory",
-				Prompt: &survey.Input{
-					Message: "Set request.memory for a job",
-					Default: "128Mi",
-					Help:    fmt.Sprintf(help, "request.memory"),
-				},
-			},
-			{
-				Name: "limit.cpu",
-				Prompt: &survey.Input{
-					Message: "Set limit.cpu for a job",
-					Default: "500m",
-					Help:    fmt.Sprintf(help, "limit.cpu"),
-				},
-			},
-			{
-				Name: "limit.memory",
-				Prompt: &survey.Input{
-					Message: "Set limit.memory for a job",
-					Default: "256Mi",
-					Help:    fmt.Sprintf(help, "limit.memory"),
-				},
-			},
-		}
-		rawResourceInput := make(map[string]interface{})
-		if err := survey.Ask(resourceQuestions, &rawResourceInput); err != nil {
-			return local.Job{}, err
-		}
-		resourceInput, err := utils.ConvertToStringMap(rawResourceInput)
-		if err != nil {
-			return local.Job{}, err
-		}
-		metadata.Resource.Request.CPU = resourceInput["request.cpu"]
-		metadata.Resource.Request.Memory = resourceInput["request.memory"]
-		metadata.Resource.Limit.CPU = resourceInput["limit.cpu"]
-		metadata.Resource.Limit.Memory = resourceInput["limit.memory"]
 	}
 
 	// define defaults
@@ -318,7 +257,6 @@ for more information.`
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
-		Metadata: metadata,
 	}
 
 	executionTask, err := pluginRepo.GetByName(jobInput.Task.Name)
