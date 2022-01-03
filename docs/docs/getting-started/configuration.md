@@ -10,22 +10,41 @@ version: 1
 # used to connect optimus service
 host: localhost:9100 
 
-jobs:
-  # folder where job specifications are stored
-  path: "job"
+# project specification
+project:
+  
+  # name of the Optimus project
+  name: sample_project
+  
+  # project level variables usable in specifications
+  config: {}
 
-datastore:
-  # optimus is capable of supporting multiple datastores
-  type: bigquery
-  # path where resource spec for BQ are stored
-  path: "bq"
-  # backup configurations of a datastore
-  backup: {}
-
-# project variables usable in specifications
-config:
-  global:{}
-  local:{}
+# namespace specification of the jobs and resources
+namespace:
+  
+  # namespace name 
+  name: sample_namespace
+  
+  jobs:
+    # folder where job specifications are stored
+    path: "job"
+    
+  datastore:
+    # optimus is capable of supporting multiple datastores
+    type: bigquery
+    # path where resource spec for BQ are stored
+    path: "bq"
+    # backup configurations of a datastore
+    backup:
+      # backup result age until expired - default '720h'
+      ttl: 168h
+      # where backup result should be located - default 'optimus_backup'
+      dataset: archive
+      # backup result prefix table name - default 'backup'
+      prefix: archive
+    
+  # namespace level variables usable in specifications
+  config: {}
 
 # for configuring optimus service locally
 serve:
