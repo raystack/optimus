@@ -6,6 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	// generic backup configurations
+	ConfigTTL              = "ttl"
+	ConfigIgnoreDownstream = "ignore_downstream"
+
+	BackupSpecKeyURN = "URN"
+)
+
 type BackupResourceRequest struct {
 	Resource   ResourceSpec
 	BackupSpec BackupRequest

@@ -27,6 +27,7 @@ type Replay struct {
 	Status        string    `gorm:"not null"`
 	Message       datatypes.JSON
 	ExecutionTree datatypes.JSON
+	Config        datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -83,12 +84,18 @@ func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
 		}
 	}
 
+	configInBytes, err := json.Marshal(spec.Config)
+	if err != nil {
+		return Replay{}, err
+	}
+
 	return Replay{
 		ID:            spec.ID,
 		JobID:         spec.Job.ID,
 		StartDate:     spec.StartDate.UTC(),
 		EndDate:       spec.EndDate.UTC(),
 		Status:        spec.Status,
+		Config:        configInBytes,
 		Message:       message,
 		ExecutionTree: executionTree,
 	}, nil
@@ -130,6 +137,13 @@ func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
 			return models.ReplaySpec{}, err
 		}
 		treeNode = toTreeNode(&jobTree)
+	}
+
+	if p.Config != nil {
+		config := make(map[string]string)
+		if err := json.Unmarshal(p.Config, &config); err != nil {
+			return models.ReplaySpec{}, err
+		}
 	}
 
 	return models.ReplaySpec{

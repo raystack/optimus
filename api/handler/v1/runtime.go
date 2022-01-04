@@ -929,6 +929,7 @@ func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListRep
 			StartDate: timestamppb.New(replaySpec.StartDate),
 			EndDate:   timestamppb.New(replaySpec.EndDate),
 			State:     replaySpec.Status,
+			Config:    replaySpec.Config,
 			CreatedAt: timestamppb.New(replaySpec.CreatedAt),
 		})
 	}
@@ -1050,7 +1051,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupRequest) (*pb.BackupResponse, error) {
+func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.CreateBackupRequest) (*pb.CreateBackupResponse, error) {
 	projectSpec, err := sv.getProjectSpec(ctx, req.ProjectName)
 	if err != nil {
 		return nil, err
@@ -1096,7 +1097,7 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 		return nil, status.Errorf(codes.Internal, "error while doing backup: %v", err)
 	}
 
-	return &pb.BackupResponse{
+	return &pb.CreateBackupResponse{
 		Urn:              result.Resources,
 		IgnoredResources: result.IgnoredResources,
 	}, nil
@@ -1108,7 +1109,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 		return nil, err
 	}
 
-	results, err := sv.resourceSvc.ListBackupResources(ctx, projectSpec, req.DatastoreName)
+	results, err := sv.resourceSvc.ListResourceBackups(ctx, projectSpec, req.DatastoreName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting backup list: %v", err)
 	}
@@ -1120,10 +1121,62 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 			ResourceName: result.Resource.Name,
 			CreatedAt:    timestamppb.New(result.CreatedAt),
 			Description:  result.Description,
+			Config:       result.Config,
 		})
 	}
 	return &pb.ListBackupsResponse{
 		Backups: backupList,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
+	projectSpec, err := sv.getProjectSpec(ctx, req.ProjectName)
+	if err != nil {
+		return nil, err
+	}
+
+	uuid, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "error while parsing backup ID: %v", err)
+	}
+
+	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
+	if err != nil {
+		if err == store.ErrResourceNotFound {
+			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
+		}
+		return nil, status.Errorf(codes.Internal, "error while getting backup detail: %v", err)
+	}
+
+	var results []string
+	for _, result := range backupDetail.Result {
+		backupResult, ok := result.(map[string]interface{})
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "error while parsing backup result: %v", ok)
+		}
+
+		backupURN, ok := backupResult[models.BackupSpecKeyURN]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "%s is not found in backup result", models.BackupSpecKeyURN)
+		}
+
+		backupURNStr, ok := backupURN.(string)
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "invalid backup URN: %v", backupURN)
+		}
+
+		results = append(results, backupURNStr)
+	}
+
+	return &pb.GetBackupResponse{
+		Spec: &pb.BackupSpec{
+			Id:           backupDetail.ID.String(),
+			ResourceName: backupDetail.Resource.Name,
+			CreatedAt:    timestamppb.New(backupDetail.CreatedAt),
+			Description:  backupDetail.Description,
+			Config:       backupDetail.Config,
+		},
+		Urn: results,
 	}, nil
 }
 

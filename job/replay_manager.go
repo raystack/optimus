@@ -101,6 +101,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 		Job:           reqInput.Job,
 		StartDate:     reqInput.Start,
 		EndDate:       reqInput.End,
+		Config:        prepareReplayConfig(reqInput.AllowedDownstreamNamespaces),
 		Status:        models.ReplayStatusAccepted,
 		ExecutionTree: replayPlan.ExecutionTree,
 	}
@@ -124,6 +125,17 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 		})
 		return models.ReplayResult{}, ErrRequestQueueFull
 	}
+}
+
+func prepareReplayConfig(allowedDownstreamNamespaces []string) map[string]string {
+	config := make(map[string]string)
+
+	config[models.ConfigIgnoreDownstream] = "true"
+	if len(allowedDownstreamNamespaces) > 0 {
+		config[models.ConfigIgnoreDownstream] = "false"
+	}
+
+	return config
 }
 
 // start a worker goroutine that runs the replay in background

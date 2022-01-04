@@ -16,17 +16,19 @@ import (
 )
 
 var (
-	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
-	errorReadTableSpec  = "failed to read table spec for bigquery"
+	tableNameParseRegex     = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
+	errorReadTableSpec      = "failed to read table spec for bigquery"
+	backupTimePostfixFormat = "2006_01_02_15_04_05"
 )
 
 const (
-	BackupConfigDataset  = "dataset"
-	BackupConfigPrefix   = "prefix"
-	BackupConfigTTL      = "ttl"
+	// bigquery datastore specific configurations
+	BackupConfigDataset = "dataset"
+	BackupConfigPrefix  = "prefix"
+
 	defaultBackupDataset = "optimus_backup"
 	defaultBackupPrefix  = "backup"
-	defaultBackupTTL     = time.Hour * 720
+	defaultBackupTTL     = "720h"
 )
 
 func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
@@ -145,7 +147,7 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 		return models.BackupResourceResponse{}, errors.New(errorReadTableSpec)
 	}
 
-	bqResourceDst := prepareBQResourceDst(bqResourceSrc, request.BackupSpec)
+	bqResourceDst := prepareBQResourceDst(bqResourceSrc, request.BackupSpec, request.BackupTime)
 
 	tableDst, err := duplicateTable(ctx, client, bqResourceSrc, bqResourceDst)
 	if err != nil {
@@ -172,21 +174,24 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 	}, nil
 }
 
-func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest) BQTable {
+func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest, backupTime time.Time) BQTable {
 	datasetValue, ok := backupSpec.Config[BackupConfigDataset]
 	if !ok {
 		datasetValue = defaultBackupDataset
+		backupSpec.Config[BackupConfigDataset] = defaultBackupDataset
 	}
 
 	prefixValue, ok := backupSpec.Config[BackupConfigPrefix]
 	if !ok {
 		prefixValue = defaultBackupPrefix
+		backupSpec.Config[BackupConfigPrefix] = defaultBackupPrefix
 	}
 
 	return BQTable{
 		Project: bqResourceSrc.Project,
 		Dataset: datasetValue,
-		Table:   fmt.Sprintf("%s_%s_%s_%s", prefixValue, bqResourceSrc.Dataset, bqResourceSrc.Table, backupSpec.ID),
+		Table: fmt.Sprintf("%s_%s_%s_%s", prefixValue, bqResourceSrc.Dataset, bqResourceSrc.Table,
+			backupTime.Format(backupTimePostfixFormat)),
 	}
 }
 
@@ -231,19 +236,19 @@ func updateExpiry(ctx context.Context, tableDst bqiface.Table, req models.Backup
 		return nil, err
 	}
 
-	var ttl time.Duration
-	ttlStr, ok := req.BackupSpec.Config[BackupConfigTTL]
-	if ok {
-		ttl, err = time.ParseDuration(ttlStr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse bigquery backup TTL %s", ttlStr)
-		}
-	} else {
+	ttl, ok := req.BackupSpec.Config[models.ConfigTTL]
+	if !ok {
 		ttl = defaultBackupTTL
+		req.BackupSpec.Config[models.ConfigTTL] = defaultBackupTTL
+	}
+
+	ttlDuration, err := time.ParseDuration(ttl)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse bigquery backup TTL %s", ttl)
 	}
 
 	update := bigquery.TableMetadataToUpdate{
-		ExpirationTime: req.BackupTime.Add(ttl),
+		ExpirationTime: req.BackupTime.Add(ttlDuration),
 	}
 	if _, err = tableDst.Update(ctx, update, meta.ETag); err != nil {
 		return nil, err
