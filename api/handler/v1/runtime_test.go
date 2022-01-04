@@ -3556,7 +3556,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: resourceName,
 				URN:  resourceUrn,
 			}
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -3574,7 +3574,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 				DryRun: false,
 			}
-			backupResponsePb := &pb.BackupResponse{
+			backupResponsePb := &pb.CreateBackupResponse{
 				Urn: []string{backupUrn},
 			}
 			backupResult := models.BackupResult{
@@ -3604,7 +3604,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(ctx, &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResponsePb, backupResponse)
@@ -3665,7 +3665,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			backupDownstream1Urn := "datastore://a-data-project:optimus_backup.downstream1"
 			backupDownstream2Urn := "datastore://a-data-project:optimus_backup.downstream2"
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -3716,7 +3716,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResult.Resources, backupResponse.Urn)
@@ -3777,7 +3777,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			backupDownstream1Urn := "datastore://a-data-project:optimus_backup.downstream1"
 			backupDownstream2Urn := "datastore://a-data-project:optimus_backup.downstream2"
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -3828,7 +3828,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResult.Resources, backupResponse.Urn)
@@ -3850,7 +3850,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
 
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -3873,7 +3873,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -3891,7 +3891,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			namespaceRepoFact := new(mock.NamespaceRepoFactory)
 			defer namespaceRepoFact.AssertExpectations(t)
 
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -3918,7 +3918,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -3943,7 +3943,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: resourceName,
 				URN:  resourceUrn,
 			}
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -3971,7 +3971,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -3999,7 +3999,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: resourceName,
 				URN:  resourceUrn,
 			}
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -4027,7 +4027,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -4076,7 +4076,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: resourceName,
 				URN:  resourceUrn,
 			}
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:                 projectName,
 				DatastoreName:               models.DestinationTypeBigquery.String(),
 				ResourceName:                resourceName,
@@ -4106,7 +4106,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -4165,7 +4165,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: resourceName,
 				URN:  resourceUrn,
 			}
-			backupRequestPb := pb.BackupRequest{
+			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
@@ -4199,7 +4199,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.Backup(context.Background(), &backupRequestPb)
+			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -4361,7 +4361,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 	})
 
-	t.Run("GetBackupDetail", func(t *testing.T) {
+	t.Run("GetBackup", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
 			ID:   uuid.Must(uuid.NewRandom()),
@@ -4377,7 +4377,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			ProjectSpec: projectSpec,
 		}
 		backupID := uuid.Must(uuid.NewRandom())
-		getBackupDetailReq := pb.GetBackupDetailRequest{
+		getBackupDetailReq := pb.GetBackupRequest{
 			ProjectName:   projectName,
 			DatastoreName: datastoreName,
 			Namespace:     namespaceSpec.Name,
@@ -4401,7 +4401,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
 
-			backupResultPb := &pb.GetBackupDetailResponse{
+			backupResultPb := &pb.GetBackupResponse{
 				Spec: &pb.BackupSpec{
 					Id:           backupSpec.ID.String(),
 					ResourceName: backupSpec.Resource.Name,
@@ -4427,7 +4427,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.GetBackupDetail(context.Background(), &getBackupDetailReq)
+			backupResponse, err := runtimeServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResultPb, backupResponse)
@@ -4460,7 +4460,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.GetBackupDetail(context.Background(), &getBackupDetailReq)
+			backupResponse, err := runtimeServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -4493,7 +4493,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.GetBackupDetail(context.Background(), &getBackupDetailReq)
+			backupResponse, err := runtimeServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -4526,7 +4526,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.GetBackupDetail(context.Background(), &getBackupDetailReq)
+			backupResponse, err := runtimeServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -4572,7 +4572,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.GetBackupDetail(context.Background(), &getBackupDetailReq)
+			backupResponse, err := runtimeServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
 
 			assert.Nil(t, backupResponse)
 			assert.Contains(t, err.Error(), "URN is not found in backup result")
@@ -4618,7 +4618,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
-			backupResponse, err := runtimeServiceServer.GetBackupDetail(context.Background(), &getBackupDetailReq)
+			backupResponse, err := runtimeServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
 
 			assert.Nil(t, backupResponse)
 			assert.Contains(t, err.Error(), "invalid backup URN")

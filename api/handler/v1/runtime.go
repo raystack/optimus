@@ -1051,7 +1051,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupRequest) (*pb.BackupResponse, error) {
+func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.CreateBackupRequest) (*pb.CreateBackupResponse, error) {
 	projectSpec, err := sv.getProjectSpec(ctx, req.ProjectName)
 	if err != nil {
 		return nil, err
@@ -1097,7 +1097,7 @@ func (sv *RuntimeServiceServer) Backup(ctx context.Context, req *pb.BackupReques
 		return nil, status.Errorf(codes.Internal, "error while doing backup: %v", err)
 	}
 
-	return &pb.BackupResponse{
+	return &pb.CreateBackupResponse{
 		Urn:              result.Resources,
 		IgnoredResources: result.IgnoredResources,
 	}, nil
@@ -1129,7 +1129,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) GetBackupDetail(ctx context.Context, req *pb.GetBackupDetailRequest) (*pb.GetBackupDetailResponse, error) {
+func (sv *RuntimeServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
 	projectSpec, err := sv.getProjectSpec(ctx, req.ProjectName)
 	if err != nil {
 		return nil, err
@@ -1168,7 +1168,7 @@ func (sv *RuntimeServiceServer) GetBackupDetail(ctx context.Context, req *pb.Get
 		results = append(results, backupURNStr)
 	}
 
-	return &pb.GetBackupDetailResponse{
+	return &pb.GetBackupResponse{
 		Spec: &pb.BackupSpec{
 			Id:           backupDetail.ID.String(),
 			ResourceName: backupDetail.Resource.Name,

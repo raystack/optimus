@@ -319,12 +319,12 @@
         ]
       },
       "post": {
-        "operationId": "RuntimeService_Backup",
+        "operationId": "RuntimeService_CreateBackup",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/optimusBackupResponse"
+              "$ref": "#/definitions/optimusCreateBackupResponse"
             }
           },
           "default": {
@@ -461,12 +461,12 @@
     },
     "/v1/project/{projectName}/namespace/{namespace}/datastore/{datastoreName}/backup/{id}": {
       "get": {
-        "operationId": "RuntimeService_GetBackupDetail",
+        "operationId": "RuntimeService_GetBackup",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/optimusGetBackupDetailResponse"
+              "$ref": "#/definitions/optimusGetBackupResponse"
             }
           },
           "default": {
@@ -1453,23 +1453,6 @@
         }
       }
     },
-    "optimusBackupResponse": {
-      "type": "object",
-      "properties": {
-        "urn": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "ignoredResources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "optimusBackupSpec": {
       "type": "object",
       "properties": {
@@ -1517,6 +1500,23 @@
         },
         "jobName": {
           "type": "string"
+        }
+      }
+    },
+    "optimusCreateBackupResponse": {
+      "type": "object",
+      "properties": {
+        "urn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignoredResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1589,7 +1589,7 @@
         }
       }
     },
-    "optimusGetBackupDetailResponse": {
+    "optimusGetBackupResponse": {
       "type": "object",
       "properties": {
         "spec": {
@@ -1752,6 +1752,14 @@
       ],
       "default": "UNSPECIFIED"
     },
+    "optimusJobMetadata": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "$ref": "#/definitions/optimusJobSpecMetadataResource"
+        }
+      }
+    },
     "optimusJobSpecHook": {
       "type": "object",
       "properties": {
@@ -1763,6 +1771,28 @@
           "items": {
             "$ref": "#/definitions/optimusJobConfigItem"
           }
+        }
+      }
+    },
+    "optimusJobSpecMetadataResource": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "$ref": "#/definitions/optimusJobSpecMetadataResourceConfig"
+        },
+        "limit": {
+          "$ref": "#/definitions/optimusJobSpecMetadataResourceConfig"
+        }
+      }
+    },
+    "optimusJobSpecMetadataResourceConfig": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
         }
       }
     },
@@ -1841,6 +1871,9 @@
         },
         "behavior": {
           "$ref": "#/definitions/JobSpecificationBehavior"
+        },
+        "metadata": {
+          "$ref": "#/definitions/optimusJobMetadata"
         }
       }
     },

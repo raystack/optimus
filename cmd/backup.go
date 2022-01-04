@@ -141,7 +141,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 			return nil
 		}
 
-		backupRequest := &pb.BackupRequest{
+		backupRequest := &pb.CreateBackupRequest{
 			ProjectName:                 project,
 			Namespace:                   namespace,
 			ResourceName:                resourceName,
@@ -192,7 +192,7 @@ func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *p
 	return nil
 }
 
-func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.BackupRequest) (err error) {
+func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.CreateBackupRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -211,7 +211,7 @@ func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.Back
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 
-	backupResponse, err := runtime.Backup(requestTimeout, backupRequest)
+	backupResponse, err := runtime.CreateBackup(requestTimeout, backupRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Info("backup took too long, timing out")
@@ -223,7 +223,7 @@ func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.Back
 	return nil
 }
 
-func printBackupResponse(l log.Logger, backupResponse *pb.BackupResponse) {
+func printBackupResponse(l log.Logger, backupResponse *pb.CreateBackupResponse) {
 	l.Info(coloredSuccess("\nBackup Finished"))
 	l.Info("Resource backup completed successfully:")
 	counter := 1
@@ -376,7 +376,7 @@ func backupDetailSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, co
 			return err
 		}
 
-		listBackupsRequest := &pb.GetBackupDetailRequest{
+		listBackupsRequest := &pb.GetBackupRequest{
 			ProjectName:   project,
 			DatastoreName: storerName,
 			Id:            args[0],
@@ -400,7 +400,7 @@ func backupDetailSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, co
 		l.Info("please wait...")
 		runtime := pb.NewRuntimeServiceClient(conn)
 
-		backupDetailResponse, err := runtime.GetBackupDetail(requestTimeout, listBackupsRequest)
+		backupDetailResponse, err := runtime.GetBackup(requestTimeout, listBackupsRequest)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Info("getting backup detail took too long, timing out")
@@ -414,7 +414,7 @@ func backupDetailSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, co
 	return backupCmd
 }
 
-func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupDetailResponse) {
+func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupResponse) {
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
 
