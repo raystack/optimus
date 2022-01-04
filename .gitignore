@@ -28,13 +28,9 @@ coverage.txt
 !/api/proto/odpf/optimus/*
 !/api/proto/odpf/optimus/**/*
 
-!/api/proto/odpf/metadata/
-!/api/proto/odpf/metadata/optimus/
-!/api/proto/odpf/metadata/optimus/*
-!/api/proto/odpf/metadata/optimus/**/*
-
 api/third_party/openapi/odpf/**/*
 api/third_party/openapi/odpf/optimus/plugins/*
 api/third_party/openapi/odpf/optimus/cluster/*
+api/third_party/openapi/odpf/optimus/core/*
 !api/third_party/openapi/odpf/optimus/
-!api/third_party/openapi/odpf/optimus/runtime_service.swagger.json
+!api/third_party/openapi/odpf/optimus/core/v1beta1/runtime.swagger.json

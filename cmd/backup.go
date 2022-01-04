@@ -9,7 +9,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 
 	"github.com/AlecAivazis/survey/v2"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
@@ -110,7 +110,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
 			ProjectName:                 project,
-			Namespace:                   namespace,
+			NamespaceName:               namespace,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
@@ -143,7 +143,7 @@ func backupResourceSubCommand(l log.Logger, datastoreRepo models.DatastoreRepo, 
 
 		backupRequest := &pb.CreateBackupRequest{
 			ProjectName:                 project,
-			Namespace:                   namespace,
+			NamespaceName:               namespace,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,

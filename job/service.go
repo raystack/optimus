@@ -11,7 +11,6 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
-	"github.com/odpf/optimus/meta"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
@@ -77,7 +76,6 @@ type Service struct {
 	jobSpecRepoFactory        SpecRepoFactory
 	dependencyResolver        DependencyResolver
 	priorityResolver          PriorityResolver
-	metaSvcFactory            meta.MetaSvcFactory
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	replayManager             ReplayManager
 
@@ -280,10 +278,6 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		return err
 	}
 
-	if err = srv.publishMetadata(namespace, jobSpecs, progressObserver); err != nil {
-		return err
-	}
-
 	// get all stored job names
 	schedulerJobs, err := srv.batchScheduler.ListJobs(ctx, namespace, models.SchedulerListOptions{OnlyName: true})
 	if err != nil {
@@ -408,19 +402,6 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 		}
 	}
 	return resolvedSpecs, resolvedErrors
-}
-
-func (srv *Service) publishMetadata(namespace models.NamespaceSpec, jobSpecs []models.JobSpec,
-	progressObserver progress.Observer) error {
-	if srv.metaSvcFactory == nil {
-		return nil
-	}
-
-	metadataJobService := srv.metaSvcFactory.New()
-	if err := metadataJobService.Publish(namespace, jobSpecs, progressObserver); err != nil {
-		return err
-	}
-	return nil
 }
 
 // isJobDeletable determines if a given job is deletable or not
@@ -628,7 +609,7 @@ func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
 func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.SchedulerUnit,
 	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
-	metaSvcFactory meta.MetaSvcFactory, projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager,
 ) *Service {
 	return &Service{
@@ -637,7 +618,6 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		manualScheduler:           manualScheduler,
 		dependencyResolver:        dependencyResolver,
 		priorityResolver:          priorityResolver,
-		metaSvcFactory:            metaSvcFactory,
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
 		replayManager:             replayManager,
 

@@ -238,7 +238,7 @@ class OptimusAPIClient:
         return "http://" + host
 
     def get_job_run_status(self, optimus_project: str, optimus_job: str) -> dict:
-        url = '{optimus_host}/api/v1/project/{optimus_project}/job/{optimus_job}/status'.format(
+        url = '{optimus_host}/api/v1beta1/project/{optimus_project}/job/{optimus_job}/status'.format(
             optimus_host=self.host,
             optimus_project=optimus_project,
             optimus_job=optimus_job,
@@ -249,7 +249,7 @@ class OptimusAPIClient:
 
     def get_task_window(self, scheduled_at: str, window_size: str, window_offset: str,
                         window_truncate_upto: str) -> dict:
-        url = '{optimus_host}/api/v1/window?scheduledAt={scheduled_at}&size={window_size}&offset={window_offset}&truncate_to={window_truncate_upto}'.format(
+        url = '{optimus_host}/api/v1beta1/window?scheduledAt={scheduled_at}&size={window_size}&offset={window_offset}&truncate_to={window_truncate_upto}'.format(
             optimus_host=self.host,
             scheduled_at=scheduled_at,
             window_size=window_size,
@@ -261,7 +261,7 @@ class OptimusAPIClient:
         return response.json()
 
     def get_job_metadata(self, execution_date, project, job) -> dict:
-        url = '{optimus_host}/api/v1/project/{project_name}/job/{job_name}/instance'.format(optimus_host=self.host,
+        url = '{optimus_host}/api/v1beta1/project/{project_name}/job/{job_name}/instance'.format(optimus_host=self.host,
                                                                                             project_name=project,
                                                                                             job_name=job)
         request_data = {
@@ -274,7 +274,7 @@ class OptimusAPIClient:
         return response.json()
 
     def notify_event(self, project, namespace, job, event) -> dict:
-        url = '{optimus_host}/api/v1/project/{project_name}/namespace/{namespace}/job/{job_name}/event'.format(
+        url = '{optimus_host}/api/v1beta1/project/{project_name}/namespace/{namespace}/job/{job_name}/event'.format(
             optimus_host=self.host,
             project_name=project,
             namespace=namespace,
@@ -437,7 +437,7 @@ def optimus_failure_notify(context):
         "scheduled_at": current_execution_date.strftime("%Y-%m-%dT%H:%M:%SZ")
     }
     event = {
-        "type": "FAILURE",
+        "type": "TYPE_FAILURE",
         "value": message,
     }
     # post event
@@ -471,7 +471,7 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
     }
 
     event = {
-        "type": "SLA_MISS",
+        "type": "TYPE_SLA_MISS",
         "value": message,
     }
     # post event

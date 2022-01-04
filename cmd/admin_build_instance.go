@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"

@@ -53,7 +53,7 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
@@ -85,7 +85,7 @@ func TestService(t *testing.T) {
 			repoFac.On("New", namespaceSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil)
 			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})
@@ -119,7 +119,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
+			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil)
 			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
@@ -152,7 +152,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
+			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil)
 			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
@@ -247,7 +247,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -335,7 +335,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -388,7 +388,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
 		})
@@ -436,7 +436,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
 		})
@@ -526,7 +526,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[1].Name}, nil).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -578,7 +578,7 @@ func TestService(t *testing.T) {
 				errors.New("error test-2"))
 			defer depenResolver.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), "error test")
@@ -658,20 +658,12 @@ func TestService(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
-			metaSvc := new(mock.MetaService)
-			metaSvc.On("Publish", namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
-			defer metaSvc.AssertExpectations(t)
-
-			metaSvcFact := new(mock.MetaSvcFactory)
-			metaSvcFact.On("New").Return(metaSvc)
-			defer metaSvcFact.AssertExpectations(t)
-
 			batchScheduler := new(mock.Scheduler)
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
 			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, metaSvcFact, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -745,7 +737,7 @@ func TestService(t *testing.T) {
 			// delete unwanted
 			jobSpecRepo.On("Delete", ctx, jobSpecsBase[0].Name).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil)
 			err := svc.KeepOnly(ctx, namespaceSpec, toKeep, nil)
 			assert.Nil(t, err)
 		})
@@ -804,7 +796,7 @@ func TestService(t *testing.T) {
 				Dependencies: []string{"bq://project.dataset.table"},
 			}, nil)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil)
 			dest, depen, err := svc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 			assert.Equal(t, models.JobSpecTaskDestination{
@@ -887,7 +879,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[0].Name}, nil).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 		})
@@ -969,7 +961,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.NotNil(t, err)
 			assert.Equal(t, "cannot delete job test since it's dependency of job downstream-test", err.Error())
@@ -997,7 +989,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil)
 			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpec1, jobSpecsResult)
@@ -1017,7 +1009,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil)
 			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Equal(t, models.JobSpec{}, jobSpecsResult)
@@ -1051,7 +1043,7 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(jobSpec1, nil)
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, []models.JobSpec{jobSpec2}, jobSpecsResult)
@@ -1076,7 +1068,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, jobSpecsResult)
@@ -1110,7 +1102,7 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, nil, projJobSpecRepoFac, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
 			assert := assert.New(t)
 			assert.Contains(err.Error(), errorMsg)

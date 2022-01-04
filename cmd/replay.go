@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/models"
@@ -177,7 +177,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	replayRequest := &pb.ReplayDryRunRequest{
 		ProjectName:                 projectName,
 		JobName:                     jobName,
-		Namespace:                   namespace,
+		NamespaceName:               namespace,
 		StartDate:                   startDate,
 		EndDate:                     endDate,
 		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
@@ -195,7 +195,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 }
 
 func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
-	l.Info(fmt.Sprintf("For %s project and %s namespace\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.Namespace)))
+	l.Info(fmt.Sprintf("For %s project and %s namespace\n", coloredNotice(replayRequest.ProjectName), coloredNotice(replayRequest.NamespaceName)))
 	l.Info(coloredNotice("Replay Runs"))
 	table := tablewriter.NewWriter(l.Writer())
 	table.SetBorder(false)
@@ -282,7 +282,7 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 	replayRequest := &pb.ReplayRequest{
 		ProjectName:                 projectName,
 		JobName:                     jobName,
-		Namespace:                   namespace,
+		NamespaceName:               namespace,
 		StartDate:                   startDate,
 		EndDate:                     endDate,
 		Force:                       forceRun,

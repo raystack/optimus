@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -12,15 +11,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/meta"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -114,9 +113,9 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(respStream.Context(), req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(respStream.Context(), req.GetNamespaceName())
 	if err != nil {
-		return status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	var jobsToKeep []models.JobSpec
@@ -163,9 +162,9 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	jobSpecs, err := sv.jobSvc.GetAll(ctx, namespaceSpec)
@@ -194,9 +193,9 @@ func (sv *RuntimeServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTa
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespaceName())
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -241,9 +240,9 @@ func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	j, err := sv.adapter.FromJobProto(req.GetJob())
@@ -266,9 +265,9 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(respStream.Context(), req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(respStream.Context(), req.GetNamespaceName())
 	if err != nil {
-		return status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	observers := new(progress.ObserverChain)
@@ -345,9 +344,9 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespaceName())
 	}
 
 	jobSpec, err := sv.adapter.FromJobProto(req.GetSpec())
@@ -376,7 +375,7 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ReadJobSpecification(ctx context.Context, req *pb.ReadJobSpecificationRequest) (*pb.ReadJobSpecificationResponse, error) {
+func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
 	projectRepo := sv.projectRepoFactory.New()
 	projSpec, err := projectRepo.GetByName(ctx, req.GetProjectName())
 	if err != nil {
@@ -384,9 +383,9 @@ func (sv *RuntimeServiceServer) ReadJobSpecification(ctx context.Context, req *p
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespaceName())
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -399,7 +398,7 @@ func (sv *RuntimeServiceServer) ReadJobSpecification(ctx context.Context, req *p
 		return nil, status.Errorf(codes.Internal, "cannot serialize job: \n%s", err.Error())
 	}
 
-	return &pb.ReadJobSpecificationResponse{
+	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,
 	}, nil
 }
@@ -412,9 +411,9 @@ func (sv *RuntimeServiceServer) DeleteJobSpecification(ctx context.Context, req 
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found. Is it registered?", err.Error(), req.GetNamespaceName())
 	}
 
 	jobSpecToDelete, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -486,7 +485,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
 	}
 
-	instanceType, err := models.InstanceType("").New(req.InstanceType.String())
+	instanceType, err := models.ToInstanceType(utils.FromEnumProto(req.InstanceType.String(), "TYPE"))
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: instance type %s not found", err.Error(), req.InstanceType.String())
 	}
@@ -586,15 +585,15 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "%s: failed to find the job %s for namespace %s", err.Error(),
-			req.GetJobName(), req.GetNamespace())
+			req.GetJobName(), req.GetNamespaceName())
 	}
 
 	if req.GetEvent() == nil {
@@ -606,7 +605,7 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 		eventValues = req.GetEvent().Value.GetFields()
 	}
 	if err := sv.jobEventSvc.Register(ctx, namespaceSpec, jobSpec, models.JobEvent{
-		Type:  models.JobEventType(strings.ToLower(req.GetEvent().Type.String())),
+		Type:  models.JobEventType(utils.FromEnumProto(req.GetEvent().Type.String(), "TYPE")),
 		Value: eventValues,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to register event: \n%s", err.Error())
@@ -677,9 +676,9 @@ func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.Crea
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
@@ -704,9 +703,9 @@ func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.Upda
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
@@ -731,9 +730,9 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	response, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
@@ -762,9 +761,9 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(respStream.Context(), req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(respStream.Context(), req.GetNamespaceName())
 	if err != nil {
-		return status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	var resourceSpecs []models.ResourceSpec
@@ -801,9 +800,9 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespace())
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.GetNamespaceName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespace())
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.GetNamespaceName())
 	}
 
 	resourceSpecs, err := sv.resourceSvc.GetAll(ctx, namespaceSpec, req.DatastoreName)
@@ -825,7 +824,7 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 }
 
 func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
-	replayRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.Namespace, req.JobName, req.StartDate,
+	replayRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.NamespaceName, req.JobName, req.StartDate,
 		req.EndDate, false, req.AllowedDownstreamNamespaces)
 	if err != nil {
 		return nil, err
@@ -848,7 +847,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 }
 
 func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
-	replayWorkerRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.Namespace, req.JobName, req.StartDate,
+	replayWorkerRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.NamespaceName, req.JobName, req.StartDate,
 		req.EndDate, req.Force, req.AllowedDownstreamNamespaces)
 	if err != nil {
 		return nil, err
@@ -1008,9 +1007,9 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projectSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.Namespace)
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.NamespaceName)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.Namespace)
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.NamespaceName)
 	}
 
 	resourceSpec, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
@@ -1058,9 +1057,9 @@ func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.Create
 	}
 
 	namespaceRepo := sv.namespaceRepoFactory.New(projectSpec)
-	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.Namespace)
+	namespaceSpec, err := namespaceRepo.GetByName(ctx, req.NamespaceName)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.Namespace)
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.NamespaceName)
 	}
 
 	resourceSpec, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
@@ -1187,9 +1186,9 @@ func (sv *RuntimeServiceServer) RunJob(ctx context.Context, req *pb.RunJobReques
 		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.ProjectName)
 	}
 
-	namespaceSpec, err := sv.namespaceRepoFactory.New(projSpec).GetByName(ctx, req.Namespace)
+	namespaceSpec, err := sv.namespaceRepoFactory.New(projSpec).GetByName(ctx, req.NamespaceName)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.Namespace)
+		return nil, status.Errorf(codes.NotFound, "%s: namespace %s not found", err.Error(), req.NamespaceName)
 	}
 
 	var jobSpecs []models.JobSpec
@@ -1277,13 +1276,6 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 		}
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
-		}
-	case *meta.EventPublish:
-		resp := &pb.DeployJobSpecificationResponse{
-			Message: evt.String(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send publish metadata notification", "evt", evt.String(), "error", err)
 		}
 	}
 }

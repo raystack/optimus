@@ -40,9 +40,9 @@ var (
 
 const (
 	baseLibFileName   = "__lib.py"
-	dagStatusUrl      = "api/v1/dags/%s/dagRuns?limit=99999"
-	dagStatusBatchUrl = "api/v1/dags/~/dagRuns/list"
-	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
+	dagStatusUrl      = "api/v1beta1/dags/%s/dagRuns?limit=99999"
+	dagStatusBatchUrl = "api/v1beta1/dags/~/dagRuns/list"
+	dagRunClearURL    = "api/v1beta1/dags/%s/clearTaskInstances"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
 	JobsDir       = "dags"

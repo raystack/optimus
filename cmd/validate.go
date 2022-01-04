@@ -9,7 +9,7 @@ import (
 	"github.com/odpf/optimus/config"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
@@ -95,9 +95,9 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	respStream, err := runtime.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
-		ProjectName: projectName,
-		Jobs:        adaptedJobSpecs,
-		Namespace:   namespace,
+		ProjectName:   projectName,
+		Jobs:          adaptedJobSpecs,
+		NamespaceName: namespace,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

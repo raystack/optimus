@@ -12,7 +12,7 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	"github.com/odpf/optimus/models"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -82,8 +82,8 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 	jobResponse, err := runtime.RunJob(runTimeoutCtx, &pb.RunJobRequest{
-		ProjectName: projectName,
-		Namespace:   namespace,
+		ProjectName:   projectName,
+		NamespaceName: namespace,
 		Specifications: []*pb.JobSpecification{
 			adaptedSpec,
 		},

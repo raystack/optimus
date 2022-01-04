@@ -93,14 +93,14 @@ func (I InstanceType) String() string {
 	return string(I)
 }
 
-func (I InstanceType) New(val string) (InstanceType, error) {
+func ToInstanceType(val string) (InstanceType, error) {
 	switch strings.ToLower(val) {
 	case "task":
 		return InstanceTypeTask, nil
 	case "hook":
 		return InstanceTypeHook, nil
 	}
-	return InstanceType(""), errors.Errorf("failed to convert to instance type, invalid val: %s", val)
+	return "", errors.Errorf("failed to convert to instance type, invalid val: %s", val)
 }
 
 // InstanceSpec is a representation of task/hook in execution state

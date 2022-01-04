@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -132,7 +132,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				Resources:     adaptedSpecs,
 				ProjectName:   projectSpec.Name,
 				DatastoreName: storeName,
-				Namespace:     namespaceSpec.Name,
+				NamespaceName: namespaceSpec.Name,
 			})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
@@ -187,9 +187,9 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
 		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
-			Jobs:        adaptedJobSpecs,
-			ProjectName: projectSpec.Name,
-			Namespace:   namespaceSpec.Name,
+			Jobs:          adaptedJobSpecs,
+			ProjectName:   projectSpec.Name,
+			NamespaceName: namespaceSpec.Name,
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

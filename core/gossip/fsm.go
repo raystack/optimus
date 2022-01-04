@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/raft"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
@@ -46,7 +46,7 @@ func (f *fsm) Apply(rlog *raft.Log) interface{} {
 
 	f.l.Debug("apply wal", "command", cmd.Type.String())
 	switch cmd.Type {
-	case pb.CommandLog_COMMAND_TYPE_SCHEDULE_JOB:
+	case pb.CommandLogType_COMMAND_LOG_TYPE_SCHEDULE_JOB:
 		cmdLog := &pb.CommandScheduleJob{}
 		if err := proto.Unmarshal(cmd.Payload, cmdLog); err != nil {
 			return nil
@@ -63,7 +63,7 @@ func (f *fsm) Apply(rlog *raft.Log) interface{} {
 			})
 		}
 		f.l.Debug("updated state", "alloc state", f.state.Allocation[cmdLog.PeerId])
-	case pb.CommandLog_COMMAND_TYPE_UPDATE_JOB:
+	case pb.CommandLogType_COMMAND_LOG_TYPE_UPDATE_JOB:
 		cmdLog := &pb.CommandUpdateJob{}
 		if err := proto.Unmarshal(cmd.Payload, cmdLog); err != nil {
 			return nil
