@@ -63,6 +63,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		JobSpecDependencyTypeExtra string
 		SLAMissDurationInSec       int64
 		Version                    string
+		Metadata                   models.JobSpecMetadata
 	}{
 		Namespace:                  namespaceSpec,
 		Job:                        jobSpec,
@@ -77,6 +78,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
 		SLAMissDurationInSec:       slaMissDurationInSec,
 		Version:                    config.Version,
+		Metadata:                   jobSpec.Metadata,
 	}); err != nil {
 		return models.Job{}, errors.Wrap(err, "failed to templatize job")
 	}

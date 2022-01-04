@@ -56,6 +56,7 @@ type JobSpec struct {
 	Dependencies map[string]JobSpecDependency // job name to dependency
 	Assets       JobAssets
 	Hooks        []JobSpecHook
+	Metadata     JobSpecMetadata
 }
 
 func (js JobSpec) GetName() string {
@@ -370,4 +371,21 @@ type NotifyAttrs struct {
 type Notifier interface {
 	io.Closer
 	Notify(ctx context.Context, attr NotifyAttrs) error
+}
+
+// JobSpecMetadata contains metadata for a job spec
+type JobSpecMetadata struct {
+	Resource JobSpecResource
+}
+
+// JobSpecResource represents resource management configuration
+type JobSpecResource struct {
+	Request JobSpecResourceConfig
+	Limit   JobSpecResourceConfig
+}
+
+// JobSpecResourceConfig represents the resource configuration
+type JobSpecResourceConfig struct {
+	Memory string
+	CPU    string
 }

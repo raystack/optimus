@@ -50,6 +50,7 @@ transformation_secret = Secret(
     "optimus-task-bq",
     "auth.json"
 )
+
 transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),

@@ -116,6 +116,9 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		},
 		Dependencies: dependencies,
 		Hooks:        hooks,
+		Metadata: models.JobSpecMetadata{
+			Resource: adapt.FromJobSpecMetadataResourceProto(spec.Metadata.Resource),
+		},
 	}, nil
 }
 
@@ -183,6 +186,9 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
 			},
 			Notify: notifyProto,
+		},
+		Metadata: &pb.JobMetadata{
+			Resource: adapt.ToJobSpecMetadataResourceProto(spec.Metadata.Resource),
 		},
 	}
 	if spec.Schedule.EndDate != nil {
@@ -464,6 +470,52 @@ func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStat
 		response.Dependents = append(response.Dependents, parsedDep)
 	}
 	return response, nil
+}
+
+func (adapt *Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) *pb.JobSpecMetadataResource {
+	if resource.Request.CPU == "" && resource.Request.Memory == "" &&
+		resource.Limit.CPU == "" && resource.Limit.Memory == "" {
+		return nil
+	}
+	output := &pb.JobSpecMetadataResource{}
+	if resource.Request.CPU != "" {
+		output.Request = &pb.JobSpecMetadataResourceConfig{
+			Cpu: resource.Request.CPU,
+		}
+	}
+	if resource.Request.Memory != "" {
+		if output.Request == nil {
+			output.Request = &pb.JobSpecMetadataResourceConfig{}
+		}
+		output.Request.Memory = resource.Request.Memory
+	}
+	if resource.Limit.CPU != "" {
+		output.Limit = &pb.JobSpecMetadataResourceConfig{
+			Cpu: resource.Limit.CPU,
+		}
+	}
+	if resource.Limit.Memory != "" {
+		if output.Limit == nil {
+			output.Limit = &pb.JobSpecMetadataResourceConfig{}
+		}
+		output.Limit.Memory = resource.Limit.Memory
+	}
+	return output
+}
+
+func (adapt *Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
+	var output models.JobSpecResource
+	if resource != nil {
+		if resource.Request != nil {
+			output.Request.Memory = resource.Request.Memory
+			output.Request.CPU = resource.Request.Cpu
+		}
+		if resource.Limit != nil {
+			output.Limit.Memory = resource.Limit.Memory
+			output.Limit.CPU = resource.Limit.Cpu
+		}
+	}
+	return output
 }
 
 func NewAdapter(pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *Adapter {

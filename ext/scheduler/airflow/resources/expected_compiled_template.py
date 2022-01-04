@@ -7,6 +7,7 @@ from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOp
 from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
+from kubernetes.client import models as k8s
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, CrossTenantDependencySensor
@@ -49,6 +50,7 @@ transformation_secret = Secret(
     "optimus-task-bq",
     "auth.json"
 )
+
 transformation_bq = SuperKubernetesPodOperator(
     image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),

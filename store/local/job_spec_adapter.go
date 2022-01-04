@@ -42,6 +42,7 @@ type Job struct {
 	Labels       map[string]string `yaml:"labels,omitempty"`
 	Dependencies []JobDependency
 	Hooks        []JobHook
+	Metadata     JobSpecMetadata `yaml:"metadata,omitempty"`
 }
 
 type JobSchedule struct {
@@ -104,6 +105,23 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 		Name:   spec.Unit.Info().Name,
 		Config: JobSpecConfigToYamlSlice(spec.Config),
 	}, nil
+}
+
+// JobSpecMetadata is a metadata representation for a job spec
+type JobSpecMetadata struct {
+	Resource JobSpecResource `yaml:"resource,omitempty"`
+}
+
+// JobSpecResource represents the resource management configuration
+type JobSpecResource struct {
+	Request JobSpecResourceConfig `yaml:"request,omitempty"`
+	Limit   JobSpecResourceConfig `yaml:"limit,omitempty"`
+}
+
+// JobSpecResourceConfig is a resource configuration
+type JobSpecResourceConfig struct {
+	Memory string `yaml:"memory,omitempty"`
+	CPU    string `yaml:"cpu,omitempty"`
 }
 
 // MergeFrom merges parent job into this
@@ -285,6 +303,18 @@ func (conf *Job) MergeFrom(parent Job) {
 			})
 		}
 	}
+	if parent.Metadata.Resource.Request.CPU != "" {
+		conf.Metadata.Resource.Request.CPU = parent.Metadata.Resource.Request.CPU
+	}
+	if parent.Metadata.Resource.Request.Memory != "" {
+		conf.Metadata.Resource.Request.Memory = parent.Metadata.Resource.Request.Memory
+	}
+	if parent.Metadata.Resource.Limit.CPU != "" {
+		conf.Metadata.Resource.Limit.CPU = parent.Metadata.Resource.Limit.CPU
+	}
+	if parent.Metadata.Resource.Limit.Memory != "" {
+		conf.Metadata.Resource.Limit.Memory = parent.Metadata.Resource.Limit.Memory
+	}
 }
 
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
@@ -448,6 +478,18 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Assets:       models.JobAssets{}.FromMap(conf.Asset),
 		Dependencies: dependencies,
 		Hooks:        hooks,
+		Metadata: models.JobSpecMetadata{
+			Resource: models.JobSpecResource{
+				Request: models.JobSpecResourceConfig{
+					Memory: conf.Metadata.Resource.Request.Memory,
+					CPU:    conf.Metadata.Resource.Request.CPU,
+				},
+				Limit: models.JobSpecResourceConfig{
+					Memory: conf.Metadata.Resource.Limit.Memory,
+					CPU:    conf.Metadata.Resource.Limit.CPU,
+				},
+			},
+		},
 	}
 	return job, nil
 }
@@ -516,6 +558,18 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		Asset:        spec.Assets.ToMap(),
 		Dependencies: []JobDependency{},
 		Hooks:        []JobHook{},
+		Metadata: JobSpecMetadata{
+			Resource: JobSpecResource{
+				Request: JobSpecResourceConfig{
+					Memory: spec.Metadata.Resource.Request.Memory,
+					CPU:    spec.Metadata.Resource.Request.CPU,
+				},
+				Limit: JobSpecResourceConfig{
+					Memory: spec.Metadata.Resource.Limit.Memory,
+					CPU:    spec.Metadata.Resource.Limit.CPU,
+				},
+			},
+		},
 	}
 
 	if spec.Schedule.EndDate != nil {

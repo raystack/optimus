@@ -216,7 +216,28 @@ hooks:
       PRODUCER_CONFIG_BOOTSTRAP_SERVERS: "{{.GLOBAL__TransporterKafkaBroker}}"
 
       PROTO_SCHEMA: example.data.HelloTable
+
+# contains additional metadata information
+metadata:
+  # contains metadata on the resource of a job
+  resource:
+    # defines the requested configuration of a resource for a job
+    request:
+      # defines the requested memory for a job's resource
+      memory: 128Mi
+      # defines the requested cpu for a job's resource
+      cpu: 250m
+    # defines the limit configuration of a resource for a job
+    limit:
+      # defines the limit memory for a job's resource
+      memory: 256Mi
+      # defines the limit cpu for a job's resource
+      cpu: 500m
 ```
+
+`resource` under metadata follows most of the convention specified [here](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container).
+Though it's similar, the difference is only on how to write it in the specification YAML file.
+Configuring `metadata`, including but not limited to `resource`, is **NOT** mandatory.
 
 ## Macros & Templates
 

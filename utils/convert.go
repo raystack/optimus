@@ -19,6 +19,8 @@ func ConvertToStringMap(inputs map[string]interface{}) (map[string]string, error
 			conv[key] = val.(string)
 		case "OptionAnswer":
 			conv[key] = val.(survey.OptionAnswer).Value
+		case "bool":
+			conv[key] = strconv.FormatBool(val.(bool))
 		default:
 			return conv, errors.New("unknown type found while parsing user inputs")
 		}

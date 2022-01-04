@@ -7,6 +7,7 @@ Basic building blocks of Optimus are
 - Optimus Database
 - Optimus Plugins
 - Scheduler
+- Optimus Extension
 
 ### Overview
 
@@ -64,3 +65,10 @@ executed via a execution engine. This execution engine is termed here as Schedul
 Optimus by default recommends using `Airflow` but is extensible enough to support any
 other scheduler that satisfies some basic requirements, one of the most important
 of all is, scheduler should be able to execute a Docker container.
+
+### Optimus Extension
+
+Optimus extension is a feature in Optimus where the user could extend the
+functionality of Optimus itself using third-party or arbitrary
+implementation. Currently, extension is designed only for when the
+user running it as CLI.
