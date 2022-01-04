@@ -43,15 +43,15 @@ type ReplayPlan struct {
 }
 
 type ReplaySpec struct {
-	ID               uuid.UUID
-	Job              JobSpec
-	StartDate        time.Time
-	EndDate          time.Time
-	IgnoreDownstream bool
-	ExecutionTree    *tree.TreeNode
-	Status           string
-	Message          ReplayMessage
-	CreatedAt        time.Time
+	ID            uuid.UUID
+	Job           JobSpec
+	StartDate     time.Time
+	EndDate       time.Time
+	Config        map[string]string
+	ExecutionTree *tree.TreeNode
+	Status        string
+	Message       ReplayMessage
+	CreatedAt     time.Time
 }
 
 type ReplayState struct {

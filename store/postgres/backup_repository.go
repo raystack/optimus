@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/odpf/optimus/store"
+
 	"gorm.io/datatypes"
 
 	"github.com/google/uuid"
@@ -107,6 +109,18 @@ func (repo *backupRepository) GetAll(ctx context.Context) ([]models.BackupSpec, 
 		specs = append(specs, adapted)
 	}
 	return specs, nil
+}
+
+func (repo *backupRepository) GetByID(ctx context.Context, id uuid.UUID) (models.BackupSpec, error) {
+	var b Backup
+	if err := repo.db.WithContext(ctx).Preload("Resource").Joins("JOIN resource ON backup.resource_id = resource.id").
+		Where("backup.id = ?", id).First(&b).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.BackupSpec{}, store.ErrResourceNotFound
+		}
+		return models.BackupSpec{}, err
+	}
+	return b.ToSpec(repo.datastorer)
 }
 
 func NewBackupRepository(db *gorm.DB, projectSpec models.ProjectSpec, ds models.Datastorer) *backupRepository {

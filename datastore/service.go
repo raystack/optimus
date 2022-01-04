@@ -3,7 +3,10 @@ package datastore
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/odpf/optimus/utils"
 
@@ -229,6 +232,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		return models.BackupResult{}, err
 	}
 	backupRequest.ID = backupSpec.ID
+	backupTime := time.Now()
 
 	var resources []string
 	var resourcesToIgnore []string
@@ -270,7 +274,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		backupResp, err := datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
-			BackupTime: time.Now(),
+			BackupTime: backupTime,
 		})
 		if err != nil {
 			if err == models.ErrUnsupportedResource {
@@ -303,7 +307,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	}, nil
 }
 
-func (srv Service) ListBackupResources(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
+func (srv Service) ListResourceBackups(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string) ([]models.BackupSpec, error) {
 	datastorer, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return []models.BackupSpec{}, err
@@ -327,17 +331,43 @@ func (srv Service) ListBackupResources(ctx context.Context, projectSpec models.P
 	return recentBackups, nil
 }
 
+func (srv Service) GetResourceBackup(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string,
+	id uuid.UUID) (models.BackupSpec, error) {
+	datastorer, err := srv.dsRepo.GetByName(datastoreName)
+	if err != nil {
+		return models.BackupSpec{}, err
+	}
+
+	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
+	return backupRepo.GetByID(ctx, id)
+}
+
 func (srv Service) prepareBackupSpec(backupRequest models.BackupRequest) (models.BackupSpec, error) {
 	backupID, err := srv.uuidProvider.NewUUID()
 	if err != nil {
 		return models.BackupSpec{}, err
 	}
+	backupRequest.Config = addIgnoreDownstreamConfig(backupRequest.Config, backupRequest.AllowedDownstreamNamespaces)
 	return models.BackupSpec{
 		ID:          backupID,
 		Description: backupRequest.Description,
 		Config:      backupRequest.Config,
 		Result:      make(map[string]interface{}),
 	}, nil
+}
+
+func addIgnoreDownstreamConfig(config map[string]string, allowedDownstreamNamespaces []string) map[string]string {
+	if len(config) == 0 {
+		config = make(map[string]string)
+	}
+
+	ignoreDownstream := true
+	if len(allowedDownstreamNamespaces) > 0 {
+		ignoreDownstream = false
+	}
+
+	config[models.ConfigIgnoreDownstream] = strconv.FormatBool(ignoreDownstream)
+	return config
 }
 
 func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {

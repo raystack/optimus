@@ -118,4 +118,5 @@ type ReplaySpecRepository interface {
 type BackupRepository interface {
 	Save(ctx context.Context, spec models.BackupSpec) error
 	GetAll(context.Context) ([]models.BackupSpec, error)
+	GetByID(context.Context, uuid.UUID) (models.BackupSpec, error)
 }
