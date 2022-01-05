@@ -28,22 +28,28 @@ var (
 // deployCommand pushes current repo to optimus service
 func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecRepository,
 	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
-	var projectName string
-	var namespace string
-	var ignoreJobs bool
-	var ignoreResources bool
-
-	cmd := &cli.Command{
-		Use:   "deploy",
-		Short: "Deploy current project to server",
-	}
-	cmd.Flags().StringVar(&projectName, "project", conf.GetProject().Name, "project name of deployee")
-	cmd.Flags().StringVar(&namespace, "namespace", conf.GetNamespace().Name, "namespace of deployee")
-	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "ignore deployment of jobs")
-	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "ignore deployment of resources")
+	var (
+		projectName     string
+		namespace       string
+		ignoreJobs      bool
+		ignoreResources bool
+		verbose         bool
+		cmd             = &cli.Command{
+			Use:   "deploy",
+			Short: "Deploy current optimus project to server",
+			Long: `Apply local changes to destination server which includes creating/updating/deleting
+jobs and creating/updating datastore resources`,
+			Example: "optimus deploy [--ignore-resources|--ignore-jobs]",
+		}
+	)
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Optimus project name")
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
+	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
+	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		l.Info(fmt.Sprintf("deploying project %s for namespace %s at %s\nplease wait...", projectName, namespace, conf.GetHost()))
+		l.Info(fmt.Sprintf("Deploying project %s for namespace %s at %s", projectName, namespace, conf.GetHost()))
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -51,11 +57,10 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 		}
 
 		if err := postDeploymentRequest(l, projectName, namespace, jobSpecRepo, conf, pluginRepo, datastoreRepo,
-			datastoreSpecFs, ignoreJobs, ignoreResources); err != nil {
+			datastoreSpecFs, ignoreJobs, ignoreResources, verbose); err != nil {
 			return err
 		}
-
-		l.Info(fmt.Sprintf("deployment took %v", time.Since(start)))
+		l.Info(coloredSuccess("\nDeployment completed, took %.2f seconds", time.Since(start).Seconds()))
 		return nil
 	}
 
@@ -65,14 +70,14 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
 	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
-	ignoreJobDeployment, ignoreResources bool) (err error) {
+	ignoreJobDeployment, ignoreResources bool, verbose bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("can't reach optimus service")
+			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
 		}
 		return err
 	}
@@ -103,6 +108,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 	if !ignoreResources {
 		// deploy datastore resources
 		for storeName, repoFS := range datastoreSpecFs {
+			l.Info(fmt.Sprintf("\n> Deploying resources for %s", storeName))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
 				return fmt.Errorf("unsupported datastore: %s\n", storeName)
@@ -136,7 +142,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
-					l.Info("deployment process took too long, timing out")
+					l.Error(coloredError("Deployment process took too long, timing out"))
 				}
 				return errors.Wrapf(err, "deployement failed")
 			}
@@ -144,6 +150,10 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			// track progress
 			deployCounter := 0
 			totalSpecs := len(adaptedSpecs)
+			spinner := NewProgressBar()
+			if !verbose {
+				spinner.StartProgress(totalSpecs, "please wait")
+			}
 			for {
 				resp, err := respStream.Recv()
 				if err != nil {
@@ -155,24 +165,30 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				if resp.Ack {
 					// ack for the resource spec
 					if !resp.GetSuccess() {
-						return errors.Errorf("unable to deploy: %s %s", resp.GetResourceName(), resp.GetMessage())
+						return errors.Errorf("unable to deploy resource: %s %s", resp.GetResourceName(), resp.GetMessage())
 					}
 					deployCounter++
-					l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", deployCounter, totalSpecs, resp.GetResourceName()))
+					spinner.SetProgress(deployCounter)
+					if verbose {
+						l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", deployCounter, totalSpecs, resp.GetResourceName()))
+					}
 				} else {
-					// ordinary progress event
-					l.Info(fmt.Sprintf("info '%s': %s", resp.GetResourceName(), resp.GetMessage()))
+					if verbose {
+						// ordinary progress event
+						l.Info(fmt.Sprintf("info '%s': %s", resp.GetResourceName(), resp.GetMessage()))
+					}
 				}
 			}
+			spinner.Stop()
+			l.Info(coloredSuccess("Successfully deployed %d/%d resources.", deployCounter, totalSpecs))
 		}
-		l.Info("deployed resources")
 	} else {
-		l.Info("skipping resource deployment")
+		l.Info("> Skipping resource deployment")
 	}
 
 	if !ignoreJobDeployment {
 		// deploy job specifications
-		l.Info("deploying jobs")
+		l.Info("\n> Deploying jobs")
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
 			return err
@@ -193,13 +209,18 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Info("deployment process took too long, timing out")
+				l.Error(coloredError("Deployment process took too long, timing out"))
 			}
 			return errors.Wrapf(err, "deployement failed")
 		}
 
 		ackCounter := 0
 		totalJobs := len(jobSpecs)
+		spinner := NewProgressBar()
+		if !verbose {
+			spinner.StartProgress(totalJobs, "please wait")
+			spinner.SetProgress(0)
+		}
 		var streamError error
 		for {
 			resp, err := respStream.Recv()
@@ -216,16 +237,22 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 					return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
 				}
 				ackCounter++
-				l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", ackCounter, totalJobs, resp.GetJobName()))
+				spinner.SetProgress(ackCounter)
+				if verbose {
+					l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", ackCounter, totalJobs, resp.GetJobName()))
+				}
 			} else {
-				// ordinary progress event
-				if resp.GetJobName() != "" {
-					l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
-				} else {
-					l.Info(fmt.Sprintf("info: %s", resp.GetMessage()))
+				if verbose {
+					// ordinary progress event
+					if resp.GetJobName() != "" {
+						l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
+					} else {
+						l.Info(fmt.Sprintf("info: %s", resp.GetMessage()))
+					}
 				}
 			}
 		}
+		spinner.Stop()
 
 		if streamError != nil {
 			if ackCounter == totalJobs {
@@ -233,16 +260,14 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				// should not cause errors to fail and should end with warnings if any.
 				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
 			} else {
-				l.Error("failed to receive success deployment ack", "err", streamError)
 				return errors.Wrap(streamError, "failed to receive success deployment ack")
 			}
 		}
-		l.Info(fmt.Sprintf("successfully deployed %d/%d jobs", ackCounter, totalJobs))
+		l.Info(coloredSuccess("Successfully deployed %d/%d jobs.", ackCounter, totalJobs))
 	} else {
-		l.Info("skipping job deployment")
+		l.Info("> Skipping job deployment")
 	}
 
-	l.Info("deployment completed")
 	return nil
 }
 
@@ -253,14 +278,14 @@ func registerProject(deployTimeoutCtx context.Context, l log.Logger, runtime pb.
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(coloredNotice(fmt.Sprintf("ignoring project config changes: %s", err.Error())))
+			l.Warn(coloredNotice("> Ignoring project config changes: %s", err.Error()))
 			return nil
 		}
 		return errors.Wrap(err, "failed to update project configurations")
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
 	}
-	l.Info("updated project configuration")
+	l.Info("\n> Updated project configuration")
 	return nil
 }
 
@@ -272,13 +297,13 @@ func registerNamespace(deployTimeoutCtx context.Context, l log.Logger, runtime p
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(coloredNotice(fmt.Sprintf("ignoring namespace config changes: %s", err.Error())))
+			l.Warn(coloredNotice("> Ignoring namespace config changes: %s", err.Error()))
 			return nil
 		}
 		return errors.Wrap(err, "failed to update namespace configurations")
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update namespace configurations, %s", registerResponse.Message)
 	}
-	l.Info("updated namespace configuration")
+	l.Info("\n> Updated namespace configuration")
 	return nil
 }

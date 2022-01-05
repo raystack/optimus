@@ -14,7 +14,7 @@ There are 3 ways to create an external table:
 Supported datastore can be selected by calling
 
 ```bash
-optimus create resource
+optimus resource create
 ```
 
 Optimus will request a resource name which should be unique across whole datastore.

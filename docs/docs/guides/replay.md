@@ -12,7 +12,7 @@ various reasons. Optimus provides an easy way to do this using Replay. Please go
 In order to run a replay, run the following command:
 
 ```shell
-$ optimus replay run sample-job 2021-01-01 2021-02-01 --project sample-project --namespace sample-namespace
+$ optimus replay create sample-job 2021-01-01 2021-02-01 --project sample-project --namespace sample-namespace
 ```
 
 Replay accepts three arguments, first is the DAG name that is used in optimus specification, second is 
@@ -51,5 +51,5 @@ A dry run is also available to simulate all the impacted tasks without actually 
 usage:
 
 ```shell
-$ optimus replay run sample-job 2021-01-01 2021-02-01 --project sample-project --namespace sample-namespace --dry-run
+$ optimus replay create sample-job 2021-01-01 2021-02-01 --project sample-project --namespace sample-namespace --dry-run
 ```

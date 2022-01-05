@@ -9,8 +9,9 @@ import (
 
 func serveCommand(l log.Logger, conf config.Provider) *cli.Command {
 	c := &cli.Command{
-		Use:   "serve",
-		Short: "Starts optimus service",
+		Use:     "serve",
+		Short:   "Starts optimus service",
+		Example: "optimus serve",
 		RunE: func(c *cli.Command, args []string) error {
 			return server.Initialize(l, conf)
 		},

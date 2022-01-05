@@ -13,7 +13,7 @@ There are 3 ways to create a dataset:
 
 Supported datastore can be selected by calling
 ```bash
-optimus create resource
+optimus resource create
 ```
 Optimus will request a resource name which should be unique across whole datastore.
 All resource specification contains a name field which conforms to a fixed format.

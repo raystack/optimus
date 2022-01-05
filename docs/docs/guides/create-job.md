@@ -26,7 +26,7 @@ command and answer the corresponding prompts (do note that some prompts
 would be to select from options instead of input):
 
 ```
-$ optimus create job
+$ optimus job create
 ? What is the job name? example_job
 ? Who is the owner of this job? example@example.com
 ? Which task to run? bq2bq

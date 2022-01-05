@@ -22,30 +22,21 @@ var (
 	runJobTimeout = time.Minute * 1
 )
 
-func runCommand(l log.Logger, host string, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
+func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
 	conf config.Provider) *cli.Command {
+	var (
+		projectName = conf.GetProject().Name
+		namespace   = conf.GetNamespace().Name
+	)
 	cmd := &cli.Command{
-		Use:   "run",
-		Short: "[EXPERIMENTAL]",
-	}
-	if jobSpecRepo != nil {
-		cmd.AddCommand(runJobCommand(l, jobSpecRepo, host, pluginRepo, conf))
-	}
-	return cmd
-}
-
-func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, pluginRepo models.PluginRepository,
-	conf config.Provider) *cli.Command {
-	var projectName string
-	var namespace string
-	cmd := &cli.Command{
-		Use:     "job",
+		Use:     "run",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
 		Args:    cli.MinimumNArgs(1),
-		Example: "optimus beta run job <job_name> --project g-optimus",
+		Example: "optimus job run <job_name> [--project g-optimus]",
+		Hidden:  true,
 	}
-	cmd.Flags().StringVar(&projectName, "project", conf.GetProject().Name, "name of the project")
-	cmd.Flags().StringVar(&namespace, "namespace", conf.GetNamespace().Name, "namespace under the project")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of job that needs to run")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		jobSpec, err := jobSpecRepo.GetByName(args[0])
@@ -53,7 +44,7 @@ func runJobCommand(l log.Logger, jobSpecRepo JobSpecRepository, host string, plu
 			return err
 		}
 
-		return runJobSpecificationRequest(l, projectName, namespace, host, jobSpec, pluginRepo)
+		return runJobSpecificationRequest(l, projectName, namespace, conf.GetHost(), jobSpec, pluginRepo)
 	}
 	return cmd
 }

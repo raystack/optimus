@@ -39,7 +39,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 					Name: "ProjectName",
 					Prompt: &survey.Input{
 						Message: "What is the project name?",
-						Help:    "project name of the repository",
+						Help:    "Project name of the optimus repository",
 					},
 					Validate: survey.Required,
 				},
@@ -60,7 +60,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 
 			// for project config
 			if option, ok := answers["RegisterProjectConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf, err = projectConfigQuestions(l, conf)
+				conf, err = projectConfigQuestions(conf)
 				if err != nil {
 					return err
 				}
@@ -72,7 +72,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 					Name: "NamespaceName",
 					Prompt: &survey.Input{
 						Message: "What is the namespace name?",
-						Help:    "specific namespace name for jobs and resources inside the directory",
+						Help:    "Namespace name for jobs and resources inside the directory",
 					},
 					Validate: survey.Required,
 				},
@@ -93,7 +93,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			conf.Namespace.Name = answers["NamespaceName"].(string)
 			// for namespace config
 			if option, ok := answers["RegisterNamespaceConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf, err = namespaceConfigQuestions(l, conf)
+				conf, err = namespaceConfigQuestions(conf)
 				if err != nil {
 					return err
 				}
@@ -106,7 +106,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 					Prompt: &survey.Input{
 						Message: "Scheduled jobs directory",
 						Default: "./jobs",
-						Help:    "relative directory path to jobs specification",
+						Help:    "Relative directory path to jobs specification",
 					},
 					Validate: survey.Required,
 				},
@@ -125,7 +125,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			}
 			conf.Namespace.Job.Path = answers["JobPath"].(string)
 			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
-				conf, err = datastoreConfigQuestions(l, conf, dsRepo)
+				conf, err = datastoreConfigQuestions(conf, dsRepo)
 				if err != nil {
 					return err
 				}
@@ -138,15 +138,14 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0655); err != nil {
 				return err
 			}
-			l.Info("configuration initialised successfully")
-
+			l.Info(coloredSuccess("Configuration initialised successfully"))
 			return nil
 		},
 	}
 	return c
 }
 
-func projectConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
+func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 	conf.Project.Config = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
@@ -183,7 +182,7 @@ func projectConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, 
 	return conf, nil
 }
 
-func namespaceConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus, error) {
+func namespaceConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 	conf.Namespace.Config = map[string]string{}
 	registerMore := "Yes"
 	for registerMore == "Yes" {
@@ -220,7 +219,7 @@ func namespaceConfigQuestions(l log.Logger, conf config.Optimus) (config.Optimus
 	return conf, nil
 }
 
-func datastoreConfigQuestions(l log.Logger, conf config.Optimus, dsRepo models.DatastoreRepo) (config.Optimus, error) {
+func datastoreConfigQuestions(conf config.Optimus, dsRepo models.DatastoreRepo) (config.Optimus, error) {
 	dsOptions := []string{}
 	for _, ds := range dsRepo.GetAll() {
 		dsOptions = append(dsOptions, ds.Name())

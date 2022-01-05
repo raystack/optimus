@@ -9,7 +9,7 @@ To enable Profiler and Auditor (Predator), answer the related questions in Job s
 Note: this is not available for public use at the moment
 
 ```bash
-• $ optimus create job
+• $ optimus job addhook
 ? What is the job name? test_job
 ? Who is the Owner of this job? de@go-jek.com
 ? Specify the start date (YYYY-MM-DD) 2021-01-01

@@ -10,7 +10,7 @@ In order to add a hook to an existing Job, run the following command and answer 
 corresponding prompts:
 
 ```
-$ ./optimus create hook
+$ ./optimus job addhook
 ? Select a Job example_job
 ? Which hook to run? transporter
 ? Filter expression for extracting transformation rows? event_timestamp >= '{{.DSTART}}' 

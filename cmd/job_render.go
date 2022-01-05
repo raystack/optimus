@@ -17,24 +17,13 @@ var (
 	templateEngine = run.NewGoEngine()
 )
 
-func renderCommand(l log.Logger, host string, jobSpecRepo JobSpecRepository) *cli.Command {
+func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
-		Use:   "render",
-		Short: "convert raw representation of specification to consumables",
+		Use:     "render",
+		Short:   "Apply template values in job specification to current 'render' directory",
+		Long:    "Process optimus job specification based on macros/functions used.",
+		Example: "optimus job render",
 	}
-	if jobSpecRepo != nil {
-		cmd.AddCommand(renderTemplateCommand(l, jobSpecRepo))
-	}
-	return cmd
-}
-
-func renderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.Command {
-	cmd := &cli.Command{
-		Use:     "template",
-		Short:   "render templates for a job to current 'render' directory",
-		Example: "optimus render template",
-	}
-
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		var err error
 		var jobName string
