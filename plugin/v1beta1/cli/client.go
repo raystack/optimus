@@ -2,8 +2,9 @@ package cli
 
 import (
 	"context"
-	"strings"
 	"time"
+
+	"github.com/odpf/optimus/utils"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 
@@ -111,7 +112,7 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 		instanceData = append(instanceData, &pb.InstanceSpecData{
 			Name:  inst.Name,
 			Value: inst.Value,
-			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[strings.ToUpper(inst.Type)]),
+			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[utils.ToEnumProto(inst.Type, "type")]),
 		})
 	}
 

@@ -319,7 +319,7 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 		data = append(data, &pb.InstanceSpecData{
 			Name:  asset.Name,
 			Value: asset.Value,
-			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[strings.ToUpper(asset.Type)]),
+			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[utils.ToEnumProto(asset.Type, "type")]),
 		})
 	}
 	return &pb.InstanceSpec{
@@ -327,11 +327,14 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 		Data:       data,
 		ExecutedAt: timestamppb.New(spec.ExecutedAt),
 		Name:       spec.Name,
-		Type:       pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(spec.Type.String())]),
+		Type:       pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(spec.Type.String(), "type")]),
 	}, nil
 }
 
 func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
+	if conf == nil {
+		return models.InstanceSpec{}, nil
+	}
 	var data []models.InstanceSpecData
 	for _, asset := range conf.GetData() {
 		assetType := models.InstanceDataTypeEnv
@@ -345,7 +348,7 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 			Type:  assetType,
 		})
 	}
-	instanceType, err := models.ToInstanceType(conf.Type.String())
+	instanceType, err := models.ToInstanceType(utils.FromEnumProto(conf.Type.String(), "type"))
 	if err != nil {
 		return models.InstanceSpec{}, err
 	}

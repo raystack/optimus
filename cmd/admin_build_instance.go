@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/odpf/optimus/config"
@@ -99,7 +98,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 		ProjectName:  projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,
-		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[strings.ToUpper(runType)]),
+		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(runType, "type")]),
 		InstanceName: runName,
 	})
 	if err != nil {
