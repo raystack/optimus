@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/MakeNowJust/heredoc"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -14,6 +15,7 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
+	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
 	"github.com/spf13/afero"
@@ -23,27 +25,18 @@ import (
 )
 
 var (
-	prologueContents = `Optimus is an easy-to-use, reliable, and performant workflow orchestrator for 
-data transformation, data modeling, pipelines, and data quality management.
-
-For passing authentication header, set one of the following environment
-variables:
-1. OPTIMUS_AUTH_BASIC_TOKEN
-2. OPTIMUS_AUTH_BEARER_TOKEN
-`
 	disableColoredOut = false
-
 	// colored print
 	coloredNotice  = fmt.Sprintf
 	coloredError   = fmt.Sprintf
 	coloredSuccess = fmt.Sprintf
 
 	ErrServerNotReachable = func(host string) error {
-		return fmt.Errorf(`Unable to reach optimus server at %s, this can happen due to following reasons:
-1. Check if you are connected to internet
-2. Is the host correctly configured in optimus config
-3. Is OPTIMUS_HOST env incorrectly set
-4. Is Optimus server currently unreachable`, host)
+		return fmt.Errorf(heredoc.Docf(`Unable to reach optimus server at %s, this can happen due to following reasons:
+			1. Check if you are connected to internet
+			2. Is the host correctly configured in optimus config
+			3. Is OPTIMUS_HOST env incorrectly set
+			4. Is Optimus server currently unreachable`, host))
 	}
 )
 
@@ -63,15 +56,40 @@ type JobSpecRepository interface {
 	GetAll() ([]models.JobSpec, error)
 }
 
-// New constructs the 'root' command.It houses all other sub commands
+// New constructs the 'root' command. It houses all other sub commands
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
+
 	var cmd = &cli.Command{
-		Use:  "optimus <command> <subcommand> [flags]",
-		Long: prologueContents,
+		Use: "optimus <command> <subcommand> [flags]",
+		Long: heredoc.Doc(`
+			Optimus is an easy-to-use, reliable, and performant workflow orchestrator for 
+			data transformation, data modeling, pipelines, and data quality management.
+		
+			For passing authentication header, set one of the following environment
+			variables:
+			1. OPTIMUS_AUTH_BASIC_TOKEN
+			2. OPTIMUS_AUTH_BEARER_TOKEN`),
+		SilenceUsage: true,
+		Example: heredoc.Doc(`
+				$ optimus job create
+				$ optimus backup create
+				$ optimus backup list
+				$ optimus replay create
+			`),
+		Annotations: map[string]string{
+			"group:core": "true",
+			"help:learn": heredoc.Doc(`
+				Use 'optimus <command> <subcommand> --help' for more information about a command.
+				Read the manual at https://odpf.github.io/optimus/
+			`),
+			"help:feedback": heredoc.Doc(`
+				Open an issue here https://github.com/odpf/optimus/issues
+			`),
+		},
 		PersistentPreRun: func(cmd *cli.Command, args []string) {
 			// initialise color if not requested to be disabled
 			cs := term.NewColorScheme()
@@ -87,8 +105,9 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 				}
 			}
 		},
-		SilenceUsage: true,
 	}
+
+	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
 	//init local specs

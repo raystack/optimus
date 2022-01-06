@@ -26,6 +26,9 @@ func resourceCommand(l log.Logger, datastoreSpecsFs map[string]afero.Fs, datasto
 	cmd := &cli.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
+		Annotations: map[string]string{
+			"group:core": "true",
+		},
 	}
 	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
 	return cmd

@@ -14,6 +14,9 @@ func jobCommand(l log.Logger, jobSpecFs afero.Fs, pluginRepo models.PluginReposi
 	cmd := &cli.Command{
 		Use:   "job",
 		Short: "Interact with schedulable Job",
+		Annotations: map[string]string{
+			"group:core": "true",
+		},
 	}
 	jobSpecRepo := local.NewJobSpecRepository(
 		jobSpecFs,

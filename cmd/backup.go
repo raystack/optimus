@@ -3,6 +3,7 @@ package cmd
 import (
 	"time"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
@@ -17,10 +18,13 @@ func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config
 	cmd := &cli.Command{
 		Use:   "backup",
 		Short: "Backup a resource and its downstream",
-		Long: `Backup supported resource of a datastore and all of its downstream dependencies.
-Operation can take up to few minutes to complete. It is advised to check the operation status
-using "list" command.
-`,
+		Long: heredoc.Doc(`Backup supported resource of a datastore and all of its downstream dependencies.
+			Operation can take up to few minutes to complete. It is advised to check the operation status
+			using "list" command.
+		`),
+		Annotations: map[string]string{
+			"group:core": "true",
+		},
 	}
 	cmd.AddCommand(backupCreateCommand(l, datastoreRepo, conf))
 	cmd.AddCommand(backupListCommand(l, datastoreRepo, conf))
