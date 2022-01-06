@@ -38,6 +38,9 @@ func adminBuildInstanceCommand(l log.Logger, conf config.Provider) *cli.Command 
 			Short:   "Builds a Job instance including the assets for a scheduled execution",
 			Example: "optimus admin build instance <sample_replace> --output-dir </tmp> --scheduled-at <2021-01-14T02:00:00+00:00> --type task --name <bq2bq> [--project \"project-id\"]",
 			Args:    cli.MinimumNArgs(1),
+			Annotations: map[string]string{
+				"group:core": "true",
+			},
 		}
 	)
 	cmd.Flags().StringVar(&assetOutputDir, "output-dir", assetOutputDir, "Output directory for assets")

@@ -56,6 +56,9 @@ func replayCommand(l log.Logger, conf config.Provider) *cli.Command {
 		Use:   "replay",
 		Short: "Re-running jobs in order to update data for older dates/partitions",
 		Long:  `Backfill etl job and all of its downstream dependencies`,
+		Annotations: map[string]string{
+			"group:core": "true",
+		},
 	}
 	cmd.AddCommand(replayRunCommand(l, conf))
 	cmd.AddCommand(replayStatusCommand(l, conf))

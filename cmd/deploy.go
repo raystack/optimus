@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/MakeNowJust/heredoc"
 	v1handler "github.com/odpf/optimus/api/handler/v1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -37,9 +38,12 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 		cmd             = &cli.Command{
 			Use:   "deploy",
 			Short: "Deploy current optimus project to server",
-			Long: `Apply local changes to destination server which includes creating/updating/deleting
-jobs and creating/updating datastore resources`,
+			Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
+				jobs and creating/updating datastore resources`),
 			Example: "optimus deploy [--ignore-resources|--ignore-jobs]",
+			Annotations: map[string]string{
+				"group:core": "true",
+			},
 		}
 	)
 	cmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Optimus project name")
