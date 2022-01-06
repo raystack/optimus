@@ -1,4 +1,4 @@
-package v1_test
+package v1beta1_test
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 	"github.com/odpf/optimus/core/tree"
 
 	"github.com/google/uuid"
-	v1 "github.com/odpf/optimus/api/handler/v1"
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"

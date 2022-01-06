@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/config"
-
-	"github.com/odpf/salt/log"
-
-	v1handler "github.com/odpf/optimus/api/handler/v1"
-	"github.com/odpf/optimus/models"
-
+	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"

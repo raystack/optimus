@@ -1,11 +1,11 @@
-package v1_test
+package v1beta1_test
 
 import (
 	"reflect"
 	"testing"
 	"time"
 
-	v1 "github.com/odpf/optimus/api/handler/v1"
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/core/tree"

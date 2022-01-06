@@ -8,7 +8,7 @@ import (
 
 	"github.com/odpf/optimus/config"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1"
+	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"

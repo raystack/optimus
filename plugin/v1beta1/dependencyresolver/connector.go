@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
 
-	v1 "github.com/odpf/optimus/api/handler/v1"
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 
 	"github.com/odpf/optimus/models"
 
