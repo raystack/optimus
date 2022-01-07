@@ -71,13 +71,14 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
 		projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
-		if err != nil || len(projectJobPairs) == 0 {
-			if err == store.ErrResourceNotFound {
-				// should not fail for unknown dependency
-				r.notifyProgress(observer, &EventJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
-				continue
-			}
+		if err != nil && err != store.ErrResourceNotFound {
 			return jobSpec, errors.Wrap(err, "runtime dependency evaluation failed")
+		}
+		if len(projectJobPairs) == 0 {
+			// should not fail for unknown dependency, its okay to not have a upstream job
+			// registered in optimus project and still refer to them in our job
+			r.notifyProgress(observer, &EventJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
+			continue
 		}
 		dep := extractDependency(projectJobPairs, projectSpec)
 		jobSpec.Dependencies[dep.Job.Name] = dep

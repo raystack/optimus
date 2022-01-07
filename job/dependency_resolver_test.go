@@ -209,6 +209,7 @@ func TestDependencyResolver(t *testing.T) {
 					Project: projectSpec, Job: jobSpec2,
 				},
 			}, nil)
+			jobSpecRepository.On("GetByDestination", ctx, "project.dataset.tablex_destination").Return(nil, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
@@ -225,7 +226,11 @@ func TestDependencyResolver(t *testing.T) {
 			}
 
 			// task dependencies
-			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{
+				Dependencies: []string{
+					"project.dataset.tablex_destination",
+					"project.dataset.table2_destination",
+				}}, nil)
 			execUnit1.On("GenerateDependencies", ctx, unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
 			// hook dependency
