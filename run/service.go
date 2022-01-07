@@ -48,6 +48,7 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 		Trigger:     models.TriggerSchedule,
 		Status:      models.RunStatePending,
 		ScheduledAt: scheduledAt,
+		ExecutedAt:  s.Now(),
 	}
 
 	repo := s.repoFac.New()
@@ -58,6 +59,12 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 			// if already exists, use the same id for in place update
 			// because job spec might have changed by now, status needs to be reset
 			newJobRun.ID = jobRun.ID
+
+			// If existing job run found, use its time.
+			// This might be a retry of existing instances and whole pipeline(of instances)
+			// would like to inherit same run level variable even though it might be triggered
+			// more than once.
+			newJobRun.ExecutedAt = jobRun.ExecutedAt
 		}
 		if err := repo.Save(ctx, namespace, newJobRun); err != nil {
 			return models.JobRun{}, err
@@ -72,46 +79,24 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 
 func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
 	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
-	executedAt := s.Now()
-	if len(jobRun.Instances) > 0 {
-		// Extract execution time which will be shared across all job run instances.
-		// Note(kushsharma): This is not the best way to do this, a better inter task communication
-		// mechanism should be in place at job run level which each instance can use
-		// at least as a key/value map for temporary storage. This kv map will be
-		// available to all the instances
-		executedAt = jobRun.Instances[0].ExecutedAt
+	jobRunRepo := s.repoFac.New()
+
+	// clear old run
+	for _, instance := range jobRun.Instances {
+		if instance.Name == instanceName && instance.Type == instanceType {
+			if err := jobRunRepo.ClearInstance(ctx, jobRun.ID, instance.Type, instance.Name); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+				return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
+			}
+			break
+		}
 	}
-	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, executedAt)
+
+	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, jobRun.ExecutedAt)
 	if err != nil {
 		return models.InstanceSpec{}, errors.Wrap(err, "Register: failed to prepare instance")
 	}
-
-	jobRunRepo := s.repoFac.New()
-	switch instanceType {
-	case models.InstanceTypeTask:
-		// clear and save fresh
-		if err := jobRunRepo.ClearInstance(ctx, jobRun.ID, instanceType, instanceName); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-			return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
-		}
-		if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
-			return models.InstanceSpec{}, err
-		}
-	case models.InstanceTypeHook:
-		exists := false
-		// store only if not already exists
-		for _, instance := range jobRun.Instances {
-			if instance.Name == instanceName && instance.Type == instanceType {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
-				return models.InstanceSpec{}, err
-			}
-		}
-	default:
-		return models.InstanceSpec{}, errors.Errorf("invalid instance type: %s", instanceType)
+	if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
+		return models.InstanceSpec{}, err
 	}
 
 	// get whatever is saved, querying again ensures it was saved correctly
