@@ -64,7 +64,7 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 			datastoreSpecFs, ignoreJobs, ignoreResources, verbose); err != nil {
 			return err
 		}
-		l.Info(coloredSuccess("\nDeployment completed, took %.2f seconds", time.Since(start).Seconds()))
+		l.Info(coloredSuccess("\nDeployment completed, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
 

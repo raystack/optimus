@@ -48,7 +48,7 @@ func jobValidateCommand(l log.Logger, host string, pluginRepo models.PluginRepos
 		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host, verbose); err != nil {
 			return err
 		}
-		l.Info(coloredNotice("Jobs successfully validated in %s", time.Since(start).String()))
+		l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
 	return cmd
@@ -144,7 +144,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 	} else if streamError != nil && ackCounter == totalJobs && failedCounter == 0 {
 		// if we have uploaded all jobs successfully, further steps in pipeline
 		// should not cause errors to fail and should end with warnings if any.
-		l.Warn(coloredNotice("requested ended with warning"), "err", streamError)
+		l.Warn(coloredNotice("request ended with warning"), "err", streamError)
 		return nil
 	}
 	return streamError

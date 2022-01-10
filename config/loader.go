@@ -48,6 +48,5 @@ func InitOptimus() (*Optimus, error) {
 	if err := l.Load(&o); err != nil {
 		return nil, errors.Wrapf(err, "error loading config")
 	}
-
 	return &o, nil
 }

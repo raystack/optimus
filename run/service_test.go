@@ -2,6 +2,8 @@ package run_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -46,7 +48,7 @@ func TestService(t *testing.T) {
 		},
 		Dependencies: map[string]models.JobSpecDependency{},
 	}
-	mockedTimeNow := time.Now()
+	mockedTimeNow := time.Date(2021, 11, 21, 0, 0, 0, 0, time.UTC)
 	mockedTimeFunc := func() time.Time { return mockedTimeNow }
 	projSpec := models.ProjectSpec{
 		Name: "proj",
@@ -56,16 +58,64 @@ func TestService(t *testing.T) {
 		Name:        "dev-team-1",
 		ProjectSpec: projSpec,
 	}
-	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+	scheduledAt := time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)
 	jobRun := models.JobRun{
 		ID:          uuid.Must(uuid.NewRandom()),
 		Spec:        jobSpec,
 		Trigger:     models.TriggerSchedule,
 		Status:      models.RunStateRunning,
 		ScheduledAt: scheduledAt,
+		ExecutedAt:  mockedTimeNow,
 	}
 
 	t.Run("Register", func(t *testing.T) {
+		t.Run("for transformation, save specs and return data", func(t *testing.T) {
+			instanceSpec := models.InstanceSpec{
+				Name:       "bq",
+				Type:       models.InstanceTypeTask,
+				ExecutedAt: mockedTimeNow,
+				Status:     models.RunStateRunning,
+				Data: []models.InstanceSpecData{
+					{
+						Name:  run.ConfigKeyExecutionTime,
+						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  run.ConfigKeyDstart,
+						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  run.ConfigKeyDend,
+						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Type:  models.InstanceDataTypeEnv,
+					},
+					{
+						Name:  run.ConfigKeyDestination,
+						Value: "proj.data.tab",
+						Type:  models.InstanceDataTypeEnv,
+					},
+				},
+			}
+
+			localRun := jobRun
+			localRun.Instances = append(jobRun.Instances, instanceSpec)
+
+			runRepo := new(mock.JobRunRepository)
+			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
+			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
+			defer runRepo.AssertExpectations(t)
+
+			jobRunSpecRep := new(mock.JobRunRepoFactory)
+			jobRunSpecRep.On("New").Return(runRepo, nil)
+			defer jobRunSpecRep.AssertExpectations(t)
+
+			runService := run.NewService(jobRunSpecRep, nil, nil)
+			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
+			assert.Nil(t, err)
+			assert.Equal(t, instanceSpec, returnedInstanceSpec)
+		})
 		t.Run("for transformation, should clear if present, save specs and return data", func(t *testing.T) {
 			instanceSpec := models.InstanceSpec{
 				Name:       "bq",
@@ -98,7 +148,6 @@ func TestService(t *testing.T) {
 
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
-			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
 
 			localRun := jobRun
 			localRun.Instances = append(jobRun.Instances, instanceSpec)
@@ -109,8 +158,16 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc, nil)
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
+			runService := run.NewService(jobRunSpecRep, nil, nil)
+
+			var existingRun models.JobRun
+			Copy(&existingRun, jobRun)
+			existingRun.Spec.Task = jobRun.Spec.Task
+			existingRun.Instances = append(existingRun.Instances, instanceSpec)
+			existingRun.Instances[0].ExecutedAt = mockedTimeNow
+			runRepo.On("AddInstance", ctx, namespaceSpec, existingRun, instanceSpec).Return(nil)
+
+			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
@@ -161,7 +218,7 @@ func TestService(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, returnedInstanceSpec, instanceSpec)
 		})
-		t.Run("for hook, should not save specs if already present and return data", func(t *testing.T) {
+		t.Run("for hook, should clear if its running after exceeding its schedule frequency, save specs and return data", func(t *testing.T) {
 			instanceSpec := models.InstanceSpec{
 				Name:       "bq",
 				Type:       models.InstanceTypeHook,
@@ -192,9 +249,18 @@ func TestService(t *testing.T) {
 			}
 
 			runRepo := new(mock.JobRunRepository)
-			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
-			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
+
+			var existingJobRun models.JobRun
+			Copy(&existingJobRun, &jobRun)
+			existingJobRun.Instances = append(jobRun.Instances, instanceSpec)
+			existingJobRun.Spec.Task.Unit = jobRun.Spec.Task.Unit
+			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
+
+			var newJobRun models.JobRun
+			Copy(&newJobRun, &existingJobRun)
+			newJobRun.Spec.Task.Unit = jobRun.Spec.Task.Unit
+			runRepo.On("AddInstance", ctx, namespaceSpec, existingJobRun, instanceSpec).Return(nil)
+			runRepo.On("GetByID", ctx, jobRun.ID).Return(newJobRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
 			jobRunSpecRep := new(mock.JobRunRepoFactory)
@@ -202,55 +268,9 @@ func TestService(t *testing.T) {
 			defer jobRunSpecRep.AssertExpectations(t)
 
 			runService := run.NewService(jobRunSpecRep, mockedTimeFunc, nil)
-
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, localRun, instanceSpec.Type, instanceSpec.Name)
+			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingJobRun, models.InstanceTypeHook, "bq")
 			assert.Nil(t, err)
-			assert.Equal(t, returnedInstanceSpec, instanceSpec)
-		})
-		t.Run("for instance, should reuse the existing EXECUTION_TIME config if job run contains one", func(t *testing.T) {
-			instanceSpec := models.InstanceSpec{
-				Name:       "bq",
-				Type:       models.InstanceTypeHook,
-				ExecutedAt: mockedTimeNow,
-				Status:     models.RunStateRunning,
-				Data: []models.InstanceSpecData{
-					{
-						Name:  run.ConfigKeyExecutionTime,
-						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDestination,
-						Value: "proj.data.tab",
-						Type:  models.InstanceDataTypeEnv,
-					},
-				},
-			}
-
-			runRepo := new(mock.JobRunRepository)
-			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
-			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
-			defer runRepo.AssertExpectations(t)
-
-			jobRunSpecRep := new(mock.JobRunRepoFactory)
-			jobRunSpecRep.On("New").Return(runRepo, nil)
-			defer jobRunSpecRep.AssertExpectations(t)
-
-			runService := run.NewService(jobRunSpecRep, time.Now().UTC, nil)
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, localRun, instanceSpec.Type, instanceSpec.Name)
-			assert.Nil(t, err)
-			assert.Equal(t, returnedInstanceSpec, instanceSpec)
+			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
 		t.Run("should return empty Instance Spec if there was any error while saving spec", func(t *testing.T) {
 			instanceSpec := models.InstanceSpec{
@@ -283,7 +303,6 @@ func TestService(t *testing.T) {
 			}
 
 			runRepo := new(mock.JobRunRepository)
-			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
 			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(errors.New("a random error"))
 			defer runRepo.AssertExpectations(t)
 
@@ -308,6 +327,7 @@ func TestService(t *testing.T) {
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStatePending,
 				ScheduledAt: scheduledAt,
+				ExecutedAt:  mockedTimeNow,
 			}).Return(nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -328,6 +348,7 @@ func TestService(t *testing.T) {
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStatePending,
 				ScheduledAt: scheduledAt,
+				ExecutedAt:  mockedTimeNow,
 			}).Return(nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -353,4 +374,17 @@ func TestService(t *testing.T) {
 			assert.Equal(t, models.JobRun{}, returnedSpec)
 		})
 	})
+}
+
+// Copy exported fields
+func Copy(dst interface{}, src interface{}) error {
+	bytes, err := json.Marshal(src)
+	if err != nil {
+		return fmt.Errorf("failed to marshal src: %v", err)
+	}
+	err = json.Unmarshal(bytes, dst)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal into dst: %s", err)
+	}
+	return nil
 }

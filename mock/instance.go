@@ -75,11 +75,6 @@ func (r *JobRunRepository) ClearInstance(ctx context.Context, runID uuid.UUID, i
 	return args.Error(0)
 }
 
-func (r *JobRunRepository) ClearInstances(ctx context.Context, jobID uuid.UUID, scheduled time.Time) error {
-	args := r.Called(ctx, jobID, scheduled)
-	return args.Error(0)
-}
-
 type InstanceSpecRepoFactory struct {
 	mock.Mock
 }
