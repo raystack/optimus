@@ -8,14 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/models"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/config"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 var (
@@ -38,6 +39,7 @@ func secretSetSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 		filePath      string
 		encoded       bool
 		updateOnly    bool
+		skipConfirm   bool
 	)
 
 	secretCmd := &cli.Command{
@@ -55,6 +57,7 @@ Use base64 flag if the value has been encoded.
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
 	secretCmd.Flags().StringVarP(&filePath, "file", "f", filePath, "Provide file path to create secret from file instead")
+	secretCmd.Flags().BoolVar(&skipConfirm, "confirm", false, "Skip asking for confirmation")
 
 	secretCmd.RunE = func(cmd *cli.Command, args []string) error {
 		secretName, err := getSecretName(args)
@@ -67,14 +70,49 @@ Use base64 flag if the value has been encoded.
 			return err
 		}
 
+		if updateOnly {
+			updateSecretRequest := &pb.UpdateSecretRequest{
+				ProjectName:   projectName,
+				SecretName:    secretName,
+				Value:         secretValue,
+				NamespaceName: namespaceName,
+			}
+			return updateSecret(l, conf, updateSecretRequest)
+		}
 		registerSecretReq := &pb.RegisterSecretRequest{
 			ProjectName:   projectName,
 			SecretName:    secretName,
 			Value:         secretValue,
 			NamespaceName: namespaceName,
-			UpdateOnly:    updateOnly,
 		}
-		return registerSecret(l, conf, registerSecretReq)
+		err = registerSecret(l, conf, registerSecretReq)
+		if err != nil {
+			if strings.Contains(err.Error(), "Internal desc = secret already exist") {
+				proceedWithUpdate := "Yes"
+				if !skipConfirm {
+					if err := survey.AskOne(&survey.Select{
+						Message: "Secret already exists, proceed with update?",
+						Options: []string{"Yes", "No"},
+						Default: "No",
+					}, &proceedWithUpdate); err != nil {
+						return err
+					}
+				}
+				if proceedWithUpdate == "Yes" {
+					updateSecretRequest := &pb.UpdateSecretRequest{
+						ProjectName:   projectName,
+						SecretName:    secretName,
+						Value:         secretValue,
+						NamespaceName: namespaceName,
+					}
+					return updateSecret(l, conf, updateSecretRequest)
+				} else {
+					l.Info(coloredNotice("Aborting..."))
+					return nil
+				}
+			}
+		}
+		return nil
 	}
 	return secretCmd
 }
@@ -153,6 +191,43 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	} else {
 		return errors.New(fmt.Sprintf("request failed for creating secret %s: %s", req.SecretName,
 			registerSecretResponse.Message))
+	}
+
+	return nil
+}
+
+func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretRequest) (err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	var conn *grpc.ClientConn
+	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Info("can't reach optimus service")
+		}
+		return err
+	}
+	defer conn.Close()
+
+	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
+	defer secretRequestCancel()
+
+	l.Info("please wait...")
+	runtime := pb.NewRuntimeServiceClient(conn)
+
+	updateSecretResponse, err := runtime.UpdateSecret(secretRequestTimeout, req)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Info("secret update took too long, timing out")
+		}
+		return errors.Wrapf(err, "request failed for updating secret %s", req.SecretName)
+	}
+
+	if updateSecretResponse.Success {
+		l.Info("secret updated")
+	} else {
+		return errors.New(fmt.Sprintf("request failed for updating secret %s: %s", req.SecretName,
+			updateSecretResponse.Message))
 	}
 
 	return nil

@@ -1263,9 +1263,57 @@
                 },
                 "namespaceName": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
+      "put": {
+        "summary": "UpdateSecret updates secret at project level",
+        "operationId": "RuntimeService_UpdateSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1UpdateSecretResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "secretName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
                 },
-                "updateOnly": {
-                  "type": "boolean"
+                "namespaceName": {
+                  "type": "string"
                 }
               }
             }
@@ -2314,6 +2362,17 @@
       "type": "object"
     },
     "v1beta1UpdateResourceResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1UpdateSecretResponse": {
       "type": "object",
       "properties": {
         "success": {
