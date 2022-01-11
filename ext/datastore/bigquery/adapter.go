@@ -89,13 +89,15 @@ func bqGoogleSheetsOptionsTo(m map[string]interface{}) *bqapi.GoogleSheetsOption
 	var sheetRange string
 
 	if val, ok := m["skip_leading_rows"]; ok {
-		skipLeadingRows = int64(val.(float64))
+		if rows, ok := val.(float64); ok {
+			skipLeadingRows = int64(rows)
+		}
 	}
-
 	if val, ok := m["range"]; ok {
-		sheetRange = val.(string)
+		if ran, ok := val.(string); ok {
+			sheetRange = ran
+		}
 	}
-
 	return &bqapi.GoogleSheetsOptions{
 		SkipLeadingRows: skipLeadingRows,
 		Range:           sheetRange,

@@ -90,6 +90,11 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 			})
 		}
 	}
+
+	metadata := models.JobSpecMetadata{}
+	if spec.Metadata != nil {
+		metadata.Resource = adapt.FromJobSpecMetadataResourceProto(spec.Metadata.Resource)
+	}
 	return models.JobSpec{
 		Version:     int(spec.Version),
 		Name:        spec.Name,
@@ -119,9 +124,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		},
 		Dependencies: dependencies,
 		Hooks:        hooks,
-		Metadata: models.JobSpecMetadata{
-			Resource: adapt.FromJobSpecMetadataResourceProto(spec.Metadata.Resource),
-		},
+		Metadata:     metadata,
 	}, nil
 }
 
