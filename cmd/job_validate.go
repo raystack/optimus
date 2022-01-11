@@ -21,7 +21,7 @@ const (
 	validateTimeout = time.Minute * 5
 )
 
-func jobValidateCommand(l log.Logger, host string, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
+func jobValidateCommand(l log.Logger, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
 	conf config.Provider) *cli.Command {
 	var (
 		projectName string
@@ -39,13 +39,17 @@ func jobValidateCommand(l log.Logger, host string, pluginRepo models.PluginRepos
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		if projectName == "" || namespace == "" {
+			return fmt.Errorf("project and namespace configurations are required")
+		}
+		l.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace))
 		start := time.Now()
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("directory '%s': %v", conf.GetJob().Path, err)
 		}
 
-		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, host, verbose); err != nil {
+		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, conf.GetHost(), verbose); err != nil {
 			return err
 		}
 		l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
