@@ -21,7 +21,7 @@ type Secret struct {
 	ProjectID uuid.UUID
 	Project   Project `gorm:"foreignKey:ProjectID"`
 
-	NamespaceID uuid.UUID
+	NamespaceID uuid.UUID `gorm:"default:null"`
 	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
 	Name  string `gorm:"not null"`

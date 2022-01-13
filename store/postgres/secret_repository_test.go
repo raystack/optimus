@@ -53,6 +53,9 @@ func TestSecretRepository(t *testing.T) {
 
 		projRepo := NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
+
+		namespaceRepo := NewNamespaceRepository(dbConn, projectSpec, hash)
+		assert.Nil(t, namespaceRepo.Save(ctx, namespaceSpec))
 		return dbConn
 	}
 
