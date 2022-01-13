@@ -48,7 +48,6 @@ module.exports = {
         "concepts/overview",
         "concepts/architecture",
         "concepts/intervals-and-windows",
-        "concepts/v1-to-v2",
       ],
     },
     {
