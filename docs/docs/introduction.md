@@ -5,15 +5,13 @@ title: Introduction
 
 # Optimus
 
-We're still a work in progress, so expect more documentation soon!
-
 Optimus is an ETL orchestration tool that helps manage warehouse resources and
 schedule transformation over cron interval. Warehouses like Bigquery can be used
 to create, update, read, delete different types of resources(dataset/table/standard view).
 Similarly, jobs can be SQL transformations taking inputs from single/multiple
 source tables executing over fixed schedule interval. Optimus was made from start
-to be extensible, which is, adding support of different kind of warehouses,
-transformers can be done easily.
+to be extensible, which is, adding support for different kind of warehouses,
+transformations and executors can be done easily.
 
 ## Features
 
@@ -35,7 +33,7 @@ transformers can be done easily.
     checks
 - Extensibility to support Python transformation
 - Git based specification management
-- GRPC/REST based specification management
+- GRPC/REST based APIs
 
 NOTE: This is still in early stages and very close to use for production.
 We are taking feedback and making breaking changes based on user requirements.

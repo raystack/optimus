@@ -60,17 +60,53 @@ After setup is completed
 ```
  # Run the following command in shell (bash/zsh)
  $ optimus [tab][tab]
- ```
+```
 
 Output :
  ```
 $ optimus 
-config   -- Manage optimus configuration required to deploy specifications
-create   -- Create a new job/resource
-deploy   -- Deploy current project to server
-help     -- Help about any command
-render   -- convert raw representation of specification to consumables
-replay   -- re-running jobs in order to update data for older dates/partitions
-serve    -- Starts optimus service
-version  -- Print the client version information
+Optimus is an easy-to-use, reliable, and performant workflow orchestrator for
+data transformation, data modeling, pipelines, and data quality management.
+
+For passing authentication header, set one of the following environment
+variables:
+1. OPTIMUS_AUTH_BASIC_TOKEN
+2. OPTIMUS_AUTH_BEARER_TOKEN
+
+USAGE
+  optimus <command> <subcommand> [flags]
+
+CORE COMMANDS
+  backup      Backup a resource and its downstream
+  deploy      Deploy current optimus project to server
+  job         Interact with schedulable Job
+  replay      Re-running jobs in order to update data for older dates/partitions
+  resource    Interact with data resource
+
+DEV COMMANDS
+  serve       Starts optimus service
+
+ADDITIONAL COMMANDS
+  completion  generate the autocompletion script for the specified shell
+  config      Manage optimus configuration required to deploy specifications
+  extension   Operate with extension
+  help        Help about any command
+  version     Print the client version information
+
+FLAGS
+  --help       Show help for command
+  --no-color   Disable colored output
+
+EXAMPLES
+  $ optimus job create
+  $ optimus backup create
+  $ optimus backup list
+  $ optimus replay create
+
+LEARN MORE
+  Use 'optimus <command> <subcommand> --help' for more information about a command.
+  Read the manual at https://odpf.github.io/optimus/
+
+FEEDBACK
+  Open an issue here https://github.com/odpf/optimus/issues
  ```
