@@ -166,7 +166,7 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("can't reach optimus service")
+			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
 		}
 		return err
 	}
@@ -181,15 +181,15 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	registerSecretResponse, err := runtime.RegisterSecret(secretRequestTimeout, req)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("secret registration took too long, timing out")
+			l.Error(coloredError("Secret registration took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for creating secret %s", req.SecretName)
+		return errors.Wrapf(err, "Request failed for creating secret %s", req.SecretName)
 	}
 
 	if registerSecretResponse.Success {
-		l.Info("secret registered")
+		l.Info(coloredSuccess("Secret registered"))
 	} else {
-		return errors.New(fmt.Sprintf("request failed for creating secret %s: %s", req.SecretName,
+		return errors.New(fmt.Sprintf("Request failed for creating secret %s: %s", req.SecretName,
 			registerSecretResponse.Message))
 	}
 
@@ -203,7 +203,7 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	var conn *grpc.ClientConn
 	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("can't reach optimus service")
+			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
 		}
 		return err
 	}
@@ -218,15 +218,15 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	updateSecretResponse, err := runtime.UpdateSecret(secretRequestTimeout, req)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("secret update took too long, timing out")
+			l.Error(coloredError("Secret update took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for updating secret %s", req.SecretName)
+		return errors.Wrapf(err, "Request failed for updating secret %s", req.SecretName)
 	}
 
 	if updateSecretResponse.Success {
-		l.Info("secret updated")
+		l.Info(coloredSuccess("Secret updated"))
 	} else {
-		return errors.New(fmt.Sprintf("request failed for updating secret %s: %s", req.SecretName,
+		return errors.New(fmt.Sprintf("Request failed for updating secret %s: %s", req.SecretName,
 			updateSecretResponse.Message))
 	}
 
