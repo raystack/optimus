@@ -266,7 +266,7 @@ class OptimusAPIClient:
                                                                                             job_name=job)
         request_data = {
             "scheduledAt": execution_date,
-            "instance_type": "TASK",
+            "instance_type": "TYPE_TASK",
             "instance_name": "none"
         }
         response = requests.post(url, data=json.dumps(request_data))
