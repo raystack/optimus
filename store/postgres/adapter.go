@@ -494,7 +494,7 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 		// to make it backward compatible, generate execution time
 		// although this time may not match exactly what it should be
 		// but will avoid failing
-		adaptedData.ExecutedAt = time.Now().UTC()
+		adaptedData.ExecutedAt = jr.ScheduledAt
 	}
 
 	var instanceSpecs []models.InstanceSpec
