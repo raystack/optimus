@@ -486,8 +486,15 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 	}
 
 	adaptedData := JobRunData{}
-	if err := json.Unmarshal(jr.Data, &adaptedData); err != nil {
-		return models.JobRun{}, models.NamespaceSpec{}, err
+	if len(jr.Data) != 0 {
+		if err := json.Unmarshal(jr.Data, &adaptedData); err != nil {
+			return models.JobRun{}, models.NamespaceSpec{}, err
+		}
+	} else {
+		// to make it backward compatible, generate execution time
+		// although this time may not match exactly what it should be
+		// but will avoid failing
+		adaptedData.ExecutedAt = time.Now().UTC()
 	}
 
 	var instanceSpecs []models.InstanceSpec
