@@ -60,7 +60,7 @@ transformation_secret = Secret(
 {{- $setMemoryLimit := not (empty .Metadata.Resource.Limit.Memory) -}}
 {{- $setResourceConfig := or $setCPURequest $setMemoryRequest $setCPULimit $setMemoryLimit }}
 
-{{- if $setResourceConfig -}}
+{{- if $setResourceConfig }}
 resources = k8s.V1ResourceRequirements (
     {{- if or $setCPURequest $setMemoryRequest }}
     requests = {
