@@ -179,21 +179,16 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	spinner.Start("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 
-	registerSecretResponse, err := runtime.RegisterSecret(secretRequestTimeout, req)
+	_, err = runtime.RegisterSecret(secretRequestTimeout, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret registration took too long, timing out"))
 		}
-		return errors.Wrapf(err, "Request failed for creating secret %s", req.SecretName)
+		return errors.Wrapf(err, "request failed for creating secret %s", req.SecretName)
 	}
 
-	if registerSecretResponse.Success {
-		l.Info(coloredSuccess("Secret registered"))
-	} else {
-		return errors.New(fmt.Sprintf("Request failed for creating secret %s: %s", req.SecretName,
-			registerSecretResponse.Message))
-	}
+	l.Info(coloredSuccess("Secret registered"))
 
 	return nil
 }
@@ -218,21 +213,16 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	spinner.Start("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 
-	updateSecretResponse, err := runtime.UpdateSecret(secretRequestTimeout, req)
+	_, err = runtime.UpdateSecret(secretRequestTimeout, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret update took too long, timing out"))
 		}
-		return errors.Wrapf(err, "Request failed for updating secret %s", req.SecretName)
+		return errors.Wrapf(err, "request failed for updating secret %s", req.SecretName)
 	}
 
-	if updateSecretResponse.Success {
-		l.Info(coloredSuccess("Secret updated"))
-	} else {
-		return errors.New(fmt.Sprintf("Request failed for updating secret %s: %s", req.SecretName,
-			updateSecretResponse.Message))
-	}
+	l.Info(coloredSuccess("Secret updated"))
 
 	return nil
 }
