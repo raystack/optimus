@@ -154,7 +154,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 
 func validateProperlyEncoded(secretValue string) error {
 	if _, err := base64.StdEncoding.DecodeString(secretValue); err != nil {
-		return errors.New("value is not encoded. please use --base64 to let Optimus encode the secret for you.")
+		return errors.New("value is not encoded. please remove --base64 to let Optimus encode the secret for you.")
 	}
 	return nil
 }
@@ -175,10 +175,12 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
 	defer secretRequestCancel()
 
-	l.Info("please wait...")
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 
 	registerSecretResponse, err := runtime.RegisterSecret(secretRequestTimeout, req)
+	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret registration took too long, timing out"))
@@ -212,10 +214,12 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
 	defer secretRequestCancel()
 
-	l.Info("please wait...")
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
 
 	updateSecretResponse, err := runtime.UpdateSecret(secretRequestTimeout, req)
+	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret update took too long, timing out"))
