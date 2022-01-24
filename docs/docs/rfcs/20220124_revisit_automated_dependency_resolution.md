@@ -31,6 +31,19 @@ data_window :
  amount : 1d/1w/2d/1m 
 ```
 
+`max_delay` is used to identify the end time of the window.
+
+`amount` is the amount of data the user is consuming from the primary sources.
+
+Below is the current windowing configuration.
+
+```yaml
+  window:
+    size: 24h
+    offset: 24h
+    truncate_to: d
+```
+
 Let's answer **Question 2**, I believe this is mainly linked with the schedule of the job, if the job is scheduled daily then the expectation is the job makes data available for a whole day, if hourly then for a whole hour, irrespective of the input_window. What exactly is the time range can be computed by `max_delay` and `schedule_frequency` . 
 
 If the job has a max_delay of 2h & the job is scheduled at 2 AM UTC then the job is making the data available for the entire previous day, irrespective of the window(1d,1m,1w).
