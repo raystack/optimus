@@ -22,7 +22,7 @@ func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
 		Long:    "Process optimus job specification based on macros/functions used.",
-		Example: "optimus job render",
+		Example: "optimus job render [<job_name>]",
 	}
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		var err error
@@ -37,15 +37,18 @@ func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.
 		} else {
 			jobName = args[0]
 		}
-		jobSpec, _ := jobSpecRepo.GetByName(jobName)
+		jobSpec, err := jobSpecRepo.GetByName(jobName)
+		if err != nil {
+			return err
+		}
 
 		// create temporary directory
 		renderedPath := filepath.Join(".", "render", jobSpec.Name)
 		_ = os.MkdirAll(renderedPath, 0770)
-		l.Info(fmt.Sprintf("rendering assets in %s", renderedPath))
+		l.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
 
 		now := time.Now()
-		l.Info(fmt.Sprintf("assuming execution time as current time of %s", now.Format(models.InstanceScheduledAtTimeLayout)))
+		l.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
 
 		templates, err := run.DumpAssets(jobSpec, now, templateEngine, true)
 		if err != nil {
@@ -59,7 +62,7 @@ func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.
 			}
 		}
 
-		l.Info(coloredSuccess("render complete"))
+		l.Info(coloredSuccess("\nRender complete."))
 		return nil
 	}
 

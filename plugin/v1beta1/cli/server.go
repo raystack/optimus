@@ -2,9 +2,9 @@ package cli
 
 import (
 	"context"
-	"strings"
 
 	"github.com/odpf/optimus/plugin/v1beta1/base"
+	"github.com/odpf/optimus/utils"
 
 	"github.com/odpf/optimus/models"
 
@@ -103,7 +103,7 @@ func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRe
 		instanceData = append(instanceData, models.InstanceSpecData{
 			Name:  inst.Name,
 			Value: inst.Value,
-			Type:  strings.ToLower(inst.Type.String()),
+			Type:  utils.FromEnumProto(inst.Type.String(), "type"),
 		})
 	}
 

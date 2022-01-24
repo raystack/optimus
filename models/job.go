@@ -106,7 +106,7 @@ type JobSpecNotifier struct {
 }
 
 type JobSpecTask struct {
-	Unit     *Plugin
+	Unit     *Plugin `json:"-" yaml:"-"`
 	Config   JobSpecConfigs
 	Window   JobSpecTaskWindow
 	Priority int

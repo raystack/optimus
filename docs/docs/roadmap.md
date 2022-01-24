@@ -32,7 +32,7 @@ This will be an effort to easy the same.
 Giving a provision for defining the SLAs & providing a dashboard to visualize how the slas are met is a must.
 With this users will be able to monitor any slas that are breached out of the box.
 
-### SQLlite Support
+### SQLite Support
 With support of SQLlite database, just helps users to kick start Optimus fast & easy to try on without having a dependency on postgres.
 
 ### Custom Macro Support

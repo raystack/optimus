@@ -53,7 +53,11 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		l.Info(fmt.Sprintf("Deploying project %s for namespace %s at %s", projectName, namespace, conf.GetHost()))
+		if projectName == "" || namespace == "" {
+			return fmt.Errorf("project and namespace configurations are required")
+		}
+
+		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.GetHost()))
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -64,7 +68,7 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 			datastoreSpecFs, ignoreJobs, ignoreResources, verbose); err != nil {
 			return err
 		}
-		l.Info(coloredSuccess("\nDeployment completed, took %.2f seconds", time.Since(start).Seconds()))
+		l.Info(coloredSuccess("\nDeployment completed, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
 

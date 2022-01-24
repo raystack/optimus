@@ -413,11 +413,16 @@ type JobRun struct {
 	Trigger     string
 	Status      string
 	ScheduledAt time.Time
+	Data        datatypes.JSON
 
 	Instances []Instance
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+}
+
+type JobRunData struct {
+	ExecutedAt time.Time
 }
 
 func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.NamespaceSpec) (JobRun, error) {
@@ -426,6 +431,13 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 		return JobRun{}, err
 	}
 	specBytes, err := json.Marshal(adaptedJobSpec)
+	if err != nil {
+		return JobRun{}, err
+	}
+
+	dataBytes, err := json.Marshal(JobRunData{
+		ExecutedAt: jr.ExecutedAt,
+	})
 	if err != nil {
 		return JobRun{}, err
 	}
@@ -456,6 +468,7 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 		Trigger:     jr.Trigger.String(),
 		Status:      jr.Status.String(),
 		ScheduledAt: jr.ScheduledAt,
+		Data:        dataBytes,
 
 		Instances: instances,
 	}, nil
@@ -470,6 +483,18 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 	jobSpec, err := adapt.ToSpec(adaptedSpec)
 	if err != nil {
 		return models.JobRun{}, models.NamespaceSpec{}, err
+	}
+
+	adaptedData := JobRunData{}
+	if len(jr.Data) != 0 {
+		if err := json.Unmarshal(jr.Data, &adaptedData); err != nil {
+			return models.JobRun{}, models.NamespaceSpec{}, err
+		}
+	} else {
+		// to make it backward compatible, generate execution time
+		// although this time may not match exactly what it should be
+		// but will avoid failing
+		adaptedData.ExecutedAt = jr.ScheduledAt
 	}
 
 	var instanceSpecs []models.InstanceSpec
@@ -504,5 +529,6 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 		Status:      models.JobRunState(jr.Status),
 		ScheduledAt: jr.ScheduledAt,
 		Instances:   instanceSpecs,
+		ExecutedAt:  adaptedData.ExecutedAt,
 	}, adaptNamespace, nil
 }

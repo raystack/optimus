@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/set"
@@ -127,6 +129,119 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, jobSpec, original)
 		assert.Nil(t, err)
 	})
+}
+
+func TestAdapter_FromInstanceProto(t *testing.T) {
+	type args struct {
+		conf *pb.InstanceSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want models.InstanceSpec
+	}{
+		{
+			name: "null model should be handled correctly",
+			args: args{
+				conf: nil,
+			},
+			want: models.InstanceSpec{},
+		},
+		{
+			name: "proto should be converted correctly",
+			args: args{
+				conf: &pb.InstanceSpec{
+					State: "running",
+					Data: []*pb.InstanceSpecData{
+						{
+							Name:  "hello",
+							Value: "world",
+							Type:  pb.InstanceSpecData_TYPE_ENV,
+						},
+					},
+					ExecutedAt: timestamppb.New(time.Date(2021, 2, 2, 2, 2, 2, 2, time.UTC)),
+					Name:       "hello",
+					Type:       pb.InstanceSpec_TYPE_TASK,
+				},
+			},
+			want: models.InstanceSpec{
+				Name:   "hello",
+				Type:   "task",
+				Status: "running",
+				Data: []models.InstanceSpecData{
+					{
+						Name:  "hello",
+						Value: "world",
+						Type:  models.InstanceDataTypeEnv,
+					},
+				},
+				ExecutedAt: time.Date(2021, 2, 2, 2, 2, 2, 2, time.UTC),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			adapt := &v1.Adapter{}
+			got, err := adapt.FromInstanceProto(tt.args.conf)
+			assert.Nil(t, err)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FromInstanceProto() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAdapter_ToInstanceProto(t *testing.T) {
+	type args struct {
+		conf models.InstanceSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want *pb.InstanceSpec
+	}{
+		{
+			name: "proto should be converted correctly",
+			args: args{
+				conf: models.InstanceSpec{
+					Name:   "hello",
+					Type:   "task",
+					Status: "running",
+					Data: []models.InstanceSpecData{
+						{
+							Name:  "hello",
+							Value: "world",
+							Type:  models.InstanceDataTypeEnv,
+						},
+					},
+					ExecutedAt: time.Date(2021, 2, 2, 2, 2, 2, 2, time.UTC),
+				},
+			},
+			want: &pb.InstanceSpec{
+				State: "running",
+				Data: []*pb.InstanceSpecData{
+					{
+						Name:  "hello",
+						Value: "world",
+						Type:  pb.InstanceSpecData_TYPE_ENV,
+					},
+				},
+				ExecutedAt: timestamppb.New(time.Date(2021, 2, 2, 2, 2, 2, 2, time.UTC)),
+				Name:       "hello",
+				Type:       pb.InstanceSpec_TYPE_TASK,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			adapt := &v1.Adapter{}
+			got, err := adapt.ToInstanceProto(tt.args.conf)
+			assert.Nil(t, err)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToInstanceProto() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestAdapter_FromProjectProtoWithSecrets(t *testing.T) {

@@ -72,6 +72,7 @@ type JobRun struct {
 	Status      JobRunState
 	Instances   []InstanceSpec
 	ScheduledAt time.Time
+	ExecutedAt  time.Time
 }
 
 func (j *JobRun) GetInstance(instanceName string, instanceType InstanceType) (InstanceSpec, error) {
