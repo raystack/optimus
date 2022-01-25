@@ -131,7 +131,6 @@ func secretListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
 
 	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
-
 		updateSecretRequest := &pb.ListSecretsRequest{
 			ProjectName: projectName,
 		}

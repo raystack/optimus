@@ -118,9 +118,8 @@ func (p Secret) ToSecretItemInfo(hash models.ApplicationKey) (models.SecretItemI
 }
 
 type secretRepository struct {
-	db        *gorm.DB
-	project   models.ProjectSpec
-	namespace models.NamespaceSpec
+	db      *gorm.DB
+	project models.ProjectSpec
 
 	hash models.ApplicationKey
 }
