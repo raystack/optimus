@@ -134,8 +134,8 @@ type projectSecretRepoFactory struct {
 	hash models.ApplicationKey
 }
 
-func (fac *projectSecretRepoFactory) New(spec models.ProjectSpec) store.ProjectSecretRepository {
-	return postgres.NewSecretRepository(fac.db, spec, fac.hash)
+func (fac *projectSecretRepoFactory) New(projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec) store.ProjectSecretRepository {
+	return postgres.NewSecretRepository(fac.db, projectSpec, namespaceSpec, fac.hash)
 }
 
 type jobRunRepoFactory struct {

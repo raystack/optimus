@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"sync"
 	"time"
@@ -48,7 +47,7 @@ type NamespaceRepoFactory interface {
 }
 
 type SecretRepoFactory interface {
-	New(spec models.ProjectSpec) store.ProjectSecretRepository
+	New(projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec) store.ProjectSecretRepository
 }
 
 type JobEventService interface {
@@ -636,35 +635,6 @@ func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindow
 	return &pb.GetWindowResponse{
 		Start: windowStart,
 		End:   windowEnd,
-	}, nil
-}
-
-func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.RegisterSecretRequest) (*pb.RegisterSecretResponse, error) {
-	if req.GetValue() == "" {
-		return nil, status.Error(codes.Internal, "empty value for secret")
-	}
-	// decode base64
-	base64Decoded, err := base64.StdEncoding.DecodeString(req.GetValue())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to decode base64 string: \n%s", err.Error())
-	}
-
-	projectRepo := sv.projectRepoFactory.New()
-	projSpec, err := projectRepo.GetByName(ctx, req.GetProjectName())
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
-	}
-
-	secretRepo := sv.secretRepoFactory.New(projSpec)
-	if err := secretRepo.Save(ctx, models.ProjectSecretItem{
-		Name:  req.GetSecretName(),
-		Value: string(base64Decoded),
-	}); err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to save secret %s", err.Error(), req.GetSecretName())
-	}
-
-	return &pb.RegisterSecretResponse{
-		Success: true,
 	}, nil
 }
 

@@ -133,6 +133,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 	cmd.AddCommand(replayCommand(plainLog, conf))
 	cmd.AddCommand(backupCommand(plainLog, dsRepo, conf))
 	cmd.AddCommand(adminCommand(plainLog, conf))
+	cmd.AddCommand(secretCommand(plainLog, conf))
 
 	addExtensionCommand(cmd, plainLog)
 	return cmd

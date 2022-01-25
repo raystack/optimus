@@ -21,6 +21,12 @@ const (
 
 	// Secret used to authenticate with scheduler provided at ProjectSchedulerHost
 	ProjectSchedulerAuth = "SCHEDULER_AUTH"
+
+	SecretTypeSystemDefined SecretType = "system"
+	SecretTypeUserDefined   SecretType = "user"
+
+	// Secret name with this prefix indicates managed by system
+	SecretTypeSystemDefinedPrefix = "_OPTIMUS_"
 )
 
 var (
@@ -77,6 +83,14 @@ type ProjectSecretItem struct {
 
 	Name  string
 	Value string
+
+	Type SecretType
+}
+
+type SecretType string
+
+func (s SecretType) String() string {
+	return string(s)
 }
 
 type ApplicationKey struct {

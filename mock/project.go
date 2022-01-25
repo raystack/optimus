@@ -40,8 +40,8 @@ type ProjectSecretRepoFactory struct {
 	mock.Mock
 }
 
-func (fac *ProjectSecretRepoFactory) New(p models.ProjectSpec) store.ProjectSecretRepository {
-	args := fac.Called(p)
+func (fac *ProjectSecretRepoFactory) New(p models.ProjectSpec, n models.NamespaceSpec) store.ProjectSecretRepository {
+	args := fac.Called(p, n)
 	return args.Get(0).(store.ProjectSecretRepository)
 }
 
@@ -50,6 +50,10 @@ type ProjectSecretRepository struct {
 }
 
 func (pr *ProjectSecretRepository) Save(ctx context.Context, spec models.ProjectSecretItem) error {
+	return pr.Called(ctx, spec).Error(0)
+}
+
+func (pr *ProjectSecretRepository) Update(ctx context.Context, spec models.ProjectSecretItem) error {
 	return pr.Called(ctx, spec).Error(0)
 }
 

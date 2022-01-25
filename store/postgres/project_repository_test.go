@@ -193,7 +193,7 @@ func TestProjectRepository(t *testing.T) {
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = NewSecretRepository(db, testModels[0], hash).Save(ctx, models.ProjectSecretItem{
+		err = NewSecretRepository(db, testModels[0], models.NamespaceSpec{}, hash).Save(ctx, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
@@ -218,12 +218,12 @@ func TestProjectRepository(t *testing.T) {
 		assert.Nil(t, repo.Insert(ctx, testModels[2]))
 		assert.Nil(t, repo.Insert(ctx, testModels[3]))
 
-		err := NewSecretRepository(db, testModels[2], hash).Save(ctx, models.ProjectSecretItem{
+		err := NewSecretRepository(db, testModels[2], models.NamespaceSpec{}, hash).Save(ctx, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
 		assert.Nil(t, err)
-		err = NewSecretRepository(db, testModels[3], hash).Save(ctx, models.ProjectSecretItem{
+		err = NewSecretRepository(db, testModels[3], models.NamespaceSpec{}, hash).Save(ctx, models.ProjectSecretItem{
 			Name:  "t2",
 			Value: "v2",
 		})
