@@ -48,6 +48,8 @@ type RuntimeServiceClient interface {
 	RegisterSecret(ctx context.Context, in *RegisterSecretRequest, opts ...grpc.CallOption) (*RegisterSecretResponse, error)
 	// UpdateSecret updates secret at project level
 	UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error)
+	// ListSecrets shows the secrets registered for a project
+	ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error)
 	// ListProjects returns list of registered projects and configurations
 	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
@@ -252,6 +254,15 @@ func (c *runtimeServiceClient) RegisterSecret(ctx context.Context, in *RegisterS
 func (c *runtimeServiceClient) UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error) {
 	out := new(UpdateSecretResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/UpdateSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runtimeServiceClient) ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error) {
+	out := new(ListSecretsResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/ListSecrets", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -495,6 +506,8 @@ type RuntimeServiceServer interface {
 	RegisterSecret(context.Context, *RegisterSecretRequest) (*RegisterSecretResponse, error)
 	// UpdateSecret updates secret at project level
 	UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error)
+	// ListSecrets shows the secrets registered for a project
+	ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error)
 	// ListProjects returns list of registered projects and configurations
 	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
@@ -577,6 +590,9 @@ func (UnimplementedRuntimeServiceServer) RegisterSecret(context.Context, *Regist
 }
 func (UnimplementedRuntimeServiceServer) UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSecret not implemented")
+}
+func (UnimplementedRuntimeServiceServer) ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSecrets not implemented")
 }
 func (UnimplementedRuntimeServiceServer) ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListProjects not implemented")
@@ -887,6 +903,24 @@ func _RuntimeService_UpdateSecret_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuntimeServiceServer).UpdateSecret(ctx, req.(*UpdateSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuntimeService_ListSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSecretsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).ListSecrets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/ListSecrets",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).ListSecrets(ctx, req.(*ListSecretsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1304,6 +1338,10 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSecret",
 			Handler:    _RuntimeService_UpdateSecret_Handler,
+		},
+		{
+			MethodName: "ListSecrets",
+			Handler:    _RuntimeService_ListSecrets_Handler,
 		},
 		{
 			MethodName: "ListProjects",

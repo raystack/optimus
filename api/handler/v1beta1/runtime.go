@@ -47,7 +47,7 @@ type NamespaceRepoFactory interface {
 }
 
 type SecretRepoFactory interface {
-	New(projectSpec models.ProjectSpec, namespaceSpec models.NamespaceSpec) store.ProjectSecretRepository
+	New(projectSpec models.ProjectSpec) store.ProjectSecretRepository
 }
 
 type JobEventService interface {

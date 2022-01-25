@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -110,4 +111,14 @@ func NewApplicationSecret(k string) (ApplicationKey, error) {
 
 func (s *ApplicationKey) GetKey() *[32]byte {
 	return s.key
+}
+
+type SecretItemInfo struct {
+	ID     uuid.UUID
+	Name   string
+	Digest string
+
+	Type      SecretType
+	Namespace string
+	UpdatedAt time.Time
 }

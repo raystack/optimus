@@ -86,6 +86,37 @@ func (p Secret) ToSpec(hash models.ApplicationKey) (models.ProjectSecretItem, er
 	}, nil
 }
 
+func (p Secret) ToSecretItemInfo(hash models.ApplicationKey) (models.SecretItemInfo, error) {
+	// decode base64
+	encrypted, err := base64.StdEncoding.DecodeString(p.Value)
+	if err != nil {
+		return models.SecretItemInfo{}, err
+	}
+
+	// decrypt secret
+	cleartext, err := cryptopasta.Decrypt(encrypted, hash.GetKey())
+	if err != nil {
+		return models.SecretItemInfo{}, err
+	}
+
+	digest := cryptopasta.Hash("secret", cleartext)
+	base64encoded := base64.StdEncoding.EncodeToString(digest)
+
+	secretType := models.SecretTypeSystemDefined
+	if p.Type == models.SecretTypeUserDefined.String() {
+		secretType = models.SecretTypeUserDefined
+	}
+
+	return models.SecretItemInfo{
+		ID:        p.ID,
+		Name:      p.Name,
+		Digest:    base64encoded,
+		Type:      secretType,
+		Namespace: p.Namespace.Name,
+		UpdatedAt: p.UpdatedAt,
+	}, nil
+}
+
 type secretRepository struct {
 	db        *gorm.DB
 	project   models.ProjectSpec
@@ -94,8 +125,8 @@ type secretRepository struct {
 	hash models.ApplicationKey
 }
 
-func (repo *secretRepository) Insert(ctx context.Context, resource models.ProjectSecretItem) error {
-	p, err := Secret{}.FromSpec(resource, repo.project, repo.namespace, repo.hash)
+func (repo *secretRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, resource models.ProjectSecretItem) error {
+	p, err := Secret{}.FromSpec(resource, repo.project, namespace, repo.hash)
 	if err != nil {
 		return err
 	}
@@ -105,17 +136,17 @@ func (repo *secretRepository) Insert(ctx context.Context, resource models.Projec
 	return repo.db.WithContext(ctx).Save(&p).Error
 }
 
-func (repo *secretRepository) Save(ctx context.Context, spec models.ProjectSecretItem) error {
+func (repo *secretRepository) Save(ctx context.Context, namespace models.NamespaceSpec, spec models.ProjectSecretItem) error {
 	_, err := repo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, spec)
+		return repo.Insert(ctx, namespace, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find secret by name")
 	}
 	return errors.New("secret already exist")
 }
 
-func (repo *secretRepository) Update(ctx context.Context, spec models.ProjectSecretItem) error {
+func (repo *secretRepository) Update(ctx context.Context, namespace models.NamespaceSpec, spec models.ProjectSecretItem) error {
 	existingResource, err := repo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return errors.New(fmt.Sprintf("secret %s does not exist", spec.Name))
@@ -123,7 +154,7 @@ func (repo *secretRepository) Update(ctx context.Context, spec models.ProjectSec
 		return errors.Wrap(err, "unable to find secret by name")
 	}
 
-	resource, err := Secret{}.FromSpec(spec, repo.project, repo.namespace, repo.hash)
+	resource, err := Secret{}.FromSpec(spec, repo.project, namespace, repo.hash)
 	if err != nil {
 		return err
 	}
@@ -155,27 +186,29 @@ func (repo *secretRepository) GetByID(ctx context.Context, id uuid.UUID) (models
 	return r.ToSpec(repo.hash)
 }
 
-func (repo *secretRepository) GetAll(ctx context.Context) ([]models.ProjectSecretItem, error) {
-	var specs []models.ProjectSecretItem
+func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemInfo, error) {
+	var secretItems []models.SecretItemInfo
 	var resources []Secret
-	if err := repo.db.WithContext(ctx).Find(&resources).Error; err != nil {
-		return specs, err
+	if err := repo.db.WithContext(ctx).Preload("Namespace").
+		Joins("LEFT JOIN namespace ON secret.namespace_id = namespace.id").
+		Where("secret.project_id = ? and secret.type = 'user'", repo.project.ID).Find(&resources).Error; err != nil {
+		return secretItems, err
 	}
 	for _, res := range resources {
-		adapted, err := res.ToSpec(repo.hash)
+		adapted, err := res.ToSecretItemInfo(repo.hash)
 		if err != nil {
-			return specs, errors.Wrap(err, "failed to adapt secret")
+			return secretItems, errors.Wrap(err, "failed to adapt secret")
 		}
-		specs = append(specs, adapted)
+		secretItems = append(secretItems, adapted)
 	}
-	return specs, nil
+
+	return secretItems, nil
 }
 
-func NewSecretRepository(db *gorm.DB, project models.ProjectSpec, namespace models.NamespaceSpec, hash models.ApplicationKey) *secretRepository {
+func NewSecretRepository(db *gorm.DB, project models.ProjectSpec, hash models.ApplicationKey) *secretRepository {
 	return &secretRepository{
-		db:        db,
-		project:   project,
-		namespace: namespace,
-		hash:      hash,
+		db:      db,
+		project: project,
+		hash:    hash,
 	}
 }

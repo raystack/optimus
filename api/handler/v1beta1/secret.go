@@ -8,6 +8,7 @@ import (
 	"github.com/odpf/optimus/models"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.RegisterSecretRequest) (*pb.RegisterSecretResponse, error) {
@@ -31,17 +32,15 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 		}
 	}
 
-	secretRepo := sv.secretRepoFactory.New(projSpec, namespaceSpec)
-	if err := secretRepo.Save(ctx, models.ProjectSecretItem{
+	secretRepo := sv.secretRepoFactory.New(projSpec)
+	if err := secretRepo.Save(ctx, namespaceSpec, models.ProjectSecretItem{
 		Name:  req.GetSecretName(),
 		Value: base64Decoded,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to register secret %s", err.Error(), req.GetSecretName())
 	}
 
-	return &pb.RegisterSecretResponse{
-		Success: true,
-	}, nil
+	return &pb.RegisterSecretResponse{}, nil
 }
 
 func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.UpdateSecretRequest) (*pb.UpdateSecretResponse, error) {
@@ -65,17 +64,42 @@ func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.Update
 		}
 	}
 
-	secretRepo := sv.secretRepoFactory.New(projSpec, namespaceSpec)
-	if err := secretRepo.Update(ctx, models.ProjectSecretItem{
+	secretRepo := sv.secretRepoFactory.New(projSpec)
+	if err := secretRepo.Update(ctx, namespaceSpec, models.ProjectSecretItem{
 		Name:  req.GetSecretName(),
 		Value: base64Decoded,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to update secret %s", err.Error(), req.GetSecretName())
 	}
 
-	return &pb.UpdateSecretResponse{
-		Success: true,
-	}, nil
+	return &pb.UpdateSecretResponse{}, nil
+}
+
+func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSecretsRequest) (*pb.ListSecretsResponse, error) {
+	projectRepo := sv.projectRepoFactory.New()
+	projSpec, err := projectRepo.GetByName(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: project %s not found", err.Error(), req.GetProjectName())
+	}
+
+	secretRepo := sv.secretRepoFactory.New(projSpec)
+	secrets, err := secretRepo.GetAll(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to list secrets", err.Error())
+	}
+
+	var secretsResponse []*pb.ListSecretsResponse_Secret
+	for _, s := range secrets {
+		respSecret := pb.ListSecretsResponse_Secret{
+			Name:      s.Name,
+			Namespace: s.Namespace,
+			Digest:    s.Digest,
+			UpdatedAt: timestamppb.New(s.UpdatedAt),
+		}
+		secretsResponse = append(secretsResponse, &respSecret)
+	}
+
+	return &pb.ListSecretsResponse{Secrets: secretsResponse}, nil
 }
 
 func getDecodedSecret(encodedString string) (string, error) {
