@@ -16,6 +16,7 @@ SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
 DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
+DAGRUN_TIMEOUT_IN_SECS = int(Variable.get("dagrun_timeout_in_secs", default_var=3 * 24 * 60 * 60))
 
 default_args = {
     "params": {
@@ -41,7 +42,8 @@ dag = DAG(
     default_args=default_args,
     schedule_interval="* * * * *",
     sla_miss_callback=optimus_sla_miss_notify,
-    catchup = True
+    catchup=True,
+    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS)
 )
 
 transformation_secret = Secret(
