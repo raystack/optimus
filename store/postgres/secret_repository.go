@@ -93,13 +93,7 @@ func (p Secret) ToSecretItemInfo(hash models.ApplicationKey) (models.SecretItemI
 		return models.SecretItemInfo{}, err
 	}
 
-	// decrypt secret
-	cleartext, err := cryptopasta.Decrypt(encrypted, hash.GetKey())
-	if err != nil {
-		return models.SecretItemInfo{}, err
-	}
-
-	digest := cryptopasta.Hash("secret", cleartext)
+	digest := cryptopasta.Hash("user defined secrets", encrypted)
 	base64encoded := base64.StdEncoding.EncodeToString(digest)
 
 	secretType := models.SecretTypeSystemDefined
@@ -190,7 +184,7 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	var resources []Secret
 	if err := repo.db.WithContext(ctx).Preload("Namespace").
 		Joins("LEFT JOIN namespace ON secret.namespace_id = namespace.id").
-		Where("secret.project_id = ? and secret.type = 'user'", repo.project.ID).Find(&resources).Error; err != nil {
+		Where("secret.project_id = ? and secret.type = ?", repo.project.ID, models.SecretTypeUserDefined).Find(&resources).Error; err != nil {
 		return secretItems, err
 	}
 	for _, res := range resources {
