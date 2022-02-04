@@ -73,6 +73,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.config_file = kwargs.get('config_file')
 
     def execute(self, context):
+        log.info('Task image version: %s', self.image)
         try:
             if self.in_cluster is not None:
                 client = kube_client.get_kube_client(in_cluster=self.in_cluster,
