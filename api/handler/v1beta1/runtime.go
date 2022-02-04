@@ -17,6 +17,7 @@ import (
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
@@ -44,10 +45,6 @@ type ProjectRepoFactory interface {
 
 type NamespaceRepoFactory interface {
 	New(spec models.ProjectSpec) store.NamespaceRepository
-}
-
-type SecretRepoFactory interface {
-	New(projectSpec models.ProjectSpec) store.ProjectSecretRepository
 }
 
 type JobEventService interface {
@@ -83,7 +80,7 @@ type RuntimeServiceServer struct {
 	adapter              ProtoAdapter
 	projectRepoFactory   ProjectRepoFactory
 	namespaceRepoFactory NamespaceRepoFactory
-	secretRepoFactory    SecretRepoFactory
+	secretService        service.SecretService
 	runSvc               models.RunService
 	scheduler            models.SchedulerUnit
 	l                    log.Logger
@@ -1184,7 +1181,7 @@ func NewRuntimeServiceServer(
 	datastoreSvc models.DatastoreService,
 	projectRepoFactory ProjectRepoFactory,
 	namespaceRepoFactory NamespaceRepoFactory,
-	secretRepoFactory SecretRepoFactory,
+	secretService service.SecretService,
 	adapter ProtoAdapter,
 	progressObserver progress.Observer,
 	instSvc models.RunService,
@@ -1202,7 +1199,7 @@ func NewRuntimeServiceServer(
 		progressObserver:     progressObserver,
 		runSvc:               instSvc,
 		scheduler:            scheduler,
-		secretRepoFactory:    secretRepoFactory,
+		secretService:        secretService,
 	}
 }
 

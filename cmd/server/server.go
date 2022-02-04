@@ -37,6 +37,7 @@ import (
 	"github.com/odpf/optimus/models"
 	_ "github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/run"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
@@ -362,6 +363,11 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		db: dbConn,
 	}
 
+	// services
+	projectService := service.NewProjectService(projectRepoFac)
+	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
+	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepoFac)
+
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{
 		db:                    dbConn,
@@ -468,7 +474,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
 		projectRepoFac,
 		namespaceSpecRepoFac,
-		projectSecretRepoFac,
+		secretService,
 		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
 		run.NewService(

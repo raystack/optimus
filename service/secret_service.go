@@ -10,6 +10,8 @@ import (
 
 type SecretService interface {
 	Save(context.Context, string, string, models.ProjectSecretItem) error
+	Update(context.Context, string, string, models.ProjectSecretItem) error
+	List(context.Context, string) ([]models.SecretItemInfo, error)
 }
 
 type SecretRepoFactory interface {
@@ -17,12 +19,14 @@ type SecretRepoFactory interface {
 }
 
 type secretService struct {
+	projService   ProjectService
 	nsService     NamespaceService
 	secretRepoFac SecretRepoFactory
 }
 
-func NewSecretService(namespaceService NamespaceService, factory SecretRepoFactory) *secretService {
+func NewSecretService(projectService ProjectService, namespaceService NamespaceService, factory SecretRepoFactory) *secretService {
 	return &secretService{
+		projService:   projectService,
 		nsService:     namespaceService,
 		secretRepoFac: factory,
 	}
@@ -41,4 +45,28 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 
 	repo := s.secretRepoFac.New(projectSpec)
 	return repo.Save(ctx, namespaceSpec, item)
+}
+
+func (s secretService) Update(ctx context.Context, projectName string, namespaceName string, item models.ProjectSecretItem) error {
+	if item.Name == "" {
+		return errors.New("secret name cannot be empty")
+	}
+
+	projectSpec, namespaceSpec, err := s.nsService.GetProjectAndNamespace(ctx, projectName, namespaceName)
+	if err != nil {
+		return err
+	}
+
+	repo := s.secretRepoFac.New(projectSpec)
+	return repo.Update(ctx, namespaceSpec, item)
+}
+
+func (s secretService) List(ctx context.Context, projectName string) ([]models.SecretItemInfo, error) {
+	projectSpec, err := s.projService.Get(ctx, projectName)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := s.secretRepoFac.New(projectSpec)
+	return repo.GetAll(ctx)
 }
