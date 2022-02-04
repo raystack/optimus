@@ -34,3 +34,12 @@ func (fac *NamespaceRepoFactory) New(proj models.ProjectSpec) store.NamespaceRep
 	args := fac.Called(proj)
 	return args.Get(0).(store.NamespaceRepository)
 }
+
+type NamespaceService struct {
+	mock.Mock
+}
+
+func (n *NamespaceService) GetProjectAndNamespace(ctx context.Context, projectName, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
+	args := n.Called(ctx, projectName, namespaceName)
+	return args.Get(0).(models.ProjectSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
+}

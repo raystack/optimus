@@ -123,7 +123,7 @@ func (repo *secretRepository) Insert(ctx context.Context, namespace models.Names
 	if err != nil {
 		return err
 	}
-	if len(p.Name) == 0 {
+	if len(p.Name) == 0 { // TODO: already checked in service
 		return errors.New("name cannot be empty")
 	}
 	return repo.db.WithContext(ctx).Save(&p).Error
