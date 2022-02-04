@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -201,7 +200,7 @@ func TestSecretRepository(t *testing.T) {
 			//try for create the same secret
 			testModelA.Value = "gs://another_folder"
 			err = repo.Save(ctx, namespaceSpec, testModelA)
-			assert.Equal(t, "secret already exist", err.Error())
+			assert.Equal(t, "resource already exists", err.Error())
 		})
 	})
 	t.Run("Update", func(t *testing.T) {
@@ -241,7 +240,7 @@ func TestSecretRepository(t *testing.T) {
 
 			//try for update
 			err := repo.Update(ctx, namespaceSpec, testModelA)
-			assert.Equal(t, fmt.Sprintf("secret %s does not exist", testModelA.Name), err.Error())
+			assert.Equal(t, "resource not found", err.Error())
 		})
 	})
 	t.Run("GetByName", func(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrResourceNotFound = errors.New("resource not found")
+	ErrResourceExists   = errors.New("resource already exists")
 	ErrEmptyConfig      = errors.New("empty config")
 )
 

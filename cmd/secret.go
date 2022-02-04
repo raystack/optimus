@@ -89,7 +89,7 @@ Use base64 flag if the value has been encoded.
 		}
 		err = registerSecret(l, conf, registerSecretReq)
 		if err != nil {
-			if strings.Contains(err.Error(), "Internal desc = secret already exist") {
+			if strings.Contains(err.Error(), "resource already exists") {
 				proceedWithUpdate := "Yes"
 				if !skipConfirm {
 					if err := survey.AskOne(&survey.Select{
