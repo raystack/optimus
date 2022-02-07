@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
