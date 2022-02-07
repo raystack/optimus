@@ -95,6 +95,7 @@ func (p Secret) ToSecretItemInfo(hash models.ApplicationKey) (models.SecretItemI
 	digest := cryptopasta.Hash("user defined secrets", encrypted)
 	base64encoded := base64.StdEncoding.EncodeToString(digest)
 
+	// Todo: Move to Secret type
 	secretType := models.SecretTypeSystemDefined
 	if p.Type == models.SecretTypeUserDefined.String() {
 		secretType = models.SecretTypeUserDefined
@@ -150,12 +151,15 @@ func (repo *secretRepository) Update(ctx context.Context, namespace models.Names
 	}
 
 	resource.ID = existingResource.ID
+	// TODO: Check project_id at time of update, currently getByName protects from that
 	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
 }
 
 func (repo *secretRepository) GetByName(ctx context.Context, name string) (models.ProjectSecretItem, error) {
 	var r Secret
-	if err := repo.db.WithContext(ctx).Where("name = ? AND project_id = ?", name, repo.project.ID).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).
+		Where("project_id = ?", repo.project.ID).
+		Where("name = ?", name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSecretItem{}, store.ErrResourceNotFound
 		}
@@ -166,6 +170,7 @@ func (repo *secretRepository) GetByName(ctx context.Context, name string) (model
 
 func (repo *secretRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ProjectSecretItem, error) {
 	var r Secret
+	// TODO: Should this query be scoped to project?
 	if err := repo.db.WithContext(ctx).Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSecretItem{}, store.ErrResourceNotFound
@@ -180,7 +185,9 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	var resources []Secret
 	if err := repo.db.WithContext(ctx).Preload("Namespace").
 		Joins("LEFT JOIN namespace ON secret.namespace_id = namespace.id").
-		Where("secret.project_id = ? and secret.type = ?", repo.project.ID, models.SecretTypeUserDefined).Find(&resources).Error; err != nil {
+		Where("secret.project_id = ?", repo.project.ID).
+		Where("secret.type = ?", models.SecretTypeUserDefined).
+		Find(&resources).Error; err != nil {
 		return secretItems, err
 	}
 	for _, res := range resources {

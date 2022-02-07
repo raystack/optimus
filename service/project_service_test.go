@@ -2,13 +2,13 @@ package service_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,12 +25,12 @@ func TestProjectService(t *testing.T) {
 
 			_, err := svc.Get(ctx, "")
 			assert.NotNil(t, err)
-			assert.Equal(t, "project name cannot be empty", err.Error())
+			assert.Equal(t, "project name cannot be empty: invalid argument for entity project", err.Error())
 		})
 		t.Run("return error when project name is invalid", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
 			projectRepository.On("GetByName", ctx, "nonexistent").
-				Return(models.ProjectSpec{}, errors.New("invalid project name"))
+				Return(models.ProjectSpec{}, store.ErrResourceNotFound)
 			defer projectRepository.AssertExpectations(t)
 
 			projectRepoFactory := new(mock.ProjectRepoFactory)
@@ -41,7 +41,7 @@ func TestProjectService(t *testing.T) {
 
 			_, err := svc.Get(ctx, "nonexistent")
 			assert.NotNil(t, err)
-			assert.Equal(t, "invalid project name: project nonexistent not found", err.Error())
+			assert.Equal(t, "resource not found: not found for entity project", err.Error())
 		})
 		t.Run("return project successfully", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)

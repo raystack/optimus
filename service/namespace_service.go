@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -33,7 +32,8 @@ func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFac
 // Repository can provide a method to query both together.
 func (s namespaceService) GetProjectAndNamespace(ctx context.Context, projectName string, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
 	if namespaceName == "" {
-		return models.ProjectSpec{}, models.NamespaceSpec{}, errors.New("namespace name cannot be empty")
+		return models.ProjectSpec{}, models.NamespaceSpec{},
+			NewError("namespace", ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
 	projectSpec, err := s.projectService.Get(ctx, projectName)
@@ -44,7 +44,7 @@ func (s namespaceService) GetProjectAndNamespace(ctx context.Context, projectNam
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
 	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
 	if err != nil {
-		return models.ProjectSpec{}, models.NamespaceSpec{}, err
+		return models.ProjectSpec{}, models.NamespaceSpec{}, FromStoreError(err, "namespace", "")
 	}
 
 	return projectSpec, nsSpec, nil

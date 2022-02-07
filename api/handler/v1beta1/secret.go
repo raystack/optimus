@@ -3,9 +3,11 @@ package v1beta1
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -21,8 +23,7 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 		Name:  req.GetSecretName(),
 		Value: base64Decoded,
 	}); err != nil {
-		// TODO: Need to map proper error from service
-		return nil, status.Errorf(codes.Internal, "%s: failed to register secret %s", err.Error(), req.GetSecretName())
+		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to register secret %s", req.GetSecretName()))
 	}
 
 	return &pb.RegisterSecretResponse{}, nil
@@ -38,8 +39,7 @@ func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.Update
 		Name:  req.GetSecretName(),
 		Value: base64Decoded,
 	}); err != nil {
-		// TODO: Need to map proper error from service
-		return nil, status.Errorf(codes.Internal, "%s: failed to update secret %s", err.Error(), req.GetSecretName())
+		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to update secret %s", req.GetSecretName()))
 	}
 
 	return &pb.UpdateSecretResponse{}, nil
@@ -48,8 +48,7 @@ func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.Update
 func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSecretsRequest) (*pb.ListSecretsResponse, error) {
 	secrets, err := sv.secretService.List(ctx, req.GetProjectName())
 	if err != nil {
-		// TODO: Need to map proper error from service
-		return nil, status.Errorf(codes.Internal, "%s: failed to list secrets", err.Error())
+		return nil, mapToGRPCErr(err, "failed to list secrets")
 	}
 
 	var secretsResponse []*pb.ListSecretsResponse_Secret
@@ -76,4 +75,22 @@ func getDecodedSecret(encodedString string) (string, error) {
 		return "", status.Errorf(codes.InvalidArgument, "failed to decode base64 string: \n%s", err.Error())
 	}
 	return string(base64Decoded), nil
+}
+
+func mapToGRPCErr(err error, msg string) error {
+	code := codes.Internal
+	de, ok := err.(*service.DomainError)
+	if ok {
+		switch de.ErrorType {
+		case service.ErrNotFound:
+			code = codes.NotFound
+		case service.ErrInvalidArgument:
+			code = codes.InvalidArgument
+		case service.ErrAlreadyExists:
+			code = codes.AlreadyExists
+		}
+	}
+
+	// TODO: Log the full error before returning
+	return status.Errorf(code, "%s: %s", err.Error(), msg)
 }

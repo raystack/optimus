@@ -9,6 +9,7 @@ import (
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +33,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, _, err := svc.GetProjectAndNamespace(ctx, "project", "")
 			assert.NotNil(t, err)
-			assert.Equal(t, "namespace name cannot be empty", err.Error())
+			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
 		})
 		t.Run("return error when projectService returns error", func(t *testing.T) {
 			projService := new(mock.ProjectService)
@@ -51,7 +52,7 @@ func TestNamespaceService(t *testing.T) {
 
 			namespaceRepository := new(mock.NamespaceRepository)
 			namespaceRepository.On("GetByName", ctx, "nonexistent").
-				Return(models.NamespaceSpec{}, errors.New("invalid namespace name"))
+				Return(models.NamespaceSpec{}, store.ErrResourceNotFound)
 			defer namespaceRepository.AssertExpectations(t)
 
 			nsRepoFactory := new(mock.NamespaceRepoFactory)
@@ -62,7 +63,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, _, err := svc.GetProjectAndNamespace(ctx, project.Name, "nonexistent")
 			assert.NotNil(t, err)
-			assert.Equal(t, "invalid namespace name", err.Error())
+			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
 		})
 		t.Run("return project and namespace successfully", func(t *testing.T) {
 			defer projService.AssertExpectations(t)
