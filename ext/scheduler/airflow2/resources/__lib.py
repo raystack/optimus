@@ -325,7 +325,9 @@ class CrossTenantDependencySensor(BaseSensorOperator):
             upstream_optimus_project: str,
             upstream_optimus_job: str,
             window_size: str,
+            *args,
             **kwargs) -> None:
+        kwargs['mode'] = kwargs.get('mode', 'reschedule')
         super().__init__(**kwargs)
         self.optimus_project = upstream_optimus_project
         self.optimus_job = upstream_optimus_job
