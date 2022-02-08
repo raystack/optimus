@@ -156,4 +156,47 @@ func TestSecretService(t *testing.T) {
 			assert.Equal(t, secretItems, list)
 		})
 	})
+	t.Run("GetSecrets", func(t *testing.T) {
+		t.Run("returns error when project service has error", func(t *testing.T) {
+			projService := new(mock.ProjectService)
+			projService.On("Get", ctx, project.Name).
+				Return(models.ProjectSpec{}, errors.New("error in getting project"))
+			defer projService.AssertExpectations(t)
+
+			svc := service.NewSecretService(projService, nil, nil)
+
+			_, err := svc.GetSecrets(ctx, project.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, "error in getting project", err.Error())
+		})
+		t.Run("returns secrets for a project", func(t *testing.T) {
+			projService := new(mock.ProjectService)
+			projService.On("Get", ctx, project.Name).Return(project, nil)
+			defer projService.AssertExpectations(t)
+
+			secrets := []models.ProjectSecretItem{
+				{
+					ID:    uuid.New(),
+					Name:  "secret1",
+					Value: "secret1",
+					Type:  models.SecretTypeUserDefined,
+				},
+			}
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("GetSecrets", ctx).Return(secrets, nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(projService, nil, secretRepoFac)
+
+			list, err := svc.GetSecrets(ctx, project.Name)
+			assert.Nil(t, err)
+
+			assert.Len(t, list, 1)
+			assert.Equal(t, secrets, list)
+		})
+	})
 }
