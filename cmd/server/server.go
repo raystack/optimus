@@ -479,6 +479,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,
+			secretService,
 			func() time.Time {
 				return time.Now().UTC()
 			},

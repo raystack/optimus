@@ -35,6 +35,7 @@ var (
 // used in job specification
 type ContextManager struct {
 	namespace models.NamespaceSpec
+	secrets   models.ProjectSecrets
 	jobRun    models.JobRun
 	engine    models.TemplateEngine
 }
@@ -45,7 +46,7 @@ type ContextManager struct {
 func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (
 	envMap map[string]string, fileMap map[string]string, err error) {
 	projectPrefixedConfig, projRawConfig := fm.projectEnvs()
-
+	secretMap := fm.createSecretsMap()
 	// instance env will be used for templating
 	instanceEnvMap, instanceFileMap := fm.getInstanceData(instanceSpec)
 
@@ -53,6 +54,7 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (
 	projectInstanceContext := MergeInterfaceMapToInterface(instanceEnvMap, projectPrefixedConfig)
 	projectInstanceContext["proj"] = projRawConfig
 	projectInstanceContext["inst"] = instanceEnvMap
+	projectInstanceContext["secret"] = secretMap
 
 	// prepare configs
 	envMap, err = fm.generateEnvs(instanceSpec.Name, instanceSpec.Type, projectInstanceContext)
@@ -172,6 +174,15 @@ func (fm *ContextManager) getNamespaceConfigMap() map[string]string {
 	return configMap
 }
 
+func (fm *ContextManager) createSecretsMap() map[string]string {
+	secretsMap := map[string]string{}
+
+	for _, s := range fm.secrets {
+		secretsMap[s.Name] = s.Value
+	}
+	return secretsMap
+}
+
 func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]interface{}, map[string]string) {
 	envMap := map[string]interface{}{}
 	fileMap := map[string]string{}
@@ -210,9 +221,10 @@ func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 	return transformationMap, hookMap, nil
 }
 
-func NewContextManager(namespace models.NamespaceSpec, jobRun models.JobRun, engine models.TemplateEngine) *ContextManager {
+func NewContextManager(namespace models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, engine models.TemplateEngine) *ContextManager {
 	return &ContextManager{
 		namespace: namespace,
+		secrets:   secrets,
 		jobRun:    jobRun,
 		engine:    engine,
 	}

@@ -60,3 +60,8 @@ func (s *SecretService) List(ctx context.Context, prjName string) ([]models.Secr
 	args := s.Called(ctx, prjName)
 	return args.Get(0).([]models.SecretItemInfo), args.Error(1)
 }
+
+func (s *SecretService) GetSecrets(ctx context.Context, spec models.ProjectSpec) ([]models.ProjectSecretItem, error) {
+	args := s.Called(ctx, spec)
+	return args.Get(0).([]models.ProjectSecretItem), args.Error(1)
+}

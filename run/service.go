@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -32,13 +33,18 @@ type SpecRepoFactory interface {
 
 type Service struct {
 	repoFac        SpecRepoFactory
+	secretService  service.SecretService
 	Now            func() time.Time
 	templateEngine models.TemplateEngine
 }
 
 func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
 	envMap map[string]string, fileMap map[string]string, err error) {
-	return NewContextManager(namespace, jobRun, s.templateEngine).Generate(instanceSpec)
+	secrets, err := s.secretService.GetSecrets(ctx, namespace.ProjectSpec)
+	if err != nil {
+		return nil, nil, err
+	}
+	return NewContextManager(namespace, secrets, jobRun, s.templateEngine).Generate(instanceSpec)
 }
 
 func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
@@ -156,9 +162,10 @@ func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRu
 	return s.repoFac.New().GetByID(ctx, JobRunID)
 }
 
-func NewService(repoFac SpecRepoFactory, timeFunc func() time.Time, te models.TemplateEngine) *Service {
+func NewService(repoFac SpecRepoFactory, secretService service.SecretService, timeFunc func() time.Time, te models.TemplateEngine) *Service {
 	return &Service{
 		repoFac:        repoFac,
+		secretService:  secretService,
 		Now:            timeFunc,
 		templateEngine: te,
 	}
