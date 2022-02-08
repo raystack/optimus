@@ -39,6 +39,11 @@ func (pr *ProjectSecretRepository) GetAll(ctx context.Context) ([]models.SecretI
 	return args.Get(0).([]models.SecretItemInfo), args.Error(1)
 }
 
+func (pr *ProjectSecretRepository) GetSecrets(ctx context.Context) ([]models.ProjectSecretItem, error) {
+	args := pr.Called(ctx)
+	return args.Get(0).([]models.ProjectSecretItem), args.Error(1)
+}
+
 type SecretService struct {
 	mock.Mock
 }
