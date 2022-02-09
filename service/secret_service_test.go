@@ -45,7 +45,7 @@ func TestSecretService(t *testing.T) {
 
 			err := svc.Save(ctx, "local", "first", emptySecret)
 			assert.NotNil(t, err)
-			assert.Equal(t, "secret name cannot be empty", err.Error())
+			assert.Equal(t, "secret name cannot be empty: invalid argument for entity secret", err.Error())
 		})
 		t.Run("returns error when namespace service has error", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
@@ -86,7 +86,7 @@ func TestSecretService(t *testing.T) {
 
 			err := svc.Update(ctx, "local", "first", emptySecret)
 			assert.NotNil(t, err)
-			assert.Equal(t, "secret name cannot be empty", err.Error())
+			assert.Equal(t, "secret name cannot be empty: invalid argument for entity secret", err.Error())
 		})
 		t.Run("returns error when namespace service has error", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
