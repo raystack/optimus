@@ -474,6 +474,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
 		projectRepoFac,
 		namespaceSpecRepoFac,
+		namespaceService,
 		secretService,
 		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
