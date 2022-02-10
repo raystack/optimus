@@ -59,7 +59,8 @@ func (p Secret) FromSpec(spec models.ProjectSecretItem, proj models.ProjectSpec,
 	}, nil
 }
 
-func (p Secret) ToSpec(hash models.ApplicationKey) (models.ProjectSecretItem, error) {
+// ToSpec TODO: move decryption of secret to service
+func (p Secret) ToSpec(key models.ApplicationKey) (models.ProjectSecretItem, error) {
 	// decode base64
 	encrypted, err := base64.StdEncoding.DecodeString(p.Value)
 	if err != nil {
@@ -67,7 +68,7 @@ func (p Secret) ToSpec(hash models.ApplicationKey) (models.ProjectSecretItem, er
 	}
 
 	// decrypt secret
-	cleartext, err := cryptopasta.Decrypt(encrypted, hash.GetKey())
+	cleartext, err := cryptopasta.Decrypt(encrypted, key.GetKey())
 	if err != nil {
 		return models.ProjectSecretItem{}, err
 	}
@@ -85,7 +86,7 @@ func (p Secret) ToSpec(hash models.ApplicationKey) (models.ProjectSecretItem, er
 	}, nil
 }
 
-func (p Secret) ToSecretItemInfo(hash models.ApplicationKey) (models.SecretItemInfo, error) {
+func (p Secret) ToSecretItemInfo() (models.SecretItemInfo, error) {
 	// decode base64
 	encrypted, err := base64.StdEncoding.DecodeString(p.Value)
 	if err != nil {
@@ -151,7 +152,6 @@ func (repo *secretRepository) Update(ctx context.Context, namespace models.Names
 	}
 
 	resource.ID = existingResource.ID
-	// TODO: Check project_id at time of update, currently getByName protects from that
 	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
 }
 
@@ -191,7 +191,7 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 		return secretItems, err
 	}
 	for _, res := range resources {
-		adapted, err := res.ToSecretItemInfo(repo.hash)
+		adapted, err := res.ToSecretItemInfo()
 		if err != nil {
 			return secretItems, errors.Wrap(err, "failed to adapt secret")
 		}
