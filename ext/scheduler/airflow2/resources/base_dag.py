@@ -102,7 +102,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
     env_vars = [
         k8s.V1EnvVar(name="JOB_NAME",value='{{.Job.Name}}'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='{{.Hostname}}'),
+        k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{.Hostname}}'),
         k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='{{.Namespace.ProjectSpec.Name}}'),
@@ -148,7 +148,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
     env_vars = [
         k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='{{$.Hostname}}'),
+        k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{$.Hostname}}'),
         k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
