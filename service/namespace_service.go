@@ -44,7 +44,7 @@ func (s namespaceService) GetProjectAndNamespace(ctx context.Context, projectNam
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
 	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
 	if err != nil {
-		return models.ProjectSpec{}, models.NamespaceSpec{}, FromStoreError(err, "namespace", "")
+		return models.ProjectSpec{}, models.NamespaceSpec{}, FromError(err, "namespace", "")
 	}
 
 	return projectSpec, nsSpec, nil

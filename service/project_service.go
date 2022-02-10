@@ -34,7 +34,7 @@ func (s projectService) Get(ctx context.Context, projectName string) (models.Pro
 	projectRepo := s.projectRepoFac.New()
 	projSpec, err := projectRepo.GetByName(ctx, projectName)
 	if err != nil {
-		return models.ProjectSpec{}, FromStoreError(err, "project", "")
+		return models.ProjectSpec{}, FromError(err, "project", "")
 	}
 	return projSpec, nil
 }

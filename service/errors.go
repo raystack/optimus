@@ -38,7 +38,7 @@ func NewError(entity string, errType ErrorType, msg string) *DomainError {
 	}
 }
 
-func FromStoreError(err error, entity string, msg string) *DomainError {
+func FromError(err error, entity string, msg string) *DomainError {
 	errType := ErrInternalError
 	msgStr := ""
 	if errors.Is(err, store.ErrResourceNotFound) {
@@ -52,6 +52,7 @@ func FromStoreError(err error, entity string, msg string) *DomainError {
 		msgStr = err.Error()
 	}
 
+	// TODO: Improve the msg, append to existing msg
 	if msg == "" {
 		msg = msgStr
 	}
@@ -67,4 +68,17 @@ func FromStoreError(err error, entity string, msg string) *DomainError {
 func (e *DomainError) Error() string {
 	return fmt.Sprintf("%v: %v for entity %v",
 		e.Message, strings.ToLower(e.ErrorType.String()), e.Entity)
+}
+
+func (e *DomainError) DebugString() string {
+	var wrappedError string
+	de, ok := e.Err.(*DomainError)
+	if ok {
+		wrappedError = de.DebugString()
+	} else {
+		wrappedError = e.Err.Error()
+	}
+
+	return fmt.Sprintf("%v: %v for %v: %s",
+		e.Message, e.ErrorType.String(), e.Entity, wrappedError)
 }

@@ -46,7 +46,7 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 	repo := s.secretRepoFac.New(projectSpec)
 	err = repo.Save(ctx, namespaceSpec, item)
 	if err != nil {
-		return FromStoreError(err, "secret", "error while saving secret")
+		return FromError(err, "secret", "error while saving secret")
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func (s secretService) Update(ctx context.Context, projectName string, namespace
 	repo := s.secretRepoFac.New(projectSpec)
 	err = repo.Update(ctx, namespaceSpec, item)
 	if err != nil {
-		return FromStoreError(err, "secret", "error while updating secret")
+		return FromError(err, "secret", "error while updating secret")
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 	repo := s.secretRepoFac.New(projectSpec)
 	secretItems, err := repo.GetAll(ctx)
 	if err != nil {
-		return []models.SecretItemInfo{}, FromStoreError(err, "secret", "error while saving secret")
+		return []models.SecretItemInfo{}, FromError(err, "secret", "error while saving secret")
 	}
 	return secretItems, nil
 }

@@ -7,7 +7,6 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -75,22 +74,4 @@ func getDecodedSecret(encodedString string) (string, error) {
 		return "", status.Errorf(codes.InvalidArgument, "failed to decode base64 string: \n%s", err.Error())
 	}
 	return string(base64Decoded), nil
-}
-
-func mapToGRPCErr(err error, msg string) error {
-	code := codes.Internal
-	de, ok := err.(*service.DomainError)
-	if ok {
-		switch de.ErrorType {
-		case service.ErrNotFound:
-			code = codes.NotFound
-		case service.ErrInvalidArgument:
-			code = codes.InvalidArgument
-		case service.ErrAlreadyExists:
-			code = codes.AlreadyExists
-		}
-	}
-
-	// TODO: Log the full error before returning
-	return status.Errorf(code, "%s: %s", err.Error(), msg)
 }
