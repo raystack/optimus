@@ -68,7 +68,7 @@ transformation_bq = SuperKubernetesPodOperator(
     secrets=[transformation_secret],
     env_vars = [
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
+        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
@@ -105,7 +105,7 @@ hook_transporter = SuperKubernetesPodOperator(
     secrets=[hook_transporter_secret],
     env_vars = [
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
+        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
@@ -134,7 +134,7 @@ hook_predator = SuperKubernetesPodOperator(
     secrets=[],
     env_vars = [
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
+        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),
@@ -163,7 +163,7 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     secrets=[],
     env_vars = [
         k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOSTNAME",value='http://airflow.example.io'),
+        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
         k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
         k8s.V1EnvVar(name="JOB_DIR",value='/data'),
         k8s.V1EnvVar(name="PROJECT",value='foo-project'),

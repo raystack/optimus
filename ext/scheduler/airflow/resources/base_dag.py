@@ -101,7 +101,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     do_xcom_push=False,
     secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
     env_vars={
-        "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOSTNAME":'{{.Hostname}}',
+        "JOB_NAME":'{{.Job.Name}}', "OPTIMUS_HOST":'{{.Hostname}}',
         "JOB_LABELS":'{{.Job.GetLabelsAsString}}', "NAMESPACE":'{{.Namespace.Name}}',
         "JOB_DIR":'/data', "PROJECT":'{{.Namespace.ProjectSpec.Name}}',
         "INSTANCE_TYPE":'{{$.InstanceTypeTask}}', "INSTANCE_NAME":'{{$baseTaskSchema.Name}}',
@@ -142,7 +142,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
     env_vars={
-        "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOSTNAME":'{{$.Hostname}}',
+        "JOB_NAME":'{{$.Job.Name}}', "OPTIMUS_HOST":'{{$.Hostname}}',
         "JOB_LABELS":'{{$.Job.GetLabelsAsString}}', "NAMESPACE":'{{$.Namespace.Name}}',
         "JOB_DIR":'/data', "PROJECT":'{{$.Namespace.ProjectSpec.Name}}',
         "INSTANCE_TYPE":'{{$.InstanceTypeHook}}', "INSTANCE_NAME":'{{$hookSchema.Name}}',

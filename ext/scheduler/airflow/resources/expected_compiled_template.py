@@ -67,7 +67,7 @@ transformation_bq = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[transformation_secret],
     env_vars={
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOST":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "INSTANCE_TYPE":'task', "INSTANCE_NAME":'bq',
@@ -100,7 +100,7 @@ hook_transporter = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[hook_transporter_secret],
     env_vars={
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOST":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "INSTANCE_TYPE":'hook', "INSTANCE_NAME":'transporter',
@@ -125,7 +125,7 @@ hook_predator = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[],
     env_vars={
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOST":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "INSTANCE_TYPE":'hook', "INSTANCE_NAME":'predator',
@@ -150,7 +150,7 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     do_xcom_push=False,
     secrets=[],
     env_vars={
-        "JOB_NAME":'foo', "OPTIMUS_HOSTNAME":'http://airflow.example.io',
+        "JOB_NAME":'foo', "OPTIMUS_HOST":'http://airflow.example.io',
         "JOB_LABELS":'orchestrator=optimus', "NAMESPACE":'bar-namespace',
         "JOB_DIR":'/data', "PROJECT":'foo-project',
         "INSTANCE_TYPE":'hook', "INSTANCE_NAME":'hook-for-fail',
