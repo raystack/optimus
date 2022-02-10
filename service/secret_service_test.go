@@ -49,8 +49,8 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when namespace service has error", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("GetProjectAndNamespace", ctx, "local", "first").
-				Return(models.ProjectSpec{}, models.NamespaceSpec{}, errors.New("invalid project name"))
+			nsService.On("Get", ctx, "local", "first").
+				Return(models.NamespaceSpec{}, errors.New("invalid project name"))
 			defer nsService.AssertExpectations(t)
 
 			svc := service.NewSecretService(nil, nsService, nil)
@@ -62,8 +62,8 @@ func TestSecretService(t *testing.T) {
 
 		t.Run("saves the secret item successfully", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("GetProjectAndNamespace", ctx, project.Name, namespace.Name).
-				Return(project, namespace, nil)
+			nsService.On("Get", ctx, project.Name, namespace.Name).
+				Return(namespace, nil)
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
@@ -90,8 +90,8 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when namespace service has error", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("GetProjectAndNamespace", ctx, "local", "first").
-				Return(models.ProjectSpec{}, models.NamespaceSpec{}, errors.New("invalid project name"))
+			nsService.On("Get", ctx, "local", "first").
+				Return(models.NamespaceSpec{}, errors.New("invalid project name"))
 			defer nsService.AssertExpectations(t)
 
 			svc := service.NewSecretService(nil, nsService, nil)
@@ -103,8 +103,8 @@ func TestSecretService(t *testing.T) {
 
 		t.Run("saves the secret item successfully", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("GetProjectAndNamespace", ctx, project.Name, namespace.Name).
-				Return(project, namespace, nil)
+			nsService.On("Get", ctx, project.Name, namespace.Name).
+				Return(namespace, nil)
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)

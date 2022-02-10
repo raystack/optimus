@@ -31,7 +31,7 @@ func TestNamespaceService(t *testing.T) {
 		t.Run("return error when namespace name is empty", func(t *testing.T) {
 			svc := service.NewNamespaceService(nil, nil)
 
-			_, _, err := svc.GetProjectAndNamespace(ctx, "project", "")
+			_, err := svc.Get(ctx, "project", "")
 			assert.NotNil(t, err)
 			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
 		})
@@ -43,7 +43,7 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nil)
 
-			_, _, err := svc.GetProjectAndNamespace(ctx, "invalid", "namespace")
+			_, err := svc.Get(ctx, "invalid", "namespace")
 			assert.NotNil(t, err)
 			assert.Equal(t, "project not found", err.Error())
 		})
@@ -61,7 +61,7 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nsRepoFactory)
 
-			_, _, err := svc.GetProjectAndNamespace(ctx, project.Name, "nonexistent")
+			_, err := svc.Get(ctx, project.Name, "nonexistent")
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
 		})
@@ -78,10 +78,10 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nsRepoFactory)
 
-			prj, ns, err := svc.GetProjectAndNamespace(ctx, project.Name, namespace.Name)
+			ns, err := svc.Get(ctx, project.Name, namespace.Name)
 			assert.Nil(t, err)
-			assert.Equal(t, "optimus-project", prj.Name)
-			assert.Equal(t, project.ID, prj.ID)
+			assert.Equal(t, "optimus-project", ns.ProjectSpec.Name)
+			assert.Equal(t, project.ID, ns.ProjectSpec.ID)
 
 			assert.Equal(t, "sample-namespace", ns.Name)
 			assert.Equal(t, namespace.ID, ns.ID)

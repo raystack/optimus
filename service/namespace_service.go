@@ -12,7 +12,7 @@ type NamespaceRepoFactory interface {
 }
 
 type NamespaceService interface {
-	GetProjectAndNamespace(context.Context, string, string) (models.ProjectSpec, models.NamespaceSpec, error)
+	Get(context.Context, string, string) (models.NamespaceSpec, error)
 }
 
 type namespaceService struct {
@@ -27,25 +27,25 @@ func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFac
 	}
 }
 
-// GetProjectAndNamespace This function is inefficient, it gets the project from repo along with secrets
+// Get This function is inefficient, it gets the project from repo along with secrets
 // Then we only use the id from the project to fetch the Namespace, along with project and secrets
 // Repository can provide a method to query both together.
-func (s namespaceService) GetProjectAndNamespace(ctx context.Context, projectName string, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
+func (s namespaceService) Get(ctx context.Context, projectName string, namespaceName string) (models.NamespaceSpec, error) {
 	if namespaceName == "" {
-		return models.ProjectSpec{}, models.NamespaceSpec{},
+		return models.NamespaceSpec{},
 			NewError("namespace", ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
 	projectSpec, err := s.projectService.Get(ctx, projectName)
 	if err != nil {
-		return models.ProjectSpec{}, models.NamespaceSpec{}, err
+		return models.NamespaceSpec{}, err
 	}
 
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
 	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
 	if err != nil {
-		return models.ProjectSpec{}, models.NamespaceSpec{}, FromError(err, "namespace", "")
+		return models.NamespaceSpec{}, FromError(err, "namespace", "")
 	}
 
-	return projectSpec, nsSpec, nil
+	return nsSpec, nil
 }

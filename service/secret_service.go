@@ -38,12 +38,12 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// TODO: Add new service method to get only project and namespace id for names
-	projectSpec, namespaceSpec, err := s.nsService.GetProjectAndNamespace(ctx, projectName, namespaceName)
+	namespaceSpec, err := s.nsService.Get(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(projectSpec)
+	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
 	err = repo.Save(ctx, namespaceSpec, item)
 	if err != nil {
 		return FromError(err, "secret", "error while saving secret")
@@ -56,12 +56,12 @@ func (s secretService) Update(ctx context.Context, projectName string, namespace
 		return errors.New("secret name cannot be empty")
 	}
 
-	projectSpec, namespaceSpec, err := s.nsService.GetProjectAndNamespace(ctx, projectName, namespaceName)
+	namespaceSpec, err := s.nsService.Get(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(projectSpec)
+	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
 	err = repo.Update(ctx, namespaceSpec, item)
 	if err != nil {
 		return FromError(err, "secret", "error while updating secret")

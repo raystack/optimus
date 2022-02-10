@@ -39,7 +39,7 @@ type NamespaceService struct {
 	mock.Mock
 }
 
-func (n *NamespaceService) GetProjectAndNamespace(ctx context.Context, projectName, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
+func (n *NamespaceService) Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error) {
 	args := n.Called(ctx, projectName, namespaceName)
-	return args.Get(0).(models.ProjectSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
+	return args.Get(0).(models.NamespaceSpec), args.Error(1)
 }
