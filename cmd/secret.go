@@ -10,6 +10,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -29,6 +30,7 @@ func secretCommand(l log.Logger, conf config.Provider) *cli.Command {
 		Short: "Manage secrets to be used in jobs",
 	}
 	cmd.AddCommand(secretSetSubCommand(l, conf))
+	cmd.AddCommand(secretListSubCommand(l, conf))
 	return cmd
 }
 
@@ -87,7 +89,7 @@ Use base64 flag if the value has been encoded.
 		}
 		err = registerSecret(l, conf, registerSecretReq)
 		if err != nil {
-			if strings.Contains(err.Error(), "Internal desc = secret already exist") {
+			if strings.Contains(err.Error(), "resource already exists") {
 				proceedWithUpdate := "Yes"
 				if !skipConfirm {
 					if err := survey.AskOne(&survey.Select{
@@ -115,6 +117,26 @@ Use base64 flag if the value has been encoded.
 		return nil
 	}
 	return secretCmd
+}
+
+func secretListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
+	var projectName string
+
+	secretListCmd := &cli.Command{
+		Use:     "list",
+		Short:   "Show all the secrets registered with optimus",
+		Example: "optimus secret list",
+		Long:    `This operation shows the secrets for project.`,
+	}
+	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+
+	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
+		updateSecretRequest := &pb.ListSecretsRequest{
+			ProjectName: projectName,
+		}
+		return listSecret(l, conf, updateSecretRequest)
+	}
+	return secretListCmd
 }
 
 func getSecretName(args []string) (string, error) {
@@ -225,4 +247,70 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	l.Info(coloredSuccess("Secret updated"))
 
 	return nil
+}
+
+func listSecret(l log.Logger, conf config.Provider, req *pb.ListSecretsRequest) (err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	var conn *grpc.ClientConn
+	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+		}
+		return err
+	}
+	defer conn.Close()
+
+	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
+	defer secretRequestCancel()
+
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
+	runtime := pb.NewRuntimeServiceClient(conn)
+
+	listSecretsResponse, err := runtime.ListSecrets(secretRequestTimeout, req)
+	spinner.Stop()
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(coloredError("Secret listing took too long, timing out"))
+		}
+		return errors.Wrap(err, "request failed for listing secrets")
+	}
+
+	if len(listSecretsResponse.Secrets) == 0 {
+		l.Info(coloredNotice("No secrets were found in %s project.", req.ProjectName))
+	} else {
+		printListOfSecrets(l, req.ProjectName, listSecretsResponse)
+	}
+
+	return nil
+}
+
+func printListOfSecrets(l log.Logger, projectName string, listSecretsResponse *pb.ListSecretsResponse) {
+	l.Info(coloredNotice("Secrets for project: %s", projectName))
+	table := tablewriter.NewWriter(l.Writer())
+	table.SetBorder(false)
+	table.SetHeader([]string{
+		"Name",
+		"Digest",
+		"Namespace",
+		"Date",
+	})
+
+	table.SetAlignment(tablewriter.ALIGN_CENTER)
+	for _, secret := range listSecretsResponse.Secrets {
+		namespace := "*"
+		if secret.Namespace != "" {
+			namespace = secret.Namespace
+		}
+		table.Append([]string{
+			secret.Name,
+			secret.Digest,
+			namespace,
+			secret.UpdatedAt.AsTime().Format(time.RFC3339),
+		})
+	}
+	table.Render()
+	l.Info("")
 }

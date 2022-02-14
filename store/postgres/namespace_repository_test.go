@@ -1,3 +1,4 @@
+//go:build !unit_test
 // +build !unit_test
 
 package postgres
@@ -116,10 +117,10 @@ func TestNamespaceRepository(t *testing.T) {
 		assert.NotNil(t, err)
 
 		// Secrets depend on namespace
-		secretRepo := NewSecretRepository(db, projectSpec, namespaceSpecs[0], hash)
-		err = secretRepo.Insert(ctx, secrets[0])
+		secretRepo := NewSecretRepository(db, projectSpec, hash)
+		err = secretRepo.Insert(ctx, namespaceSpecs[0], secrets[0])
 		assert.Nil(t, err)
-		err = secretRepo.Insert(ctx, secrets[1])
+		err = secretRepo.Insert(ctx, namespaceSpecs[0], secrets[1])
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
