@@ -44,6 +44,7 @@ type Job struct {
 	Assets   datatypes.JSON
 	Hooks    datatypes.JSON
 	Metadata datatypes.JSON
+	ExternalDependencies datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -165,6 +166,12 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
+	//prep external dependencies
+	externalDependencies := models.ExternalDependency{}
+	if err := json.Unmarshal(conf.ExternalDependencies, &externalDependencies); err != nil {
+		return models.JobSpec{}, err
+	}
+
 	// prep task conf
 	taskConf := models.JobSpecConfigs{}
 	if err := json.Unmarshal(conf.TaskConfig, &taskConf); err != nil {
@@ -251,6 +258,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Dependencies: dependencies,
 		Hooks:        jobHooks,
 		Metadata:     metadata,
+		ExternalDependencies: externalDependencies,
 	}
 	return job, nil
 }
@@ -296,6 +304,12 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		spec.Dependencies[idx] = dep
 	}
 	dependenciesJSON, err := json.Marshal(spec.Dependencies)
+	if err != nil {
+		return Job{}, err
+	}
+
+	// prep external dependencies
+	externalDependenciesJSON, err := json.Marshal(spec.ExternalDependencies)
 	if err != nil {
 		return Job{}, err
 	}
@@ -370,6 +384,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		Assets:           assetsJSON,
 		Hooks:            hooksJSON,
 		Metadata:         metadata,
+		ExternalDependencies: externalDependenciesJSON,
 	}, nil
 }
 

@@ -589,3 +589,9 @@ def alert_failed_to_slack(context):
         channel=SLACK_CHANNEL
     )
     return failed_alert.execute(context=context)
+
+def check_response(status_code):
+    if status_code == 200:
+        return True
+    else:
+        return False

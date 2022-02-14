@@ -1730,6 +1730,17 @@
         }
       }
     },
+    "v1beta1ExternalDependency": {
+      "type": "object",
+      "properties": {
+        "httpDependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1HttpDependency"
+          }
+        }
+      }
+    },
     "v1beta1GetBackupResponse": {
       "type": "object",
       "properties": {
@@ -1781,6 +1792,29 @@
         "end": {
           "type": "string",
           "format": "date-time"
+        }
+      }
+    },
+    "v1beta1HttpDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "requestParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -2023,6 +2057,9 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        },
+        "externalDependency": {
+          "$ref": "#/definitions/v1beta1ExternalDependency"
         }
       }
     },

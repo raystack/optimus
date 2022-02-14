@@ -43,6 +43,7 @@ type Job struct {
 	Dependencies []JobDependency
 	Hooks        []JobHook
 	Metadata     JobSpecMetadata `yaml:"metadata,omitempty"`
+	ExternalDependencies ExternalDependency `yaml:"external-dependencies,omitempty"`
 }
 
 type JobSchedule struct {
@@ -360,6 +361,17 @@ type JobDependency struct {
 	Type    string `yaml:"type,omitempty"`
 }
 
+type ExternalDependency struct {
+	HTTPDependencies []HTTPDependency `yaml:"http"`
+}
+
+type HTTPDependency struct {
+	Name          string        	`yaml:"Name"`
+	RequestParams map[string]string `yaml:"request-params,omitempty"`
+	URL           string        	`yaml:"url"`
+	Headers       map[string]string `yaml:"headers,omitempty"`
+}
+
 type JobSpecAdapter struct {
 	pluginRepo models.PluginRepository
 }
@@ -449,6 +461,14 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		})
 	}
 
+	//prep external http dependencies
+	var externalDependency models.ExternalDependency
+	var httpDependencies []models.HTTPDependency
+	for _, http := range conf.ExternalDependencies.HTTPDependencies{
+		httpDependencies = append(httpDependencies,models.HTTPDependency(http))
+	}
+	externalDependency.HTTPDependencies = httpDependencies
+
 	job := models.JobSpec{
 		Version:     conf.Version,
 		Name:        strings.TrimSpace(conf.Name),
@@ -490,6 +510,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				},
 			},
 		},
+		ExternalDependencies: externalDependency,
 	}
 	return job, nil
 }
@@ -570,6 +591,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 				},
 			},
 		},
+		ExternalDependencies: ExternalDependency{},
 	}
 
 	if spec.Schedule.EndDate != nil {
@@ -580,6 +602,10 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			JobName: name,
 			Type:    dep.Type.String(),
 		})
+	}
+    // external http dependencies
+	for _, dep := range spec.ExternalDependencies.HTTPDependencies{
+		parsed.ExternalDependencies.HTTPDependencies = append(parsed.ExternalDependencies.HTTPDependencies,HTTPDependency(dep))
 	}
 
 	// prep hooks

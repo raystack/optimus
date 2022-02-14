@@ -9,6 +9,8 @@ from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
+from airflow.providers.http.sensors import HttpSensor
+
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, CrossTenantDependencySensor
 
@@ -194,12 +196,29 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 {{- end -}}
 {{- end}}
 
+{{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
+wait_{{$httpDependency.Name | replace "-" "__dash__" | replace "." "__dot__"}} = HttpSensor(
+    endpoint="{{$httpDependency.URL}}",
+    headers="{{$httpDependency.Headers}}",
+    request_params="{{$httpDependency.RequestParams}}",
+    response_check=lambda response: True if check_response(response.status_code) is True else False,
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_{{$httpDependency.Name| trunc 200}}-{{$dependencySchema.Name}}",
+    dag=dag
+)
+{{- end}}
+
 # arrange inter task dependencies
 ####################################
 
 # upstream sensors -> base transformation task
 {{- range $i, $t := $.Job.Dependencies }}
 wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- end}}
+
+{{- range $_, $t := $.Job.ExternalDependencies.HTTPDependencies }}
+wait_{{ $t.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 
 # set inter-dependencies between task and hooks

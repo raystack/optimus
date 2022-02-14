@@ -57,6 +57,7 @@ type JobSpec struct {
 	Assets       JobAssets
 	Hooks        []JobSpecHook
 	Metadata     JobSpecMetadata
+	ExternalDependencies ExternalDependency //external dependencies
 }
 
 func (js JobSpec) GetName() string {
@@ -299,6 +300,16 @@ type JobSpecDependency struct {
 	Type    JobSpecDependencyType
 }
 
+type ExternalDependency struct {
+	HTTPDependencies []HTTPDependency
+}
+
+type HTTPDependency struct {
+	Name          string
+	RequestParams map[string]string
+	URL           string
+	Headers       map[string]string
+}
 // JobService provides a high-level operations on DAGs
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
