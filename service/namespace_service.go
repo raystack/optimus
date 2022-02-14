@@ -7,8 +7,6 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-const NamespaceEntity = "namespace"
-
 type NamespaceRepoFactory interface {
 	New(spec models.ProjectSpec) store.NamespaceRepository
 }
@@ -37,7 +35,7 @@ func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFac
 func (s namespaceService) Get(ctx context.Context, projectName string, namespaceName string) (models.NamespaceSpec, error) {
 	if namespaceName == "" {
 		return models.NamespaceSpec{},
-			NewError(NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
+			NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
 	projectSpec, err := s.projectService.Get(ctx, projectName)
@@ -48,7 +46,7 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
 	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
 	if err != nil {
-		return models.NamespaceSpec{}, FromError(err, NamespaceEntity, "")
+		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
 
 	return nsSpec, nil
@@ -56,11 +54,11 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 
 func (s namespaceService) Save(ctx context.Context, projName string, namespace models.NamespaceSpec) error {
 	if namespace.Name == "" {
-		return NewError(NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
+		return NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
 	if len(namespace.Config) == 0 {
-		return NewError(NamespaceEntity, ErrInvalidArgument, "namespace config cannot be empty")
+		return NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace config cannot be empty")
 	}
 
 	projectSpec, err := s.projectService.Get(ctx, projName)
@@ -71,7 +69,7 @@ func (s namespaceService) Save(ctx context.Context, projName string, namespace m
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
 	err = nsRepo.Save(ctx, namespace)
 	if err != nil {
-		return FromError(err, NamespaceEntity, "")
+		return FromError(err, models.NamespaceEntity, "")
 	}
 	return nil
 }
@@ -85,7 +83,7 @@ func (s namespaceService) GetAll(ctx context.Context, projName string) ([]models
 	namespaceRepo := s.namespaceRepoFac.New(projectSpec)
 	namespaces, err := namespaceRepo.GetAll(ctx)
 	if err != nil {
-		return []models.NamespaceSpec{}, FromError(err, NamespaceEntity, "")
+		return []models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
 	return namespaces, nil
 }
