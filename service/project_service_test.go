@@ -72,13 +72,6 @@ func TestProjectService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "project name cannot be empty: invalid argument for entity project", err.Error())
 		})
-		t.Run("returns error when config is empty", func(t *testing.T) {
-			svc := service.NewProjectService(nil)
-
-			err := svc.Save(ctx, project)
-			assert.NotNil(t, err)
-			assert.Equal(t, "project config cannot be empty: invalid argument for entity project", err.Error())
-		})
 		t.Run("calls repo to store project successfully", func(t *testing.T) {
 			project2 := models.ProjectSpec{
 				ID:   uuid.New(),

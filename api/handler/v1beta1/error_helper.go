@@ -17,6 +17,8 @@ func mapToGRPCErr(err error, msg string) error {
 			code = codes.InvalidArgument
 		case service.ErrAlreadyExists:
 			code = codes.AlreadyExists
+		case service.ErrFailedPrecond:
+			code = codes.FailedPrecondition
 		}
 	}
 

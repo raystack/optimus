@@ -274,7 +274,7 @@ func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, re
 	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
 	err := sv.namespaceService.Save(ctx, req.GetProjectName(), namespaceSpec)
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to store namespace")
+		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to register namespace %s", namespaceSpec.Name))
 	}
 
 	return &pb.RegisterProjectNamespaceResponse{

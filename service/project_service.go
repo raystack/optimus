@@ -46,10 +46,6 @@ func (s projectService) Save(ctx context.Context, project models.ProjectSpec) er
 		return NewError(models.ProjectEntity, ErrInvalidArgument, "project name cannot be empty")
 	}
 
-	if len(project.Config) == 0 {
-		return NewError(models.ProjectEntity, ErrInvalidArgument, "project config cannot be empty")
-	}
-
 	projectRepo := s.projectRepoFac.New()
 	err := projectRepo.Save(ctx, project)
 	if err != nil {

@@ -13,6 +13,7 @@ const (
 	ErrAlreadyExists   ErrorType = "Resource Already Exists"
 	ErrInvalidArgument ErrorType = "Invalid Argument"
 	ErrInternalError   ErrorType = "Internal Error"
+	ErrFailedPrecond   ErrorType = "Failed Precondition"
 )
 
 type ErrorType string
@@ -48,7 +49,7 @@ func FromError(err error, entity string, msg string) *DomainError {
 		errType = ErrAlreadyExists
 		msgStr = err.Error()
 	} else if errors.Is(err, store.ErrEmptyConfig) {
-		errType = ErrInvalidArgument
+		errType = ErrFailedPrecond
 		msgStr = err.Error()
 	}
 
