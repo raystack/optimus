@@ -446,7 +446,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			_, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
 			assert.NotNil(t, err)
-			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: not found for entity namespace: unable to store namespace", err.Error())
+			assert.Equal(t,
+				"rpc error: code = NotFound desc = project does not exist: not found for entity namespace: not able to register namespace dev-test-namespace-1", err.Error())
 		})
 	})
 
