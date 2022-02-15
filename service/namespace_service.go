@@ -57,10 +57,6 @@ func (s namespaceService) Save(ctx context.Context, projName string, namespace m
 		return NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
-	if len(namespace.Config) == 0 {
-		return NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace config cannot be empty")
-	}
-
 	projectSpec, err := s.projectService.Get(ctx, projName)
 	if err != nil {
 		return err

@@ -102,17 +102,6 @@ func TestNamespaceService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
 		})
-		t.Run("return error when namespace config is empty", func(t *testing.T) {
-			ns := models.NamespaceSpec{
-				ID:   uuid.New(),
-				Name: "name",
-			}
-			svc := service.NewNamespaceService(nil, nil)
-
-			err := svc.Save(ctx, project.Name, ns)
-			assert.NotNil(t, err)
-			assert.Equal(t, "namespace config cannot be empty: invalid argument for entity namespace", err.Error())
-		})
 		t.Run("returns error when fetching project fails", func(t *testing.T) {
 			defer projService.AssertExpectations(t)
 
