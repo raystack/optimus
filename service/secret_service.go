@@ -87,7 +87,7 @@ func (s secretService) GetSecrets(ctx context.Context, projectSpec models.Projec
 	repo := s.secretRepoFac.New(projectSpec)
 	secretItems, err := repo.GetSecrets(ctx)
 	if err != nil {
-		return []models.ProjectSecretItem{}, FromStoreError(err, "secret", "error while getting secrets")
+		return []models.ProjectSecretItem{}, FromError(err, models.SecretEntity, "error while getting secrets")
 	}
 	return secretItems, nil
 }
