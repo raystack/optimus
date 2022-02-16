@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -122,67 +121,6 @@ func (sv *RuntimeServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTa
 
 	return &pb.GetJobTaskResponse{
 		Task: jobTaskSpec,
-	}, nil
-}
-
-func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
-	projectSpec := sv.adapter.FromProjectProto(req.GetProject())
-	if err := sv.projectService.Save(ctx, projectSpec); err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
-	}
-
-	responseMsg := "project saved successfully."
-	if req.Namespace != nil {
-		responseMsg += " ignoring to save namespace (deprecated). please use register namespace rpc."
-	}
-	return &pb.RegisterProjectResponse{
-		Success: true,
-		Message: responseMsg,
-	}, nil
-}
-
-func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, req *pb.RegisterProjectNamespaceRequest) (*pb.RegisterProjectNamespaceResponse, error) {
-	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
-	err := sv.namespaceService.Save(ctx, req.GetProjectName(), namespaceSpec)
-	if err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to register namespace %s", namespaceSpec.Name))
-	}
-
-	return &pb.RegisterProjectNamespaceResponse{
-		Success: true,
-		Message: "saved successfully",
-	}, nil
-}
-
-func (sv *RuntimeServiceServer) ListProjects(ctx context.Context, req *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
-	projects, err := sv.projectService.GetAll(ctx)
-	if err != nil {
-		return nil, mapToGRPCErr(err, "failed to retrieve saved projects")
-	}
-
-	projSpecsProto := []*pb.ProjectSpecification{}
-	for _, project := range projects {
-		projSpecsProto = append(projSpecsProto, sv.adapter.ToProjectProto(project))
-	}
-
-	return &pb.ListProjectsResponse{
-		Projects: projSpecsProto,
-	}, nil
-}
-
-func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *pb.ListProjectNamespacesRequest) (*pb.ListProjectNamespacesResponse, error) {
-	namespaceSpecs, err := sv.namespaceService.GetAll(ctx, req.GetProjectName())
-	if err != nil {
-		return nil, mapToGRPCErr(err, "not able to list namespaces")
-	}
-
-	namespaceSpecsProto := []*pb.NamespaceSpecification{}
-	for _, namespace := range namespaceSpecs {
-		namespaceSpecsProto = append(namespaceSpecsProto, sv.adapter.ToNamespaceProto(namespace))
-	}
-
-	return &pb.ListProjectNamespacesResponse{
-		Namespaces: namespaceSpecsProto,
 	}, nil
 }
 

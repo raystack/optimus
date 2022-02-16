@@ -11,7 +11,6 @@ import (
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
-	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 
 	"google.golang.org/protobuf/types/known/structpb"
@@ -19,7 +18,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -274,176 +272,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 	})
 
-	t.Run("RegisterProject", func(t *testing.T) {
-		t.Run("should return error if saving to repository fails", func(t *testing.T) {
-			projectName := "a-data-project"
-
-			projectSpec := models.ProjectSpec{
-				Name: projectName,
-				Config: map[string]string{
-					"BUCKET": "gs://some_folder",
-				},
-			}
-			adapter := v1.NewAdapter(nil, nil)
-
-			projectService := new(mock.ProjectService)
-			projectService.On("Save", ctx, projectSpec).Return(errors.New("random error"))
-			defer projectService.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				"someVersion1.0",
-				jobService, nil, nil,
-				projectService,
-				nil,
-				nil,
-				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
-			)
-
-			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
-			assert.Equal(t, "rpc error: code = Internal desc = random error: not able to register project a-data-project", err.Error())
-			assert.Nil(t, resp)
-		})
-		t.Run("should register a project", func(t *testing.T) {
-			projectName := "a-data-project"
-
-			projectSpec := models.ProjectSpec{
-				Name: projectName,
-				Config: map[string]string{
-					"BUCKET": "gs://some_folder",
-				},
-			}
-			adapter := v1.NewAdapter(nil, nil)
-
-			projectService := new(mock.ProjectService)
-			projectService.On("Save", ctx, projectSpec).Return(nil)
-			defer projectService.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				"someVersion1.0",
-				jobService, nil, nil,
-				projectService,
-				nil,
-				nil,
-				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
-			)
-
-			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
-			assert.Nil(t, err)
-			assert.Equal(t, &pb.RegisterProjectResponse{
-				Success: true,
-				Message: "project saved successfully.",
-			}, resp)
-		})
-	})
-
-	t.Run("RegisterProjectNamespace", func(t *testing.T) {
-		t.Run("should save a new namespace", func(t *testing.T) {
-			projectName := "a-data-project"
-
-			projectSpec := models.ProjectSpec{
-				Name: projectName,
-				Config: map[string]string{
-					"BUCKET": "gs://some_folder",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				Name:   "dev-test-namespace-1",
-				Config: map[string]string{},
-			}
-
-			adapter := v1.NewAdapter(nil, nil)
-
-			jobSvc := new(mock.JobService)
-			defer jobSvc.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("Save", ctx, projectSpec.Name, namespaceSpec).Return(nil)
-			defer namespaceService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				"someVersion1.0",
-				jobSvc,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
-			)
-
-			namespaceRequest := pb.RegisterProjectNamespaceRequest{
-				ProjectName: projectName,
-				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
-			}
-			resp, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
-			assert.Nil(t, err)
-			assert.Equal(t, &pb.RegisterProjectNamespaceResponse{
-				Success: true,
-				Message: "saved successfully",
-			}, resp)
-		})
-		t.Run("should throw error if project does not exist while saving a namespace", func(t *testing.T) {
-			projectName := "a-data-project"
-
-			namespaceSpec := models.NamespaceSpec{
-				Name: "dev-test-namespace-1",
-				Config: map[string]string{
-					"BUCKET": "gs://something",
-				},
-			}
-
-			adapter := v1.NewAdapter(nil, nil)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("Save", ctx, projectName, namespaceSpec).
-				Return(service.NewError("namespace", service.ErrNotFound, "project does not exist"))
-			defer namespaceService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				"someVersion1.0",
-				nil,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
-				nil,
-			)
-
-			namespaceRequest := pb.RegisterProjectNamespaceRequest{
-				ProjectName: projectName,
-				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
-			}
-			_, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
-			assert.NotNil(t, err)
-			assert.Equal(t,
-				"rpc error: code = NotFound desc = project does not exist: not found for entity namespace: not able to register namespace dev-test-namespace-1", err.Error())
-		})
-	})
-
 	t.Run("GetJobTask", func(t *testing.T) {
 		t.Run("should read a job spec task details", func(t *testing.T) {
 			Version := "1.0.1"
@@ -645,59 +473,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobTaskResp, err := runtimeServiceServer.GetJobTask(ctx, jobTaskRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, taskSpecExpected, jobTaskResp.Task)
-		})
-	})
-	t.Run("ListProjectNamespaces", func(t *testing.T) {
-		t.Run("should read namespaces of a project", func(t *testing.T) {
-			Version := "1.0.1"
-
-			projectName := "a-data-project"
-
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: "dev-test-namespace-1",
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-				ProjectSpec: projectSpec,
-			}
-
-			adapter := v1.NewAdapter(nil, nil)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetAll", ctx, projectName).Return([]models.NamespaceSpec{namespaceSpec}, nil)
-			defer namespaceService.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				Version,
-				jobService,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
-				nil,
-			)
-
-			namespaceAdapted := adapter.ToNamespaceProto(namespaceSpec)
-			request := pb.ListProjectNamespacesRequest{ProjectName: projectName}
-			resp, err := runtimeServiceServer.ListProjectNamespaces(ctx, &request)
-			assert.Nil(t, err)
-			assert.Equal(t, []*pb.NamespaceSpecification{namespaceAdapted}, resp.GetNamespaces())
 		})
 	})
 
