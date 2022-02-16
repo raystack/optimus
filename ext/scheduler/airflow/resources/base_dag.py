@@ -12,7 +12,7 @@ from kubernetes.client import models as k8s
 from airflow.providers.http.sensors import HttpSensor
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor, CrossTenantDependencySensor
+    SuperExternalTaskSensor, CrossTenantDependencySensor, check_response
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
