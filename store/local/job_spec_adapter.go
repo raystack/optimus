@@ -31,18 +31,18 @@ func init() {
 // Job are inputs from user to create a job
 // yaml representation of the job
 type Job struct {
-	Version      int    `yaml:"version,omitempty" validate:"min=1,max=100"`
-	Name         string `validate:"min=3,max=1024"`
-	Owner        string `yaml:"owner" validate:"min=3,max=1024"`
-	Description  string `yaml:"description,omitempty"`
-	Schedule     JobSchedule
-	Behavior     JobBehavior
-	Task         JobTask
-	Asset        map[string]string `yaml:"asset,omitempty"`
-	Labels       map[string]string `yaml:"labels,omitempty"`
-	Dependencies []JobDependency
-	Hooks        []JobHook
-	Metadata     JobSpecMetadata `yaml:"metadata,omitempty"`
+	Version              int    `yaml:"version,omitempty" validate:"min=1,max=100"`
+	Name                 string `validate:"min=3,max=1024"`
+	Owner                string `yaml:"owner" validate:"min=3,max=1024"`
+	Description          string `yaml:"description,omitempty"`
+	Schedule             JobSchedule
+	Behavior             JobBehavior
+	Task                 JobTask
+	Asset                map[string]string `yaml:"asset,omitempty"`
+	Labels               map[string]string `yaml:"labels,omitempty"`
+	Dependencies         []JobDependency
+	Hooks                []JobHook
+	Metadata             JobSpecMetadata    `yaml:"metadata,omitempty"`
 	ExternalDependencies ExternalDependency `yaml:"external-dependencies,omitempty"`
 }
 
@@ -362,13 +362,13 @@ type JobDependency struct {
 }
 
 type ExternalDependency struct {
-	HTTPDependencies []HTTPDependency `yaml:"http"`
+	HTTPDependencies []HTTPDependency `yaml:"http,omitempty"`
 }
 
 type HTTPDependency struct {
-	Name          string        	`yaml:"Name"`
+	Name          string            `yaml:"Name"`
 	RequestParams map[string]string `yaml:"request-params,omitempty"`
-	URL           string        	`yaml:"url"`
+	URL           string            `yaml:"url"`
 	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
@@ -464,8 +464,8 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	//prep external http dependencies
 	var externalDependency models.ExternalDependency
 	var httpDependencies []models.HTTPDependency
-	for _, http := range conf.ExternalDependencies.HTTPDependencies{
-		httpDependencies = append(httpDependencies,models.HTTPDependency(http))
+	for _, http := range conf.ExternalDependencies.HTTPDependencies {
+		httpDependencies = append(httpDependencies, models.HTTPDependency(http))
 	}
 	externalDependency.HTTPDependencies = httpDependencies
 
@@ -603,9 +603,9 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Type:    dep.Type.String(),
 		})
 	}
-    // external http dependencies
-	for _, dep := range spec.ExternalDependencies.HTTPDependencies{
-		parsed.ExternalDependencies.HTTPDependencies = append(parsed.ExternalDependencies.HTTPDependencies,HTTPDependency(dep))
+	// external http dependencies
+	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
+		parsed.ExternalDependencies.HTTPDependencies = append(parsed.ExternalDependencies.HTTPDependencies, HTTPDependency(dep))
 	}
 
 	// prep hooks

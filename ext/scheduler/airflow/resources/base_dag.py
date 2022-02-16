@@ -197,14 +197,17 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 {{- end}}
 
 {{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
-wait_{{$httpDependency.Name | replace "-" "__dash__" | replace "." "__dot__"}} = HttpSensor(
+headers_dict_{{$httpDependency.Name}}={ {{- range $k, $v := $httpDependency.Headers}} '{{$k}}': '{{$v}}', {{- end}} }
+request_params_dict_{{$httpDependency.Name}}={ {{- range $key, $value := $httpDependency.RequestParams}} '{{$key}}': '{{$value}}', {{- end}} }
+
+wait_{{$httpDependency.Name}} = HttpSensor(
     endpoint="{{$httpDependency.URL}}",
-    headers="{{$httpDependency.Headers}}",
-    request_params="{{$httpDependency.RequestParams}}",
+    headers=headers_dict_{{$httpDependency.Name}},
+    request_params=request_params_dict_{{$httpDependency.Name}},
     response_check=lambda response: True if check_response(response.status_code) is True else False,
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$httpDependency.Name| trunc 200}}-{{$dependencySchema.Name}}",
+    task_id="wait_{{$httpDependency.Name| trunc 200}}",
     dag=dag
 )
 {{- end}}
@@ -218,7 +221,7 @@ wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> trans
 {{- end}}
 
 {{- range $_, $t := $.Job.ExternalDependencies.HTTPDependencies }}
-wait_{{ $t.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 
 # set inter-dependencies between task and hooks

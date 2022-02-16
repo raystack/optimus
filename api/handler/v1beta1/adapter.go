@@ -47,13 +47,15 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 
 	// prep external dependencies
 	var externalDependencies models.ExternalDependency
-	for _,httpDep := range spec.ExternalDependency.HttpDependencies{
-		externalDependencies.HTTPDependencies = append(externalDependencies.HTTPDependencies,models.HTTPDependency{
-			Name:          httpDep.Name,
-			RequestParams: httpDep.RequestParams,
-			URL:           httpDep.Url,
-			Headers:       httpDep.Headers,
-		})
+	if spec.ExternalDependency != nil {
+		for _, httpDep := range spec.ExternalDependency.HttpDependencies {
+			externalDependencies.HTTPDependencies = append(externalDependencies.HTTPDependencies, models.HTTPDependency{
+				Name:          httpDep.Name,
+				RequestParams: httpDep.RequestParams,
+				URL:           httpDep.Url,
+				Headers:       httpDep.Headers,
+			})
+		}
 	}
 
 	window, err := prepareWindow(spec.WindowSize, spec.WindowOffset, spec.WindowTruncateTo)
@@ -133,9 +135,9 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 			Config: taskConfigs,
 			Window: window,
 		},
-		Dependencies: dependencies,
-		Hooks:        hooks,
-		Metadata:     metadata,
+		Dependencies:         dependencies,
+		Hooks:                hooks,
+		Metadata:             metadata,
 		ExternalDependencies: externalDependencies,
 	}, nil
 }
@@ -180,8 +182,11 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		})
 	}
 	//prep external dependencies for proto
-	var externalDependenciesProto *pb.ExternalDependency
-	for _,httpDep := range spec.ExternalDependencies.HTTPDependencies{
+	//var externalDependenciesProto *pb.ExternalDependency
+	externalDependenciesProto := &pb.ExternalDependency{
+		HttpDependencies: []*pb.HttpDependency{},
+	}
+	for _, httpDep := range spec.ExternalDependencies.HTTPDependencies {
 		externalDependenciesProto.HttpDependencies = append(externalDependenciesProto.HttpDependencies, &pb.HttpDependency{
 			Name:          httpDep.Name,
 			Url:           httpDep.URL,

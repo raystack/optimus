@@ -41,10 +41,10 @@ type Job struct {
 	WindowOffset     *int64
 	WindowTruncateTo *string
 
-	Assets   datatypes.JSON
-	Hooks    datatypes.JSON
-	Metadata datatypes.JSON
-	ExternalDependencies datatypes.JSON
+	Assets               datatypes.JSON
+	Hooks                datatypes.JSON
+	Metadata             datatypes.JSON
+	ExternalDependencies datatypes.JSON //store external dependencies
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -254,10 +254,10 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				TruncateTo: *conf.WindowTruncateTo,
 			},
 		},
-		Assets:       *(models.JobAssets{}).New(jobAssets),
-		Dependencies: dependencies,
-		Hooks:        jobHooks,
-		Metadata:     metadata,
+		Assets:               *(models.JobAssets{}).New(jobAssets),
+		Dependencies:         dependencies,
+		Hooks:                jobHooks,
+		Metadata:             metadata,
 		ExternalDependencies: externalDependencies,
 	}
 	return job, nil
@@ -364,26 +364,26 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 	}
 
 	return Job{
-		ID:               spec.ID,
-		Version:          spec.Version,
-		Name:             spec.Name,
-		Owner:            spec.Owner,
-		Description:      spec.Description,
-		Labels:           labelsJSON,
-		StartDate:        spec.Schedule.StartDate,
-		EndDate:          spec.Schedule.EndDate,
-		Interval:         &spec.Schedule.Interval,
-		Behavior:         behaviorJSON,
-		Destination:      jobDestination,
-		Dependencies:     dependenciesJSON,
-		TaskName:         spec.Task.Unit.Info().Name,
-		TaskConfig:       taskConfigJSON,
-		WindowSize:       &wsize,
-		WindowOffset:     &woffset,
-		WindowTruncateTo: &spec.Task.Window.TruncateTo,
-		Assets:           assetsJSON,
-		Hooks:            hooksJSON,
-		Metadata:         metadata,
+		ID:                   spec.ID,
+		Version:              spec.Version,
+		Name:                 spec.Name,
+		Owner:                spec.Owner,
+		Description:          spec.Description,
+		Labels:               labelsJSON,
+		StartDate:            spec.Schedule.StartDate,
+		EndDate:              spec.Schedule.EndDate,
+		Interval:             &spec.Schedule.Interval,
+		Behavior:             behaviorJSON,
+		Destination:          jobDestination,
+		Dependencies:         dependenciesJSON,
+		TaskName:             spec.Task.Unit.Info().Name,
+		TaskConfig:           taskConfigJSON,
+		WindowSize:           &wsize,
+		WindowOffset:         &woffset,
+		WindowTruncateTo:     &spec.Task.Window.TruncateTo,
+		Assets:               assetsJSON,
+		Hooks:                hooksJSON,
+		Metadata:             metadata,
 		ExternalDependencies: externalDependenciesJSON,
 	}, nil
 }
