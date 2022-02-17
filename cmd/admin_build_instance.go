@@ -129,5 +129,15 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
 	}
 
+	// write all secrets into a file
+	secretsFileContent := ""
+	for key, val := range jobResponse.Context.Secrets {
+		secretsFileContent += fmt.Sprintf("%s='%s'\n", key, val)
+	}
+	secretsFilePath := filepath.Join(inputDirectory, models.InstanceDataTypeSecretFileName)
+	if err := writeToFileFn(secretsFilePath, secretsFileContent, l.Writer()); err != nil {
+		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+	}
+
 	return nil
 }

@@ -1798,6 +1798,12 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
