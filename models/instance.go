@@ -131,6 +131,12 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 	return json.Marshal(j.Data)
 }
 
+type CompiledAssets struct {
+	EnvMap     map[string]string
+	FileMap    map[string]string
+	SecretsMap map[string]string
+}
+
 type RunService interface {
 	// GetScheduledRun find if already present or create a new scheduled run
 	GetScheduledRun(ctx context.Context, namespace NamespaceSpec, JobID JobSpec, scheduledAt time.Time) (JobRun, error)
@@ -142,8 +148,7 @@ type RunService interface {
 	Register(ctx context.Context, namespace NamespaceSpec, jobRun JobRun, instanceType InstanceType, instanceName string) (InstanceSpec, error)
 
 	// Compile prepares instance execution context environment
-	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (envMap map[string]string,
-		fileMap map[string]string, secretsMap map[string]string, err error)
+	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (assets *CompiledAssets, err error)
 }
 
 // TemplateEngine compiles raw text templates using provided values

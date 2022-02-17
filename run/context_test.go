@@ -137,22 +137,22 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, _, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun,
+			assets, err := run.NewContextManager(namespaceSpec, nil, jobRun,
 				run.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
-			assert.Equal(t, "2020-11-10T23:00:00Z", envMap["DSTART"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECUTION_TIME"])
+			assert.Equal(t, "2020-11-11T00:00:00Z", assets.EnvMap["DEND"])
+			assert.Equal(t, "2020-11-10T23:00:00Z", assets.EnvMap["DSTART"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECUTION_TIME"])
 
-			assert.Equal(t, "22", envMap["BQ_VAL"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECT"])
-			assert.Equal(t, projectSpec.Config["bucket"], envMap["BUCKET"])
-			assert.Equal(t, projectSpec.Config["bucket"], envMap["BUCKETX"])
+			assert.Equal(t, "22", assets.EnvMap["BQ_VAL"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECT"])
+			assert.Equal(t, projectSpec.Config["bucket"], assets.EnvMap["BUCKET"])
+			assert.Equal(t, projectSpec.Config["bucket"], assets.EnvMap["BUCKETX"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s'", mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout)),
-				fileMap["query.sql"],
+				assets.FileMap["query.sql"],
 			)
 		})
 		t.Run("should return valid compiled instanceSpec config for task type hook", func(t *testing.T) {
@@ -297,26 +297,26 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, _, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
+			assets, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
 				Generate(instanceSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
-			assert.Equal(t, "2020-11-10T23:00:00Z", envMap["DSTART"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECUTION_TIME"])
+			assert.Equal(t, "2020-11-11T00:00:00Z", assets.EnvMap["DEND"])
+			assert.Equal(t, "2020-11-10T23:00:00Z", assets.EnvMap["DSTART"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECUTION_TIME"])
 
-			assert.Equal(t, "0.0.0.0:9092", envMap["PRODUCER_CONFIG_BOOTSTRAP_SERVERS"])
-			assert.Equal(t, "200", envMap["SAMPLE_CONFIG"])
-			assert.Equal(t, "22", envMap["INHERIT_CONFIG"])
-			assert.Equal(t, "22", envMap["INHERIT_CONFIG_AS_WELL"])
-			assert.Equal(t, "<no value>", envMap["UNKNOWN"])
-			assert.Equal(t, "22", envMap["TASK__BQ_VAL"])
+			assert.Equal(t, "0.0.0.0:9092", assets.EnvMap["PRODUCER_CONFIG_BOOTSTRAP_SERVERS"])
+			assert.Equal(t, "200", assets.EnvMap["SAMPLE_CONFIG"])
+			assert.Equal(t, "22", assets.EnvMap["INHERIT_CONFIG"])
+			assert.Equal(t, "22", assets.EnvMap["INHERIT_CONFIG_AS_WELL"])
+			assert.Equal(t, "<no value>", assets.EnvMap["UNKNOWN"])
+			assert.Equal(t, "22", assets.EnvMap["TASK__BQ_VAL"])
 
-			assert.Equal(t, "event_timestamp >= '2020-11-10T23:00:00Z' AND event_timestamp < '2020-11-11T00:00:00Z'", envMap["FILTER_EXPRESSION"])
+			assert.Equal(t, "event_timestamp >= '2020-11-10T23:00:00Z' AND event_timestamp < '2020-11-11T00:00:00Z'", assets.EnvMap["FILTER_EXPRESSION"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s'", mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout)),
-				fileMap["query.sql"],
+				assets.FileMap["query.sql"],
 			)
 		})
 		t.Run("should return compiled instanceSpec config with overridden config provided in NamespaceSpec", func(t *testing.T) {
@@ -438,22 +438,22 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, _, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
+			assets, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
 				Generate(instanceSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
-			assert.Equal(t, "2020-11-10T23:00:00Z", envMap["DSTART"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECUTION_TIME"])
+			assert.Equal(t, "2020-11-11T00:00:00Z", assets.EnvMap["DEND"])
+			assert.Equal(t, "2020-11-10T23:00:00Z", assets.EnvMap["DSTART"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECUTION_TIME"])
 
-			assert.Equal(t, "22", envMap["BQ_VAL"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECT"])
-			assert.Equal(t, projectSpec.Config["bucket"], envMap["BUCKET"])
-			assert.Equal(t, namespaceSpec.Config["transporter_brokers"], envMap["TRANSPORTER_BROKERS"])
+			assert.Equal(t, "22", assets.EnvMap["BQ_VAL"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECT"])
+			assert.Equal(t, projectSpec.Config["bucket"], assets.EnvMap["BUCKET"])
+			assert.Equal(t, namespaceSpec.Config["transporter_brokers"], assets.EnvMap["TRANSPORTER_BROKERS"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s'", mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout)),
-				fileMap["query.sql"],
+				assets.FileMap["query.sql"],
 			)
 		})
 		t.Run("returns compiled instance spec with secrets", func(t *testing.T) {
@@ -588,24 +588,24 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, secretMap, fileMap, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
+			assets, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
 				run.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, "2020-11-11T00:00:00Z", envMap["DEND"])
-			assert.Equal(t, "2020-11-10T23:00:00Z", envMap["DSTART"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECUTION_TIME"])
+			assert.Equal(t, "2020-11-11T00:00:00Z", assets.EnvMap["DEND"])
+			assert.Equal(t, "2020-11-10T23:00:00Z", assets.EnvMap["DSTART"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECUTION_TIME"])
 
-			assert.Equal(t, "22", envMap["BQ_VAL"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECT"])
-			_, ok := envMap["BUCKET"]
+			assert.Equal(t, "22", assets.EnvMap["BQ_VAL"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.EnvMap["EXECT"])
+			_, ok := assets.EnvMap["BUCKET"]
 			assert.Equal(t, false, ok)
-			assert.Equal(t, "gs://some_secret_bucket", secretMap["BUCKET"])
+			assert.Equal(t, "gs://some_secret_bucket", assets.SecretsMap["BUCKET"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",
 					mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), secrets[0].Value),
-				fileMap["query.sql"],
+				assets.FileMap["query.sql"],
 			)
 		})
 	})

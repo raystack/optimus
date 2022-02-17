@@ -39,10 +39,10 @@ type Service struct {
 }
 
 func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	envMap map[string]string, secretsMap map[string]string, fileMap map[string]string, err error) {
+	assets *models.CompiledAssets, err error) {
 	secrets, err := s.secretService.GetSecrets(ctx, namespace.ProjectSpec)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	return NewContextManager(namespace, secrets, jobRun, s.templateEngine).Generate(instanceSpec)
 }

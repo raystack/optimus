@@ -44,8 +44,7 @@ type ContextManager struct {
 // Generate fetches and compiles all config data related to an instance and
 // returns a map of env variables and a map[fileName]fileContent
 // It compiles any templates/macros present in the config.
-func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (
-	envMap map[string]string, secretsMap map[string]string, fileMap map[string]string, err error) {
+func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *models.CompiledAssets, err error) {
 	projectPrefixedConfig, projRawConfig := fm.projectEnvs()
 	secretMap := fm.createSecretsMap()
 	// instance env will be used for templating
@@ -58,10 +57,11 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (
 	projectInstanceContext["secret"] = secretMap
 
 	// prepare configs
+	var envMap map[string]string
 	var secretConfig map[string]string
 	envMap, secretConfig, err = fm.generateEnvs(instanceSpec.Name, instanceSpec.Type, projectInstanceContext)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil
 	}
 
 	// append instance envMap
@@ -81,15 +81,20 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (
 		InstanceData:     instanceSpec.Data,
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	// append job spec assets to list of files need to write
+	var fileMap map[string]string
 	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
 	if fileMap, err = fm.engine.CompileFiles(fileMap, projectInstanceContext); err != nil {
 		return
 	}
-	return envMap, secretConfig, fileMap, nil
+	return &models.CompiledAssets{
+		EnvMap:     envMap,
+		SecretsMap: secretConfig,
+		FileMap:    fileMap,
+	}, nil
 }
 
 func (fm *ContextManager) projectEnvs() (map[string]interface{}, map[string]interface{}) {
