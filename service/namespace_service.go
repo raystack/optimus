@@ -13,6 +13,8 @@ type NamespaceRepoFactory interface {
 
 type NamespaceService interface {
 	Get(context.Context, string, string) (models.NamespaceSpec, error)
+	Save(context.Context, string, models.NamespaceSpec) error
+	GetAll(context.Context, string) ([]models.NamespaceSpec, error)
 }
 
 type namespaceService struct {
@@ -33,7 +35,7 @@ func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFac
 func (s namespaceService) Get(ctx context.Context, projectName string, namespaceName string) (models.NamespaceSpec, error) {
 	if namespaceName == "" {
 		return models.NamespaceSpec{},
-			NewError("namespace", ErrInvalidArgument, "namespace name cannot be empty")
+			NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
 	projectSpec, err := s.projectService.Get(ctx, projectName)
@@ -44,8 +46,40 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
 	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
 	if err != nil {
-		return models.NamespaceSpec{}, FromError(err, "namespace", "")
+		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
 
 	return nsSpec, nil
+}
+
+func (s namespaceService) Save(ctx context.Context, projName string, namespace models.NamespaceSpec) error {
+	if namespace.Name == "" {
+		return NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
+	}
+
+	projectSpec, err := s.projectService.Get(ctx, projName)
+	if err != nil {
+		return err
+	}
+
+	nsRepo := s.namespaceRepoFac.New(projectSpec)
+	err = nsRepo.Save(ctx, namespace)
+	if err != nil {
+		return FromError(err, models.NamespaceEntity, "")
+	}
+	return nil
+}
+
+func (s namespaceService) GetAll(ctx context.Context, projName string) ([]models.NamespaceSpec, error) {
+	projectSpec, err := s.projectService.Get(ctx, projName)
+	if err != nil {
+		return []models.NamespaceSpec{}, err
+	}
+
+	namespaceRepo := s.namespaceRepoFac.New(projectSpec)
+	namespaces, err := namespaceRepo.GetAll(ctx)
+	if err != nil {
+		return []models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
+	}
+	return namespaces, nil
 }

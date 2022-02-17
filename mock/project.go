@@ -52,3 +52,13 @@ func (pr *ProjectService) Get(ctx context.Context, name string) (models.ProjectS
 	args := pr.Called(ctx, name)
 	return args.Get(0).(models.ProjectSpec), args.Error(1)
 }
+
+func (pr *ProjectService) Save(ctx context.Context, project models.ProjectSpec) error {
+	args := pr.Called(ctx, project)
+	return args.Error(0)
+}
+
+func (pr *ProjectService) GetAll(ctx context.Context) ([]models.ProjectSpec, error) {
+	args := pr.Called(ctx)
+	return args.Get(0).([]models.ProjectSpec), args.Error(1)
+}

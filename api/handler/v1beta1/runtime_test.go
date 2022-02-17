@@ -6,27 +6,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/set"
-	"github.com/odpf/optimus/run"
-
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/run"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"google.golang.org/protobuf/types/known/structpb"
-
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -149,13 +146,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			ScheduledAt: scheduledAt,
 		}
 		t.Run("should register a new job instance with run for scheduled triggers", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
@@ -180,7 +173,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				v1.NewAdapter(nil, nil),
@@ -189,7 +182,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 
-			versionRequest := pb.RegisterInstanceRequest{ProjectName: projectName, JobName: jobName,
+			versionRequest := pb.RegisterInstanceRequest{
+				ProjectName:  projectName,
+				JobName:      jobName,
 				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
 				ScheduledAt:  scheduledAtTimestamp,
 				InstanceName: instanceSpec.Name,
@@ -220,13 +215,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, expectedResponse, resp)
 		})
 		t.Run("should find the existing job run if manually triggered", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			instanceService := new(mock.RunService)
 			instanceService.On("GetByID", ctx, jobRun.ID).Return(jobRun, namespaceSpec, nil)
@@ -248,7 +239,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				v1.NewAdapter(nil, nil),
@@ -302,13 +293,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			adapter := v1.NewAdapter(nil, nil)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("Save", ctx, projectSpec).Return(errors.New("a random error"))
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Save", ctx, projectSpec).Return(errors.New("random error"))
+			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -317,8 +304,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				log,
 				"someVersion1.0",
 				jobService, nil, nil,
-				projectRepoFactory,
-
+				projectService,
 				nil,
 				nil,
 				v1.NewAdapter(nil, nil),
@@ -329,7 +315,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
 			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
-			assert.Equal(t, "rpc error: code = Internal desc = a random error: failed to save project a-data-project", err.Error())
+			assert.Equal(t, "rpc error: code = Internal desc = random error: not able to register project a-data-project", err.Error())
 			assert.Nil(t, resp)
 		})
 		t.Run("should register a project", func(t *testing.T) {
@@ -343,13 +329,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			adapter := v1.NewAdapter(nil, nil)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("Save", ctx, projectSpec).Return(nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Save", ctx, projectSpec).Return(nil)
+			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -358,8 +340,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				log,
 				"someVersion1.0",
 				jobService, nil, nil,
-				projectRepoFactory,
-
+				projectService,
 				nil,
 				nil,
 				v1.NewAdapter(nil, nil),
@@ -396,32 +377,20 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			jobSvc := new(mock.JobService)
 			defer jobSvc.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("Save", ctx, namespaceSpec).Return(nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Save", ctx, projectSpec.Name, namespaceSpec).Return(nil)
+			defer namespaceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"someVersion1.0",
 				jobSvc,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				v1.NewAdapter(nil, nil),
 				nil,
@@ -443,45 +412,29 @@ func TestRuntimeServiceServer(t *testing.T) {
 		t.Run("should throw error if project does not exist while saving a namespace", func(t *testing.T) {
 			projectName := "a-data-project"
 
-			projectSpec := models.ProjectSpec{
-				Name: projectName,
-				Config: map[string]string{
-					"BUCKET": "gs://some_folder",
-				},
-			}
-
 			namespaceSpec := models.NamespaceSpec{
 				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"BUCKET": "gs://something",
+				},
 			}
 
 			adapter := v1.NewAdapter(nil, nil)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, errors.New("project does not exist"))
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			jobSvc := new(mock.JobService)
-			defer jobSvc.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Save", ctx, projectName, namespaceSpec).
+				Return(service.NewError("namespace", service.ErrNotFound, "project does not exist"))
+			defer namespaceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"someVersion1.0",
-				jobSvc,
-				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
 				nil,
-				v1.NewAdapter(nil, nil),
+				nil, nil,
+				nil,
+				namespaceService,
+				nil,
+				adapter,
 				nil,
 				nil,
 				nil,
@@ -493,7 +446,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			_, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
 			assert.NotNil(t, err)
-			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: project a-data-project not found", err.Error())
+			assert.Equal(t,
+				"rpc error: code = NotFound desc = project does not exist: not found for entity namespace: not able to register namespace dev-test-namespace-1", err.Error())
 		})
 	})
 
@@ -556,35 +510,23 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Dependencies: map[string]models.JobSpecDependency{},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			jobSvc := new(mock.JobService)
 			jobSvc.On("Create", ctx, jobSpec, namespaceSpec).Return(nil)
 			jobSvc.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
 			jobSvc.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
 			defer jobSvc.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"someVersion1.0",
 				jobSvc,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -662,14 +604,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			jobSpecRepository := new(mock.JobSpecRepository)
 			defer jobSpecRepository.AssertExpectations(t)
 
@@ -682,13 +616,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}, nil)
 			adapter := v1.NewAdapter(pluginRepo, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			nsService := new(mock.NamespaceService)
+			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer nsService.AssertExpectations(t)
 
 			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepository.AssertExpectations(t)
@@ -711,8 +641,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				nsService,
 				nil,
 				adapter,
 				nil,
@@ -786,25 +716,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			allTasksRepo := new(mock.SupportedPluginRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
@@ -815,8 +733,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -890,25 +808,14 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			allTasksRepo := new(mock.SupportedPluginRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			nsService := new(mock.NamespaceService)
+			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
+				Return(namespaceSpec, nil)
+			defer nsService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
@@ -923,8 +830,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil, nsService,
 				nil,
 				adapter,
 				nil,
@@ -1007,25 +913,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			allTasksRepo := new(mock.SupportedPluginRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
 			adapter := v1.NewAdapter(allTasksRepo, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
@@ -1036,8 +930,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1081,23 +975,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			adapter := v1.NewAdapter(nil, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetAll", ctx).Return([]models.NamespaceSpec{namespaceSpec}, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("GetAll", ctx, projectName).Return([]models.NamespaceSpec{namespaceSpec}, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -1107,8 +989,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1176,27 +1058,16 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			pluginRepo := new(mock.SupportedPluginRepo)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
 			adapter := v1.NewAdapter(pluginRepo, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
+				Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobSpec := jobSpecs[0]
 
@@ -1210,8 +1081,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				jobService,
 				nil, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1245,13 +1116,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Name: "transform-tables",
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 
@@ -1277,7 +1144,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				log,
 				Version,
 				jobService, nil, nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				adapter,
@@ -1330,23 +1197,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			adapter := v1.NewAdapter(nil, nil)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
@@ -1368,8 +1223,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				log,
 				Version,
 				jobService, eventSvc, nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1507,33 +1362,21 @@ func TestRuntimeServiceServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			resourceSvc := new(mock.DatastoreService)
 			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				v1.NewAdapter(nil, dsRepo),
 				nil,
@@ -1606,33 +1449,21 @@ func TestRuntimeServiceServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			resourceSvc := new(mock.DatastoreService)
 			resourceSvc.On("UpdateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				v1.NewAdapter(nil, dsRepo),
 				nil,
@@ -1706,29 +1537,18 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
 			defer jobService.AssertExpectations(t)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				jobService, nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1774,29 +1594,18 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
 			defer jobService.AssertExpectations(t)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				jobService, nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1828,21 +1637,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
 			defer jobService.AssertExpectations(t)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -1850,8 +1648,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1885,21 +1683,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(models.ReplayPlan{}, errors.New("populating jobs spec failed"))
 			defer jobService.AssertExpectations(t)
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -1907,8 +1694,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -1979,26 +1766,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			randomUUID := uuid.Must(uuid.NewRandom())
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2006,8 +1782,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2036,26 +1812,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			randomUUID := uuid.Must(uuid.NewRandom())
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2063,8 +1828,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2084,21 +1849,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
 		t.Run("should failed when replay request is invalid", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
+				Return(models.NamespaceSpec{}, errors.New("Namespace not found"))
+			defer namespaceService.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New("Namespace not found"))
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2106,8 +1861,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2136,26 +1891,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			errMessage := "internal error"
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2163,8 +1907,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2187,13 +1931,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 		t.Run("should failed when project is not found", func(t *testing.T) {
 			errMessage := "project not found"
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(models.ProjectSpec{}, errors.New(errMessage))
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
+				Return(models.NamespaceSpec{}, errors.New(errMessage))
+			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -2202,8 +1943,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				projectRepoFactory,
 				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2224,27 +1965,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, replayResponse)
 		})
 		t.Run("should failed when job is not found in the namespace", func(t *testing.T) {
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
+
 			errMessage := "job not found in namespace"
-
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(models.JobSpec{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2252,8 +1981,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2282,26 +2011,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrConflictedJobRun)
 			defer jobService.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2309,8 +2027,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2340,26 +2058,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrRequestQueueFull)
 			defer jobService.AssertExpectations(t)
 
-			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
-			defer namespaceRepoFact.AssertExpectations(t)
 			adapter := v1.NewAdapter(nil, nil)
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -2367,8 +2074,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				adapter,
 				nil,
@@ -2445,13 +2152,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Node:   dagNode,
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -2464,7 +2167,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				adapter,
@@ -2487,13 +2190,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, expectedReplayStatusNodeResponse.Runs, replayStatusResponse.Response.Runs)
 		})
 		t.Run("should failed when unable to get status of a replay", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			errMessage := "internal error"
 			jobService := new(mock.JobService)
@@ -2507,7 +2206,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				adapter,
@@ -2596,13 +2295,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -2615,7 +2310,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				adapter,
@@ -2633,13 +2328,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, expectedReplayList, replayStatusResponse)
 		})
 		t.Run("should failed when unable to get status of a replay", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			errMessage := "internal error"
 			jobService := new(mock.JobService)
@@ -2653,7 +2344,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				nil,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				adapter,
@@ -2725,21 +2416,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -2769,8 +2448,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -2822,21 +2501,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			allowedDownstream := []string{models.AllNamespace}
 
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -2877,8 +2544,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -2930,21 +2597,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -2985,8 +2640,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3007,31 +2662,19 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, []string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, backupResponse.ResourceName)
 		})
 		t.Run("should return error when project is not found", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 			errorMsg := "unable to fetch project"
-			projectRepository.On("GetByName", ctx, projectName).Return(models.ProjectSpec{}, errors.New(errorMsg))
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-
-			resourceSvc := new(mock.DatastoreService)
-			defer resourceSvc.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectName, "sample-namespace").
+				Return(models.NamespaceSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
-				jobService, nil,
-				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil, nil,
+				nil,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3043,6 +2686,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName:   projectName,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
+				NamespaceName: "sample-namespace",
 			}
 			backupResponse, err := runtimeServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
@@ -3050,22 +2694,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when namespace is not found", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 			errorMsg := "unable to get namespace"
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
+				Return(models.NamespaceSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3073,8 +2706,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3094,21 +2727,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to read resource", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -3126,8 +2747,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3147,21 +2768,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get jobSpec", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -3182,8 +2791,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3225,21 +2834,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			allowedDownstream := []string{models.AllNamespace}
 
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -3261,8 +2858,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3305,21 +2902,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			allowedDownstream := []string{models.AllNamespace}
 
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSpec := models.ResourceSpec{
 				Name: resourceName,
@@ -3352,8 +2937,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3394,17 +2979,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 		backupUrn := "datastore://a-data-project:optimus_backup.table_backup"
 
 		t.Run("should able to do backup ignoring downstream", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -3461,11 +3037,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Resources: []string{backupUrn},
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
@@ -3476,8 +3048,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3490,17 +3062,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, backupResponsePb, backupResponse)
 		})
 		t.Run("should return list of resources for backup with downstream", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -3570,11 +3133,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Resources: urns,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
@@ -3588,8 +3147,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3603,17 +3162,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, backupResult.IgnoredResources, backupResponse.IgnoredResources)
 		})
 		t.Run("should return list of resources for backup with downstream with only allowed namespace", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -3682,11 +3232,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Resources: urns,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
@@ -3700,8 +3246,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3715,14 +3261,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, backupResult.IgnoredResources, backupResponse.IgnoredResources)
 		})
 		t.Run("should return error when project is not found", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
+				Return(models.NamespaceSpec{}, errors.New("failed to get project"))
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
@@ -3732,21 +3274,18 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
+				NamespaceName: namespaceSpec.Name,
 				DatastoreName: models.DestinationTypeBigquery.String(),
 				ResourceName:  resourceName,
 			}
-
-			projectRepoFactory.On("New").Return(projectRepository)
-			errorMsg := "unable to fetch project"
-			projectRepository.On("GetByName", ctx, projectName).Return(models.ProjectSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3755,21 +3294,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			backupResponse, err := runtimeServiceServer.CreateBackup(context.Background(), &backupRequestPb)
 
-			assert.Contains(t, err.Error(), errorMsg)
+			assert.Contains(t, err.Error(), "failed to get project")
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when namespace is not found", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			backupRequestPb := pb.CreateBackupRequest{
 				ProjectName:   projectName,
@@ -3778,11 +3308,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
 			errorMsg := "unable to get namespace"
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -3790,8 +3317,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3804,17 +3331,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to read resource", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -3830,10 +3348,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			errorMsg := "unable to read resource"
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec,
 				models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, errors.New(errorMsg))
@@ -3843,8 +3358,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3857,17 +3372,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get jobSpec", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -3886,10 +3392,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			errorMsg := "unable to get jobspec"
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
@@ -3899,8 +3402,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3913,17 +3416,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get jobSpec downstream", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -3964,10 +3458,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			errorMsg := "unable to get jobspec downstream"
@@ -3978,8 +3469,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -3992,17 +3483,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to do backup", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			namespaceRepository := new(mock.NamespaceRepository)
-			defer namespaceRepository.AssertExpectations(t)
-
-			namespaceRepoFact := new(mock.NamespaceRepoFactory)
-			defer namespaceRepoFact.AssertExpectations(t)
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -4056,10 +3538,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				AllowedDownstreamNamespaces: allowedDownstream,
 			}
 
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
-			projectRepoFactory.On("New").Return(projectRepository)
-			namespaceRepository.On("GetByName", ctx, namespaceSpec.Name).Return(namespaceSpec, nil)
-			namespaceRepoFact.On("New", projectSpec).Return(namespaceRepository)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
@@ -4071,8 +3550,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				jobService, nil,
 				resourceSvc,
-				projectRepoFactory,
-				namespaceRepoFact,
+				nil,
+				namespaceService,
 				nil,
 				nil,
 				nil,
@@ -4125,11 +3604,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			},
 		}
 		t.Run("should return list of backups", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -4151,8 +3628,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			resourceSvc.On("ListResourceBackups", ctx, projectSpec, datastoreName).Return(backupSpecs, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -4160,7 +3635,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4174,26 +3649,21 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, backupResultPb, backupResponse)
 		})
 		t.Run("should return error when unable to get project spec", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
-
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
 
-			projectRepoFactory.On("New").Return(projectRepository)
 			errorMsg := "unable to get project spec"
-			projectRepository.On("GetByName", ctx, projectName).Return(models.ProjectSpec{},
-				errors.New(errorMsg))
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).
+				Return(models.ProjectSpec{}, errors.New(errorMsg))
+			defer projectService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4207,17 +3677,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get list of backups", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
 
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			errorMsg := "unable to get list of backups"
 			resourceSvc.On("ListResourceBackups", ctx, projectSpec, datastoreName).Return([]models.BackupSpec{}, errors.New(errorMsg))
 
@@ -4226,7 +3692,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4272,11 +3738,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			Description: "backup purpose",
 		}
 		t.Run("should return backup detail", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -4290,8 +3754,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(backupSpec, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -4299,7 +3761,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4313,26 +3775,20 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, backupResultPb, backupResponse)
 		})
 		t.Run("should return error when unable to get project spec", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			errorMsg := "unable to get project spec"
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, errors.New(errorMsg))
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-
-			projectRepoFactory.On("New").Return(projectRepository)
-			errorMsg := "unable to get project spec"
-			projectRepository.On("GetByName", ctx, projectName).Return(models.ProjectSpec{},
-				errors.New(errorMsg))
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4346,17 +3802,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when unable to get backup detail", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
 
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			errorMsg := "unable to get backup detail"
 			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(models.BackupSpec{}, errors.New(errorMsg))
 
@@ -4365,7 +3817,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4379,17 +3831,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when backup is not found", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(models.BackupSpec{}, store.ErrResourceNotFound)
 
 			errorMsg := fmt.Sprintf("backup with ID %s not found", backupID)
@@ -4398,7 +3845,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4412,11 +3859,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, backupResponse)
 		})
 		t.Run("should return error when backup URN is not found", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -4435,8 +3880,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(invalidBackupSpec, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -4444,7 +3887,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
@@ -4458,11 +3901,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Contains(t, err.Error(), "URN is not found in backup result")
 		})
 		t.Run("should return error when backup URN is invalid", func(t *testing.T) {
-			projectRepository := new(mock.ProjectRepository)
-			defer projectRepository.AssertExpectations(t)
-
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			defer projectRepoFactory.AssertExpectations(t)
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
@@ -4480,9 +3921,6 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 				},
 			}
-
-			projectRepoFactory.On("New").Return(projectRepository)
-			projectRepository.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(invalidBackupSpec, nil)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -4490,7 +3928,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				"Version",
 				nil, nil,
 				resourceSvc,
-				projectRepoFactory,
+				projectService,
 				nil,
 				nil,
 				nil,
