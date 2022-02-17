@@ -172,7 +172,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of jobrun %s", err.Error(), jobRun)
 	}
-	envMap, fileMap, err := sv.runSvc.Compile(ctx, namespaceSpec, jobRun, instance)
+	envMap, secretMap, fileMap, err := sv.runSvc.Compile(ctx, namespaceSpec, jobRun, instance)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
@@ -191,8 +191,9 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		Instance:  instanceProto,
 		Namespace: sv.adapter.ToNamespaceProto(namespaceSpec),
 		Context: &pb.InstanceContext{
-			Envs:  envMap,
-			Files: fileMap,
+			Envs:    envMap,
+			Secrets: secretMap,
+			Files:   fileMap,
 		},
 	}, nil
 }

@@ -22,7 +22,8 @@ const (
 	InstanceDataTypeFile = "file"
 
 	// InstanceDataTypeEnvFileName is run data env type file name
-	InstanceDataTypeEnvFileName = ".env"
+	InstanceDataTypeEnvFileName    = ".env"
+	InstanceDataTypeSecretFileName = ".secret"
 
 	// iso 2021-01-14T02:00:00+00:00
 	InstanceScheduledAtTimeLayout = time.RFC3339
@@ -142,7 +143,7 @@ type RunService interface {
 
 	// Compile prepares instance execution context environment
 	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (envMap map[string]string,
-		fileMap map[string]string, err error)
+		fileMap map[string]string, secretsMap map[string]string, err error)
 }
 
 // TemplateEngine compiles raw text templates using provided values

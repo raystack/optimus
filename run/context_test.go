@@ -137,7 +137,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun,
+			envMap, _, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun,
 				run.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
@@ -297,7 +297,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
+			envMap, _, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
 				Generate(instanceSpec)
 			assert.Nil(t, err)
 
@@ -438,7 +438,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
+			envMap, _, fileMap, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
 				Generate(instanceSpec)
 			assert.Nil(t, err)
 
@@ -588,7 +588,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			envMap, fileMap, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
+			envMap, secretMap, fileMap, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
 				run.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
@@ -598,7 +598,9 @@ func TestContextManager(t *testing.T) {
 
 			assert.Equal(t, "22", envMap["BQ_VAL"])
 			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), envMap["EXECT"])
-			assert.Equal(t, "gs://some_secret_bucket", envMap["BUCKET"])
+			_, ok := envMap["BUCKET"]
+			assert.Equal(t, false, ok)
+			assert.Equal(t, "gs://some_secret_bucket", secretMap["BUCKET"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",
