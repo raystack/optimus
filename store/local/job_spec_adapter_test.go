@@ -91,7 +91,6 @@ external-dependencies :
 
 		assert.Equal(t, localJobParsed, localJobBack)
 	})
-
 	t.Run("should not convert job with task from yaml when URL present at http dependencies is invalid", func(t *testing.T) {
 		yamlSpec := `
 version: 1
@@ -165,9 +164,7 @@ external-dependencies :
 		expErr := fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", errOnIndex, urlErr)
 		assert.Equal(t, expErr, actualErr)
 		assert.Equal(t, models.JobSpec{}, modelJob)
-
 	})
-
 	t.Run("should not convert job with task from yaml when Name present at http dependencies is invalid", func(t *testing.T) {
 		yamlSpec := `
 version: 1
@@ -241,7 +238,6 @@ external-dependencies :
 		expErr := fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", errOnIndex)
 		assert.Equal(t, expErr, actualErr)
 		assert.Equal(t, models.JobSpec{}, modelJob)
-
 	})
 }
 
