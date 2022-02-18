@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/utils"
 	"github.com/pkg/errors"
 )
 
@@ -51,7 +52,9 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *mo
 	instanceEnvMap, instanceFileMap := fm.getInstanceData(instanceSpec)
 
 	// merge both
-	projectInstanceContext := MergeInterfaceMapToInterface(instanceEnvMap, projectPrefixedConfig)
+	projectInstanceContext := map[string]interface{}{}
+	utils.AppendToMap(projectInstanceContext, instanceEnvMap)
+	utils.AppendToMap(projectInstanceContext, projectPrefixedConfig)
 	projectInstanceContext["proj"] = projRawConfig
 	projectInstanceContext["inst"] = instanceEnvMap
 	projectInstanceContext["secret"] = secretMap
@@ -65,11 +68,7 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *mo
 	}
 
 	// append instance envMap
-	for k, v := range instanceEnvMap {
-		if vs, ok := v.(string); ok {
-			envMap[k] = vs
-		}
-	}
+	envMap = utils.MergeMaps(envMap, instanceEnvMap)
 
 	// do the same for asset files
 	// check if task needs to override the compilation behaviour
@@ -86,7 +85,7 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *mo
 
 	// append job spec assets to list of files need to write
 	var fileMap map[string]string
-	fileMap = MergeStringMap(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
+	fileMap = utils.MergeMaps(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
 	if fileMap, err = fm.engine.CompileFiles(fileMap, projectInstanceContext); err != nil {
 		return
 	}
@@ -97,11 +96,11 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *mo
 	}, nil
 }
 
-func (fm *ContextManager) projectEnvs() (map[string]interface{}, map[string]interface{}) {
+func (fm *ContextManager) projectEnvs() (map[string]string, map[string]string) {
 	// project configs will be used for templating
 	// prefix project configs to avoid conflicts with project/instance configs
-	projectPrefixedConfig := map[string]interface{}{}
-	projRawConfig := map[string]interface{}{}
+	projectPrefixedConfig := map[string]string{}
+	projRawConfig := map[string]string{}
 	for key, val := range fm.getProjectConfigMap() {
 		projectPrefixedConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
 		projRawConfig[key] = val
@@ -134,35 +133,31 @@ func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceTy
 
 	// if this is requested for transformation, just return from here
 	if runType == models.InstanceTypeTask {
-		return MergeInterfaceMapToString(transformationConfigs, nil),
-			MergeInterfaceMapToString(secretConfig, nil), nil
+		return transformationConfigs, secretConfig, nil
 	}
 
 	// prefix transformation configs to avoid conflicts with project/instance configs
-	prefixedTransformationConfigs := map[string]interface{}{}
+	prefixedTransformationConfigs := map[string]string{}
 	for k, v := range transformationConfigs {
 		prefixedTransformationConfigs[fmt.Sprintf("%s%s", TaskConfigPrefix, k)] = v
 	}
 
 	// templatize configs of hook with transformation, project and instance
-	projectInstanceTransformationConfigs := MergeInterfaceMapToInterface(projectInstanceContext, prefixedTransformationConfigs)
+	projectInstanceTransformationConfigs := utils.CloneMap(projectInstanceContext)
+	utils.AppendToMap(projectInstanceTransformationConfigs, prefixedTransformationConfigs)
+
 	projectInstanceTransformationConfigs["task"] = transformationConfigs
 	if hookConfigs, err = fm.compileTemplates(hookConfigs, projectInstanceTransformationConfigs); err != nil {
 		return nil, nil, err
 	}
 
 	// merge transformation and hook configs
-	return MergeInterfaceMapToString(prefixedTransformationConfigs, hookConfigs), MergeInterfaceMapToString(secretConfig, nil),
-		nil
+	return utils.MergeMaps(prefixedTransformationConfigs, hookConfigs), secretConfig, nil
 }
 
-func (fm *ContextManager) compileTemplates(templateValueMap, templateContext map[string]interface{}) (map[string]interface{}, error) {
+func (fm *ContextManager) compileTemplates(templateValueMap map[string]string, templateContext map[string]interface{}) (map[string]string, error) {
 	for key, val := range templateValueMap {
-		valString, ok := val.(string)
-		if !ok {
-			continue
-		}
-		compiledValue, err := fm.engine.CompileString(valString, templateContext)
+		compiledValue, err := fm.engine.CompileString(val, templateContext)
 		if err != nil {
 			return nil, err
 		}
@@ -196,8 +191,8 @@ func (fm *ContextManager) createSecretsMap() map[string]string {
 	return secretsMap
 }
 
-func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]interface{}, map[string]string) {
-	envMap := map[string]interface{}{}
+func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]string, map[string]string) {
+	envMap := map[string]string{}
 	fileMap := map[string]string{}
 
 	if instanceSpec.Data != nil {
@@ -214,10 +209,10 @@ func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map
 }
 
 func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
-	runType models.InstanceType) (map[string]interface{}, map[string]interface{},
-	map[string]interface{}, error) {
-	transformationMap := map[string]interface{}{}
-	configWithSecrets := map[string]interface{}{}
+	runType models.InstanceType) (map[string]string, map[string]string,
+	map[string]string, error) {
+	transformationMap := map[string]string{}
+	configWithSecrets := map[string]string{}
 	for _, val := range jobSpec.Task.Config {
 		if strings.Contains(val.Value, ".secret.") {
 			configWithSecrets[val.Name] = val.Value
@@ -226,7 +221,7 @@ func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
 		transformationMap[val.Name] = val.Value
 	}
 
-	hookMap := map[string]interface{}{}
+	hookMap := map[string]string{}
 	if runType == models.InstanceTypeHook {
 		hook, err := jobSpec.GetHookByName(runName)
 		if err != nil {
@@ -250,45 +245,6 @@ func NewContextManager(namespace models.NamespaceSpec, secrets models.ProjectSec
 		jobRun:    jobRun,
 		engine:    engine,
 	}
-}
-
-func MergeStringMap(mp1, mp2 map[string]string) (mp3 map[string]string) {
-	mp3 = make(map[string]string)
-	for k, v := range mp1 {
-		mp3[k] = v
-	}
-	for k, v := range mp2 {
-		mp3[k] = v
-	}
-	return mp3
-}
-
-func MergeInterfaceMapToInterface(mp1, mp2 map[string]interface{}) (mp3 map[string]interface{}) {
-	mp3 = make(map[string]interface{})
-	for k, v := range mp1 {
-		mp3[k] = v
-	}
-	for k, v := range mp2 {
-		mp3[k] = v
-	}
-	return mp3
-}
-
-// merge two maps and return a map of string
-// it will ignore whatever is not a string type
-func MergeInterfaceMapToString(mp1, mp2 map[string]interface{}) (mp3 map[string]string) {
-	mp3 = make(map[string]string)
-	for k, v := range mp1 {
-		if vs, ok := v.(string); ok {
-			mp3[k] = vs
-		}
-	}
-	for k, v := range mp2 {
-		if vs, ok := v.(string); ok {
-			mp3[k] = vs
-		}
-	}
-	return mp3
 }
 
 // DumpAssets used for dry run and does not effect actual execution of a job
