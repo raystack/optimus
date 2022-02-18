@@ -143,7 +143,7 @@ func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceTy
 	}
 
 	// templatize configs of hook with transformation, project and instance
-	projectInstanceTransformationConfigs := utils.CloneMap(projectInstanceContext)
+	projectInstanceTransformationConfigs := utils.MergeAnyMaps(projectInstanceContext)
 	utils.AppendToMap(projectInstanceTransformationConfigs, prefixedTransformationConfigs)
 
 	projectInstanceTransformationConfigs["task"] = transformationConfigs
