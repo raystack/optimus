@@ -19,6 +19,8 @@ const (
 	// ProjectConfigPrefix will be used to prefix all the config variables of
 	// a project, i.e. registered entities
 	ProjectConfigPrefix = "GLOBAL__"
+
+	SecretsStringToMatch = ".secret."
 )
 
 var (
@@ -45,30 +47,41 @@ type ContextManager struct {
 // Generate fetches and compiles all config data related to an instance and
 // returns a map of env variables and a map[fileName]fileContent
 // It compiles any templates/macros present in the config.
-func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *models.CompiledAssets, err error) {
-	projectPrefixedConfig, projRawConfig := fm.projectEnvs()
+func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.CompiledAssets, error) {
+	contextForTemplates := map[string]interface{}{}
+
+	// Collect project config
+	projectConfig := fm.collectProjectConfigs()
+	contextForTemplates["proj"] = projectConfig
+	utils.AppendToMap(contextForTemplates, prefixKeysOf(projectConfig, ProjectConfigPrefix))
+
+	// Collect secrets
 	secretMap := fm.createSecretsMap()
-	// instance env will be used for templating
-	instanceEnvMap, instanceFileMap := fm.getInstanceData(instanceSpec)
+	contextForTemplates["secret"] = secretMap
 
-	// merge both
-	projectInstanceContext := map[string]interface{}{}
-	utils.AppendToMap(projectInstanceContext, instanceEnvMap)
-	utils.AppendToMap(projectInstanceContext, projectPrefixedConfig)
-	projectInstanceContext["proj"] = projRawConfig
-	projectInstanceContext["inst"] = instanceEnvMap
-	projectInstanceContext["secret"] = secretMap
+	// Collect instance env for templating
+	instanceEnvMap := getInstanceEnv(instanceSpec)
+	utils.AppendToMap(contextForTemplates, instanceEnvMap)
+	contextForTemplates["inst"] = instanceEnvMap
 
-	// prepare configs
-	var envMap map[string]string
-	var secretConfig map[string]string
-	envMap, secretConfig, err = fm.generateEnvs(instanceSpec.Name, instanceSpec.Type, projectInstanceContext)
+	// Compile Task config
+	taskEnvs, secretEnvs, err := fm.compileTaskConfigs(contextForTemplates)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
-	// append instance envMap
-	envMap = utils.MergeMaps(envMap, instanceEnvMap)
+	// Compile Hook config
+	var hookEnvs map[string]string
+	var hookSecretEnvs map[string]string
+	if instanceSpec.Type == models.InstanceTypeHook {
+		hookEnvs, hookSecretEnvs, err = fm.compileHookConfigs(instanceSpec.Name, contextForTemplates, taskEnvs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	envMap := utils.MergeMaps(taskEnvs, hookEnvs, instanceEnvMap)
+	envSecret := utils.MergeMaps(secretEnvs, hookSecretEnvs)
 
 	// do the same for asset files
 	// check if task needs to override the compilation behaviour
@@ -83,76 +96,64 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (assets *mo
 		return nil, err
 	}
 
-	// append job spec assets to list of files need to write
 	var fileMap map[string]string
+	instanceFileMap := getInstanceFiles(instanceSpec)
 	fileMap = utils.MergeMaps(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
-	if fileMap, err = fm.engine.CompileFiles(fileMap, projectInstanceContext); err != nil {
-		return
+	if fileMap, err = fm.engine.CompileFiles(fileMap, contextForTemplates); err != nil {
+		return nil, err
 	}
 	return &models.CompiledAssets{
 		EnvMap:     envMap,
-		SecretsMap: secretConfig,
+		SecretsMap: envSecret,
 		FileMap:    fileMap,
 	}, nil
 }
 
-func (fm *ContextManager) projectEnvs() (map[string]string, map[string]string) {
+func (fm *ContextManager) collectProjectConfigs() map[string]string {
 	// project configs will be used for templating
-	// prefix project configs to avoid conflicts with project/instance configs
-	projectPrefixedConfig := map[string]string{}
-	projRawConfig := map[string]string{}
-	for key, val := range fm.getProjectConfigMap() {
-		projectPrefixedConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
-		projRawConfig[key] = val
-	}
-
-	// use namespace configs for templating. also, override project config with
-	// namespace's configs when present
-	for key, val := range fm.getNamespaceConfigMap() {
-		projectPrefixedConfig[fmt.Sprintf("%s%s", ProjectConfigPrefix, key)] = val
-		projRawConfig[key] = val
-	}
-	return projectPrefixedConfig, projRawConfig
+	// override project config with namespace's configs when present
+	return utils.MergeMaps(fm.namespace.ProjectSpec.Config, fm.namespace.Config)
 }
 
-func (fm *ContextManager) generateEnvs(runName string, runType models.InstanceType,
-	projectInstanceContext map[string]interface{}) (map[string]string, map[string]string, error) {
-	transformationConfigs, hookConfigs, secretConfig, err := fm.getConfigMaps(fm.jobRun.Spec, runName, runType)
+func (fm *ContextManager) compileConfigs(config models.JobSpecConfigs, ctx map[string]interface{}) (map[string]string, map[string]string, error) {
+	conf, secretsConfig := splitConfigForSecrets(config)
+
+	var err error
+	if conf, err = fm.compileTemplates(conf, ctx); err != nil {
+		return nil, nil, err
+	}
+
+	if secretsConfig, err = fm.compileTemplates(secretsConfig, ctx); err != nil {
+		return nil, nil, err
+	}
+
+	return conf, secretsConfig, nil
+}
+
+func (fm *ContextManager) compileTaskConfigs(ctx map[string]interface{}) (map[string]string, map[string]string, error) {
+	return fm.compileConfigs(fm.jobRun.Spec.Task.Config, ctx)
+}
+
+func (fm *ContextManager) compileHookConfigs(runName string, templateContext map[string]interface{}, taskEnv map[string]string) (
+	map[string]string, map[string]string, error) {
+	hook, err := fm.jobRun.Spec.GetHookByName(runName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: requested hook not found %s", err.Error(), runName)
+	}
+
+	// Add task config to context for hook
+	ctxWithTaskConfig := utils.MergeAnyMaps(templateContext)
+	ctxWithTaskConfig["task"] = taskEnv
+	prefixedTaskConfig := prefixKeysOf(taskEnv, TaskConfigPrefix)
+	utils.AppendToMap(ctxWithTaskConfig, prefixedTaskConfig)
+
+	hookConfigs, withSecrets, err := fm.compileConfigs(hook.Config, ctxWithTaskConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// templatize configs for transformation with project and instance
-	if transformationConfigs, err = fm.compileTemplates(transformationConfigs, projectInstanceContext); err != nil {
-		return nil, nil, err
-	}
-
-	if secretConfig, err = fm.compileTemplates(secretConfig, projectInstanceContext); err != nil {
-		return nil, nil, err
-	}
-
-	// if this is requested for transformation, just return from here
-	if runType == models.InstanceTypeTask {
-		return transformationConfigs, secretConfig, nil
-	}
-
-	// prefix transformation configs to avoid conflicts with project/instance configs
-	prefixedTransformationConfigs := map[string]string{}
-	for k, v := range transformationConfigs {
-		prefixedTransformationConfigs[fmt.Sprintf("%s%s", TaskConfigPrefix, k)] = v
-	}
-
-	// templatize configs of hook with transformation, project and instance
-	projectInstanceTransformationConfigs := utils.MergeAnyMaps(projectInstanceContext)
-	utils.AppendToMap(projectInstanceTransformationConfigs, prefixedTransformationConfigs)
-
-	projectInstanceTransformationConfigs["task"] = transformationConfigs
-	if hookConfigs, err = fm.compileTemplates(hookConfigs, projectInstanceTransformationConfigs); err != nil {
-		return nil, nil, err
-	}
-
 	// merge transformation and hook configs
-	return utils.MergeMaps(prefixedTransformationConfigs, hookConfigs), secretConfig, nil
+	return utils.MergeMaps(prefixedTaskConfig, hookConfigs), withSecrets, nil
 }
 
 func (fm *ContextManager) compileTemplates(templateValueMap map[string]string, templateContext map[string]interface{}) (map[string]string, error) {
@@ -166,22 +167,6 @@ func (fm *ContextManager) compileTemplates(templateValueMap map[string]string, t
 	return templateValueMap, nil
 }
 
-func (fm *ContextManager) getProjectConfigMap() map[string]string {
-	configMap := map[string]string{}
-	for key, val := range fm.namespace.ProjectSpec.Config {
-		configMap[key] = val
-	}
-	return configMap
-}
-
-func (fm *ContextManager) getNamespaceConfigMap() map[string]string {
-	configMap := map[string]string{}
-	for key, val := range fm.namespace.Config {
-		configMap[key] = val
-	}
-	return configMap
-}
-
 func (fm *ContextManager) createSecretsMap() map[string]string {
 	secretsMap := map[string]string{}
 
@@ -191,51 +176,52 @@ func (fm *ContextManager) createSecretsMap() map[string]string {
 	return secretsMap
 }
 
-func (fm *ContextManager) getInstanceData(instanceSpec models.InstanceSpec) (map[string]string, map[string]string) {
-	envMap := map[string]string{}
-	fileMap := map[string]string{}
-
-	if instanceSpec.Data != nil {
-		for _, jobRunData := range instanceSpec.Data {
-			switch jobRunData.Type {
-			case models.InstanceDataTypeFile:
-				fileMap[jobRunData.Name] = jobRunData.Value
-			case models.InstanceDataTypeEnv:
-				envMap[jobRunData.Name] = jobRunData.Value
-			}
-		}
-	}
-	return envMap, fileMap
-}
-
-func (fm *ContextManager) getConfigMaps(jobSpec models.JobSpec, runName string,
-	runType models.InstanceType) (map[string]string, map[string]string,
-	map[string]string, error) {
-	transformationMap := map[string]string{}
+func splitConfigForSecrets(jobSpecConfig models.JobSpecConfigs) (map[string]string, map[string]string) {
+	configs := map[string]string{}
 	configWithSecrets := map[string]string{}
-	for _, val := range jobSpec.Task.Config {
-		if strings.Contains(val.Value, ".secret.") {
+	for _, val := range jobSpecConfig {
+		if strings.Contains(val.Value, SecretsStringToMatch) {
 			configWithSecrets[val.Name] = val.Value
 			continue
 		}
-		transformationMap[val.Name] = val.Value
+		configs[val.Name] = val.Value
 	}
 
-	hookMap := map[string]string{}
-	if runType == models.InstanceTypeHook {
-		hook, err := jobSpec.GetHookByName(runName)
-		if err != nil {
-			return nil, nil, nil, errors.Wrapf(err, "requested hook not found %s", runName)
-		}
-		for _, val := range hook.Config {
-			if strings.Contains(val.Value, ".secret.") {
-				configWithSecrets[val.Name] = val.Value
-				continue
-			}
-			hookMap[val.Name] = val.Value
+	return configs, configWithSecrets
+}
+
+func prefixKeysOf(configMap map[string]string, prefix string) map[string]string {
+	prefixedConfig := map[string]string{}
+	for key, val := range configMap {
+		prefixedConfig[fmt.Sprintf("%s%s", prefix, key)] = val
+	}
+	return prefixedConfig
+}
+
+func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {
+	if instanceSpec.Data == nil {
+		return nil
+	}
+	envMap := map[string]string{}
+	for _, jobRunData := range instanceSpec.Data {
+		if jobRunData.Type == models.InstanceDataTypeEnv {
+			envMap[jobRunData.Name] = jobRunData.Value
 		}
 	}
-	return transformationMap, hookMap, configWithSecrets, nil
+	return envMap
+}
+
+func getInstanceFiles(instanceSpec models.InstanceSpec) map[string]string {
+	if instanceSpec.Data == nil {
+		return nil
+	}
+	fileMap := map[string]string{}
+	for _, jobRunData := range instanceSpec.Data {
+		if jobRunData.Type == models.InstanceDataTypeFile {
+			fileMap[jobRunData.Name] = jobRunData.Value
+		}
+	}
+	return fileMap
 }
 
 func NewContextManager(namespace models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, engine models.TemplateEngine) *ContextManager {
