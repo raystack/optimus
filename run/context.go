@@ -8,7 +8,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -284,7 +283,7 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 		ConfigKeyDestination:   jobDestination,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to compile templates")
+		return nil, fmt.Errorf("%s: failed to compile templates", err)
 	}
 
 	return templates, nil
