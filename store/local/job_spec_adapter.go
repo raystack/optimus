@@ -1,6 +1,8 @@
 package local
 
 import (
+	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -464,7 +466,13 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	//prep external http dependencies
 	var externalDependency models.ExternalDependency
 	var httpDependencies []models.HTTPDependency
-	for _, http := range conf.ExternalDependencies.HTTPDependencies {
+	for index, http := range conf.ExternalDependencies.HTTPDependencies {
+		if _, err := url.ParseRequestURI(http.URL); err != nil {
+			return models.JobSpec{}, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+		}
+		if http.Name == "" {
+			return models.JobSpec{}, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
+		}
 		httpDependencies = append(httpDependencies, models.HTTPDependency(http))
 	}
 	externalDependency.HTTPDependencies = httpDependencies

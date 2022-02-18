@@ -1,6 +1,8 @@
 package local_test
 
 import (
+	"fmt"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -45,6 +47,26 @@ labels:
   orchestrator: optimus
 dependencies: []
 hooks: []
+external-dependencies :
+ http :
+    -
+     Name : http-sensor-1
+     request-params:
+       key-1 : value-1
+       key-2 : value-2
+     url : https://optimus-host:80/serve/1/
+     headers:
+        Content-type : application/json
+        Authentication : Token-1
+    -
+     Name : http-sensor-2
+     request-params:
+       key-1 : value-3
+       key-2 : value-4
+     url : https://optimus-host:80/serve/2/
+     headers:
+        Content-type : application/json
+        Authentication : Token-2 
 `
 		var localJobParsed local.Job
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
@@ -68,6 +90,158 @@ hooks: []
 		assert.Nil(t, err)
 
 		assert.Equal(t, localJobParsed, localJobBack)
+	})
+
+	t.Run("should not convert job with task from yaml when URL present at http dependencies is invalid", func(t *testing.T) {
+		yamlSpec := `
+version: 1
+name: test_job
+owner: test@example.com
+schedule:
+  start_date: "2021-02-03"
+  interval: 0 2 * * *
+behavior:
+  depends_on_past: true
+  catch_up: false
+  notify:
+    - on: test
+      channel:
+        - test://hello
+task:
+  name: bq2bq
+  config:
+    PROJECT: project
+    DATASET: dataset
+    TABLE: table
+    SQL_TYPE: STANDARD
+    LOAD_METHOD: REPLACE
+  window:
+    size: 168h
+    offset: 0
+    truncate_to: w
+labels:
+  orchestrator: optimus
+dependencies: []
+hooks: []
+external-dependencies :
+ http :
+    -
+     Name : http-sensor-1
+     request-params:
+       key-1 : value-1
+       key-2 : value-2
+     url : ""
+     headers:
+        Content-type : application/json
+        Authentication : Token-1
+    -
+     Name : http-sensor-2
+     request-params:
+       key-1 : value-3
+       key-2 : value-4
+     url : https://optimus-host:80/serve/2/
+     headers:
+        Content-type : application/json
+        Authentication : Token-2 
+`
+		var localJobParsed local.Job
+		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
+		assert.Nil(t, err)
+
+		execUnit := new(mock.BasePlugin)
+		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: "bq2bq",
+		}, nil)
+
+		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
+			Base: execUnit,
+		}, nil)
+		adapter := local.NewJobSpecAdapter(pluginRepo)
+
+		modelJob, actualErr := adapter.ToSpec(localJobParsed)
+		_, urlErr := url.ParseRequestURI("")
+		errOnIndex := 0
+		expErr := fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", errOnIndex, urlErr)
+		assert.Equal(t, expErr, actualErr)
+		assert.Equal(t, models.JobSpec{}, modelJob)
+
+	})
+
+	t.Run("should not convert job with task from yaml when Name present at http dependencies is invalid", func(t *testing.T) {
+		yamlSpec := `
+version: 1
+name: test_job
+owner: test@example.com
+schedule:
+  start_date: "2021-02-03"
+  interval: 0 2 * * *
+behavior:
+  depends_on_past: true
+  catch_up: false
+  notify:
+    - on: test
+      channel:
+        - test://hello
+task:
+  name: bq2bq
+  config:
+    PROJECT: project
+    DATASET: dataset
+    TABLE: table
+    SQL_TYPE: STANDARD
+    LOAD_METHOD: REPLACE
+  window:
+    size: 168h
+    offset: 0
+    truncate_to: w
+labels:
+  orchestrator: optimus
+dependencies: []
+hooks: []
+external-dependencies :
+ http :
+    -
+     Name : ""
+     request-params:
+       key-1 : value-1
+       key-2 : value-2
+     url : "https://optimus-host:80/serve/1/"
+     headers:
+        Content-type : application/json
+        Authentication : Token-1
+    -
+     Name : http-sensor-2
+     request-params:
+       key-1 : value-3
+       key-2 : value-4
+     url : https://optimus-host:80/serve/2/
+     headers:
+        Content-type : application/json
+        Authentication : Token-2 
+`
+		var localJobParsed local.Job
+		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
+		assert.Nil(t, err)
+
+		execUnit := new(mock.BasePlugin)
+		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: "bq2bq",
+		}, nil)
+
+		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
+			Base: execUnit,
+		}, nil)
+		adapter := local.NewJobSpecAdapter(pluginRepo)
+
+		modelJob, actualErr := adapter.ToSpec(localJobParsed)
+
+		errOnIndex := 0
+		expErr := fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", errOnIndex)
+		assert.Equal(t, expErr, actualErr)
+		assert.Equal(t, models.JobSpec{}, modelJob)
+
 	})
 }
 
