@@ -105,15 +105,56 @@ Advantages:
 Disadvantages:
 * Additional time to write/read from DB
 
+### Handling Modified View
+A BQ2BQ job can have a source from views. For this job, the dependency will be the underlying tables of the view. Let's simulate a case where there is a change in the view source.
+
+In a project, there is view `X` that querying from table `A` and `B`. There is also table `C` that querying from View `X`. The job dependencies for this case can be summarized as:
+```
+    Job     |   Upstream
+---------------------------
+    A       |   -
+    B       |   -
+    C       |   A
+    C       |   B
+```
+Job C has dependency to job `A` and `B`, even though it is querying from view `X`.
+
+Imagine a case where view `X` is modified, for example no longer querying from `A` and `B`, but instead only from `A`.
+Job `C` dependency will never be updated, since it is not considered as modified. There should be a mechanism where if
+a view is updated, it will also resolve the dependency for the jobs that depend on the view.
+
+To make this happen, there should be a visibility of which resources are the sources of a job, for example which job is 
+using this view as a destination and querying from this view. Optimus is a transformation tool, in the job spec we store 
+what is the transformation destination of the job. However, we are not storing what are the sources of the transformation. 
+The only thing we have is job dependency, not resource.
+
+We can add a Source URNs field to the jobs specs, or create a Job Source table. Whenever there is a change in a view
+through Optimus, datastore should be able to request the dependency resolution for the view's dependent and having the
+dependencies updated. Same with job deployment, resource deployment should also be done only for the modified ones.
+
+We can also provide a mechanism to refresh dependencies of all jobs that can be used by admins for fixing any errors, 
+or to refresh when there are views updated outside Optimus.
+
+This can be put as a flag in deploy command.
+```
+optimus deploy --refresh
+```
+or
+```
+optimus deploy --clean
+```
+
 ### Affected Areas
 Resolving dependencies are being done when doing deployment, create jobs, replay, backup, and job deletion (to check if a to-be-deleted job still has downstream).
 
-#### Deployment
+#### Job Deployment
 * Identify the modified Jobs 
 * Delete the jobs from repository which are no longer there in the request
 * Identify the dependencies only for modified ones & persist the dependencies
 * Load all dependencies for all jobs in the entire project
 * Continue on the priority resolution and other processes
+Note: We will also provide --refresh/clean flag to not look for the modified jobs, but instead resolve dependencies for 
+all jobs
 
 #### Create Job
 * Identify the dependencies only for modified ones & persist the dependencies
@@ -125,8 +166,18 @@ Resolving dependencies are being done when doing deployment, create jobs, replay
 * Continue to build the tree.
 
 #### Job Deletion
-* Instead of doing the dependency resolution, before deleting a job, there will be a check to job_dependency table whether there is a record with this job ID as an upstream (dependency).
+Instead of doing the dependency resolution, before deleting a job, there will be a check to job_dependency table whether there is a record with this job ID as an upstream (dependency).
 
+#### Resource Deployment
+* Identify the modified Resources
+* External datastore will decide if the modified resource requires dependency resolution (example for BQ view)
+* Job service will run the dependency resolution if needed & persist the dependencies
+* Load all dependencies for all jobs in the entire project
+* Continue on the priority resolution and other processes to deploy the affected jobs
+
+#### Resource Deletion
+At this time, resource deletion is not supported. However, we can enable this and validate whether a job is available 
+for this resource or not.
 
 ### Other Thoughts:
 
