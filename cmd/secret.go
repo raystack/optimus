@@ -14,6 +14,8 @@ import (
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -89,7 +91,7 @@ Use base64 flag if the value has been encoded.
 		}
 		err = registerSecret(l, conf, registerSecretReq)
 		if err != nil {
-			if strings.Contains(err.Error(), "resource already exists") {
+			if status.Code(err) == codes.AlreadyExists {
 				proceedWithUpdate := "Yes"
 				if !skipConfirm {
 					if err := survey.AskOne(&survey.Select{
@@ -112,6 +114,8 @@ Use base64 flag if the value has been encoded.
 					l.Info(coloredNotice("Aborting..."))
 					return nil
 				}
+			} else {
+				return errors.Wrapf(err, "request failed for creating secret %s", secretName)
 			}
 		}
 		return nil
@@ -207,7 +211,7 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret registration took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for creating secret %s", req.SecretName)
+		return err
 	}
 
 	l.Info(coloredSuccess("Secret registered"))
