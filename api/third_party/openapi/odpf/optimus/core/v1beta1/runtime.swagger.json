@@ -1252,6 +1252,41 @@
       }
     },
     "/v1beta1/project/{projectName}/secret/{secretName}": {
+      "delete": {
+        "summary": "DeleteSecret deletes a secret for a project",
+        "operationId": "RuntimeService_DeleteSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1DeleteSecretResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "secretName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
       "post": {
         "summary": "RegisterSecret creates a new secret of a project",
         "operationId": "RuntimeService_RegisterSecret",
@@ -1693,6 +1728,9 @@
           "type": "string"
         }
       }
+    },
+    "v1beta1DeleteSecretResponse": {
+      "type": "object"
     },
     "v1beta1DeployJobSpecificationResponse": {
       "type": "object",
