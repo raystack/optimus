@@ -156,4 +156,37 @@ func TestSecretService(t *testing.T) {
 			assert.Equal(t, secretItems, list)
 		})
 	})
+
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("returns error when project has error", func(t *testing.T) {
+			projService := new(mock.ProjectService)
+			projService.On("Get", ctx, project.Name).
+				Return(models.ProjectSpec{}, errors.New("error in getting project"))
+			defer projService.AssertExpectations(t)
+
+			svc := service.NewSecretService(projService, nil, nil)
+
+			err := svc.Delete(ctx, project.Name, "hello")
+			assert.NotNil(t, err)
+			assert.Equal(t, "error in getting project", err.Error())
+		})
+		t.Run("deletes the secret successfully", func(t *testing.T) {
+			projService := new(mock.ProjectService)
+			projService.On("Get", ctx, project.Name).Return(project, nil)
+			defer projService.AssertExpectations(t)
+
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("Delete", ctx, "hello").Return(nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(projService, nil, secretRepoFac)
+
+			err := svc.Delete(ctx, project.Name, "hello")
+			assert.Nil(t, err)
+		})
+	})
 }

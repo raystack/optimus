@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -290,6 +291,26 @@ func TestSecretRepository(t *testing.T) {
 			assert.Equal(t, allSecrets[1].Name, testModels[2].Name)
 			assert.Equal(t, allSecrets[1].Namespace, namespaceSpec.Name)
 			assert.Equal(t, string(allSecrets[1].Type), string(testModels[2].Type))
+		})
+	})
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("deletes the secret with given name", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			var testModels []models.ProjectSecretItem
+			testModels = append(testModels, testConfigs...)
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
+
+			err := repo.Delete(ctx, testModels[2].Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, testModels[2].Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
 		})
 	})
 }

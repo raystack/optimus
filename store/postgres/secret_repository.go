@@ -201,6 +201,13 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	return secretItems, nil
 }
 
+func (repo *secretRepository) Delete(ctx context.Context, secretName string) error {
+	return repo.db.WithContext(ctx).
+		Where("project_id = ?", repo.project.ID).
+		Where("name = ?", secretName).
+		Delete(&Secret{}).Error
+}
+
 func NewSecretRepository(db *gorm.DB, project models.ProjectSpec, hash models.ApplicationKey) *secretRepository {
 	return &secretRepository{
 		db:      db,

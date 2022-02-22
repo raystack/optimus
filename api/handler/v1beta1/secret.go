@@ -64,6 +64,14 @@ func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSec
 	return &pb.ListSecretsResponse{Secrets: secretsResponse}, nil
 }
 
+func (sv *RuntimeServiceServer) DeleteSecret(ctx context.Context, req *pb.DeleteSecretRequest) (*pb.DeleteSecretResponse, error) {
+	if err := sv.secretService.Delete(ctx, req.GetProjectName(), req.GetSecretName()); err != nil {
+		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to delete secret %s", req.GetSecretName()))
+	}
+
+	return &pb.DeleteSecretResponse{}, nil
+}
+
 func getDecodedSecret(encodedString string) (string, error) {
 	if encodedString == "" {
 		return "", status.Error(codes.InvalidArgument, "empty value for secret")

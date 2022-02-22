@@ -209,6 +209,40 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			assert.Equal(t, resp.Secrets[0].Name, secretItems[0].Name)
 		})
 	})
+
+	t.Run("DeleteSecret", func(t *testing.T) {
+		t.Run("returns error when service has error", func(t *testing.T) {
+			secretService := new(mock.SecretService)
+			secretService.On("Delete", ctx, projectSpec.Name, "hello").
+				Return(errors.New("random error"))
+			defer secretService.AssertExpectations(t)
+
+			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+
+			secretRequest := pb.DeleteSecretRequest{
+				ProjectName: projectSpec.Name,
+				SecretName:  "hello",
+			}
+			resp, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			assert.Nil(t, resp)
+			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to delete secret hello", err.Error())
+		})
+		t.Run("deletes the secret successfully", func(t *testing.T) {
+			secretService := new(mock.SecretService)
+			secretService.On("Delete", ctx, projectSpec.Name, "hello").
+				Return(nil)
+			defer secretService.AssertExpectations(t)
+
+			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+
+			secretRequest := pb.DeleteSecretRequest{
+				ProjectName: projectSpec.Name,
+				SecretName:  "hello",
+			}
+			_, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			assert.Nil(t, err)
+		})
+	})
 }
 
 func createTestRuntimeServiceServer(secretService service.SecretService) *v1.RuntimeServiceServer {
