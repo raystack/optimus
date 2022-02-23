@@ -11,7 +11,7 @@ type SecretService interface {
 	Save(context.Context, string, string, models.ProjectSecretItem) error
 	Update(context.Context, string, string, models.ProjectSecretItem) error
 	List(context.Context, string) ([]models.SecretItemInfo, error)
-	GetSecrets(context.Context, models.ProjectSpec) ([]models.ProjectSecretItem, error)
+	GetSecrets(context.Context, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
 }
 
 type SecretRepoFactory interface {
@@ -83,9 +83,9 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 	return secretItems, nil
 }
 
-func (s secretService) GetSecrets(ctx context.Context, projectSpec models.ProjectSpec) ([]models.ProjectSecretItem, error) {
-	repo := s.secretRepoFac.New(projectSpec)
-	secretItems, err := repo.GetSecrets(ctx)
+func (s secretService) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	repo := s.secretRepoFac.New(namespace.ProjectSpec)
+	secretItems, err := repo.GetSecrets(ctx, namespace)
 	if err != nil {
 		return []models.ProjectSecretItem{}, FromError(err, models.SecretEntity, "error while getting secrets")
 	}

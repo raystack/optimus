@@ -302,32 +302,30 @@ func TestSecretRepository(t *testing.T) {
 
 			var otherModels []models.ProjectSecretItem
 			otherModels = append(otherModels, testConfigs...)
+			// Other namespace
 			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[0]))
-			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[4]))
+			// No namespace
+			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, otherModels[4]))
 
 			var testModels []models.ProjectSecretItem
 			testModels = append(testModels, testConfigs...)
 			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
+			// System defined secret
 			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[3]))
 
-			allSecrets, err := repo.GetSecrets(ctx)
+			allSecrets, err := repo.GetSecrets(ctx, namespaceSpec)
 			assert.Nil(t, err)
-			assert.Len(t, allSecrets, 3)
+			assert.Equal(t, len(allSecrets), 2)
 
-			assert.Equal(t, allSecrets[0].ID, otherModels[0].ID)
-			assert.Equal(t, allSecrets[0].Name, otherModels[0].Name)
-			assert.Equal(t, allSecrets[0].Value, otherModels[0].Value)
+			assert.Equal(t, allSecrets[0].ID, otherModels[4].ID)
+			assert.Equal(t, allSecrets[0].Name, otherModels[4].Name)
+			assert.Equal(t, allSecrets[0].Value, otherModels[4].Value)
 			assert.Equal(t, allSecrets[0].Type, models.SecretTypeUserDefined)
 
-			assert.Equal(t, allSecrets[1].ID, otherModels[4].ID)
-			assert.Equal(t, allSecrets[1].Name, otherModels[4].Name)
-			assert.Equal(t, allSecrets[1].Value, otherModels[4].Value)
+			assert.Equal(t, allSecrets[1].ID, testModels[2].ID)
+			assert.Equal(t, allSecrets[1].Name, testModels[2].Name)
+			assert.Equal(t, allSecrets[1].Value, testModels[2].Value)
 			assert.Equal(t, allSecrets[1].Type, models.SecretTypeUserDefined)
-
-			assert.Equal(t, allSecrets[2].ID, testModels[2].ID)
-			assert.Equal(t, allSecrets[2].Name, testModels[2].Name)
-			assert.Equal(t, allSecrets[2].Value, testModels[2].Value)
-			assert.Equal(t, allSecrets[2].Type, models.SecretTypeUserDefined)
 		})
 	})
 }

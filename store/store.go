@@ -45,7 +45,7 @@ type ProjectRepository interface {
 
 // ProjectSecretRepository stores secrets attached to projects
 type ProjectSecretRepository interface {
-	GetSecrets(context.Context) ([]models.ProjectSecretItem, error)
+	GetSecrets(context.Context, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
 	Save(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
 	Update(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
 	GetByName(context.Context, string) (models.ProjectSecretItem, error)

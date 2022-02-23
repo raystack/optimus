@@ -39,8 +39,8 @@ func (pr *ProjectSecretRepository) GetAll(ctx context.Context) ([]models.SecretI
 	return args.Get(0).([]models.SecretItemInfo), args.Error(1)
 }
 
-func (pr *ProjectSecretRepository) GetSecrets(ctx context.Context) ([]models.ProjectSecretItem, error) {
-	args := pr.Called(ctx)
+func (pr *ProjectSecretRepository) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	args := pr.Called(ctx, namespace)
 	return args.Get(0).([]models.ProjectSecretItem), args.Error(1)
 }
 
@@ -61,7 +61,7 @@ func (s *SecretService) List(ctx context.Context, prjName string) ([]models.Secr
 	return args.Get(0).([]models.SecretItemInfo), args.Error(1)
 }
 
-func (s *SecretService) GetSecrets(ctx context.Context, spec models.ProjectSpec) ([]models.ProjectSecretItem, error) {
-	args := s.Called(ctx, spec)
+func (s *SecretService) GetSecrets(ctx context.Context, ns models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	args := s.Called(ctx, ns)
 	return args.Get(0).([]models.ProjectSecretItem), args.Error(1)
 }

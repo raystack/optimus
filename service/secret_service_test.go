@@ -157,7 +157,7 @@ func TestSecretService(t *testing.T) {
 		})
 	})
 	t.Run("GetSecrets", func(t *testing.T) {
-		t.Run("returns secrets for a project", func(t *testing.T) {
+		t.Run("returns secrets for a namespace", func(t *testing.T) {
 			secrets := []models.ProjectSecretItem{
 				{
 					ID:    uuid.New(),
@@ -167,7 +167,7 @@ func TestSecretService(t *testing.T) {
 				},
 			}
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("GetSecrets", ctx).Return(secrets, nil)
+			secretRepo.On("GetSecrets", ctx, namespace).Return(secrets, nil)
 			defer secretRepo.AssertExpectations(t)
 
 			secretRepoFac := new(mock.ProjectSecretRepoFactory)
@@ -176,11 +176,29 @@ func TestSecretService(t *testing.T) {
 
 			svc := service.NewSecretService(nil, nil, secretRepoFac)
 
-			list, err := svc.GetSecrets(ctx, project)
+			list, err := svc.GetSecrets(ctx, namespace)
 			assert.Nil(t, err)
 
 			assert.Len(t, list, 1)
 			assert.Equal(t, secrets, list)
+		})
+		t.Run("returns error when repo returns error", func(t *testing.T) {
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("GetSecrets", ctx, namespace).Return([]models.ProjectSecretItem{},
+				errors.New("random error"))
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nil, secretRepoFac)
+
+			list, err := svc.GetSecrets(ctx, namespace)
+			assert.Len(t, list, 0)
+
+			assert.NotNil(t, err)
+			assert.Equal(t, "error while getting secrets: internal error for entity secret", err.Error())
 		})
 	})
 }

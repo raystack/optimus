@@ -202,12 +202,13 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	return secretItems, nil
 }
 
-func (repo secretRepository) GetSecrets(ctx context.Context) ([]models.ProjectSecretItem, error) {
+func (repo secretRepository) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
 	var secretItems []models.ProjectSecretItem
 	var resources []Secret
 	if err := repo.db.WithContext(ctx).
 		Where("project_id = ?", repo.project.ID).
 		Where("type = ?", models.SecretTypeUserDefined).
+		Where("namespace_id is null or namespace_id = ?", namespace.ID).
 		Find(&resources).Error; err != nil {
 		return secretItems, err
 	}
