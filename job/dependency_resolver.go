@@ -156,16 +156,18 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 					}
 					projectName := depParts[0]
 					jobName := depParts[1]
-					if jobSpec.Dependencies[jobName].Job == nil {
-						job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
-						if err != nil {
-							return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownCrossProjectDependency, depName)
-						}
-						depSpec.Job = &job
-						depSpec.Project = &proj
-						jobSpec.Dependencies[jobName] = depSpec
+
+					if dep := jobSpec.Dependencies[jobName]; dep.Job != nil && dep.Project != nil && dep.Project.Name == projectName {
+						delete(jobSpec.Dependencies, depName)
+						continue
 					}
-					delete(jobSpec.Dependencies, depName)
+					job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
+					if err != nil {
+						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownCrossProjectDependency, depName)
+					}
+					depSpec.Job = &job
+					depSpec.Project = &proj
+					jobSpec.Dependencies[depName] = depSpec
 				}
 			default:
 				return models.JobSpec{}, errors.Errorf("unsupported dependency type: %s", depSpec.Type)
