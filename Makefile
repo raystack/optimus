@@ -7,7 +7,7 @@ LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
 PROTON_COMMIT := "da1e4831cdd697935fbd8724850fcf22be13e0f9"
 
-.PHONY: build test generate pack-files generate-proto unit-test smoke-test integration-test vet coverage clean install
+.PHONY: build test generate pack-files generate-proto unit-test smoke-test integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
 
@@ -49,7 +49,7 @@ coverage: ## print code coverage
 clean:
 	rm -rf ./optimus ./dist ./api/proto/* ./api/third_party/odpf/*
 
-make lint:
+lint:
 	golangci-lint run
 
 install: ## install required dependencies
