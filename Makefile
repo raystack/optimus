@@ -49,6 +49,9 @@ coverage: ## print code coverage
 clean:
 	rm -rf ./optimus ./dist ./api/proto/* ./api/third_party/odpf/*
 
+make lint:
+	golangci-lint run
+
 install: ## install required dependencies
 	@echo "> installing dependencies"
 	go mod tidy
@@ -60,3 +63,4 @@ install: ## install required dependencies
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.5.0
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
 	go get github.com/bufbuild/buf/cmd/buf@v0.54.1
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.1

@@ -31,6 +31,8 @@ linters:
     - gci
     - forbidigo
     - errcheck
+    - maintidx
+    - errchkjson
 
     # Following linters should be enabled after fixing the code
     - testpackage
