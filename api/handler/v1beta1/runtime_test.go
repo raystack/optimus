@@ -28,7 +28,8 @@ type RuntimeServiceServerTestSuite struct {
 	namespaceService *mock.NamespaceService
 	projectService   *mock.ProjectService
 	secretService    *mock.SecretService
-	runService       *mock.RunService       // TODO: refactor to service package
+	jobInputCompiler *mock.JobInputCompiler
+	runService       *mock.JobRunService    // TODO: refactor to service package
 	jobService       *mock.JobService       // TODO: refactor to service package
 	resourceService  *mock.DatastoreService // TODO: refactor to service package
 	jobEventService  v1.JobEventService     // TODO: refactor to service package
@@ -84,6 +85,7 @@ func (s *RuntimeServiceServerTestSuite) newRuntimeServiceServer() *v1.RuntimeSer
 		s.adapter,
 		s.progressObserver,
 		s.runService,
+		s.jobInputCompiler,
 		s.scheduler,
 	)
 }
@@ -100,6 +102,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				log,
 				Version,
 				nil, nil, nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -212,10 +215,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobService.On("GetByNameForProject", ctx, jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
-			instanceService := new(mock.RunService)
-			instanceService.On("GetScheduledRun", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
-			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
-			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
+			jobRunService := new(mock.JobRunService)
+			jobRunService.On("GetScheduledRun", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
+			jobRunService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
+			defer jobRunService.AssertExpectations(t)
+
+			jobInputCompiler := new(mock.JobInputCompiler)
+			jobInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -226,7 +232,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						"query.sql": "select * from 1",
 					},
 				}, nil)
-			defer instanceService.AssertExpectations(t)
+			defer jobInputCompiler.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -238,7 +244,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				v1.NewAdapter(nil, nil),
 				nil,
-				instanceService,
+				jobRunService,
+				jobInputCompiler,
 				nil,
 			)
 
@@ -279,10 +286,13 @@ func TestRuntimeServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			instanceService := new(mock.RunService)
-			instanceService.On("GetByID", ctx, jobRun.ID).Return(jobRun, namespaceSpec, nil)
-			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
-			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
+			jobRunService := new(mock.JobRunService)
+			jobRunService.On("GetByID", ctx, jobRun.ID).Return(jobRun, namespaceSpec, nil)
+			jobRunService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
+			defer jobRunService.AssertExpectations(t)
+
+			jobInputCompiler := new(mock.JobInputCompiler)
+			jobInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -293,7 +303,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 						"query.sql": "select * from 1",
 					},
 				}, nil)
-			defer instanceService.AssertExpectations(t)
+			defer jobInputCompiler.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
@@ -306,7 +316,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				v1.NewAdapter(nil, nil),
 				nil,
-				instanceService,
+				jobRunService,
+				jobInputCompiler,
 				nil,
 			)
 
@@ -430,6 +441,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			taskSpecExpected := &pb.JobTask{
@@ -531,6 +543,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			taskSpecExpected := &pb.JobTask{
@@ -598,6 +611,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				scheduler,
@@ -680,6 +694,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			req := &pb.RegisterJobEventRequest{
 				ProjectName:   projectSpec.Name,
@@ -710,6 +725,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 			scheduledAtTimestamp := timestamppb.New(scheduledAt)
@@ -733,6 +749,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Version,
 				nil, nil,
 				nil, nil,
+				nil,
 				nil,
 				nil,
 				nil,

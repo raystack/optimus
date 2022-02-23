@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -30,20 +29,20 @@ type SpecRepoFactory interface {
 	New() store.JobRunRepository
 }
 
-type Service struct {
-	repoFac        SpecRepoFactory
-	secretService  service.SecretService
-	Now            func() time.Time
-	templateEngine models.TemplateEngine
+type JobRunService interface {
+	// GetScheduledRun find if already present or create a new scheduled run
+	GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, JobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error)
+
+	// GetByID returns job run, normally gets requested for manual runs
+	GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error)
+
+	// Register creates a new instance in provided job run
+	Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error)
 }
 
-func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	*models.JobRunInput, error) {
-	secrets, err := s.secretService.GetSecrets(ctx, namespace)
-	if err != nil {
-		return nil, err
-	}
-	return NewContextManager(namespace, secrets, jobRun, s.templateEngine).Generate(instanceSpec)
+type Service struct {
+	repoFac SpecRepoFactory
+	Now     func() time.Time
 }
 
 func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
@@ -161,11 +160,9 @@ func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRu
 	return s.repoFac.New().GetByID(ctx, JobRunID)
 }
 
-func NewService(repoFac SpecRepoFactory, secretService service.SecretService, timeFunc func() time.Time, te models.TemplateEngine) *Service {
+func NewService(repoFac SpecRepoFactory, timeFunc func() time.Time) *Service {
 	return &Service{
-		repoFac:        repoFac,
-		secretService:  secretService,
-		Now:            timeFunc,
-		templateEngine: te,
+		repoFac: repoFac,
+		Now:     timeFunc,
 	}
 }

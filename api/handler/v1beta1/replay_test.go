@@ -103,6 +103,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
@@ -160,6 +161,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
@@ -201,6 +203,7 @@ func TestReplayOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -247,6 +250,7 @@ func TestReplayOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -338,6 +342,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -384,6 +389,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -414,6 +420,7 @@ func TestReplayOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -463,6 +470,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -496,6 +504,7 @@ func TestReplayOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -534,6 +543,7 @@ func TestReplayOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -583,6 +593,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -627,6 +638,7 @@ func TestReplayOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -723,6 +735,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			expectedReplayStatusNodeResponse, err := adapter.ToReplayStatusTreeNode(replayState.Node)
@@ -759,6 +772,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -866,6 +880,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			replayRequestPb := pb.ListReplaysRequest{
@@ -897,6 +912,7 @@ func TestReplayOnServer(t *testing.T) {
 				nil,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,

@@ -12,6 +12,7 @@ import (
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
@@ -59,7 +60,8 @@ type RuntimeServiceServer struct {
 	projectService   service.ProjectService
 	namespaceService service.NamespaceService
 	secretService    service.SecretService
-	runSvc           models.RunService
+	runSvc           run.JobRunService
+	assetCompiler    run.AssetCompiler
 	scheduler        models.SchedulerUnit
 	l                log.Logger
 
@@ -165,7 +167,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of jobrun %s", err.Error(), jobRun)
 	}
-	jobRunInput, err := sv.runSvc.Compile(ctx, namespaceSpec, jobRun, instance)
+	jobRunInput, err := sv.assetCompiler.Compile(ctx, namespaceSpec, jobRun, instance)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
@@ -306,7 +308,8 @@ func NewRuntimeServiceServer(
 	secretService service.SecretService,
 	adapter ProtoAdapter,
 	progressObserver progress.Observer,
-	instSvc models.RunService,
+	instSvc run.JobRunService,
+	assetCompiler run.AssetCompiler,
 	scheduler models.SchedulerUnit,
 ) *RuntimeServiceServer {
 	return &RuntimeServiceServer{
@@ -318,6 +321,7 @@ func NewRuntimeServiceServer(
 		adapter:          adapter,
 		progressObserver: progressObserver,
 		runSvc:           instSvc,
+		assetCompiler:    assetCompiler,
 		scheduler:        scheduler,
 		secretService:    secretService,
 		namespaceService: namespaceService,

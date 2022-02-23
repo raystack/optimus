@@ -227,6 +227,7 @@ func TestResourcesOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			resp, err := runtimeServiceServer.CreateResource(ctx, &req)
@@ -311,6 +312,7 @@ func TestResourcesOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				v1.NewAdapter(nil, dsRepo),
+				nil,
 				nil,
 				nil,
 				nil,

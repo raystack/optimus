@@ -56,6 +56,7 @@ func TestNamespaceOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			namespaceRequest := pb.RegisterProjectNamespaceRequest{
@@ -95,6 +96,7 @@ func TestNamespaceOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -151,6 +153,7 @@ func TestNamespaceOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,

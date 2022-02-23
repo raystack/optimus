@@ -329,6 +329,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			jobProto := adapter.ToJobProto(jobSpec)
@@ -425,6 +426,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 				adapter,
+				nil,
 				nil,
 				nil,
 				nil,

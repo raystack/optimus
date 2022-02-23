@@ -260,5 +260,6 @@ func createTestRuntimeServiceServer(secretService service.SecretService) *v1.Run
 		nil,
 		nil,
 		nil,
+		nil,
 	)
 }

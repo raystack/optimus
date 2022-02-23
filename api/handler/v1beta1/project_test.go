@@ -48,6 +48,7 @@ func TestProjectOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
@@ -81,6 +82,7 @@ func TestProjectOnServer(t *testing.T) {
 				nil,
 				nil,
 				v1.NewAdapter(nil, nil),
+				nil,
 				nil,
 				nil,
 				nil,
