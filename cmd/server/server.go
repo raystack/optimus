@@ -469,7 +469,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		secretService,
 		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
-		run.NewService(jobrunRepoFac, func() time.Time {
+		run.NewJobRunService(jobrunRepoFac, func() time.Time {
 			return time.Now().UTC()
 		}),
 		run.NewAssetCompiler(secretService, run.NewGoEngine()),

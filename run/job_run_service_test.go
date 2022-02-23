@@ -19,7 +19,7 @@ import (
 	mock2 "github.com/stretchr/testify/mock"
 )
 
-func TestService(t *testing.T) {
+func TestJobRunService(t *testing.T) {
 	ctx := context.Background()
 	execUnit := new(mock.BasePlugin)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
@@ -111,8 +111,8 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil)
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
+			jobRunService := run.NewJobRunService(jobRunSpecRep, nil)
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
@@ -158,7 +158,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil)
+			jobRunService := run.NewJobRunService(jobRunSpecRep, nil)
 
 			var existingRun models.JobRun
 			Copy(&existingRun, jobRun)
@@ -167,7 +167,7 @@ func TestService(t *testing.T) {
 			existingRun.Instances[0].ExecutedAt = mockedTimeNow
 			runRepo.On("AddInstance", ctx, namespaceSpec, existingRun, instanceSpec).Return(nil)
 
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingRun, models.InstanceTypeTask, "bq")
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, existingRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
@@ -212,9 +212,9 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc)
+			jobRunService := run.NewJobRunService(jobRunSpecRep, mockedTimeFunc)
 
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, returnedInstanceSpec, instanceSpec)
 		})
@@ -267,7 +267,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc)
+			runService := run.NewJobRunService(jobRunSpecRep, mockedTimeFunc)
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingJobRun, models.InstanceTypeHook, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
@@ -310,9 +310,9 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc)
+			jobRunService := run.NewJobRunService(jobRunSpecRep, mockedTimeFunc)
 
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.InstanceSpec{}, returnedInstanceSpec)
 		})
@@ -335,7 +335,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc)
+			runService := run.NewJobRunService(jobRunSpecRep, mockedTimeFunc)
 			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, jobRun, returnedSpec)
@@ -356,8 +356,8 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc)
-			_, _ = runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
+			jobRunService := run.NewJobRunService(jobRunSpecRep, mockedTimeFunc)
+			_, _ = jobRunService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 		})
 		t.Run("should return empty RunSpec if GetByScheduledAt returns an error", func(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
@@ -368,8 +368,8 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, mockedTimeFunc)
-			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
+			jobRunService := run.NewJobRunService(jobRunSpecRep, mockedTimeFunc)
+			returnedSpec, err := jobRunService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.JobRun{}, returnedSpec)
 		})

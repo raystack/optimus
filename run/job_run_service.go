@@ -40,12 +40,12 @@ type JobRunService interface {
 	Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error)
 }
 
-type Service struct {
+type jobRunService struct {
 	repoFac SpecRepoFactory
 	Now     func() time.Time
 }
 
-func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
+func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
 	scheduledAt time.Time) (models.JobRun, error) {
 	newJobRun := models.JobRun{
 		Spec:        jobSpec,
@@ -81,7 +81,7 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 	return jobRun, err
 }
 
-func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
+func (s *jobRunService) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
 	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
 	jobRunRepo := s.repoFac.New()
 
@@ -111,7 +111,7 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
+func (s *jobRunService) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
 	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {
@@ -156,12 +156,12 @@ func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.Instanc
 	}, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+func (s *jobRunService) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
 	return s.repoFac.New().GetByID(ctx, JobRunID)
 }
 
-func NewService(repoFac SpecRepoFactory, timeFunc func() time.Time) *Service {
-	return &Service{
+func NewJobRunService(repoFac SpecRepoFactory, timeFunc func() time.Time) *jobRunService {
+	return &jobRunService{
 		repoFac: repoFac,
 		Now:     timeFunc,
 	}
