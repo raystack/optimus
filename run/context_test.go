@@ -105,17 +105,17 @@ func TestContextManager(t *testing.T) {
 				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -268,17 +268,17 @@ func TestContextManager(t *testing.T) {
 				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -407,17 +407,17 @@ func TestContextManager(t *testing.T) {
 				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -555,17 +555,17 @@ func TestContextManager(t *testing.T) {
 				Status: models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},

@@ -276,7 +276,7 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 			InstanceSchedule: scheduledAt,
 			InstanceData: []models.InstanceSpecData{
 				{
-					Name:  ConfigKeyExecutionTime,
+					Name:  models.ConfigKeyExecutionTime,
 					Value: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
@@ -293,10 +293,10 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 
 	// compile again if needed
 	templates, err := engine.CompileFiles(assetsToDump, map[string]interface{}{
-		ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-		ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-		ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
-		ConfigKeyDestination:   jobDestination,
+		models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+		models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+		models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+		models.ConfigKeyDestination:   jobDestination,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile templates: %w", err)

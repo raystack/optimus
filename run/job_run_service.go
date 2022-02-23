@@ -11,20 +11,6 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-const (
-
-	// these configs can be used as macros in task/hook config and job assets
-	// ConfigKeyDstart start of the execution window
-	ConfigKeyDstart = "DSTART"
-	// ConfigKeyDend end of the execution window
-	ConfigKeyDend = "DEND"
-	// ConfigKeyExecutionTime time when the job started executing, this gets shared across all
-	// task and hooks of a job instance
-	ConfigKeyExecutionTime = "EXECUTION_TIME"
-	// ConfigKeyDestination is destination urn
-	ConfigKeyDestination = "JOB_DESTINATION"
-)
-
 type SpecRepoFactory interface {
 	New() store.JobRunRepository
 }
@@ -133,22 +119,22 @@ func (s *jobRunService) prepInstance(jobRun models.JobRun, instanceType models.I
 		// append optimus configs based on the values of a specific JobRun eg, jobScheduledTime
 		Data: []models.InstanceSpecData{
 			{
-				Name:  ConfigKeyExecutionTime,
+				Name:  models.ConfigKeyExecutionTime,
 				Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
-				Name:  ConfigKeyDstart,
+				Name:  models.ConfigKeyDstart,
 				Value: jobRun.Spec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
-				Name:  ConfigKeyDend,
+				Name:  models.ConfigKeyDend,
 				Value: jobRun.Spec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
-				Name:  ConfigKeyDestination,
+				Name:  models.ConfigKeyDestination,
 				Value: jobDestination,
 				Type:  models.InstanceDataTypeEnv,
 			},

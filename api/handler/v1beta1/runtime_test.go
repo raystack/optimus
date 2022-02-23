@@ -12,7 +12,6 @@ import (
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
@@ -181,17 +180,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 			Status: models.RunStateRunning,
 			Data: []models.InstanceSpecData{
 				{
-					Name:  run.ConfigKeyExecutionTime,
+					Name:  models.ConfigKeyExecutionTime,
 					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
-					Name:  run.ConfigKeyDstart,
+					Name:  models.ConfigKeyDstart,
 					Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
-					Name:  run.ConfigKeyDend,
+					Name:  models.ConfigKeyDend,
 					Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
@@ -224,9 +223,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
@@ -268,9 +267,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project: projectSpecProto,
 				Context: &pb.InstanceContext{
 					Envs: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
@@ -295,9 +294,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			jobInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
@@ -339,9 +338,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project: projectSpecProto,
 				Context: &pb.InstanceContext{
 					Envs: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
