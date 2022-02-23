@@ -8,7 +8,6 @@ require (
 	github.com/briandowns/spinner v1.18.0
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/emirpasic/gods v1.12.0
-	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/glog v1.0.0 // indirect
@@ -40,12 +39,10 @@ require (
 	github.com/odpf/salt v0.0.0-20210919015538-3fd8ab22acea
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/schollz/progressbar/v3 v3.8.5
-	github.com/segmentio/kafka-go v0.4.17
 	github.com/sirupsen/logrus v1.8.1
 	github.com/slack-go/slack v0.9.1
 	github.com/spf13/afero v1.6.0
