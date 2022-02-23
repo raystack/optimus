@@ -355,8 +355,6 @@ type PluginRepository interface {
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
 	GetHooks() []*Plugin
-	GetCommandLines() []CommandLineMod
-	GetDependencyResolvers() []DependencyResolverMod
 }
 
 // Plugin is an extensible module implemented outside the core optimus boundaries

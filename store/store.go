@@ -67,9 +67,7 @@ type JobRunRepository interface {
 	GetByScheduledAt(ctx context.Context, jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error)
 	GetByID(context.Context, uuid.UUID) (models.JobRun, models.NamespaceSpec, error)
 	UpdateStatus(context.Context, uuid.UUID, models.JobRunState) error
-	GetByStatus(ctx context.Context, state ...models.JobRunState) ([]models.JobRun, error)
 	GetByTrigger(ctx context.Context, trigger models.JobRunTrigger, state ...models.JobRunState) ([]models.JobRun, error)
-	Delete(context.Context, uuid.UUID) error
 
 	AddInstance(ctx context.Context, namespace models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error
 
@@ -82,18 +80,13 @@ type JobRunRepository interface {
 // JobRunSpecRepository represents a storage interface for Job run instances created
 // during execution
 type InstanceRepository interface {
-	Save(ctx context.Context, run models.JobRun, spec models.InstanceSpec) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error
-	GetByName(ctx context.Context, runID uuid.UUID, instanceName, instanceType string) (models.InstanceSpec, error)
-
-	DeleteByJobRun(ctx context.Context, id uuid.UUID) error
 }
 
 // ProjectResourceSpecRepository represents a storage interface for Resource specifications at project level
 type ProjectResourceSpecRepository interface {
 	GetByName(context.Context, string) (models.ResourceSpec, models.NamespaceSpec, error)
 	GetByURN(context.Context, string) (models.ResourceSpec, models.NamespaceSpec, error)
-	GetAll(context.Context) ([]models.ResourceSpec, error)
 }
 
 // ResourceSpecRepository represents a storage interface for Resource specifications at namespace level
