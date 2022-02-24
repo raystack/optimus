@@ -23,7 +23,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
+func InitTelemetry(l log.Logger, conf Optimus) (func(), error) {
 	var tp *tracesdk.TracerProvider
 	var err error
 	if conf.GetTelemetry().JaegerAddr != "" {

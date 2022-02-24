@@ -20,7 +20,7 @@ var (
 )
 
 func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
-	conf config.Provider) *cli.Command {
+	conf config.Optimus) *cli.Command {
 	var (
 		projectName = conf.GetProject().Name
 		namespace   = conf.GetNamespace().Name

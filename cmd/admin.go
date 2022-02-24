@@ -7,7 +7,7 @@ import (
 )
 
 // adminCommand registers internal administration commands
-func adminCommand(l log.Logger, conf config.Provider) *cli.Command {
+func adminCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:    "admin",
 		Short:  "Internal administration commands",
@@ -18,7 +18,7 @@ func adminCommand(l log.Logger, conf config.Provider) *cli.Command {
 }
 
 // adminBuildCommand builds a run instance
-func adminBuildCommand(l log.Logger, conf config.Provider) *cli.Command {
+func adminBuildCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "build",
 		Short: "Register a job run and get required assets",

@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func replayRunCommand(l log.Logger, conf config.Provider) *cli.Command {
+func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false
@@ -108,7 +108,7 @@ Date ranges are inclusive.
 }
 
 func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
-	allowedDownstreamNamespaces []string, conf config.Provider) (err error) {
+	allowedDownstreamNamespaces []string, conf config.Optimus) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -213,7 +213,7 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 }
 
 func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
-	allowedDownstreamNamespaces []string, conf config.Provider) (string, error) {
+	allowedDownstreamNamespaces []string, conf config.Optimus) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 

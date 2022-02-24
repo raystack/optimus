@@ -19,7 +19,7 @@ const (
 	jobStatusTimeout = time.Second * 30
 )
 
-func jobStatusCommand(l log.Logger, conf config.Provider) *cli.Command {
+func jobStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		optimusHost = conf.GetHost()
 		projectName = conf.GetProject().Name

@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// init telemetry
-	teleShutdown, err := config.InitTelemetry(jsonLogger, configuration)
+	teleShutdown, err := config.InitTelemetry(jsonLogger, *configuration)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
@@ -87,7 +87,7 @@ func main() {
 	command := cmd.New(
 		plainLogger,
 		jsonLogger,
-		configuration,
+		*configuration,
 		models.PluginRegistry,
 		models.DatastoreRegistry,
 	)

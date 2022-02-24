@@ -24,7 +24,7 @@ var (
 	secretTimeout = time.Minute * 2
 )
 
-func secretCommand(l log.Logger, conf config.Provider) *cli.Command {
+func secretCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "secret",
 		Short: "Manage secrets to be used in jobs",
@@ -34,7 +34,7 @@ func secretCommand(l log.Logger, conf config.Provider) *cli.Command {
 	return cmd
 }
 
-func secretSetSubCommand(l log.Logger, conf config.Provider) *cli.Command {
+func secretSetSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		projectName   string
 		namespaceName string
@@ -119,7 +119,7 @@ Use base64 flag if the value has been encoded.
 	return secretCmd
 }
 
-func secretListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
+func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var projectName string
 
 	secretListCmd := &cli.Command{
@@ -181,7 +181,7 @@ func validateProperlyEncoded(secretValue string) error {
 	return nil
 }
 
-func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRequest) (err error) {
+func registerSecret(l log.Logger, conf config.Optimus, req *pb.RegisterSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -215,7 +215,7 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	return nil
 }
 
-func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretRequest) (err error) {
+func updateSecret(l log.Logger, conf config.Optimus, req *pb.UpdateSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -249,7 +249,7 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	return nil
 }
 
-func listSecret(l log.Logger, conf config.Provider, req *pb.ListSecretsRequest) (err error) {
+func listSecret(l log.Logger, conf config.Optimus, req *pb.ListSecretsRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 

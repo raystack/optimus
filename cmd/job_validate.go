@@ -22,7 +22,7 @@ const (
 )
 
 func jobValidateCommand(l log.Logger, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
-	conf config.Provider) *cli.Command {
+	conf config.Optimus) *cli.Command {
 	var (
 		projectName string
 		namespace   string

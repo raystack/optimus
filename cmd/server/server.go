@@ -252,7 +252,7 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 	}
 }
 
-func checkRequiredConfigs(conf config.Provider) error {
+func checkRequiredConfigs(conf config.Optimus) error {
 	errRequiredMissing := errors.New("required config missing")
 	if conf.GetServe().IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
@@ -273,7 +273,7 @@ func checkRequiredConfigs(conf config.Provider) error {
 	return nil
 }
 
-func Initialize(l log.Logger, conf config.Provider) error {
+func Initialize(l log.Logger, conf config.Optimus) error {
 	if err := checkRequiredConfigs(conf); err != nil {
 		return err
 	}

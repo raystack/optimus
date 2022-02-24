@@ -10,7 +10,7 @@ import (
 )
 
 func jobCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepository,
-	pluginRepo models.PluginRepository, conf config.Provider) *cli.Command {
+	pluginRepo models.PluginRepository, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "job",
 		Short: "Interact with schedulable Job",

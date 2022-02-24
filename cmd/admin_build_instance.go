@@ -24,7 +24,7 @@ var (
 	adminBuildInstanceTimeout = time.Minute * 1
 )
 
-func adminBuildInstanceCommand(l log.Logger, conf config.Provider) *cli.Command {
+func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		optimusHost    = conf.GetHost()
 		projectName    = conf.GetProject().Name

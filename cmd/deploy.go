@@ -27,7 +27,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecRepository,
+func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecRepository,
 	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var (
 		projectName     string
@@ -77,7 +77,7 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
-	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
+	conf config.Optimus, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool, verbose bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()

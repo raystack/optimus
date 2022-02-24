@@ -60,7 +60,7 @@ type JobSpecRepository interface {
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
-func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
 
 	var cmd = &cli.Command{

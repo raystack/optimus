@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Provider) *cli.Command {
+func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "create",
@@ -166,7 +166,7 @@ func extractDescription(description string) (string, error) {
 	return description, nil
 }
 
-func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) (err error) {
+func runBackupDryRunRequest(l log.Logger, conf config.Optimus, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -199,7 +199,7 @@ func runBackupDryRunRequest(l log.Logger, conf config.Provider, backupRequest *p
 	return nil
 }
 
-func runBackupRequest(l log.Logger, conf config.Provider, backupRequest *pb.CreateBackupRequest) (err error) {
+func runBackupRequest(l log.Logger, conf config.Optimus, backupRequest *pb.CreateBackupRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
