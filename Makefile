@@ -50,7 +50,7 @@ clean:
 	rm -rf ./optimus ./dist ./api/proto/* ./api/third_party/odpf/*
 
 lint:
-	golangci-lint run
+	golangci-lint run --fix
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
