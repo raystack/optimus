@@ -23,12 +23,12 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func InitTelemetry(l log.Logger, conf Optimus) (func(), error) {
+func InitTelemetry(l log.Logger, conf TelemetryConfig) (func(), error) {
 	var tp *tracesdk.TracerProvider
 	var err error
-	if conf.GetTelemetry().JaegerAddr != "" {
-		l.Debug("enabling jaeger traces", "addr", conf.GetTelemetry().JaegerAddr)
-		tp, err = tracerProvider(conf.GetTelemetry().JaegerAddr)
+	if conf.JaegerAddr != "" {
+		l.Debug("enabling jaeger traces", "addr", conf.JaegerAddr)
+		tp, err = tracerProvider(conf.JaegerAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -47,8 +47,8 @@ func InitTelemetry(l log.Logger, conf Optimus) (func(), error) {
 	}
 
 	var metricServer *http.Server
-	if conf.GetTelemetry().ProfileAddr != "" {
-		l.Debug("enabling profile metrics", "addr", conf.GetTelemetry().ProfileAddr)
+	if conf.ProfileAddr != "" {
+		l.Debug("enabling profile metrics", "addr", conf.ProfileAddr)
 		// custom metric for app uptime
 		go func() {
 			appUptime := promauto.NewGauge(prometheus.GaugeOpts{
@@ -68,7 +68,7 @@ func InitTelemetry(l log.Logger, conf Optimus) (func(), error) {
 		}()
 
 		// start exposing metrics
-		metricServer = MetricsServer(conf.GetTelemetry().ProfileAddr)
+		metricServer = MetricsServer(conf.ProfileAddr)
 		go func() {
 			if err := metricServer.ListenAndServe(); err != http.ErrServerClosed {
 				l.Warn("failed while serving metrics", "err", err)

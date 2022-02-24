@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// init telemetry
-	teleShutdown, err := config.InitTelemetry(jsonLogger, *configuration)
+	teleShutdown, err := config.InitTelemetry(jsonLogger, configuration.Telemetry)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
