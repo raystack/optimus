@@ -254,16 +254,16 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 
 func checkRequiredConfigs(conf config.Optimus) error {
 	errRequiredMissing := errors.New("required config missing")
-	if conf.GetServe().IngressHost == "" {
+	if conf.Server.IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
-	if conf.GetServe().ReplayNumWorkers < 1 {
+	if conf.Server.ReplayNumWorkers < 1 {
 		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
 	}
-	if conf.GetServe().DB.DSN == "" {
+	if conf.Server.DB.DSN == "" {
 		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
 	}
-	if parsed, err := url.Parse(conf.GetServe().DB.DSN); err != nil {
+	if parsed, err := url.Parse(conf.Server.DB.DSN); err != nil {
 		return errors.Wrap(err, "failed to parse serve.db.dsn")
 	} else {
 		if parsed.Scheme != "postgres" {
@@ -283,16 +283,16 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 
 	// setup db
-	if err := postgres.Migrate(conf.GetServe().DB.DSN); err != nil {
+	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
 		return errors.Wrap(err, "postgres.Migrate")
 	}
-	dbConn, err := postgres.Connect(conf.GetServe().DB.DSN, conf.GetServe().DB.MaxIdleConnection,
-		conf.GetServe().DB.MaxOpenConnection, l.Writer())
+	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
+		conf.Server.DB.MaxOpenConnection, l.Writer())
 	if err != nil {
 		return errors.Wrap(err, "postgres.Connect")
 	}
 
-	jobCompiler := compiler.NewCompiler(conf.GetServe().IngressHost)
+	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
 	switch conf.GetScheduler().Name {
 	case "airflow":
@@ -321,7 +321,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	)
 
 	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.GetServe().AppKey)
+	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
 	if err != nil {
 		return errors.Wrap(err, "NewApplicationSecret")
 	}
@@ -391,7 +391,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
-	grpcAddr := fmt.Sprintf("%s:%d", conf.GetServe().Host, conf.GetServe().Port)
+	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -437,9 +437,9 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		},
 	)
 	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    conf.GetServe().ReplayNumWorkers,
-		WorkerTimeout: conf.GetServe().ReplayWorkerTimeout,
-		RunTimeout:    conf.GetServe().ReplayRunTimeout,
+		NumWorkers:    conf.Server.ReplayNumWorkers,
+		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
+		RunTimeout:    conf.Server.ReplayRunTimeout,
 	}, models.BatchScheduler, replayValidator, replaySyncer)
 	backupRepoFac := backupRepoFactory{
 		db: dbConn,
