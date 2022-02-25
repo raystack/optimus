@@ -105,7 +105,7 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			Description:                 description,
 			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 		}
-		for _, ds := range conf.GetDatastore() {
+		for _, ds := range conf.Namespace.Datastore {
 			if ds.Type == storerName {
 				backupRequest.Config = ds.Backup
 			}

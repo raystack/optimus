@@ -120,7 +120,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 		)
 	}
 	datastoreSpecsFs := map[string]afero.Fs{}
-	for _, dsConfig := range conf.GetDatastore() {
+	for _, dsConfig := range conf.Namespace.Datastore {
 		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
 
