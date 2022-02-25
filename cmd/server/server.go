@@ -294,7 +294,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
-	switch conf.GetScheduler().Name {
+	switch conf.Scheduler.Name {
 	case "airflow":
 		models.BatchScheduler = airflow.NewScheduler(
 			&airflowBucketFactory{},
@@ -308,7 +308,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			jobCompiler,
 		)
 	default:
-		return errors.Errorf("unsupported scheduler: %s", conf.GetScheduler().Name)
+		return errors.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 	jobrunRepoFac := &jobRunRepoFactory{
 		db: dbConn,
@@ -332,7 +332,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		db:   dbConn,
 		hash: appHash,
 	}
-	if !conf.GetScheduler().SkipInit {
+	if !conf.Scheduler.SkipInit {
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
 			return errors.Wrap(err, "projectRepoFactory.GetAll()")
@@ -549,9 +549,9 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return time.Now().UTC()
 		},
 	)
-	if conf.GetScheduler().NodeID != "" {
+	if conf.Scheduler.NodeID != "" {
 		// start optimus cluster
-		if err := clusterServer.Init(clusterCtx, conf.GetScheduler()); err != nil {
+		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
 			clusterCancel()
 			return err
 		}

@@ -115,10 +115,6 @@ func (o *Optimus) GetVersion() string {
 	return strconv.Itoa(o.Version)
 }
 
-func (o *Optimus) GetScheduler() SchedulerConfig {
-	return o.Scheduler
-}
-
 func (o *Optimus) GetAdmin() AdminConfig {
 	return o.Admin
 }
