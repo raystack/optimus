@@ -47,7 +47,7 @@ func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecReposit
 		}
 	)
 	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.Namespace.Name, "Namespace of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
@@ -107,7 +107,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 	namespaceSpec := &pb.NamespaceSpecification{
 		Name:   namespaceName,
-		Config: conf.GetNamespace().Config,
+		Config: conf.Namespace.Config,
 	}
 	if err = registerNamespace(deployTimeoutCtx, l, runtime, projectSpec.Name, namespaceSpec); err != nil {
 		return err

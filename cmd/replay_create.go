@@ -27,7 +27,7 @@ func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		allDownstream    = false
 		skipConfirm      = false
 		projectName      = conf.Project.Name
-		namespaceName    = conf.GetNamespace().Name
+		namespaceName    = conf.Namespace.Name
 	)
 
 	reCmd := &cli.Command{

@@ -23,7 +23,7 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			Example: "optimus backup create --resource <sample_resource_name>",
 		}
 		project          = conf.Project.Name
-		namespace        = conf.GetNamespace().Name
+		namespace        = conf.Namespace.Name
 		dryRun           = false
 		ignoreDownstream = false
 		allDownstream    = false

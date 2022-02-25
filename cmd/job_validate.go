@@ -36,7 +36,7 @@ func jobValidateCommand(l log.Logger, pluginRepo models.PluginRepository, jobSpe
 	)
 
 	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.Namespace.Name, "Namespace of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		if projectName == "" || namespace == "" {

@@ -55,7 +55,7 @@ Use base64 flag if the value has been encoded.
 		`,
 	}
 	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
-	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.GetNamespace().Name, "Namespace of deployee")
+	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.Namespace.Name, "Namespace of deployee")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
 	secretCmd.Flags().StringVarP(&filePath, "file", "f", filePath, "Provide file path to create secret from file instead")

@@ -23,7 +23,7 @@ func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo model
 	conf config.Optimus) *cli.Command {
 	var (
 		projectName = conf.Project.Name
-		namespace   = conf.GetNamespace().Name
+		namespace   = conf.Namespace.Name
 	)
 	cmd := &cli.Command{
 		Use:     "run",
