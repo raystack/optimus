@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -115,7 +115,7 @@ Use base64 flag if the value has been encoded.
 					return nil
 				}
 			} else {
-				return errors.Wrapf(err, "request failed for creating secret %s", secretName)
+				return fmt.Errorf("%s: request failed for creating secret %s", err, secretName)
 			}
 		}
 		return nil
@@ -148,7 +148,7 @@ func getSecretName(args []string) (string, error) {
 		return "", errors.New("secret name is required")
 	}
 	if strings.HasPrefix(args[0], models.SecretTypeSystemDefinedPrefix) {
-		return "", errors.New(fmt.Sprintf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix))
+		return "", fmt.Errorf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix)
 	}
 	return args[0], nil
 }
@@ -163,7 +163,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 	} else {
 		secretValueBytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return "", errors.Wrapf(err, "failed when reading secret file %s", filePath)
+			return "", fmt.Errorf("%s: failed when reading secret file %s", err, filePath)
 		}
 		secretValue = string(secretValueBytes)
 	}
@@ -245,7 +245,7 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret update took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for updating secret %s", req.SecretName)
+		return fmt.Errorf("%s: request failed for updating secret %s", err, req.SecretName)
 	}
 
 	l.Info(coloredSuccess("Secret updated"))
@@ -279,7 +279,7 @@ func listSecret(l log.Logger, conf config.Provider, req *pb.ListSecretsRequest) 
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret listing took too long, timing out"))
 		}
-		return errors.Wrap(err, "request failed for listing secrets")
+		return fmt.Errorf("%s: request failed for listing secrets", err)
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {
