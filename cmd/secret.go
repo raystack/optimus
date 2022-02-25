@@ -143,15 +143,15 @@ func secretListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 func secretDeleteSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var projectName string
 
-	secretDeleteCmd := &cli.Command{
+	cmd := &cli.Command{
 		Use:     "delete",
 		Short:   "Delete a secrets registered with optimus",
 		Example: "optimus secret delete <secret_name>",
 		Long:    `This operation deletes a secret registered with optimus.`,
 	}
-	secretDeleteCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
 
-	secretDeleteCmd.RunE = func(cmd *cli.Command, args []string) error {
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
 		secretName, err := getSecretName(args)
 		if err != nil {
 			return err
@@ -163,7 +163,7 @@ func secretDeleteSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 		}
 		return deleteSecret(l, conf, deleteSecretRequest)
 	}
-	return secretDeleteCmd
+	return cmd
 }
 
 func getSecretName(args []string) (string, error) {
