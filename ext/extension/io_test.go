@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/ext/extension"
 )
 
 func TestGetDefaultDir(t *testing.T) {

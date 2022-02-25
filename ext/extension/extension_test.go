@@ -14,7 +14,7 @@ import (
 	tMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/ext/extension"
 	"github.com/odpf/optimus/mock"
 )
 
