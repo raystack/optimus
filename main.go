@@ -52,10 +52,10 @@ func main() {
 	var jsonLogger log.Logger
 	var plainLogger log.Logger
 	pluginLogLevel := hclog.Info
-	if configuration.GetLog().Level != "" {
-		jsonLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level), log.LogrusWithWriter(os.Stderr))
-		plainLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level), log.LogrusWithFormatter(new(PlainFormatter)))
-		if strings.ToLower(configuration.GetLog().Level) == "debug" {
+	if configuration.Log.Level != "" {
+		jsonLogger = log.NewLogrus(log.LogrusWithLevel(configuration.Log.Level), log.LogrusWithWriter(os.Stderr))
+		plainLogger = log.NewLogrus(log.LogrusWithLevel(configuration.Log.Level), log.LogrusWithFormatter(new(PlainFormatter)))
+		if strings.ToLower(configuration.Log.Level) == "debug" {
 			pluginLogLevel = hclog.Debug
 		}
 	} else {

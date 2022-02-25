@@ -115,10 +115,6 @@ func (o *Optimus) GetVersion() string {
 	return strconv.Itoa(o.Version)
 }
 
-func (o *Optimus) GetLog() LogConfig {
-	return o.Log
-}
-
 func (o *Optimus) GetServe() ServerConfig {
 	return o.Server
 }
