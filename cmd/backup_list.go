@@ -24,7 +24,7 @@ func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf co
 		}
 		project string
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+	backupCmd.Flags().StringVarP(&project, "project", "p", conf.Project.Name, "project name of optimus managed repository")
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {

@@ -46,7 +46,7 @@ func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecReposit
 			},
 		}
 	)
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Optimus project name")
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
@@ -99,7 +99,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 	projectSpec := &pb.ProjectSpecification{
 		Name:   projectName,
-		Config: conf.GetProject().Config,
+		Config: conf.Project.Config,
 	}
 	if err = registerProject(deployTimeoutCtx, l, runtime, projectSpec); err != nil {
 		return err

@@ -22,7 +22,7 @@ var (
 func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
 	conf config.Optimus) *cli.Command {
 	var (
-		projectName = conf.GetProject().Name
+		projectName = conf.Project.Name
 		namespace   = conf.GetNamespace().Name
 	)
 	cmd := &cli.Command{

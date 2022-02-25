@@ -54,7 +54,7 @@ Secret value can be either provided in second argument or through file flag.
 Use base64 flag if the value has been encoded.
 		`,
 	}
-	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.GetNamespace().Name, "Namespace of deployee")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
@@ -128,7 +128,7 @@ func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		Example: "optimus secret list",
 		Long:    `This operation shows the secrets for project.`,
 	}
-	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 
 	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
 		updateSecretRequest := &pb.ListSecretsRequest{

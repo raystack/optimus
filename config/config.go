@@ -115,10 +115,6 @@ func (o *Optimus) GetVersion() string {
 	return strconv.Itoa(o.Version)
 }
 
-func (o *Optimus) GetProject() Project {
-	return o.Project
-}
-
 func (o *Optimus) GetNamespace() Namespace {
 	return o.Namespace
 }
