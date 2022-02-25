@@ -14,7 +14,7 @@ import (
 	"github.com/xlab/treeprint"
 )
 
-func replayStatusCommand(l log.Logger, conf config.Provider) *cli.Command {
+func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		projectName string
 	)
@@ -34,15 +34,15 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			return nil
 		},
 	}
-	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 
-		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		conn, err := createConnection(dialTimeoutCtx, conf.Host)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+				l.Error(ErrServerNotReachable(conf.Host).Error())
 			}
 			return err
 		}

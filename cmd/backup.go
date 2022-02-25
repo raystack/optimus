@@ -14,7 +14,7 @@ var (
 	backupTimeout = time.Minute * 15
 )
 
-func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Provider) *cli.Command {
+func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "backup",
 		Short: "Backup a resource and its downstream",
