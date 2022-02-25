@@ -112,8 +112,8 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 
 	//init local specs
 	var jobSpecRepo JobSpecRepository
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.GetJob().Path)
-	if conf.GetJob().Path != "" {
+	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.Namespace.Job.Path)
+	if conf.Namespace.Job.Path != "" {
 		jobSpecRepo = local.NewJobSpecRepository(
 			jobSpecFs,
 			local.NewJobSpecAdapter(pluginRepo),
