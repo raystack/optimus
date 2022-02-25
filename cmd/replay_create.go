@@ -19,15 +19,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-func replayRunCommand(l log.Logger, conf config.Provider) *cli.Command {
+func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false
 		ignoreDownstream = false
 		allDownstream    = false
 		skipConfirm      = false
-		projectName      = conf.GetProject().Name
-		namespaceName    = conf.GetNamespace().Name
+		projectName      = conf.Project.Name
+		namespaceName    = conf.Namespace.Name
 	)
 
 	reCmd := &cli.Command{
@@ -73,7 +73,7 @@ Date ranges are inclusive.
 			}
 		}
 
-		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, allowedDownstreamNamespaces, conf); err != nil {
+		if err := printReplayExecutionTree(l, projectName, namespaceName, args[0], args[1], endDate, allowedDownstreamNamespaces, conf.Host); err != nil {
 			return err
 		}
 		if dryRun {
@@ -97,7 +97,7 @@ Date ranges are inclusive.
 		}
 
 		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
-			allowedDownstreamNamespaces, conf)
+			allowedDownstreamNamespaces, conf.Host)
 		if err != nil {
 			return err
 		}
@@ -108,14 +108,14 @@ Date ranges are inclusive.
 }
 
 func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
-	allowedDownstreamNamespaces []string, conf config.Provider) (err error) {
+	allowedDownstreamNamespaces []string, host string) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -213,14 +213,14 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 }
 
 func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
-	allowedDownstreamNamespaces []string, conf config.Provider) (string, error) {
+	allowedDownstreamNamespaces []string, host string) (string, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
-	conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+	conn, err := createConnection(dialTimeoutCtx, host)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return "", err
 	}

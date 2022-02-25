@@ -21,7 +21,6 @@ type Optimus struct {
 	Server    ServerConfig    `mapstructure:"serve"`
 	Log       LogConfig       `mapstructure:"log"`
 	Scheduler SchedulerConfig `mapstructure:"scheduler"`
-	Admin     AdminConfig     `mapstructure:"admin"`
 	Telemetry TelemetryConfig `mapstructure:"telemetry"`
 }
 
@@ -102,10 +101,6 @@ type SchedulerConfig struct {
 	Peers      string `mapstructure:"peers"`
 }
 
-type AdminConfig struct {
-	Enabled bool `mapstructure:"enabled"`
-}
-
 type TelemetryConfig struct {
 	ProfileAddr string `mapstructure:"profile_addr"`
 	JaegerAddr  string `mapstructure:"jaeger_addr"`
@@ -113,44 +108,4 @@ type TelemetryConfig struct {
 
 func (o *Optimus) GetVersion() string {
 	return strconv.Itoa(o.Version)
-}
-
-func (o *Optimus) GetHost() string {
-	return o.Host
-}
-
-func (o *Optimus) GetProject() Project {
-	return o.Project
-}
-
-func (o *Optimus) GetNamespace() Namespace {
-	return o.Namespace
-}
-
-func (o *Optimus) GetJob() Job {
-	return o.Namespace.Job
-}
-
-func (o *Optimus) GetDatastore() []Datastore {
-	return o.Namespace.Datastore
-}
-
-func (o *Optimus) GetLog() LogConfig {
-	return o.Log
-}
-
-func (o *Optimus) GetServe() ServerConfig {
-	return o.Server
-}
-
-func (o *Optimus) GetScheduler() SchedulerConfig {
-	return o.Scheduler
-}
-
-func (o *Optimus) GetAdmin() AdminConfig {
-	return o.Admin
-}
-
-func (o *Optimus) GetTelemetry() TelemetryConfig {
-	return o.Telemetry
 }

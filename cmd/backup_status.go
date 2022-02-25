@@ -16,7 +16,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func backupStatusCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Provider) *cli.Command {
+func backupStatusCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
 	var (
 		project   string
 		backupCmd = &cli.Command{
@@ -25,7 +25,7 @@ func backupStatusCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			Example: "optimus backup status <uuid>",
 		}
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+	backupCmd.Flags().StringVarP(&project, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {
@@ -48,10 +48,10 @@ func backupStatusCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 
-		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		conn, err := createConnection(dialTimeoutCtx, conf.Host)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+				l.Error(ErrServerNotReachable(conf.Host).Error())
 			}
 			return err
 		}
