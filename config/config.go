@@ -114,11 +114,3 @@ type TelemetryConfig struct {
 func (o *Optimus) GetVersion() string {
 	return strconv.Itoa(o.Version)
 }
-
-func (o *Optimus) GetAdmin() AdminConfig {
-	return o.Admin
-}
-
-func (o *Optimus) GetTelemetry() TelemetryConfig {
-	return o.Telemetry
-}
