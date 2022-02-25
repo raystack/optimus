@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -11,9 +12,10 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -89,7 +91,7 @@ Use base64 flag if the value has been encoded.
 		}
 		err = registerSecret(l, conf.Host, registerSecretReq)
 		if err != nil {
-			if strings.Contains(err.Error(), "resource already exists") {
+			if status.Code(err) == codes.AlreadyExists {
 				proceedWithUpdate := "Yes"
 				if !skipConfirm {
 					if err := survey.AskOne(&survey.Select{
@@ -112,6 +114,8 @@ Use base64 flag if the value has been encoded.
 					l.Info(coloredNotice("Aborting..."))
 					return nil
 				}
+			} else {
+				return fmt.Errorf("%s: request failed for creating secret %s", err, secretName)
 			}
 		}
 		return nil
@@ -144,7 +148,7 @@ func getSecretName(args []string) (string, error) {
 		return "", errors.New("secret name is required")
 	}
 	if strings.HasPrefix(args[0], models.SecretTypeSystemDefinedPrefix) {
-		return "", errors.New(fmt.Sprintf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix))
+		return "", fmt.Errorf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix)
 	}
 	return args[0], nil
 }
@@ -159,7 +163,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 	} else {
 		secretValueBytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return "", errors.Wrapf(err, "failed when reading secret file %s", filePath)
+			return "", fmt.Errorf("%s: failed when reading secret file %s", err, filePath)
 		}
 		secretValue = string(secretValueBytes)
 	}
@@ -207,7 +211,7 @@ func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) (e
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret registration took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for creating secret %s", req.SecretName)
+		return err
 	}
 
 	l.Info(coloredSuccess("Secret registered"))
@@ -241,7 +245,7 @@ func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err e
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret update took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for updating secret %s", req.SecretName)
+		return fmt.Errorf("%s: request failed for updating secret %s", err, req.SecretName)
 	}
 
 	l.Info(coloredSuccess("Secret updated"))
@@ -275,7 +279,7 @@ func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) (err erro
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret listing took too long, timing out"))
 		}
-		return errors.Wrap(err, "request failed for listing secrets")
+		return fmt.Errorf("%s: request failed for listing secrets", err)
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {
