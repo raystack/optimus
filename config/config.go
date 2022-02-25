@@ -21,7 +21,6 @@ type Optimus struct {
 	Server    ServerConfig    `mapstructure:"serve"`
 	Log       LogConfig       `mapstructure:"log"`
 	Scheduler SchedulerConfig `mapstructure:"scheduler"`
-	Admin     AdminConfig     `mapstructure:"admin"`
 	Telemetry TelemetryConfig `mapstructure:"telemetry"`
 }
 
@@ -100,10 +99,6 @@ type SchedulerConfig struct {
 	NodeID     string `mapstructure:"node_id"`
 	DataDir    string `mapstructure:"data_dir"`
 	Peers      string `mapstructure:"peers"`
-}
-
-type AdminConfig struct {
-	Enabled bool `mapstructure:"enabled"`
 }
 
 type TelemetryConfig struct {
