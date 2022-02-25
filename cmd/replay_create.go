@@ -113,9 +113,9 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}
@@ -217,10 +217,10 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
-	conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+	conn, err := createConnection(dialTimeoutCtx, conf.Host)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return "", err
 	}

@@ -186,9 +186,9 @@ func registerSecret(l log.Logger, conf config.Optimus, req *pb.RegisterSecretReq
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}
@@ -220,9 +220,9 @@ func updateSecret(l log.Logger, conf config.Optimus, req *pb.UpdateSecretRequest
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}
@@ -254,9 +254,9 @@ func listSecret(l log.Logger, conf config.Optimus, req *pb.ListSecretsRequest) (
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}

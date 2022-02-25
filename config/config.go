@@ -115,10 +115,6 @@ func (o *Optimus) GetVersion() string {
 	return strconv.Itoa(o.Version)
 }
 
-func (o *Optimus) GetHost() string {
-	return o.Host
-}
-
 func (o *Optimus) GetProject() Project {
 	return o.Project
 }

@@ -41,7 +41,7 @@ func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo model
 			return err
 		}
 
-		return runJobSpecificationRequest(l, projectName, namespace, conf.GetHost(), jobSpec, pluginRepo)
+		return runJobSpecificationRequest(l, projectName, namespace, conf.Host, jobSpec, pluginRepo)
 	}
 	return cmd
 }

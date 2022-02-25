@@ -21,8 +21,8 @@ const (
 
 func jobStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
-		optimusHost = conf.GetHost()
-		projectName = conf.GetProject().Name
+		optimusHost = conf.Host
+		projectName = conf.Project.Name
 	)
 	cmd := &cli.Command{
 		Use:     "status",

@@ -57,7 +57,7 @@ func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecReposit
 			return fmt.Errorf("project and namespace configurations are required")
 		}
 
-		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.GetHost()))
+		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.Host))
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -83,9 +83,9 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}

@@ -124,7 +124,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
 
-	cmd.AddCommand(versionCommand(plainLog, conf.GetHost(), pluginRepo))
+	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))
 	cmd.AddCommand(configCommand(plainLog, dsRepo))
 	cmd.AddCommand(jobCommand(plainLog, jobSpecFs, jobSpecRepo, pluginRepo, conf))
 	cmd.AddCommand(deployCommand(plainLog, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))

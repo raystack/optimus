@@ -49,7 +49,7 @@ func jobValidateCommand(l log.Logger, pluginRepo models.PluginRepository, jobSpe
 			return fmt.Errorf("directory '%s': %v", conf.GetJob().Path, err)
 		}
 
-		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, conf.GetHost(), verbose); err != nil {
+		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, conf.Host, verbose); err != nil {
 			return err
 		}
 		l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))

@@ -26,8 +26,8 @@ var (
 
 func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
-		optimusHost    = conf.GetHost()
-		projectName    = conf.GetProject().Name
+		optimusHost    = conf.Host
+		projectName    = conf.Project.Name
 		assetOutputDir = "/tmp/"
 		runType        = "task"
 		runName        string
