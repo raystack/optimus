@@ -73,7 +73,7 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			Description:                 description,
 			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 		}
-		if err := runBackupDryRunRequest(l, conf, backupDryRunRequest, !ignoreDownstream); err != nil {
+		if err := runBackupDryRunRequest(l, conf.Host, backupDryRunRequest, !ignoreDownstream); err != nil {
 			l.Info(coloredNotice("Failed to run backup dry run"))
 			return err
 		}
@@ -110,7 +110,7 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 				backupRequest.Config = ds.Backup
 			}
 		}
-		return runBackupRequest(l, conf, backupRequest)
+		return runBackupRequest(l, conf.Host, backupRequest)
 	}
 	return backupCmd
 }
@@ -166,14 +166,14 @@ func extractDescription(description string) (string, error) {
 	return description, nil
 }
 
-func runBackupDryRunRequest(l log.Logger, conf config.Optimus, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) (err error) {
+func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.Host).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -199,14 +199,14 @@ func runBackupDryRunRequest(l log.Logger, conf config.Optimus, backupRequest *pb
 	return nil
 }
 
-func runBackupRequest(l log.Logger, conf config.Optimus, backupRequest *pb.CreateBackupRequest) (err error) {
+func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.Host).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}

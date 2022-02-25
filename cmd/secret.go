@@ -79,7 +79,7 @@ Use base64 flag if the value has been encoded.
 				Value:         secretValue,
 				NamespaceName: namespaceName,
 			}
-			return updateSecret(l, conf, updateSecretRequest)
+			return updateSecret(l, conf.Host, updateSecretRequest)
 		}
 		registerSecretReq := &pb.RegisterSecretRequest{
 			ProjectName:   projectName,
@@ -87,7 +87,7 @@ Use base64 flag if the value has been encoded.
 			Value:         secretValue,
 			NamespaceName: namespaceName,
 		}
-		err = registerSecret(l, conf, registerSecretReq)
+		err = registerSecret(l, conf.Host, registerSecretReq)
 		if err != nil {
 			if strings.Contains(err.Error(), "resource already exists") {
 				proceedWithUpdate := "Yes"
@@ -107,7 +107,7 @@ Use base64 flag if the value has been encoded.
 						Value:         secretValue,
 						NamespaceName: namespaceName,
 					}
-					return updateSecret(l, conf, updateSecretRequest)
+					return updateSecret(l, conf.Host, updateSecretRequest)
 				} else {
 					l.Info(coloredNotice("Aborting..."))
 					return nil
@@ -134,7 +134,7 @@ func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		updateSecretRequest := &pb.ListSecretsRequest{
 			ProjectName: projectName,
 		}
-		return listSecret(l, conf, updateSecretRequest)
+		return listSecret(l, conf.Host, updateSecretRequest)
 	}
 	return secretListCmd
 }
@@ -181,14 +181,14 @@ func validateProperlyEncoded(secretValue string) error {
 	return nil
 }
 
-func registerSecret(l log.Logger, conf config.Optimus, req *pb.RegisterSecretRequest) (err error) {
+func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.Host).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -215,14 +215,14 @@ func registerSecret(l log.Logger, conf config.Optimus, req *pb.RegisterSecretReq
 	return nil
 }
 
-func updateSecret(l log.Logger, conf config.Optimus, req *pb.UpdateSecretRequest) (err error) {
+func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.Host).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -249,14 +249,14 @@ func updateSecret(l log.Logger, conf config.Optimus, req *pb.UpdateSecretRequest
 	return nil
 }
 
-func listSecret(l log.Logger, conf config.Optimus, req *pb.ListSecretsRequest) (err error) {
+func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.Host).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
