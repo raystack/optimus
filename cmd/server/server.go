@@ -252,18 +252,18 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 	}
 }
 
-func checkRequiredConfigs(conf config.Optimus) error {
+func checkRequiredConfigs(conf config.ServerConfig) error {
 	errRequiredMissing := errors.New("required config missing")
-	if conf.Server.IngressHost == "" {
+	if conf.IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
-	if conf.Server.ReplayNumWorkers < 1 {
+	if conf.ReplayNumWorkers < 1 {
 		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
 	}
-	if conf.Server.DB.DSN == "" {
+	if conf.DB.DSN == "" {
 		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
 	}
-	if parsed, err := url.Parse(conf.Server.DB.DSN); err != nil {
+	if parsed, err := url.Parse(conf.DB.DSN); err != nil {
 		return errors.Wrap(err, "failed to parse serve.db.dsn")
 	} else {
 		if parsed.Scheme != "postgres" {
@@ -274,7 +274,7 @@ func checkRequiredConfigs(conf config.Optimus) error {
 }
 
 func Initialize(l log.Logger, conf config.Optimus) error {
-	if err := checkRequiredConfigs(conf); err != nil {
+	if err := checkRequiredConfigs(conf.Server); err != nil {
 		return err
 	}
 	l.Info("starting optimus", "version", config.Version)
