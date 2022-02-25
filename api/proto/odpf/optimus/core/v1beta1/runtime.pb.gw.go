@@ -901,6 +901,10 @@ func local_request_RuntimeService_ListSecrets_0(ctx context.Context, marshaler r
 
 }
 
+var (
+	filter_RuntimeService_DeleteSecret_0 = &utilities.DoubleArray{Encoding: map[string]int{"project_name": 0, "secret_name": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+)
+
 func request_RuntimeService_DeleteSecret_0(ctx context.Context, marshaler runtime.Marshaler, client RuntimeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteSecretRequest
 	var metadata runtime.ServerMetadata
@@ -930,6 +934,13 @@ func request_RuntimeService_DeleteSecret_0(ctx context.Context, marshaler runtim
 	protoReq.SecretName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_name", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RuntimeService_DeleteSecret_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.DeleteSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -966,6 +977,13 @@ func local_request_RuntimeService_DeleteSecret_0(ctx context.Context, marshaler 
 	protoReq.SecretName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_name", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RuntimeService_DeleteSecret_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.DeleteSecret(ctx, &protoReq)

@@ -1281,6 +1281,12 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1832,6 +1838,12 @@
           }
         },
         "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
