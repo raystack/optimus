@@ -1,10 +1,11 @@
-package airflow
+package airflow_test
 
 import (
 	_ "embed"
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 
 	"github.com/odpf/optimus/mock"
@@ -170,7 +171,7 @@ func TestCompiler(t *testing.T) {
 
 	t.Run("Compile", func(t *testing.T) {
 		t.Run("should compile template without any error", func(t *testing.T) {
-			scheduler := NewScheduler(nil, nil, nil)
+			scheduler := airflow.NewScheduler(nil, nil, nil)
 			com := compiler.NewCompiler(
 				"http://airflow.example.io",
 			)

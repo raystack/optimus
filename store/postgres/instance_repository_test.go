@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/postgres"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -45,7 +46,7 @@ func TestInstanceRepository(t *testing.T) {
 	pluginRepo := new(mock.SupportedPluginRepo)
 	pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1}, nil)
 	pluginRepo.On("GetByName", tTask).Return(&models.Plugin{Base: execUnit2}, nil)
-	adapter := NewAdapter(pluginRepo)
+	adapter := postgres.NewAdapter(pluginRepo)
 
 	jobConfigs := []models.JobSpec{
 		{
@@ -110,31 +111,31 @@ func TestInstanceRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-		prepo := NewProjectRepository(dbConn, hash)
+		prepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, prepo.Save(ctx, projectSpec))
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
-		jrepo := NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
+		jrepo := postgres.NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
 		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0]))
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1]).Error())
 
-		jobRunRepo := NewJobRunRepository(dbConn, adapter)
+		jobRunRepo := postgres.NewJobRunRepository(dbConn, adapter)
 		err = jobRunRepo.Save(ctx, namespaceSpec, jobRuns[0])
 		assert.Nil(t, err)
 		return dbConn
@@ -164,7 +165,7 @@ func TestInstanceRepository(t *testing.T) {
 		var testModels []models.InstanceSpec
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewInstanceRepository(db, adapter)
+		repo := postgres.NewInstanceRepository(db, adapter)
 		err := repo.Insert(ctx, jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 
@@ -181,7 +182,7 @@ func TestInstanceRepository(t *testing.T) {
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewInstanceRepository(db, adapter)
+		repo := postgres.NewInstanceRepository(db, adapter)
 		err := repo.Insert(ctx, jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 
@@ -211,7 +212,7 @@ func TestInstanceRepository(t *testing.T) {
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewInstanceRepository(db, adapter)
+		repo := postgres.NewInstanceRepository(db, adapter)
 		err := repo.Save(ctx, jobRuns[0], testModels[0])
 		assert.Nil(t, err)
 

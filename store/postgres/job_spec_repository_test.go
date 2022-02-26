@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/postgres"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -22,18 +23,18 @@ func TestJobRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 		return dbConn
@@ -81,7 +82,7 @@ func TestJobRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tTask).Return(&models.Plugin{Base: execUnit2, DependencyMod: depMod2}, nil)
 	pluginRepo.On("GetByName", gHook).Return(&models.Plugin{Base: hookUnit1}, nil)
 	pluginRepo.On("GetByName", tHook).Return(&models.Plugin{Base: hookUnit2}, nil)
-	adapter := NewAdapter(pluginRepo)
+	adapter := postgres.NewAdapter(pluginRepo)
 
 	testConfigs := []models.JobSpec{
 		{
@@ -190,7 +191,7 @@ func TestJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err := repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
@@ -235,7 +236,7 @@ func TestJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// first insert
 			err := repo.Insert(ctx, testModels[0])
@@ -279,8 +280,8 @@ func TestJobRepository(t *testing.T) {
 			defer execUnit2.AssertExpectations(t)
 			defer depMod2.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(ctx, testModelA)
@@ -321,8 +322,8 @@ func TestJobRepository(t *testing.T) {
 			defer execUnit2.AssertExpectations(t)
 			defer depMod2.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit1, DependencyMod: depMod1}
@@ -357,8 +358,8 @@ func TestJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
-			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(ctx, testModelA)
@@ -379,8 +380,8 @@ func TestJobRepository(t *testing.T) {
 				PluginType: models.PluginTypeTask,
 			}, nil)
 
-			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err := repo.Insert(ctx, testModel)
 			assert.Nil(t, err)
@@ -474,9 +475,9 @@ func TestJobRepository(t *testing.T) {
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepoNamespace1 := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			jobRepoNamespace2 := NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+			jobRepoNamespace1 := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepoNamespace2 := postgres.NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
 
 			// try to create with first namespace
 			err := jobRepoNamespace1.Save(ctx, testModelA)
@@ -506,8 +507,8 @@ func TestJobRepository(t *testing.T) {
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
-			projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			//try for create
 			err := repo.Save(ctx, testModelA)
@@ -542,8 +543,8 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -561,8 +562,8 @@ func TestJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -581,18 +582,18 @@ func TestProjectJobRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 		return dbConn
@@ -640,7 +641,7 @@ func TestProjectJobRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tTask).Return(&models.Plugin{Base: execUnit2, DependencyMod: depMod2}, nil)
 	pluginRepo.On("GetByName", gHook).Return(&models.Plugin{Base: hookUnit1}, nil)
 	pluginRepo.On("GetByName", tHook).Return(&models.Plugin{Base: hookUnit2}, nil)
-	adapter := NewAdapter(pluginRepo)
+	adapter := postgres.NewAdapter(pluginRepo)
 
 	testConfigs := []models.JobSpec{
 		{
@@ -736,8 +737,8 @@ func TestProjectJobRepository(t *testing.T) {
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -770,8 +771,8 @@ func TestProjectJobRepository(t *testing.T) {
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -801,8 +802,8 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 		err := jobRepo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
@@ -832,8 +833,8 @@ func TestProjectJobRepository(t *testing.T) {
 
 		assert.Nil(t, NewProjectRepository(db, hash).Save(ctx, projectSpec))
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 		err := jobRepo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
@@ -864,15 +865,15 @@ func TestProjectJobRepository(t *testing.T) {
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repoNamespace1 := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repoNamespace1 := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repoNamespace1.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 		err = repoNamespace1.Insert(ctx, testModels[2])
 		assert.Nil(t, err)
 
-		repoNamespace2 := NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
+		repoNamespace2 := postgres.NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
 		err = repoNamespace2.Insert(ctx, testModels[3])
 		assert.Nil(t, err)
 

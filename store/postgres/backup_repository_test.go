@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/store/postgres"
 	testMock "github.com/stretchr/testify/mock"
 
 	"github.com/google/uuid"
@@ -45,22 +46,22 @@ func TestBackupRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 
-		projRepo := NewProjectRepository(dbConn, hash)
+		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
@@ -113,13 +114,13 @@ func TestBackupRepository(t *testing.T) {
 			},
 		}
 
-		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		resourceRepo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		resourceRepo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 		err := resourceRepo.Insert(ctx, resourceSpec)
 		assert.Nil(t, err)
 
-		backupRepo := NewBackupRepository(db, projectSpec, datastorer)
+		backupRepo := postgres.NewBackupRepository(db, projectSpec, datastorer)
 		err = backupRepo.Save(ctx, backupSpec)
 		assert.Nil(t, err)
 
