@@ -97,11 +97,6 @@ func TestReplay(t *testing.T) {
 	specs[spec6] = models.JobSpec{Name: spec6, Dependencies: getDependencyObject(specs, spec4, spec5), Schedule: dailySchedule, Task: threeDayTaskWindow}
 	jobSpecs = append(jobSpecs, specs[spec6])
 
-	var jobNames []string
-	for _, dag := range jobSpecs {
-		jobNames = append(jobNames, dag.Name)
-	}
-
 	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)

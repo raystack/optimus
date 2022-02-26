@@ -563,7 +563,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	// Block until we receive our signal.
 	<-termChan
