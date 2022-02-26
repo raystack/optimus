@@ -96,12 +96,12 @@ Date ranges are inclusive.
 			}
 		}
 
-		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
+		replayID, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
 			allowedDownstreamNamespaces, conf.Host)
 		if err != nil {
 			return err
 		}
-		l.Info(coloredSuccess("Replay request created with id %s", replayId))
+		l.Info(coloredSuccess("Replay request created with id %s", replayID))
 		return nil
 	}
 	return reCmd

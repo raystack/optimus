@@ -9,29 +9,28 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	hplugin "github.com/hashicorp/go-plugin"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"google.golang.org/grpc"
 )
 
-var _ hplugin.GRPCPlugin = &Connector{}
+var _ plugin.GRPCPlugin = &Connector{}
 
 type Connector struct {
-	hplugin.NetRPCUnsupportedPlugin
-	hplugin.GRPCPlugin
+	plugin.NetRPCUnsupportedPlugin
+	plugin.GRPCPlugin
 
 	impl   models.CommandLineMod
 	logger hclog.Logger
 }
 
-func (p *Connector) GRPCServer(broker *hplugin.GRPCBroker, s *grpc.Server) error {
+func (p *Connector) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	pbp.RegisterCLIModServiceServer(s, &GRPCServer{
 		Impl: p.impl,
 	})
 	return nil
 }
 
-func (p *Connector) GRPCClient(ctx context.Context, broker *hplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (p *Connector) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClient{
 		client: pbp.NewCLIModServiceClient(c),
 		baseClient: &base.GRPCClient{
@@ -55,7 +54,7 @@ func NewPluginClient(logger hclog.Logger) *Connector {
 }
 
 func Serve(t interface{}, logger hclog.Logger) {
-	hplugin.Serve(&hplugin.ServeConfig{
+	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: base.Handshake,
 		Plugins: map[string]plugin.Plugin{
 			models.PluginTypeBase:      base.NewPlugin(t, logger),

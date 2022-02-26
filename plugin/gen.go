@@ -77,7 +77,7 @@ exec $(eval echo "$@")
 )
 
 // (kush.sharma): deprecated, gonna replace it with(#14)
-func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, optimusDownloadUrl string, skipDockerBuild, skipBinaryBuild bool) error {
+func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes []byte, binaryBuildPath, optimusDownloadURL string, skipDockerBuild, skipBinaryBuild bool) error {
 	inputConfig := BuildConfig{}
 	if err := yaml.Unmarshal(configBytes, &inputConfig); err != nil {
 		return err
@@ -107,7 +107,7 @@ func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes
 
 		dockerFile, err := templateEngine.CompileString(DockerTemplate, map[string]interface{}{
 			"Header":             taskPlugin.Docker.Header,
-			"OptimusDownloadUrl": optimusDownloadUrl,
+			"OptimusDownloadUrl": optimusDownloadURL,
 			"EntrypointTemplate": preparedEntrypoint,
 			"Footer":             taskPlugin.Docker.Footer,
 		})
@@ -180,7 +180,7 @@ func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes
 	for _, hookPlugin := range inputConfig.Plugins.Hook {
 		dockerFile, err := templateEngine.CompileString(DockerTemplate, map[string]interface{}{
 			"Header":             hookPlugin.Docker.Header,
-			"OptimusDownloadUrl": optimusDownloadUrl,
+			"OptimusDownloadUrl": optimusDownloadURL,
 			"EntrypointTemplate": preparedEntrypoint,
 			"Footer":             hookPlugin.Docker.Footer,
 		})

@@ -19,7 +19,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-multierror"
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -475,7 +474,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		projectService,
 		namespaceService,
 		secretService,
-		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
+		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,

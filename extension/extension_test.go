@@ -349,7 +349,7 @@ func TestNewExtension(t *testing.T) {
 		manifest := &extension.Manifest{}
 		ghReleaseGetter := &mock.GithubReleaseGetter{}
 		httpDoer := &mock.HTTPDoer{}
-		var dirPath string = ""
+		dirPath := ""
 		reservedCommands := []string{"help"}
 
 		ext, err := extension.NewExtension(manifest, ghReleaseGetter, httpDoer, dirPath, reservedCommands...)

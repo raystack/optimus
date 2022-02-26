@@ -19,7 +19,6 @@ import (
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
-	_ "github.com/odpf/optimus/plugin"
 	"github.com/odpf/salt/log"
 )
 
