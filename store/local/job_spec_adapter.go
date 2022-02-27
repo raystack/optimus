@@ -3,6 +3,7 @@ package local
 import (
 	"fmt"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -33,19 +34,18 @@ func init() {
 // Job are inputs from user to create a job
 // yaml representation of the job
 type Job struct {
-	Version              int    `yaml:"version,omitempty" validate:"min=1,max=100"`
-	Name                 string `validate:"min=3,max=1024"`
-	Owner                string `yaml:"owner" validate:"min=3,max=1024"`
-	Description          string `yaml:"description,omitempty"`
-	Schedule             JobSchedule
-	Behavior             JobBehavior
-	Task                 JobTask
-	Asset                map[string]string `yaml:"asset,omitempty"`
-	Labels               map[string]string `yaml:"labels,omitempty"`
-	Dependencies         []JobDependency
-	Hooks                []JobHook
-	Metadata             JobSpecMetadata    `yaml:"metadata,omitempty"`
-	ExternalDependencies ExternalDependency `yaml:"external-dependencies,omitempty"`
+	Version      int    `yaml:"version,omitempty" validate:"min=1,max=100"`
+	Name         string `validate:"min=3,max=1024"`
+	Owner        string `yaml:"owner" validate:"min=3,max=1024"`
+	Description  string `yaml:"description,omitempty"`
+	Schedule     JobSchedule
+	Behavior     JobBehavior
+	Task         JobTask
+	Asset        map[string]string `yaml:"asset,omitempty"`
+	Labels       map[string]string `yaml:"labels,omitempty"`
+	Dependencies []JobDependency
+	Hooks        []JobHook
+	Metadata     JobSpecMetadata `yaml:"metadata,omitempty"`
 }
 
 type JobSchedule struct {
@@ -359,17 +359,14 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 }
 
 type JobDependency struct {
-	JobName string `yaml:"job"`
-	Type    string `yaml:"type,omitempty"`
-}
-
-type ExternalDependency struct {
-	HTTPDependencies []HTTPDependency `yaml:"http,omitempty"`
+	JobName string         `yaml:"job,omitempty"`
+	Type    string         `yaml:"type,omitempty"`
+	HttpDep HTTPDependency `yaml:"http,omitempty"`
 }
 
 type HTTPDependency struct {
-	Name          string            `yaml:"Name"`
-	RequestParams map[string]string `yaml:"request-params,omitempty"`
+	Name          string            `yaml:"name"`
+	RequestParams map[string]string `yaml:"params,omitempty"`
 	URL           string            `yaml:"url"`
 	Headers       map[string]string `yaml:"headers,omitempty"`
 }
@@ -395,22 +392,36 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		endDate = &end
 	}
 
-	// prep dirty dependencies
+	// prep dirty dependencies and external http dependencies
+	var externalDependency models.ExternalDependency
+	var httpDependencies []models.HTTPDependency
 	dependencies := map[string]models.JobSpecDependency{}
-	for _, dep := range conf.Dependencies {
-		depType := models.JobSpecDependencyTypeIntra
-		switch dep.Type {
-		case string(models.JobSpecDependencyTypeIntra):
-			depType = models.JobSpecDependencyTypeIntra
-		case string(models.JobSpecDependencyTypeInter):
-			depType = models.JobSpecDependencyTypeInter
-		case string(models.JobSpecDependencyTypeExtra):
-			depType = models.JobSpecDependencyTypeExtra
+	for index, dep := range conf.Dependencies {
+		if dep.JobName != "" {
+			depType := models.JobSpecDependencyTypeIntra
+			switch dep.Type {
+			case string(models.JobSpecDependencyTypeIntra):
+				depType = models.JobSpecDependencyTypeIntra
+			case string(models.JobSpecDependencyTypeInter):
+				depType = models.JobSpecDependencyTypeInter
+			case string(models.JobSpecDependencyTypeExtra):
+				depType = models.JobSpecDependencyTypeExtra
+			}
+			dependencies[dep.JobName] = models.JobSpecDependency{
+				Type: depType,
+			}
 		}
-		dependencies[dep.JobName] = models.JobSpecDependency{
-			Type: depType,
+		if !reflect.DeepEqual(dep.HttpDep, HTTPDependency{}) {
+			if _, err := url.ParseRequestURI(dep.HttpDep.URL); err != nil {
+				return models.JobSpec{}, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+			}
+			if dep.HttpDep.Name == "" {
+				return models.JobSpec{}, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
+			}
+			httpDependencies = append(httpDependencies, models.HTTPDependency(dep.HttpDep))
 		}
 	}
+	externalDependency.HTTPDependencies = httpDependencies
 
 	// prep hooks
 	var hooks []models.JobSpecHook
@@ -462,20 +473,6 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 			Channels: notify.Channels,
 		})
 	}
-
-	//prep external http dependencies
-	var externalDependency models.ExternalDependency
-	var httpDependencies []models.HTTPDependency
-	for index, http := range conf.ExternalDependencies.HTTPDependencies {
-		if _, err := url.ParseRequestURI(http.URL); err != nil {
-			return models.JobSpec{}, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
-		}
-		if http.Name == "" {
-			return models.JobSpec{}, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
-		}
-		httpDependencies = append(httpDependencies, models.HTTPDependency(http))
-	}
-	externalDependency.HTTPDependencies = httpDependencies
 
 	job := models.JobSpec{
 		Version:     conf.Version,
@@ -599,7 +596,6 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 				},
 			},
 		},
-		ExternalDependencies: ExternalDependency{},
 	}
 
 	if spec.Schedule.EndDate != nil {
@@ -613,7 +609,9 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	}
 	// external http dependencies
 	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
-		parsed.ExternalDependencies.HTTPDependencies = append(parsed.ExternalDependencies.HTTPDependencies, HTTPDependency(dep))
+		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
+			HttpDep: HTTPDependency(dep),
+		})
 	}
 
 	// prep hooks

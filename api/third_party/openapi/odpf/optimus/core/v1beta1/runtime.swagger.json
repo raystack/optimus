@@ -1730,17 +1730,6 @@
         }
       }
     },
-    "v1beta1ExternalDependency": {
-      "type": "object",
-      "properties": {
-        "httpDependencies": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1HttpDependency"
-          }
-        }
-      }
-    },
     "v1beta1GetBackupResponse": {
       "type": "object",
       "properties": {
@@ -1810,7 +1799,7 @@
             "type": "string"
           }
         },
-        "requestParams": {
+        "params": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -1828,6 +1817,12 @@
           }
         },
         "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -1911,6 +1906,9 @@
         },
         "type": {
           "type": "string"
+        },
+        "httpDependency": {
+          "$ref": "#/definitions/v1beta1HttpDependency"
         }
       }
     },
@@ -2057,9 +2055,6 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
-        },
-        "externalDependency": {
-          "$ref": "#/definitions/v1beta1ExternalDependency"
         }
       }
     },

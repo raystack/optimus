@@ -45,29 +45,29 @@ task:
     truncate_to: w
 labels:
   orchestrator: optimus
-dependencies: []
-hooks: []
-external-dependencies :
- http :
-    -
-     Name : http-sensor-1
-     request-params:
-       key-1 : value-1
-       key-2 : value-2
-     url : https://optimus-host:80/serve/1/
-     headers:
-        Content-type : application/json
-        Authentication : Token-1
-    -
-     Name : http-sensor-2
-     request-params:
-       key-1 : value-3
-       key-2 : value-4
-     url : https://optimus-host:80/serve/2/
-     headers:
-        Content-type : application/json
-        Authentication : Token-2 
-`
+dependencies: 
+  - 
+    http: 
+      name: http-sensor-1
+      headers: 
+        Authentication: Token-1
+        Content-type: application/json
+      params: 
+        key-1: value-1
+        key-2: value-2
+      url: "https://optimus-host:80/serve/1/"
+  - 
+    http: 
+      name: http-sensor-2
+      headers: 
+        Authentication: Token-2
+        Content-type: application/json
+      params: 
+        key-3: value-3
+        key-4: value-4
+      url: "https://optimus-host:80/serve/2/"
+
+hooks: []`
 		var localJobParsed local.Job
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
@@ -120,29 +120,28 @@ task:
     truncate_to: w
 labels:
   orchestrator: optimus
-dependencies: []
-hooks: []
-external-dependencies :
- http :
-    -
-     Name : http-sensor-1
-     request-params:
-       key-1 : value-1
-       key-2 : value-2
-     url : ""
-     headers:
-        Content-type : application/json
-        Authentication : Token-1
-    -
-     Name : http-sensor-2
-     request-params:
-       key-1 : value-3
-       key-2 : value-4
-     url : https://optimus-host:80/serve/2/
-     headers:
-        Content-type : application/json
-        Authentication : Token-2 
-`
+dependencies: 
+  - 
+    http: 
+      name: http-sensor-1
+      headers: 
+        Authentication: Token-1
+        Content-type: application/json
+      params: 
+        key-1: value-1
+        key-2: value-2
+      url: ""
+  - 
+    http: 
+      name: http-sensor-2
+      headers: 
+        Authentication: Token-2
+        Content-type: application/json
+      params: 
+        key-3: value-3
+        key-4: value-4
+      url: "https://optimus-host:80/serve/2/"
+hooks: []`
 		var localJobParsed local.Job
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
@@ -194,29 +193,28 @@ task:
     truncate_to: w
 labels:
   orchestrator: optimus
-dependencies: []
-hooks: []
-external-dependencies :
- http :
-    -
-     Name : ""
-     request-params:
-       key-1 : value-1
-       key-2 : value-2
-     url : "https://optimus-host:80/serve/1/"
-     headers:
-        Content-type : application/json
-        Authentication : Token-1
-    -
-     Name : http-sensor-2
-     request-params:
-       key-1 : value-3
-       key-2 : value-4
-     url : https://optimus-host:80/serve/2/
-     headers:
-        Content-type : application/json
-        Authentication : Token-2 
-`
+dependencies: 
+  - 
+    http: 
+      name: ""
+      headers: 
+        Authentication: Token-1
+        Content-type: application/json
+      params: 
+        key-1: value-1
+        key-2: value-2
+      url: "https://optimus-host:80/serve/1/"
+  - 
+    http: 
+      name: http-sensor-2
+      headers: 
+        Authentication: Token-2
+        Content-type: application/json
+      params: 
+        key-3: value-3
+        key-4: value-4
+      url: "https://optimus-host:80/serve/2/"
+hooks: []`
 		var localJobParsed local.Job
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
