@@ -7,7 +7,7 @@ LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
 PROTON_COMMIT := "da1e4831cdd697935fbd8724850fcf22be13e0f9"
 
-.PHONY: build test generate pack-files generate-proto unit-test smoke-test integration-test vet coverage clean install
+.PHONY: build test generate pack-files generate-proto unit-test smoke-test integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
 
@@ -49,6 +49,9 @@ coverage: ## print code coverage
 clean:
 	rm -rf ./optimus ./dist ./api/proto/* ./api/third_party/odpf/*
 
+lint:
+	golangci-lint run --fix
+
 install: ## install required dependencies
 	@echo "> installing dependencies"
 	go mod tidy
@@ -60,3 +63,4 @@ install: ## install required dependencies
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.5.0
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
 	go get github.com/bufbuild/buf/cmd/buf@v0.54.1
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.1
