@@ -180,7 +180,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 
 func validateProperlyEncoded(secretValue string) error {
 	if _, err := base64.StdEncoding.DecodeString(secretValue); err != nil {
-		return errors.New("value is not encoded. please remove --base64 to let Optimus encode the secret for you.")
+		return errors.New("value is not encoded, please remove --base64 to let Optimus encode the secret for you")
 	}
 	return nil
 }
