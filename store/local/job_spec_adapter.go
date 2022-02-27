@@ -412,13 +412,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 			}
 		}
 		if !reflect.DeepEqual(dep.HttpDep, HTTPDependency{}) {
-			if _, err := url.ParseRequestURI(dep.HttpDep.URL); err != nil {
-				return models.JobSpec{}, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+			httpDep, err := prepHttpDependency(dep.HttpDep, index)
+			if err != nil {
+				return models.JobSpec{}, err
 			}
-			if dep.HttpDep.Name == "" {
-				return models.JobSpec{}, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
-			}
-			httpDependencies = append(httpDependencies, models.HTTPDependency(dep.HttpDep))
+			httpDependencies = append(httpDependencies, httpDep)
 		}
 	}
 	externalDependency.HTTPDependencies = httpDependencies
@@ -681,4 +679,16 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 		return sz, nil
 	}
 	return sz, ErrNotAMonthDuration
+}
+
+func prepHttpDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
+	var httpDep models.HTTPDependency
+	if _, err := url.ParseRequestURI(dep.URL); err != nil {
+		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+	}
+	if dep.Name == "" {
+		return httpDep, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
+	}
+	httpDep = models.HTTPDependency(dep)
+	return httpDep, nil
 }
