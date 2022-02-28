@@ -59,7 +59,25 @@ func TestSecretService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "invalid project name", err.Error())
 		})
+		t.Run("saves the secret when no namespace", func(t *testing.T) {
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, project.Name).
+				Return(project, nil)
+			defer projectService.AssertExpectations(t)
 
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("Save", ctx, models.NamespaceSpec{}, secret1).Return(nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(projectService, nil, secretRepoFac)
+
+			err := svc.Save(ctx, project.Name, "", secret1)
+			assert.Nil(t, err)
+		})
 		t.Run("saves the secret item successfully", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
 			nsService.On("Get", ctx, project.Name, namespace.Name).
@@ -100,8 +118,26 @@ func TestSecretService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "invalid project name", err.Error())
 		})
+		t.Run("updates the secret item when no namespace", func(t *testing.T) {
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, project.Name).
+				Return(project, nil)
+			defer projectService.AssertExpectations(t)
 
-		t.Run("saves the secret item successfully", func(t *testing.T) {
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("Update", ctx, models.NamespaceSpec{}, secret1).Return(nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(projectService, nil, secretRepoFac)
+
+			err := svc.Update(ctx, project.Name, "", secret1)
+			assert.Nil(t, err)
+		})
+		t.Run("updates the secret item successfully", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
 			nsService.On("Get", ctx, project.Name, namespace.Name).
 				Return(namespace, nil)

@@ -27,7 +27,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecRepository,
+func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecRepository,
 	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var (
 		projectName     string
@@ -46,8 +46,8 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 			},
 		}
 	)
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Optimus project name")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.Namespace.Name, "Namespace of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
@@ -57,7 +57,7 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 			return fmt.Errorf("project and namespace configurations are required")
 		}
 
-		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.GetHost()))
+		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.Host))
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -77,15 +77,15 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
-	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
+	conf config.Optimus, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool, verbose bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}
@@ -99,7 +99,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 	projectSpec := &pb.ProjectSpecification{
 		Name:   projectName,
-		Config: conf.GetProject().Config,
+		Config: conf.Project.Config,
 	}
 	if err = registerProject(deployTimeoutCtx, l, runtime, projectSpec); err != nil {
 		return err
@@ -107,7 +107,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 	namespaceSpec := &pb.NamespaceSpecification{
 		Name:   namespaceName,
-		Config: conf.GetNamespace().Config,
+		Config: conf.Namespace.Config,
 	}
 	if err = registerNamespace(deployTimeoutCtx, l, runtime, projectSpec.Name, namespaceSpec); err != nil {
 		return err

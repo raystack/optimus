@@ -60,7 +60,7 @@ type JobSpecRepository interface {
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
-func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
 
 	var cmd = &cli.Command{
@@ -112,19 +112,19 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Provider, pluginRe
 
 	//init local specs
 	var jobSpecRepo JobSpecRepository
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.GetJob().Path)
-	if conf.GetJob().Path != "" {
+	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.Namespace.Job.Path)
+	if conf.Namespace.Job.Path != "" {
 		jobSpecRepo = local.NewJobSpecRepository(
 			jobSpecFs,
 			local.NewJobSpecAdapter(pluginRepo),
 		)
 	}
 	datastoreSpecsFs := map[string]afero.Fs{}
-	for _, dsConfig := range conf.GetDatastore() {
+	for _, dsConfig := range conf.Namespace.Datastore {
 		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
 
-	cmd.AddCommand(versionCommand(plainLog, conf.GetHost(), pluginRepo))
+	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))
 	cmd.AddCommand(configCommand(plainLog, dsRepo))
 	cmd.AddCommand(jobCommand(plainLog, jobSpecFs, jobSpecRepo, pluginRepo, conf))
 	cmd.AddCommand(deployCommand(plainLog, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))

@@ -52,10 +52,10 @@ func main() {
 	var jsonLogger log.Logger
 	var plainLogger log.Logger
 	pluginLogLevel := hclog.Info
-	if configuration.GetLog().Level != "" {
-		jsonLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level), log.LogrusWithWriter(os.Stderr))
-		plainLogger = log.NewLogrus(log.LogrusWithLevel(configuration.GetLog().Level), log.LogrusWithFormatter(new(PlainFormatter)))
-		if strings.ToLower(configuration.GetLog().Level) == "debug" {
+	if configuration.Log.Level != "" {
+		jsonLogger = log.NewLogrus(log.LogrusWithLevel(configuration.Log.Level), log.LogrusWithWriter(os.Stderr))
+		plainLogger = log.NewLogrus(log.LogrusWithLevel(configuration.Log.Level), log.LogrusWithFormatter(new(PlainFormatter)))
+		if strings.ToLower(configuration.Log.Level) == "debug" {
 			pluginLogLevel = hclog.Debug
 		}
 	} else {
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// init telemetry
-	teleShutdown, err := config.InitTelemetry(jsonLogger, configuration)
+	teleShutdown, err := config.InitTelemetry(jsonLogger, configuration.Telemetry)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
@@ -87,7 +87,7 @@ func main() {
 	command := cmd.New(
 		plainLogger,
 		jsonLogger,
-		configuration,
+		*configuration,
 		models.PluginRegistry,
 		models.DatastoreRegistry,
 	)

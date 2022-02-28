@@ -20,10 +20,10 @@ var (
 )
 
 func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
-	conf config.Provider) *cli.Command {
+	conf config.Optimus) *cli.Command {
 	var (
-		projectName = conf.GetProject().Name
-		namespace   = conf.GetNamespace().Name
+		projectName = conf.Project.Name
+		namespace   = conf.Namespace.Name
 	)
 	cmd := &cli.Command{
 		Use:     "run",
@@ -41,7 +41,7 @@ func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo model
 			return err
 		}
 
-		return runJobSpecificationRequest(l, projectName, namespace, conf.GetHost(), jobSpec, pluginRepo)
+		return runJobSpecificationRequest(l, projectName, namespace, conf.Host, jobSpec, pluginRepo)
 	}
 	return cmd
 }
