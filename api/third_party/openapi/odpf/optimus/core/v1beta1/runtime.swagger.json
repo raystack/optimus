@@ -1784,6 +1784,29 @@
         }
       }
     },
+    "v1beta1HttpDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1beta1InstanceContext": {
       "type": "object",
       "properties": {
@@ -1794,6 +1817,12 @@
           }
         },
         "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -1877,6 +1906,9 @@
         },
         "type": {
           "type": "string"
+        },
+        "httpDependency": {
+          "$ref": "#/definitions/v1beta1HttpDependency"
         }
       }
     },

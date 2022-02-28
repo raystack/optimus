@@ -9,8 +9,9 @@ from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
+
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor, CrossTenantDependencySensor
+    SuperExternalTaskSensor, CrossTenantDependencySensor, ExternalHttpSensor
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -194,12 +195,31 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 {{- end -}}
 {{- end}}
 
+{{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
+headers_dict_{{$httpDependency.Name}} = { {{- range $k, $v := $httpDependency.Headers}} '{{$k}}': '{{$v}}', {{- end}} }
+request_params_dict_{{$httpDependency.Name}} = { {{- range $key, $value := $httpDependency.RequestParams}} '{{$key}}': '{{$value}}', {{- end}} }
+
+wait_{{$httpDependency.Name}} = ExternalHttpSensor(
+    endpoint='{{$httpDependency.URL}}',
+    headers=headers_dict_{{$httpDependency.Name}},
+    request_params=request_params_dict_{{$httpDependency.Name}},
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id='wait_{{$httpDependency.Name| trunc 200}}',
+    dag=dag
+)
+{{- end}}
+
 # arrange inter task dependencies
 ####################################
 
 # upstream sensors -> base transformation task
 {{- range $i, $t := $.Job.Dependencies }}
 wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- end}}
+
+{{- range $_, $t := $.Job.ExternalDependencies.HTTPDependencies }}
+wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 
 # set inter-dependencies between task and hooks

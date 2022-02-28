@@ -1,0 +1,1 @@
+ALTER TABLE job DROP IF EXISTS external_dependencies;
