@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/odpf/optimus/config"
@@ -23,6 +24,8 @@ var (
 	taskInputDirectory        = "in"
 	adminBuildInstanceTimeout = time.Minute * 1
 )
+
+const unsubstitutedValue = "<no value>"
 
 func adminBuildInstanceCommand(l log.Logger, conf config.Provider) *cli.Command {
 	var (
@@ -119,9 +122,14 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 		}
 	}
 
+	var keysWithUnsubstitutedValue []string
+
 	// write all env into a file
 	envFileBlob := ""
 	for key, val := range jobResponse.Context.Envs {
+		if strings.Contains(val, unsubstitutedValue) {
+			keysWithUnsubstitutedValue = append(keysWithUnsubstitutedValue, key)
+		}
 		envFileBlob += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 	filePath := filepath.Join(inputDirectory, models.InstanceDataTypeEnvFileName)
@@ -132,12 +140,17 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	// write all secrets into a file
 	secretsFileContent := ""
 	for key, val := range jobResponse.Context.Secrets {
+		if strings.Contains(val, unsubstitutedValue) {
+			keysWithUnsubstitutedValue = append(keysWithUnsubstitutedValue, key)
+		}
 		secretsFileContent += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 	secretsFilePath := filepath.Join(inputDirectory, models.InstanceDataTypeSecretFileName)
 	if err := writeToFileFn(secretsFilePath, secretsFileContent, l.Writer()); err != nil {
 		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
 	}
+
+	l.Warn(coloredNotice(fmt.Sprintf("Value not substituted for keys:\n%s", strings.Join(keysWithUnsubstitutedValue, "\n"))))
 
 	return nil
 }
