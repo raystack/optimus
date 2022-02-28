@@ -703,13 +703,8 @@ class ExternalHttpSensor(BaseSensorOperator):
 
     def poke(self, context: 'Context') -> bool:
         self.log.info('Poking: %s', self.endpoint)
-        try:
-            r = requests.get(self.endpoint, headers=self.headers, params=self.request_params)
-            if (r.status_code >= 200 and r.status_code <=300):
-               return True
-        except AirflowException as exc:
-            if str(exc).startswith("404"):
-                return False
-            raise exc
+        r = requests.get(self.endpoint, headers=self.headers, params=self.request_params)
+        if (r.status_code >= 200 and r.status_code <=300):
+           return True
         return False
 
