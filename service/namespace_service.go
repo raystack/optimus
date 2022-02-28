@@ -13,6 +13,7 @@ type NamespaceRepoFactory interface {
 
 type NamespaceService interface {
 	Get(context.Context, string, string) (models.NamespaceSpec, error)
+	GetOptional(context.Context, string, string) (models.NamespaceSpec, error)
 	Save(context.Context, string, models.NamespaceSpec) error
 	GetAll(context.Context, string) ([]models.NamespaceSpec, error)
 }
@@ -41,6 +42,28 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 	projectSpec, err := s.projectService.Get(ctx, projectName)
 	if err != nil {
 		return models.NamespaceSpec{}, err
+	}
+
+	nsRepo := s.namespaceRepoFac.New(projectSpec)
+	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
+	if err != nil {
+		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
+	}
+
+	return nsSpec, nil
+}
+
+// GetOptional is used for optionally getting namespace if name is present, otherwise get only project
+func (s namespaceService) GetOptional(ctx context.Context, projectName string, namespaceName string) (models.NamespaceSpec, error) {
+	projectSpec, err := s.projectService.Get(ctx, projectName)
+	if err != nil {
+		return models.NamespaceSpec{}, err
+	}
+
+	if namespaceName == "" {
+		nsSpec := models.NamespaceSpec{}
+		nsSpec.ProjectSpec = projectSpec
+		return nsSpec, nil
 	}
 
 	nsRepo := s.namespaceRepoFac.New(projectSpec)
