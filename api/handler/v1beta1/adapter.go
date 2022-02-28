@@ -36,12 +36,23 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		}
 		endDate = &end
 	}
-
+	// prep external dependencies
+	var externalDependencies models.ExternalDependency
 	// prep dirty dependencies
 	dependencies := map[string]models.JobSpecDependency{}
 	for _, dep := range spec.Dependencies {
-		dependencies[dep.GetName()] = models.JobSpecDependency{
-			Type: models.JobSpecDependencyType(dep.GetType()),
+		if dep.GetName() != "" {
+			dependencies[dep.GetName()] = models.JobSpecDependency{
+				Type: models.JobSpecDependencyType(dep.GetType()),
+			}
+		}
+		if dep.HttpDependency != nil {
+			externalDependencies.HTTPDependencies = append(externalDependencies.HTTPDependencies, models.HTTPDependency{
+				Name:          dep.HttpDependency.Name,
+				RequestParams: dep.HttpDependency.Params,
+				URL:           dep.HttpDependency.Url,
+				Headers:       dep.HttpDependency.Headers,
+			})
 		}
 	}
 
@@ -122,9 +133,10 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 			Config: taskConfigs,
 			Window: window,
 		},
-		Dependencies: dependencies,
-		Hooks:        hooks,
-		Metadata:     metadata,
+		Dependencies:         dependencies,
+		Hooks:                hooks,
+		Metadata:             metadata,
+		ExternalDependencies: externalDependencies,
 	}, nil
 }
 
@@ -204,6 +216,18 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		conf.Dependencies = append(conf.Dependencies, &pb.JobDependency{
 			Name: name,
 			Type: dep.Type.String(),
+		})
+	}
+
+	//prep external dependencies for proto
+	for _, httpDep := range spec.ExternalDependencies.HTTPDependencies {
+		conf.Dependencies = append(conf.Dependencies, &pb.JobDependency{
+			HttpDependency: &pb.HttpDependency{
+				Name:    httpDep.Name,
+				Url:     httpDep.URL,
+				Headers: httpDep.Headers,
+				Params:  httpDep.RequestParams,
+			},
 		})
 	}
 

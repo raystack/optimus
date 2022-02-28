@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from typing import List
 import pendulum
-
+from typing import Any, Callable, Dict, List, Optional
 import requests
 from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
 from airflow.providers.cncf.kubernetes.utils import pod_launcher
@@ -589,3 +589,39 @@ def alert_failed_to_slack(context):
         channel=SLACK_CHANNEL
     )
     return failed_alert.execute(context=context)
+
+class ExternalHttpSensor(BaseSensorOperator):
+    """
+    Executes a HTTP GET statement and returns False on failure caused by
+    404 Not Found
+
+    :param method: The HTTP request method to use
+    :param endpoint: The relative part of the full url
+    :param request_params: The parameters to be added to the GET url
+    :param headers: The HTTP headers to be added to the GET request
+
+    """
+
+    template_fields = ('endpoint', 'request_params', 'headers')
+
+    def __init__(
+        self,
+        endpoint: str,
+        method: str = 'GET',
+        request_params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, Any]] = None,
+        *args,
+        **kwargs,
+        ) -> None:
+        kwargs['mode'] = kwargs.get('mode', 'reschedule')
+        super().__init__(**kwargs)
+        self.endpoint = endpoint
+        self.request_params = request_params or {}
+        self.headers = headers or {}
+
+    def poke(self, context: 'Context') -> bool:
+        self.log.info('Poking: %s', self.endpoint)
+        r = requests.get(url=self.endpoint, headers=self.headers, params=self.request_params)
+        if (r.status_code >= 200 and r.status_code <=300):
+           return True
+        return False
