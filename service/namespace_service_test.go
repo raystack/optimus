@@ -90,7 +90,7 @@ func TestNamespaceService(t *testing.T) {
 			assert.Equal(t, namespace.ID, ns.ID)
 		})
 	})
-	t.Run("GetOptional", func(t *testing.T) {
+	t.Run("GetNamespaceOptionally", func(t *testing.T) {
 		t.Run("return error when projectService returns error", func(t *testing.T) {
 			projService := new(mock.ProjectService)
 			projService.On("Get", ctx, "invalid").
@@ -99,7 +99,7 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nil)
 
-			_, err := svc.GetOptional(ctx, "invalid", "namespace")
+			_, _, err := svc.GetNamespaceOptionally(ctx, "invalid", "namespace")
 			assert.NotNil(t, err)
 			assert.Equal(t, "project not found", err.Error())
 		})
@@ -117,7 +117,7 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nsRepoFactory)
 
-			_, err := svc.GetOptional(ctx, project.Name, "nonexistent")
+			_, _, err := svc.GetNamespaceOptionally(ctx, project.Name, "nonexistent")
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
 		})
@@ -126,10 +126,10 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nil)
 
-			ns, err := svc.GetOptional(ctx, project.Name, "")
+			proj, ns, err := svc.GetNamespaceOptionally(ctx, project.Name, "")
 			assert.Nil(t, err)
-			assert.Equal(t, "optimus-project", ns.ProjectSpec.Name)
-			assert.Equal(t, project.ID, ns.ProjectSpec.ID)
+			assert.Equal(t, "optimus-project", proj.Name)
+			assert.Equal(t, project.ID, proj.ID)
 
 			assert.Equal(t, "", ns.Name)
 		})
@@ -146,10 +146,10 @@ func TestNamespaceService(t *testing.T) {
 
 			svc := service.NewNamespaceService(projService, nsRepoFactory)
 
-			ns, err := svc.GetOptional(ctx, project.Name, namespace.Name)
+			proj, ns, err := svc.GetNamespaceOptionally(ctx, project.Name, namespace.Name)
 			assert.Nil(t, err)
-			assert.Equal(t, "optimus-project", ns.ProjectSpec.Name)
-			assert.Equal(t, project.ID, ns.ProjectSpec.ID)
+			assert.Equal(t, "optimus-project", proj.Name)
+			assert.Equal(t, project.ID, proj.ID)
 
 			assert.Equal(t, "sample-namespace", ns.Name)
 			assert.Equal(t, namespace.ID, ns.ID)

@@ -37,13 +37,13 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
 
-	namespaceSpec, err := s.nsService.GetOptional(ctx, projectName, namespaceName)
+	proj, namespace, err := s.nsService.GetNamespaceOptionally(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
-	err = repo.Save(ctx, namespaceSpec, item)
+	repo := s.secretRepoFac.New(proj)
+	err = repo.Save(ctx, namespace, item)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while saving secret")
 	}
@@ -55,13 +55,13 @@ func (s secretService) Update(ctx context.Context, projectName string, namespace
 		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
 
-	namespaceSpec, err := s.nsService.GetOptional(ctx, projectName, namespaceName)
+	proj, namespace, err := s.nsService.GetNamespaceOptionally(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
-	err = repo.Update(ctx, namespaceSpec, item)
+	repo := s.secretRepoFac.New(proj)
+	err = repo.Update(ctx, namespace, item)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while updating secret")
 	}
@@ -83,13 +83,13 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 }
 
 func (s secretService) Delete(ctx context.Context, projectName, namespaceName, secretName string) error {
-	namespaceSpec, err := s.nsService.GetOptional(ctx, projectName, namespaceName)
+	proj, namespace, err := s.nsService.GetNamespaceOptionally(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
-	err = repo.Delete(ctx, namespaceSpec, secretName)
+	repo := s.secretRepoFac.New(proj)
+	err = repo.Delete(ctx, namespace, secretName)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while deleting secret")
 	}
