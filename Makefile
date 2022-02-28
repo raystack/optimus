@@ -10,6 +10,7 @@ PROTON_COMMIT := "2a30976f7b40884ddd90e1792576c0941426e8bc"
 .PHONY: build test generate pack-files generate-proto unit-test smoke-test integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
+INTEGRATION_TEST_PATH?=./store
 
 build: generate # build optimus binary
 	@echo " > building optimus version ${OPMS_VERSION}"
@@ -32,13 +33,13 @@ generate-proto: ## regenerate protos
 	@echo " > protobuf compilation finished"
 
 unit-test:
-	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 5 -cover -race -timeout 1m -tags=unit_test
+	go test -count 1 -cover -race -timeout 1m -tags=unit_test ./...
 
 smoke-test: build
 	@bash ./scripts/smoke-test.sh
 
-integration-test: 
-	go list ./... | grep -v -e third_party -e api/proto | xargs go test -count 1 -cover -race -timeout 1m
+integration-test:
+	go test -count 1 -cover -race -timeout 1m $(INTEGRATION_TEST_PATH)/...
 
 vet: ## run go vet
 	go vet ./...
