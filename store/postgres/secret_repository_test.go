@@ -353,5 +353,16 @@ func TestSecretRepository(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource not found", err.Error())
 		})
+		t.Run("returns error when delete has error", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			sqlDB.Close() // Closing the connection
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			err := repo.Delete(ctx, namespaceSpec, "valid-secret")
+			assert.NotNil(t, err)
+			assert.Equal(t, "sql: database is closed", err.Error())
+		})
 	})
 }

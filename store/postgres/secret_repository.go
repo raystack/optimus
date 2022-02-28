@@ -202,21 +202,26 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 }
 
 func (repo *secretRepository) Delete(ctx context.Context, namespace models.NamespaceSpec, secretName string) error {
-	existingSecret, err := repo.GetByName(ctx, secretName)
-	if err != nil {
-		return err
-	}
-
 	query := repo.db.WithContext(ctx).
 		Where("project_id = ?", repo.project.ID).
-		Where("secret.id = ?", existingSecret.ID)
+		Where("name = ?", secretName)
 
+	var result *gorm.DB
 	if namespace.Name == "" {
-		return query.Where("namespace_id is null").Delete(&Secret{}).Error
+		result = query.Where("namespace_id is null").Delete(&Secret{})
+	} else {
+		result = query.Where("namespace_id = ?", namespace.ID).Delete(&Secret{})
 	}
 
-	return query.Where("namespace_id = ?", namespace.ID).
-		Delete(&Secret{}).Error
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return store.ErrResourceNotFound
+	}
+
+	return nil
 }
 
 func NewSecretRepository(db *gorm.DB, project models.ProjectSpec, hash models.ApplicationKey) *secretRepository {
