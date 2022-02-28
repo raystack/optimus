@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -34,37 +33,56 @@ func NewSecretService(projectService ProjectService, namespaceService NamespaceS
 
 func (s secretService) Save(ctx context.Context, projectName string, namespaceName string, item models.ProjectSecretItem) error {
 	if item.Name == "" {
-		return errors.New("secret name cannot be empty")
+		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
 
-	// TODO: Add new service method to get only project and namespace id for names
-	namespaceSpec, err := s.nsService.Get(ctx, projectName, namespaceName)
-	if err != nil {
-		return err
+	var projectSpec models.ProjectSpec
+	namespaceSpec := models.NamespaceSpec{}
+	var err error
+	if namespaceName == "" { // Namespace is optional for secrets
+		if projectSpec, err = s.projService.Get(ctx, projectName); err != nil {
+			return err
+		}
+	} else {
+		namespaceSpec, err = s.nsService.Get(ctx, projectName, namespaceName)
+		if err != nil {
+			return err
+		}
+		projectSpec = namespaceSpec.ProjectSpec
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
+	repo := s.secretRepoFac.New(projectSpec)
 	err = repo.Save(ctx, namespaceSpec, item)
 	if err != nil {
-		return FromError(err, "secret", "error while saving secret")
+		return FromError(err, models.SecretEntity, "error while saving secret")
 	}
 	return nil
 }
 
 func (s secretService) Update(ctx context.Context, projectName string, namespaceName string, item models.ProjectSecretItem) error {
 	if item.Name == "" {
-		return errors.New("secret name cannot be empty")
+		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
 
-	namespaceSpec, err := s.nsService.Get(ctx, projectName, namespaceName)
-	if err != nil {
-		return err
+	var projectSpec models.ProjectSpec
+	namespaceSpec := models.NamespaceSpec{}
+	var err error
+	if namespaceName == "" { // Namespace is optional for secrets
+		if projectSpec, err = s.projService.Get(ctx, projectName); err != nil {
+			return err
+		}
+	} else {
+		namespaceSpec, err = s.nsService.Get(ctx, projectName, namespaceName)
+		if err != nil {
+			return err
+		}
+		projectSpec = namespaceSpec.ProjectSpec
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
+	repo := s.secretRepoFac.New(projectSpec)
 	err = repo.Update(ctx, namespaceSpec, item)
 	if err != nil {
-		return FromError(err, "secret", "error while updating secret")
+		return FromError(err, models.SecretEntity, "error while updating secret")
 	}
 	return nil
 }
@@ -78,7 +96,7 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 	repo := s.secretRepoFac.New(projectSpec)
 	secretItems, err := repo.GetAll(ctx)
 	if err != nil {
-		return []models.SecretItemInfo{}, FromError(err, "secret", "error while saving secret")
+		return []models.SecretItemInfo{}, FromError(err, models.SecretEntity, "error while saving secret")
 	}
 	return secretItems, nil
 }

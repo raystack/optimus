@@ -51,7 +51,7 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 	}
 }
 
-func replayCommand(l log.Logger, conf config.Provider) *cli.Command {
+func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "replay",
 		Short: "Re-running jobs in order to update data for older dates/partitions",

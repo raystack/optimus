@@ -43,3 +43,13 @@ func (n *NamespaceService) Get(ctx context.Context, projectName, namespaceName s
 	args := n.Called(ctx, projectName, namespaceName)
 	return args.Get(0).(models.NamespaceSpec), args.Error(1)
 }
+
+func (n *NamespaceService) Save(ctx context.Context, prjName string, namespace models.NamespaceSpec) error {
+	args := n.Called(ctx, prjName, namespace)
+	return args.Error(0)
+}
+
+func (n *NamespaceService) GetAll(ctx context.Context, prjName string) ([]models.NamespaceSpec, error) {
+	args := n.Called(ctx, prjName)
+	return args.Get(0).([]models.NamespaceSpec), args.Error(1)
+}

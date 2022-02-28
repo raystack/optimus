@@ -252,18 +252,18 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 	}
 }
 
-func checkRequiredConfigs(conf config.Provider) error {
+func checkRequiredConfigs(conf config.ServerConfig) error {
 	errRequiredMissing := errors.New("required config missing")
-	if conf.GetServe().IngressHost == "" {
+	if conf.IngressHost == "" {
 		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
 	}
-	if conf.GetServe().ReplayNumWorkers < 1 {
+	if conf.ReplayNumWorkers < 1 {
 		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
 	}
-	if conf.GetServe().DB.DSN == "" {
+	if conf.DB.DSN == "" {
 		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
 	}
-	if parsed, err := url.Parse(conf.GetServe().DB.DSN); err != nil {
+	if parsed, err := url.Parse(conf.DB.DSN); err != nil {
 		return errors.Wrap(err, "failed to parse serve.db.dsn")
 	} else {
 		if parsed.Scheme != "postgres" {
@@ -273,8 +273,8 @@ func checkRequiredConfigs(conf config.Provider) error {
 	return nil
 }
 
-func Initialize(l log.Logger, conf config.Provider) error {
-	if err := checkRequiredConfigs(conf); err != nil {
+func Initialize(l log.Logger, conf config.Optimus) error {
+	if err := checkRequiredConfigs(conf.Server); err != nil {
 		return err
 	}
 	l.Info("starting optimus", "version", config.Version)
@@ -283,18 +283,18 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	}
 
 	// setup db
-	if err := postgres.Migrate(conf.GetServe().DB.DSN); err != nil {
+	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
 		return errors.Wrap(err, "postgres.Migrate")
 	}
-	dbConn, err := postgres.Connect(conf.GetServe().DB.DSN, conf.GetServe().DB.MaxIdleConnection,
-		conf.GetServe().DB.MaxOpenConnection, l.Writer())
+	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
+		conf.Server.DB.MaxOpenConnection, l.Writer())
 	if err != nil {
 		return errors.Wrap(err, "postgres.Connect")
 	}
 
-	jobCompiler := compiler.NewCompiler(conf.GetServe().IngressHost)
+	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
-	switch conf.GetScheduler().Name {
+	switch conf.Scheduler.Name {
 	case "airflow":
 		models.BatchScheduler = airflow.NewScheduler(
 			&airflowBucketFactory{},
@@ -308,7 +308,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			jobCompiler,
 		)
 	default:
-		return errors.Errorf("unsupported scheduler: %s", conf.GetScheduler().Name)
+		return errors.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 	jobrunRepoFac := &jobRunRepoFactory{
 		db: dbConn,
@@ -321,7 +321,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	)
 
 	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.GetServe().AppKey)
+	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
 	if err != nil {
 		return errors.Wrap(err, "NewApplicationSecret")
 	}
@@ -332,7 +332,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		db:   dbConn,
 		hash: appHash,
 	}
-	if !conf.GetScheduler().SkipInit {
+	if !conf.Scheduler.SkipInit {
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
 			return errors.Wrap(err, "projectRepoFactory.GetAll()")
@@ -391,7 +391,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
-	grpcAddr := fmt.Sprintf("%s:%d", conf.GetServe().Host, conf.GetServe().Port)
+	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -437,9 +437,9 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		},
 	)
 	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    conf.GetServe().ReplayNumWorkers,
-		WorkerTimeout: conf.GetServe().ReplayWorkerTimeout,
-		RunTimeout:    conf.GetServe().ReplayRunTimeout,
+		NumWorkers:    conf.Server.ReplayNumWorkers,
+		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
+		RunTimeout:    conf.Server.ReplayRunTimeout,
 	}, models.BatchScheduler, replayValidator, replaySyncer)
 	backupRepoFac := backupRepoFactory{
 		db: dbConn,
@@ -472,8 +472,8 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		),
 		eventService,
 		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
-		projectRepoFac,
-		namespaceSpecRepoFac,
+		projectService,
+		namespaceService,
 		secretService,
 		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
@@ -549,9 +549,9 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			return time.Now().UTC()
 		},
 	)
-	if conf.GetScheduler().NodeID != "" {
+	if conf.Scheduler.NodeID != "" {
 		// start optimus cluster
-		if err := clusterServer.Init(clusterCtx, conf.GetScheduler()); err != nil {
+		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
 			clusterCancel()
 			return err
 		}
