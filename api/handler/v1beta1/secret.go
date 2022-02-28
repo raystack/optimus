@@ -65,7 +65,7 @@ func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSec
 }
 
 func (sv *RuntimeServiceServer) DeleteSecret(ctx context.Context, req *pb.DeleteSecretRequest) (*pb.DeleteSecretResponse, error) {
-	if err := sv.secretService.Delete(ctx, req.GetProjectName(), req.GetSecretName()); err != nil {
+	if err := sv.secretService.Delete(ctx, req.GetProjectName(), req.GetNamespaceName(), req.GetSecretName()); err != nil {
 		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to delete secret %s", req.GetSecretName()))
 	}
 

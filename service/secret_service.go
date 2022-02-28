@@ -11,7 +11,7 @@ type SecretService interface {
 	Save(context.Context, string, string, models.ProjectSecretItem) error
 	Update(context.Context, string, string, models.ProjectSecretItem) error
 	List(context.Context, string) ([]models.SecretItemInfo, error)
-	Delete(context.Context, string, string) error
+	Delete(context.Context, string, string, string) error
 }
 
 type SecretRepoFactory interface {
@@ -102,14 +102,14 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 	return secretItems, nil
 }
 
-func (s secretService) Delete(ctx context.Context, prjName string, secretName string) error {
-	projectSpec, err := s.projService.Get(ctx, prjName)
+func (s secretService) Delete(ctx context.Context, projectName, namespaceName, secretName string) error {
+	namespaceSpec, err := s.nsService.GetOptional(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(projectSpec)
-	err = repo.Delete(ctx, secretName)
+	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
+	err = repo.Delete(ctx, namespaceSpec, secretName)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while deleting secret")
 	}

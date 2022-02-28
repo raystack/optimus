@@ -213,7 +213,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 	t.Run("DeleteSecret", func(t *testing.T) {
 		t.Run("returns error when service has error", func(t *testing.T) {
 			secretService := new(mock.SecretService)
-			secretService.On("Delete", ctx, projectSpec.Name, "hello").
+			secretService.On("Delete", ctx, projectSpec.Name, "", "hello").
 				Return(errors.New("random error"))
 			defer secretService.AssertExpectations(t)
 
@@ -229,15 +229,16 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 		})
 		t.Run("deletes the secret successfully", func(t *testing.T) {
 			secretService := new(mock.SecretService)
-			secretService.On("Delete", ctx, projectSpec.Name, "hello").
+			secretService.On("Delete", ctx, projectSpec.Name, namespaceSpec.Name, "hello").
 				Return(nil)
 			defer secretService.AssertExpectations(t)
 
 			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
 
 			secretRequest := pb.DeleteSecretRequest{
-				ProjectName: projectSpec.Name,
-				SecretName:  "hello",
+				ProjectName:   projectSpec.Name,
+				NamespaceName: namespaceSpec.Name,
+				SecretName:    "hello",
 			}
 			_, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
 			assert.Nil(t, err)

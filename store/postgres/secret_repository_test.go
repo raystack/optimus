@@ -294,23 +294,64 @@ func TestSecretRepository(t *testing.T) {
 		})
 	})
 	t.Run("Delete", func(t *testing.T) {
-		t.Run("deletes the secret with given name", func(t *testing.T) {
+		t.Run("deletes the secret for namespace", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			secret := models.ProjectSecretItem{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "t-optimus-delete",
+				Value: "super-secret",
+				Type:  models.SecretTypeUserDefined,
+			}
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, secret))
+			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, err)
+
+			err = repo.Delete(ctx, namespaceSpec, secret.Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, secret.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
+		})
+		t.Run("deletes the secret for project", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			secret := models.ProjectSecretItem{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "t-optimus-delete",
+				Value: "super-secret",
+				Type:  models.SecretTypeUserDefined,
+			}
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, secret))
+			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, err)
+
+			err = repo.Delete(ctx, models.NamespaceSpec{}, secret.Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, secret.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
+		})
+		t.Run("returns error when non existing is deleted", func(t *testing.T) {
 			db := DBSetup()
 			sqlDB, _ := db.DB()
 			defer sqlDB.Close()
 
 			repo := NewSecretRepository(db, projectSpec, hash)
 
-			var testModels []models.ProjectSecretItem
-			testModels = append(testModels, testConfigs...)
-			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
-
-			err := repo.Delete(ctx, testModels[2].Name)
-			assert.Nil(t, err)
-
-			_, err = repo.GetByName(ctx, testModels[2].Name)
+			err := repo.Delete(ctx, namespaceSpec, "invalid")
 			assert.NotNil(t, err)
-			assert.Equal(t, store.ErrResourceNotFound, err)
+			assert.Equal(t, "resource not found", err.Error())
 		})
 	})
 }

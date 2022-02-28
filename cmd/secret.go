@@ -162,8 +162,9 @@ func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		}
 
 		deleteSecretRequest := &pb.DeleteSecretRequest{
-			ProjectName: projectName,
-			SecretName:  secretName,
+			ProjectName:   projectName,
+			SecretName:    secretName,
+			NamespaceName: conf.Namespace.Name,
 		}
 		return deleteSecret(l, conf.Host, deleteSecretRequest)
 	}

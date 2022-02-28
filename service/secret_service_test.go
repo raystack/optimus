@@ -192,36 +192,35 @@ func TestSecretService(t *testing.T) {
 			assert.Equal(t, secretItems, list)
 		})
 	})
-
 	t.Run("Delete", func(t *testing.T) {
-		t.Run("returns error when project has error", func(t *testing.T) {
-			projService := new(mock.ProjectService)
-			projService.On("Get", ctx, project.Name).
-				Return(models.ProjectSpec{}, errors.New("error in getting project"))
-			defer projService.AssertExpectations(t)
+		t.Run("returns error when error during getting namespace", func(t *testing.T) {
+			nsService := new(mock.NamespaceService)
+			nsService.On("GetOptional", ctx, project.Name, "").
+				Return(models.NamespaceSpec{}, errors.New("error in getting project"))
+			defer nsService.AssertExpectations(t)
 
-			svc := service.NewSecretService(projService, nil, nil)
+			svc := service.NewSecretService(nil, nsService, nil)
 
-			err := svc.Delete(ctx, project.Name, "hello")
+			err := svc.Delete(ctx, project.Name, "", "hello")
 			assert.NotNil(t, err)
 			assert.Equal(t, "error in getting project", err.Error())
 		})
 		t.Run("deletes the secret successfully", func(t *testing.T) {
-			projService := new(mock.ProjectService)
-			projService.On("Get", ctx, project.Name).Return(project, nil)
-			defer projService.AssertExpectations(t)
+			nsService := new(mock.NamespaceService)
+			nsService.On("GetOptional", ctx, project.Name, "namespace").Return(namespace, nil)
+			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("Delete", ctx, "hello").Return(nil)
+			secretRepo.On("Delete", ctx, namespace, "hello").Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
 			secretRepoFac := new(mock.ProjectSecretRepoFactory)
 			secretRepoFac.On("New", project).Return(secretRepo)
 			defer secretRepoFac.AssertExpectations(t)
 
-			svc := service.NewSecretService(projService, nil, secretRepoFac)
+			svc := service.NewSecretService(nil, nsService, secretRepoFac)
 
-			err := svc.Delete(ctx, project.Name, "hello")
+			err := svc.Delete(ctx, project.Name, "namespace", "hello")
 			assert.Nil(t, err)
 		})
 	})

@@ -201,10 +201,21 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	return secretItems, nil
 }
 
-func (repo *secretRepository) Delete(ctx context.Context, secretName string) error {
-	return repo.db.WithContext(ctx).
+func (repo *secretRepository) Delete(ctx context.Context, namespace models.NamespaceSpec, secretName string) error {
+	existingSecret, err := repo.GetByName(ctx, secretName)
+	if err != nil {
+		return err
+	}
+
+	query := repo.db.WithContext(ctx).
 		Where("project_id = ?", repo.project.ID).
-		Where("name = ?", secretName).
+		Where("secret.id = ?", existingSecret.ID)
+
+	if namespace.Name == "" {
+		return query.Where("namespace_id is null").Delete(&Secret{}).Error
+	}
+
+	return query.Where("namespace_id = ?", namespace.ID).
 		Delete(&Secret{}).Error
 }
 
