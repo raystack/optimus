@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -290,6 +291,78 @@ func TestSecretRepository(t *testing.T) {
 			assert.Equal(t, allSecrets[1].Name, testModels[2].Name)
 			assert.Equal(t, allSecrets[1].Namespace, namespaceSpec.Name)
 			assert.Equal(t, string(allSecrets[1].Type), string(testModels[2].Type))
+		})
+	})
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("deletes the secret for namespace", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			secret := models.ProjectSecretItem{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "t-optimus-delete",
+				Value: "super-secret",
+				Type:  models.SecretTypeUserDefined,
+			}
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, secret))
+			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, err)
+
+			err = repo.Delete(ctx, namespaceSpec, secret.Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, secret.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
+		})
+		t.Run("deletes the secret for project", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			secret := models.ProjectSecretItem{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "t-optimus-delete",
+				Value: "super-secret",
+				Type:  models.SecretTypeUserDefined,
+			}
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, secret))
+			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, err)
+
+			err = repo.Delete(ctx, models.NamespaceSpec{}, secret.Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, secret.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
+		})
+		t.Run("returns error when non existing is deleted", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			err := repo.Delete(ctx, namespaceSpec, "invalid")
+			assert.NotNil(t, err)
+			assert.Equal(t, "resource not found", err.Error())
+		})
+		t.Run("returns error when delete has error", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			sqlDB.Close() // Closing the connection
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			err := repo.Delete(ctx, namespaceSpec, "valid-secret")
+			assert.NotNil(t, err)
+			assert.Equal(t, "sql: database is closed", err.Error())
 		})
 	})
 }

@@ -50,6 +50,8 @@ type RuntimeServiceClient interface {
 	UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error)
 	// ListSecrets shows the secrets registered for a project
 	ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error)
+	// DeleteSecret deletes a secret for a project
+	DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error)
 	// ListProjects returns list of registered projects and configurations
 	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
@@ -263,6 +265,15 @@ func (c *runtimeServiceClient) UpdateSecret(ctx context.Context, in *UpdateSecre
 func (c *runtimeServiceClient) ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error) {
 	out := new(ListSecretsResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/ListSecrets", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runtimeServiceClient) DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error) {
+	out := new(DeleteSecretResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/DeleteSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -508,6 +519,8 @@ type RuntimeServiceServer interface {
 	UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error)
 	// ListSecrets shows the secrets registered for a project
 	ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error)
+	// DeleteSecret deletes a secret for a project
+	DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error)
 	// ListProjects returns list of registered projects and configurations
 	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
@@ -593,6 +606,9 @@ func (UnimplementedRuntimeServiceServer) UpdateSecret(context.Context, *UpdateSe
 }
 func (UnimplementedRuntimeServiceServer) ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSecrets not implemented")
+}
+func (UnimplementedRuntimeServiceServer) DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSecret not implemented")
 }
 func (UnimplementedRuntimeServiceServer) ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListProjects not implemented")
@@ -921,6 +937,24 @@ func _RuntimeService_ListSecrets_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuntimeServiceServer).ListSecrets(ctx, req.(*ListSecretsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuntimeService_DeleteSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeServiceServer).DeleteSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/DeleteSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeServiceServer).DeleteSecret(ctx, req.(*DeleteSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1342,6 +1376,10 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSecrets",
 			Handler:    _RuntimeService_ListSecrets_Handler,
+		},
+		{
+			MethodName: "DeleteSecret",
+			Handler:    _RuntimeService_DeleteSecret_Handler,
 		},
 		{
 			MethodName: "ListProjects",

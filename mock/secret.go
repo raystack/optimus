@@ -39,6 +39,10 @@ func (pr *ProjectSecretRepository) GetAll(ctx context.Context) ([]models.SecretI
 	return args.Get(0).([]models.SecretItemInfo), args.Error(1)
 }
 
+func (pr *ProjectSecretRepository) Delete(ctx context.Context, namespace models.NamespaceSpec, secretName string) error {
+	return pr.Called(ctx, namespace, secretName).Error(0)
+}
+
 type SecretService struct {
 	mock.Mock
 }
@@ -54,4 +58,8 @@ func (s *SecretService) Update(ctx context.Context, prjName string, nsName strin
 func (s *SecretService) List(ctx context.Context, prjName string) ([]models.SecretItemInfo, error) {
 	args := s.Called(ctx, prjName)
 	return args.Get(0).([]models.SecretItemInfo), args.Error(1)
+}
+
+func (s *SecretService) Delete(ctx context.Context, prjName, namespaceName, secretName string) error {
+	return s.Called(ctx, prjName, namespaceName, secretName).Error(0)
 }

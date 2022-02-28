@@ -49,6 +49,7 @@ type ProjectSecretRepository interface {
 	Update(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
 	GetByName(context.Context, string) (models.ProjectSecretItem, error)
 	GetAll(context.Context) ([]models.SecretItemInfo, error)
+	Delete(context.Context, models.NamespaceSpec, string) error
 }
 
 // NamespaceRepository represents a storage interface for registered namespaces
