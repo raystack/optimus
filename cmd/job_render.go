@@ -13,10 +13,6 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-var (
-	templateEngine = run.NewGoEngine()
-)
-
 func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "render",
@@ -50,6 +46,7 @@ func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.
 		now := time.Now()
 		l.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
 
+		templateEngine := run.NewGoEngine()
 		templates, err := run.DumpAssets(jobSpec, now, templateEngine, true)
 		if err != nil {
 			return err

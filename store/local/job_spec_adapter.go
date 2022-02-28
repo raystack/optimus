@@ -19,11 +19,11 @@ import (
 
 const (
 	JobConfigVersion = 1
+	HoursInMonth     = time.Duration(30) * 24 * time.Hour
 )
 
 var (
 	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)")
-	HoursInMonth         = time.Duration(30) * 24 * time.Hour
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 

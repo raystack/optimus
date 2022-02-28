@@ -14,10 +14,13 @@ import (
 	"github.com/odpf/salt/log"
 )
 
-var (
-	ReplayStatusToSynced = []string{models.ReplayStatusReplayed, models.ReplayStatusInProgress, models.ReplayStatusAccepted}
+const (
 	ReplayMessageSuccess = "all instances for this replay are successfully run"
 	ReplayMessageFailed  = "instance run failure found"
+)
+
+var (
+	ReplayStatusToSynced = []string{models.ReplayStatusReplayed, models.ReplayStatusInProgress, models.ReplayStatusAccepted}
 	replaySyncerCounter  = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "replay_synced",
 		Help: "Number of times replay syncer finished syncing",

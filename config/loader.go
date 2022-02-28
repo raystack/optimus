@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
+const (
 	ErrFailedToRead = "unable to read optimus config file %v (%s)"
 	FileName        = ".optimus"
 	FileExtension   = "yaml"

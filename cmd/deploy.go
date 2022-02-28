@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
+const (
 	deploymentTimeout = time.Minute * 15
 )
 

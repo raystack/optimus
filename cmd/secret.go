@@ -22,7 +22,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-var (
+const (
 	secretTimeout = time.Minute * 2
 )
 

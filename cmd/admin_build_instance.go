@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var (
+const (
 	taskInputDirectory        = "in"
 	adminBuildInstanceTimeout = time.Minute * 1
 )

@@ -16,7 +16,10 @@ import (
 )
 
 var (
-	tableNameParseRegex     = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
+	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
+)
+
+const (
 	errorReadTableSpec      = "failed to read table spec for bigquery"
 	backupTimePostfixFormat = "2006_01_02_15_04_05"
 )

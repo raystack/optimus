@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
+const (
 	runJobTimeout = time.Minute * 1
 )
 

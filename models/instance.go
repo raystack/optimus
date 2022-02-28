@@ -43,7 +43,7 @@ func (I JobRunTrigger) String() string {
 	return string(I)
 }
 
-var (
+const (
 
 	// assignment , non terminating state
 	RunStatePending JobRunState = "pending"
