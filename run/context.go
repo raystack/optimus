@@ -44,7 +44,7 @@ type ContextManager struct {
 }
 
 // Generate fetches and compiles all config data related to an instance and
-// returns a map of env variables and a map[fileName]fileContent
+// returns jobRunInput, containing config required for running the job.
 // It compiles any templates/macros present in the config.
 func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
 	contextForTemplates := map[string]interface{}{}
@@ -55,7 +55,7 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.Jo
 	utils.AppendToMap(contextForTemplates, prefixKeysOf(projectConfig, ProjectConfigPrefix))
 
 	// Collect secrets
-	secretMap := fm.createSecretsMap()
+	secretMap := getSecretsMap(fm.secrets)
 	contextForTemplates["secret"] = secretMap
 
 	// Collect instance env for templating
@@ -166,10 +166,10 @@ func (fm *ContextManager) compileTemplates(templateValueMap map[string]string, t
 	return templateValueMap, nil
 }
 
-func (fm *ContextManager) createSecretsMap() map[string]string {
+func getSecretsMap(secrets models.ProjectSecrets) map[string]string {
 	secretsMap := map[string]string{}
 
-	for _, s := range fm.secrets {
+	for _, s := range secrets {
 		secretsMap[s.Name] = s.Value
 	}
 	return secretsMap

@@ -150,7 +150,9 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
 	}
 
-	l.Warn(coloredNotice(fmt.Sprintf("Value not substituted for keys:\n%s", strings.Join(keysWithUnsubstitutedValue, "\n"))))
+	if len(keysWithUnsubstitutedValue) > 0 {
+		l.Warn(coloredNotice(fmt.Sprintf("Value not substituted for keys:\n%s", strings.Join(keysWithUnsubstitutedValue, "\n"))))
+	}
 
 	return nil
 }

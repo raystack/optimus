@@ -451,7 +451,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	for _, c := range conf.Task.Config {
 		taskConf = append(taskConf, models.JobSpecConfigItem{
 			Name:  c.Key.(string),
-			Value: c.Value.(string),
+			Value: c.Value.(string), // TODO: panics when value not valid, error with macros
 		})
 	}
 
