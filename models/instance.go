@@ -132,7 +132,7 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 }
 
 type JobRunInput struct {
-	EnvMap     map[string]string
+	ConfigMap  map[string]string
 	FileMap    map[string]string
 	SecretsMap map[string]string
 }

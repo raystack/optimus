@@ -150,7 +150,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
 			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
-					EnvMap: map[string]string{
+					ConfigMap: map[string]string{
 						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
@@ -216,7 +216,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
 			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
-					EnvMap: map[string]string{
+					ConfigMap: map[string]string{
 						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),

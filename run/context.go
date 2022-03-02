@@ -47,42 +47,71 @@ type ContextManager struct {
 // returns jobRunInput, containing config required for running the job.
 // It compiles any templates/macros present in the config.
 func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
-	contextForTemplates := map[string]interface{}{}
+	var configMap map[string]string
+	var secretConfigs map[string]string
 
-	// Collect project config
-	projectConfig := fm.collectProjectConfigs()
-	contextForTemplates["proj"] = projectConfig
-	utils.AppendToMap(contextForTemplates, prefixKeysOf(projectConfig, ProjectConfigPrefix))
-
-	// Collect secrets
-	secretMap := getSecretsMap(fm.secrets)
-	contextForTemplates["secret"] = secretMap
-
-	// Collect instance env for templating
-	instanceEnvMap := getInstanceEnv(instanceSpec)
-	utils.AppendToMap(contextForTemplates, instanceEnvMap)
-	contextForTemplates["inst"] = instanceEnvMap
-
-	// Compile Task config
-	taskEnvs, secretEnvs, err := fm.compileTaskConfigs(contextForTemplates)
+	instanceConfig := getInstanceEnv(instanceSpec)
+	contextForTask := fm.createContextForTask(instanceConfig)
+	taskConfigs, taskSecretConfigs, err := fm.compileTaskConfigs(contextForTask)
 	if err != nil {
 		return nil, err
 	}
 
-	// Compile Hook config
-	var hookEnvs map[string]string
-	var hookSecretEnvs map[string]string
+	configMap = taskConfigs
+	secretConfigs = taskSecretConfigs
+
 	if instanceSpec.Type == models.InstanceTypeHook {
-		hookEnvs, hookSecretEnvs, err = fm.compileHookConfigs(instanceSpec.Name, contextForTemplates, taskEnvs)
+		contextForHook := fm.createContextForHook(contextForTask, taskConfigs, taskSecretConfigs)
+		hookConfigs, hookSecretConfigs, err := fm.compileHookConfigs(instanceSpec.Name, contextForHook)
 		if err != nil {
 			return nil, err
 		}
+		// Removed prefixedTaskConfig from configMap for hook, remove comment if no issues found in qa
+		configMap = hookConfigs
+		secretConfigs = hookSecretConfigs
 	}
 
-	envMap := utils.MergeMaps(taskEnvs, hookEnvs, instanceEnvMap)
-	envSecret := utils.MergeMaps(secretEnvs, hookSecretEnvs)
+	fileMap, err := fm.constructCompiledFileMap(instanceSpec, contextForTask)
+	if err != nil {
+		return nil, err
+	}
+	return &models.JobRunInput{
+		ConfigMap:  utils.MergeMaps(configMap, instanceConfig),
+		SecretsMap: secretConfigs,
+		FileMap:    fileMap,
+	}, nil
+}
 
-	// do the same for asset files
+func (fm *ContextManager) createContextForTask(instanceConfig map[string]string) map[string]interface{} {
+	contextForTask := map[string]interface{}{}
+
+	// Collect project config
+	projectConfig := fm.collectProjectConfigs()
+	contextForTask["proj"] = projectConfig
+	utils.AppendToMap(contextForTask, prefixKeysOf(projectConfig, ProjectConfigPrefix))
+
+	// Collect secrets
+	secretMap := getSecretsMap(fm.secrets)
+	contextForTask["secret"] = secretMap
+
+	// Collect instance config for templating
+	utils.AppendToMap(contextForTask, instanceConfig)
+	contextForTask["inst"] = instanceConfig
+	return contextForTask
+}
+
+func (fm *ContextManager) createContextForHook(initialContext map[string]interface{}, taskConfigs map[string]string, taskSecretConfigs map[string]string) map[string]interface{} {
+	// Merge taskConfig and secret config for the context
+	mergedTaskConfigs := utils.MergeMaps(taskConfigs, taskSecretConfigs)
+
+	hookContext := utils.MergeAnyMaps(initialContext)
+	hookContext["task"] = mergedTaskConfigs
+	utils.AppendToMap(hookContext, prefixKeysOf(mergedTaskConfigs, TaskConfigPrefix))
+
+	return hookContext
+}
+
+func (fm *ContextManager) constructCompiledFileMap(instanceSpec models.InstanceSpec, contextForTask map[string]interface{}) (map[string]string, error) {
 	// check if task needs to override the compilation behaviour
 	compiledAssetResponse, err := fm.jobRun.Spec.Task.Unit.CLIMod.CompileAssets(context.Background(), models.CompileAssetsRequest{
 		Window:           fm.jobRun.Spec.Task.Window,
@@ -98,14 +127,10 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.Jo
 	var fileMap map[string]string
 	instanceFileMap := getInstanceFiles(instanceSpec)
 	fileMap = utils.MergeMaps(instanceFileMap, compiledAssetResponse.Assets.ToJobSpec().ToMap())
-	if fileMap, err = fm.engine.CompileFiles(fileMap, contextForTemplates); err != nil {
+	if fileMap, err = fm.engine.CompileFiles(fileMap, contextForTask); err != nil {
 		return nil, err
 	}
-	return &models.JobRunInput{
-		EnvMap:     envMap,
-		SecretsMap: envSecret,
-		FileMap:    fileMap,
-	}, nil
+	return fileMap, nil
 }
 
 func (fm *ContextManager) collectProjectConfigs() map[string]string {
@@ -133,26 +158,19 @@ func (fm *ContextManager) compileTaskConfigs(ctx map[string]interface{}) (map[st
 	return fm.compileConfigs(fm.jobRun.Spec.Task.Config, ctx)
 }
 
-func (fm *ContextManager) compileHookConfigs(hookName string, templateContext map[string]interface{}, taskEnv map[string]string) (
+func (fm *ContextManager) compileHookConfigs(hookName string, templateContext map[string]interface{}) (
 	map[string]string, map[string]string, error) {
 	hook, err := fm.jobRun.Spec.GetHookByName(hookName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: requested hook not found %s", err.Error(), hookName)
 	}
 
-	// Add task config to context for hook
-	ctxWithTaskConfig := utils.MergeAnyMaps(templateContext)
-	ctxWithTaskConfig["task"] = taskEnv
-	prefixedTaskConfig := prefixKeysOf(taskEnv, TaskConfigPrefix)
-	utils.AppendToMap(ctxWithTaskConfig, prefixedTaskConfig)
-
-	hookConfigs, withSecrets, err := fm.compileConfigs(hook.Config, ctxWithTaskConfig)
+	hookConfigs, withSecrets, err := fm.compileConfigs(hook.Config, templateContext)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// merge transformation and hook configs
-	return utils.MergeMaps(prefixedTaskConfig, hookConfigs), withSecrets, nil
+	return hookConfigs, withSecrets, nil
 }
 
 func (fm *ContextManager) compileTemplates(templateValueMap map[string]string, templateContext map[string]interface{}) (map[string]string, error) {

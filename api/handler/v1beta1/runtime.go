@@ -191,7 +191,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		Instance:  instanceProto,
 		Namespace: sv.adapter.ToNamespaceProto(namespaceSpec),
 		Context: &pb.InstanceContext{
-			Envs:    jobRunInput.EnvMap,
+			Envs:    jobRunInput.ConfigMap,
 			Secrets: jobRunInput.SecretsMap,
 			Files:   jobRunInput.FileMap,
 		},
