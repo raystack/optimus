@@ -88,7 +88,7 @@ func getVersionRequest(clientVer string, host string) (ver string, err error) {
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	time.Sleep(time.Second * 2)
+	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
 }

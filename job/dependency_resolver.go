@@ -19,6 +19,8 @@ var (
 		"check docs how this can be done in used transformation task"
 )
 
+const IterJobDependencyNameSections = 2
+
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 }
@@ -150,8 +152,8 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 			case models.JobSpecDependencyTypeInter:
 				{
 					// extract project name
-					depParts := strings.SplitN(depName, "/", 2)
-					if len(depParts) != 2 {
+					depParts := strings.SplitN(depName, "/", IterJobDependencyNameSections)
+					if len(depParts) != IterJobDependencyNameSections {
 						return models.JobSpec{}, errors.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
 					}
 					projectName := depParts[0]

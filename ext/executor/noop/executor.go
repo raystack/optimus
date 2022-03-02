@@ -10,6 +10,8 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+const MockTaskDuration = time.Second * 5
+
 type Executor struct {
 	state map[string]models.JobRunState
 	mu    *sync.Mutex
@@ -48,7 +50,7 @@ func (e *Executor) WaitForFinish(ctx context.Context, id string) (chan int, erro
 	resultChan := make(chan int)
 	go func(id string) {
 		// simulate work
-		time.Sleep(time.Second * 5)
+		time.Sleep(MockTaskDuration)
 
 		// mark complete
 		e.mu.Lock()

@@ -235,7 +235,7 @@ func (m *Manager) Init() {
 		if int(atomic.LoadInt32(&m.workerCapacity)) == m.config.NumWorkers {
 			break
 		}
-		time.Sleep(time.Millisecond * 50)
+		time.Sleep(time.Millisecond * 50) //nolint: gomnd
 	}
 }
 

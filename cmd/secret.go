@@ -184,7 +184,7 @@ func getSecretName(args []string) (string, error) {
 func getSecretValue(args []string, filePath string, encoded bool) (string, error) {
 	var secretValue string
 	if filePath == "" {
-		if len(args) < 2 {
+		if len(args) < 2 { //nolint: gomnd
 			return "", errors.New("secret value is required")
 		}
 		secretValue = args[1]

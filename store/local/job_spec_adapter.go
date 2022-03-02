@@ -19,11 +19,12 @@ import (
 
 const (
 	JobConfigVersion = 1
+	HoursInDay       = time.Hour * 24
+	HoursInMonth     = 30 * 24 * time.Hour
 )
 
 var (
 	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)")
-	HoursInMonth         = time.Duration(30) * 24 * time.Hour
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
@@ -323,7 +324,7 @@ func (conf *Job) MergeFrom(parent Job) {
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}
-	window.Size = time.Hour * 24
+	window.Size = HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"
 

@@ -22,6 +22,8 @@ type Adapter struct {
 	supportedDatastoreRepo models.DatastoreRepo
 }
 
+const HoursInDay = time.Hour * 24
+
 func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, error) {
 	startDate, err := time.Parse(models.JobDatetimeLayout, spec.StartDate)
 	if err != nil {
@@ -143,7 +145,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}
-	window.Size = time.Hour * 24
+	window.Size = HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"
 

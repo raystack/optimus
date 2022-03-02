@@ -11,6 +11,11 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+const (
+	ProgressBarWidth    = 15
+	ProgressBarDuration = 120 * time.Millisecond
+)
+
 type ProgressBar struct {
 	spinner *spinner.Spinner
 	bar     *progressbar.ProgressBar
@@ -46,7 +51,7 @@ func (p *ProgressBar) Start(label string) {
 		}
 		return
 	} else {
-		sp := spinner.New(spinner.CharSets[11], 120*time.Millisecond,
+		sp := spinner.New(spinner.CharSets[11], ProgressBarDuration,
 			spinner.WithWriter(p.writer), spinner.WithColor("fgCyan"))
 		if label != "" {
 			sp.Suffix = " " + label
@@ -64,7 +69,7 @@ func (p *ProgressBar) StartProgress(count int, label string) {
 		progressbar.OptionSetWriter(p.writer),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(false),
-		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetWidth(ProgressBarWidth),
 		progressbar.OptionSetDescription("[cyan] "+label),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",

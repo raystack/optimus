@@ -21,6 +21,10 @@ var (
 	tableURNFormat   = "%s://%s:%s.%s"
 )
 
+const (
+	ExpectedTableNameSegments = 4
+)
+
 // TableResourceSpec is how resource will be represented in yaml
 type TableResourceSpec struct {
 	Version int
@@ -151,7 +155,7 @@ func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	}
 
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(yamlResource.Name)
-	if len(parsedTableName) < 4 {
+	if len(parsedTableName) < ExpectedTableNameSegments {
 		return models.ResourceSpec{}, fmt.Errorf("invalid yamlResource name %s", yamlResource.Name)
 	}
 
@@ -201,7 +205,7 @@ func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 	}
 
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(protoSpec.Name)
-	if len(parsedTableName) < 4 {
+	if len(parsedTableName) < ExpectedTableNameSegments {
 		return models.ResourceSpec{}, fmt.Errorf("invalid resource name %s", protoSpec.Name)
 	}
 

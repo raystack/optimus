@@ -23,6 +23,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
+const MetricWaitInterval = time.Second * 2
+
 func InitTelemetry(l log.Logger, conf TelemetryConfig) (func(), error) {
 	var tp *tracesdk.TracerProvider
 	var err error
@@ -61,7 +63,7 @@ func InitTelemetry(l log.Logger, conf TelemetryConfig) (func(), error) {
 			})
 			startTime := time.Now()
 			for {
-				time.Sleep(time.Second * 2)
+				time.Sleep(MetricWaitInterval)
 				appUptime.Set(time.Since(startTime).Seconds())
 				appHeartbeat.Inc()
 			}
