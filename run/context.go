@@ -46,7 +46,7 @@ type ContextManager struct {
 // Generate fetches and compiles all config data related to an instance and
 // returns a map of env variables and a map[fileName]fileContent
 // It compiles any templates/macros present in the config.
-func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.CompiledAssets, error) {
+func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
 	contextForTemplates := map[string]interface{}{}
 
 	// Collect project config
@@ -101,7 +101,7 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.Co
 	if fileMap, err = fm.engine.CompileFiles(fileMap, contextForTemplates); err != nil {
 		return nil, err
 	}
-	return &models.CompiledAssets{
+	return &models.JobRunInput{
 		EnvMap:     envMap,
 		SecretsMap: envSecret,
 		FileMap:    fileMap,
@@ -133,11 +133,11 @@ func (fm *ContextManager) compileTaskConfigs(ctx map[string]interface{}) (map[st
 	return fm.compileConfigs(fm.jobRun.Spec.Task.Config, ctx)
 }
 
-func (fm *ContextManager) compileHookConfigs(runName string, templateContext map[string]interface{}, taskEnv map[string]string) (
+func (fm *ContextManager) compileHookConfigs(hookName string, templateContext map[string]interface{}, taskEnv map[string]string) (
 	map[string]string, map[string]string, error) {
-	hook, err := fm.jobRun.Spec.GetHookByName(runName)
+	hook, err := fm.jobRun.Spec.GetHookByName(hookName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: requested hook not found %s", err.Error(), runName)
+		return nil, nil, fmt.Errorf("%s: requested hook not found %s", err.Error(), hookName)
 	}
 
 	// Add task config to context for hook

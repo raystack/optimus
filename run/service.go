@@ -39,7 +39,7 @@ type Service struct {
 }
 
 func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	assets *models.CompiledAssets, err error) {
+	*models.JobRunInput, error) {
 	secrets, err := s.secretService.GetSecrets(ctx, namespace)
 	if err != nil {
 		return nil, err

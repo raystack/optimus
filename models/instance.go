@@ -131,7 +131,7 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 	return json.Marshal(j.Data)
 }
 
-type CompiledAssets struct {
+type JobRunInput struct {
 	EnvMap     map[string]string
 	FileMap    map[string]string
 	SecretsMap map[string]string
@@ -148,7 +148,7 @@ type RunService interface {
 	Register(ctx context.Context, namespace NamespaceSpec, jobRun JobRun, instanceType InstanceType, instanceName string) (InstanceSpec, error)
 
 	// Compile prepares instance execution context environment
-	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (assets *CompiledAssets, err error)
+	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (jobRunInput *JobRunInput, err error)
 }
 
 // TemplateEngine compiles raw text templates using provided values
