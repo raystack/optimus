@@ -20,9 +20,7 @@ jobs:
         with:
           go-version: '1.16.7'
       - name: test binaries
-        run: make test
-      - name: Generate cover profile
-        run: make coverage
+        run: make test-ci
       - name: Install goveralls and send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}

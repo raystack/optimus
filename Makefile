@@ -7,21 +7,19 @@ LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
 PROTON_COMMIT := "2a30976f7b40884ddd90e1792576c0941426e8bc"
 
-.PHONY: build test generate pack-files generate-proto unit-test smoke-test integration-test vet coverage clean install lint
+.PHONY: build test test-ci pack-files generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
 INTEGRATION_TEST_PATH?=./store
 
-build: generate # build optimus binary
+build: pack-files # build optimus binary
+	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
 	@echo " > building optimus version ${OPMS_VERSION}"
 	@go build -ldflags "-X ${NAME}/config.Version=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
-	
-test: smoke-test unit-test vet ## run tests
 
-generate: pack-files
-	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
-	
+test-ci: smoke-test unit-test-ci vet ## run tests
+
 pack-files:
 	@echo " > packing resources"
 	@go generate ./..
@@ -32,8 +30,8 @@ generate-proto: ## regenerate protos
 	@buf generate https://github.com/odpf/proton/archive/${PROTON_COMMIT}.zip#strip_components=1 --template buf.gen.yaml --path odpf/optimus
 	@echo " > protobuf compilation finished"
 
-unit-test:
-	go test -count 1 -cover -race -timeout 1m -tags=unit_test ./...
+unit-test-ci:
+	go test -count 5 -race -coverprofile coverage.txt -covermode=atomic -timeout 1m -tags=unit_test ./...
 
 smoke-test: build
 	@bash ./scripts/smoke-test.sh
@@ -43,6 +41,9 @@ integration-test:
 
 vet: ## run go vet
 	go vet ./...
+
+test:
+	go test -race -cover -timeout 1m -tags=unit_test ./...
 
 coverage: ## print code coverage
 	go test -race -coverprofile coverage.txt -covermode=atomic ./... -tags=unit_test && go tool cover -html=coverage.txt
