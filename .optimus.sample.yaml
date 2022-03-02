@@ -28,12 +28,12 @@ log:
 #namespace:
 #  name: sample_namespace
 #  jobs:
-#    # folder where job specifications are stored
+#    # relative path pointing to folder where job specifications are stored
 #    path: "job"
 #  datastore:
 #    # optimus is capable of supporting multiple datastores
 #    type: bigquery
-#    # path where resource spec for BQ are stored
+#    # relative path where resource spec for BQ are stored
 #    path: "bq"
 #  # namespace variables usable in specifications
 #  config: {}

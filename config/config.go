@@ -15,8 +15,8 @@ type Optimus struct {
 	// optimus server host
 	Host string `mapstructure:"host"`
 
-	Project   Project   `mapstructure:"project"`
-	Namespace Namespace `mapstructure:"namespace"`
+	Project    Project `mapstructure:"project"`
+	Namespaces map[string]*Namespace
 
 	Server    ServerConfig    `mapstructure:"serve"`
 	Log       LogConfig       `mapstructure:"log"`

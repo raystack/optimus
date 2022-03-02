@@ -68,7 +68,7 @@ type RuntimeServiceClient interface {
 	GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error)
 	// DeployResourceSpecification migrate all resource specifications of a datastore in project
 	// State of the world request
-	DeployResourceSpecification(ctx context.Context, in *DeployResourceSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployResourceSpecificationClient, error)
+	DeployResourceSpecification(ctx context.Context, opts ...grpc.CallOption) (RuntimeService_DeployResourceSpecificationClient, error)
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(ctx context.Context, in *ListResourceSpecificationRequest, opts ...grpc.CallOption) (*ListResourceSpecificationResponse, error)
 	// Database CRUD
@@ -334,28 +334,27 @@ func (c *runtimeServiceClient) GetWindow(ctx context.Context, in *GetWindowReque
 	return out, nil
 }
 
-func (c *runtimeServiceClient) DeployResourceSpecification(ctx context.Context, in *DeployResourceSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployResourceSpecificationClient, error) {
+func (c *runtimeServiceClient) DeployResourceSpecification(ctx context.Context, opts ...grpc.CallOption) (RuntimeService_DeployResourceSpecificationClient, error) {
 	stream, err := c.cc.NewStream(ctx, &RuntimeService_ServiceDesc.Streams[2], "/odpf.optimus.core.v1beta1.RuntimeService/DeployResourceSpecification", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &runtimeServiceDeployResourceSpecificationClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 type RuntimeService_DeployResourceSpecificationClient interface {
+	Send(*DeployResourceSpecificationRequest) error
 	Recv() (*DeployResourceSpecificationResponse, error)
 	grpc.ClientStream
 }
 
 type runtimeServiceDeployResourceSpecificationClient struct {
 	grpc.ClientStream
+}
+
+func (x *runtimeServiceDeployResourceSpecificationClient) Send(m *DeployResourceSpecificationRequest) error {
+	return x.ClientStream.SendMsg(m)
 }
 
 func (x *runtimeServiceDeployResourceSpecificationClient) Recv() (*DeployResourceSpecificationResponse, error) {
@@ -537,7 +536,7 @@ type RuntimeServiceServer interface {
 	GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error)
 	// DeployResourceSpecification migrate all resource specifications of a datastore in project
 	// State of the world request
-	DeployResourceSpecification(*DeployResourceSpecificationRequest, RuntimeService_DeployResourceSpecificationServer) error
+	DeployResourceSpecification(RuntimeService_DeployResourceSpecificationServer) error
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(context.Context, *ListResourceSpecificationRequest) (*ListResourceSpecificationResponse, error)
 	// Database CRUD
@@ -628,7 +627,7 @@ func (UnimplementedRuntimeServiceServer) RegisterJobEvent(context.Context, *Regi
 func (UnimplementedRuntimeServiceServer) GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWindow not implemented")
 }
-func (UnimplementedRuntimeServiceServer) DeployResourceSpecification(*DeployResourceSpecificationRequest, RuntimeService_DeployResourceSpecificationServer) error {
+func (UnimplementedRuntimeServiceServer) DeployResourceSpecification(RuntimeService_DeployResourceSpecificationServer) error {
 	return status.Errorf(codes.Unimplemented, "method DeployResourceSpecification not implemented")
 }
 func (UnimplementedRuntimeServiceServer) ListResourceSpecification(context.Context, *ListResourceSpecificationRequest) (*ListResourceSpecificationResponse, error) {
@@ -1068,15 +1067,12 @@ func _RuntimeService_GetWindow_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _RuntimeService_DeployResourceSpecification_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(DeployResourceSpecificationRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(RuntimeServiceServer).DeployResourceSpecification(m, &runtimeServiceDeployResourceSpecificationServer{stream})
+	return srv.(RuntimeServiceServer).DeployResourceSpecification(&runtimeServiceDeployResourceSpecificationServer{stream})
 }
 
 type RuntimeService_DeployResourceSpecificationServer interface {
 	Send(*DeployResourceSpecificationResponse) error
+	Recv() (*DeployResourceSpecificationRequest, error)
 	grpc.ServerStream
 }
 
@@ -1086,6 +1082,14 @@ type runtimeServiceDeployResourceSpecificationServer struct {
 
 func (x *runtimeServiceDeployResourceSpecificationServer) Send(m *DeployResourceSpecificationResponse) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func (x *runtimeServiceDeployResourceSpecificationServer) Recv() (*DeployResourceSpecificationRequest, error) {
+	m := new(DeployResourceSpecificationRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _RuntimeService_ListResourceSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1473,6 +1477,7 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "DeployResourceSpecification",
 			Handler:       _RuntimeService_DeployResourceSpecification_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "odpf/optimus/core/v1beta1/runtime.proto",
