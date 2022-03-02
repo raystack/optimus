@@ -1252,6 +1252,47 @@
       }
     },
     "/v1beta1/project/{projectName}/secret/{secretName}": {
+      "delete": {
+        "summary": "DeleteSecret deletes a secret for a project",
+        "operationId": "RuntimeService_DeleteSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1DeleteSecretResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "secretName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      },
       "post": {
         "summary": "RegisterSecret creates a new secret of a project",
         "operationId": "RuntimeService_RegisterSecret",
@@ -1694,6 +1735,9 @@
         }
       }
     },
+    "v1beta1DeleteSecretResponse": {
+      "type": "object"
+    },
     "v1beta1DeployJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -1781,6 +1825,29 @@
         "end": {
           "type": "string",
           "format": "date-time"
+        }
+      }
+    },
+    "v1beta1HttpDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1883,6 +1950,9 @@
         },
         "type": {
           "type": "string"
+        },
+        "httpDependency": {
+          "$ref": "#/definitions/v1beta1HttpDependency"
         }
       }
     },

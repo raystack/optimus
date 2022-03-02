@@ -128,6 +128,20 @@ func TestJobRepository(t *testing.T) {
 					Unit: &models.Plugin{Base: hookUnit1},
 				},
 			},
+			ExternalDependencies: models.ExternalDependency{
+				HTTPDependencies: []models.HTTPDependency{
+					{
+						Name: "test_http_sensor_1",
+						RequestParams: map[string]string{
+							"key_test": "value_test",
+						},
+						URL: "http://test/optimus/status/1",
+						Headers: map[string]string{
+							"Content-Type": "application/json",
+						},
+					},
+				},
+			},
 		},
 		{
 			Name: "",

@@ -44,19 +44,20 @@ const (
 // JobSpec represents a job
 // internal representation of the job
 type JobSpec struct {
-	ID           uuid.UUID
-	Version      int
-	Name         string
-	Description  string
-	Labels       map[string]string
-	Owner        string
-	Schedule     JobSpecSchedule
-	Behavior     JobSpecBehavior
-	Task         JobSpecTask
-	Dependencies map[string]JobSpecDependency // job name to dependency
-	Assets       JobAssets
-	Hooks        []JobSpecHook
-	Metadata     JobSpecMetadata
+	ID                   uuid.UUID
+	Version              int
+	Name                 string
+	Description          string
+	Labels               map[string]string
+	Owner                string
+	Schedule             JobSpecSchedule
+	Behavior             JobSpecBehavior
+	Task                 JobSpecTask
+	Dependencies         map[string]JobSpecDependency // job name to dependency
+	Assets               JobAssets
+	Hooks                []JobSpecHook
+	Metadata             JobSpecMetadata
+	ExternalDependencies ExternalDependency //external dependencies for http
 }
 
 func (js JobSpec) GetName() string {
@@ -297,6 +298,17 @@ type JobSpecDependency struct {
 	Project *ProjectSpec
 	Job     *JobSpec
 	Type    JobSpecDependencyType
+}
+
+type ExternalDependency struct {
+	HTTPDependencies []HTTPDependency
+}
+
+type HTTPDependency struct {
+	Name          string
+	RequestParams map[string]string
+	URL           string
+	Headers       map[string]string
 }
 
 // JobService provides a high-level operations on DAGs
