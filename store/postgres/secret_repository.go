@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -194,6 +195,27 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 		adapted, err := res.ToSecretItemInfo()
 		if err != nil {
 			return secretItems, errors.Wrap(err, "failed to adapt secret")
+		}
+		secretItems = append(secretItems, adapted)
+	}
+
+	return secretItems, nil
+}
+
+func (repo secretRepository) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	var secretItems []models.ProjectSecretItem
+	var resources []Secret
+	if err := repo.db.WithContext(ctx).
+		Where("project_id = ?", repo.project.ID).
+		Where("type = ?", models.SecretTypeUserDefined).
+		Where("namespace_id is null or namespace_id = ?", namespace.ID).
+		Find(&resources).Error; err != nil {
+		return secretItems, err
+	}
+	for _, res := range resources {
+		adapted, err := res.ToSpec(repo.hash)
+		if err != nil {
+			return secretItems, fmt.Errorf("failed to adapt secret, %s", err)
 		}
 		secretItems = append(secretItems, adapted)
 	}

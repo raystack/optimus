@@ -11,6 +11,7 @@ type SecretService interface {
 	Save(context.Context, string, string, models.ProjectSecretItem) error
 	Update(context.Context, string, string, models.ProjectSecretItem) error
 	List(context.Context, string) ([]models.SecretItemInfo, error)
+	GetSecrets(context.Context, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
 	Delete(context.Context, string, string, string) error
 }
 
@@ -78,6 +79,15 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 	secretItems, err := repo.GetAll(ctx)
 	if err != nil {
 		return []models.SecretItemInfo{}, FromError(err, models.SecretEntity, "error while saving secret")
+	}
+	return secretItems, nil
+}
+
+func (s secretService) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	repo := s.secretRepoFac.New(namespace.ProjectSpec)
+	secretItems, err := repo.GetSecrets(ctx, namespace)
+	if err != nil {
+		return []models.ProjectSecretItem{}, FromError(err, models.SecretEntity, "error while getting secrets")
 	}
 	return secretItems, nil
 }

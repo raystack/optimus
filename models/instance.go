@@ -22,7 +22,8 @@ const (
 	InstanceDataTypeFile = "file"
 
 	// InstanceDataTypeEnvFileName is run data env type file name
-	InstanceDataTypeEnvFileName = ".env"
+	InstanceDataTypeEnvFileName    = ".env"
+	InstanceDataTypeSecretFileName = ".secret"
 
 	// iso 2021-01-14T02:00:00+00:00
 	InstanceScheduledAtTimeLayout = time.RFC3339
@@ -130,6 +131,12 @@ func (j *InstanceSpec) DataToJSON() ([]byte, error) {
 	return json.Marshal(j.Data)
 }
 
+type JobRunInput struct {
+	ConfigMap  map[string]string
+	FileMap    map[string]string
+	SecretsMap map[string]string
+}
+
 type RunService interface {
 	// GetScheduledRun find if already present or create a new scheduled run
 	GetScheduledRun(ctx context.Context, namespace NamespaceSpec, JobID JobSpec, scheduledAt time.Time) (JobRun, error)
@@ -141,8 +148,7 @@ type RunService interface {
 	Register(ctx context.Context, namespace NamespaceSpec, jobRun JobRun, instanceType InstanceType, instanceName string) (InstanceSpec, error)
 
 	// Compile prepares instance execution context environment
-	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (envMap map[string]string,
-		fileMap map[string]string, err error)
+	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (jobRunInput *JobRunInput, err error)
 }
 
 // TemplateEngine compiles raw text templates using provided values

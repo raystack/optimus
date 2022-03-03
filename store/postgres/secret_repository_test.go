@@ -293,6 +293,42 @@ func TestSecretRepository(t *testing.T) {
 			assert.Equal(t, string(allSecrets[1].Type), string(testModels[2].Type))
 		})
 	})
+	t.Run("GetSecrets", func(t *testing.T) {
+		t.Run("should get all the secrets for a namespace", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			var otherModels []models.ProjectSecretItem
+			otherModels = append(otherModels, testConfigs...)
+			// Other namespace
+			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[0]))
+			// No namespace
+			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, otherModels[4]))
+
+			var testModels []models.ProjectSecretItem
+			testModels = append(testModels, testConfigs...)
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
+			// System defined secret
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[3]))
+
+			allSecrets, err := repo.GetSecrets(ctx, namespaceSpec)
+			assert.Nil(t, err)
+			assert.Equal(t, len(allSecrets), 2)
+
+			assert.Equal(t, allSecrets[0].ID, otherModels[4].ID)
+			assert.Equal(t, allSecrets[0].Name, otherModels[4].Name)
+			assert.Equal(t, allSecrets[0].Value, otherModels[4].Value)
+			assert.Equal(t, allSecrets[0].Type, models.SecretTypeUserDefined)
+
+			assert.Equal(t, allSecrets[1].ID, testModels[2].ID)
+			assert.Equal(t, allSecrets[1].Name, testModels[2].Name)
+			assert.Equal(t, allSecrets[1].Value, testModels[2].Value)
+			assert.Equal(t, allSecrets[1].Type, models.SecretTypeUserDefined)
+		})
+	})
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes the secret for namespace", func(t *testing.T) {
 			db := DBSetup()

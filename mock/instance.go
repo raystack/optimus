@@ -124,7 +124,7 @@ func (s *RunService) Register(ctx context.Context, namespace models.NamespaceSpe
 	return args.Get(0).(models.InstanceSpec), args.Error(1)
 }
 
-func (s *RunService) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (envMap map[string]string, fileMap map[string]string, err error) {
+func (s *RunService) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
 	args := s.Called(ctx, namespaceSpec, jobRun, instanceSpec)
-	return args.Get(0).(map[string]string), args.Get(1).(map[string]string), args.Error(2)
+	return args.Get(0).(*models.JobRunInput), args.Error(1)
 }
