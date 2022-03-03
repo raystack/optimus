@@ -1,11 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/odpf/salt/config"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -23,15 +23,15 @@ func InitOptimus() (*Optimus, error) {
 
 	currPath, err := os.Getwd()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting current work directory path")
+		return nil, fmt.Errorf("error getting current work directory path: %w", err)
 	}
 	execPath, err := os.Executable()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting the executable path")
+		return nil, fmt.Errorf("error getting the executable path: %w", err)
 	}
 	currentHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting the home directory")
+		return nil, fmt.Errorf("error getting the home directory: %w", err)
 	}
 	optimusDir := filepath.Join(currentHomeDir, ".optimus")
 
@@ -46,7 +46,7 @@ func InitOptimus() (*Optimus, error) {
 	)
 
 	if err := l.Load(&o); err != nil {
-		return nil, errors.Wrapf(err, "error loading config")
+		return nil, fmt.Errorf("error loading config: %w", err)
 	}
 	return &o, nil
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -192,7 +192,7 @@ func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupD
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Backup dry run took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed to backup %s", backupRequest.ResourceName)
+		return fmt.Errorf("request failed to backup %s: %w", backupRequest.ResourceName, err)
 	}
 
 	printBackupDryRunResponse(l, backupRequest, backupDryRunResponse, backupDownstream)
@@ -226,7 +226,7 @@ func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupR
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Backup took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed to backup job %s", backupRequest.ResourceName)
+		return fmt.Errorf("request failed to backup job %s: %w", backupRequest.ResourceName, err)
 	}
 
 	printBackupResponse(l, backupResponse)

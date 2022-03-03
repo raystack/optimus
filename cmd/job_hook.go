@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 )
 
@@ -72,7 +73,7 @@ func createHookSurvey(jobSpec models.JobSpec, pluginRepo models.PluginRepository
 
 	selectedHook := baseInputs["hook"]
 	if ifHookAlreadyExistsForJob(jobSpec, selectedHook) {
-		return emptyJobSpec, errors.Errorf("hook %s already exists for this job", selectedHook)
+		return emptyJobSpec, fmt.Errorf("hook %s already exists for this job", selectedHook)
 	}
 
 	executionHook, err := pluginRepo.GetByName(selectedHook)

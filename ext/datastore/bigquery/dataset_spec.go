@@ -1,13 +1,13 @@
 package bigquery
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 )
