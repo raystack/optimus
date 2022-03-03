@@ -58,7 +58,7 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 
 	repo := s.repoFac.New()
 	jobRun, _, err := repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
-	if err == nil || err == store.ErrResourceNotFound {
+	if err == nil || errors.Is(err, store.ErrResourceNotFound) {
 		// create a new instance if it does not already exists
 		if err == nil {
 			// if already exists, use the same id for in place update

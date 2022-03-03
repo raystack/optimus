@@ -73,8 +73,8 @@ func (e *DomainError) Error() string {
 
 func (e *DomainError) DebugString() string {
 	var wrappedError string
-	de, ok := e.Err.(*DomainError)
-	if ok {
+	var de *DomainError
+	if errors.As(e.Err, &de) {
 		wrappedError = de.DebugString()
 	} else {
 		wrappedError = e.Err.Error()

@@ -116,7 +116,7 @@ Use base64 flag if the value has been encoded.
 					return nil
 				}
 			} else {
-				return fmt.Errorf("%s: request failed for creating secret %s", err, secretName)
+				return fmt.Errorf("%w: request failed for creating secret %s", err, secretName)
 			}
 		}
 		return nil
@@ -191,7 +191,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 	} else {
 		secretValueBytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return "", fmt.Errorf("%s: failed when reading secret file %s", err, filePath)
+			return "", fmt.Errorf("%w: failed when reading secret file %s", err, filePath)
 		}
 		secretValue = string(secretValueBytes)
 	}
@@ -273,7 +273,7 @@ func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err e
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret update took too long, timing out"))
 		}
-		return fmt.Errorf("%s: request failed for updating secret %s", err, req.SecretName)
+		return fmt.Errorf("%w: request failed for updating secret %s", err, req.SecretName)
 	}
 
 	l.Info(coloredSuccess("Secret updated"))
@@ -307,7 +307,7 @@ func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) (err e
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret delete took too long, timing out"))
 		}
-		return fmt.Errorf("%s: request failed for deleting secret %s", err, req.SecretName)
+		return fmt.Errorf("%w: request failed for deleting secret %s", err, req.SecretName)
 	}
 
 	l.Info(coloredSuccess("Secret deleted"))
@@ -341,7 +341,7 @@ func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) (err erro
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret listing took too long, timing out"))
 		}
-		return fmt.Errorf("%s: request failed for listing secrets", err)
+		return fmt.Errorf("%w: request failed for listing secrets", err)
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {

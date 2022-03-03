@@ -684,7 +684,7 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 func prepHTTPDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
 	var httpDep models.HTTPDependency
 	if _, err := url.ParseRequestURI(dep.URL); err != nil {
-		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %w", index, err)
 	}
 	if dep.Name == "" {
 		return httpDep, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)

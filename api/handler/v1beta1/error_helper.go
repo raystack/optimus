@@ -1,6 +1,8 @@
 package v1beta1
 
 import (
+	"errors"
+
 	"github.com/odpf/optimus/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -8,8 +10,8 @@ import (
 
 func mapToGRPCErr(err error, msg string) error {
 	code := codes.Internal
-	de, ok := err.(*service.DomainError)
-	if ok {
+	var de *service.DomainError
+	if errors.As(err, &de) {
 		switch de.ErrorType {
 		case service.ErrNotFound:
 			code = codes.NotFound

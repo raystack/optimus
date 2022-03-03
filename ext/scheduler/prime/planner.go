@@ -140,10 +140,10 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 // and we will not scale down the cluster once its scaled up. This is a
 // temporary approach and ideally we should timeout jobs which are assigned
 // to jobs which went down and move them back to the pending state list.
-func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, runIDs []uuid.UUID, err error) {
+func (p *Planner) getJobAllocations(ctx context.Context) (string, []uuid.UUID, error) {
 	pendingJobRuns, err := p.jobRunRepoFac.New().GetByTrigger(ctx, models.TriggerManual, models.RunStatePending)
 	if err != nil {
-		return
+		return "", nil, err
 	}
 
 	// find which node has most capacity
@@ -164,6 +164,7 @@ func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, 
 		}
 	}
 	var mostCapSize = PeerPoolSize
+	var mostCapNodeID string
 	for nodeID, utilization := range peerUtilization {
 		if utilization < mostCapSize {
 			mostCapNodeID = nodeID
@@ -172,16 +173,17 @@ func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, 
 	}
 	// cluster is full at the moment
 	if mostCapNodeID == "" {
-		return
+		return "", nil, nil
 	}
 
+	var runIDs []uuid.UUID
 	for idx, pendingRun := range pendingJobRuns {
 		runIDs = append(runIDs, pendingRun.ID)
 		if idx+mostCapSize > PeerPoolSize {
 			break
 		}
 	}
-	return
+	return mostCapNodeID, runIDs, nil
 }
 
 // leaderJobReconcile should update the job run state from running to
@@ -405,8 +407,8 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 	if err != nil {
 		return err
 	}
-	finishCode := <-finishChan
-	if finishCode != 0 {
+
+	if finishCode := <-finishChan; finishCode != 0 {
 		p.l.Warn("job finished with non zero code", "code", finishCode, "job name", jobRun.Spec.Name)
 
 		// mark instance failed

@@ -123,7 +123,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
-			if err == models.ErrNoResources {
+			if errors.Is(err, models.ErrNoResources) {
 				l.Info(coloredNotice("no resource specifications found"))
 				continue
 			}
@@ -165,7 +165,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			for {
 				resp, err := respStream.Recv()
 				if err != nil {
-					if err == io.EOF {
+					if errors.Is(err, io.EOF) {
 						break
 					}
 					return fmt.Errorf("failed to receive deployment ack: %w", err)
@@ -233,7 +233,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 		for {
 			resp, err := respStream.Recv()
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
 				streamError = err

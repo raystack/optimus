@@ -46,7 +46,7 @@ func jobValidateCommand(l log.Logger, pluginRepo models.PluginRepository, jobSpe
 		start := time.Now()
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
-			return fmt.Errorf("directory '%s': %v", conf.Namespace.Job.Path, err)
+			return fmt.Errorf("directory '%s': %w", conf.Namespace.Job.Path, err)
 		}
 
 		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, conf.Host, verbose); err != nil {
@@ -113,7 +113,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 	for {
 		resp, err := respStream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			streamError = err
