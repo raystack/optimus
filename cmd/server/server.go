@@ -130,15 +130,6 @@ func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.Names
 	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
 }
 
-type projectSecretRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *projectSecretRepoFactory) New(projectSpec models.ProjectSpec) store.ProjectSecretRepository {
-	return postgres.NewSecretRepository(fac.db, projectSpec, fac.hash)
-}
-
 type jobRunRepoFactory struct {
 	db *gorm.DB
 }
@@ -351,10 +342,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		}
 	}
 
-	projectSecretRepoFac := &projectSecretRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
+	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
 	namespaceSpecRepoFac := &namespaceRepoFactory{
 		db:   dbConn,
 		hash: appHash,
@@ -366,7 +354,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
-	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepoFac)
+	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{

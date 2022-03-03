@@ -45,12 +45,12 @@ type ProjectRepository interface {
 
 // ProjectSecretRepository stores secrets attached to projects
 type ProjectSecretRepository interface {
-	GetSecrets(context.Context, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
-	Save(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
-	Update(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
-	GetByName(context.Context, string) (models.ProjectSecretItem, error)
-	GetAll(context.Context) ([]models.SecretItemInfo, error)
-	Delete(context.Context, models.NamespaceSpec, string) error
+	GetSecrets(context.Context, models.ProjectSpec, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
+	Save(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
+	Update(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
+	GetByName(context.Context, models.ProjectSpec, string) (models.ProjectSecretItem, error)
+	GetAll(context.Context, models.ProjectSpec) ([]models.SecretItemInfo, error)
+	Delete(context.Context, models.ProjectSpec, models.NamespaceSpec, string) error
 }
 
 // NamespaceRepository represents a storage interface for registered namespaces

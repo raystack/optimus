@@ -15,21 +15,17 @@ type SecretService interface {
 	Delete(context.Context, string, string, string) error
 }
 
-type SecretRepoFactory interface {
-	New(projectSpec models.ProjectSpec) store.ProjectSecretRepository
-}
-
 type secretService struct {
-	projService   ProjectService
-	nsService     NamespaceService
-	secretRepoFac SecretRepoFactory
+	projService ProjectService
+	nsService   NamespaceService
+	repo        store.ProjectSecretRepository
 }
 
-func NewSecretService(projectService ProjectService, namespaceService NamespaceService, factory SecretRepoFactory) *secretService {
+func NewSecretService(projectService ProjectService, namespaceService NamespaceService, repo store.ProjectSecretRepository) *secretService {
 	return &secretService{
-		projService:   projectService,
-		nsService:     namespaceService,
-		secretRepoFac: factory,
+		projService: projectService,
+		nsService:   namespaceService,
+		repo:        repo,
 	}
 }
 
@@ -43,8 +39,7 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 		return err
 	}
 
-	repo := s.secretRepoFac.New(proj)
-	err = repo.Save(ctx, namespace, item)
+	err = s.repo.Save(ctx, proj, namespace, item)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while saving secret")
 	}
@@ -61,8 +56,7 @@ func (s secretService) Update(ctx context.Context, projectName string, namespace
 		return err
 	}
 
-	repo := s.secretRepoFac.New(proj)
-	err = repo.Update(ctx, namespace, item)
+	err = s.repo.Update(ctx, proj, namespace, item)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while updating secret")
 	}
@@ -75,8 +69,7 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 		return nil, err
 	}
 
-	repo := s.secretRepoFac.New(projectSpec)
-	secretItems, err := repo.GetAll(ctx)
+	secretItems, err := s.repo.GetAll(ctx, projectSpec)
 	if err != nil {
 		return []models.SecretItemInfo{}, FromError(err, models.SecretEntity, "error while saving secret")
 	}
@@ -84,8 +77,7 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 }
 
 func (s secretService) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
-	repo := s.secretRepoFac.New(namespace.ProjectSpec)
-	secretItems, err := repo.GetSecrets(ctx, namespace)
+	secretItems, err := s.repo.GetSecrets(ctx, namespace.ProjectSpec, namespace)
 	if err != nil {
 		return []models.ProjectSecretItem{}, FromError(err, models.SecretEntity, "error while getting secrets")
 	}
@@ -98,8 +90,7 @@ func (s secretService) Delete(ctx context.Context, projectName, namespaceName, s
 		return err
 	}
 
-	repo := s.secretRepoFac.New(proj)
-	err = repo.Delete(ctx, namespace, secretName)
+	err = s.repo.Delete(ctx, proj, namespace, secretName)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while deleting secret")
 	}
