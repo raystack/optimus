@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"strings"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -24,6 +26,7 @@ const InterJobDependencyNameSections = 2
 
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+	dependencyRepoFactory     DependencyRepoFactory
 }
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
@@ -50,6 +53,67 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	jobSpec = r.resolveHookDependencies(jobSpec)
 
 	return jobSpec, nil
+}
+
+// ResolveInferred inter/intra dependencies inferred by optimus
+func (r *dependencyResolver) ResolveInferred(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+	observer progress.Observer) (models.JobSpec, error) {
+	if ctx.Err() != nil {
+		return models.JobSpec{}, ctx.Err()
+	}
+
+	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+
+	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
+
+	// delete from dependency table
+	if err = dependencyRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
+		return models.JobSpec{}, err
+	}
+
+	for _, dependency := range jobSpec.Dependencies {
+		// insert the new ones
+		jobDependency := store.JobDependency{
+			JobID:          jobSpec.ID,
+			JobDependentID: dependency.Job.ID,
+			Type:           dependency.Type.String(),
+		}
+		err = dependencyRepo.Save(ctx, jobDependency)
+		if err != nil {
+			return models.JobSpec{}, err
+		}
+	}
+
+	return jobSpec, nil
+}
+
+func (r *dependencyResolver) ResolvePersisted(ctx context.Context, projectSpec models.ProjectSpec,
+	observer progress.Observer) ([]models.JobSpec, error) {
+	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
+	jobDependencies, err := dependencyRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	jobDependencyMap := make(map[uuid.UUID][]store.JobDependency)
+	for _, dependency := range jobDependencies {
+		jobDependencyMap[dependency.JobID] = append(jobDependencyMap[dependency.JobID], dependency)
+	}
+
+	for _, jobSpec := range jobSpecs {
+		dependencies := jobDependencyMap[jobSpec.ID]
+
+	}
 }
 
 func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
@@ -197,8 +261,10 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 }
 
 // NewDependencyResolver creates a new instance of Resolver
-func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory) *dependencyResolver {
+func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+	dependencyRepoFactory DependencyRepoFactory) *dependencyResolver {
 	return &dependencyResolver{
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		dependencyRepoFactory:     dependencyRepoFactory,
 	}
 }

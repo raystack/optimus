@@ -33,6 +33,10 @@ type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.J
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
+	ResolveInferred(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
+
+	//Enriching based on what persisted, not really resolving
+	ResolvePersisted() (models.JobSpec, error)
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -58,6 +62,11 @@ type ReplaySpecRepoFactory interface {
 // ProjectRepoFactory is used to manage projects from store
 type ProjectRepoFactory interface {
 	New() store.ProjectRepository
+}
+
+//DependencyRepoFactory
+type DependencyRepoFactory interface {
+	New(proj models.ProjectSpec) store.JobDependencyRepository
 }
 
 type ReplayManager interface {
@@ -738,4 +747,106 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 	rootNode, _ := dagTree.GetNodeByName(jobSpec.Name)
 
 	return rootNode, nil
+}
+
+// Refresh fetches all the jobs that belong to a project, resolves its dependencies
+// assign proper priority weights, compiles it and uploads it to the destination
+// store.
+func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) error {
+	//Getting all jobs from a project
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+
+	//Resolve dependency
+	err := srv.ResolveAndPersistDependency(ctx, projectSpec, projectJobSpecRepo, progressObserver)
+	if err != nil {
+		return err
+	}
+
+	//Fetch dependency and enrich
+
+	//Resolve priority
+	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
+	if err != nil {
+		return err
+	}
+
+	//Group per namespace
+
+	//Compile & Deploy
+	if err = srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func prepareJobToNamespaceMap(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]string, error) {
+	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to retrieve namespace to job mapping")
+	}
+	// generate a reverse map for namespace
+	jobsToNamespace := map[string]string{}
+	for ns, jobNames := range namespaceToJobs {
+		for _, jobName := range jobNames {
+			jobsToNamespace[jobName] = ns
+		}
+	}
+	return jobsToNamespace, nil
+}
+
+func (srv *Service) ResolveAndPersistDependency(ctx context.Context, proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+	progressObserver progress.Observer) (resolvedErrors error) {
+
+	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
+	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "failed to retrieve jobs")
+	}
+	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
+
+	// compile assets first
+	for i, jSpec := range jobSpecs {
+		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
+			return errors.Wrap(err, "asset compilation")
+		}
+	}
+
+	jobsToNamespace, err := prepareJobToNamespaceMap(ctx, projectJobSpecRepo)
+	if err != nil {
+		return err
+	}
+
+	// resolve specs in parallel
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, jobSpec := range jobSpecs {
+		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				resolvedSpec, err := srv.dependencyResolver.ResolveInferred(ctx, proj, currentSpec, progressObserver)
+				if err != nil {
+					wrappedErr := errors.Wrap(errDependencyResolution, err.Error())
+					return nil, errors.Wrapf(wrappedErr, "%s/%s", jobsToNamespace[currentSpec.Name], currentSpec.Name)
+				}
+				return resolvedSpec, nil
+			}
+		}(jobSpec))
+	}
+
+	var resolvedSpecs []models.JobSpec
+	for _, state := range runner.Run() {
+		if state.Err != nil {
+			resolvedErrors = multierror.Append(resolvedErrors, state.Err)
+			//add metric
+		} else {
+			resolvedSpecs = append(resolvedSpecs, state.Val.(models.JobSpec))
+			//add metric
+		}
+	}
+
+	return resolvedErrors
+}
+
+func (srv *Service) FetchAndEnrich(ctx context.Context, proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
+	progressObserver progress.Observer) (resolvedErrors error) {
+
 }

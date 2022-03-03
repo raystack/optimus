@@ -32,6 +32,8 @@ type ProjectJobSpecRepository interface {
 	// note: be warned to handle this carefully in multi tenant situations
 	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
 
+	GetByID(context.Context, uuid.UUID)
+
 	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
@@ -116,4 +118,21 @@ type BackupRepository interface {
 	Save(ctx context.Context, spec models.BackupSpec) error
 	GetAll(context.Context) ([]models.BackupSpec, error)
 	GetByID(context.Context, uuid.UUID) (models.BackupSpec, error)
+}
+
+// JobDependencyRepository represents a storage interface for job dependencies
+type JobDependencyRepository interface {
+	Save(context.Context, JobDependency) error
+	GetAll(context.Context) ([]JobDependency, error)
+	DeleteByJobID(context.Context, uuid.UUID) error
+}
+
+type JobDependency struct {
+	JobID          uuid.UUID `gorm:"not null" json:"job_id"`
+	JobProjectID   uuid.UUID `gorm:"not null" json:"job_project_id"`
+	JobDependentID uuid.UUID `gorm:"not null" json:"job_dependent_id"`
+
+	Type string
+
+	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 }
