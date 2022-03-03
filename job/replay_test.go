@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -9,11 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/odpf/optimus/job"
-
 	"github.com/odpf/optimus/core/tree"
-
-	"github.com/pkg/errors"
+	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"

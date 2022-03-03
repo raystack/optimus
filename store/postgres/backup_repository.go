@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/odpf/optimus/store"
@@ -11,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -104,7 +105,7 @@ func (repo *backupRepository) GetAll(ctx context.Context) ([]models.BackupSpec, 
 	for _, b := range backups {
 		adapted, err := b.ToSpec(repo.datastorer)
 		if err != nil {
-			return specs, errors.Wrap(err, "failed to adapt backup")
+			return specs, fmt.Errorf("failed to adapt backup: %w", err)
 		}
 		specs = append(specs, adapted)
 	}
