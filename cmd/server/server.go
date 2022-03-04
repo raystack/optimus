@@ -478,6 +478,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,
+			secretService,
 			func() time.Time {
 				return time.Now().UTC()
 			},

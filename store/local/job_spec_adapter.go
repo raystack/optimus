@@ -1,6 +1,9 @@
 package local
 
 import (
+	"fmt"
+	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -356,8 +359,16 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 }
 
 type JobDependency struct {
-	JobName string `yaml:"job"`
-	Type    string `yaml:"type,omitempty"`
+	JobName string         `yaml:"job,omitempty"`
+	Type    string         `yaml:"type,omitempty"`
+	HttpDep HTTPDependency `yaml:"http,omitempty"`
+}
+
+type HTTPDependency struct {
+	Name          string            `yaml:"name"`
+	RequestParams map[string]string `yaml:"params,omitempty"`
+	URL           string            `yaml:"url"`
+	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
 type JobSpecAdapter struct {
@@ -381,22 +392,34 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		endDate = &end
 	}
 
-	// prep dirty dependencies
+	// prep dirty dependencies and external http dependencies
+	var externalDependency models.ExternalDependency
+	var httpDependencies []models.HTTPDependency
 	dependencies := map[string]models.JobSpecDependency{}
-	for _, dep := range conf.Dependencies {
-		depType := models.JobSpecDependencyTypeIntra
-		switch dep.Type {
-		case string(models.JobSpecDependencyTypeIntra):
-			depType = models.JobSpecDependencyTypeIntra
-		case string(models.JobSpecDependencyTypeInter):
-			depType = models.JobSpecDependencyTypeInter
-		case string(models.JobSpecDependencyTypeExtra):
-			depType = models.JobSpecDependencyTypeExtra
+	for index, dep := range conf.Dependencies {
+		if dep.JobName != "" {
+			depType := models.JobSpecDependencyTypeIntra
+			switch dep.Type {
+			case string(models.JobSpecDependencyTypeIntra):
+				depType = models.JobSpecDependencyTypeIntra
+			case string(models.JobSpecDependencyTypeInter):
+				depType = models.JobSpecDependencyTypeInter
+			case string(models.JobSpecDependencyTypeExtra):
+				depType = models.JobSpecDependencyTypeExtra
+			}
+			dependencies[dep.JobName] = models.JobSpecDependency{
+				Type: depType,
+			}
 		}
-		dependencies[dep.JobName] = models.JobSpecDependency{
-			Type: depType,
+		if !reflect.DeepEqual(dep.HttpDep, HTTPDependency{}) {
+			httpDep, err := prepHttpDependency(dep.HttpDep, index)
+			if err != nil {
+				return models.JobSpec{}, err
+			}
+			httpDependencies = append(httpDependencies, httpDep)
 		}
 	}
+	externalDependency.HTTPDependencies = httpDependencies
 
 	// prep hooks
 	var hooks []models.JobSpecHook
@@ -428,7 +451,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	for _, c := range conf.Task.Config {
 		taskConf = append(taskConf, models.JobSpecConfigItem{
 			Name:  c.Key.(string),
-			Value: c.Value.(string),
+			Value: c.Value.(string), // TODO: panics when value not valid, error with macros
 		})
 	}
 
@@ -490,6 +513,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				},
 			},
 		},
+		ExternalDependencies: externalDependency,
 	}
 	return job, nil
 }
@@ -581,6 +605,12 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Type:    dep.Type.String(),
 		})
 	}
+	// external http dependencies
+	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
+		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
+			HttpDep: HTTPDependency(dep),
+		})
+	}
 
 	// prep hooks
 	for _, hook := range spec.Hooks {
@@ -649,4 +679,16 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 		return sz, nil
 	}
 	return sz, ErrNotAMonthDuration
+}
+
+func prepHttpDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
+	var httpDep models.HTTPDependency
+	if _, err := url.ParseRequestURI(dep.URL); err != nil {
+		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+	}
+	if dep.Name == "" {
+		return httpDep, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
+	}
+	httpDep = models.HTTPDependency(dep)
+	return httpDep, nil
 }

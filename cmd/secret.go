@@ -33,6 +33,7 @@ func secretCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	}
 	cmd.AddCommand(secretSetSubCommand(l, conf))
 	cmd.AddCommand(secretListSubCommand(l, conf))
+	cmd.AddCommand(secretDeleteSubCommand(l, conf))
 	return cmd
 }
 
@@ -143,6 +144,33 @@ func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	return secretListCmd
 }
 
+func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
+	var projectName string
+
+	cmd := &cli.Command{
+		Use:     "delete",
+		Short:   "Delete a secrets registered with optimus",
+		Example: "optimus secret delete <secret_name>",
+		Long:    `This operation deletes a secret registered with optimus.`,
+	}
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		secretName, err := getSecretName(args)
+		if err != nil {
+			return err
+		}
+
+		deleteSecretRequest := &pb.DeleteSecretRequest{
+			ProjectName:   projectName,
+			SecretName:    secretName,
+			NamespaceName: conf.Namespace.Name,
+		}
+		return deleteSecret(l, conf.Host, deleteSecretRequest)
+	}
+	return cmd
+}
+
 func getSecretName(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("secret name is required")
@@ -249,6 +277,40 @@ func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err e
 	}
 
 	l.Info(coloredSuccess("Secret updated"))
+
+	return nil
+}
+
+func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) (err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	var conn *grpc.ClientConn
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(ErrServerNotReachable(host).Error())
+		}
+		return err
+	}
+	defer conn.Close()
+
+	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
+	defer secretRequestCancel()
+
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
+	runtime := pb.NewRuntimeServiceClient(conn)
+
+	_, err = runtime.DeleteSecret(secretRequestTimeout, req)
+	spinner.Stop()
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(coloredError("Secret delete took too long, timing out"))
+		}
+		return fmt.Errorf("%s: request failed for deleting secret %s", err, req.SecretName)
+	}
+
+	l.Info(coloredSuccess("Secret deleted"))
 
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -290,6 +291,114 @@ func TestSecretRepository(t *testing.T) {
 			assert.Equal(t, allSecrets[1].Name, testModels[2].Name)
 			assert.Equal(t, allSecrets[1].Namespace, namespaceSpec.Name)
 			assert.Equal(t, string(allSecrets[1].Type), string(testModels[2].Type))
+		})
+	})
+	t.Run("GetSecrets", func(t *testing.T) {
+		t.Run("should get all the secrets for a namespace", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			var otherModels []models.ProjectSecretItem
+			otherModels = append(otherModels, testConfigs...)
+			// Other namespace
+			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[0]))
+			// No namespace
+			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, otherModels[4]))
+
+			var testModels []models.ProjectSecretItem
+			testModels = append(testModels, testConfigs...)
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
+			// System defined secret
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[3]))
+
+			allSecrets, err := repo.GetSecrets(ctx, namespaceSpec)
+			assert.Nil(t, err)
+			assert.Equal(t, len(allSecrets), 2)
+
+			assert.Equal(t, allSecrets[0].ID, otherModels[4].ID)
+			assert.Equal(t, allSecrets[0].Name, otherModels[4].Name)
+			assert.Equal(t, allSecrets[0].Value, otherModels[4].Value)
+			assert.Equal(t, allSecrets[0].Type, models.SecretTypeUserDefined)
+
+			assert.Equal(t, allSecrets[1].ID, testModels[2].ID)
+			assert.Equal(t, allSecrets[1].Name, testModels[2].Name)
+			assert.Equal(t, allSecrets[1].Value, testModels[2].Value)
+			assert.Equal(t, allSecrets[1].Type, models.SecretTypeUserDefined)
+		})
+	})
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("deletes the secret for namespace", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			secret := models.ProjectSecretItem{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "t-optimus-delete",
+				Value: "super-secret",
+				Type:  models.SecretTypeUserDefined,
+			}
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			assert.Nil(t, repo.Insert(ctx, namespaceSpec, secret))
+			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, err)
+
+			err = repo.Delete(ctx, namespaceSpec, secret.Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, secret.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
+		})
+		t.Run("deletes the secret for project", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			secret := models.ProjectSecretItem{
+				ID:    uuid.Must(uuid.NewRandom()),
+				Name:  "t-optimus-delete",
+				Value: "super-secret",
+				Type:  models.SecretTypeUserDefined,
+			}
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, secret))
+			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, err)
+
+			err = repo.Delete(ctx, models.NamespaceSpec{}, secret.Name)
+			assert.Nil(t, err)
+
+			_, err = repo.GetByName(ctx, secret.Name)
+			assert.NotNil(t, err)
+			assert.Equal(t, store.ErrResourceNotFound, err)
+		})
+		t.Run("returns error when non existing is deleted", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			defer sqlDB.Close()
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			err := repo.Delete(ctx, namespaceSpec, "invalid")
+			assert.NotNil(t, err)
+			assert.Equal(t, "resource not found", err.Error())
+		})
+		t.Run("returns error when delete has error", func(t *testing.T) {
+			db := DBSetup()
+			sqlDB, _ := db.DB()
+			sqlDB.Close() // Closing the connection
+
+			repo := NewSecretRepository(db, projectSpec, hash)
+
+			err := repo.Delete(ctx, namespaceSpec, "valid-secret")
+			assert.NotNil(t, err)
+			assert.Equal(t, "sql: database is closed", err.Error())
 		})
 	})
 }

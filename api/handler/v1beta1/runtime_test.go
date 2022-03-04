@@ -149,14 +149,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			instanceService.On("GetScheduledRun", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
 			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
 			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
-				map[string]string{
-					run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-					run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-					run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-				},
-				map[string]string{
-					"query.sql": "select * from 1",
-				}, nil)
+				&models.JobRunInput{
+					ConfigMap: map[string]string{
+						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					},
+					FileMap: map[string]string{
+						"query.sql": "select * from 1",
+					}}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -214,14 +215,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 			instanceService.On("GetByID", ctx, jobRun.ID).Return(jobRun, namespaceSpec, nil)
 			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
 			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
-				map[string]string{
-					run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-					run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-					run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-				},
-				map[string]string{
-					"query.sql": "select * from 1",
-				}, nil)
+				&models.JobRunInput{
+					ConfigMap: map[string]string{
+						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					},
+					FileMap: map[string]string{
+						"query.sql": "select * from 1",
+					}}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
