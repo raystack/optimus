@@ -87,7 +87,7 @@ func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.Get
 func (sv *RuntimeServiceServer) parseReplayStatusRequest(ctx context.Context, req *pb.GetReplayStatusRequest) (models.ReplayRequest, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return models.ReplayRequest{}, mapToGRPCErr(err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
+		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
 	uuid, err := uuid.Parse(req.Id)
@@ -105,7 +105,7 @@ func (sv *RuntimeServiceServer) parseReplayStatusRequest(ctx context.Context, re
 func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListReplaysRequest) (*pb.ListReplaysResponse, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
 	replays, err := sv.jobSvc.GetReplayList(ctx, projSpec.ID)
@@ -135,7 +135,7 @@ func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectN
 	jobName string, startDate string, endDate string, forceFlag bool, allowedDownstreams []string) (models.ReplayRequest, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, projectName, namespace)
 	if err != nil {
-		return models.ReplayRequest{}, mapToGRPCErr(err, "unable to get namespace")
+		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, jobName, namespaceSpec)

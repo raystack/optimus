@@ -10,7 +10,7 @@ import (
 func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	projectSpec := sv.adapter.FromProjectProto(req.GetProject())
 	if err := sv.projectService.Save(ctx, projectSpec); err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 
 	responseMsg := "project saved successfully."
@@ -26,7 +26,7 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 func (sv *RuntimeServiceServer) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
 	projects, err := sv.projectService.GetAll(ctx)
 	if err != nil {
-		return nil, mapToGRPCErr(err, "failed to retrieve saved projects")
+		return nil, mapToGRPCErr(sv.l, err, "failed to retrieve saved projects")
 	}
 
 	projSpecsProto := []*pb.ProjectSpecification{}
