@@ -238,6 +238,28 @@ func TestNamespaceRepository(t *testing.T) {
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
 
+	t.Run("Get", func(t *testing.T) {
+		db := DBSetup()
+		sqlDB, _ := db.DB()
+		defer sqlDB.Close()
+		testModels := []models.NamespaceSpec{}
+		testModels = append(testModels, namespaceSpecs...)
+
+		repo := NewNamespaceRepository(db, projectSpec, hash)
+		err := repo.Insert(ctx, testModels[0])
+		assert.Nil(t, err)
+
+		secretRepo := NewSecretRepository(db, hash)
+		err = secretRepo.Insert(ctx, projectSpec, testModels[0], secrets[0])
+		assert.Nil(t, err)
+
+		namespace, err := repo.Get(ctx, projectSpec.Name, testModels[0].Name)
+		assert.Nil(t, err)
+		assert.Equal(t, "g-optimus", namespace.Name)
+		assert.Equal(t, "t-optimus", namespace.ProjectSpec.Name)
+		assert.Equal(t, "g-optimus", namespace.ProjectSpec.Secret[0].Name)
+	})
+
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
 		sqlDB, _ := db.DB()

@@ -58,6 +58,7 @@ type NamespaceRepository interface {
 	Save(context.Context, models.NamespaceSpec) error
 	GetByName(context.Context, string) (models.NamespaceSpec, error)
 	GetAll(context.Context) ([]models.NamespaceSpec, error)
+	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
 }
 
 // JobRunSpecRepository represents a storage interface for Job runs generated to
