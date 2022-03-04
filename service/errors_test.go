@@ -31,4 +31,22 @@ func TestErrors(t *testing.T) {
 		expectedErrorString := "error while fetching namespace: Internal Error for namespace: not able to get project: Internal Error for project: random database error"
 		assert.Equal(t, expectedErrorString, de2.DebugString())
 	})
+	t.Run("creates debug string when err inside is nil", func(t *testing.T) {
+		de1 := service.NewError("project", service.ErrInternalError, "some error with project")
+		de2 := service.FromError(de1, "namespace", "error while fetching namespace")
+
+		assert.Error(t, de2)
+		expectedErrorString := "error while fetching namespace: Internal Error for namespace: some error with project: Internal Error for project: "
+		assert.Equal(t, expectedErrorString, de2.DebugString())
+	})
+	t.Run("allows unwrapping of error in error chain", func(t *testing.T) {
+		err1 := store.ErrResourceNotFound
+		de2 := service.FromError(err1, "namespace", "error while fetching namespace")
+
+		assert.Error(t, de2)
+		assert.ErrorIs(t, de2, store.ErrResourceNotFound)
+
+		expectedErrorString := "error while fetching namespace: not found for entity namespace"
+		assert.Equal(t, expectedErrorString, de2.Error())
+	})
 }

@@ -222,7 +222,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, err := svc.GetAll(ctx, project.Name)
 			assert.NotNil(t, err)
-			assert.Equal(t, ": internal error for entity namespace", err.Error())
+			assert.Equal(t, "internal error: internal error for entity namespace", err.Error())
 		})
 		t.Run("return namespaces successfully", func(t *testing.T) {
 			defer projService.AssertExpectations(t)
