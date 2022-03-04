@@ -147,7 +147,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	}
 	secretsFilePath := filepath.Join(inputDirectory, models.InstanceDataTypeSecretFileName)
 	if err := writeToFileFn(secretsFilePath, secretsFileContent, l.Writer()); err != nil {
-		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 	}
 
 	if len(keysWithUnsubstitutedValue) > 0 {
