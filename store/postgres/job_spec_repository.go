@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/patrickmn/go-cache"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -85,13 +85,13 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 	var p Project
 	if err := repo.db.WithContext(ctx).Where("name = ?", projName).First(&p).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, models.ProjectSpec{}, errors.Wrap(store.ErrResourceNotFound, "project not found")
+			return models.JobSpec{}, models.ProjectSpec{}, fmt.Errorf("project not found: %w", store.ErrResourceNotFound)
 		}
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
 	if err := repo.db.WithContext(ctx).Where("project_id = ? AND name = ?", p.ID, jobName).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, models.ProjectSpec{}, errors.Wrap(store.ErrResourceNotFound, "job spec not found")
+			return models.JobSpec{}, models.ProjectSpec{}, fmt.Errorf("job spec not found: %w", store.ErrResourceNotFound)
 		}
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
@@ -187,7 +187,7 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) er
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to retrieve spec by name")
+		return fmt.Errorf("unable to retrieve spec by name: %w", err)
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
@@ -237,7 +237,7 @@ func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) erro
 		// no job exists, inserting for the first time
 		return nil
 	} else if err != nil {
-		return errors.Wrap(err, "failed to fetch soft deleted resource")
+		return fmt.Errorf("failed to fetch soft deleted resource: %w", err)
 	}
 	return repo.db.WithContext(ctx).Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
 }

@@ -2,12 +2,13 @@ package job
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -46,10 +47,7 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	}
 
 	// resolve inter hook dependencies
-	jobSpec, err = r.resolveHookDependencies(jobSpec)
-	if err != nil {
-		return models.JobSpec{}, err
-	}
+	jobSpec = r.resolveHookDependencies(jobSpec)
 
 	return jobSpec, nil
 }
@@ -74,7 +72,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	for _, depDestination := range jobDependencies {
 		projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
 		if err != nil && err != store.ErrResourceNotFound {
-			return jobSpec, errors.Wrap(err, "runtime dependency evaluation failed")
+			return jobSpec, fmt.Errorf("runtime dependency evaluation failed: %w", err)
 		}
 		if len(projectJobPairs) == 0 {
 			// should not fail for unknown dependency, its okay to not have a upstream job
@@ -143,7 +141,7 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 				{
 					job, _, err := projectJobSpecRepo.GetByName(ctx, depName)
 					if err != nil {
-						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownLocalDependency, depName)
+						return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
 					}
 					depSpec.Job = &job
 					depSpec.Project = &projectSpec
@@ -154,20 +152,20 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 					// extract project name
 					depParts := strings.SplitN(depName, "/", IterJobDependencyNameSections)
 					if len(depParts) != IterJobDependencyNameSections {
-						return models.JobSpec{}, errors.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
+						return models.JobSpec{}, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
 					}
 					projectName := depParts[0]
 					jobName := depParts[1]
 					job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
 					if err != nil {
-						return models.JobSpec{}, errors.Wrapf(err, "%s for job %s", ErrUnknownCrossProjectDependency, depName)
+						return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
 					}
 					depSpec.Job = &job
 					depSpec.Project = &proj
 					jobSpec.Dependencies[depName] = depSpec
 				}
 			default:
-				return models.JobSpec{}, errors.Errorf("unsupported dependency type: %s", depSpec.Type)
+				return models.JobSpec{}, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
 			}
 		}
 	}
@@ -177,7 +175,7 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 
 // hooks can be dependent on each other inside a job spec, this will populate
 // the local array that points to its dependent hook
-func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (models.JobSpec, error) {
+func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) models.JobSpec {
 	for hookIdx, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
 		for _, depends := range jobHook.Unit.Info().DependsOn {
@@ -188,7 +186,7 @@ func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (mo
 		}
 		jobSpec.Hooks[hookIdx] = jobHook
 	}
-	return jobSpec, nil
+	return jobSpec
 }
 
 func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {

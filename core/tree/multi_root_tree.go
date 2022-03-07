@@ -1,6 +1,9 @@
 package tree
 
-import "github.com/pkg/errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
@@ -79,7 +82,7 @@ func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]boo
 
 			_, childAlreadyInPath := pathMap[child.GetName()] // 1 -> 2 -> 1
 			if childAlreadyInPath && pathMap[child.GetName()] {
-				cyclicErr = errors.Wrap(ErrCyclicDependencyEncountered, root.GetName())
+				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, root.GetName())
 			}
 			if cyclicErr != nil {
 				return cyclicErr

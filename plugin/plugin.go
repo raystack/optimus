@@ -15,13 +15,12 @@ import (
 	"github.com/odpf/optimus/plugin/v1beta1/base"
 	"github.com/odpf/optimus/plugin/v1beta1/cli"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
-	"github.com/pkg/errors"
 )
 
 func Initialize(pluginLogger hclog.Logger) error {
 	discoveredPlugins, err := DiscoverPlugins(pluginLogger)
 	if err != nil {
-		return errors.Wrap(err, "DiscoverPlugins")
+		return fmt.Errorf("DiscoverPlugins: %w", err)
 	}
 	pluginLogger.Debug(fmt.Sprintf("discovering plugins(%d)...", len(discoveredPlugins)))
 
@@ -46,7 +45,7 @@ func Initialize(pluginLogger hclog.Logger) error {
 		// connect via GRPC
 		rpcClient, err := pluginClient.Client()
 		if err != nil {
-			return errors.Wrapf(err, "client.Client(): %s", pluginPath)
+			return fmt.Errorf("client.Client(): %s: %w", pluginPath, err)
 		}
 
 		var baseClient models.BasePlugin
@@ -57,12 +56,12 @@ func Initialize(pluginLogger hclog.Logger) error {
 		raw, err := rpcClient.Dispense(models.PluginTypeBase)
 		if err != nil {
 			pluginClient.Kill()
-			return errors.Wrapf(err, "rpcClient.Dispense: %s", pluginPath)
+			return fmt.Errorf("rpcClient.Dispense: %s: %w", pluginPath, err)
 		}
 		baseClient = raw.(models.BasePlugin)
 		baseInfo, err := baseClient.PluginInfo()
 		if err != nil {
-			return errors.Wrapf(err, "failed to read plugin info: %s", pluginPath)
+			return fmt.Errorf("failed to read plugin info: %s: %w", pluginPath, err)
 		}
 		pluginLogger.Debug("plugin connection established: ", baseInfo.Name)
 
@@ -87,7 +86,7 @@ func Initialize(pluginLogger hclog.Logger) error {
 		}
 
 		if err := models.PluginRegistry.Add(baseClient, cliClient, drClient); err != nil {
-			return errors.Wrapf(err, "PluginRegistry.Add: %s", pluginPath)
+			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginPath, err)
 		}
 		pluginLogger.Debug("plugin ready: ", baseInfo.Name)
 	}

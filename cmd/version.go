@@ -10,7 +10,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/version"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -83,7 +82,7 @@ func getVersionRequest(clientVer string, host string) (ver string, err error) {
 		Client: clientVer,
 	})
 	if err != nil {
-		return "", errors.Wrapf(err, "request failed for version")
+		return "", fmt.Errorf("request failed for version: %w", err)
 	}
 
 	spinner := NewProgressBar()

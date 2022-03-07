@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -15,7 +16,6 @@ import (
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 )
@@ -407,7 +407,7 @@ func AskCLISurveyQuestion(ques models.PluginQuestion, cliMod models.CommandLineM
 		}
 		return nil
 	})); err != nil {
-		return nil, errors.Wrap(err, "AskSurveyQuestion")
+		return nil, fmt.Errorf("AskSurveyQuestion: %w", err)
 	}
 
 	answers := models.PluginAnswers{
@@ -443,7 +443,7 @@ func ConvertUserInputToString(val interface{}) (string, error) {
 	case "OptionAnswer":
 		responseStr = val.(survey.OptionAnswer).Value
 	default:
-		return "", errors.Errorf("unknown type found while parsing input: %v", val)
+		return "", fmt.Errorf("unknown type found while parsing input: %v", val)
 	}
 	return responseStr, nil
 }

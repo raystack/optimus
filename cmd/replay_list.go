@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 )
 
@@ -55,7 +55,7 @@ The list command is used to fetch the recent replay in one project.
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Error(coloredError("Replay request took too long, timing out"))
 			}
-			return errors.Wrapf(err, "failed to get replay requests")
+			return fmt.Errorf("failed to get replay requests: %w", err)
 		}
 		if len(replayResponse.ReplayList) == 0 {
 			l.Info(fmt.Sprintf("No replays were found in %s project.", projectName))

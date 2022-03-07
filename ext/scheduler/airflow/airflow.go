@@ -23,7 +23,6 @@ import (
 	_ "embed"
 
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 )
 
 //go:embed resources/__lib.py
@@ -194,28 +193,28 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	error) {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
-		return nil, errors.Errorf("scheduler host not set for %s", projSpec.Name)
+		return nil, fmt.Errorf("scheduler host not set for %s", projSpec.Name)
 	}
 	schdHost = strings.Trim(schdHost, "/")
 
 	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusURL), jobName)
 	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchURL)
+		return nil, fmt.Errorf("failed to build http request for %s: %w", fetchURL, err)
 	}
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchURL)
+		return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %w", fetchURL, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch airflow dag runs from %s: %d", fetchURL, resp.StatusCode)
+		return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %d", fetchURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read airflow response")
+		return nil, fmt.Errorf("failed to read airflow response: %w", err)
 	}
 
 	//{
@@ -230,7 +229,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	responseJSON := []map[string]interface{}{}
 	err = json.Unmarshal(body, &responseJSON)
 	if err != nil {
-		return nil, errors.Wrapf(err, "json error: %s", string(body))
+		return nil, fmt.Errorf("json error: %s: %w", string(body), err)
 	}
 
 	jobStatus := []models.JobStatus{}
@@ -238,11 +237,11 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		_, ok1 := status["execution_date"]
 		_, ok2 := status["state"]
 		if !ok1 || !ok2 {
-			return nil, errors.Errorf("failed to find required response fields %s in %s", jobName, status)
+			return nil, fmt.Errorf("failed to find required response fields %s in %s", jobName, status)
 		}
 		schdAt, err := time.Parse(models.InstanceScheduledAtTimeLayout, status["execution_date"].(string))
 		if err != nil {
-			return nil, errors.Errorf("error parsing date for %s, %s", jobName, status["execution_date"].(string))
+			return nil, fmt.Errorf("error parsing date for %s, %s", jobName, status["execution_date"].(string))
 		}
 		jobStatus = append(jobStatus, models.JobStatus{
 			ScheduledAt: schdAt,
@@ -256,7 +255,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
-		return errors.Errorf("scheduler host not set for %s", projSpec.Name)
+		return fmt.Errorf("scheduler host not set for %s", projSpec.Name)
 	}
 
 	schdHost = strings.Trim(schdHost, "/")
@@ -269,20 +268,20 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		endDate.In(utcTimezone).Format(airflowDateFormat))
 	request, err := http.NewRequest(http.MethodGet, clearDagRunURL, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to build http request for %s", clearDagRunURL)
+		return fmt.Errorf("failed to build http request for %s: %w", clearDagRunURL, err)
 	}
 
 	resp, err := a.httpClient.Do(request)
 	if err != nil {
-		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", clearDagRunURL)
+		return fmt.Errorf("failed to clear airflow dag runs from %s: %w", clearDagRunURL, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("failed to clear airflow dag runs from %s: %d", clearDagRunURL, resp.StatusCode)
+		return fmt.Errorf("failed to clear airflow dag runs from %s: %d", clearDagRunURL, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrap(err, "failed to read airflow response")
+		return fmt.Errorf("failed to read airflow response: %w", err)
 	}
 
 	//{
@@ -292,13 +291,13 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	responseJSON := map[string]interface{}{}
 	err = json.Unmarshal(body, &responseJSON)
 	if err != nil {
-		return errors.Wrapf(err, "json error: %s", string(body))
+		return fmt.Errorf("json error: %s: %w", string(body), err)
 	}
 
 	responseFields := []string{"http_response_code", "status"}
 	for _, field := range responseFields {
 		if _, ok := responseJSON[field]; !ok {
-			return errors.Errorf("failed to find required response fields %s in %s", field, responseJSON)
+			return fmt.Errorf("failed to find required response fields %s in %s", field, responseJSON)
 		}
 	}
 	return nil

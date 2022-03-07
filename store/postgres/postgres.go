@@ -17,7 +17,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for postgres migrate driver
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -65,11 +64,11 @@ func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer 
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize postgres db connection")
+		return nil, fmt.Errorf("failed to initialize postgres db connection: %w", err)
 	}
 
 	if err := InitTrace(db); err != nil {
-		return nil, errors.Wrap(err, "failed to initialize tracing for postgresql")
+		return nil, fmt.Errorf("failed to initialize tracing for postgresql: %w", err)
 	}
 
 	sqlDB, err := db.DB()
@@ -85,12 +84,12 @@ func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer 
 func Migrate(connURL string) error {
 	m, err := NewHTTPFSMigrator(connURL)
 	if err != nil {
-		return errors.Wrap(err, "db migrator")
+		return fmt.Errorf("db migrator: %w", err)
 	}
 	defer m.Close()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return errors.Wrap(err, "db migrator")
+		return fmt.Errorf("db migrator: %w", err)
 	}
 	return nil
 }

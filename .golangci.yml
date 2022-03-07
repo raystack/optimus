@@ -46,7 +46,6 @@ linters:
     - nilerr
     - errorlint
     - bodyclose
-    - unparam
     - ifshort
     - prealloc
     - nestif

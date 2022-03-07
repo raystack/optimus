@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
@@ -11,7 +13,6 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 )
 
@@ -69,7 +70,7 @@ func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf co
 				l.Error(coloredError("Getting list of backups took too long, timing out"))
 				return err
 			}
-			return errors.Wrapf(err, "request failed to get list of backups")
+			return fmt.Errorf("request failed to get list of backups: %w", err)
 		}
 
 		if len(listBackupsResponse.Backups) == 0 {

@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gtank/cryptopasta"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -135,7 +136,7 @@ func (repo *secretRepository) Save(ctx context.Context, namespace models.Namespa
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, namespace, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find secret by name")
+		return fmt.Errorf("unable to find secret by name: %w", err)
 	}
 	return store.ErrResourceExists
 }
@@ -193,7 +194,28 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	for _, res := range resources {
 		adapted, err := res.ToSecretItemInfo()
 		if err != nil {
-			return secretItems, errors.Wrap(err, "failed to adapt secret")
+			return secretItems, fmt.Errorf("failed to adapt secret: %w", err)
+		}
+		secretItems = append(secretItems, adapted)
+	}
+
+	return secretItems, nil
+}
+
+func (repo secretRepository) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	var secretItems []models.ProjectSecretItem
+	var resources []Secret
+	if err := repo.db.WithContext(ctx).
+		Where("project_id = ?", repo.project.ID).
+		Where("type = ?", models.SecretTypeUserDefined).
+		Where("namespace_id is null or namespace_id = ?", namespace.ID).
+		Find(&resources).Error; err != nil {
+		return secretItems, err
+	}
+	for _, res := range resources {
+		adapted, err := res.ToSpec(repo.hash)
+		if err != nil {
+			return secretItems, fmt.Errorf("failed to adapt secret, %s", err)
 		}
 		secretItems = append(secretItems, adapted)
 	}

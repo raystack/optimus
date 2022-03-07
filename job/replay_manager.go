@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 )
 

@@ -2,12 +2,11 @@ package models
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 )
