@@ -1,12 +1,12 @@
 package bigquery
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	bqapi "cloud.google.com/go/bigquery"
-	"github.com/pkg/errors"
 )
 
 func bqPartitioningTimeTo(t BQPartitionInfo) *bqapi.TimePartitioning {
@@ -239,7 +239,7 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to parse timestamp %s", t.Metadata.ExpirationTime)
+			return nil, fmt.Errorf("unable to parse timestamp %s: %w", t.Metadata.ExpirationTime, err)
 		}
 		meta.ExpirationTime = expiryTime
 	}
@@ -274,7 +274,7 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
-			return meta, errors.Wrapf(err, "unable to parse timestamp %s", t.Metadata.ExpirationTime)
+			return meta, fmt.Errorf("unable to parse timestamp %s: %w", t.Metadata.ExpirationTime, err)
 		}
 		meta.ExpirationTime = expiryTime
 	}

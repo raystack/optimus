@@ -10,7 +10,6 @@ import (
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -134,7 +133,7 @@ func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 
 			runs, err := getRunsBetweenDates(parentRunDate, parentEndDate, childDag.Schedule.Interval)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to find runs with parent dag")
+				return nil, fmt.Errorf("failed to find runs with parent dag: %w", err)
 			}
 			for _, run := range runs {
 				childNode.Runs.Add(run)

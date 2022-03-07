@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
 )
@@ -64,7 +64,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Error(coloredError("Replay request took too long, timing out"))
 			}
-			return errors.Wrapf(err, "request getting status for replay %s is failed", args[0])
+			return fmt.Errorf("request getting status for replay %s is failed: %w", args[0], err)
 		}
 		printReplayStatusResponse(l, replayResponse)
 		return nil

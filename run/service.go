@@ -2,13 +2,13 @@ package run
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/pkg/errors"
-
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -32,13 +32,18 @@ type SpecRepoFactory interface {
 
 type Service struct {
 	repoFac        SpecRepoFactory
+	secretService  service.SecretService
 	Now            func() time.Time
 	templateEngine models.TemplateEngine
 }
 
 func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	envMap map[string]string, fileMap map[string]string, err error) {
-	return NewContextManager(namespace, jobRun, s.templateEngine).Generate(instanceSpec)
+	*models.JobRunInput, error) {
+	secrets, err := s.secretService.GetSecrets(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return NewContextManager(namespace, secrets, jobRun, s.templateEngine).Generate(instanceSpec)
 }
 
 func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
@@ -85,7 +90,7 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 	for _, instance := range jobRun.Instances {
 		if instance.Name == instanceName && instance.Type == instanceType {
 			if err := jobRunRepo.ClearInstance(ctx, jobRun.ID, instance.Type, instance.Name); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-				return models.InstanceSpec{}, errors.Wrapf(err, "Register: failed to clear instance of job %s", jobRun)
+				return models.InstanceSpec{}, fmt.Errorf("Register: failed to clear instance of job %s: %w", jobRun, err)
 			}
 			break
 		}
@@ -93,7 +98,7 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 
 	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, jobRun.ExecutedAt)
 	if err != nil {
-		return models.InstanceSpec{}, errors.Wrap(err, "Register: failed to prepare instance")
+		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
 	}
 	if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
 		return models.InstanceSpec{}, err
@@ -101,8 +106,8 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 
 	// get whatever is saved, querying again ensures it was saved correctly
 	if jobRun, _, err = jobRunRepo.GetByID(ctx, jobRun.ID); err != nil {
-		return models.InstanceSpec{}, errors.Wrapf(err, "failed to save instance for %s of %s:%s",
-			jobRun, instanceName, instanceType)
+		return models.InstanceSpec{}, fmt.Errorf("failed to save instance for %s of %s:%s: %w",
+			jobRun, instanceName, instanceType, err)
 	}
 	return jobRun.GetInstance(instanceName, instanceType)
 }
@@ -116,7 +121,7 @@ func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.Instanc
 			Assets: models.PluginAssets{}.FromJobSpec(jobRun.Spec.Assets),
 		})
 		if err != nil {
-			return models.InstanceSpec{}, errors.Wrapf(err, "failed to generate destination for job %s", jobRun.Spec.Name)
+			return models.InstanceSpec{}, fmt.Errorf("failed to generate destination for job %s: %w", jobRun.Spec.Name, err)
 		}
 		jobDestination = jobDestinationResponse.Destination
 	}
@@ -156,9 +161,10 @@ func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRu
 	return s.repoFac.New().GetByID(ctx, JobRunID)
 }
 
-func NewService(repoFac SpecRepoFactory, timeFunc func() time.Time, te models.TemplateEngine) *Service {
+func NewService(repoFac SpecRepoFactory, secretService service.SecretService, timeFunc func() time.Time, te models.TemplateEngine) *Service {
 	return &Service{
 		repoFac:        repoFac,
+		secretService:  secretService,
 		Now:            timeFunc,
 		templateEngine: te,
 	}

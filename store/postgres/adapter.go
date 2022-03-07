@@ -3,14 +3,14 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // Job are inputs from user to create a job
@@ -41,9 +41,10 @@ type Job struct {
 	WindowOffset     *int64
 	WindowTruncateTo *string
 
-	Assets   datatypes.JSON
-	Hooks    datatypes.JSON
-	Metadata datatypes.JSON
+	Assets               datatypes.JSON
+	Hooks                datatypes.JSON
+	Metadata             datatypes.JSON
+	ExternalDependencies datatypes.JSON //store external dependencies
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -97,7 +98,7 @@ type JobHook struct {
 func (a JobHook) ToSpec(pluginRepo models.PluginRepository) (models.JobSpecHook, error) {
 	hookUnit, err := pluginRepo.GetByName(a.Name)
 	if err != nil {
-		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpecHook{}, fmt.Errorf("spec reading error: %w", err)
 	}
 
 	conf := models.JobSpecConfigs{}
@@ -165,6 +166,12 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
+	//prep external dependencies
+	externalDependencies := models.ExternalDependency{}
+	if err := json.Unmarshal(conf.ExternalDependencies, &externalDependencies); err != nil {
+		return models.JobSpec{}, err
+	}
+
 	// prep task conf
 	taskConf := models.JobSpecConfigs{}
 	if err := json.Unmarshal(conf.TaskConfig, &taskConf); err != nil {
@@ -197,7 +204,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	execUnit, err := adapt.pluginRepo.GetByName(conf.TaskName)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpec{}, fmt.Errorf("spec reading error: %w", err)
 	}
 
 	var notifiers []models.JobSpecNotifier
@@ -247,10 +254,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				TruncateTo: *conf.WindowTruncateTo,
 			},
 		},
-		Assets:       *(models.JobAssets{}).New(jobAssets),
-		Dependencies: dependencies,
-		Hooks:        jobHooks,
-		Metadata:     metadata,
+		Assets:               *(models.JobAssets{}).New(jobAssets),
+		Dependencies:         dependencies,
+		Hooks:                jobHooks,
+		Metadata:             metadata,
+		ExternalDependencies: externalDependencies,
 	}
 	return job, nil
 }
@@ -296,6 +304,12 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		spec.Dependencies[idx] = dep
 	}
 	dependenciesJSON, err := json.Marshal(spec.Dependencies)
+	if err != nil {
+		return Job{}, err
+	}
+
+	// prep external dependencies
+	externalDependenciesJSON, err := json.Marshal(spec.ExternalDependencies)
 	if err != nil {
 		return Job{}, err
 	}
@@ -350,26 +364,27 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 	}
 
 	return Job{
-		ID:               spec.ID,
-		Version:          spec.Version,
-		Name:             spec.Name,
-		Owner:            spec.Owner,
-		Description:      spec.Description,
-		Labels:           labelsJSON,
-		StartDate:        spec.Schedule.StartDate,
-		EndDate:          spec.Schedule.EndDate,
-		Interval:         &spec.Schedule.Interval,
-		Behavior:         behaviorJSON,
-		Destination:      jobDestination,
-		Dependencies:     dependenciesJSON,
-		TaskName:         spec.Task.Unit.Info().Name,
-		TaskConfig:       taskConfigJSON,
-		WindowSize:       &wsize,
-		WindowOffset:     &woffset,
-		WindowTruncateTo: &spec.Task.Window.TruncateTo,
-		Assets:           assetsJSON,
-		Hooks:            hooksJSON,
-		Metadata:         metadata,
+		ID:                   spec.ID,
+		Version:              spec.Version,
+		Name:                 spec.Name,
+		Owner:                spec.Owner,
+		Description:          spec.Description,
+		Labels:               labelsJSON,
+		StartDate:            spec.Schedule.StartDate,
+		EndDate:              spec.Schedule.EndDate,
+		Interval:             &spec.Schedule.Interval,
+		Behavior:             behaviorJSON,
+		Destination:          jobDestination,
+		Dependencies:         dependenciesJSON,
+		TaskName:             spec.Task.Unit.Info().Name,
+		TaskConfig:           taskConfigJSON,
+		WindowSize:           &wsize,
+		WindowOffset:         &woffset,
+		WindowTruncateTo:     &spec.Task.Window.TruncateTo,
+		Assets:               assetsJSON,
+		Hooks:                hooksJSON,
+		Metadata:             metadata,
+		ExternalDependencies: externalDependenciesJSON,
 	}, nil
 }
 

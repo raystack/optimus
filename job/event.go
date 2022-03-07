@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -50,7 +49,7 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 						Route:     route,
 					}); currErr != nil {
 						e.log.Error("Error: No notification event for job ", "current error", currErr)
-						err = multierror.Append(err, errors.Wrapf(currErr, "notifyChannel.Notify: %s", channel))
+						err = multierror.Append(err, fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
 					}
 				}
 			}

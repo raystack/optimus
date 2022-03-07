@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -9,11 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/odpf/optimus/job"
-
 	"github.com/odpf/optimus/core/tree"
-
-	"github.com/pkg/errors"
+	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -41,7 +39,7 @@ func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]tim
 func TestReplay(t *testing.T) {
 	ctx := context.Background()
 	noDependency := map[string]models.JobSpecDependency{}
-	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+	var dumpAssets job.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 	var (

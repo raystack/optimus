@@ -3,6 +3,7 @@ package v1beta1_test
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,7 +13,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -207,6 +207,41 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Len(t, resp.Secrets, 1)
 			assert.Equal(t, resp.Secrets[0].Name, secretItems[0].Name)
+		})
+	})
+
+	t.Run("DeleteSecret", func(t *testing.T) {
+		t.Run("returns error when service has error", func(t *testing.T) {
+			secretService := new(mock.SecretService)
+			secretService.On("Delete", ctx, projectSpec.Name, "", "hello").
+				Return(errors.New("random error"))
+			defer secretService.AssertExpectations(t)
+
+			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+
+			secretRequest := pb.DeleteSecretRequest{
+				ProjectName: projectSpec.Name,
+				SecretName:  "hello",
+			}
+			resp, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			assert.Nil(t, resp)
+			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to delete secret hello", err.Error())
+		})
+		t.Run("deletes the secret successfully", func(t *testing.T) {
+			secretService := new(mock.SecretService)
+			secretService.On("Delete", ctx, projectSpec.Name, namespaceSpec.Name, "hello").
+				Return(nil)
+			defer secretService.AssertExpectations(t)
+
+			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+
+			secretRequest := pb.DeleteSecretRequest{
+				ProjectName:   projectSpec.Name,
+				NamespaceName: namespaceSpec.Name,
+				SecretName:    "hello",
+			}
+			_, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			assert.Nil(t, err)
 		})
 	})
 }

@@ -1,6 +1,10 @@
 package local
 
 import (
+	"errors"
+	"fmt"
+	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,7 +14,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
-	"github.com/pkg/errors"
 	"gopkg.in/validator.v2"
 )
 
@@ -91,7 +94,7 @@ type JobHook struct {
 func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook, error) {
 	hookUnit, err := pluginsRepo.GetByName(a.Name)
 	if err != nil {
-		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpecHook{}, fmt.Errorf("spec reading error: %w", err)
 	}
 	return models.JobSpecHook{
 		Config: JobSpecConfigFromYamlSlice(a.Config),
@@ -335,7 +338,7 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 			// treat as normal duration
 			window.Size, err = time.ParseDuration(conf.Task.Window.Size)
 			if err != nil {
-				return window, errors.Wrapf(err, "failed to parse task window %s with size %v", conf.Name, conf.Task.Window.Size)
+				return window, fmt.Errorf("failed to parse task window %s with size %v: %w", conf.Name, conf.Task.Window.Size, err)
 			}
 		}
 	}
@@ -347,7 +350,7 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 			// treat as normal duration
 			window.Offset, err = time.ParseDuration(conf.Task.Window.Offset)
 			if err != nil {
-				return window, errors.Wrapf(err, "failed to parse task window %s with offset %v", conf.Name, conf.Task.Window.Offset)
+				return window, fmt.Errorf("failed to parse task window %s with offset %v: %w", conf.Name, conf.Task.Window.Offset, err)
 			}
 		}
 	}
@@ -356,8 +359,16 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 }
 
 type JobDependency struct {
-	JobName string `yaml:"job"`
-	Type    string `yaml:"type,omitempty"`
+	JobName string         `yaml:"job,omitempty"`
+	Type    string         `yaml:"type,omitempty"`
+	HttpDep HTTPDependency `yaml:"http,omitempty"`
+}
+
+type HTTPDependency struct {
+	Name          string            `yaml:"name"`
+	RequestParams map[string]string `yaml:"params,omitempty"`
+	URL           string            `yaml:"url"`
+	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
 type JobSpecAdapter struct {
@@ -381,22 +392,34 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		endDate = &end
 	}
 
-	// prep dirty dependencies
+	// prep dirty dependencies and external http dependencies
+	var externalDependency models.ExternalDependency
+	var httpDependencies []models.HTTPDependency
 	dependencies := map[string]models.JobSpecDependency{}
-	for _, dep := range conf.Dependencies {
-		depType := models.JobSpecDependencyTypeIntra
-		switch dep.Type {
-		case string(models.JobSpecDependencyTypeIntra):
-			depType = models.JobSpecDependencyTypeIntra
-		case string(models.JobSpecDependencyTypeInter):
-			depType = models.JobSpecDependencyTypeInter
-		case string(models.JobSpecDependencyTypeExtra):
-			depType = models.JobSpecDependencyTypeExtra
+	for index, dep := range conf.Dependencies {
+		if dep.JobName != "" {
+			depType := models.JobSpecDependencyTypeIntra
+			switch dep.Type {
+			case string(models.JobSpecDependencyTypeIntra):
+				depType = models.JobSpecDependencyTypeIntra
+			case string(models.JobSpecDependencyTypeInter):
+				depType = models.JobSpecDependencyTypeInter
+			case string(models.JobSpecDependencyTypeExtra):
+				depType = models.JobSpecDependencyTypeExtra
+			}
+			dependencies[dep.JobName] = models.JobSpecDependency{
+				Type: depType,
+			}
 		}
-		dependencies[dep.JobName] = models.JobSpecDependency{
-			Type: depType,
+		if !reflect.DeepEqual(dep.HttpDep, HTTPDependency{}) {
+			httpDep, err := prepHttpDependency(dep.HttpDep, index)
+			if err != nil {
+				return models.JobSpec{}, err
+			}
+			httpDependencies = append(httpDependencies, httpDep)
 		}
 	}
+	externalDependency.HTTPDependencies = httpDependencies
 
 	// prep hooks
 	var hooks []models.JobSpecHook
@@ -416,7 +439,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	execUnit, err := adapt.pluginRepo.GetByName(conf.Task.Name)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrapf(err, "spec reading error, failed to find exec unit %s", conf.Task.Name)
+		return models.JobSpec{}, fmt.Errorf("spec reading error, failed to find exec unit %s: %w", conf.Task.Name, err)
 	}
 
 	labels := map[string]string{}
@@ -428,7 +451,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	for _, c := range conf.Task.Config {
 		taskConf = append(taskConf, models.JobSpecConfigItem{
 			Name:  c.Key.(string),
-			Value: c.Value.(string),
+			Value: c.Value.(string), // TODO: panics when value not valid, error with macros
 		})
 	}
 
@@ -490,6 +513,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				},
 			},
 		},
+		ExternalDependencies: externalDependency,
 	}
 	return job, nil
 }
@@ -581,6 +605,12 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Type:    dep.Type.String(),
 		})
 	}
+	// external http dependencies
+	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
+		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
+			HttpDep: HTTPDependency(dep),
+		})
+	}
 
 	// prep hooks
 	for _, hook := range spec.Hooks {
@@ -630,7 +660,7 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 		// replace month notation with days first, treating 1M as 30 days
 		monthsCount, err := strconv.Atoi(monthMatches[0][2])
 		if err != nil {
-			return sz, errors.Wrapf(err, "failed to parse task configuration of %s", str)
+			return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
 		}
 		sz = HoursInMonth * time.Duration(monthsCount)
 		if monthMatches[0][1] == "-" {
@@ -642,11 +672,23 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 			// check if there is remaining time that we can still parse
 			remainingTime, err := time.ParseDuration(str)
 			if err != nil {
-				return sz, errors.Wrapf(err, "failed to parse task configuration of %s", str)
+				return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
 			}
 			sz += remainingTime
 		}
 		return sz, nil
 	}
 	return sz, ErrNotAMonthDuration
+}
+
+func prepHttpDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
+	var httpDep models.HTTPDependency
+	if _, err := url.ParseRequestURI(dep.URL); err != nil {
+		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+	}
+	if dep.Name == "" {
+		return httpDep, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)
+	}
+	httpDep = models.HTTPDependency(dep)
+	return httpDep, nil
 }
