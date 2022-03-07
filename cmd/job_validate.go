@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -12,7 +13,6 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -81,7 +81,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 	for _, spec := range jobSpecs {
 		adaptJob, err := adapt.ToJobProto(spec)
 		if err != nil {
-			return errors.Wrapf(err, "failed to serialize: %s", spec.Name)
+			return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
 		}
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
@@ -96,7 +96,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Validate process took too long, timing out"))
 		}
-		return errors.Wrapf(err, "validate request failed")
+		return fmt.Errorf("validate request failed: %w", err)
 	}
 
 	ackCounter := 0

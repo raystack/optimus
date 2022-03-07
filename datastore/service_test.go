@@ -2,12 +2,9 @@ package datastore_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
-
-	"github.com/odpf/optimus/store"
-
-	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +12,7 @@ import (
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {

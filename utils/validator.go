@@ -6,8 +6,6 @@ import (
 	"regexp"
 
 	"github.com/AlecAivazis/survey/v2"
-
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 )
 
@@ -23,7 +21,7 @@ func CronIntervalValidator(val interface{}, param string) error {
 		return nil
 	}
 	if _, err := cron.ParseStandard(value); err != nil {
-		return errors.Wrap(err, "invalid crontab entry")
+		return fmt.Errorf("invalid crontab entry: %w", err)
 	}
 	return nil
 }

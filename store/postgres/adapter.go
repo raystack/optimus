@@ -3,14 +3,14 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // Job are inputs from user to create a job
@@ -98,7 +98,7 @@ type JobHook struct {
 func (a JobHook) ToSpec(pluginRepo models.PluginRepository) (models.JobSpecHook, error) {
 	hookUnit, err := pluginRepo.GetByName(a.Name)
 	if err != nil {
-		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpecHook{}, fmt.Errorf("spec reading error: %w", err)
 	}
 
 	conf := models.JobSpecConfigs{}
@@ -204,7 +204,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	execUnit, err := adapt.pluginRepo.GetByName(conf.TaskName)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpec{}, fmt.Errorf("spec reading error: %w", err)
 	}
 
 	var notifiers []models.JobSpecNotifier

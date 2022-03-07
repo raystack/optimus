@@ -134,7 +134,7 @@ func (s *Server) IsLeader() bool {
 // serf is used for managing membership of peers across cluster
 // if a node joins it gets added to cluster to take part as voter
 // if a node leaves membership gossip, it is removed from the raft cluster
-func (s *Server) initSerf(ctx context.Context, schedulerConf config.SchedulerConfig) error {
+func (s *Server) initSerf(_ context.Context, schedulerConf config.SchedulerConfig) error {
 	s.serfEvents = make(chan serf.Event)
 	serfConfig, err := newSerfConfig(schedulerConf.GossipAddr, schedulerConf.RaftAddr, schedulerConf.NodeID, s.serfEvents)
 	if err != nil {
@@ -180,7 +180,7 @@ func newSerfConfig(serfAddr, raftAddress, nodeID string, eventCh chan serf.Event
 // raft manages the leadership/follower state in cluster
 // minimum 3 nodes are required to work properly to have 1 node
 // fail-over resistant
-func (s *Server) initRaft(ctx context.Context, devMode bool, bootstrapCluster bool, schedulerConf config.SchedulerConfig, fsm raft.FSM) error {
+func (s *Server) initRaft(_ context.Context, devMode bool, bootstrapCluster bool, schedulerConf config.SchedulerConfig, fsm raft.FSM) error {
 	c := raft.DefaultConfig()
 	c.LocalID = raft.ServerID(schedulerConf.NodeID)
 

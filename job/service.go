@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -93,7 +93,7 @@ type Service struct {
 func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) error {
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
 	if err := jobRepo.Save(ctx, spec); err != nil {
-		return errors.Wrapf(err, "failed to save job: %s", spec.Name)
+		return fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
 	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(ctx, name)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrapf(err, "failed to retrieve job")
+		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
 	return jobSpec, nil
 }
@@ -111,7 +111,7 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
 	jobSpec, namespace, err := srv.projectJobSpecRepoFactory.New(proj).GetByName(ctx, name)
 	if err != nil {
-		return models.JobSpec{}, models.NamespaceSpec{}, errors.Wrapf(err, "failed to retrieve job")
+		return models.JobSpec{}, models.NamespaceSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
 	return jobSpec, namespace, nil
 }
@@ -119,7 +119,7 @@ func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj m
 func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
 	jobSpecs, err := srv.jobSpecRepoFactory.New(namespace).GetAll(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve jobs")
+		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
 	return jobSpecs, nil
 }
@@ -129,7 +129,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 	for i, jSpec := range jobSpecs {
 		// compile assets
 		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return errors.Wrap(err, "asset compilation")
+			return fmt.Errorf("asset compilation: %w", err)
 		}
 
 		// remove manual dependencies as they needs to be resolved
@@ -153,7 +153,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 						if obs != nil {
 							obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
 						}
-						return nil, errors.Wrapf(err, "%s %s", errDependencyResolution.Error(), currentSpec.Name)
+						return nil, fmt.Errorf("%s %s: %w", errDependencyResolution.Error(), currentSpec.Name, err)
 					}
 				}
 
@@ -162,7 +162,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 					if obs != nil {
 						obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
 					}
-					return nil, errors.Wrapf(err, "failed to compile %s", currentSpec.Name)
+					return nil, fmt.Errorf("failed to compile %s: %w", currentSpec.Name, err)
 				}
 
 				if obs != nil {
@@ -194,14 +194,14 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 		Project: namespace.ProjectSpec,
 	})
 	if err != nil {
-		return destination, dependencies, errors.Wrap(err, "failed to generate destination")
+		return destination, dependencies, fmt.Errorf("failed to generate destination: %w", err)
 	}
 	destination.Destination = destinationResp.Destination
 	destination.Type = destinationResp.Type
 
 	// compile assets before generating dependencies
 	if jobSpec.Assets, err = srv.assetCompiler(jobSpec, srv.Now()); err != nil {
-		return destination, dependencies, errors.Wrap(err, "asset compilation")
+		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
 	}
 	dependencyResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
 		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
@@ -209,7 +209,7 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 		Project: namespace.ProjectSpec,
 	})
 	if err != nil {
-		return destination, dependencies, errors.Wrap(err, "failed to generate dependencies")
+		return destination, dependencies, fmt.Errorf("failed to generate dependencies: %w", err)
 	}
 	dependencies = dependencyResp.Dependencies
 
@@ -225,7 +225,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 
 	// delete from internal store
 	if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
-		return errors.Wrapf(err, "failed to delete spec: %s", jobSpec.Name)
+		return fmt.Errorf("failed to delete spec: %s: %w", jobSpec.Name, err)
 	}
 
 	// delete from batch scheduler
@@ -247,7 +247,8 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		if merrs, ok := err.(*multierror.Error); ok {
 			var newErr error
 			for _, cerr := range merrs.Errors {
-				if errors.Is(cerr, errDependencyResolution) {
+				fmt.Printf("%v", cerr)
+				if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
 					if !strings.Contains(cerr.Error(), namespace.Name) {
 						continue
 					}
@@ -308,7 +309,7 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 	jobSpecs, err := jobSpecRepo.GetAll(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch specs for namespace %s", namespace.Name)
+		return fmt.Errorf("failed to fetch specs for namespace %s: %w", namespace.Name, err)
 	}
 	var specsPresentNames []string
 	for _, jobSpec := range jobSpecs {
@@ -327,7 +328,7 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 	for _, jobName := range jobsToDelete {
 		// delete raw spec
 		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
-			return errors.Wrapf(err, "failed to delete spec: %s", jobName)
+			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
 		}
 		srv.notifyProgress(progressObserver, &EventSavedJobDelete{jobName})
 	}
@@ -356,20 +357,20 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
 	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve jobs")
+		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
 
 	// compile assets first
 	for i, jSpec := range jobSpecs {
 		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return nil, errors.Wrap(err, "asset compilation")
+			return nil, fmt.Errorf("asset compilation: %w", err)
 		}
 	}
 
 	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve namespace to job mapping")
+		return nil, fmt.Errorf("failed to retrieve namespace to job mapping: %w", err)
 	}
 	// generate a reverse map for namespace
 	jobsToNamespace := map[string]string{}
@@ -386,8 +387,8 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 			return func() (interface{}, error) {
 				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
-					wrappedErr := errors.Wrap(errDependencyResolution, err.Error())
-					return nil, errors.Wrapf(wrappedErr, "%s/%s", jobsToNamespace[currentSpec.Name], currentSpec.Name)
+					//wrappedErr := errors2.Wrap(, err.Error())
+					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
 				return resolvedSpec, nil
 			}
@@ -415,7 +416,7 @@ func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.Proje
 	for _, resolvedJobSpec := range depsResolvedJobSpecs {
 		for depJobSpecName := range resolvedJobSpec.Dependencies {
 			if depJobSpecName == jobSpec.Name {
-				return errors.Errorf("cannot delete job %s since it's dependency of job %s", jobSpec.Name,
+				return fmt.Errorf("cannot delete job %s since it's dependency of job %s", jobSpec.Name,
 					resolvedJobSpec.Name)
 			}
 		}
@@ -705,7 +706,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
-					return nil, errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)
+					return nil, fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)
 				}
 				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
 				// be available in jobSpecs []models.JobSpec object (which is tenant specific)

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,7 +15,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -76,7 +76,7 @@ func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
 func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projectName, scheduledAt, runType, runName string) (err error) {
 	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, scheduledAt)
 	if err != nil {
-		return errors.Wrapf(err, "invalid time format, please use %s", models.InstanceScheduledAtTimeLayout)
+		return fmt.Errorf("invalid time format, please use %s: %w", models.InstanceScheduledAtTimeLayout, err)
 	}
 	jobScheduledTimeProto := timestamppb.New(jobScheduledTime)
 
@@ -105,12 +105,12 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 		InstanceName: runName,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "request failed for job %s", jobName)
+		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
 
 	// make sure output dir exists
 	if err := os.MkdirAll(inputDirectory, 0777); err != nil {
-		return errors.Wrapf(err, "failed to create directory at %s", inputDirectory)
+		return fmt.Errorf("failed to create directory at %s: %w", inputDirectory, err)
 	}
 	writeToFileFn := utils.WriteStringToFileIndexed()
 
@@ -118,7 +118,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	for fileName, fileContent := range jobResponse.Context.Files {
 		filePath := filepath.Join(inputDirectory, fileName)
 		if err := writeToFileFn(filePath, fileContent, l.Writer()); err != nil {
-			return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+			return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 		}
 	}
 
@@ -134,7 +134,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	}
 	filePath := filepath.Join(inputDirectory, models.InstanceDataTypeEnvFileName)
 	if err := writeToFileFn(filePath, envFileBlob, l.Writer()); err != nil {
-		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 	}
 
 	// write all secrets into a file
@@ -147,7 +147,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	}
 	secretsFilePath := filepath.Join(inputDirectory, models.InstanceDataTypeSecretFileName)
 	if err := writeToFileFn(secretsFilePath, secretsFileContent, l.Writer()); err != nil {
-		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 	}
 
 	if len(keysWithUnsubstitutedValue) > 0 {

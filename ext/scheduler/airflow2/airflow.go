@@ -220,6 +220,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	}
 
 	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
+
 	req := airflowRequest{
 		URL:    fetchURL,
 		method: http.MethodGet,
@@ -275,6 +276,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	postURL := fmt.Sprintf(
 		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
 		jobName)
+
 	req := airflowRequest{
 		URL:    postURL,
 		method: http.MethodPost,
@@ -329,11 +331,11 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		body, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			return nil, fmt.Errorf("failed to read airflow response %w", err)
+			return nil, fmt.Errorf("failed to read airflow response: %w", err)
 		}
 
 		if err := json.Unmarshal(body, &responseJson); err != nil {
-			return nil, fmt.Errorf("json error: %s : %w", string(body), err)
+			return nil, fmt.Errorf("json error: %s: %w", string(body), err)
 		}
 
 		jobStatusPerBatch, err := toJobStatus(responseJson.DagRuns, jobName)

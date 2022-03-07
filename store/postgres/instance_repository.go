@@ -3,13 +3,14 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/odpf/optimus/store"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -96,7 +97,7 @@ func (repo *InstanceRepository) Save(ctx context.Context, run models.JobRun, spe
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, run, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find instance by schedule")
+		return fmt.Errorf("unable to find instance by schedule: %w", err)
 	}
 
 	resource, err := Instance{}.FromSpec(spec, run.ID)
