@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -42,7 +43,6 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -187,7 +187,7 @@ type airflowBucketFactory struct{}
 func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
 	storagePath, ok := projectSpec.Config[models.ProjectStoragePathKey]
 	if !ok {
-		return nil, errors.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
+		return nil, fmt.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
 	}
 	parsedURL, err := url.Parse(storagePath)
 	if err != nil {
@@ -198,7 +198,7 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 	case "gs":
 		storageSecret, ok := projectSpec.Secret.GetByName(models.ProjectSecretStorageKey)
 		if !ok {
-			return nil, errors.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, projectSpec.Name)
+			return nil, fmt.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, projectSpec.Name)
 		}
 		creds, err := google.CredentialsFromJSON(ctx, []byte(storageSecret), "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
@@ -229,7 +229,7 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 	case "mem":
 		return memblob.OpenBucket(nil), nil
 	}
-	return nil, errors.Errorf("unsupported storage config %s", storagePath)
+	return nil, fmt.Errorf("unsupported storage config %s", storagePath)
 }
 
 type pipelineLogObserver struct {
@@ -251,19 +251,19 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 	}
 }
 
-func checkRequiredConfigs(conf config.Provider) error {
+func checkRequiredConfigs(conf config.ServerConfig) error {
 	errRequiredMissing := errors.New("required config missing")
-	if conf.GetServe().IngressHost == "" {
-		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
+	if conf.IngressHost == "" {
+		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
-	if conf.GetServe().ReplayNumWorkers < 1 {
+	if conf.ReplayNumWorkers < 1 {
 		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
 	}
-	if conf.GetServe().DB.DSN == "" {
-		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
+	if conf.DB.DSN == "" {
+		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
 	}
-	if parsed, err := url.Parse(conf.GetServe().DB.DSN); err != nil {
-		return errors.Wrap(err, "failed to parse serve.db.dsn")
+	if parsed, err := url.Parse(conf.DB.DSN); err != nil {
+		return fmt.Errorf("failed to parse serve.db.dsn: %w", err)
 	} else {
 		if parsed.Scheme != "postgres" {
 			return errors.New("unsupported database scheme, use 'postgres'")
@@ -272,8 +272,8 @@ func checkRequiredConfigs(conf config.Provider) error {
 	return nil
 }
 
-func Initialize(l log.Logger, conf config.Provider) error {
-	if err := checkRequiredConfigs(conf); err != nil {
+func Initialize(l log.Logger, conf config.Optimus) error {
+	if err := checkRequiredConfigs(conf.Server); err != nil {
 		return err
 	}
 	l.Info("starting optimus", "version", config.Version)
@@ -282,18 +282,18 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	}
 
 	// setup db
-	if err := postgres.Migrate(conf.GetServe().DB.DSN); err != nil {
-		return errors.Wrap(err, "postgres.Migrate")
+	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
+		return fmt.Errorf("postgres.Migrate: %w", err)
 	}
-	dbConn, err := postgres.Connect(conf.GetServe().DB.DSN, conf.GetServe().DB.MaxIdleConnection,
-		conf.GetServe().DB.MaxOpenConnection, l.Writer())
+	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
+		conf.Server.DB.MaxOpenConnection, l.Writer())
 	if err != nil {
-		return errors.Wrap(err, "postgres.Connect")
+		return fmt.Errorf("postgres.Connect: %w", err)
 	}
 
-	jobCompiler := compiler.NewCompiler(conf.GetServe().IngressHost)
+	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
-	switch conf.GetScheduler().Name {
+	switch conf.Scheduler.Name {
 	case "airflow":
 		models.BatchScheduler = airflow.NewScheduler(
 			&airflowBucketFactory{},
@@ -307,7 +307,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			jobCompiler,
 		)
 	default:
-		return errors.Errorf("unsupported scheduler: %s", conf.GetScheduler().Name)
+		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 	jobrunRepoFac := &jobRunRepoFactory{
 		db: dbConn,
@@ -320,9 +320,9 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	)
 
 	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.GetServe().AppKey)
+	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
 	if err != nil {
-		return errors.Wrap(err, "NewApplicationSecret")
+		return fmt.Errorf("NewApplicationSecret: %w", err)
 	}
 
 	// registered project store repository factory, it's a wrapper over a storage
@@ -331,10 +331,10 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		db:   dbConn,
 		hash: appHash,
 	}
-	if !conf.GetScheduler().SkipInit {
+	if !conf.Scheduler.SkipInit {
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
-			return errors.Wrap(err, "projectRepoFactory.GetAll()")
+			return fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
 		}
 		// bootstrap scheduler for registered projects
 		for _, proj := range registeredProjects {
@@ -390,7 +390,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
-	grpcAddr := fmt.Sprintf("%s:%d", conf.GetServe().Host, conf.GetServe().Port)
+	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -436,9 +436,9 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		},
 	)
 	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    conf.GetServe().ReplayNumWorkers,
-		WorkerTimeout: conf.GetServe().ReplayWorkerTimeout,
-		RunTimeout:    conf.GetServe().ReplayRunTimeout,
+		NumWorkers:    conf.Server.ReplayNumWorkers,
+		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
+		RunTimeout:    conf.Server.ReplayRunTimeout,
 	}, models.BatchScheduler, replayValidator, replaySyncer)
 	backupRepoFac := backupRepoFactory{
 		db: dbConn,
@@ -478,6 +478,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,
+			secretService,
 			func() time.Time {
 				return time.Now().UTC()
 			},
@@ -504,12 +505,12 @@ func Initialize(l log.Logger, conf config.Provider) error {
 		),
 	}...)
 	if err != nil {
-		return errors.Wrap(err, "grpc.DialContext")
+		return fmt.Errorf("grpc.DialContext: %w", err)
 	}
 	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
 	defer runtimeCancel()
 	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return errors.Wrap(err, "RegisterRuntimeServiceHandler")
+		return fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
 	}
 
 	// base router
@@ -548,9 +549,9 @@ func Initialize(l log.Logger, conf config.Provider) error {
 			return time.Now().UTC()
 		},
 	)
-	if conf.GetScheduler().NodeID != "" {
+	if conf.Scheduler.NodeID != "" {
 		// start optimus cluster
-		if err := clusterServer.Init(clusterCtx, conf.GetScheduler()); err != nil {
+		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
 			clusterCancel()
 			return err
 		}
@@ -570,7 +571,7 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	var terminalError error
 
 	if err = replayManager.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "replayManager.Close"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("replayManager.Close: %w", err))
 	}
 
 	// Create a deadline to wait for server
@@ -580,14 +581,14 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
 	if err := srv.Shutdown(ctxProxy); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "srv.Shutdown"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("srv.Shutdown: %w", err))
 	}
 	grpcServer.GracefulStop()
 
 	// gracefully shutdown event service, e.g. slack notifiers flush in memory batches
 	cancelNotifiers()
 	if err := eventService.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "eventService.Close"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("eventService.Close: %w", err))
 	}
 
 	// shutdown cluster
@@ -597,10 +598,10 @@ func Initialize(l log.Logger, conf config.Provider) error {
 
 	sqlConn, err := dbConn.DB()
 	if err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "dbConn.DB"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("dbConn.DB: %w", err))
 	}
 	if err := sqlConn.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "sqlConn.Close"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("sqlConn.Close: %w", err))
 	}
 
 	l.Info("bye")

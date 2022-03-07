@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -10,7 +11,6 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -19,10 +19,10 @@ const (
 	jobStatusTimeout = time.Second * 30
 )
 
-func jobStatusCommand(l log.Logger, conf config.Provider) *cli.Command {
+func jobStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
-		optimusHost = conf.GetHost()
-		projectName = conf.GetProject().Name
+		optimusHost = conf.Host
+		projectName = conf.Project.Name
 	)
 	cmd := &cli.Command{
 		Use:     "status",
@@ -69,7 +69,7 @@ func getJobStatusRequest(l log.Logger, jobName, host, projectName string) error 
 	})
 	spinner.Stop()
 	if err != nil {
-		return errors.Wrapf(err, "request failed for job %s", jobName)
+		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
 
 	jobStatuses := jobStatusResponse.GetStatuses()

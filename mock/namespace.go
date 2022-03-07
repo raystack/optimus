@@ -44,6 +44,11 @@ func (n *NamespaceService) Get(ctx context.Context, projectName, namespaceName s
 	return args.Get(0).(models.NamespaceSpec), args.Error(1)
 }
 
+func (n *NamespaceService) GetNamespaceOptionally(ctx context.Context, projectName, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
+	args := n.Called(ctx, projectName, namespaceName)
+	return args.Get(0).(models.ProjectSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
+}
+
 func (n *NamespaceService) Save(ctx context.Context, prjName string, namespace models.NamespaceSpec) error {
 	args := n.Called(ctx, prjName, namespace)
 	return args.Error(0)

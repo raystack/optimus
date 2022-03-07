@@ -49,8 +49,8 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when namespace service has error", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("Get", ctx, "local", "first").
-				Return(models.NamespaceSpec{}, errors.New("invalid project name"))
+			nsService.On("GetNamespaceOptionally", ctx, "local", "first").
+				Return(models.ProjectSpec{}, models.NamespaceSpec{}, errors.New("invalid project name"))
 			defer nsService.AssertExpectations(t)
 
 			svc := service.NewSecretService(nil, nsService, nil)
@@ -59,11 +59,29 @@ func TestSecretService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "invalid project name", err.Error())
 		})
+		t.Run("saves the secret when no namespace", func(t *testing.T) {
+			nsService := new(mock.NamespaceService)
+			nsService.On("GetNamespaceOptionally", ctx, project.Name, "").
+				Return(project, models.NamespaceSpec{}, nil)
+			defer nsService.AssertExpectations(t)
 
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("Save", ctx, models.NamespaceSpec{}, secret1).Return(nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+
+			err := svc.Save(ctx, project.Name, "", secret1)
+			assert.Nil(t, err)
+		})
 		t.Run("saves the secret item successfully", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("Get", ctx, project.Name, namespace.Name).
-				Return(namespace, nil)
+			nsService.On("GetNamespaceOptionally", ctx, project.Name, namespace.Name).
+				Return(project, namespace, nil)
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
@@ -90,8 +108,8 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when namespace service has error", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("Get", ctx, "local", "first").
-				Return(models.NamespaceSpec{}, errors.New("invalid project name"))
+			nsService.On("GetNamespaceOptionally", ctx, "local", "first").
+				Return(models.ProjectSpec{}, models.NamespaceSpec{}, errors.New("invalid project name"))
 			defer nsService.AssertExpectations(t)
 
 			svc := service.NewSecretService(nil, nsService, nil)
@@ -100,11 +118,29 @@ func TestSecretService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "invalid project name", err.Error())
 		})
-
-		t.Run("saves the secret item successfully", func(t *testing.T) {
+		t.Run("updates the secret item when no namespace", func(t *testing.T) {
 			nsService := new(mock.NamespaceService)
-			nsService.On("Get", ctx, project.Name, namespace.Name).
-				Return(namespace, nil)
+			nsService.On("GetNamespaceOptionally", ctx, project.Name, "").
+				Return(project, models.NamespaceSpec{}, nil)
+			defer nsService.AssertExpectations(t)
+
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("Update", ctx, models.NamespaceSpec{}, secret1).Return(nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+
+			err := svc.Update(ctx, project.Name, "", secret1)
+			assert.Nil(t, err)
+		})
+		t.Run("updates the secret item successfully", func(t *testing.T) {
+			nsService := new(mock.NamespaceService)
+			nsService.On("GetNamespaceOptionally", ctx, project.Name, namespace.Name).
+				Return(project, namespace, nil)
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
@@ -154,6 +190,83 @@ func TestSecretService(t *testing.T) {
 
 			assert.Len(t, list, 1)
 			assert.Equal(t, secretItems, list)
+		})
+	})
+	t.Run("GetSecrets", func(t *testing.T) {
+		t.Run("returns secrets for a namespace", func(t *testing.T) {
+			secrets := []models.ProjectSecretItem{
+				{
+					ID:    uuid.New(),
+					Name:  "secret1",
+					Value: "secret1",
+					Type:  models.SecretTypeUserDefined,
+				},
+			}
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("GetSecrets", ctx, namespace).Return(secrets, nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nil, secretRepoFac)
+
+			list, err := svc.GetSecrets(ctx, namespace)
+			assert.Nil(t, err)
+
+			assert.Len(t, list, 1)
+			assert.Equal(t, secrets, list)
+		})
+		t.Run("returns error when repo returns error", func(t *testing.T) {
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("GetSecrets", ctx, namespace).Return([]models.ProjectSecretItem{},
+				errors.New("random error"))
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nil, secretRepoFac)
+
+			list, err := svc.GetSecrets(ctx, namespace)
+			assert.Len(t, list, 0)
+
+			assert.NotNil(t, err)
+			assert.Equal(t, "error while getting secrets: internal error for entity secret", err.Error())
+		})
+	})
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("returns error when error during getting namespace", func(t *testing.T) {
+			nsService := new(mock.NamespaceService)
+			nsService.On("GetNamespaceOptionally", ctx, project.Name, "").
+				Return(models.ProjectSpec{}, models.NamespaceSpec{}, errors.New("error in getting project"))
+			defer nsService.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nsService, nil)
+
+			err := svc.Delete(ctx, project.Name, "", "hello")
+			assert.NotNil(t, err)
+			assert.Equal(t, "error in getting project", err.Error())
+		})
+		t.Run("deletes the secret successfully", func(t *testing.T) {
+			nsService := new(mock.NamespaceService)
+			nsService.On("GetNamespaceOptionally", ctx, project.Name, "namespace").Return(project, namespace, nil)
+			defer nsService.AssertExpectations(t)
+
+			secretRepo := new(mock.ProjectSecretRepository)
+			secretRepo.On("Delete", ctx, namespace, "hello").Return(nil)
+			defer secretRepo.AssertExpectations(t)
+
+			secretRepoFac := new(mock.ProjectSecretRepoFactory)
+			secretRepoFac.On("New", project).Return(secretRepo)
+			defer secretRepoFac.AssertExpectations(t)
+
+			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+
+			err := svc.Delete(ctx, project.Name, "namespace", "hello")
+			assert.Nil(t, err)
 		})
 	})
 }

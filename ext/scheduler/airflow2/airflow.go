@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -22,7 +23,6 @@ import (
 	"gocloud.dev/gcerrors"
 
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 
 	_ "embed"
@@ -215,22 +215,22 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to build http request for %s", fetchURL)
+		return nil, fmt.Errorf("failed to build http request for %s: %w", fetchURL, err)
 	}
 	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 	resp, err := s.httpClient.Do(request)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", fetchURL)
+		return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %w", fetchURL, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch airflow dag runs from %s: %d", fetchURL, resp.StatusCode)
+		return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %d", fetchURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read airflow response")
+		return nil, fmt.Errorf("failed to read airflow response: %w", err)
 	}
 
 	//{
@@ -252,7 +252,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	}
 	err = json.Unmarshal(body, &responseJson)
 	if err != nil {
-		return nil, errors.Wrapf(err, "json error: %s", string(body))
+		return nil, fmt.Errorf("json error: %s: %w", string(body), err)
 	}
 
 	return toJobStatus(responseJson.DagRuns, jobName)
@@ -274,17 +274,17 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 	if err != nil {
-		return errors.Wrapf(err, "failed to build http request for %s", postURL)
+		return fmt.Errorf("failed to build http request for %s: %w", postURL, err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 	resp, err := s.httpClient.Do(request)
 	if err != nil {
-		return errors.Wrapf(err, "failed to clear airflow dag runs from %s", postURL)
+		return fmt.Errorf("failed to clear airflow dag runs from %s: %w", postURL, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("failed to clear airflow dag runs from %s: %d", postURL, resp.StatusCode)
+		return fmt.Errorf("failed to clear airflow dag runs from %s: %d", postURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
@@ -318,28 +318,28 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		var jsonStr = []byte(dagRunBatchReq)
 		request, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to build http request for %s", dagStatusBatchUrl)
+			return nil, fmt.Errorf("failed to build http request for %s: %w", dagStatusBatchUrl, err)
 		}
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 		resp, err := s.httpClient.Do(request)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to fetch airflow dag runs from %s", dagStatusBatchUrl)
+			return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %w", dagStatusBatchUrl, err)
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return nil, errors.Errorf("failed to fetch airflow dag runs from %s", dagStatusBatchUrl)
+			return nil, fmt.Errorf("failed to fetch airflow dag runs from %s", dagStatusBatchUrl)
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to read airflow response")
+			return nil, fmt.Errorf("failed to read airflow response: %w", err)
 		}
 
 		if err := json.Unmarshal(body, &responseJson); err != nil {
-			return nil, errors.Wrapf(err, "json error: %s", string(body))
+			return nil, fmt.Errorf("json error: %s: %w", string(body), err)
 		}
 
 		jobStatusPerBatch, err := toJobStatus(responseJson.DagRuns, jobName)
@@ -360,11 +360,11 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 func (s *scheduler) getHostAuth(projectSpec models.ProjectSpec) (string, string, error) {
 	schdHost, ok := projectSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
-		return "", "", errors.Errorf("scheduler host not set for %s", projectSpec.Name)
+		return "", "", fmt.Errorf("scheduler host not set for %s", projectSpec.Name)
 	}
 	authToken, ok := projectSpec.Secret.GetByName(models.ProjectSchedulerAuth)
 	if !ok {
-		return "", "", errors.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projectSpec.Name)
+		return "", "", fmt.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projectSpec.Name)
 	}
 	return schdHost, authToken, nil
 }
@@ -382,11 +382,11 @@ func toJobStatus(dagRuns []map[string]interface{}, jobName string) ([]models.Job
 		_, ok1 := status["execution_date"]
 		_, ok2 := status["state"]
 		if !ok1 || !ok2 {
-			return nil, errors.Errorf("failed to find required response fields %s in %s", jobName, status)
+			return nil, fmt.Errorf("failed to find required response fields %s in %s", jobName, status)
 		}
 		scheduledAt, err := time.Parse(models.InstanceScheduledAtTimeLayout, status["execution_date"].(string))
 		if err != nil {
-			return nil, errors.Errorf("error parsing date for %s, %s", jobName, status["execution_date"].(string))
+			return nil, fmt.Errorf("error parsing date for %s, %s", jobName, status["execution_date"].(string))
 		}
 		jobStatus = append(jobStatus, models.JobStatus{
 			ScheduledAt: scheduledAt,

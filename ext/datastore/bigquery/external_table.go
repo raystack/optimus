@@ -2,13 +2,14 @@ package bigquery
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	bqapi "cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"google.golang.org/api/googleapi"
 )
 
@@ -48,7 +49,7 @@ func ensureExternalTable(ctx context.Context, tableHandle bqiface.Table, t BQTab
 		if t.Metadata.ExpirationTime != "" {
 			expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 			if err != nil {
-				return errors.Wrapf(err, "unable to parse timestamp %s", t.Metadata.ExpirationTime)
+				return fmt.Errorf("unable to parse timestamp %s: %w", t.Metadata.ExpirationTime, err)
 			}
 			meta.ExpirationTime = expiryTime
 		}
@@ -65,7 +66,7 @@ func ensureExternalTable(ctx context.Context, tableHandle bqiface.Table, t BQTab
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
-			return errors.Wrapf(err, "unable to parse timestamp %s", t.Metadata.ExpirationTime)
+			return fmt.Errorf("unable to parse timestamp %s: %w", t.Metadata.ExpirationTime, err)
 		}
 		m.ExpirationTime = expiryTime
 	}

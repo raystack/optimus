@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/odpf/optimus/config"
@@ -13,7 +15,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -24,10 +25,12 @@ var (
 	adminBuildInstanceTimeout = time.Minute * 1
 )
 
-func adminBuildInstanceCommand(l log.Logger, conf config.Provider) *cli.Command {
+const unsubstitutedValue = "<no value>"
+
+func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
-		optimusHost    = conf.GetHost()
-		projectName    = conf.GetProject().Name
+		optimusHost    = conf.Host
+		projectName    = conf.Project.Name
 		assetOutputDir = "/tmp/"
 		runType        = "task"
 		runName        string
@@ -73,7 +76,7 @@ func adminBuildInstanceCommand(l log.Logger, conf config.Provider) *cli.Command 
 func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projectName, scheduledAt, runType, runName string) (err error) {
 	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, scheduledAt)
 	if err != nil {
-		return errors.Wrapf(err, "invalid time format, please use %s", models.InstanceScheduledAtTimeLayout)
+		return fmt.Errorf("invalid time format, please use %s: %w", models.InstanceScheduledAtTimeLayout, err)
 	}
 	jobScheduledTimeProto := timestamppb.New(jobScheduledTime)
 
@@ -102,12 +105,12 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 		InstanceName: runName,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "request failed for job %s", jobName)
+		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
 
 	// make sure output dir exists
 	if err := os.MkdirAll(inputDirectory, 0777); err != nil {
-		return errors.Wrapf(err, "failed to create directory at %s", inputDirectory)
+		return fmt.Errorf("failed to create directory at %s: %w", inputDirectory, err)
 	}
 	writeToFileFn := utils.WriteStringToFileIndexed()
 
@@ -115,18 +118,40 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	for fileName, fileContent := range jobResponse.Context.Files {
 		filePath := filepath.Join(inputDirectory, fileName)
 		if err := writeToFileFn(filePath, fileContent, l.Writer()); err != nil {
-			return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+			return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 		}
 	}
+
+	var keysWithUnsubstitutedValue []string
 
 	// write all env into a file
 	envFileBlob := ""
 	for key, val := range jobResponse.Context.Envs {
+		if strings.Contains(val, unsubstitutedValue) {
+			keysWithUnsubstitutedValue = append(keysWithUnsubstitutedValue, key)
+		}
 		envFileBlob += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 	filePath := filepath.Join(inputDirectory, models.InstanceDataTypeEnvFileName)
 	if err := writeToFileFn(filePath, envFileBlob, l.Writer()); err != nil {
-		return errors.Wrapf(err, "failed to write asset file at %s", filePath)
+		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
+	}
+
+	// write all secrets into a file
+	secretsFileContent := ""
+	for key, val := range jobResponse.Context.Secrets {
+		if strings.Contains(val, unsubstitutedValue) {
+			keysWithUnsubstitutedValue = append(keysWithUnsubstitutedValue, key)
+		}
+		secretsFileContent += fmt.Sprintf("%s='%s'\n", key, val)
+	}
+	secretsFilePath := filepath.Join(inputDirectory, models.InstanceDataTypeSecretFileName)
+	if err := writeToFileFn(secretsFilePath, secretsFileContent, l.Writer()); err != nil {
+		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
+	}
+
+	if len(keysWithUnsubstitutedValue) > 0 {
+		l.Warn(coloredNotice(fmt.Sprintf("Value not substituted for keys:\n%s", strings.Join(keysWithUnsubstitutedValue, "\n"))))
 	}
 
 	return nil

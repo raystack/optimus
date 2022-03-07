@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -16,7 +17,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -27,7 +27,7 @@ var (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecRepository,
+func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecRepository,
 	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
 	var (
 		projectName     string
@@ -46,8 +46,8 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 			},
 		}
 	)
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Optimus project name")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.GetNamespace().Name, "Namespace of optimus project")
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.Namespace.Name, "Namespace of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
@@ -57,7 +57,7 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 			return fmt.Errorf("project and namespace configurations are required")
 		}
 
-		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.GetHost()))
+		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.Host))
 		start := time.Now()
 		if jobSpecRepo == nil {
 			// job repo not configured
@@ -77,15 +77,15 @@ func deployCommand(l log.Logger, conf config.Provider, jobSpecRepo JobSpecReposi
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
-	conf config.Provider, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
+	conf config.Optimus, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
 	ignoreJobDeployment, ignoreResources bool, verbose bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
 		return err
 	}
@@ -99,7 +99,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 	projectSpec := &pb.ProjectSpecification{
 		Name:   projectName,
-		Config: conf.GetProject().Config,
+		Config: conf.Project.Config,
 	}
 	if err = registerProject(deployTimeoutCtx, l, runtime, projectSpec); err != nil {
 		return err
@@ -107,7 +107,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 	namespaceSpec := &pb.NamespaceSpecification{
 		Name:   namespaceName,
-		Config: conf.GetNamespace().Config,
+		Config: conf.Namespace.Config,
 	}
 	if err = registerNamespace(deployTimeoutCtx, l, runtime, projectSpec.Name, namespaceSpec); err != nil {
 		return err
@@ -128,7 +128,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				continue
 			}
 			if err != nil {
-				return errors.Wrap(err, "resourceSpecRepo.GetAll()")
+				return fmt.Errorf("resourceSpecRepo.GetAll(): %w", err)
 			}
 
 			// prepare specs
@@ -136,7 +136,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			for _, spec := range resourceSpecs {
 				adapted, err := adapt.ToResourceProto(spec)
 				if err != nil {
-					return errors.Wrapf(err, "failed to serialize: %s", spec.Name)
+					return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
 				}
 				adaptedSpecs = append(adaptedSpecs, adapted)
 			}
@@ -152,7 +152,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				if errors.Is(err, context.DeadlineExceeded) {
 					l.Error(coloredError("Deployment process took too long, timing out"))
 				}
-				return errors.Wrapf(err, "deployement failed")
+				return fmt.Errorf("deployement failed: %w", err)
 			}
 
 			// track progress
@@ -168,12 +168,12 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 					if err == io.EOF {
 						break
 					}
-					return errors.Wrapf(err, "failed to receive deployment ack")
+					return fmt.Errorf("failed to receive deployment ack: %w", err)
 				}
 				if resp.Ack {
 					// ack for the resource spec
 					if !resp.GetSuccess() {
-						return errors.Errorf("unable to deploy resource: %s %s", resp.GetResourceName(), resp.GetMessage())
+						return fmt.Errorf("unable to deploy resource: %s %s", resp.GetResourceName(), resp.GetMessage())
 					}
 					deployCounter++
 					spinner.SetProgress(deployCounter)
@@ -206,7 +206,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 		for _, spec := range jobSpecs {
 			adaptJob, err := adapt.ToJobProto(spec)
 			if err != nil {
-				return errors.Wrapf(err, "failed to serialize: %s", spec.Name)
+				return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
 			}
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
@@ -219,7 +219,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Error(coloredError("Deployment process took too long, timing out"))
 			}
-			return errors.Wrapf(err, "deployement failed")
+			return fmt.Errorf("deployement failed: %w", err)
 		}
 
 		ackCounter := 0
@@ -242,7 +242,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			if resp.Ack {
 				// ack for the job spec
 				if !resp.GetSuccess() {
-					return errors.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
+					return fmt.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
 				}
 				ackCounter++
 				spinner.SetProgress(ackCounter)
@@ -268,7 +268,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 				// should not cause errors to fail and should end with warnings if any.
 				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
 			} else {
-				return errors.Wrap(streamError, "failed to receive success deployment ack")
+				return fmt.Errorf("failed to receive success deployment ack: %w", streamError)
 			}
 		}
 		l.Info(coloredSuccess("Successfully deployed %d/%d jobs.", ackCounter, totalJobs))
@@ -289,7 +289,7 @@ func registerProject(deployTimeoutCtx context.Context, l log.Logger, runtime pb.
 			l.Warn(coloredNotice("> Ignoring project config changes: %s", err.Error()))
 			return nil
 		}
-		return errors.Wrap(err, "failed to update project configurations")
+		return fmt.Errorf("failed to update project configurations: %w", err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
 	}
@@ -308,7 +308,7 @@ func registerNamespace(deployTimeoutCtx context.Context, l log.Logger, runtime p
 			l.Warn(coloredNotice("> Ignoring namespace config changes: %s", err.Error()))
 			return nil
 		}
-		return errors.Wrap(err, "failed to update namespace configurations")
+		return fmt.Errorf("failed to update namespace configurations: %w", err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update namespace configurations, %s", registerResponse.Message)
 	}

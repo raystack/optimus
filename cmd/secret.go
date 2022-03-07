@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -11,9 +12,10 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -24,17 +26,18 @@ var (
 	secretTimeout = time.Minute * 2
 )
 
-func secretCommand(l log.Logger, conf config.Provider) *cli.Command {
+func secretCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "secret",
 		Short: "Manage secrets to be used in jobs",
 	}
 	cmd.AddCommand(secretSetSubCommand(l, conf))
 	cmd.AddCommand(secretListSubCommand(l, conf))
+	cmd.AddCommand(secretDeleteSubCommand(l, conf))
 	return cmd
 }
 
-func secretSetSubCommand(l log.Logger, conf config.Provider) *cli.Command {
+func secretSetSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		projectName   string
 		namespaceName string
@@ -54,8 +57,8 @@ Secret value can be either provided in second argument or through file flag.
 Use base64 flag if the value has been encoded.
 		`,
 	}
-	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
-	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.GetNamespace().Name, "Namespace of deployee")
+	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.Namespace.Name, "Namespace of deployee")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
 	secretCmd.Flags().StringVarP(&filePath, "file", "f", filePath, "Provide file path to create secret from file instead")
@@ -79,7 +82,7 @@ Use base64 flag if the value has been encoded.
 				Value:         secretValue,
 				NamespaceName: namespaceName,
 			}
-			return updateSecret(l, conf, updateSecretRequest)
+			return updateSecret(l, conf.Host, updateSecretRequest)
 		}
 		registerSecretReq := &pb.RegisterSecretRequest{
 			ProjectName:   projectName,
@@ -87,9 +90,9 @@ Use base64 flag if the value has been encoded.
 			Value:         secretValue,
 			NamespaceName: namespaceName,
 		}
-		err = registerSecret(l, conf, registerSecretReq)
+		err = registerSecret(l, conf.Host, registerSecretReq)
 		if err != nil {
-			if strings.Contains(err.Error(), "resource already exists") {
+			if status.Code(err) == codes.AlreadyExists {
 				proceedWithUpdate := "Yes"
 				if !skipConfirm {
 					if err := survey.AskOne(&survey.Select{
@@ -107,11 +110,13 @@ Use base64 flag if the value has been encoded.
 						Value:         secretValue,
 						NamespaceName: namespaceName,
 					}
-					return updateSecret(l, conf, updateSecretRequest)
+					return updateSecret(l, conf.Host, updateSecretRequest)
 				} else {
 					l.Info(coloredNotice("Aborting..."))
 					return nil
 				}
+			} else {
+				return fmt.Errorf("%s: request failed for creating secret %s", err, secretName)
 			}
 		}
 		return nil
@@ -119,7 +124,7 @@ Use base64 flag if the value has been encoded.
 	return secretCmd
 }
 
-func secretListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
+func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var projectName string
 
 	secretListCmd := &cli.Command{
@@ -128,15 +133,42 @@ func secretListSubCommand(l log.Logger, conf config.Provider) *cli.Command {
 		Example: "optimus secret list",
 		Long:    `This operation shows the secrets for project.`,
 	}
-	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 
 	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
 		updateSecretRequest := &pb.ListSecretsRequest{
 			ProjectName: projectName,
 		}
-		return listSecret(l, conf, updateSecretRequest)
+		return listSecret(l, conf.Host, updateSecretRequest)
 	}
 	return secretListCmd
+}
+
+func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
+	var projectName string
+
+	cmd := &cli.Command{
+		Use:     "delete",
+		Short:   "Delete a secrets registered with optimus",
+		Example: "optimus secret delete <secret_name>",
+		Long:    `This operation deletes a secret registered with optimus.`,
+	}
+	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		secretName, err := getSecretName(args)
+		if err != nil {
+			return err
+		}
+
+		deleteSecretRequest := &pb.DeleteSecretRequest{
+			ProjectName:   projectName,
+			SecretName:    secretName,
+			NamespaceName: conf.Namespace.Name,
+		}
+		return deleteSecret(l, conf.Host, deleteSecretRequest)
+	}
+	return cmd
 }
 
 func getSecretName(args []string) (string, error) {
@@ -144,7 +176,7 @@ func getSecretName(args []string) (string, error) {
 		return "", errors.New("secret name is required")
 	}
 	if strings.HasPrefix(args[0], models.SecretTypeSystemDefinedPrefix) {
-		return "", errors.New(fmt.Sprintf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix))
+		return "", fmt.Errorf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix)
 	}
 	return args[0], nil
 }
@@ -159,7 +191,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 	} else {
 		secretValueBytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return "", errors.Wrapf(err, "failed when reading secret file %s", filePath)
+			return "", fmt.Errorf("%s: failed when reading secret file %s", err, filePath)
 		}
 		secretValue = string(secretValueBytes)
 	}
@@ -176,19 +208,19 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 
 func validateProperlyEncoded(secretValue string) error {
 	if _, err := base64.StdEncoding.DecodeString(secretValue); err != nil {
-		return errors.New("value is not encoded. please remove --base64 to let Optimus encode the secret for you.")
+		return errors.New("value is not encoded. please remove --base64 to let Optimus encode the secret for you")
 	}
 	return nil
 }
 
-func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRequest) (err error) {
+func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -207,7 +239,7 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret registration took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for creating secret %s", req.SecretName)
+		return err
 	}
 
 	l.Info(coloredSuccess("Secret registered"))
@@ -215,14 +247,14 @@ func registerSecret(l log.Logger, conf config.Provider, req *pb.RegisterSecretRe
 	return nil
 }
 
-func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretRequest) (err error) {
+func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -241,7 +273,7 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret update took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for updating secret %s", req.SecretName)
+		return fmt.Errorf("%s: request failed for updating secret %s", err, req.SecretName)
 	}
 
 	l.Info(coloredSuccess("Secret updated"))
@@ -249,14 +281,48 @@ func updateSecret(l log.Logger, conf config.Provider, req *pb.UpdateSecretReques
 	return nil
 }
 
-func listSecret(l log.Logger, conf config.Provider, req *pb.ListSecretsRequest) (err error) {
+func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.GetHost()); err != nil {
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+			l.Error(ErrServerNotReachable(host).Error())
+		}
+		return err
+	}
+	defer conn.Close()
+
+	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
+	defer secretRequestCancel()
+
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
+	runtime := pb.NewRuntimeServiceClient(conn)
+
+	_, err = runtime.DeleteSecret(secretRequestTimeout, req)
+	spinner.Stop()
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(coloredError("Secret delete took too long, timing out"))
+		}
+		return fmt.Errorf("%s: request failed for deleting secret %s", err, req.SecretName)
+	}
+
+	l.Info(coloredSuccess("Secret deleted"))
+
+	return nil
+}
+
+func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) (err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	var conn *grpc.ClientConn
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(ErrServerNotReachable(host).Error())
 		}
 		return err
 	}
@@ -275,7 +341,7 @@ func listSecret(l log.Logger, conf config.Provider, req *pb.ListSecretsRequest) 
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Secret listing took too long, timing out"))
 		}
-		return errors.Wrap(err, "request failed for listing secrets")
+		return fmt.Errorf("%s: request failed for listing secrets", err)
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {

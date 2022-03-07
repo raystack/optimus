@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -23,12 +23,12 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
+func InitTelemetry(l log.Logger, conf TelemetryConfig) (func(), error) {
 	var tp *tracesdk.TracerProvider
 	var err error
-	if conf.GetTelemetry().JaegerAddr != "" {
-		l.Debug("enabling jaeger traces", "addr", conf.GetTelemetry().JaegerAddr)
-		tp, err = tracerProvider(conf.GetTelemetry().JaegerAddr)
+	if conf.JaegerAddr != "" {
+		l.Debug("enabling jaeger traces", "addr", conf.JaegerAddr)
+		tp, err = tracerProvider(conf.JaegerAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -47,8 +47,8 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 	}
 
 	var metricServer *http.Server
-	if conf.GetTelemetry().ProfileAddr != "" {
-		l.Debug("enabling profile metrics", "addr", conf.GetTelemetry().ProfileAddr)
+	if conf.ProfileAddr != "" {
+		l.Debug("enabling profile metrics", "addr", conf.ProfileAddr)
 		// custom metric for app uptime
 		go func() {
 			appUptime := promauto.NewGauge(prometheus.GaugeOpts{
@@ -68,7 +68,7 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 		}()
 
 		// start exposing metrics
-		metricServer = MetricsServer(conf.GetTelemetry().ProfileAddr)
+		metricServer = MetricsServer(conf.ProfileAddr)
 		go func() {
 			if err := metricServer.ListenAndServe(); err != http.ErrServerClosed {
 				l.Warn("failed while serving metrics", "err", err)
@@ -83,7 +83,7 @@ func InitTelemetry(l log.Logger, conf Provider) (func(), error) {
 		}
 		if metricServer != nil {
 			if err := metricServer.Close(); err != nil {
-				l.Warn("failed to shutdown metrics http server", "err", errors.Wrap(err, "metricServer.Close"))
+				l.Warn("failed to shutdown metrics http server", "err", fmt.Errorf("metricServer.Close: %w", err))
 			}
 		}
 	}, nil

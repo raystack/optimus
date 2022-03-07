@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,11 +11,10 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 )
 
-func replayListCommand(l log.Logger, conf config.Provider) *cli.Command {
+func replayListCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		projectName string
 		reCmd       = &cli.Command{
@@ -26,15 +26,15 @@ The list command is used to fetch the recent replay in one project.
 		`,
 		}
 	)
-	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "Project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 
-		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		conn, err := createConnection(dialTimeoutCtx, conf.Host)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+				l.Error(ErrServerNotReachable(conf.Host).Error())
 			}
 			return err
 		}
@@ -55,7 +55,7 @@ The list command is used to fetch the recent replay in one project.
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Error(coloredError("Replay request took too long, timing out"))
 			}
-			return errors.Wrapf(err, "failed to get replay requests")
+			return fmt.Errorf("failed to get replay requests: %w", err)
 		}
 		if len(replayResponse.ReplayList) == 0 {
 			l.Info(fmt.Sprintf("No replays were found in %s project.", projectName))

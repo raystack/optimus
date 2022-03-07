@@ -6,20 +6,60 @@ run:
 output:
   format: colored-line-number
 linters:
-  enable-all: false
-  disable-all: true
-  enable:
-    - vet
-    - goimports
-    - thelper
-    - tparallel
-    - unconvert
-    - wastedassign
-    - revive
-    - unused
-    - gofmt
-    - whitespace
-    - misspell
+  enable-all: true
+  disable:
+    # Rules to review
+    - varnamelen
+    - wrapcheck
+    - tagliatelle
+    - paralleltest
+    - nlreturn
+    - gochecknoglobals
+    - exhaustivestruct
+    - forcetypeassert
+    - exhaustive
+    - contextcheck
+    - wsl
+    - scopelint
+    - promlinter
+    - interfacer
+    - gosec
+    - gofumpt
+    - godox
+    - godot
+    - gochecknoinits
+    - gci
+    - forbidigo
+    - errcheck
+    - maintidx
+    - errchkjson
+
+    # Following linters should be enabled after fixing the code
+    - testpackage
+    - stylecheck
+    - staticcheck
+    - cyclop
+    - noctx
+    - ireturn
+    - gosimple
+    - gomnd
+    - goerr113
+    - nilerr
+    - errorlint
+    - bodyclose
+    - ifshort
+    - prealloc
+    - nestif
+    - lll
+    - maligned
+    - nakedret
+    - golint
+    - gocritic
+    - goconst
+    - gocognit
+    - funlen
+    - gocyclo
+    - dupl
 linters-settings:
   revive:
     ignore-generated-header: true

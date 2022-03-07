@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
@@ -11,11 +13,10 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 )
 
-func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Provider) *cli.Command {
+func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "list",
@@ -24,7 +25,7 @@ func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf co
 		}
 		project string
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+	backupCmd.Flags().StringVarP(&project, "project", "p", conf.Project.Name, "project name of optimus managed repository")
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		availableStorer := []string{}
 		for _, s := range datastoreRepo.GetAll() {
@@ -46,10 +47,10 @@ func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf co
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 
-		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		conn, err := createConnection(dialTimeoutCtx, conf.Host)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+				l.Error(ErrServerNotReachable(conf.Host).Error())
 			}
 			return err
 		}
@@ -69,7 +70,7 @@ func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf co
 				l.Error(coloredError("Getting list of backups took too long, timing out"))
 				return err
 			}
-			return errors.Wrapf(err, "request failed to get list of backups")
+			return fmt.Errorf("request failed to get list of backups: %w", err)
 		}
 
 		if len(listBackupsResponse.Backups) == 0 {

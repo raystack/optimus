@@ -2,12 +2,12 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/odpf/optimus/core/progress"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -143,7 +143,7 @@ func (s *supportedDatastore) GetByName(name string) (Datastorer, error) {
 	if unit, ok := s.data[name]; ok {
 		return unit, nil
 	}
-	return nil, errors.Wrap(ErrUnsupportedDatastore, name)
+	return nil, fmt.Errorf("%s: %w", name, ErrUnsupportedDatastore)
 }
 
 func (s *supportedDatastore) GetAll() []Datastorer {

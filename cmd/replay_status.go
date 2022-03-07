@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,12 +10,11 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
 )
 
-func replayStatusCommand(l log.Logger, conf config.Provider) *cli.Command {
+func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		projectName string
 	)
@@ -34,15 +34,15 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			return nil
 		},
 	}
-	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.GetProject().Name, "project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 
-		conn, err := createConnection(dialTimeoutCtx, conf.GetHost())
+		conn, err := createConnection(dialTimeoutCtx, conf.Host)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.GetHost()).Error())
+				l.Error(ErrServerNotReachable(conf.Host).Error())
 			}
 			return err
 		}
@@ -64,7 +64,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			if errors.Is(err, context.DeadlineExceeded) {
 				l.Error(coloredError("Replay request took too long, timing out"))
 			}
-			return errors.Wrapf(err, "request getting status for replay %s is failed", args[0])
+			return fmt.Errorf("request getting status for replay %s is failed: %w", args[0], err)
 		}
 		printReplayStatusResponse(l, replayResponse)
 		return nil

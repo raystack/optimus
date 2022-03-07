@@ -11,6 +11,8 @@ type SecretService interface {
 	Save(context.Context, string, string, models.ProjectSecretItem) error
 	Update(context.Context, string, string, models.ProjectSecretItem) error
 	List(context.Context, string) ([]models.SecretItemInfo, error)
+	GetSecrets(context.Context, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
+	Delete(context.Context, string, string, string) error
 }
 
 type SecretRepoFactory interface {
@@ -36,14 +38,13 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
 
-	// TODO: Add new service method to get only project and namespace id for names
-	namespaceSpec, err := s.nsService.Get(ctx, projectName, namespaceName)
+	proj, namespace, err := s.nsService.GetNamespaceOptionally(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
-	err = repo.Save(ctx, namespaceSpec, item)
+	repo := s.secretRepoFac.New(proj)
+	err = repo.Save(ctx, namespace, item)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while saving secret")
 	}
@@ -55,13 +56,13 @@ func (s secretService) Update(ctx context.Context, projectName string, namespace
 		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
 
-	namespaceSpec, err := s.nsService.Get(ctx, projectName, namespaceName)
+	proj, namespace, err := s.nsService.GetNamespaceOptionally(ctx, projectName, namespaceName)
 	if err != nil {
 		return err
 	}
 
-	repo := s.secretRepoFac.New(namespaceSpec.ProjectSpec)
-	err = repo.Update(ctx, namespaceSpec, item)
+	repo := s.secretRepoFac.New(proj)
+	err = repo.Update(ctx, namespace, item)
 	if err != nil {
 		return FromError(err, models.SecretEntity, "error while updating secret")
 	}
@@ -80,4 +81,27 @@ func (s secretService) List(ctx context.Context, projectName string) ([]models.S
 		return []models.SecretItemInfo{}, FromError(err, models.SecretEntity, "error while saving secret")
 	}
 	return secretItems, nil
+}
+
+func (s secretService) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+	repo := s.secretRepoFac.New(namespace.ProjectSpec)
+	secretItems, err := repo.GetSecrets(ctx, namespace)
+	if err != nil {
+		return []models.ProjectSecretItem{}, FromError(err, models.SecretEntity, "error while getting secrets")
+	}
+	return secretItems, nil
+}
+
+func (s secretService) Delete(ctx context.Context, projectName, namespaceName, secretName string) error {
+	proj, namespace, err := s.nsService.GetNamespaceOptionally(ctx, projectName, namespaceName)
+	if err != nil {
+		return err
+	}
+
+	repo := s.secretRepoFac.New(proj)
+	err = repo.Delete(ctx, namespace, secretName)
+	if err != nil {
+		return FromError(err, models.SecretEntity, "error while deleting secret")
+	}
+	return nil
 }
