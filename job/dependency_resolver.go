@@ -45,10 +45,7 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	}
 
 	// resolve inter hook dependencies
-	jobSpec, err = r.resolveHookDependencies(jobSpec)
-	if err != nil {
-		return models.JobSpec{}, err
-	}
+	jobSpec = r.resolveHookDependencies(jobSpec)
 
 	return jobSpec, nil
 }
@@ -176,7 +173,7 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 
 // hooks can be dependent on each other inside a job spec, this will populate
 // the local array that points to its dependent hook
-func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (models.JobSpec, error) {
+func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) models.JobSpec {
 	for hookIdx, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
 		for _, depends := range jobHook.Unit.Info().DependsOn {
@@ -187,7 +184,7 @@ func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) (mo
 		}
 		jobSpec.Hooks[hookIdx] = jobHook
 	}
-	return jobSpec, nil
+	return jobSpec
 }
 
 func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {

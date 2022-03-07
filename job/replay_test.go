@@ -39,7 +39,7 @@ func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]tim
 func TestReplay(t *testing.T) {
 	ctx := context.Background()
 	noDependency := map[string]models.JobSpecDependency{}
-	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+	var dumpAssets job.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 	var (
