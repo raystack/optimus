@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/postgres"
 	"github.com/stretchr/testify/assert"
 	testMock "github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
@@ -46,22 +47,22 @@ func TestResourceSpecRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 
-		projRepo := NewProjectRepository(dbConn, hash)
+		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
@@ -130,8 +131,8 @@ func TestResourceSpecRepository(t *testing.T) {
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[1].URN, nil).Once()
 
-		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -152,8 +153,8 @@ func TestResourceSpecRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-			repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+			projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+			repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Once()
 
@@ -180,8 +181,8 @@ func TestResourceSpecRepository(t *testing.T) {
 			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
-			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-			repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+			projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+			repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
@@ -228,8 +229,8 @@ func TestResourceSpecRepository(t *testing.T) {
 			dsTypeTableAdapterLocal.On("ToYaml", resourceSpecWithEmptyUUID).Return([]byte("some binary data emptyUUID nil"), nil)
 			dsTypeTableAdapterLocal.On("FromYaml", []byte("some binary data emptyUUID nil")).Return(resourceSpecWithEmptyUUID, nil)
 
-			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorerLocal)
-			repo := NewResourceSpecRepository(db, namespaceSpec, datastorerLocal, projectResourceSpecRepo)
+			projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorerLocal)
+			repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorerLocal, projectResourceSpecRepo)
 
 			dsTypeTableControllerLocal.On("GenerateURN", testMock.Anything).Return(resourceSpecWithEmptyUUID.URN, nil).Once()
 
@@ -247,9 +248,9 @@ func TestResourceSpecRepository(t *testing.T) {
 			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
-			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-			resourceSpecNamespace1 := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
-			resourceSpecNamespace2 := NewResourceSpecRepository(db, namespaceSpec2, datastorer, projectResourceSpecRepo)
+			projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+			resourceSpecNamespace1 := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+			resourceSpecNamespace2 := postgres.NewResourceSpecRepository(db, namespaceSpec2, datastorer, projectResourceSpecRepo)
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
@@ -277,8 +278,8 @@ func TestResourceSpecRepository(t *testing.T) {
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -318,22 +319,22 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 
-		projRepo := NewProjectRepository(dbConn, hash)
+		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
@@ -393,8 +394,8 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 
@@ -420,8 +421,8 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 
@@ -442,8 +443,8 @@ func TestProjectResourceSpecRepository(t *testing.T) {
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		repo := NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
+		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
+		repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
 

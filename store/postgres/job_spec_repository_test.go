@@ -831,7 +831,7 @@ func TestProjectJobRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		assert.Nil(t, NewProjectRepository(db, hash).Save(ctx, projectSpec))
+		assert.Nil(t, postgres.NewProjectRepository(db, hash).Save(ctx, projectSpec))
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)

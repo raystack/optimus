@@ -1,12 +1,14 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
 	"os"
 	"testing"
+
+	"github.com/odpf/optimus/store/postgres"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
@@ -42,25 +44,25 @@ func TestSecretRepository(t *testing.T) {
 		if !ok {
 			panic("unable to find TEST_OPTIMUS_DB_URL env var")
 		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 		if err != nil {
 			panic(err)
 		}
-		m, err := NewHTTPFSMigrator(dbURL)
+		m, err := postgres.NewHTTPFSMigrator(dbURL)
 		if err != nil {
 			panic(err)
 		}
 		if err := m.Drop(); err != nil {
 			panic(err)
 		}
-		if err := Migrate(dbURL); err != nil {
+		if err := postgres.Migrate(dbURL); err != nil {
 			panic(err)
 		}
 
-		projRepo := NewProjectRepository(dbConn, hash)
+		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 
-		namespaceRepo := NewNamespaceRepository(dbConn, projectSpec, hash)
+		namespaceRepo := postgres.NewNamespaceRepository(dbConn, projectSpec, hash)
 		assert.Nil(t, namespaceRepo.Save(ctx, namespaceSpec))
 		assert.Nil(t, namespaceRepo.Save(ctx, otherNamespaceSpec))
 		return dbConn
@@ -104,7 +106,7 @@ func TestSecretRepository(t *testing.T) {
 			testModels := []models.ProjectSecretItem{}
 			testModels = append(testModels, testConfigs...)
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			err := repo.Insert(ctx, models.NamespaceSpec{}, testModels[0])
 			assert.Nil(t, err)
@@ -132,7 +134,7 @@ func TestSecretRepository(t *testing.T) {
 			testModels := []models.ProjectSecretItem{}
 			testModels = append(testModels, testConfigs...)
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			err := repo.Insert(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
@@ -162,7 +164,7 @@ func TestSecretRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			//try for create
 			err := repo.Save(ctx, namespaceSpec, testModelA)
@@ -187,7 +189,7 @@ func TestSecretRepository(t *testing.T) {
 			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			//try for create
 			testModelA.Value = "gs://some_folder"
@@ -211,7 +213,7 @@ func TestSecretRepository(t *testing.T) {
 			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			//try for create
 			testModelA.Value = "gs://some_folder"
@@ -237,7 +239,7 @@ func TestSecretRepository(t *testing.T) {
 			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			//try for update
 			err := repo.Update(ctx, namespaceSpec, testModelA)
@@ -251,7 +253,7 @@ func TestSecretRepository(t *testing.T) {
 		testModels := []models.ProjectSecretItem{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewSecretRepository(db, projectSpec, hash)
+		repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
@@ -268,7 +270,7 @@ func TestSecretRepository(t *testing.T) {
 
 			var otherModels []models.ProjectSecretItem
 			otherModels = append(otherModels, testConfigs...)
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[0]))
 			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[3]))
 
@@ -276,7 +278,8 @@ func TestSecretRepository(t *testing.T) {
 			testModels = append(testModels, testConfigs...)
 			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
 			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[4]))
-			repo.db.Table("secret").Delete(&testModels[4])
+			err := repo.Delete(ctx, namespaceSpec, testModels[4].Name)
+			assert.Nil(t, err)
 
 			allSecrets, err := repo.GetAll(ctx)
 			assert.Nil(t, err)
@@ -299,7 +302,7 @@ func TestSecretRepository(t *testing.T) {
 			sqlDB, _ := db.DB()
 			defer sqlDB.Close()
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			var otherModels []models.ProjectSecretItem
 			otherModels = append(otherModels, testConfigs...)
@@ -341,7 +344,7 @@ func TestSecretRepository(t *testing.T) {
 				Value: "super-secret",
 				Type:  models.SecretTypeUserDefined,
 			}
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			assert.Nil(t, repo.Insert(ctx, namespaceSpec, secret))
 			_, err := repo.GetByName(ctx, secret.Name)
@@ -365,7 +368,7 @@ func TestSecretRepository(t *testing.T) {
 				Value: "super-secret",
 				Type:  models.SecretTypeUserDefined,
 			}
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, secret))
 			_, err := repo.GetByName(ctx, secret.Name)
@@ -383,7 +386,7 @@ func TestSecretRepository(t *testing.T) {
 			sqlDB, _ := db.DB()
 			defer sqlDB.Close()
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			err := repo.Delete(ctx, namespaceSpec, "invalid")
 			assert.NotNil(t, err)
@@ -394,7 +397,7 @@ func TestSecretRepository(t *testing.T) {
 			sqlDB, _ := db.DB()
 			sqlDB.Close() // Closing the connection
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := postgres.NewSecretRepository(db, projectSpec, hash)
 
 			err := repo.Delete(ctx, namespaceSpec, "valid-secret")
 			assert.NotNil(t, err)
