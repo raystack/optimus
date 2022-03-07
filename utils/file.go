@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-
-	"github.com/pkg/errors"
 )
 
 func WriteStringToFileIndexed() func(filePath, data string, writer io.Writer) error {
@@ -13,7 +11,7 @@ func WriteStringToFileIndexed() func(filePath, data string, writer io.Writer) er
 	return func(filePath, data string, writer io.Writer) error {
 		if err := ioutil.WriteFile(filePath,
 			[]byte(data), 0644); err != nil {
-			return errors.Wrapf(err, "failed to write file at %s", filePath)
+			return fmt.Errorf("failed to write file at %s: %w", filePath, err)
 		}
 		index++
 		_, err := writer.Write([]byte(fmt.Sprintf("%d. writing file at %s\n", index, filePath)))

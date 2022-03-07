@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -61,7 +61,7 @@ func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 	binaryReadySpec.Labels = nil
 	serializedSpec, err := controller.Adapter().ToYaml(binaryReadySpec)
 	if err != nil {
-		return Resource{}, errors.Wrapf(err, "controller.Adapter().ToYaml: %v", binaryReadySpec)
+		return Resource{}, fmt.Errorf("controller.Adapter().ToYaml: %v: %w", binaryReadySpec, err)
 	}
 
 	urn, err := controller.GenerateURN(resourceSpec.Spec)
@@ -117,7 +117,7 @@ func (r Resource) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
 	}
 	deserializedSpec, err := controller.Adapter().FromYaml(r.Spec)
 	if err != nil {
-		return models.ResourceSpec{}, errors.Wrapf(err, "controller.Adapter().FromYaml: %s", string(r.Spec))
+		return models.ResourceSpec{}, fmt.Errorf("controller.Adapter().FromYaml: %s: %w", string(r.Spec), err)
 	}
 
 	var assets map[string]string
@@ -180,7 +180,7 @@ func (repo *projectResourceSpecRepository) GetAll(ctx context.Context) ([]models
 	for _, r := range resources {
 		adapted, err := r.ToSpec(repo.datastore)
 		if err != nil {
-			return specs, errors.Wrap(err, "failed to adapt resource")
+			return specs, fmt.Errorf("failed to adapt resource: %w", err)
 		}
 		specs = append(specs, adapted)
 	}
@@ -245,7 +245,7 @@ func (repo *resourceSpecRepository) Save(ctx context.Context, spec models.Resour
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find resource by name")
+		return fmt.Errorf("unable to find resource by name: %w", err)
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
@@ -294,7 +294,7 @@ func (repo *resourceSpecRepository) GetAll(ctx context.Context) ([]models.Resour
 	for _, r := range resources {
 		adapted, err := r.ToSpec(repo.datastore)
 		if err != nil {
-			return specs, errors.Wrap(err, "failed to adapt resource")
+			return specs, fmt.Errorf("failed to adapt resource: %w", err)
 		}
 		specs = append(specs, adapted)
 	}

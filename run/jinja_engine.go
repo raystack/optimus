@@ -2,12 +2,12 @@ package run
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"time"
 
 	"github.com/flosch/pongo2"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 )
 
 // JinjaEngine compiles a set of defined macros using the provided context
@@ -67,7 +67,7 @@ func (loader inMemoryTemplateLoader) Abs(base, name string) string {
 func (loader inMemoryTemplateLoader) Get(path string) (io.Reader, error) {
 	data, ok := loader.files[path]
 	if !ok {
-		return nil, errors.Errorf("file not found: %s", path)
+		return nil, fmt.Errorf("file not found: %s", path)
 	}
 	return bytes.NewReader([]byte(data)), nil
 }

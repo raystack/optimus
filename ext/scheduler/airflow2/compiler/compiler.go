@@ -2,13 +2,14 @@ package compiler
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"text/template"
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -42,7 +43,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 
 			dur, err := time.ParseDuration(notify.Config["duration"])
 			if err != nil {
-				return models.Job{}, errors.Wrapf(err, "failed to parse sla_miss duration %s", notify.Config["duration"])
+				return models.Job{}, fmt.Errorf("failed to parse sla_miss duration %s: %w", notify.Config["duration"], err)
 			}
 			slaMissDurationInSec = int64(dur.Seconds())
 		}
@@ -80,7 +81,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		Version:                    config.Version,
 		Metadata:                   jobSpec.Metadata,
 	}); err != nil {
-		return models.Job{}, errors.Wrap(err, "failed to templatize job")
+		return models.Job{}, fmt.Errorf("failed to templatize job: %w", err)
 	}
 
 	return models.Job{

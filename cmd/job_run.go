@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -80,7 +80,7 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Info("process took too long, timing out")
 		}
-		return errors.Wrapf(err, "request failed for job %s", jobSpec.Name)
+		return fmt.Errorf("request failed for job %s: %w", jobSpec.Name, err)
 	}
 	l.Info(fmt.Sprintf("%v", jobResponse))
 	return nil

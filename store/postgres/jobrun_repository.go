@@ -2,12 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -35,7 +36,7 @@ func (repo *JobRunRepository) Save(ctx context.Context, namespace models.Namespa
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, namespace, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find jobrun by id")
+		return fmt.Errorf("unable to find jobrun by id: %w", err)
 	}
 
 	resource, err := repo.adapter.FromJobRun(spec, namespace)
