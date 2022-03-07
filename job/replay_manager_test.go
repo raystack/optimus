@@ -2,16 +2,15 @@ package job_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
-
-	"github.com/odpf/optimus/store"
-	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	mocklib "github.com/stretchr/testify/mock"

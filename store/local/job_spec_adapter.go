@@ -1,6 +1,7 @@
 package local
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
-	"github.com/pkg/errors"
 	"gopkg.in/validator.v2"
 )
 
@@ -94,7 +94,7 @@ type JobHook struct {
 func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook, error) {
 	hookUnit, err := pluginsRepo.GetByName(a.Name)
 	if err != nil {
-		return models.JobSpecHook{}, errors.Wrap(err, "spec reading error")
+		return models.JobSpecHook{}, fmt.Errorf("spec reading error: %w", err)
 	}
 	return models.JobSpecHook{
 		Config: JobSpecConfigFromYamlSlice(a.Config),
@@ -338,7 +338,7 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 			// treat as normal duration
 			window.Size, err = time.ParseDuration(conf.Task.Window.Size)
 			if err != nil {
-				return window, errors.Wrapf(err, "failed to parse task window %s with size %v", conf.Name, conf.Task.Window.Size)
+				return window, fmt.Errorf("failed to parse task window %s with size %v: %w", conf.Name, conf.Task.Window.Size, err)
 			}
 		}
 	}
@@ -350,7 +350,7 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 			// treat as normal duration
 			window.Offset, err = time.ParseDuration(conf.Task.Window.Offset)
 			if err != nil {
-				return window, errors.Wrapf(err, "failed to parse task window %s with offset %v", conf.Name, conf.Task.Window.Offset)
+				return window, fmt.Errorf("failed to parse task window %s with offset %v: %w", conf.Name, conf.Task.Window.Offset, err)
 			}
 		}
 	}
@@ -439,7 +439,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	execUnit, err := adapt.pluginRepo.GetByName(conf.Task.Name)
 	if err != nil {
-		return models.JobSpec{}, errors.Wrapf(err, "spec reading error, failed to find exec unit %s", conf.Task.Name)
+		return models.JobSpec{}, fmt.Errorf("spec reading error, failed to find exec unit %s: %w", conf.Task.Name, err)
 	}
 
 	labels := map[string]string{}
@@ -660,7 +660,7 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 		// replace month notation with days first, treating 1M as 30 days
 		monthsCount, err := strconv.Atoi(monthMatches[0][2])
 		if err != nil {
-			return sz, errors.Wrapf(err, "failed to parse task configuration of %s", str)
+			return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
 		}
 		sz = HoursInMonth * time.Duration(monthsCount)
 		if monthMatches[0][1] == "-" {
@@ -672,7 +672,7 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 			// check if there is remaining time that we can still parse
 			remainingTime, err := time.ParseDuration(str)
 			if err != nil {
-				return sz, errors.Wrapf(err, "failed to parse task configuration of %s", str)
+				return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
 			}
 			sz += remainingTime
 		}

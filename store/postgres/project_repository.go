@@ -3,12 +3,13 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -92,7 +93,7 @@ func (repo *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find project by name")
+		return fmt.Errorf("unable to find project by name: %w", err)
 	}
 	if len(spec.Config) == 0 {
 		return store.ErrEmptyConfig

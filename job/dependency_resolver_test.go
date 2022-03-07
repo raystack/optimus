@@ -2,12 +2,12 @@ package job_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/odpf/optimus/store"
-
-	"github.com/pkg/errors"
 
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
@@ -529,8 +529,8 @@ func TestDependencyResolver(t *testing.T) {
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
-			assert.Error(t, errors.Wrapf(errors.New("random error"), job.UnknownRuntimeDependencyMessage,
-				"project.dataset.table2_destination", jobSpec1.Name),
+			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
+				"project.dataset.table2_destination: %w", jobSpec1.Name, errors.New("random error")),
 				err.Error())
 			assert.Equal(t, models.JobSpec{}, resolvedJobSpec1)
 		})
@@ -613,9 +613,9 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
-			assert.Error(t, errors.Wrapf(errors.New("spec not found"), job.UnknownRuntimeDependencyMessage,
+			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
 				"project.dataset.table3_destination", jobSpec1.Name),
-				err.Error())
+				err.Error(), errors.New("spec not found"))
 		})
 
 		t.Run("it should fail for unknown static dependency", func(t *testing.T) {

@@ -2,11 +2,10 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -383,7 +382,7 @@ func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
 	if unit, ok := s.data[name]; ok {
 		return unit, nil
 	}
-	return nil, errors.Wrap(ErrUnsupportedPlugin, name)
+	return nil, fmt.Errorf("%s: %w", name, ErrUnsupportedPlugin)
 }
 
 func (s *registeredPlugins) GetAll() []*Plugin {
@@ -445,7 +444,7 @@ func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 
 	// check if name is already used
 	if _, ok := s.data[info.Name]; ok {
-		return errors.Errorf("plugin name already in use %s", info.Name)
+		return fmt.Errorf("plugin name already in use %s", info.Name)
 	}
 
 	// image is a required field

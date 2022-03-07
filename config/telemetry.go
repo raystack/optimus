@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -83,7 +83,7 @@ func InitTelemetry(l log.Logger, conf TelemetryConfig) (func(), error) {
 		}
 		if metricServer != nil {
 			if err := metricServer.Close(); err != nil {
-				l.Warn("failed to shutdown metrics http server", "err", errors.Wrap(err, "metricServer.Close"))
+				l.Warn("failed to shutdown metrics http server", "err", fmt.Errorf("metricServer.Close: %w", err))
 			}
 		}
 	}, nil
