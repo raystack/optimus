@@ -7,6 +7,7 @@ import (
 
 	"github.com/odpf/optimus/config"
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 )
 
 type ConfigType int
@@ -44,7 +45,6 @@ telemetry:
 	rawProject string = `
 version: 1
 host: localhost:9100
-serve: {}
 project:
   name: sample_project
   config:
@@ -54,10 +54,9 @@ project:
 `
 	rawNamespace string = `
 version: 1
-serve: {}
 namespace:
   name: sample_namespace
-  jobs:
+  job:
     path: "./job"
   datastore:
     type: bigquery
@@ -109,25 +108,47 @@ func TestLoadConfig(t *testing.T) {
 			configType: project,
 			err:        nil,
 		},
-		{
-			name:       "LoadAsNamespaceStructure_NoError",
-			path:       "/",
-			configType: namespace,
-			err:        nil,
-		},
 	}
 	fs := afero.NewMemMapFs()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := createConfig(fs, filepath.Join(tc.path, ".optimus.yaml"), tc.configType); err != nil {
-				t.Error(err.Error())
-			}
+			err := createConfig(fs, filepath.Join(tc.path, ".optimus.yaml"), tc.configType)
+			assert.NoError(t, err)
 
 			optimus := config.Optimus{}
-			if err := config.LoadConfig(&optimus, fs, tc.path); err != nil {
-				t.Error(err.Error())
-			}
+			err = config.LoadConfig(&optimus, fs, tc.path)
+			assert.NoError(t, err)
+			// TODO: check the value
 		})
 	}
+}
+
+func TestLoadNamespaceConfig(t *testing.T) {
+	t.Run("NoNamespacesDetected", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		path := "/project1"
+		fs.MkdirAll(path, 0755)
+
+		namespaces := map[string]*config.Namespace{}
+		err := config.LoadNamespacesConfig(namespaces, fs, path)
+		assert.NoError(t, err)
+		assert.Len(t, namespaces, 0)
+		// TODO: check the value
+	})
+
+	t.Run("WithFolderWithNamespaces", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		path := "/project2"
+		fs.MkdirAll(filepath.Join(path, "ns1"), 0755)
+
+		err := createConfig(fs, filepath.Join("/project2/ns1", ".optimus.yaml"), namespace)
+		assert.NoError(t, err)
+
+		namespaces := map[string]*config.Namespace{}
+		err = config.LoadNamespacesConfig(namespaces, fs, path)
+		assert.NoError(t, err)
+		assert.Len(t, namespaces, 1)
+		// TODO: check the value
+	})
 }

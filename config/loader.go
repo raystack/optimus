@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -51,7 +50,7 @@ func LoadOptimusConfig() (*Optimus, error) {
 	}
 
 	// Load namespaces config
-	if err = LoadNamespacesConfig(LoadConfig)(o.Namespaces, fs, currPath); err != nil {
+	if err = LoadNamespacesConfig(o.Namespaces, fs, currPath); err != nil {
 		return nil, fmt.Errorf("error loading namespaces config: %w", err)
 	}
 
@@ -65,42 +64,45 @@ func LoadOptimusConfig() (*Optimus, error) {
 // |_ ns2
 //    |_ .optimus.yaml -> namespaces 2
 // |_ ...
-func LoadNamespacesConfig(f LoadConfigFunc) func(map[string]*Namespace, afero.Fs, string) error {
-	return func(namespaces map[string]*Namespace, fs afero.Fs, currPath string) error {
-		fileInfos, err := ioutil.ReadDir(currPath)
-		if err != nil {
+func LoadNamespacesConfig(namespaces map[string]*Namespace, fs afero.Fs, currPath string) error {
+	fileInfos, err := afero.ReadDir(fs, currPath)
+	if err != nil {
+		return err
+	}
+	for _, fileInfo := range fileInfos {
+		// check if .optimus.yaml exist
+		filePath := path.Join(currPath, fileInfo.Name())
+		if _, err := fs.Stat(filePath); os.IsNotExist(err) {
+			continue
+		}
+
+		// load namespace config
+		// TODO: find a proper way to load namespace value without introducing additional fields
+		optimus := struct {
+			Version   string    `mapstructure:"version"`
+			Namespace Namespace `mapstructure:"namespace"`
+		}{}
+		if err := LoadConfig(&optimus, fs, filePath); err != nil {
 			return err
 		}
-		for _, fileInfo := range fileInfos {
-			// check if .optimus.yaml exist
-			filePath := path.Join(currPath, fileInfo.Name(), FileName, FileExtension)
-			if _, err := fs.Stat(filePath); os.IsNotExist(err) {
-				continue
-			}
+		namespace := optimus.Namespace
 
-			// load namespace config
-			var namespace Namespace
-			if err := f(namespace, fs, filePath); err != nil {
-				return err
-			}
-
-			// skip conflicted namespace
-			if namespaces[namespace.Name] != nil {
-				fmt.Printf("warning! namespace [%s] from [%s] is already used", namespace.Name, filePath)
-				continue
-			}
-
-			// assigning absolute path for job & datastore
-			namespace.Job.Path = path.Join(currPath, fileInfo.Name(), namespace.Job.Path)
-			for i, d := range namespace.Datastore {
-				namespace.Datastore[i].Path = path.Join(currPath, fileInfo.Name(), d.Path)
-			}
-
-			// assigning to namespaces map
-			namespaces[namespace.Name] = &namespace
+		// skip conflicted namespace
+		if namespaces[namespace.Name] != nil {
+			fmt.Printf("warning! namespace [%s] from [%s] is already used", namespace.Name, filePath)
+			continue
 		}
-		return nil
+
+		// assigning absolute path for job & datastore
+		namespace.Job.Path = path.Join(currPath, fileInfo.Name(), namespace.Job.Path)
+		for i, d := range namespace.Datastore {
+			namespace.Datastore[i].Path = path.Join(currPath, fileInfo.Name(), d.Path)
+		}
+
+		// assigning to namespaces map
+		namespaces[namespace.Name] = &namespace
 	}
+	return nil
 }
 
 func LoadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
