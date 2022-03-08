@@ -43,7 +43,6 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -624,18 +623,4 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	}), &http2.Server{})
-}
-
-// NewKafkaWriter creates a new kafka client that will be used for meta publishing
-func NewKafkaWriter(topic string, brokers []string, batchSize int) *kafka.Writer {
-	// check if metadata publisher is disabled
-	if len(brokers) == 0 || (len(brokers) == 1 && (brokers[0] == "-" || brokers[0] == "")) {
-		return nil
-	}
-
-	return kafka.NewWriter(kafka.WriterConfig{
-		Topic:     topic,
-		Brokers:   brokers,
-		BatchSize: batchSize,
-	})
 }
