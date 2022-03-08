@@ -59,7 +59,7 @@ func (e *ExtensionSuite) TestInstall() {
 			panic(err)
 		}
 
-		err = ext.Install(nil, e.validOwner, e.validRepo, e.validAlias)
+		err = ext.Install(nil, e.validOwner, e.validRepo, e.validAlias) // nolint:staticcheck
 
 		e.Error(err)
 	})
