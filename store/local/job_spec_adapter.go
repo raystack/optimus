@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)")
+	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)") //nolint:gosimple
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
@@ -146,7 +146,7 @@ func (conf *Job) MergeFrom(parent Job) {
 		conf.Schedule.EndDate = parent.Schedule.EndDate
 	}
 
-	if conf.Behavior.Retry.ExponentialBackoff == false {
+	if !conf.Behavior.Retry.ExponentialBackoff {
 		conf.Behavior.Retry.ExponentialBackoff = parent.Behavior.Retry.ExponentialBackoff
 	}
 	if conf.Behavior.Retry.Delay == "" {
@@ -155,10 +155,10 @@ func (conf *Job) MergeFrom(parent Job) {
 	if conf.Behavior.Retry.Count == 0 {
 		conf.Behavior.Retry.Count = parent.Behavior.Retry.Count
 	}
-	if conf.Behavior.DependsOnPast == false {
+	if !conf.Behavior.DependsOnPast {
 		conf.Behavior.DependsOnPast = parent.Behavior.DependsOnPast
 	}
-	if conf.Behavior.Catchup == false {
+	if !conf.Behavior.Catchup {
 		conf.Behavior.Catchup = parent.Behavior.Catchup
 	}
 	for _, pNotify := range parent.Behavior.Notify {

@@ -2,7 +2,6 @@ package bigquery
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
@@ -50,7 +49,7 @@ func (b BigQuery) Types() map[models.ResourceType]models.DatastoreTypeController
 func (b *BigQuery) CreateResource(ctx context.Context, request models.CreateResourceRequest) error {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || len(svcAcc) == 0 {
-		return errors.New(fmt.Sprintf(errSecretNotFoundStr, SecretName, b.Name()))
+		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
 	client, err := b.ClientFac.New(ctx, svcAcc)
@@ -74,7 +73,7 @@ func (b *BigQuery) CreateResource(ctx context.Context, request models.CreateReso
 func (b *BigQuery) UpdateResource(ctx context.Context, request models.UpdateResourceRequest) error {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || len(svcAcc) == 0 {
-		return errors.New(fmt.Sprintf(errSecretNotFoundStr, SecretName, b.Name()))
+		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
 	client, err := b.ClientFac.New(ctx, svcAcc)
@@ -98,7 +97,7 @@ func (b *BigQuery) UpdateResource(ctx context.Context, request models.UpdateReso
 func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResourceRequest) (models.ReadResourceResponse, error) {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || len(svcAcc) == 0 {
-		return models.ReadResourceResponse{}, errors.New(fmt.Sprintf(errSecretNotFoundStr, SecretName, b.Name()))
+		return models.ReadResourceResponse{}, fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
 	client, err := b.ClientFac.New(ctx, svcAcc)
@@ -138,7 +137,7 @@ func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResource
 func (b *BigQuery) DeleteResource(ctx context.Context, request models.DeleteResourceRequest) error {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || len(svcAcc) == 0 {
-		return errors.New(fmt.Sprintf(errSecretNotFoundStr, SecretName, b.Name()))
+		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
 	client, err := b.ClientFac.New(ctx, svcAcc)

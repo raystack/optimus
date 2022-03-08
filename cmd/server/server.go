@@ -259,7 +259,7 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
 	if conf.ReplayNumWorkers < 1 {
-		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
+		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
 	}
 	if conf.DB.DSN == "" {
 		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)

@@ -39,7 +39,6 @@ linters:
     - cyclop
     - noctx
     - ireturn
-    - gosimple
     - gomnd
     - goerr113
     - nilerr

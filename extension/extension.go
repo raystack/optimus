@@ -150,7 +150,7 @@ func (e *Extension) getResponseError(resp *http.Response) error {
 	if err := json.Indent(&buff, body, "", "  "); err != nil {
 		return fmt.Errorf("error indenting json: %v", err)
 	}
-	return errors.New(string(buff.Bytes()))
+	return errors.New(buff.String())
 }
 
 func (e *Extension) getDownloadURL(release *github.RepositoryRelease) (string, error) {
