@@ -15,15 +15,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
+func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "create",
 			Short:   "Create a backup",
 			Example: "optimus backup create --resource <sample_resource_name>",
 		}
-		project          = conf.Project.Name
-		namespace        = conf.Namespace.Name
+		namespaceName    string
 		dryRun           = false
 		ignoreDownstream = false
 		allDownstream    = false
@@ -32,8 +31,8 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 		description      string
 		storerName       string
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", project, "Project name of optimus managed repository")
-	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of the resource within project")
+	backupCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of the resource within project")
+	backupCmd.MarkFlagRequired("namespace")
 
 	backupCmd.Flags().StringVarP(&resourceName, "resource", "r", resourceName, "Resource name created inside the datastore")
 	backupCmd.Flags().StringVarP(&description, "description", "i", description, "Describe intention to help identify the backup")
@@ -46,6 +45,9 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		var err error
+		if conf.Namespaces[namespaceName] == nil {
+			return fmt.Errorf("[%s] namespace is not found in config", namespaceName)
+		}
 		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
 			return err
 		}
@@ -61,13 +63,13 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			if allDownstream {
 				allowedDownstreamNamespaces = []string{"*"}
 			} else {
-				allowedDownstreamNamespaces = []string{namespace}
+				allowedDownstreamNamespaces = []string{namespaceName}
 			}
 		}
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
-			ProjectName:                 project,
-			NamespaceName:               namespace,
+			ProjectName:                 conf.Project.Name,
+			NamespaceName:               namespaceName,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
@@ -98,14 +100,14 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 		}
 
 		backupRequest := &pb.CreateBackupRequest{
-			ProjectName:                 project,
-			NamespaceName:               namespace,
+			ProjectName:                 conf.Project.Name,
+			NamespaceName:               namespaceName,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
 			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 		}
-		for _, ds := range conf.Namespace.Datastore {
+		for _, ds := range conf.Namespaces[namespaceName].Datastore {
 			if ds.Type == storerName {
 				backupRequest.Config = ds.Backup
 			}

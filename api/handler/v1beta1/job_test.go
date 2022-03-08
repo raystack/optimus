@@ -126,8 +126,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
 				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
 			}
-			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
-			err := runtimeServiceServer.DeployJobSpecification(&deployRequest, grpcRespStream)
+			// deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
+			err := runtimeServiceServer.DeployJobSpecification(grpcRespStream)
 			assert.Nil(t, err)
 		})
 	})

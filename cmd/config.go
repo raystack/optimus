@@ -89,48 +89,6 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err := survey.Ask(questions, &answers); err != nil {
 				return err
 			}
-
-			conf.Namespace.Name = answers["NamespaceName"].(string)
-			// for namespace config
-			if option, ok := answers["RegisterNamespaceConfig"]; ok && option.(survey.OptionAnswer).Value == AnswerYes {
-				conf, err = namespaceConfigQuestions(conf)
-				if err != nil {
-					return err
-				}
-			}
-
-			// for datastore
-			questions = []*survey.Question{
-				{
-					Name: "JobPath",
-					Prompt: &survey.Input{
-						Message: "Scheduled jobs directory",
-						Default: "./jobs",
-						Help:    "Relative directory path to jobs specification",
-					},
-					Validate: survey.Required,
-				},
-				{
-					Name: "RegisterDatastore",
-					Prompt: &survey.Select{
-						Message: "Register datastore configs?",
-						Options: []string{AnswerYes, AnswerNo},
-						Default: AnswerNo,
-					},
-				},
-			}
-			answers = map[string]interface{}{}
-			if err := survey.Ask(questions, &answers); err != nil {
-				return err
-			}
-			conf.Namespace.Job.Path = answers["JobPath"].(string)
-			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == AnswerYes {
-				conf, err = datastoreConfigQuestions(conf, dsRepo)
-				if err != nil {
-					return err
-				}
-			}
-
 			confMarshaled, err := yaml.Marshal(conf)
 			if err != nil {
 				return err
@@ -178,77 +136,6 @@ func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 		}
 		conf.Project.Config[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
 	}
-
-	return conf, nil
-}
-
-func namespaceConfigQuestions(conf config.Optimus) (config.Optimus, error) {
-	conf.Namespace.Config = map[string]string{}
-	registerMore := AnswerYes
-	for registerMore == AnswerYes {
-		configAnswers := map[string]interface{}{}
-		if err := survey.Ask([]*survey.Question{
-			{
-				Name: "Name",
-				Prompt: &survey.Input{
-					Message: "Name of the config",
-				},
-				Validate: survey.MinLength(3),
-			},
-			{
-				Name: "Value",
-				Prompt: &survey.Input{
-					Message: "Value",
-				},
-				Validate: survey.MinLength(1),
-			},
-		}, &configAnswers); err != nil {
-			return conf, err
-		}
-
-		if err := survey.AskOne(&survey.Select{
-			Message: "Add one more?",
-			Options: []string{AnswerYes, AnswerNo},
-			Default: AnswerYes,
-		}, &registerMore); err != nil {
-			return conf, err
-		}
-		conf.Namespace.Config[configAnswers["Name"].(string)] = configAnswers["Value"].(string)
-	}
-
-	return conf, nil
-}
-
-func datastoreConfigQuestions(conf config.Optimus, dsRepo models.DatastoreRepo) (config.Optimus, error) {
-	dsOptions := []string{}
-	for _, ds := range dsRepo.GetAll() {
-		dsOptions = append(dsOptions, ds.Name())
-	}
-	conf.Namespace.Datastore = []config.Datastore{}
-
-	configAnswers := map[string]interface{}{}
-	if err := survey.Ask([]*survey.Question{
-		{
-			Name: "Type",
-			Prompt: &survey.Select{
-				Message: "Type of the datastore",
-				Options: dsOptions,
-			},
-		},
-		{
-			Name: "Path",
-			Prompt: &survey.Input{
-				Message: "Path for specifications",
-			},
-			Validate: survey.MinLength(1),
-		},
-	}, &configAnswers); err != nil {
-		return conf, err
-	}
-	conf.Namespace.Datastore = append(conf.Namespace.Datastore, config.Datastore{
-		Type: configAnswers["Type"].(survey.OptionAnswer).Value,
-		Path: configAnswers["Path"].(string),
-	})
 
 	return conf, nil
 }
