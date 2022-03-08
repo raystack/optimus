@@ -83,15 +83,15 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 		}
 
 		if !skipConfirm {
-			proceedWithBackup := "Yes"
+			proceedWithBackup := AnswerYes
 			if err := survey.AskOne(&survey.Select{
 				Message: "Proceed with backup?",
-				Options: []string{"Yes", "No"},
-				Default: "No",
+				Options: []string{AnswerYes, AnswerNo},
+				Default: AnswerNo,
 			}, &proceedWithBackup); err != nil {
 				return err
 			}
-			if proceedWithBackup == "No" {
+			if proceedWithBackup == AnswerNo {
 				l.Info(coloredNotice("Aborting..."))
 				return nil
 			}

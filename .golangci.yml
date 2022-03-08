@@ -53,7 +53,6 @@ linters:
     - nakedret
     - golint
     - gocritic
-    - goconst
     - gocognit
     - funlen
     - gocyclo
@@ -62,5 +61,8 @@ linters-settings:
   revive:
     ignore-generated-header: true
     severity: warning
+  goconst:
+    ignore-tests: true
+    numbers: true
 severity:
   default-severity: error

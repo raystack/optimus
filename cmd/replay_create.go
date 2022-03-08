@@ -82,15 +82,15 @@ Date ranges are inclusive.
 		}
 
 		if !skipConfirm {
-			proceedWithReplay := "Yes"
+			proceedWithReplay := AnswerYes
 			if err := survey.AskOne(&survey.Select{
 				Message: "Proceed with replay?",
-				Options: []string{"Yes", "No"},
-				Default: "No",
+				Options: []string{AnswerYes, AnswerNo},
+				Default: AnswerNo,
 			}, &proceedWithReplay); err != nil {
 				return err
 			}
-			if proceedWithReplay == "No" {
+			if proceedWithReplay == AnswerNo {
 				l.Info("Aborting...")
 				return nil
 			}
