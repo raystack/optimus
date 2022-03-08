@@ -19,7 +19,7 @@ const (
 type ErrorType string
 
 func (s ErrorType) String() string {
-	return string(s)
+	return strings.ToLower(string(s))
 }
 
 // DomainError is used to map different type of errors identified in service to network errors
@@ -68,7 +68,7 @@ func FromError(err error, entity string, msg string) *DomainError {
 
 func (e *DomainError) Error() string {
 	return fmt.Sprintf("%v: %v for entity %v",
-		e.Message, strings.ToLower(e.ErrorType.String()), e.Entity)
+		e.Message, e.ErrorType.String(), e.Entity)
 }
 
 func (e *DomainError) Unwrap() error {

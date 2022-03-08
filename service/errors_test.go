@@ -28,7 +28,7 @@ func TestErrors(t *testing.T) {
 		de2 := service.FromError(de1, "namespace", "error while fetching namespace")
 
 		assert.Error(t, de2)
-		expectedErrorString := "error while fetching namespace: Internal Error for namespace: not able to get project: Internal Error for project: random database error"
+		expectedErrorString := "error while fetching namespace: internal error for namespace: not able to get project: internal error for project: random database error"
 		assert.Equal(t, expectedErrorString, de2.DebugString())
 	})
 	t.Run("creates debug string when err inside is nil", func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestErrors(t *testing.T) {
 		de2 := service.FromError(de1, "namespace", "error while fetching namespace")
 
 		assert.Error(t, de2)
-		expectedErrorString := "error while fetching namespace: Internal Error for namespace: some error with project: Internal Error for project: "
+		expectedErrorString := "error while fetching namespace: internal error for namespace: some error with project: internal error for project: "
 		assert.Equal(t, expectedErrorString, de2.DebugString())
 	})
 	t.Run("allows unwrapping of error in error chain", func(t *testing.T) {
