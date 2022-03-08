@@ -22,7 +22,7 @@ var (
 		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 )
 
-func resourceCommand(l log.Logger, datastoreSpecsFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo, datastoreSpecsFs map[string]map[string]afero.Fs) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
@@ -34,12 +34,16 @@ func resourceCommand(l log.Logger, datastoreSpecsFs map[string]afero.Fs, datasto
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
-	return &cli.Command{
+func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+	var namespaceName string
+	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			if datastoreSpecFs[namespaceName] == nil {
+				return fmt.Errorf("[%s] namespace is not found in config", namespaceName)
+			}
 			availableStorer := []string{}
 			for _, s := range datastoreRepo.GetAll() {
 				availableStorer = append(availableStorer, s.Name())
@@ -51,7 +55,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			}, &storerName); err != nil {
 				return err
 			}
-			repoFS, ok := datastoreSpecFs[storerName]
+			repoFS, ok := datastoreSpecFs[namespaceName][storerName]
 			if !ok {
 				return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
 			}
@@ -119,6 +123,9 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			return nil
 		},
 	}
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", "", "targetted namespace for resource creation")
+	cmd.MarkFlagRequired("namespace")
+	return cmd
 }
 
 // IsResourceNameUnique return a validator that checks if the resource already exists with the same name

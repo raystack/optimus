@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -13,46 +14,89 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecificationRequest, respStream pb.RuntimeService_DeployJobSpecificationServer) error {
+func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
-
-	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
-	if err != nil {
-		return mapToGRPCErr(sv.l, err, "unable to get namespace")
-	}
-
-	var jobsToKeep []models.JobSpec
-	for _, reqJob := range req.GetJobs() {
-		adaptJob, err := sv.adapter.FromJobProto(reqJob)
+	for {
+		req, err := stream.Recv()
 		if err != nil {
-			return status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), reqJob.GetName())
+			if err == io.EOF {
+				break
+			}
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return err
+		}
+		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), req.GetProjectName(), req.GetNamespaceName())
+		if err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return mapToGRPCErr(sv.l, err, "unable to get namespace")
 		}
 
-		err = sv.jobSvc.Create(respStream.Context(), namespaceSpec, adaptJob)
-		if err != nil {
-			return status.Errorf(codes.Internal, "%s: failed to save %s", err.Error(), adaptJob.Name)
+		var jobsToKeep []models.JobSpec
+		for _, reqJob := range req.GetJobs() {
+			adaptJob, err := sv.adapter.FromJobProto(reqJob)
+			if err != nil {
+				stream.Send(&pb.DeployJobSpecificationResponse{
+					Success: false,
+					Ack:     true,
+					Message: err.Error(),
+				})
+				return status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), reqJob.GetName())
+			}
+
+			err = sv.jobSvc.Create(stream.Context(), namespaceSpec, adaptJob)
+			if err != nil {
+				stream.Send(&pb.DeployJobSpecificationResponse{
+					Success: false,
+					Ack:     true,
+					Message: err.Error(),
+				})
+				return status.Errorf(codes.Internal, "%s: failed to save %s", err.Error(), adaptJob.Name)
+			}
+			jobsToKeep = append(jobsToKeep, adaptJob)
 		}
-		jobsToKeep = append(jobsToKeep, adaptJob)
+
+		observers := new(progress.ObserverChain)
+		observers.Join(sv.progressObserver)
+		observers.Join(&jobSyncObserver{
+			stream: stream,
+			log:    sv.l,
+			mu:     new(sync.Mutex),
+		})
+
+		// delete specs not sent for deployment from internal repository
+		if err := sv.jobSvc.KeepOnly(stream.Context(), namespaceSpec, jobsToKeep, observers); err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return status.Errorf(codes.Internal, "failed to delete jobs: \n%s", err.Error())
+		}
+
+		if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
+		}
+
+		runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
+		stream.Send(&pb.DeployJobSpecificationResponse{
+			Success: true,
+			Ack:     true,
+			Message: "success",
+		})
 	}
-
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
-	observers.Join(&jobSyncObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
-
-	// delete specs not sent for deployment from internal repository
-	if err := sv.jobSvc.KeepOnly(respStream.Context(), namespaceSpec, jobsToKeep, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete jobs: \n%s", err.Error())
-	}
-
-	if err := sv.jobSvc.Sync(respStream.Context(), namespaceSpec, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
-	}
-
-	runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))
 	return nil
 }

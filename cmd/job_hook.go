@@ -6,13 +6,21 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 )
 
-func jobAddHookCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository) *cli.Command {
+func jobAddHookCommand(l log.Logger, namespace *config.Namespace, pluginRepo models.PluginRepository) *cli.Command {
+	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+	jobSpecRepo := local.NewJobSpecRepository(
+		jobSpecFs,
+		local.NewJobSpecAdapter(pluginRepo),
+	)
 	cmd := &cli.Command{
 		Use:     "addhook",
 		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},

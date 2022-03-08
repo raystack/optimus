@@ -12,6 +12,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
@@ -31,8 +32,12 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepository,
-	pluginRepo models.PluginRepository) *cli.Command {
+func jobCreateCommand(l log.Logger, namespace *config.Namespace, pluginRepo models.PluginRepository) *cli.Command {
+	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+	jobSpecRepo := local.NewJobSpecRepository(
+		jobSpecFs,
+		local.NewJobSpecAdapter(pluginRepo),
+	)
 	return &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",

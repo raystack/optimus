@@ -25,7 +25,7 @@ type RuntimeServiceClient interface {
 	// of deployments. Message containing ack are status events other are progress
 	// events
 	// State of the world request
-	DeployJobSpecification(ctx context.Context, in *DeployJobSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployJobSpecificationClient, error)
+	DeployJobSpecification(ctx context.Context, opts ...grpc.CallOption) (RuntimeService_DeployJobSpecificationClient, error)
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
@@ -108,28 +108,27 @@ func (c *runtimeServiceClient) Version(ctx context.Context, in *VersionRequest, 
 	return out, nil
 }
 
-func (c *runtimeServiceClient) DeployJobSpecification(ctx context.Context, in *DeployJobSpecificationRequest, opts ...grpc.CallOption) (RuntimeService_DeployJobSpecificationClient, error) {
+func (c *runtimeServiceClient) DeployJobSpecification(ctx context.Context, opts ...grpc.CallOption) (RuntimeService_DeployJobSpecificationClient, error) {
 	stream, err := c.cc.NewStream(ctx, &RuntimeService_ServiceDesc.Streams[0], "/odpf.optimus.core.v1beta1.RuntimeService/DeployJobSpecification", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &runtimeServiceDeployJobSpecificationClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 type RuntimeService_DeployJobSpecificationClient interface {
+	Send(*DeployJobSpecificationRequest) error
 	Recv() (*DeployJobSpecificationResponse, error)
 	grpc.ClientStream
 }
 
 type runtimeServiceDeployJobSpecificationClient struct {
 	grpc.ClientStream
+}
+
+func (x *runtimeServiceDeployJobSpecificationClient) Send(m *DeployJobSpecificationRequest) error {
+	return x.ClientStream.SendMsg(m)
 }
 
 func (x *runtimeServiceDeployJobSpecificationClient) Recv() (*DeployJobSpecificationResponse, error) {
@@ -493,7 +492,7 @@ type RuntimeServiceServer interface {
 	// of deployments. Message containing ack are status events other are progress
 	// events
 	// State of the world request
-	DeployJobSpecification(*DeployJobSpecificationRequest, RuntimeService_DeployJobSpecificationServer) error
+	DeployJobSpecification(RuntimeService_DeployJobSpecificationServer) error
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
@@ -567,7 +566,7 @@ type UnimplementedRuntimeServiceServer struct {
 func (UnimplementedRuntimeServiceServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
 }
-func (UnimplementedRuntimeServiceServer) DeployJobSpecification(*DeployJobSpecificationRequest, RuntimeService_DeployJobSpecificationServer) error {
+func (UnimplementedRuntimeServiceServer) DeployJobSpecification(RuntimeService_DeployJobSpecificationServer) error {
 	return status.Errorf(codes.Unimplemented, "method DeployJobSpecification not implemented")
 }
 func (UnimplementedRuntimeServiceServer) CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error) {
@@ -701,15 +700,12 @@ func _RuntimeService_Version_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _RuntimeService_DeployJobSpecification_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(DeployJobSpecificationRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(RuntimeServiceServer).DeployJobSpecification(m, &runtimeServiceDeployJobSpecificationServer{stream})
+	return srv.(RuntimeServiceServer).DeployJobSpecification(&runtimeServiceDeployJobSpecificationServer{stream})
 }
 
 type RuntimeService_DeployJobSpecificationServer interface {
 	Send(*DeployJobSpecificationResponse) error
+	Recv() (*DeployJobSpecificationRequest, error)
 	grpc.ServerStream
 }
 
@@ -719,6 +715,14 @@ type runtimeServiceDeployJobSpecificationServer struct {
 
 func (x *runtimeServiceDeployJobSpecificationServer) Send(m *DeployJobSpecificationResponse) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func (x *runtimeServiceDeployJobSpecificationServer) Recv() (*DeployJobSpecificationRequest, error) {
+	m := new(DeployJobSpecificationRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _RuntimeService_CreateJobSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1467,6 +1471,7 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "DeployJobSpecification",
 			Handler:       _RuntimeService_DeployJobSpecification_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 		{
 			StreamName:    "CheckJobSpecifications",
