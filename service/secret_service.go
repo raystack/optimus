@@ -18,10 +18,10 @@ type SecretService interface {
 type secretService struct {
 	projService ProjectService
 	nsService   NamespaceService
-	repo        store.ProjectSecretRepository
+	repo        store.SecretRepository
 }
 
-func NewSecretService(projectService ProjectService, namespaceService NamespaceService, repo store.ProjectSecretRepository) *secretService {
+func NewSecretService(projectService ProjectService, namespaceService NamespaceService, repo store.SecretRepository) *secretService {
 	return &secretService{
 		projService: projectService,
 		nsService:   namespaceService,
