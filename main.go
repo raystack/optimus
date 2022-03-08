@@ -47,12 +47,6 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
-	namespaces, err := config.LoadNamespaceConfig()
-	if err != nil {
-		fmt.Printf("ERROR: %s\n", err.Error())
-		os.Exit(1)
-	}
-	optimusConfig.Namespaces = namespaces
 
 	var jsonLogger log.Logger
 	var plainLogger log.Logger
