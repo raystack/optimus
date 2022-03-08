@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	ProgressBarWidth    = 15
-	ProgressBarDuration = 120 * time.Millisecond
+	ProgressBarWidth           = 15
+	ProgressBarRefreshDuration = 120 * time.Millisecond
 )
 
 type ProgressBar struct {
@@ -51,7 +51,7 @@ func (p *ProgressBar) Start(label string) {
 		}
 		return
 	} else {
-		sp := spinner.New(spinner.CharSets[11], ProgressBarDuration,
+		sp := spinner.New(spinner.CharSets[11], ProgressBarRefreshDuration,
 			spinner.WithWriter(p.writer), spinner.WithColor("fgCyan"))
 		if label != "" {
 			sp.Suffix = " " + label
