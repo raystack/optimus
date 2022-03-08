@@ -10,7 +10,6 @@ PROTON_COMMIT := "2a30976f7b40884ddd90e1792576c0941426e8bc"
 .PHONY: build test test-ci pack-files generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
-INTEGRATION_TEST_PATH?=./store
 
 build: pack-files # build optimus binary
 	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
@@ -37,7 +36,7 @@ smoke-test: build
 	@bash ./scripts/smoke-test.sh
 
 integration-test:
-	go test -count 1 -cover -race -timeout 1m $(INTEGRATION_TEST_PATH)/...
+	go test -count 1 -cover -race -timeout 1m ./... -run TestIntegration
 
 vet: ## run go vet
 	go vet ./...
