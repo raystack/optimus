@@ -10,7 +10,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-var (
+const (
 	backupTimeout = time.Minute * 15
 )
 

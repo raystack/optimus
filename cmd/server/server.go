@@ -62,7 +62,10 @@ import (
 
 var (
 	// termChan listen for sigterm
-	termChan           = make(chan os.Signal, 1)
+	termChan = make(chan os.Signal, 1)
+)
+
+const (
 	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
