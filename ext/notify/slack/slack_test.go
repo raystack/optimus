@@ -24,7 +24,7 @@ func getTestUserProfile() api.UserProfile {
 	}
 }
 
-func getTestUserWithId(id string) api.User {
+func getTestUserWithID(id string) api.User {
 	return api.User{
 		ID:                id,
 		Name:              "Test User",
@@ -57,7 +57,7 @@ func TestSlack(t *testing.T) {
 				User api.User `json:"user"`
 			}{
 				Ok:   true,
-				User: getTestUserWithId("ABCD"),
+				User: getTestUserWithID("ABCD"),
 			})
 			rw.Write(response)
 		})

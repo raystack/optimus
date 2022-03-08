@@ -125,7 +125,7 @@ func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, err
 		option = bqGoogleSheetsOptionsTo(es.Config)
 		sourceType = bqapi.GoogleSheets
 	default:
-		return &bqapi.ExternalDataConfig{}, fmt.Errorf("Source format not yet implemented %s", es.SourceType)
+		return &bqapi.ExternalDataConfig{}, fmt.Errorf("source format not yet implemented %s", es.SourceType)
 	}
 
 	externalConfig := &bqapi.ExternalDataConfig{
@@ -143,7 +143,7 @@ func bqExternalDataConfigFrom(c *bqapi.ExternalDataConfig) (*BQExternalSource, e
 	case bqapi.GoogleSheets:
 		option = bqGoogleSheetsOptionsFrom(c.Options.(*bqapi.GoogleSheetsOptions))
 	default:
-		return &BQExternalSource{}, fmt.Errorf("Source format not yet implemented %s", c.SourceFormat)
+		return &BQExternalSource{}, fmt.Errorf("source format not yet implemented %s", c.SourceFormat)
 	}
 
 	externalDataConfig := &BQExternalSource{

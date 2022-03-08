@@ -39,7 +39,7 @@ var (
 type Notifier struct {
 	io.Closer
 
-	slackUrl      string
+	slackURL      string
 	routeMsgBatch map[route][]event // channelID -> [][][][][]
 	wg            sync.WaitGroup
 	mu            sync.Mutex
@@ -67,7 +67,7 @@ func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 	if !ok {
 		return fmt.Errorf("failed to find authentication token of bot required for sending notifications, please register %s secret", OAuthTokenSecretName)
 	}
-	client := api.New(oauthSecret, api.OptionAPIURL(s.slackUrl))
+	client := api.New(oauthSecret, api.OptionAPIURL(s.slackURL))
 
 	var receiverIDs []string
 
@@ -252,7 +252,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 			messageOptions = append(messageOptions, api.MsgOptionBlocks(buildMessageBlocks(events)...))
 			messageOptions = append(messageOptions, api.MsgOptionAsUser(true))
 
-			client := api.New(route.authToken, api.OptionAPIURL(s.slackUrl))
+			client := api.New(route.authToken, api.OptionAPIURL(s.slackURL))
 			if _, _, _, err := client.SendMessage(route.receiverID,
 				messageOptions...,
 			); err != nil {
@@ -287,9 +287,9 @@ func (s *Notifier) Close() error {
 	return nil
 }
 
-func NewNotifier(ctx context.Context, slackUrl string, eventBatchInterval time.Duration, errHandler func(error)) *Notifier {
+func NewNotifier(ctx context.Context, slackURL string, eventBatchInterval time.Duration, errHandler func(error)) *Notifier {
 	this := &Notifier{
-		slackUrl:           slackUrl,
+		slackURL:           slackURL,
 		routeMsgBatch:      map[route][]event{},
 		workerErrChan:      make(chan error, 0),
 		eventBatchInterval: eventBatchInterval,

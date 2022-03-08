@@ -40,8 +40,8 @@ var (
 
 const (
 	baseLibFileName   = "__lib.py"
-	dagStatusUrl      = "api/v1/dags/%s/dagRuns?limit=99999"
-	dagStatusBatchUrl = "api/v1/dags/~/dagRuns/list"
+	dagStatusURL      = "api/v1/dags/%s/dagRuns?limit=99999"
+	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
 	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
@@ -52,7 +52,7 @@ const (
 	ConcurrentLimit        = 600
 )
 
-type HttpClient interface {
+type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -70,7 +70,7 @@ type Bucket interface {
 
 type scheduler struct {
 	bucketFac  BucketFactory
-	httpClient HttpClient
+	httpClient HTTPClient
 	compiler   models.JobCompiler
 }
 
@@ -212,7 +212,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		return nil, err
 	}
 
-	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusUrl), jobName)
+	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusURL), jobName)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build http request for %s: %w", fetchURL, err)
@@ -247,15 +247,15 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	//	],
 	//	"total_entries": 0
 	//}
-	var responseJson struct {
+	var responseJSON struct {
 		DagRuns []map[string]interface{} `json:"dag_runs"`
 	}
-	err = json.Unmarshal(body, &responseJson)
+	err = json.Unmarshal(body, &responseJSON)
 	if err != nil {
 		return nil, fmt.Errorf("json error: %s: %w", string(body), err)
 	}
 
-	return toJobStatus(responseJson.DagRuns, jobName)
+	return toJobStatus(responseJSON.DagRuns, jobName)
 }
 
 func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
@@ -298,11 +298,11 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		return nil, err
 	}
 	schdHost = strings.Trim(schdHost, "/")
-	postURL := fmt.Sprintf("%s/%s", schdHost, dagStatusBatchUrl)
+	postURL := fmt.Sprintf("%s/%s", schdHost, dagStatusBatchURL)
 
 	pageOffset := 0
 	var jobStatus []models.JobStatus
-	var responseJson struct {
+	var responseJSON struct {
 		DagRuns      []map[string]interface{} `json:"dag_runs"`
 		TotalEntries int                      `json:"total_entries"`
 	}
@@ -318,18 +318,18 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		var jsonStr = []byte(dagRunBatchReq)
 		request, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 		if err != nil {
-			return nil, fmt.Errorf("failed to build http request for %s: %w", dagStatusBatchUrl, err)
+			return nil, fmt.Errorf("failed to build http request for %s: %w", dagStatusBatchURL, err)
 		}
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 
 		resp, err := s.httpClient.Do(request)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %w", dagStatusBatchUrl, err)
+			return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %w", dagStatusBatchURL, err)
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return nil, fmt.Errorf("failed to fetch airflow dag runs from %s", dagStatusBatchUrl)
+			return nil, fmt.Errorf("failed to fetch airflow dag runs from %s", dagStatusBatchURL)
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
@@ -338,18 +338,18 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 			return nil, fmt.Errorf("failed to read airflow response: %w", err)
 		}
 
-		if err := json.Unmarshal(body, &responseJson); err != nil {
+		if err := json.Unmarshal(body, &responseJSON); err != nil {
 			return nil, fmt.Errorf("json error: %s: %w", string(body), err)
 		}
 
-		jobStatusPerBatch, err := toJobStatus(responseJson.DagRuns, jobName)
+		jobStatusPerBatch, err := toJobStatus(responseJSON.DagRuns, jobName)
 		if err != nil {
 			return nil, err
 		}
 		jobStatus = append(jobStatus, jobStatusPerBatch...)
 
 		pageOffset += batchSize
-		if responseJson.TotalEntries <= pageOffset {
+		if responseJSON.TotalEntries <= pageOffset {
 			break
 		}
 	}
@@ -415,7 +415,7 @@ func JobNameFromPath(filePath, suffix string) string {
 	return strings.TrimSuffix(jobFileName, suffix)
 }
 
-func NewScheduler(bucketFac BucketFactory, httpClient HttpClient, compiler models.JobCompiler) *scheduler {
+func NewScheduler(bucketFac BucketFactory, httpClient HTTPClient, compiler models.JobCompiler) *scheduler {
 	return &scheduler{
 		bucketFac:  bucketFac,
 		compiler:   compiler,

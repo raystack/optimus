@@ -103,7 +103,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobService.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
 			defer jobService.AssertExpectations(t)
 
-			grpcRespStream := new(mock.RuntimeService_DeployJobSpecificationServer)
+			grpcRespStream := new(mock.DeployJobSpecificationServer)
 			grpcRespStream.On("Context").Return(context.Background())
 			defer grpcRespStream.AssertExpectations(t)
 

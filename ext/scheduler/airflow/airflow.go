@@ -58,7 +58,7 @@ func NewScheduler(bf airflow2.BucketFactory, httpClient HTTPClient, compiler mod
 	}
 }
 
-func (a *scheduler) GetName() string {
+func (s *scheduler) GetName() string {
 	return "airflow"
 }
 
@@ -189,7 +189,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	return jobs, nil
 }
 
-func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
+func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
 	error) {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
@@ -203,7 +203,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		return nil, fmt.Errorf("failed to build http request for %s: %w", fetchURL, err)
 	}
 
-	resp, err := a.httpClient.Do(request)
+	resp, err := s.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch airflow dag runs from %s: %w", fetchURL, err)
 	}
@@ -252,7 +252,7 @@ func (a *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	return jobStatus, nil
 }
 
-func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
 		return fmt.Errorf("scheduler host not set for %s", projSpec.Name)
@@ -271,7 +271,7 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		return fmt.Errorf("failed to build http request for %s: %w", clearDagRunURL, err)
 	}
 
-	resp, err := a.httpClient.Do(request)
+	resp, err := s.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("failed to clear airflow dag runs from %s: %w", clearDagRunURL, err)
 	}
@@ -303,9 +303,9 @@ func (a *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	return nil
 }
 
-func (a *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
+func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
 	batchSize int) ([]models.JobStatus, error) {
-	allJobStatus, err := a.GetJobStatus(ctx, projectSpec, jobName)
+	allJobStatus, err := s.GetJobStatus(ctx, projectSpec, jobName)
 	if err != nil {
 		return nil, err
 	}
