@@ -138,7 +138,7 @@ type PluginQuestions []PluginQuestion
 
 func (q PluginQuestions) Get(name string) (PluginQuestion, bool) {
 	for _, que := range q {
-		if strings.ToLower(que.Name) == strings.ToLower(name) {
+		if strings.EqualFold(que.Name, name) {
 			return que, true
 		}
 	}
@@ -154,7 +154,7 @@ type PluginAnswers []PluginAnswer
 
 func (ans PluginAnswers) Get(name string) (PluginAnswer, bool) {
 	for _, a := range ans {
-		if strings.ToLower(a.Question.Name) == strings.ToLower(name) {
+		if strings.EqualFold(a.Question.Name, name) {
 			return a, true
 		}
 	}
@@ -190,7 +190,7 @@ type PluginConfigs []PluginConfig
 
 func (c PluginConfigs) Get(name string) (PluginConfig, bool) {
 	for _, con := range c {
-		if strings.ToLower(con.Name) == strings.ToLower(name) {
+		if strings.EqualFold(con.Name, name) {
 			return con, true
 		}
 	}
@@ -239,7 +239,7 @@ type PluginAssets []PluginAsset
 
 func (c PluginAssets) Get(name string) (PluginAsset, bool) {
 	for _, con := range c {
-		if strings.ToLower(con.Name) == strings.ToLower(name) {
+		if strings.EqualFold(con.Name, name) {
 			return con, true
 		}
 	}

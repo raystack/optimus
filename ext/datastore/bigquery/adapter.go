@@ -262,9 +262,7 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 	if t.Metadata.Partition != nil {
 		if t.Metadata.Partition.Range == nil {
 			meta.TimePartitioning = bqPartitioningTimeTo(*t.Metadata.Partition)
-		} else {
-			// updating range based partition after creation is not supported
-		}
+		} // updating range based partition after creation is not supported
 	}
 	if meta.Schema, err = bqSchemaTo(t.Metadata.Schema); err != nil {
 		return

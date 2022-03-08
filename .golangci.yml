@@ -37,7 +37,6 @@ linters:
     # Following linters should be enabled after fixing the code
     - testpackage
     - stylecheck
-    - staticcheck
     - cyclop
     - noctx
     - ireturn
