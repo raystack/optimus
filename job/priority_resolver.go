@@ -2,11 +2,12 @@ package job
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -57,7 +58,7 @@ func NewPriorityResolver() *priorityResolver {
 func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec,
 	progressObserver progress.Observer) ([]models.JobSpec, error) {
 	if err := a.resolvePriorities(jobSpecs, progressObserver); err != nil {
-		return nil, errors.Wrap(err, "error occurred while resolving priority")
+		return nil, fmt.Errorf("error occurred while resolving priority: %w", err)
 	}
 
 	return jobSpecs, nil
@@ -80,7 +81,7 @@ func (a *priorityResolver) resolvePriorities(jobSpecs []models.JobSpec, progress
 	for idx, jobSpec := range jobSpecs {
 		priority, ok := taskPriorityMap[jobSpec.Name]
 		if !ok {
-			return errors.Wrap(ErrPriorityNotFound, jobSpec.Name)
+			return fmt.Errorf("%s: %w", jobSpec.Name, ErrPriorityNotFound)
 		}
 		jobSpec.Task.Priority = priority
 		jobSpecs[idx] = jobSpec
@@ -122,7 +123,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 					// if its intra dependency, ideally this should not happen but instead of failing
 					// its better to simply soft fail by notifying about this action
 					// this will cause us to treat it as a dummy job with a unique root
-					notify(progressObserver, &EventJobPriorityWeightAssignmentFailed{Err: errors.Wrap(ErrJobSpecNotFound, depDAG.Job.Name)})
+					notify(progressObserver, &EventJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)})
 				}
 
 				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't

@@ -2,11 +2,11 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -168,7 +168,7 @@ func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupReso
 
 	svcAcc, ok := request.BackupSpec.Project.Secret.GetByName(SecretName)
 	if !ok || len(svcAcc) == 0 {
-		return models.BackupResourceResponse{}, errors.Errorf(errSecretNotFoundStr, SecretName, b.Name())
+		return models.BackupResourceResponse{}, fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
 	client, err := b.ClientFac.New(ctx, svcAcc)

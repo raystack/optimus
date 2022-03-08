@@ -1,21 +1,22 @@
 package bigquery
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 )
 
 var (
 	datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)
-	datasetURNFormat      = "%s://%s:%s"
 )
+
+const datasetURNFormat = "%s://%s:%s"
 
 // DatasetResourceSpec is how dataset should be represented in yaml
 type DatasetResourceSpec struct {

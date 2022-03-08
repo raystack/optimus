@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	api "github.com/slack-go/slack"
 )
 
@@ -40,7 +39,7 @@ var (
 type Notifier struct {
 	io.Closer
 
-	slackUrl      string
+	slackURL      string
 	routeMsgBatch map[route][]event // channelID -> [][][][][]
 	wg            sync.WaitGroup
 	mu            sync.Mutex
@@ -66,9 +65,9 @@ type event struct {
 func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 	oauthSecret, ok := attr.Namespace.ProjectSpec.Secret.GetByName(OAuthTokenSecretName)
 	if !ok {
-		return errors.Errorf("failed to find authentication token of bot required for sending notifications, please register %s secret", OAuthTokenSecretName)
+		return fmt.Errorf("failed to find authentication token of bot required for sending notifications, please register %s secret", OAuthTokenSecretName)
 	}
-	client := api.New(oauthSecret, api.OptionAPIURL(s.slackUrl))
+	client := api.New(oauthSecret, api.OptionAPIURL(s.slackURL))
 
 	var receiverIDs []string
 
@@ -84,7 +83,7 @@ func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 			groupHandle := strings.TrimLeft(attr.Route, "@")
 			groups, err := client.GetUserGroupsContext(ctx)
 			if err != nil {
-				return errors.Wrapf(err, "client.GetUserGroupsContext")
+				return fmt.Errorf("client.GetUserGroupsContext: %w", err)
 			}
 			var groupID string
 			for _, group := range groups {
@@ -95,13 +94,13 @@ func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 			}
 			receiverIDs, err = client.GetUserGroupMembersContext(ctx, groupID)
 			if err != nil {
-				return errors.Wrapf(err, "client.GetUserGroupMembersContext")
+				return fmt.Errorf("client.GetUserGroupMembersContext: %w", err)
 			}
 		} else {
 			// user email
 			user, err := client.GetUserByEmail(attr.Route)
 			if err != nil {
-				return errors.Wrapf(err, "client.GetUserByEmail")
+				return fmt.Errorf("client.GetUserByEmail: %w", err)
 			}
 			receiverIDs = append(receiverIDs, user.ID)
 		}
@@ -109,7 +108,7 @@ func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 
 	// fail if unable to find the receiver ID
 	if len(receiverIDs) == 0 {
-		return errors.Errorf("failed to find notification route %s", attr.Route)
+		return fmt.Errorf("failed to find notification route %s", attr.Route)
 	}
 
 	s.queueNotification(receiverIDs, oauthSecret, attr)
@@ -253,7 +252,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 			messageOptions = append(messageOptions, api.MsgOptionBlocks(buildMessageBlocks(events)...))
 			messageOptions = append(messageOptions, api.MsgOptionAsUser(true))
 
-			client := api.New(route.authToken, api.OptionAPIURL(s.slackUrl))
+			client := api.New(route.authToken, api.OptionAPIURL(s.slackURL))
 			if _, _, _, err := client.SendMessage(route.receiverID,
 				messageOptions...,
 			); err != nil {
@@ -262,7 +261,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 					ev.authToken = "*redacted*"
 					cleanedEvents = append(cleanedEvents, ev)
 				}
-				s.workerErrChan <- errors.Wrapf(err, "Worker_SendMessageContext: %v", cleanedEvents)
+				s.workerErrChan <- fmt.Errorf("Worker_SendMessageContext: %v: %w", cleanedEvents, err)
 			}
 
 			// clear events from map as they are processed
@@ -288,9 +287,9 @@ func (s *Notifier) Close() error {
 	return nil
 }
 
-func NewNotifier(ctx context.Context, slackUrl string, eventBatchInterval time.Duration, errHandler func(error)) *Notifier {
+func NewNotifier(ctx context.Context, slackURL string, eventBatchInterval time.Duration, errHandler func(error)) *Notifier {
 	this := &Notifier{
-		slackUrl:           slackUrl,
+		slackURL:           slackURL,
 		routeMsgBatch:      map[route][]event{},
 		workerErrChan:      make(chan error, 0),
 		eventBatchInterval: eventBatchInterval,

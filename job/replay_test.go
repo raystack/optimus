@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -9,11 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/odpf/optimus/job"
-
 	"github.com/odpf/optimus/core/tree"
-
-	"github.com/pkg/errors"
+	"github.com/odpf/optimus/job"
 
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -41,7 +39,7 @@ func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]tim
 func TestReplay(t *testing.T) {
 	ctx := context.Background()
 	noDependency := map[string]models.JobSpecDependency{}
-	dumpAssets := func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
+	var dumpAssets job.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 	var (
@@ -96,11 +94,6 @@ func TestReplay(t *testing.T) {
 	jobSpecs = append(jobSpecs, specs[spec5])
 	specs[spec6] = models.JobSpec{Name: spec6, Dependencies: getDependencyObject(specs, spec4, spec5), Schedule: dailySchedule, Task: threeDayTaskWindow}
 	jobSpecs = append(jobSpecs, specs[spec6])
-
-	var jobNames []string
-	for _, dag := range jobSpecs {
-		jobNames = append(jobNames, dag.Name)
-	}
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
 		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {

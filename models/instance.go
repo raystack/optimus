@@ -3,11 +3,10 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 )
@@ -44,7 +43,7 @@ func (I JobRunTrigger) String() string {
 	return string(I)
 }
 
-var (
+const (
 
 	// assignment , non terminating state
 	RunStatePending JobRunState = "pending"
@@ -102,7 +101,7 @@ func ToInstanceType(val string) (InstanceType, error) {
 	case "hook":
 		return InstanceTypeHook, nil
 	}
-	return "", errors.Errorf("failed to convert to instance type, invalid val: %s", val)
+	return "", fmt.Errorf("failed to convert to instance type, invalid val: %s", val)
 }
 
 // InstanceSpec is a representation of task/hook in execution state

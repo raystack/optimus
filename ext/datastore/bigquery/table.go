@@ -2,6 +2,7 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -11,12 +12,14 @@ import (
 
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"google.golang.org/api/googleapi"
 )
 
 var (
-	tableNameParseRegex     = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
+	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
+)
+
+const (
 	errorReadTableSpec      = "failed to read table spec for bigquery"
 	backupTimePostfixFormat = "2006_01_02_15_04_05"
 )
@@ -244,7 +247,7 @@ func updateExpiry(ctx context.Context, tableDst bqiface.Table, req models.Backup
 
 	ttlDuration, err := time.ParseDuration(ttl)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse bigquery backup TTL %s", ttl)
+		return nil, fmt.Errorf("failed to parse bigquery backup TTL %s: %w", ttl, err)
 	}
 
 	update := bigquery.TableMetadataToUpdate{

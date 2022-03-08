@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gtank/cryptopasta"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -132,7 +132,7 @@ func (repo *secretRepository) Save(ctx context.Context, project models.ProjectSp
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, project, namespace, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find secret by name")
+		return fmt.Errorf("unable to find secret by name: %w", err)
 	}
 	return store.ErrResourceExists
 }
@@ -190,7 +190,7 @@ func (repo *secretRepository) GetAll(ctx context.Context, project models.Project
 	for _, res := range resources {
 		adapted, err := res.ToSecretItemInfo()
 		if err != nil {
-			return secretItems, errors.Wrap(err, "failed to adapt secret")
+			return secretItems, fmt.Errorf("failed to adapt secret: %w", err)
 		}
 		secretItems = append(secretItems, adapted)
 	}

@@ -1,12 +1,12 @@
 package bigquery
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	bqapi "cloud.google.com/go/bigquery"
-	"github.com/pkg/errors"
 )
 
 func bqPartitioningTimeTo(t BQPartitionInfo) *bqapi.TimePartitioning {
@@ -125,7 +125,7 @@ func bqExternalDataConfigTo(es BQExternalSource) (*bqapi.ExternalDataConfig, err
 		option = bqGoogleSheetsOptionsTo(es.Config)
 		sourceType = bqapi.GoogleSheets
 	default:
-		return &bqapi.ExternalDataConfig{}, fmt.Errorf("Source format not yet implemented %s", es.SourceType)
+		return &bqapi.ExternalDataConfig{}, fmt.Errorf("source format not yet implemented %s", es.SourceType)
 	}
 
 	externalConfig := &bqapi.ExternalDataConfig{
@@ -143,7 +143,7 @@ func bqExternalDataConfigFrom(c *bqapi.ExternalDataConfig) (*BQExternalSource, e
 	case bqapi.GoogleSheets:
 		option = bqGoogleSheetsOptionsFrom(c.Options.(*bqapi.GoogleSheetsOptions))
 	default:
-		return &BQExternalSource{}, fmt.Errorf("Source format not yet implemented %s", c.SourceFormat)
+		return &BQExternalSource{}, fmt.Errorf("source format not yet implemented %s", c.SourceFormat)
 	}
 
 	externalDataConfig := &BQExternalSource{
@@ -239,7 +239,7 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to parse timestamp %s", t.Metadata.ExpirationTime)
+			return nil, fmt.Errorf("unable to parse timestamp %s: %w", t.Metadata.ExpirationTime, err)
 		}
 		meta.ExpirationTime = expiryTime
 	}
@@ -262,9 +262,7 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 	if t.Metadata.Partition != nil {
 		if t.Metadata.Partition.Range == nil {
 			meta.TimePartitioning = bqPartitioningTimeTo(*t.Metadata.Partition)
-		} else {
-			// updating range based partition after creation is not supported
-		}
+		} // updating range based partition after creation is not supported
 	}
 	if meta.Schema, err = bqSchemaTo(t.Metadata.Schema); err != nil {
 		return
@@ -276,7 +274,7 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 	if t.Metadata.ExpirationTime != "" {
 		expiryTime, err := time.Parse(time.RFC3339, t.Metadata.ExpirationTime)
 		if err != nil {
-			return meta, errors.Wrapf(err, "unable to parse timestamp %s", t.Metadata.ExpirationTime)
+			return meta, fmt.Errorf("unable to parse timestamp %s: %w", t.Metadata.ExpirationTime, err)
 		}
 		meta.ExpirationTime = expiryTime
 	}

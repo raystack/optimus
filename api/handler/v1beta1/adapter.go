@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -8,11 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -153,13 +153,13 @@ func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecT
 	if windowSize != "" {
 		window.Size, err = time.ParseDuration(windowSize)
 		if err != nil {
-			return window, errors.Wrapf(err, "failed to parse task window with size %v", windowSize)
+			return window, fmt.Errorf("failed to parse task window with size %v: %w", windowSize, err)
 		}
 	}
 	if windowOffset != "" {
 		window.Offset, err = time.ParseDuration(windowOffset)
 		if err != nil {
-			return window, errors.Wrapf(err, "failed to parse task window with offset %v", windowOffset)
+			return window, fmt.Errorf("failed to parse task window with offset %v: %w", windowOffset, err)
 		}
 	}
 	return window, nil
@@ -261,6 +261,7 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
+// ToProjectProtoWithSecrets is unused, TODO: delete
 func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
@@ -433,7 +434,7 @@ func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 func (adapt *Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
 	typeController, ok := spec.Datastore.Types()[spec.Type]
 	if !ok {
-		return nil, errors.Errorf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name())
+		return nil, fmt.Errorf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name())
 	}
 	buf, err := typeController.Adapter().ToProtobuf(spec)
 	if err != nil {
@@ -455,7 +456,7 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 
 	typeController, ok := storer.Types()[models.ResourceType(spec.GetType())]
 	if !ok {
-		return models.ResourceSpec{}, errors.Errorf("unsupported type %s for datastore %s", spec.Type, storeName)
+		return models.ResourceSpec{}, fmt.Errorf("unsupported type %s for datastore %s", spec.Type, storeName)
 	}
 	buf, err := proto.Marshal(spec)
 	if err != nil {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
 	"google.golang.org/grpc"
@@ -96,12 +96,12 @@ Date ranges are inclusive.
 			}
 		}
 
-		replayId, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
+		replayID, err := runReplayRequest(l, projectName, namespaceName, args[0], args[1], endDate, forceRun,
 			allowedDownstreamNamespaces, conf.Host)
 		if err != nil {
 			return err
 		}
-		l.Info(coloredSuccess("Replay request created with id %s", replayId))
+		l.Info(coloredSuccess("Replay request created with id %s", replayID))
 		return nil
 	}
 	return reCmd
@@ -142,7 +142,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Replay dry run took too long, timing out"))
 		}
-		return errors.Wrapf(err, "request failed for job %s", jobName)
+		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
 
 	printReplayDryRunResponse(l, replayRequest, replayDryRunResponse)
@@ -252,7 +252,7 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Replay request took too long, timing out"))
 		}
-		return "", errors.Wrapf(err, "request failed for job %s", jobName)
+		return "", fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
 	return replayResponse.Id, nil
 }

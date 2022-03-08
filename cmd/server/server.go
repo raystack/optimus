@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,7 +20,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-multierror"
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -42,8 +42,6 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
-	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -63,7 +61,10 @@ import (
 
 var (
 	// termChan listen for sigterm
-	termChan           = make(chan os.Signal, 1)
+	termChan = make(chan os.Signal, 1)
+)
+
+const (
 	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
@@ -179,7 +180,7 @@ type airflowBucketFactory struct{}
 func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
 	storagePath, ok := projectSpec.Config[models.ProjectStoragePathKey]
 	if !ok {
-		return nil, errors.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
+		return nil, fmt.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
 	}
 	parsedURL, err := url.Parse(storagePath)
 	if err != nil {
@@ -190,7 +191,7 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 	case "gs":
 		storageSecret, ok := projectSpec.Secret.GetByName(models.ProjectSecretStorageKey)
 		if !ok {
-			return nil, errors.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, projectSpec.Name)
+			return nil, fmt.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, projectSpec.Name)
 		}
 		creds, err := google.CredentialsFromJSON(ctx, []byte(storageSecret), "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
@@ -221,7 +222,7 @@ func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.Proje
 	case "mem":
 		return memblob.OpenBucket(nil), nil
 	}
-	return nil, errors.Errorf("unsupported storage config %s", storagePath)
+	return nil, fmt.Errorf("unsupported storage config %s", storagePath)
 }
 
 type pipelineLogObserver struct {
@@ -246,16 +247,16 @@ func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (mod
 func checkRequiredConfigs(conf config.ServerConfig) error {
 	errRequiredMissing := errors.New("required config missing")
 	if conf.IngressHost == "" {
-		return errors.Wrap(errRequiredMissing, "serve.ingress_host")
+		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
 	if conf.ReplayNumWorkers < 1 {
 		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
 	}
 	if conf.DB.DSN == "" {
-		return errors.Wrap(errRequiredMissing, "serve.db.dsn")
+		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
 	}
 	if parsed, err := url.Parse(conf.DB.DSN); err != nil {
-		return errors.Wrap(err, "failed to parse serve.db.dsn")
+		return fmt.Errorf("failed to parse serve.db.dsn: %w", err)
 	} else {
 		if parsed.Scheme != "postgres" {
 			return errors.New("unsupported database scheme, use 'postgres'")
@@ -275,12 +276,12 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	// setup db
 	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
-		return errors.Wrap(err, "postgres.Migrate")
+		return fmt.Errorf("postgres.Migrate: %w", err)
 	}
 	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
 		conf.Server.DB.MaxOpenConnection, l.Writer())
 	if err != nil {
-		return errors.Wrap(err, "postgres.Connect")
+		return fmt.Errorf("postgres.Connect: %w", err)
 	}
 
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
@@ -299,7 +300,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			jobCompiler,
 		)
 	default:
-		return errors.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
+		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 	jobrunRepoFac := &jobRunRepoFactory{
 		db: dbConn,
@@ -314,7 +315,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// used to encrypt secrets
 	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
 	if err != nil {
-		return errors.Wrap(err, "NewApplicationSecret")
+		return fmt.Errorf("NewApplicationSecret: %w", err)
 	}
 
 	// registered project store repository factory, it's a wrapper over a storage
@@ -326,7 +327,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	if !conf.Scheduler.SkipInit {
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
-			return errors.Wrap(err, "projectRepoFactory.GetAll()")
+			return fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
 		}
 		// bootstrap scheduler for registered projects
 		for _, proj := range registeredProjects {
@@ -463,7 +464,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		projectService,
 		namespaceService,
 		secretService,
-		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
+		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,
@@ -494,12 +495,12 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		),
 	}...)
 	if err != nil {
-		return errors.Wrap(err, "grpc.DialContext")
+		return fmt.Errorf("grpc.DialContext: %w", err)
 	}
 	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
 	defer runtimeCancel()
 	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return errors.Wrap(err, "RegisterRuntimeServiceHandler")
+		return fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
 	}
 
 	// base router
@@ -552,7 +553,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	// Block until we receive our signal.
 	<-termChan
@@ -560,7 +561,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	var terminalError error
 
 	if err = replayManager.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "replayManager.Close"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("replayManager.Close: %w", err))
 	}
 
 	// Create a deadline to wait for server
@@ -570,14 +571,14 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
 	if err := srv.Shutdown(ctxProxy); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "srv.Shutdown"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("srv.Shutdown: %w", err))
 	}
 	grpcServer.GracefulStop()
 
 	// gracefully shutdown event service, e.g. slack notifiers flush in memory batches
 	cancelNotifiers()
 	if err := eventService.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "eventService.Close"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("eventService.Close: %w", err))
 	}
 
 	// shutdown cluster
@@ -587,10 +588,10 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	sqlConn, err := dbConn.DB()
 	if err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "dbConn.DB"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("dbConn.DB: %w", err))
 	}
 	if err := sqlConn.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, errors.Wrap(err, "sqlConn.Close"))
+		terminalError = multierror.Append(terminalError, fmt.Errorf("sqlConn.Close: %w", err))
 	}
 
 	l.Info("bye")
@@ -612,18 +613,4 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	}), &http2.Server{})
-}
-
-// NewKafkaWriter creates a new kafka client that will be used for meta publishing
-func NewKafkaWriter(topic string, brokers []string, batchSize int) *kafka.Writer {
-	// check if metadata publisher is disabled
-	if len(brokers) == 0 || (len(brokers) == 1 && (brokers[0] == "-" || brokers[0] == "")) {
-		return nil
-	}
-
-	return kafka.NewWriter(kafka.WriterConfig{
-		Topic:     topic,
-		Brokers:   brokers,
-		BatchSize: batchSize,
-	})
 }

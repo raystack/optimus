@@ -3,6 +3,7 @@ package v1beta1_test
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,7 +13,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -2,11 +2,10 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -139,7 +138,7 @@ type PluginQuestions []PluginQuestion
 
 func (q PluginQuestions) Get(name string) (PluginQuestion, bool) {
 	for _, que := range q {
-		if strings.ToLower(que.Name) == strings.ToLower(name) {
+		if strings.EqualFold(que.Name, name) {
 			return que, true
 		}
 	}
@@ -155,7 +154,7 @@ type PluginAnswers []PluginAnswer
 
 func (ans PluginAnswers) Get(name string) (PluginAnswer, bool) {
 	for _, a := range ans {
-		if strings.ToLower(a.Question.Name) == strings.ToLower(name) {
+		if strings.EqualFold(a.Question.Name, name) {
 			return a, true
 		}
 	}
@@ -191,7 +190,7 @@ type PluginConfigs []PluginConfig
 
 func (c PluginConfigs) Get(name string) (PluginConfig, bool) {
 	for _, con := range c {
-		if strings.ToLower(con.Name) == strings.ToLower(name) {
+		if strings.EqualFold(con.Name, name) {
 			return con, true
 		}
 	}
@@ -240,7 +239,7 @@ type PluginAssets []PluginAsset
 
 func (c PluginAssets) Get(name string) (PluginAsset, bool) {
 	for _, con := range c {
-		if strings.ToLower(con.Name) == strings.ToLower(name) {
+		if strings.EqualFold(con.Name, name) {
 			return con, true
 		}
 	}
@@ -383,7 +382,7 @@ func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
 	if unit, ok := s.data[name]; ok {
 		return unit, nil
 	}
-	return nil, errors.Wrap(ErrUnsupportedPlugin, name)
+	return nil, fmt.Errorf("%s: %w", name, ErrUnsupportedPlugin)
 }
 
 func (s *registeredPlugins) GetAll() []*Plugin {
@@ -445,7 +444,7 @@ func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 
 	// check if name is already used
 	if _, ok := s.data[info.Name]; ok {
-		return errors.Errorf("plugin name already in use %s", info.Name)
+		return fmt.Errorf("plugin name already in use %s", info.Name)
 	}
 
 	// image is a required field

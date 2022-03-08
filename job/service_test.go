@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,14 +12,13 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestService(t *testing.T) {
 	ctx := context.Background()
 
-	dumpAssets := func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
+	var dumpAssets job.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 

@@ -3,13 +3,14 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/odpf/optimus/store"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -111,7 +112,7 @@ func (repo *namespaceRepository) Save(ctx context.Context, spec models.Namespace
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return repo.Insert(ctx, spec)
 	} else if err != nil {
-		return errors.Wrap(err, "unable to find namespace by name")
+		return fmt.Errorf("unable to find namespace by name: %w", err)
 	}
 	if len(spec.Config) == 0 {
 		return store.ErrEmptyConfig

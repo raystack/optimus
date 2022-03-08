@@ -2,13 +2,13 @@ package bigquery
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	v1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"gopkg.in/yaml.v3"
@@ -18,8 +18,9 @@ var (
 	validProjectName = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
 	validDatasetName = regexp.MustCompile(`^[\w]{3,1000}`) // golang's regex engine only let's you restrict maximum repetitions to 1000 ¯\_(ツ)_/¯
 	validTableName   = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-	tableURNFormat   = "%s://%s:%s.%s"
 )
+
+const tableURNFormat = "%s://%s:%s.%s"
 
 // TableResourceSpec is how resource will be represented in yaml
 type TableResourceSpec struct {
@@ -375,14 +376,14 @@ func convertToStructPB(val interface{}) (*structpb.Struct, error) {
 	var mapGeneric map[string]interface{}
 	rawBytes, err := json.Marshal(val)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("json.Marshal: %v", val))
+		return nil, fmt.Errorf("json.Marshal: %v: %w", val, err)
 	}
 	if err := json.Unmarshal(rawBytes, &mapGeneric); err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("json.Unmarshal: %v", mapGeneric))
+		return nil, fmt.Errorf("json.Unmarshal: %v: %w", mapGeneric, err)
 	}
 	protoStruct, err := structpb.NewStruct(mapGeneric)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("structpb.NewStruct(): %v", mapGeneric))
+		return nil, fmt.Errorf("structpb.NewStruct(): %v: %w", mapGeneric, err)
 	}
 	return protoStruct, nil
 }

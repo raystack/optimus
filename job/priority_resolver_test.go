@@ -95,12 +95,12 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
-		max_1 := max - job.PriorityWeightGap*1
-		max_2 := max - job.PriorityWeightGap*2
-		max_3 := max - job.PriorityWeightGap*3
+		max1 := max - job.PriorityWeightGap*1
+		max2 := max - job.PriorityWeightGap*2
+		max3 := max - job.PriorityWeightGap*3
 		expectedWeights := map[string]int{
-			spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1,
-			spec6: max, spec7: max_1, spec8: max, spec9: max_1, spec10: max_2, spec11: max_3,
+			spec1: max, spec2: max1, spec3: max2, spec4: max, spec5: max1,
+			spec6: max, spec7: max1, spec8: max, spec9: max1, spec10: max2, spec11: max3,
 		}
 
 		for _, jobSpec := range resolvedJobSpecs {
@@ -165,11 +165,11 @@ func TestPriorityWeightResolver(t *testing.T) {
 			assert.Nil(t, err)
 
 			max := job.MaxPriorityWeight
-			max_1 := max - job.PriorityWeightGap*1
-			max_2 := max - job.PriorityWeightGap*2
+			max1 := max - job.PriorityWeightGap*1
+			max2 := max - job.PriorityWeightGap*2
 			expectedWeights := map[string]int{
-				spec1: max, spec11: max_1, spec12: max_1, spec111: max_2, spec112: max_2, spec121: max_2, spec122: max_2,
-				spec2: max, spec21: max_1, spec22: max_1, spec211: max_2, spec212: max_2, spec221: max_2, spec222: max_2,
+				spec1: max, spec11: max1, spec12: max1, spec111: max2, spec112: max2, spec121: max2, spec122: max2,
+				spec2: max, spec21: max1, spec22: max1, spec211: max2, spec212: max2, spec221: max2, spec222: max2,
 			}
 
 			for _, jobSpec := range resolvedJobSpecs {
@@ -210,9 +210,9 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
-		max_1 := max - job.PriorityWeightGap*1
-		max_2 := max - job.PriorityWeightGap*2
-		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1}
+		max1 := max - job.PriorityWeightGap*1
+		max2 := max - job.PriorityWeightGap*2
+		expectedWeights := map[string]int{spec1: max, spec2: max1, spec3: max2, spec4: max, spec5: max1}
 
 		for _, jobSpec := range resolvedJobSpecs {
 			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)
@@ -265,10 +265,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 		assert.Nil(t, err)
 
 		max := job.MaxPriorityWeight
-		max_1 := max - job.PriorityWeightGap*1
-		max_2 := max - job.PriorityWeightGap*2
-		expectedWeights := map[string]int{spec1: max, spec2: max_1, spec3: max_2, spec4: max, spec5: max_1,
-			jobnameWithExternalDep: max_1}
+		max1 := max - job.PriorityWeightGap*1
+		max2 := max - job.PriorityWeightGap*2
+		expectedWeights := map[string]int{spec1: max, spec2: max1, spec3: max2, spec4: max, spec5: max1,
+			jobnameWithExternalDep: max1}
 
 		for _, jobSpec := range resolvedJobSpecs {
 			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)

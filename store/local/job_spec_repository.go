@@ -1,6 +1,7 @@
 package local
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
 	"gopkg.in/validator.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -45,11 +45,11 @@ type jobRepository struct {
 func (repo *jobRepository) SaveAt(job models.JobSpec, rootDir string) error {
 	config, err := repo.adapter.FromSpec(job)
 	if err != nil {
-		return errors.Wrapf(err, "repo.adapter.FromJobSpec: %s", config.Name)
+		return fmt.Errorf("repo.adapter.FromJobSpec: %s: %w", config.Name, err)
 	}
 
 	if err := validator.Validate(config); err != nil {
-		return errors.Wrapf(err, "validator.Validate: %s", config.Name)
+		return fmt.Errorf("validator.Validate: %s: %w", config.Name, err)
 	}
 
 	// set default dir name as config name
@@ -59,13 +59,13 @@ func (repo *jobRepository) SaveAt(job models.JobSpec, rootDir string) error {
 
 	// create necessary folders
 	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0765)|os.ModeDir); err != nil {
-		return errors.Wrapf(err, "repo.fs.MkdirAll: %s", rootDir)
+		return fmt.Errorf("repo.fs.MkdirAll: %s: %w", rootDir, err)
 	}
 
 	// save assets
 	for assetName, assetValue := range config.Asset {
 		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
-			return errors.Wrapf(err, "WriteFile.Asset: %s", repo.assetFilePath(rootDir, assetName))
+			return fmt.Errorf("WriteFile.Asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
 		}
 	}
 	config.Asset = nil
@@ -126,7 +126,7 @@ func (repo *jobRepository) GetAll() ([]models.JobSpec, error) {
 // GetByName returns a job requested by the name
 func (repo *jobRepository) GetByName(jobName string) (models.JobSpec, error) {
 	if strings.TrimSpace(jobName) == "" {
-		return models.JobSpec{}, errors.Errorf("job name cannot be an empty string")
+		return models.JobSpec{}, fmt.Errorf("job name cannot be an empty string")
 	}
 
 	// refresh local cache if needed
@@ -184,17 +184,17 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.
 	dec := yaml.NewDecoder(fd)
 	var inputs Job
 	if err = dec.Decode(&inputs); err != nil {
-		return jobSpec, errors.Wrapf(err, "error parsing job spec in %s", dirName)
+		return jobSpec, fmt.Errorf("error parsing job spec in %s: %w", dirName, err)
 	}
 	inputs.MergeFrom(inheritedSpec)
 	if err := validator.Validate(inputs); err != nil {
-		return jobSpec, errors.Wrapf(err, "failed to validate job specification: %s", dirName)
+		return jobSpec, fmt.Errorf("failed to validate job specification: %s: %w", dirName, err)
 	}
 
 	// convert to internal model
 	jobSpec, err = repo.adapter.ToSpec(inputs)
 	if err != nil {
-		return jobSpec, errors.Wrapf(err, "failed to read spec in: %s", dirName)
+		return jobSpec, fmt.Errorf("failed to read spec in: %s: %w", dirName, err)
 	}
 
 	assets := map[string]string{}
@@ -229,7 +229,7 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.
 	jobSpec.Assets = models.JobAssets{}.FromMap(assets)
 
 	if _, ok := repo.cache.data[jobSpec.Name]; ok {
-		return jobSpec, errors.Errorf("job name should be unique across directories: %s", jobSpec.Name)
+		return jobSpec, fmt.Errorf("job name should be unique across directories: %s: %w", jobSpec.Name, err)
 	}
 	repo.cache.data[jobSpec.Name] = cacheItem{
 		path: dirName,
@@ -288,7 +288,7 @@ func (repo *jobRepository) getThisSpec(dirName string) (Job, error) {
 	var inputs Job
 	dec := yaml.NewDecoder(fd)
 	if err = dec.Decode(&inputs); err != nil {
-		return Job{}, errors.Wrapf(err, "error parsing job spec in %s", dirName)
+		return Job{}, fmt.Errorf("error parsing job spec in %s: %w", dirName, err)
 	}
 	return inputs, nil
 }

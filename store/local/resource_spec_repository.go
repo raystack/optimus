@@ -2,16 +2,15 @@ package local
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/afero"
-
 	"github.com/odpf/optimus/models"
-	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
 )
 
@@ -57,13 +56,13 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 
 	// create necessary folders
 	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0765)|os.ModeDir); err != nil {
-		return errors.Wrapf(err, "repo.fs.MkdirAll: %s", rootDir)
+		return fmt.Errorf("repo.fs.MkdirAll: %s: %w", rootDir, err)
 	}
 
 	// save assets
 	for assetName, assetValue := range resourceSpec.Assets {
 		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
-			return errors.Wrapf(err, "WriteFile.Asset: %s", repo.assetFilePath(rootDir, assetName))
+			return fmt.Errorf("WriteFile.Asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
 		}
 	}
 
@@ -117,7 +116,7 @@ func (repo *resourceRepository) GetAll(ctx context.Context) ([]models.ResourceSp
 // GetByName returns a job requested by the name
 func (repo *resourceRepository) GetByName(ctx context.Context, jobName string) (models.ResourceSpec, error) {
 	if strings.TrimSpace(jobName) == "" {
-		return models.ResourceSpec{}, errors.Errorf("resource name cannot be an empty string")
+		return models.ResourceSpec{}, fmt.Errorf("resource name cannot be an empty string")
 	}
 
 	// refresh local cache if needed
@@ -138,7 +137,7 @@ func (repo *resourceRepository) GetByName(ctx context.Context, jobName string) (
 // GetByURN returns a job requested by URN
 func (repo *resourceRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, error) {
 	if strings.TrimSpace(urn) == "" {
-		return models.ResourceSpec{}, errors.Errorf("resource urn cannot be an empty string")
+		return models.ResourceSpec{}, fmt.Errorf("resource urn cannot be an empty string")
 	}
 
 	// refresh local cache if needed
@@ -197,7 +196,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 
 	var rawResource Resource
 	if err := yaml.Unmarshal(resourceBytes, &rawResource); err != nil {
-		return resourceSpec, errors.Wrapf(err, "error parsing resource spec in %s", dirName)
+		return resourceSpec, fmt.Errorf("error parsing resource spec in %s: %w", dirName, err)
 	}
 	typeController, ok := repo.ds.Types()[models.ResourceType(rawResource.Type)]
 	if !ok {
@@ -207,7 +206,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 	// convert to internal model
 	resourceSpec, err = typeController.Adapter().FromYaml(resourceBytes)
 	if err != nil {
-		return resourceSpec, errors.Wrapf(err, "failed to read spec in: %s", dirName)
+		return resourceSpec, fmt.Errorf("failed to read spec in: %s: %w", dirName, err)
 	}
 
 	assets := map[string]string{}
@@ -248,7 +247,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 	resourceSpec.Assets = assets
 
 	if _, ok := repo.cache.data[resourceSpec.Name]; ok {
-		return resourceSpec, errors.Errorf("job name should be unique across directories: %s", resourceSpec.Name)
+		return resourceSpec, fmt.Errorf("job name should be unique across directories: %s", resourceSpec.Name)
 	}
 	repo.cache.data[resourceSpec.Name] = cacheItem{
 		path: dirName,

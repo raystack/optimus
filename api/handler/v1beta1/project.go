@@ -14,7 +14,7 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	}
 
 	responseMsg := "project saved successfully."
-	if req.Namespace != nil {
+	if req.Namespace != nil { //nolint:staticcheck
 		responseMsg += " ignoring to save namespace (deprecated). please use register namespace rpc."
 	}
 	return &pb.RegisterProjectResponse{

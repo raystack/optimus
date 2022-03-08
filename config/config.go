@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var (
+const (
 	KeyServeReplayNumWorkers = "serve.replay_num_workers"
 )
 
