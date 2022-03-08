@@ -22,6 +22,9 @@ var (
 	ErrRequestQueueFull = errors.New("request queue is full")
 	// ErrConflictedJobRun signifies other replay job / dependency run is active or instance already running
 	ErrConflictedJobRun = errors.New("conflicted job run found")
+)
+
+const (
 	//ReplayRunTimeout signifies type of replay failure caused by timeout
 	ReplayRunTimeout = "long running replay timeout"
 	// TimestampLogFormat format of a timestamp will be used in logs

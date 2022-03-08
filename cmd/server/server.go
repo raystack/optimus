@@ -20,7 +20,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-multierror"
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -43,7 +42,6 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -63,7 +61,10 @@ import (
 
 var (
 	// termChan listen for sigterm
-	termChan           = make(chan os.Signal, 1)
+	termChan = make(chan os.Signal, 1)
+)
+
+const (
 	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
@@ -480,7 +481,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		projectService,
 		namespaceService,
 		secretService,
-		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
+		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,
@@ -570,7 +571,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	// Block until we receive our signal.
 	<-termChan
@@ -630,18 +631,4 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	}), &http2.Server{})
-}
-
-// NewKafkaWriter creates a new kafka client that will be used for meta publishing
-func NewKafkaWriter(topic string, brokers []string, batchSize int) *kafka.Writer {
-	// check if metadata publisher is disabled
-	if len(brokers) == 0 || (len(brokers) == 1 && (brokers[0] == "-" || brokers[0] == "")) {
-		return nil
-	}
-
-	return kafka.NewWriter(kafka.WriterConfig{
-		Topic:     topic,
-		Brokers:   brokers,
-		BatchSize: batchSize,
-	})
 }

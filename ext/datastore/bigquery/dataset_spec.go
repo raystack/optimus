@@ -14,11 +14,11 @@ import (
 
 var (
 	datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)
-	datasetURNFormat      = "%s://%s:%s"
 )
 
 const (
 	ExpectedDatasetNameSegments = 3
+	datasetURNFormat            = "%s://%s:%s"
 )
 
 // DatasetResourceSpec is how dataset should be represented in yaml

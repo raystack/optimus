@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -263,6 +263,7 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
+// ToProjectProtoWithSecrets is unused, TODO: delete
 func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {

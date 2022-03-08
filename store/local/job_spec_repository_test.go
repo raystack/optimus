@@ -18,7 +18,7 @@ import (
 	"github.com/odpf/optimus/mock"
 )
 
-var testJobContents = `version: 1
+const testJobContents = `version: 1
 name: test
 owner: optimus
 schedule:

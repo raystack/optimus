@@ -8,7 +8,7 @@ import (
 	"github.com/odpf/salt/config"
 )
 
-var (
+const (
 	ErrFailedToRead = "unable to read optimus config file %v (%s)"
 	FileName        = ".optimus"
 	FileExtension   = "yaml"

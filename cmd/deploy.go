@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
+const (
 	deploymentTimeout = time.Minute * 15
 )
 
@@ -119,7 +119,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			l.Info(fmt.Sprintf("\n> Deploying resources for %s", storeName))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				return fmt.Errorf("unsupported datastore: %s\n", storeName)
+				return fmt.Errorf("unsupported datastore: %s", storeName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())

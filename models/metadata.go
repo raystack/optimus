@@ -1,24 +1,5 @@
 package models
 
-import (
-	"github.com/odpf/optimus/core/progress"
-)
-
-type MetadataService interface {
-	Publish(NamespaceSpec, []JobSpec, progress.Observer) error
-}
-
-type JobMetadataAdapter interface {
-	FromJobSpec(NamespaceSpec, JobSpec) (*JobMetadata, error)
-	CompileMessage(*JobMetadata) ([]byte, error)
-	CompileKey(string) ([]byte, error)
-}
-
-type MetadataWriter interface {
-	Write(key []byte, message []byte) error
-	Flush() error
-}
-
 type JobMetadata struct {
 	Urn          string
 	Name         string
