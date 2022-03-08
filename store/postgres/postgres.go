@@ -38,12 +38,12 @@ const (
 var tracer = otel.Tracer("optimus/store/postgres")
 
 // NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
-func NewHTTPFSMigrator(DBConnURL string) (*migrate.Migrate, error) {
+func NewHTTPFSMigrator(dbConnURL string) (*migrate.Migrate, error) {
 	src, err := httpfs.New(http.FS(migrationFs), resourcePath)
 	if err != nil {
 		return &migrate.Migrate{}, fmt.Errorf("db migrator: %w", err)
 	}
-	return migrate.NewWithSourceInstance("httpfs", src, DBConnURL)
+	return migrate.NewWithSourceInstance("httpfs", src, dbConnURL)
 }
 
 // Connect connect to the DB with custom configuration.

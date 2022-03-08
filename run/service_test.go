@@ -100,7 +100,7 @@ func TestService(t *testing.T) {
 			}
 
 			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			localRun.Instances = append(localRun.Instances, instanceSpec)
 
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
@@ -150,7 +150,7 @@ func TestService(t *testing.T) {
 			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
 
 			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			localRun.Instances = append(localRun.Instances, instanceSpec)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -204,7 +204,7 @@ func TestService(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
 			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			localRun.Instances = append(localRun.Instances, instanceSpec)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -252,7 +252,7 @@ func TestService(t *testing.T) {
 
 			var existingJobRun models.JobRun
 			Copy(&existingJobRun, &jobRun)
-			existingJobRun.Instances = append(jobRun.Instances, instanceSpec)
+			existingJobRun.Instances = append(existingJobRun.Instances, instanceSpec)
 			existingJobRun.Spec.Task.Unit = jobRun.Spec.Task.Unit
 			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
 

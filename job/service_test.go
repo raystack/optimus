@@ -562,7 +562,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
 				namespaceSpec.Name: {jobSpecsBase[1].Name},
 			}, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
@@ -943,7 +942,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
 				namespaceSpec.Name: {jobSpecsBase[1].Name},
 			}, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)

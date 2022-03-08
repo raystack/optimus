@@ -157,8 +157,8 @@ func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.Instanc
 	}, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	return s.repoFac.New().GetByID(ctx, JobRunID)
+func (s *Service) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+	return s.repoFac.New().GetByID(ctx, jobRunID)
 }
 
 func NewService(repoFac SpecRepoFactory, secretService service.SecretService, timeFunc func() time.Time, te models.TemplateEngine) *Service {

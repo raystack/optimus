@@ -110,7 +110,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 	}
 
 	// could get cancelled later if queue is full
-	if err = replaySpecRepo.Insert(ctx, &replay); err != nil {
+	if err := replaySpecRepo.Insert(ctx, &replay); err != nil {
 		return models.ReplayResult{}, err
 	}
 

@@ -190,7 +190,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	return jobs, nil
 }
 
-func (s *scheduler) GetJobStatus(_ context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
+func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
 	error) {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
@@ -199,7 +199,7 @@ func (s *scheduler) GetJobStatus(_ context.Context, projSpec models.ProjectSpec,
 	schdHost = strings.Trim(schdHost, "/")
 
 	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusURL), jobName)
-	request, err := http.NewRequest(http.MethodGet, fetchURL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build http request for %s: %w", fetchURL, err)
 	}
@@ -226,7 +226,7 @@ func (s *scheduler) GetJobStatus(_ context.Context, projSpec models.ProjectSpec,
 	//	"run_id": "scheduled__2020-03-25T02:00:00+00:00",
 	//	"start_date": "2020-06-01T16:32:58.489042+00:00",
 	//	"state": "success"
-	//},
+	// },
 	responseJSON := []map[string]interface{}{}
 	err = json.Unmarshal(body, &responseJSON)
 	if err != nil {
@@ -253,7 +253,7 @@ func (s *scheduler) GetJobStatus(_ context.Context, projSpec models.ProjectSpec,
 	return jobStatus, nil
 }
 
-func (s *scheduler) Clear(_ context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
 		return fmt.Errorf("scheduler host not set for %s", projSpec.Name)
@@ -267,7 +267,7 @@ func (s *scheduler) Clear(_ context.Context, projSpec models.ProjectSpec, jobNam
 		jobName,
 		startDate.In(utcTimezone).Format(airflowDateFormat),
 		endDate.In(utcTimezone).Format(airflowDateFormat))
-	request, err := http.NewRequest(http.MethodGet, clearDagRunURL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, clearDagRunURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to build http request for %s: %w", clearDagRunURL, err)
 	}

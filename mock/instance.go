@@ -109,13 +109,13 @@ type RunService struct {
 	mock.Mock
 }
 
-func (s *RunService) GetScheduledRun(ctx context.Context, namespaceSpec models.NamespaceSpec, JobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
-	args := s.Called(ctx, namespaceSpec, JobID, scheduledAt)
+func (s *RunService) GetScheduledRun(ctx context.Context, namespaceSpec models.NamespaceSpec, jobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
+	args := s.Called(ctx, namespaceSpec, jobID, scheduledAt)
 	return args.Get(0).(models.JobRun), args.Error(1)
 }
 
-func (s *RunService) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	args := s.Called(ctx, JobRunID)
+func (s *RunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+	args := s.Called(ctx, jobRunID)
 	return args.Get(0).(models.JobRun), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 

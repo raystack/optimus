@@ -1,7 +1,6 @@
 package utils_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/odpf/optimus/utils"
@@ -99,7 +98,7 @@ func TestValidator(t *testing.T) {
 				if tcase.IsValid {
 					assert.Nil(t, err)
 				} else {
-					assert.Equal(t, fmt.Errorf(tcase.Message), err)
+					assert.Equal(t, tcase.Message, err.Error())
 				}
 			}
 		})

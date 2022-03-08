@@ -13,7 +13,7 @@ func bqPartitioningTimeTo(t BQPartitionInfo) *bqapi.TimePartitioning {
 	info := new(bqapi.TimePartitioning)
 	info.Field = t.Field
 	info.Expiration = time.Duration(t.Expiration) * time.Hour
-	if strings.ToUpper(t.Type) == string(bqapi.HourPartitioningType) {
+	if strings.EqualFold(t.Type, string(bqapi.HourPartitioningType)) {
 		info.Type = bqapi.HourPartitioningType
 	} else {
 		info.Type = bqapi.DayPartitioningType
@@ -73,11 +73,11 @@ type fieldMode struct {
 
 func bqFieldModeTo(field BQField) (fieldMode, error) {
 	var fm fieldMode
-	if strings.ToLower(field.Mode) == "required" {
+	if strings.EqualFold(field.Mode, "required") {
 		fm.required = true
-	} else if strings.ToLower(field.Mode) == "repeated" {
+	} else if strings.EqualFold(field.Mode, "repeated") {
 		fm.repeated = true
-	} else if len(field.Mode) == 0 || strings.ToLower(field.Mode) == "nullable" {
+	} else if len(field.Mode) == 0 || strings.EqualFold(field.Mode, "nullable") {
 		fm.required = false
 	} else {
 		return fm, fmt.Errorf("field %v mode should be required,repeated or nullable ", field.Name)
