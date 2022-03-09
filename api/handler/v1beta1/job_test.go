@@ -2,6 +2,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -103,8 +104,18 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobService.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
 			defer jobService.AssertExpectations(t)
 
+			jobSpecsAdapted := []*pb.JobSpecification{}
+			for _, jobSpec := range jobSpecs {
+				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
+				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
+			}
+
 			grpcRespStream := new(mock.DeployJobSpecificationServer)
 			grpcRespStream.On("Context").Return(context.Background())
+			recv := &pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
+			grpcRespStream.On("Recv").Return(recv, nil).Once()
+			grpcRespStream.On("Recv").Return(nil, io.EOF).Once()
+			grpcRespStream.On("Send", mock2.Anything).Return(nil)
 			defer grpcRespStream.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -121,14 +132,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobSpecsAdapted := []*pb.JobSpecification{}
-			for _, jobSpec := range jobSpecs {
-				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
-				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
-			}
-			// deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
 			err := runtimeServiceServer.DeployJobSpecification(grpcRespStream)
-			assert.Nil(t, err)
+
+			assert.NoError(t, err)
 		})
 	})
 
