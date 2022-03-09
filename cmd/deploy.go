@@ -204,10 +204,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 
 		var adaptedJobSpecs []*pb.JobSpecification
 		for _, spec := range jobSpecs {
-			adaptJob, err := adapt.ToJobProto(spec)
-			if err != nil {
-				return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
-			}
+			adaptJob := adapt.ToJobProto(spec)
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
 		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{

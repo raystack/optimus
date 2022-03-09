@@ -75,7 +75,7 @@ func (s *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 	return bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
 }
 
-func (s *scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
+func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
 	_, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
 	return err
 }
@@ -189,7 +189,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	return jobs, nil
 }
 
-func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
+func (s *scheduler) GetJobStatus(_ context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus,
 	error) {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
@@ -252,7 +252,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	return jobStatus, nil
 }
 
-func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+func (s *scheduler) Clear(_ context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
 	schdHost, ok := projSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
 		return fmt.Errorf("scheduler host not set for %s", projSpec.Name)
@@ -304,7 +304,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 }
 
 func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
-	batchSize int) ([]models.JobStatus, error) {
+	_ int) ([]models.JobStatus, error) {
 	allJobStatus, err := s.GetJobStatus(ctx, projectSpec, jobName)
 	if err != nil {
 		return nil, err

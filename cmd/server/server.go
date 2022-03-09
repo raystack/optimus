@@ -552,10 +552,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return err
 		}
 
-		if err := clusterPlanner.Init(clusterCtx); err != nil {
-			clusterCancel()
-			return err
-		}
+		clusterPlanner.Init(clusterCtx)
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)

@@ -123,7 +123,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobSpecsAdapted := []*pb.JobSpecification{}
 			for _, jobSpec := range jobSpecs {
-				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
+				jobSpecAdapted := adapter.ToJobProto(jobSpec)
 				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
 			}
 			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
@@ -213,7 +213,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
+			jobSpecAdapted := adapter.ToJobProto(jobSpecs[0])
 			deployRequest := pb.GetJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
 			jobSpecResp, err := runtimeServiceServer.GetJobSpecification(context.Background(), &deployRequest)
 			assert.Nil(t, err)
@@ -304,7 +304,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobProto, _ := adapter.ToJobProto(jobSpec)
+			jobProto := adapter.ToJobProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,
