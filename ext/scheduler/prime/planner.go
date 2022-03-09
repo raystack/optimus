@@ -68,7 +68,7 @@ func (p *Planner) Init(ctx context.Context) {
 	go p.peerJobExecution(ctx)
 }
 
-func (p *Planner) Close() error {
+func (p *Planner) Close() error { // nolint: unparam
 	p.wg.Wait()
 	return nil
 }

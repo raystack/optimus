@@ -74,7 +74,7 @@ type RuntimeServiceServer struct {
 	pb.UnimplementedRuntimeServiceServer
 }
 
-func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) {
+func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) { // nolint: unparam
 	sv.l.Info("client requested for ping", "version", version.Client)
 	response := &pb.VersionResponse{
 		Server: sv.version,

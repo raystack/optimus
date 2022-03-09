@@ -74,5 +74,9 @@ linters-settings:
       - 'survey.MinLength'
       - 'survey.MaxLength'
       - 'args.Error'
+  unparam:
+    # Inspect exported functions.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    check-exported: true
 severity:
   default-severity: error
