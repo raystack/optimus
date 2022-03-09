@@ -26,10 +26,9 @@ type LoadConfigFunc func(interface{}, afero.Fs, ...string) error
 // ~/.optimus/
 // Namespaces will be loaded only from current project ./
 func LoadOptimusConfig() (*Optimus, error) {
-	var fs afero.Fs
-	var o Optimus
+	fs := afero.NewReadOnlyFs(afero.NewOsFs())
+	o := Optimus{}
 
-	fs = afero.NewReadOnlyFs(afero.NewOsFs())
 	currPath, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("error getting current work directory path: %w", err)
@@ -50,6 +49,7 @@ func LoadOptimusConfig() (*Optimus, error) {
 	}
 
 	// Load namespaces config
+	o.Namespaces = map[string]*Namespace{}
 	if err = LoadNamespacesConfig(o.Namespaces, fs, currPath); err != nil {
 		return nil, fmt.Errorf("error loading namespaces config: %w", err)
 	}
@@ -71,7 +71,8 @@ func LoadNamespacesConfig(namespaces map[string]*Namespace, fs afero.Fs, currPat
 	}
 	for _, fileInfo := range fileInfos {
 		// check if .optimus.yaml exist
-		filePath := path.Join(currPath, fileInfo.Name())
+		dirPath := path.Join(currPath, fileInfo.Name())
+		filePath := path.Join(dirPath, FileName+"."+FileExtension)
 		if _, err := fs.Stat(filePath); os.IsNotExist(err) {
 			continue
 		}
@@ -82,14 +83,14 @@ func LoadNamespacesConfig(namespaces map[string]*Namespace, fs afero.Fs, currPat
 			Version   string    `mapstructure:"version"`
 			Namespace Namespace `mapstructure:"namespace"`
 		}{}
-		if err := LoadConfig(&optimus, fs, filePath); err != nil {
+		if err := LoadConfig(&optimus, fs, dirPath); err != nil {
 			return err
 		}
 		namespace := optimus.Namespace
 
 		// skip conflicted namespace
 		if namespaces[namespace.Name] != nil {
-			fmt.Printf("warning! namespace [%s] from [%s] is already used", namespace.Name, filePath)
+			fmt.Printf("warning! namespace [%s] from [%s] is already used\n", namespace.Name, filePath)
 			continue
 		}
 

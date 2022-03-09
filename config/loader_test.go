@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -55,7 +56,7 @@ project:
 	rawNamespace string = `
 version: 1
 namespace:
-  name: sample_namespace
+  name: sample_namespace_%s
   job:
     path: "./job"
   datastore:
@@ -72,7 +73,7 @@ func createConfig(fs afero.Fs, filePath string, confType ConfigType) error {
 	case project:
 		return afero.WriteFile(fs, filePath, []byte(rawProject), 0644)
 	case namespace:
-		return afero.WriteFile(fs, filePath, []byte(rawNamespace), 0644)
+		return afero.WriteFile(fs, filePath, []byte(fmt.Sprintf(rawNamespace, "")), 0644)
 	}
 	return errors.New("")
 }
@@ -128,25 +129,47 @@ func TestLoadNamespaceConfig(t *testing.T) {
 	t.Run("NoNamespacesDetected", func(t *testing.T) {
 		fs := afero.NewMemMapFs()
 		path := "/project1"
-		fs.MkdirAll(path, 0755)
+		fs.MkdirAll(filepath.Join(path, "folder_1"), 0755)
+		fs.MkdirAll(filepath.Join(path, "folder_2"), 0755)
+		fs.MkdirAll(filepath.Join(path, "folder_3"), 0755)
 
 		namespaces := map[string]*config.Namespace{}
 		err := config.LoadNamespacesConfig(namespaces, fs, path)
 		assert.NoError(t, err)
 		assert.Len(t, namespaces, 0)
-		// TODO: check the value
 	})
 
-	t.Run("WithFolderWithNamespaces", func(t *testing.T) {
+	t.Run("WithNamespaces", func(t *testing.T) {
 		fs := afero.NewMemMapFs()
 		path := "/project2"
 		fs.MkdirAll(filepath.Join(path, "ns1"), 0755)
+		fs.MkdirAll(filepath.Join(path, "ns2"), 0755)
+		fs.MkdirAll(filepath.Join(path, "ns3"), 0755)
 
-		err := createConfig(fs, filepath.Join("/project2/ns1", ".optimus.yaml"), namespace)
-		assert.NoError(t, err)
+		assert.NoError(t, afero.WriteFile(fs, "/project2/ns1/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "ns1")), 0644))
+		assert.NoError(t, afero.WriteFile(fs, "/project2/ns2/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "ns2")), 0644))
+		assert.NoError(t, afero.WriteFile(fs, "/project2/ns3/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "ns3")), 0644))
 
 		namespaces := map[string]*config.Namespace{}
-		err = config.LoadNamespacesConfig(namespaces, fs, path)
+		err := config.LoadNamespacesConfig(namespaces, fs, path)
+		assert.NoError(t, err)
+		assert.Len(t, namespaces, 3)
+		// TODO: check the value
+	})
+
+	t.Run("WithDuplicatedNamespaces", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		path := "/project2"
+		fs.MkdirAll(filepath.Join(path, "ns1"), 0755)
+		fs.MkdirAll(filepath.Join(path, "ns2"), 0755)
+		fs.MkdirAll(filepath.Join(path, "ns3"), 0755)
+
+		assert.NoError(t, afero.WriteFile(fs, "/project2/ns1/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "dup")), 0644))
+		assert.NoError(t, afero.WriteFile(fs, "/project2/ns2/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "dup")), 0644))
+		assert.NoError(t, afero.WriteFile(fs, "/project2/ns3/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "dup")), 0644))
+
+		namespaces := map[string]*config.Namespace{}
+		err := config.LoadNamespacesConfig(namespaces, fs, path)
 		assert.NoError(t, err)
 		assert.Len(t, namespaces, 1)
 		// TODO: check the value
