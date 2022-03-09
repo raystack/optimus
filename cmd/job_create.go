@@ -20,6 +20,8 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
+const NumberOfWordsToGenerate = 2
+
 var (
 	validateDate    = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
 	validateNoSlash = utils.ValidatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
@@ -125,7 +127,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 
 // getDirectoryName returns the directory name of the new spec folder
 func getDirectoryName(root string) (string, error) {
-	sampleDirectoryName := petname.Generate(2, "_")
+	sampleDirectoryName := petname.Generate(NumberOfWordsToGenerate, "_")
 
 	var selectedDir string
 	if err := survey.AskOne(&survey.Input{

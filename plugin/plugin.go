@@ -171,7 +171,7 @@ func DiscoverPlugins(pluginLogger hclog.Logger) ([]string, error) {
 				continue
 			}
 
-			if len(strings.Split(fullName, "-")) < 2 {
+			if len(strings.Split(fullName, "-")) < 2 { //nolint: gomnd
 				continue
 			}
 

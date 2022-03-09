@@ -14,6 +14,7 @@ import (
 
 const (
 	PluginGRPCMaxRetry = 3
+	BackoffDuration    = 200 * time.Millisecond
 )
 
 // GRPCClient will be used by core to talk over grpc with plugins
@@ -43,7 +44,7 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
-	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
 		m.baseClient.MakeFatalOnConnErr(err)
@@ -63,7 +64,7 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
-	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
 		m.baseClient.MakeFatalOnConnErr(err)
