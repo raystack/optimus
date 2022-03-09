@@ -22,7 +22,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-var (
+const (
 	secretTimeout = time.Minute * 2
 )
 
@@ -184,7 +184,7 @@ func getSecretName(args []string) (string, error) {
 func getSecretValue(args []string, filePath string, encoded bool) (string, error) {
 	var secretValue string
 	if filePath == "" {
-		if len(args) < 2 {
+		if len(args) < 2 { //nolint: gomnd
 			return "", errors.New("secret value is required")
 		}
 		secretValue = args[1]
@@ -208,7 +208,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 
 func validateProperlyEncoded(secretValue string) error {
 	if _, err := base64.StdEncoding.DecodeString(secretValue); err != nil {
-		return errors.New("value is not encoded. please remove --base64 to let Optimus encode the secret for you")
+		return errors.New("value is not encoded, please remove --base64 to let Optimus encode the secret for you")
 	}
 	return nil
 }

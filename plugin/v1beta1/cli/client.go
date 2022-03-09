@@ -18,6 +18,7 @@ import (
 
 const (
 	PluginGRPCMaxRetry = 3
+	BackoffDuration    = 200 * time.Millisecond
 )
 
 // GRPCClient will be used by core to talk over grpc with plugins
@@ -127,7 +128,7 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 		InstanceSchedule: schdAt,
 		InstanceData:     instanceData,
 		Options:          &pbp.PluginOptions{DryRun: request.DryRun},
-	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(200*time.Millisecond)),
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
 		m.baseClient.MakeFatalOnConnErr(err)

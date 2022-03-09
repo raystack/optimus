@@ -157,54 +157,54 @@ func (srv *JobService) Sync(ctx context.Context, spec models.NamespaceSpec, obse
 	return args.Error(0)
 }
 
-func (j *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec models.NamespaceSpec, spec models.JobSpec) (models.JobSpecTaskDestination,
+func (srv *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec models.NamespaceSpec, spec models.JobSpec) (models.JobSpecTaskDestination,
 	models.JobSpecTaskDependencies, error) {
-	args := j.Called(ctx, namespaceSpec, spec)
+	args := srv.Called(ctx, namespaceSpec, spec)
 	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
 }
 
-func (j *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
-	args := j.Called(ctx, namespaceSpec, specs, observer)
+func (srv *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
+	args := srv.Called(ctx, namespaceSpec, specs, observer)
 	return args.Error(0)
 }
 
-func (j *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job models.JobSpec) error {
-	args := j.Called(ctx, c, job)
+func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job models.JobSpec) error {
+	args := srv.Called(ctx, c, job)
 	return args.Error(0)
 }
 
-func (j *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
-	args := j.Called(ctx, replayRequest)
+func (srv *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
+	args := srv.Called(ctx, replayRequest)
 	return args.Get(0).(models.ReplayPlan), args.Error(1)
 }
 
-func (j *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
-	args := j.Called(ctx, replayRequest)
+func (srv *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
+	args := srv.Called(ctx, replayRequest)
 	return args.Get(0).(models.ReplayResult), args.Error(1)
 }
 
-func (j *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
-	args := j.Called(ctx, replayRequest)
+func (srv *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
+	args := srv.Called(ctx, replayRequest)
 	return args.Get(0).(models.ReplayState), args.Error(1)
 }
 
-func (j *JobService) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
-	args := j.Called(ctx, projectUUID)
+func (srv *JobService) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+	args := srv.Called(ctx, projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-func (j *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {
-	args := j.Called(ctx, ns, js, obs)
+func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {
+	args := srv.Called(ctx, ns, js, obs)
 	return args.Error(0)
 }
 
-func (j *JobService) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
-	args := j.Called(projectSpec, destination)
+func (srv *JobService) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+	args := srv.Called(projectSpec, destination)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (j *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
-	args := j.Called(ctx, projectSpec, jobName)
+func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, projectSpec, jobName)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 

@@ -19,11 +19,12 @@ import (
 
 const (
 	JobConfigVersion = 1
+	HoursInDay       = time.Hour * 24
+	HoursInMonth     = 30 * 24 * time.Hour
 )
 
 var (
 	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)")
-	HoursInMonth         = time.Duration(30) * 24 * time.Hour
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
@@ -323,7 +324,7 @@ func (conf *Job) MergeFrom(parent Job) {
 func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}
-	window.Size = time.Hour * 24
+	window.Size = HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"
 
@@ -361,7 +362,7 @@ func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 type JobDependency struct {
 	JobName string         `yaml:"job,omitempty"`
 	Type    string         `yaml:"type,omitempty"`
-	HttpDep HTTPDependency `yaml:"http,omitempty"`
+	HTTPDep HTTPDependency `yaml:"http,omitempty"`
 }
 
 type HTTPDependency struct {
@@ -411,8 +412,8 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 				Type: depType,
 			}
 		}
-		if !reflect.DeepEqual(dep.HttpDep, HTTPDependency{}) {
-			httpDep, err := prepHttpDependency(dep.HttpDep, index)
+		if !reflect.DeepEqual(dep.HTTPDep, HTTPDependency{}) {
+			httpDep, err := prepHTTPDependency(dep.HTTPDep, index)
 			if err != nil {
 				return models.JobSpec{}, err
 			}
@@ -608,7 +609,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	// external http dependencies
 	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
 		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
-			HttpDep: HTTPDependency(dep),
+			HTTPDep: HTTPDependency(dep),
 		})
 	}
 
@@ -681,7 +682,7 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 	return sz, ErrNotAMonthDuration
 }
 
-func prepHttpDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
+func prepHTTPDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
 	var httpDep models.HTTPDependency
 	if _, err := url.ParseRequestURI(dep.URL); err != nil {
 		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)

@@ -46,6 +46,7 @@ const (
 	GRPCMaxRetry          uint = 3
 
 	OptimusDialTimeout = time.Second * 2
+	BackoffDuration    = 100 * time.Millisecond
 )
 
 // JobSpecRepository represents a storage interface for Job specifications locally
@@ -141,7 +142,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 
 func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
 	retryOpts := []grpc_retry.CallOption{
-		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(GRPCMaxRetry),
 	}
 	var opts []grpc.DialOption

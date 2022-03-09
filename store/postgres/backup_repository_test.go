@@ -18,7 +18,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestBackupRepository(t *testing.T) {
+func TestIntegrationBackupRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-project",
@@ -90,10 +90,10 @@ func TestBackupRepository(t *testing.T) {
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(resourceSpec.URN, nil).Twice()
 
-		backupUuid := uuid.Must(uuid.NewRandom())
+		backupUUID := uuid.Must(uuid.NewRandom())
 		projectName := "project"
 		destinationDataset := "optimus_backup"
-		destinationTable := fmt.Sprintf("backup_playground_table_%s", backupUuid)
+		destinationTable := fmt.Sprintf("backup_playground_table_%s", backupUUID)
 		//urn := fmt.Sprintf("store://%s:%s.%s", projectName, destinationDataset, destinationTable)
 
 		backupResult := make(map[string]interface{})
@@ -102,7 +102,7 @@ func TestBackupRepository(t *testing.T) {
 		backupResult["table"] = destinationTable
 
 		backupSpec := models.BackupSpec{
-			ID:          backupUuid,
+			ID:          backupUUID,
 			Resource:    resourceSpec,
 			Result:      backupResult,
 			Description: "description",
@@ -132,7 +132,7 @@ func TestBackupRepository(t *testing.T) {
 		assert.Equal(t, backupSpec.Config, backups[0].Config)
 		assert.Equal(t, backupSpec.Result, backups[0].Result)
 
-		backup, err := backupRepo.GetByID(ctx, backupUuid)
+		backup, err := backupRepo.GetByID(ctx, backupUUID)
 		assert.Nil(t, err)
 
 		assert.Equal(t, backupSpec.ID, backup.ID)

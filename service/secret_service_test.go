@@ -66,14 +66,10 @@ func TestSecretService(t *testing.T) {
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("Save", ctx, models.NamespaceSpec{}, secret1).Return(nil)
+			secretRepo.On("Save", ctx, project, models.NamespaceSpec{}, secret1).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+			svc := service.NewSecretService(nil, nsService, secretRepo)
 
 			err := svc.Save(ctx, project.Name, "", secret1)
 			assert.Nil(t, err)
@@ -85,14 +81,10 @@ func TestSecretService(t *testing.T) {
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("Save", ctx, namespace, secret1).Return(nil)
+			secretRepo.On("Save", ctx, project, namespace, secret1).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+			svc := service.NewSecretService(nil, nsService, secretRepo)
 
 			err := svc.Save(ctx, project.Name, namespace.Name, secret1)
 			assert.Nil(t, err)
@@ -125,14 +117,10 @@ func TestSecretService(t *testing.T) {
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("Update", ctx, models.NamespaceSpec{}, secret1).Return(nil)
+			secretRepo.On("Update", ctx, project, models.NamespaceSpec{}, secret1).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+			svc := service.NewSecretService(nil, nsService, secretRepo)
 
 			err := svc.Update(ctx, project.Name, "", secret1)
 			assert.Nil(t, err)
@@ -144,14 +132,10 @@ func TestSecretService(t *testing.T) {
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("Update", ctx, namespace, secret1).Return(nil)
+			secretRepo.On("Update", ctx, project, namespace, secret1).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+			svc := service.NewSecretService(nil, nsService, secretRepo)
 
 			err := svc.Update(ctx, project.Name, namespace.Name, secret1)
 			assert.Nil(t, err)
@@ -176,14 +160,10 @@ func TestSecretService(t *testing.T) {
 			defer projService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("GetAll", ctx).Return(secretItems, nil)
+			secretRepo.On("GetAll", ctx, project).Return(secretItems, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(projService, nil, secretRepoFac)
+			svc := service.NewSecretService(projService, nil, secretRepo)
 
 			list, err := svc.List(ctx, project.Name)
 			assert.Nil(t, err)
@@ -203,14 +183,10 @@ func TestSecretService(t *testing.T) {
 				},
 			}
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("GetSecrets", ctx, namespace).Return(secrets, nil)
+			secretRepo.On("GetSecrets", ctx, project, namespace).Return(secrets, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nil, secretRepoFac)
+			svc := service.NewSecretService(nil, nil, secretRepo)
 
 			list, err := svc.GetSecrets(ctx, namespace)
 			assert.Nil(t, err)
@@ -220,15 +196,11 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when repo returns error", func(t *testing.T) {
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("GetSecrets", ctx, namespace).Return([]models.ProjectSecretItem{},
+			secretRepo.On("GetSecrets", ctx, project, namespace).Return([]models.ProjectSecretItem{},
 				errors.New("random error"))
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nil, secretRepoFac)
+			svc := service.NewSecretService(nil, nil, secretRepo)
 
 			list, err := svc.GetSecrets(ctx, namespace)
 			assert.Len(t, list, 0)
@@ -256,14 +228,10 @@ func TestSecretService(t *testing.T) {
 			defer nsService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("Delete", ctx, namespace, "hello").Return(nil)
+			secretRepo.On("Delete", ctx, project, namespace, "hello").Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretRepoFac := new(mock.ProjectSecretRepoFactory)
-			secretRepoFac.On("New", project).Return(secretRepo)
-			defer secretRepoFac.AssertExpectations(t)
-
-			svc := service.NewSecretService(nil, nsService, secretRepoFac)
+			svc := service.NewSecretService(nil, nsService, secretRepo)
 
 			err := svc.Delete(ctx, project.Name, "namespace", "hello")
 			assert.Nil(t, err)

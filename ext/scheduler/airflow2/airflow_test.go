@@ -26,11 +26,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type MockHttpClient struct {
+type MockHTTPClient struct {
 	DoFunc func(req *http.Request) (*http.Response, error)
 }
 
-func (m *MockHttpClient) Do(req *http.Request) (*http.Response, error) {
+func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	if m.DoFunc != nil {
 		return m.DoFunc(req)
 	}
@@ -305,7 +305,7 @@ func TestAirflow2(t *testing.T) {
 }`
 			// create a new reader with JSON
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
@@ -335,7 +335,7 @@ func TestAirflow2(t *testing.T) {
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusInternalServerError,
@@ -382,7 +382,7 @@ func TestAirflow2(t *testing.T) {
 		t.Run("should clear dagrun state successfully", func(t *testing.T) {
 			// create a new reader with JSON
 			r := ioutil.NopCloser(bytes.NewReader([]byte("")))
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
@@ -410,7 +410,7 @@ func TestAirflow2(t *testing.T) {
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusInternalServerError,
@@ -508,7 +508,7 @@ func TestAirflow2(t *testing.T) {
 			}
 
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
@@ -587,7 +587,7 @@ func TestAirflow2(t *testing.T) {
 				ioutil.NopCloser(bytes.NewReader([]byte(respStringSecond))),
 			}
 			countDagRunReq := -1
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					countDagRunReq++
 					return &http.Response{
@@ -606,7 +606,7 @@ func TestAirflow2(t *testing.T) {
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
-			client := &MockHttpClient{
+			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusInternalServerError,

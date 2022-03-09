@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -21,6 +21,8 @@ type Adapter struct {
 	pluginRepo             models.PluginRepository
 	supportedDatastoreRepo models.DatastoreRepo
 }
+
+const HoursInDay = time.Hour * 24
 
 func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, error) {
 	startDate, err := time.Parse(models.JobDatetimeLayout, spec.StartDate)
@@ -143,7 +145,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}
-	window.Size = time.Hour * 24
+	window.Size = HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"
 
@@ -261,6 +263,7 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 	}
 }
 
+// ToProjectProtoWithSecrets is unused, TODO: delete
 func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {

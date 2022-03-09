@@ -17,7 +17,7 @@ import (
 func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.BackupDryRunRequest) (*pb.BackupDryRunResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	resourceSpec, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
@@ -61,7 +61,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.CreateBackupRequest) (*pb.CreateBackupResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	resourceSpec, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
@@ -107,7 +107,7 @@ func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.Create
 func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBackupsRequest) (*pb.ListBackupsResponse, error) {
 	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
 	results, err := sv.resourceSvc.ListResourceBackups(ctx, projectSpec, req.DatastoreName)
@@ -133,7 +133,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 func (sv *RuntimeServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
 	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
 	uuid, err := uuid.Parse(req.Id)

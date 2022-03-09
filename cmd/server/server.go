@@ -20,7 +20,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-multierror"
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -43,7 +42,6 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
-	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -63,10 +61,18 @@ import (
 
 var (
 	// termChan listen for sigterm
-	termChan           = make(chan os.Signal, 1)
+	termChan = make(chan os.Signal, 1)
+)
+
+const (
 	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
+)
+
+const (
+	DialTimeout      = time.Second * 5
+	BootstrapTimeout = time.Second * 10
 )
 
 // projectJobSpecRepoFactory stores raw specifications
@@ -128,15 +134,6 @@ type namespaceRepoFactory struct {
 
 func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
 	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
-}
-
-type projectSecretRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *projectSecretRepoFactory) New(projectSpec models.ProjectSpec) store.ProjectSecretRepository {
-	return postgres.NewSecretRepository(fac.db, projectSpec, fac.hash)
 }
 
 type jobRunRepoFactory struct {
@@ -339,7 +336,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		}
 		// bootstrap scheduler for registered projects
 		for _, proj := range registeredProjects {
-			bootstrapCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
 			l.Info("bootstrapping project", "project name", proj.Name)
 			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil {
 				// Major ERROR, but we can't make this fatal
@@ -351,10 +348,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		}
 	}
 
-	projectSecretRepoFac := &projectSecretRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
+	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
 	namespaceSpecRepoFac := &namespaceRepoFactory{
 		db:   dbConn,
 		hash: appHash,
@@ -366,7 +360,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
-	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepoFac)
+	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{
@@ -475,7 +469,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		projectService,
 		namespaceService,
 		secretService,
-		v1.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
+		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
 		progressObs,
 		run.NewService(
 			jobrunRepoFac,
@@ -490,7 +484,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 
-	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), time.Second*5)
+	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
 	defer grpcDialCancel()
 
 	// prepare http proxy
@@ -521,6 +515,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}), "Ping").ServeHTTP)
 	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
 
+	//nolint: gomnd
 	srv := &http.Server{
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,
@@ -564,7 +559,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	// Block until we receive our signal.
 	<-termChan
@@ -624,18 +619,4 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	}), &http2.Server{})
-}
-
-// NewKafkaWriter creates a new kafka client that will be used for meta publishing
-func NewKafkaWriter(topic string, brokers []string, batchSize int) *kafka.Writer {
-	// check if metadata publisher is disabled
-	if len(brokers) == 0 || (len(brokers) == 1 && (brokers[0] == "-" || brokers[0] == "")) {
-		return nil
-	}
-
-	return kafka.NewWriter(kafka.WriterConfig{
-		Topic:     topic,
-		Brokers:   brokers,
-		BatchSize: batchSize,
-	})
 }

@@ -59,7 +59,7 @@ func (e *ExtensionSuite) TestInstall() {
 			panic(err)
 		}
 
-		err = ext.Install(nil, e.validOwner, e.validRepo, e.validAlias)
+		err = ext.Install(nil, e.validOwner, e.validRepo, e.validAlias) // nolint:staticcheck
 
 		e.Error(err)
 	})
@@ -349,7 +349,7 @@ func TestNewExtension(t *testing.T) {
 		manifest := &extension.Manifest{}
 		ghReleaseGetter := &mock.GithubReleaseGetter{}
 		httpDoer := &mock.HTTPDoer{}
-		var dirPath string = ""
+		dirPath := ""
 		reservedCommands := []string{"help"}
 
 		ext, err := extension.NewExtension(manifest, ghReleaseGetter, httpDoer, dirPath, reservedCommands...)

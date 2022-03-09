@@ -42,12 +42,10 @@ type ProtoAdapter interface {
 
 	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
 	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
-	ToProjectProtoWithSecret(proj models.ProjectSpec, pType models.InstanceType, pName string) *pb.ProjectSpecification
 
 	FromNamespaceProto(specification *pb.NamespaceSpecification) models.NamespaceSpec
 	ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification
 
-	FromInstanceProto(*pb.InstanceSpec) (models.InstanceSpec, error)
 	ToInstanceProto(models.InstanceSpec) (*pb.InstanceSpec, error)
 
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
@@ -87,7 +85,7 @@ func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRe
 func (sv *RuntimeServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -134,7 +132,7 @@ func (sv *RuntimeServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTa
 func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.RegisterInstanceResponse, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "not able to find project")
+		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
 	}
 
 	instanceType, err := models.ToInstanceType(utils.FromEnumProto(req.InstanceType.String(), "TYPE"))
@@ -201,7 +199,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusRequest) (*pb.JobStatusResponse, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "not able to find project")
+		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
 	}
 
 	_, _, err = sv.jobSvc.GetByNameForProject(ctx, req.GetJobName(), projSpec)
@@ -232,7 +230,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -288,7 +286,7 @@ func (sv *RuntimeServiceServer) RunJob(ctx context.Context, req *pb.RunJobReques
 	// create job run in db
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	var jobSpecs []models.JobSpec

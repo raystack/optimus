@@ -18,7 +18,11 @@ var (
 	validProjectName = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
 	validDatasetName = regexp.MustCompile(`^[\w]{3,1000}`) // golang's regex engine only let's you restrict maximum repetitions to 1000 ¯\_(ツ)_/¯
 	validTableName   = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-	tableURNFormat   = "%s://%s:%s.%s"
+)
+
+const (
+	ExpectedTableNameSegments = 4
+	tableURNFormat            = "%s://%s:%s.%s"
 )
 
 // TableResourceSpec is how resource will be represented in yaml
@@ -151,7 +155,7 @@ func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	}
 
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(yamlResource.Name)
-	if len(parsedTableName) < 4 {
+	if len(parsedTableName) < ExpectedTableNameSegments {
 		return models.ResourceSpec{}, fmt.Errorf("invalid yamlResource name %s", yamlResource.Name)
 	}
 
@@ -201,7 +205,7 @@ func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 	}
 
 	parsedTableName := tableNameParseRegex.FindStringSubmatch(protoSpec.Name)
-	if len(parsedTableName) < 4 {
+	if len(parsedTableName) < ExpectedTableNameSegments {
 		return models.ResourceSpec{}, fmt.Errorf("invalid resource name %s", protoSpec.Name)
 	}
 

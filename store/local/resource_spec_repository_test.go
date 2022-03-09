@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/mock"
 )
 
-var testResourceContents = `version: 1
+const testResourceContents = `version: 1
 name: proj.datas.test
 type: table
 spec:

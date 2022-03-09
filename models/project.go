@@ -27,6 +27,8 @@ const (
 
 	// Secret name with this prefix indicates managed by system
 	SecretTypeSystemDefinedPrefix = "_OPTIMUS_"
+
+	KeyLength = 32
 )
 
 var (
@@ -94,14 +96,14 @@ func (s SecretType) String() string {
 }
 
 type ApplicationKey struct {
-	key *[32]byte
+	key *[KeyLength]byte
 }
 
 func NewApplicationSecret(k string) (ApplicationKey, error) {
 	secret := ApplicationKey{
-		key: &[32]byte{},
+		key: &[KeyLength]byte{},
 	}
-	if len(k) < 32 {
+	if len(k) < KeyLength {
 		return secret, errors.New("random hash should be 32 chars in length")
 	}
 	_, err := io.ReadFull(bytes.NewBufferString(k), secret.key[:])

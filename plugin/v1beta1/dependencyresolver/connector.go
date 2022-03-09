@@ -15,12 +15,11 @@ import (
 
 	"github.com/odpf/optimus/models"
 
-	hplugin "github.com/hashicorp/go-plugin"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"google.golang.org/grpc"
 )
 
-var _ hplugin.GRPCPlugin = &Connector{}
+var _ plugin.GRPCPlugin = &Connector{}
 
 type ProjectSpecAdapter interface {
 	FromProjectProtoWithSecrets(*pb.ProjectSpecification) models.ProjectSpec
@@ -28,8 +27,8 @@ type ProjectSpecAdapter interface {
 }
 
 type Connector struct {
-	hplugin.NetRPCUnsupportedPlugin
-	hplugin.GRPCPlugin
+	plugin.NetRPCUnsupportedPlugin
+	plugin.GRPCPlugin
 
 	impl               models.DependencyResolverMod
 	projectSpecAdapter ProjectSpecAdapter
@@ -37,7 +36,7 @@ type Connector struct {
 	logger hclog.Logger
 }
 
-func (p *Connector) GRPCServer(broker *hplugin.GRPCBroker, s *grpc.Server) error {
+func (p *Connector) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	pbp.RegisterDependencyResolverModServiceServer(s, &GRPCServer{
 		Impl:               p.impl,
 		projectSpecAdapter: p.projectSpecAdapter,
@@ -45,7 +44,7 @@ func (p *Connector) GRPCServer(broker *hplugin.GRPCBroker, s *grpc.Server) error
 	return nil
 }
 
-func (p *Connector) GRPCClient(ctx context.Context, broker *hplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (p *Connector) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClient{
 		client:             pbp.NewDependencyResolverModServiceClient(c),
 		projectSpecAdapter: p.projectSpecAdapter,
@@ -95,7 +94,7 @@ func Serve(t models.DependencyResolverMod, logger hclog.Logger) {
 }
 
 func startServe(mp map[string]plugin.Plugin, logger hclog.Logger) {
-	hplugin.Serve(&hplugin.ServeConfig{
+	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: base.Handshake,
 		Plugins:         mp,
 		GRPCServer:      plugin.DefaultGRPCServer,

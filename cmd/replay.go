@@ -11,7 +11,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-var (
+const (
 	replayTimeout = time.Minute * 15
 )
 
