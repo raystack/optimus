@@ -1,9 +1,7 @@
 package airflow2
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -69,16 +67,9 @@ type Bucket interface {
 }
 
 type scheduler struct {
-	bucketFac  BucketFactory
-	httpClient HTTPClient
-	compiler   models.JobCompiler
-}
-
-type airflowRequest struct {
-	URL    string
-	method string
-	token  string
-	body   []byte
+	bucketFac BucketFactory
+	client    airflowClient
+	compiler  models.JobCompiler
 }
 
 func (s *scheduler) GetName() string {
@@ -218,7 +209,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 	if err != nil {
 		return nil, err
 	}
-	fetchURL := fmt.Sprintf(fmt.Sprintf("%s/%s", schdHost, dagStatusURL), jobName)
+	fetchURL := buildEndPoint(dagStatusURL, schdHost, jobName)
 
 	req := airflowRequest{
 		URL:    fetchURL,
@@ -226,7 +217,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		token:  authToken,
 		body:   nil,
 	}
-	resp, err := req.invoke(ctx, s.httpClient)
+	resp, err := s.client.invoke(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failure reason for fetching airflow latest dag run: %w", err)
 	}
@@ -272,9 +263,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	var jsonStr = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
-	postURL := fmt.Sprintf(
-		fmt.Sprintf("%s/%s", schdHost, dagRunClearURL),
-		jobName)
+	postURL := buildEndPoint(dagRunClearURL, schdHost, jobName)
 
 	req := airflowRequest{
 		URL:    postURL,
@@ -282,7 +271,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		token:  authToken,
 		body:   jsonStr,
 	}
-	resp, err := req.invoke(ctx, s.httpClient)
+	resp, err := s.client.invoke(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failure reason for clearing airflow dag runs: %w", err)
 	}
@@ -296,9 +285,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	if err != nil {
 		return nil, err
 	}
-	schdHost = strings.Trim(schdHost, "/")
-	postURL := fmt.Sprintf("%s/%s", schdHost, dagStatusBatchURL)
-
+	postURL := buildEndPoint(dagStatusBatchURL, schdHost, "")
 	pageOffset := 0
 	var jobStatus []models.JobStatus
 	var responseJSON struct {
@@ -322,7 +309,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		}`, pageOffset, batchSize, jobName, startDate.UTC().Format(airflowDateFormat), endDate.UTC().Format(airflowDateFormat))
 		var jsonStr = []byte(dagRunBatchReq)
 		req.body = jsonStr
-		resp, err := req.invoke(ctx, s.httpClient)
+		resp, err := s.client.invoke(ctx, req)
 		if err != nil {
 			return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %v", err)
 		}
@@ -371,25 +358,6 @@ func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func (ar airflowRequest) invoke(ctx context.Context, client HTTPClient) (*http.Response, error) {
-	request, err := http.NewRequestWithContext(ctx, ar.method, ar.URL, bytes.NewBuffer(ar.body))
-	if err != nil {
-		return nil, fmt.Errorf("failed to build http request for %s due to %w", ar.URL, err)
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(ar.token))))
-
-	resp, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call airflow %s due to %w", ar.URL, err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("status code received %d on calling %s", resp.StatusCode, ar.URL)
-	}
-	return resp, nil
-}
-
 func toJobStatus(dagRuns []map[string]interface{}, jobName string) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	for _, status := range dagRuns {
@@ -431,8 +399,8 @@ func JobNameFromPath(filePath, suffix string) string {
 
 func NewScheduler(bucketFac BucketFactory, httpClient HTTPClient, compiler models.JobCompiler) *scheduler {
 	return &scheduler{
-		bucketFac:  bucketFac,
-		compiler:   compiler,
-		httpClient: httpClient,
+		bucketFac: bucketFac,
+		compiler:  compiler,
+		client:    newClient(httpClient),
 	}
 }
