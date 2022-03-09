@@ -29,7 +29,6 @@ import (
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/ext/executor/noop"
 	"github.com/odpf/optimus/ext/notify/slack"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/ext/scheduler/prime"
@@ -292,12 +291,6 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
 	switch conf.Scheduler.Name {
-	case "airflow":
-		models.BatchScheduler = airflow.NewScheduler(
-			&airflowBucketFactory{},
-			&http.Client{},
-			jobCompiler,
-		)
 	case "airflow2":
 		models.BatchScheduler = airflow2.NewScheduler(
 			&airflowBucketFactory{},
