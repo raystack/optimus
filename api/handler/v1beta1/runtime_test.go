@@ -42,7 +42,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil,
 			)
 			versionRequest := pb.VersionRequest{Client: Version}
-			resp, err := runtimeServiceServer.Version(context.Background(), &versionRequest)
+			resp, err := runtimeServiceServer.Version(ctx, &versionRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, Version, resp.Server)
 			assert.Equal(t, &pb.VersionResponse{Server: Version}, resp)
@@ -181,7 +181,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ScheduledAt:  scheduledAtTimestamp,
 				InstanceName: instanceSpec.Name,
 			}
-			resp, err := runtimeServiceServer.RegisterInstance(context.Background(), &versionRequest)
+			resp, err := runtimeServiceServer.RegisterInstance(ctx, &versionRequest)
 			assert.Nil(t, err)
 
 			adapter := v1.NewAdapter(nil, nil)
@@ -247,7 +247,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
 				InstanceName: instanceSpec.Name,
 			}
-			resp, err := runtimeServiceServer.RegisterInstance(context.Background(), &versionRequest)
+			resp, err := runtimeServiceServer.RegisterInstance(ctx, &versionRequest)
 			assert.Nil(t, err)
 
 			adapter := v1.NewAdapter(nil, nil)

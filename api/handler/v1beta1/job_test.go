@@ -104,7 +104,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			grpcRespStream := new(mock.DeployJobSpecificationServer)
-			grpcRespStream.On("Context").Return(context.Background())
+			grpcRespStream.On("Context").Return(ctx)
 			defer grpcRespStream.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -215,7 +215,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
 			deployRequest := pb.GetJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
-			jobSpecResp, err := runtimeServiceServer.GetJobSpecification(context.Background(), &deployRequest)
+			jobSpecResp, err := runtimeServiceServer.GetJobSpecification(ctx, &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
 		})
@@ -310,7 +310,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 				Spec:          jobProto,
 			}
-			resp, err := runtimeServiceServer.CreateJobSpecification(context.Background(), &request)
+			resp, err := runtimeServiceServer.CreateJobSpecification(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,

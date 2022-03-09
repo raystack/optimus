@@ -43,7 +43,7 @@ func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 	if err != nil {
 		return nil, err
 	}
-	return NewContextManager(namespace, secrets, jobRun, s.templateEngine).Generate(instanceSpec)
+	return NewContextManager(namespace, secrets, jobRun, s.templateEngine).Generate(ctx, instanceSpec)
 }
 
 func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
@@ -96,7 +96,7 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 		}
 	}
 
-	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, jobRun.ExecutedAt)
+	instanceToSave, err := s.prepInstance(ctx, jobRun, instanceType, instanceName, jobRun.ExecutedAt)
 	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
 	}
@@ -112,11 +112,11 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
+func (s *Service) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType,
 	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {
-		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(jobRun.Spec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(jobRun.Spec.Assets),
 		})

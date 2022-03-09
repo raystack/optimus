@@ -46,7 +46,7 @@ type ContextManager struct {
 // Generate fetches and compiles all config data related to an instance and
 // returns jobRunInput, containing config required for running the job.
 // It compiles any templates/macros present in the config.
-func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
+func (fm *ContextManager) Generate(ctx context.Context, instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
 	var configMap map[string]string
 	var secretConfigs map[string]string
 
@@ -71,7 +71,7 @@ func (fm *ContextManager) Generate(instanceSpec models.InstanceSpec) (*models.Jo
 		secretConfigs = hookSecretConfigs
 	}
 
-	fileMap, err := fm.constructCompiledFileMap(instanceSpec, contextForTask)
+	fileMap, err := fm.constructCompiledFileMap(ctx, instanceSpec, contextForTask)
 	if err != nil {
 		return nil, err
 	}
@@ -111,9 +111,9 @@ func (fm *ContextManager) createContextForHook(initialContext map[string]interfa
 	return hookContext
 }
 
-func (fm *ContextManager) constructCompiledFileMap(instanceSpec models.InstanceSpec, contextForTask map[string]interface{}) (map[string]string, error) {
+func (fm *ContextManager) constructCompiledFileMap(ctx context.Context, instanceSpec models.InstanceSpec, contextForTask map[string]interface{}) (map[string]string, error) {
 	// check if task needs to override the compilation behaviour
-	compiledAssetResponse, err := fm.jobRun.Spec.Task.Unit.CLIMod.CompileAssets(context.Background(), models.CompileAssetsRequest{
+	compiledAssetResponse, err := fm.jobRun.Spec.Task.Unit.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
 		Window:           fm.jobRun.Spec.Task.Window,
 		Config:           models.PluginConfigs{}.FromJobSpec(fm.jobRun.Spec.Task.Config),
 		Assets:           models.PluginAssets{}.FromJobSpec(fm.jobRun.Spec.Assets),

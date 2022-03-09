@@ -508,7 +508,7 @@ func TestReplayManager(t *testing.T) {
 			scheduler.On("GetJobRunStatus", ctx, projectSpec, jobSpec.Name, startDate, batchEndDate, 100).Return(jobStatusList, nil)
 
 			replayManager := job.NewManager(log, nil, nil, nil, job.ReplayManagerConfig{}, scheduler, nil, nil)
-			jobStatusMap, err := replayManager.GetRunStatus(context.TODO(), projectSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec.Name)
+			jobStatusMap, err := replayManager.GetRunStatus(ctx, projectSpec, replaySpec.StartDate, replaySpec.EndDate, jobSpec.Name)
 
 			assert.Nil(t, err)
 			assert.Equal(t, jobStatusList, jobStatusMap)

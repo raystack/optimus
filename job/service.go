@@ -142,7 +142,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 			return func() (interface{}, error) {
 				// check dependencies
 				if currentSpec.Task.Unit.DependencyMod != nil {
-					if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
+					if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
 						Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
 						Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
 						Project: namespace.ProjectSpec,

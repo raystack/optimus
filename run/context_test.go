@@ -14,6 +14,7 @@ import (
 )
 
 func TestContextManager(t *testing.T) {
+	ctx := context.Background()
 	t.Run("Generate", func(t *testing.T) {
 		t.Run("should return compiled instanceSpec config for task type transformation", func(t *testing.T) {
 			projectName := "humara-projectSpec"
@@ -124,7 +125,7 @@ func TestContextManager(t *testing.T) {
 				UpdatedAt:  time.Time{},
 			}
 
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			cliMod.On("CompileAssets", ctx, models.CompileAssetsRequest{
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
@@ -138,7 +139,7 @@ func TestContextManager(t *testing.T) {
 			}}, nil)
 
 			jobRunInput, err := run.NewContextManager(namespaceSpec, nil, jobRun,
-				run.NewGoEngine()).Generate(instanceSpec)
+				run.NewGoEngine()).Generate(ctx, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -284,7 +285,7 @@ func TestContextManager(t *testing.T) {
 					},
 				},
 			}
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			cliMod.On("CompileAssets", ctx, models.CompileAssetsRequest{
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
@@ -298,7 +299,7 @@ func TestContextManager(t *testing.T) {
 			}}, nil)
 
 			jobRunInput, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
-				Generate(instanceSpec)
+				Generate(ctx, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -424,7 +425,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}
 
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			cliMod.On("CompileAssets", ctx, models.CompileAssetsRequest{
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
@@ -438,7 +439,7 @@ func TestContextManager(t *testing.T) {
 			}}, nil)
 
 			assets, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
-				Generate(instanceSpec)
+				Generate(ctx, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", assets.ConfigMap["DEND"])
@@ -574,7 +575,7 @@ func TestContextManager(t *testing.T) {
 				UpdatedAt:  time.Time{},
 			}
 
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			cliMod.On("CompileAssets", ctx, models.CompileAssetsRequest{
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
@@ -588,7 +589,7 @@ func TestContextManager(t *testing.T) {
 			}}, nil)
 
 			assets, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
-				run.NewGoEngine()).Generate(instanceSpec)
+				run.NewGoEngine()).Generate(ctx, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", assets.ConfigMap["DEND"])
