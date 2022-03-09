@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestInstanceRepository(t *testing.T) {
+func TestIntegrationInstanceRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-id",

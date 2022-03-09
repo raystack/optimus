@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestNamespaceRepository(t *testing.T) {
+func TestIntegrationNamespaceRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {

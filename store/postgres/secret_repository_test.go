@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestSecretRepository(t *testing.T) {
+func TestIntegrationSecretRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
