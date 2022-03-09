@@ -22,7 +22,7 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 		Name:  req.GetSecretName(),
 		Value: base64Decoded,
 	}); err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to register secret %s", req.GetSecretName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to register secret %s", req.GetSecretName()))
 	}
 
 	return &pb.RegisterSecretResponse{}, nil
@@ -38,7 +38,7 @@ func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.Update
 		Name:  req.GetSecretName(),
 		Value: base64Decoded,
 	}); err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to update secret %s", req.GetSecretName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to update secret %s", req.GetSecretName()))
 	}
 
 	return &pb.UpdateSecretResponse{}, nil
@@ -47,7 +47,7 @@ func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.Update
 func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSecretsRequest) (*pb.ListSecretsResponse, error) {
 	secrets, err := sv.secretService.List(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "failed to list secrets")
+		return nil, mapToGRPCErr(sv.l, err, "failed to list secrets")
 	}
 
 	var secretsResponse []*pb.ListSecretsResponse_Secret
@@ -66,7 +66,7 @@ func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSec
 
 func (sv *RuntimeServiceServer) DeleteSecret(ctx context.Context, req *pb.DeleteSecretRequest) (*pb.DeleteSecretResponse, error) {
 	if err := sv.secretService.Delete(ctx, req.GetProjectName(), req.GetNamespaceName(), req.GetSecretName()); err != nil {
-		return nil, mapToGRPCErr(err, fmt.Sprintf("failed to delete secret %s", req.GetSecretName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to delete secret %s", req.GetSecretName()))
 	}
 
 	return &pb.DeleteSecretResponse{}, nil

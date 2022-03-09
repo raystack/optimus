@@ -15,7 +15,7 @@ import (
 func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
@@ -35,7 +35,7 @@ func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.Crea
 func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
@@ -55,7 +55,7 @@ func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.Upda
 func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadResourceRequest) (*pb.ReadResourceResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	response, err := sv.resourceSvc.ReadResource(ctx, namespaceSpec, req.DatastoreName, req.ResourceName)
@@ -79,7 +79,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 
 	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return mapToGRPCErr(err, "unable to get namespace")
+		return mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 	var resourceSpecs []models.ResourceSpec
 	for _, resourceProto := range req.GetResources() {
@@ -110,7 +110,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResour
 func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	resourceSpecs, err := sv.resourceSvc.GetAll(ctx, namespaceSpec, req.DatastoreName)

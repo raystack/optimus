@@ -19,7 +19,7 @@ const (
 type ErrorType string
 
 func (s ErrorType) String() string {
-	return string(s)
+	return strings.ToLower(string(s))
 }
 
 // DomainError is used to map different type of errors identified in service to network errors
@@ -41,7 +41,7 @@ func NewError(entity string, errType ErrorType, msg string) *DomainError {
 
 func FromError(err error, entity string, msg string) *DomainError {
 	errType := ErrInternalError
-	msgStr := ""
+	msgStr := "internal error"
 	if errors.Is(err, store.ErrResourceNotFound) {
 		errType = ErrNotFound
 		msgStr = err.Error()
@@ -68,15 +68,19 @@ func FromError(err error, entity string, msg string) *DomainError {
 
 func (e *DomainError) Error() string {
 	return fmt.Sprintf("%v: %v for entity %v",
-		e.Message, strings.ToLower(e.ErrorType.String()), e.Entity)
+		e.Message, e.ErrorType.String(), e.Entity)
+}
+
+func (e *DomainError) Unwrap() error {
+	return e.Err
 }
 
 func (e *DomainError) DebugString() string {
 	var wrappedError string
-	de, ok := e.Err.(*DomainError)
-	if ok {
+	var de *DomainError
+	if errors.As(e.Err, &de) {
 		wrappedError = de.DebugString()
-	} else {
+	} else if e.Err != nil {
 		wrappedError = e.Err.Error()
 	}
 
