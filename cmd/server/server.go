@@ -126,49 +126,9 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		db: dbConn,
 	}
 
-	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
-	// init default scheduler
-	switch conf.Scheduler.Name {
-	case "airflow":
-		models.BatchScheduler = airflow.NewScheduler(
-			&airflowBucketFactory{},
-			&http.Client{},
-			jobCompiler,
-		)
-	case "airflow2":
-		models.BatchScheduler = airflow2.NewScheduler(
-			&airflowBucketFactory{},
-			&http.Client{},
-			jobCompiler,
-		)
-	default:
-		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
-	}
-
-	models.ManualScheduler = prime.NewScheduler(
-		jobrunRepoFac,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-
-	if !conf.Scheduler.SkipInit {
-		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
-		if err != nil {
-			return fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
-		}
-		// bootstrap scheduler for registered projects
-		for _, proj := range registeredProjects {
-			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
-			l.Info("bootstrapping project", "project name", proj.Name)
-			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil {
-				// Major ERROR, but we can't make this fatal
-				// other projects might be working fine
-				l.Error("no bootstrapping project", "error", err)
-			}
-			l.Info("bootstrapped project", "project name", proj.Name)
-			cancel()
-		}
+	err = initSchedulers(l, conf, jobrunRepoFac, projectRepoFac)
+	if err != nil {
+		return err
 	}
 
 	// services
@@ -413,6 +373,54 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	l.Info("bye")
 	return terminalError
+}
+
+func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, projectRepoFac *projectRepoFactory) error {
+	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
+	// init default scheduler
+	switch conf.Scheduler.Name {
+	case "airflow":
+		models.BatchScheduler = airflow.NewScheduler(
+			&airflowBucketFactory{},
+			&http.Client{},
+			jobCompiler,
+		)
+	case "airflow2":
+		models.BatchScheduler = airflow2.NewScheduler(
+			&airflowBucketFactory{},
+			&http.Client{},
+			jobCompiler,
+		)
+	default:
+		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
+	}
+
+	models.ManualScheduler = prime.NewScheduler(
+		jobrunRepoFac,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+	)
+
+	if !conf.Scheduler.SkipInit {
+		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
+		if err != nil {
+			return fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
+		}
+		// bootstrap scheduler for registered projects
+		for _, proj := range registeredProjects {
+			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
+			l.Info("bootstrapping project", "project name", proj.Name)
+			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil {
+				// Major ERROR, but we can't make this fatal
+				// other projects might be working fine
+				l.Error("no bootstrapping project", "error", err)
+			}
+			l.Info("bootstrapped project", "project name", proj.Name)
+			cancel()
+		}
+	}
+	return nil
 }
 
 func setupDB(l log.Logger, conf config.Optimus) (*gorm.DB, error) {
