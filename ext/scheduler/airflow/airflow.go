@@ -320,6 +320,10 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	return requestedJobStatus, nil
 }
 
+func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
+	return []models.JobRun{}, nil
+}
+
 func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return

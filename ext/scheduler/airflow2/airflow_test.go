@@ -3,6 +3,7 @@ package airflow2_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -621,6 +622,173 @@ func TestAirflow2(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), fmt.Sprint("failure reason for fetching airflow dag runs"))
 			assert.Len(t, status, 0)
+		})
+	})
+
+	t.Run("GetJobRuns", func(t *testing.T) {
+		host := "http://airflow.example.io"
+		date, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+		if err != nil {
+			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		}
+		params := models.JobQuery{
+			Name:      "sample_select",
+			StartDate: date,
+			EndDate:   date.Add(time.Hour * 24),
+			Filter:    nil,
+		}
+		t.Run("should return job status with valid args", func(t *testing.T) {
+			run := airflow2.DagRun{
+				DagRunID:        "scheduled__2022-03-25T02:00:00+00:00",
+				DagID:           "sample_select",
+				LogicalDate:     date,
+				ExecutionDate:   date,
+				StartDate:       date.Add(time.Hour * 1),
+				EndDate:         date.Add(time.Hour * 2),
+				State:           "success",
+				ExternalTrigger: false,
+				Conf:            struct{}{},
+			}
+			list := airflow2.DagRunList{
+				DagRuns:      []airflow2.DagRun{run, run},
+				TotalEntries: 0,
+			}
+			resp, err := json.Marshal(list)
+			if err != nil {
+				t.Errorf("unable to parse the response to test GetJobRuns %v", err)
+			}
+
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader(resp))
+			client := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+					models.ProjectSchedulerAuth: "admin:admin",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params)
+
+			assert.Nil(t, err)
+			assert.Len(t, status, 2)
+		})
+		t.Run("should fail if host fails to return OK", func(t *testing.T) {
+			respString := "INTERNAL ERROR"
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusInternalServerError,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params)
+
+			assert.NotNil(t, err)
+			assert.Len(t, status, 0)
+		})
+		t.Run("should fail if host faulty json response", func(t *testing.T) {
+			respString := "INTERNAL ERROR"
+			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params)
+
+			assert.NotNil(t, err)
+			assert.Len(t, status, 0)
+		})
+		t.Run("should fail if host is not reachable", func(t *testing.T) {
+			client := &http.Client{}
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params)
+
+			assert.NotNil(t, err)
+			assert.Len(t, status, 0)
+		})
+		t.Run("should fail if host is not configured", func(t *testing.T) {
+			client := &http.Client{}
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params)
+			assert.NotNil(t, err)
+			assert.Len(t, status, 0)
+		})
+		t.Run("should fail if host is not configured", func(t *testing.T) {
+			//respString := "INTERNAL ERROR"
+			//r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			client := &http.Client{}
+			air := airflow2.NewScheduler(nil, client, nil)
+			status, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params)
+			assert.NotNil(t, err)
+			assert.Len(t, status, 0)
+		})
+		t.Run("should fail if not scheduler secret registered", func(t *testing.T) {
+			air := airflow2.NewScheduler(nil, nil, nil)
+			_, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+				},
+			}, &params)
+			assert.NotNil(t, err)
 		})
 	})
 }

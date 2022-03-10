@@ -125,3 +125,27 @@ func toJobStatus(list DagRunList) ([]models.JobStatus, error) {
 	}
 	return jobStatus, nil
 }
+
+func getDagRunReqBody(param models.JobQuery) DagRunReqBody {
+	return DagRunReqBody{
+		OrderBy:          "execution_date",
+		PageOffset:       0,
+		PageLimit:        100,
+		DagIds:           []string{param.Name},
+		ExecutionDateGte: param.StartDate.Format(airflowDateFormat),
+		ExecutionDateLte: param.EndDate.Format(airflowDateFormat),
+	}
+}
+
+func getJobRunList(res DagRunList) []models.JobRun {
+	var jobRunList []models.JobRun
+	for _, dag := range res.DagRuns {
+		jobRun := models.JobRun{
+			Status:      models.JobRunState(dag.State),
+			ScheduledAt: dag.ExecutionDate,
+			ExecutedAt:  dag.StartDate,
+		}
+		jobRunList = append(jobRunList, jobRun)
+	}
+	return jobRunList
+}

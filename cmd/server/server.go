@@ -477,6 +477,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			func() time.Time {
 				return time.Now().UTC()
 			},
+			models.BatchScheduler,
 			run.NewGoEngine(),
 		),
 		models.BatchScheduler,

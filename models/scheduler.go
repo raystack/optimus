@@ -42,6 +42,9 @@ type SchedulerUnit interface {
 	// GetJobRunStatus should return batch of runs of a job
 	GetJobRunStatus(ctx context.Context, projectSpec ProjectSpec, jobName string, startDate time.Time,
 		endDate time.Time, batchSize int) ([]JobStatus, error)
+
+	//GetJobRuns return all the job runs based on query
+	GetJobRuns(ctx context.Context, projectSpec ProjectSpec, param *JobQuery) ([]JobRun, error)
 }
 
 type SchedulerListOptions struct {

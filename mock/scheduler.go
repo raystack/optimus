@@ -57,3 +57,8 @@ func (ms *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Pro
 	args := ms.Called(ctx, projectSpec, jobName, startDate, endDate, batchSize)
 	return args.Get(0).([]models.JobStatus), args.Error(1)
 }
+
+func (ms *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
+	args := ms.Called(ctx, projectSpec, param)
+	return args.Get(0).([]models.JobRun), args.Error(1)
+}

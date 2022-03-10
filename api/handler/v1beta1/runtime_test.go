@@ -683,4 +683,92 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
 		})
 	})
+
+	t.Run("JobRun", func(t *testing.T) {
+		t.Run("should return all job status via scheduler if valid inputs", func(t *testing.T) {
+			date, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+			if err != nil {
+				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+			}
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			jobRuns := []models.JobRun{
+				{
+					ScheduledAt: date,
+					Status:      "success",
+				},
+			}
+			query := &models.JobQuery{
+				Name:      jobSpec.Name,
+				StartDate: date,
+				EndDate:   date.Add(time.Hour * 24),
+				Filter:    []string{"success"},
+			}
+			instsvc := new(mock.RunService)
+			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return(jobRuns, nil)
+			defer instsvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				instsvc,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   "2022-03-25T02:00:00+00:00",
+				EndDate:     "2022-03-26T02:00:00+00:00",
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.Nil(t, err)
+			assert.Equal(t, len(jobRuns), len(resp.RunStatus))
+			for _, expectedStatus := range jobRuns {
+				var found bool
+				for _, respVal := range resp.RunStatus {
+					if expectedStatus.ScheduledAt.Equal(respVal.ScheduledAt.AsTime()) &&
+						expectedStatus.Status.String() == respVal.State {
+						found = true
+						break
+					}
+				}
+				if !found {
+					assert.Fail(t, fmt.Sprintf("failed to find expected job Run status %v", expectedStatus))
+				}
+			}
+		})
+	})
 }

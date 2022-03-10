@@ -215,6 +215,65 @@
         ]
       }
     },
+    "/v1beta1/project/{projectName}/job/{jobName}/run": {
+      "get": {
+        "summary": "JobRun returns the current and past run status of jobs on a given range",
+        "operationId": "RuntimeService_JobRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1JobRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "RuntimeService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/job/{jobName}/status": {
       "get": {
         "summary": "JobStatus returns the current and past run status of jobs",
@@ -1985,6 +2044,17 @@
         }
       }
     },
+    "v1beta1JobRunResponse": {
+      "type": "object",
+      "properties": {
+        "runStatus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1RunStatus"
+          }
+        }
+      }
+    },
     "v1beta1JobSpecHook": {
       "type": "object",
       "properties": {
@@ -2488,6 +2558,18 @@
     },
     "v1beta1RunJobResponse": {
       "type": "object"
+    },
+    "v1beta1RunStatus": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
     },
     "v1beta1UpdateResourceResponse": {
       "type": "object",

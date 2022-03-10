@@ -283,6 +283,29 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 
 	return jobStatus, nil
 }
+
+func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
+	var jobRuns []models.JobRun
+	var list DagRunList
+	reqBody, err := json.Marshal(getDagRunReqBody(*param))
+	if err != nil {
+		return jobRuns, err
+	}
+	req := airflowRequest{
+		URL:    dagStatusBatchURL,
+		method: http.MethodPost,
+		body:   reqBody,
+	}
+	resp, err := s.client.invoke(ctx, req, projectSpec)
+	if err != nil {
+		return jobRuns, fmt.Errorf("failure reason for fetching airflow dag runs: %v", err)
+	}
+	if err := json.Unmarshal(resp, &list); err != nil {
+		return jobRuns, fmt.Errorf("json error: %s: %w", string(resp), err)
+	}
+	return getJobRunList(list), nil
+}
+
 func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return

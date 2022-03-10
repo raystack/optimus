@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
@@ -33,6 +34,7 @@ type SpecRepoFactory interface {
 type Service struct {
 	repoFac        SpecRepoFactory
 	secretService  service.SecretService
+	scheduler      models.SchedulerUnit
 	Now            func() time.Time
 	templateEngine models.TemplateEngine
 }
@@ -80,6 +82,44 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 
 	jobRun, _, err = repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
 	return jobRun, err
+}
+
+func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
+	//get expected runs
+	var jobRuns []models.JobRun
+	jobStartDate := jobSpec.Schedule.StartDate
+	jobInterval := jobSpec.Schedule.Interval
+
+	givenStartDate := jobQuery.StartDate
+	givenEndDate := jobQuery.EndDate
+
+	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
+		return jobRuns, errors.New("invalid date range")
+	}
+
+	sch, err := cron.ParseCronSchedule(jobInterval)
+	if err != nil {
+		return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
+	}
+
+	duration := sch.Interval(time.Now())
+	executionStartDate := givenStartDate.Add(-duration)
+	executionEndDate := givenEndDate.Add(-duration)
+
+	expectedRuns := buildExpectedRun(sch, executionStartDate, executionEndDate)
+
+	//modify the date at query according on execution date
+	jobQuery.StartDate = executionStartDate
+	jobQuery.EndDate = executionEndDate
+	//call to airflow for get runs
+	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery)
+	if err != nil {
+		return jobRuns, fmt.Errorf("unable to get job runs from airflow %w", err)
+	}
+	//merge
+	runs := merge(expectedRuns, actualRuns)
+	//filter
+	return filter(runs, filterMap(jobQuery.Filter)), nil
 }
 
 func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
@@ -161,11 +201,60 @@ func (s *Service) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRu
 	return s.repoFac.New().GetByID(ctx, JobRunID)
 }
 
-func NewService(repoFac SpecRepoFactory, secretService service.SecretService, timeFunc func() time.Time, te models.TemplateEngine) *Service {
+func NewService(repoFac SpecRepoFactory, secretService service.SecretService, timeFunc func() time.Time, scheduler models.SchedulerUnit, te models.TemplateEngine) *Service {
 	return &Service{
 		repoFac:        repoFac,
 		secretService:  secretService,
 		Now:            timeFunc,
+		scheduler:      scheduler,
 		templateEngine: te,
 	}
+}
+
+func buildExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
+	var jobRuns []models.JobRun
+	start := spec.Next(startTime)
+	end := spec.Next(endTime)
+	exit := spec.Next(end)
+	for !start.Equal(exit) {
+		jobRuns = append(jobRuns, models.JobRun{
+			Status:      models.RunStatePending,
+			ScheduledAt: start,
+		})
+		start = spec.Next(start)
+	}
+	return jobRuns
+}
+
+func merge(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
+	var list []models.JobRun
+	if len(expected) < len(actual) {
+		list = expected
+	} else {
+		list = actual
+	}
+	for index, value := range list {
+		if actual[index].ScheduledAt.Equal(value.ScheduledAt) {
+			value.Status = actual[index].Status
+		}
+	}
+	return expected
+}
+
+func filter(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
+	var filteredRuns []models.JobRun
+	for _, v := range runs {
+		if _, ok := filter[v.Status.String()]; ok {
+			filteredRuns = append(filteredRuns, v)
+		}
+	}
+	return filteredRuns
+}
+
+func filterMap(filter []string) map[string]struct{} {
+	m := map[string]struct{}{}
+	for _, v := range filter {
+		m[v] = struct{}{}
+	}
+	return m
 }

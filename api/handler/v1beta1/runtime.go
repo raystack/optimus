@@ -227,6 +227,52 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 	}, nil
 }
 
+func (sv *RuntimeServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.JobRunResponse, error) {
+	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
+	}
+
+	jobSpec, _, err := sv.jobSvc.GetByNameForProject(ctx, req.GetJobName(), projSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to find the job %s for project %s", err.Error(),
+			req.GetJobName(), req.GetProjectName())
+	}
+	start, err := time.Parse(time.RFC3339, req.GetStartDate())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to find the job %s for project %s", err.Error(),
+			req.GetJobName(), req.GetProjectName())
+	}
+	end, err := time.Parse(time.RFC3339, req.GetEndDate())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to find the job %s for project %s", err.Error(),
+			req.GetJobName(), req.GetProjectName())
+	}
+	query := &models.JobQuery{
+		Name:      req.GetJobName(),
+		StartDate: start,
+		EndDate:   end,
+		Filter:    req.GetFilter(),
+	}
+	jobRuns, err := sv.runSvc.GetJobRunList(ctx, projSpec, jobSpec, query)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobStatus %s", err.Error(),
+			req.GetJobName())
+	}
+
+	var runStatus []*pb.RunStatus
+	for _, run := range jobRuns {
+		ts := timestamppb.New(run.ScheduledAt)
+		runStatus = append(runStatus, &pb.RunStatus{
+			State:       run.Status.String(),
+			ScheduledAt: ts,
+		})
+	}
+	return &pb.JobRunResponse{
+		RunStatus: runStatus,
+	}, nil
+}
+
 func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {

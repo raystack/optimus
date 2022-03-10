@@ -75,6 +75,10 @@ func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	panic("implement me")
 }
 
+func (s *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
+	return []models.JobRun{}, nil
+}
+
 func NewScheduler(jobRunRepoFac RunRepoFactory, nowFn func() time.Time) *Scheduler {
 	return &Scheduler{
 		jobRunRepoFac: jobRunRepoFac,
