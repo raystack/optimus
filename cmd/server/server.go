@@ -247,25 +247,9 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		}
 	}()
 
-	clusterCtx, clusterCancel := context.WithCancel(context.Background())
-	clusterServer := gossip.NewServer(l)
-	clusterPlanner := prime.NewPlanner(
-		l,
-		clusterServer, jobrunRepoFac, &instanceRepoFactory{
-			db: dbConn,
-		},
-		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-	if conf.Scheduler.NodeID != "" {
-		// start optimus cluster
-		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
-			clusterCancel()
-			return err
-		}
-
-		clusterPlanner.Init(clusterCtx)
+	cleanupCluster, err := initPrimeCluster(l, conf, jobrunRepoFac, dbConn)
+	if err != nil {
+		return err
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
@@ -297,10 +281,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		terminalError = multierror.Append(terminalError, fmt.Errorf("eventService.Close: %w", err))
 	}
 
-	// shutdown cluster
-	clusterCancel()
-	clusterPlanner.Close()
-	clusterServer.Shutdown()
+	cleanupCluster()
 
 	sqlConn, err := dbConn.DB()
 	if err != nil {
@@ -312,6 +293,41 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	l.Info("bye")
 	return terminalError
+}
+
+func initPrimeCluster(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
+	clusterCtx, clusterCancel := context.WithCancel(context.Background())
+	clusterServer := gossip.NewServer(l)
+	clusterPlanner := prime.NewPlanner(
+		l,
+		clusterServer, jobrunRepoFac, &instanceRepoFactory{
+			db: dbConn,
+		},
+		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
+			return time.Now().UTC()
+		},
+	)
+	cleanup := func() {
+		// shutdown cluster
+		clusterCancel()
+		if clusterPlanner != nil {
+			clusterPlanner.Close()
+		}
+		if clusterServer != nil {
+			clusterServer.Shutdown()
+		}
+	}
+
+	if conf.Scheduler.NodeID != "" {
+		// start optimus cluster
+		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
+			return cleanup, err
+		}
+
+		clusterPlanner.Init(clusterCtx)
+	}
+
+	return cleanup, nil
 }
 
 func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, func(), error) {
