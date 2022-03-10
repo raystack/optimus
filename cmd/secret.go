@@ -59,7 +59,6 @@ Use base64 flag if the value has been encoded.
 	}
 	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of deployee")
-	secretCmd.MarkFlagRequired("namespace")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
 	secretCmd.Flags().StringVarP(&filePath, "file", "f", filePath, "Provide file path to create secret from file instead")
@@ -154,7 +153,6 @@ func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	}
 	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace name of optimus managed repository")
-	cmd.MarkFlagRequired("namespace")
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
 		secretName, err := getSecretName(args)
