@@ -14,6 +14,10 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+const (
+	Hundred = 100
+)
+
 type airflowRequest struct {
 	URL    string
 	method string
@@ -130,7 +134,7 @@ func getDagRunReqBody(param models.JobQuery) DagRunReqBody {
 	return DagRunReqBody{
 		OrderBy:          "execution_date",
 		PageOffset:       0,
-		PageLimit:        100,
+		PageLimit:        Hundred,
 		DagIds:           []string{param.Name},
 		ExecutionDateGte: param.StartDate.Format(airflowDateFormat),
 		ExecutionDateLte: param.EndDate.Format(airflowDateFormat),
