@@ -48,6 +48,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"gorm.io/gorm"
 )
 
 // termChan listen for sigterm
@@ -94,14 +95,10 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		log: l,
 	}
 
-	// setup db
-	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
-		return fmt.Errorf("postgres.Migrate: %w", err)
-	}
-	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
-		conf.Server.DB.MaxOpenConnection, l.Writer())
+	dbConn, err := setupDB(l, conf)
 	if err != nil {
-		return fmt.Errorf("postgres.Connect: %w", err)
+		return err
+	}
 	}
 
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
@@ -414,6 +411,19 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	l.Info("bye")
 	return terminalError
+}
+
+func setupDB(l log.Logger, conf config.Optimus) (*gorm.DB, error) {
+	// setup db
+	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
+		return nil, fmt.Errorf("postgres.Migrate: %w", err)
+	}
+	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
+		conf.Server.DB.MaxOpenConnection, l.Writer())
+	if err != nil {
+		return nil, fmt.Errorf("postgres.Connect: %w", err)
+	}
+	return dbConn, nil
 }
 
 // grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.
