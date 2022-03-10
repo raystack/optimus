@@ -144,38 +144,10 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
-	// Logrus entry is used, allowing pre-definition of certain fields by the user.
-	grpcLogLevel, err := logrus.ParseLevel(l.Level())
+	grpcAddr, grpcServer, err := setupGRPCServer(l, conf, err)
 	if err != nil {
 		return err
 	}
-	grpcLogrus := logrus.New()
-	grpcLogrus.SetLevel(grpcLogLevel)
-	grpcLogrusEntry := logrus.NewEntry(grpcLogrus)
-	// Shared options for the logger, with a custom gRPC code to log level function.
-	opts := []grpc_logrus.Option{
-		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
-	}
-	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
-	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
-
-	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
-	grpcOpts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(
-			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
-			grpc_logrus.UnaryServerInterceptor(grpcLogrusEntry, opts...),
-			otelgrpc.UnaryServerInterceptor(),
-			grpc_prometheus.UnaryServerInterceptor,
-		),
-		grpc_middleware.WithStreamServerChain(
-			otelgrpc.StreamServerInterceptor(),
-			grpc_prometheus.StreamServerInterceptor,
-		),
-		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
-		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
-	}
-	grpcServer := grpc.NewServer(grpcOpts...)
-	reflection.Register(grpcServer)
 
 	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
 		db: dbConn,
@@ -373,6 +345,42 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	l.Info("bye")
 	return terminalError
+}
+
+func setupGRPCServer(l log.Logger, conf config.Optimus, err error) (string, *grpc.Server, error) {
+	// Logrus entry is used, allowing pre-definition of certain fields by the user.
+	grpcLogLevel, err := logrus.ParseLevel(l.Level())
+	if err != nil {
+		return "", nil, err
+	}
+	grpcLogrus := logrus.New()
+	grpcLogrus.SetLevel(grpcLogLevel)
+	grpcLogrusEntry := logrus.NewEntry(grpcLogrus)
+	// Shared options for the logger, with a custom gRPC code to log level function.
+	opts := []grpc_logrus.Option{
+		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
+	}
+	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
+	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
+
+	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
+	grpcOpts := []grpc.ServerOption{
+		grpc_middleware.WithUnaryServerChain(
+			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
+			grpc_logrus.UnaryServerInterceptor(grpcLogrusEntry, opts...),
+			otelgrpc.UnaryServerInterceptor(),
+			grpc_prometheus.UnaryServerInterceptor,
+		),
+		grpc_middleware.WithStreamServerChain(
+			otelgrpc.StreamServerInterceptor(),
+			grpc_prometheus.StreamServerInterceptor,
+		),
+		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
+		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
+	}
+	grpcServer := grpc.NewServer(grpcOpts...)
+	reflection.Register(grpcServer)
+	return grpcAddr, grpcServer, nil
 }
 
 func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, projectRepoFac *projectRepoFactory) error {
