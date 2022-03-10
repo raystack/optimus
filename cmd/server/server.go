@@ -144,7 +144,8 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
-	grpcAddr, grpcServer, err := setupGRPCServer(l, conf, err)
+	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
+	grpcServer, err := setupGRPCServer(l)
 	if err != nil {
 		return err
 	}
@@ -347,11 +348,11 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	return terminalError
 }
 
-func setupGRPCServer(l log.Logger, conf config.Optimus, err error) (string, *grpc.Server, error) {
+func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
 	grpcLogLevel, err := logrus.ParseLevel(l.Level())
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	grpcLogrus := logrus.New()
 	grpcLogrus.SetLevel(grpcLogLevel)
@@ -363,7 +364,6 @@ func setupGRPCServer(l log.Logger, conf config.Optimus, err error) (string, *grp
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
-	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -380,7 +380,7 @@ func setupGRPCServer(l log.Logger, conf config.Optimus, err error) (string, *grp
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
-	return grpcAddr, grpcServer, nil
+	return grpcServer, nil
 }
 
 func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, projectRepoFac *projectRepoFactory) error {
@@ -403,7 +403,7 @@ func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepo
 		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 
-	models.ManualScheduler = prime.NewScheduler(
+	models.ManualScheduler = prime.NewScheduler( // careful global variable
 		jobrunRepoFac,
 		func() time.Time {
 			return time.Now().UTC()
@@ -419,7 +419,7 @@ func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepo
 		for _, proj := range registeredProjects {
 			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
 			l.Info("bootstrapping project", "project name", proj.Name)
-			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil {
+			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil { // careful global variable
 				// Major ERROR, but we can't make this fatal
 				// other projects might be working fine
 				l.Error("no bootstrapping project", "error", err)
