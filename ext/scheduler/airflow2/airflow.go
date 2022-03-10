@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -205,97 +204,50 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 
 func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec,
 	jobName string) ([]models.JobStatus, error) {
-	schdHost, authToken, err := s.getHostAuth(projSpec)
-	if err != nil {
-		return nil, err
-	}
-	fetchURL := buildEndPoint(dagStatusURL, schdHost, jobName)
-
+	var jobStatus []models.JobStatus
+	var list DagRunList
 	req := airflowRequest{
-		URL:    fetchURL,
+		URL:    dagStatusURL,
 		method: http.MethodGet,
-		token:  authToken,
+		param:  jobName,
 		body:   nil,
 	}
-	resp, err := s.client.invoke(ctx, req)
+	resp, err := s.client.invoke(ctx, req, projSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failure reason for fetching airflow latest dag run: %w", err)
+		return jobStatus, fmt.Errorf("failure reason for fetching airflow latest dag run: %w", err)
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(resp, &list)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read airflow response: %w", err)
+		return nil, fmt.Errorf("json error: %s : %w", string(resp), err)
 	}
-
-	//{
-	//	"dag_runs": [
-	//		{
-	//			"dag_id": "",
-	//			"dag_run_url": "",
-	//			"execution_date": "2020-03-25T02:00:00+00:00",
-	//			"id": 1997,
-	//			"run_id": "scheduled__2020-03-25T02:00:00+00:00",
-	//			"start_date": "2020-06-01T16:32:58.489042+00:00",
-	//			"state": "success"
-	//	   },
-	//	],
-	//	"total_entries": 0
-	//}
-	var responseJSON struct {
-		DagRuns []map[string]interface{} `json:"dag_runs"`
-	}
-	err = json.Unmarshal(body, &responseJSON)
-	if err != nil {
-		return nil, fmt.Errorf("json error: %s : %w", string(body), err)
-	}
-
-	return toJobStatus(responseJSON.DagRuns, jobName)
+	return toJobStatus(list)
 }
 
 func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
-	schdHost, authToken, err := s.getHostAuth(projSpec)
-	if err != nil {
-		return err
-	}
-
-	schdHost = strings.Trim(schdHost, "/")
-	var jsonStr = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
+	var data = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
-	postURL := buildEndPoint(dagRunClearURL, schdHost, jobName)
-
 	req := airflowRequest{
-		URL:    postURL,
+		URL:    dagRunClearURL,
 		method: http.MethodPost,
-		token:  authToken,
-		body:   jsonStr,
+		param:  jobName,
+		body:   data,
 	}
-	resp, err := s.client.invoke(ctx, req)
+	_, err := s.client.invoke(ctx, req, projSpec)
 	if err != nil {
 		return fmt.Errorf("failure reason for clearing airflow dag runs: %w", err)
 	}
-	defer resp.Body.Close()
 	return nil
 }
 
 func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
 	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
-	schdHost, authToken, err := s.getHostAuth(projectSpec)
-	if err != nil {
-		return nil, err
-	}
-	postURL := buildEndPoint(dagStatusBatchURL, schdHost, "")
-	pageOffset := 0
 	var jobStatus []models.JobStatus
-	var responseJSON struct {
-		DagRuns      []map[string]interface{} `json:"dag_runs"`
-		TotalEntries int                      `json:"total_entries"`
-	}
+	var list DagRunList
+	pageOffset := 0
 	req := airflowRequest{
-		URL:    postURL,
+		URL:    dagStatusBatchURL,
 		method: http.MethodPost,
-		token:  authToken,
 		body:   []byte(""),
 	}
 
@@ -307,75 +259,35 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		"execution_date_gte": "%s",
 		"execution_date_lte": "%s"
 		}`, pageOffset, batchSize, jobName, startDate.UTC().Format(airflowDateFormat), endDate.UTC().Format(airflowDateFormat))
-		var jsonStr = []byte(dagRunBatchReq)
-		req.body = jsonStr
-		resp, err := s.client.invoke(ctx, req)
+		req.body = []byte(dagRunBatchReq)
+		resp, err := s.client.invoke(ctx, req, projectSpec)
 		if err != nil {
 			return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %v", err)
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read airflow response: %w", err)
+		if err := json.Unmarshal(resp, &list); err != nil {
+			return nil, fmt.Errorf("json error: %s: %w", string(resp), err)
 		}
 
-		if err := json.Unmarshal(body, &responseJSON); err != nil {
-			return nil, fmt.Errorf("json error: %s: %w", string(body), err)
-		}
-
-		jobStatusPerBatch, err := toJobStatus(responseJSON.DagRuns, jobName)
+		jobStatusPerBatch, err := toJobStatus(list)
 		if err != nil {
 			return nil, err
 		}
 		jobStatus = append(jobStatus, jobStatusPerBatch...)
 
 		pageOffset += batchSize
-		if responseJSON.TotalEntries <= pageOffset {
+		if list.TotalEntries <= pageOffset {
 			break
 		}
 	}
 
 	return jobStatus, nil
 }
-
-func (s *scheduler) getHostAuth(projectSpec models.ProjectSpec) (string, string, error) {
-	schdHost, ok := projectSpec.Config[models.ProjectSchedulerHost]
-	if !ok {
-		return "", "", fmt.Errorf("scheduler host not set for %s", projectSpec.Name)
-	}
-	authToken, ok := projectSpec.Secret.GetByName(models.ProjectSchedulerAuth)
-	if !ok {
-		return "", "", fmt.Errorf("%s secret not configured for project %s", models.ProjectSchedulerAuth, projectSpec.Name)
-	}
-	return schdHost, authToken, nil
-}
-
 func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
 	}
 	po.Notify(event)
-}
-
-func toJobStatus(dagRuns []map[string]interface{}, jobName string) ([]models.JobStatus, error) {
-	var jobStatus []models.JobStatus
-	for _, status := range dagRuns {
-		_, ok1 := status["execution_date"]
-		_, ok2 := status["state"]
-		if !ok1 || !ok2 {
-			return nil, fmt.Errorf("failed to find required response fields %s in %s", jobName, status)
-		}
-		scheduledAt, err := time.Parse(models.InstanceScheduledAtTimeLayout, status["execution_date"].(string))
-		if err != nil {
-			return nil, fmt.Errorf("error parsing date for %s, %s", jobName, status["execution_date"].(string))
-		}
-		jobStatus = append(jobStatus, models.JobStatus{
-			ScheduledAt: scheduledAt,
-			State:       models.JobRunState(status["state"].(string)),
-		})
-	}
-	return jobStatus, nil
 }
 
 func PathForJobDirectory(prefix, namespace string) string {
