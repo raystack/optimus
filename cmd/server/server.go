@@ -95,10 +95,15 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		log: l,
 	}
 
+	// used to encrypt secrets
+	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
+	if err != nil {
+		return fmt.Errorf("NewApplicationSecret: %w", err)
+	}
+
 	dbConn, err := setupDB(l, conf)
 	if err != nil {
 		return err
-	}
 	}
 
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
@@ -128,12 +133,6 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return time.Now().UTC()
 		},
 	)
-
-	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
-	if err != nil {
-		return fmt.Errorf("NewApplicationSecret: %w", err)
-	}
 
 	// registered project store repository factory, it's a wrapper over a storage
 	// interface
