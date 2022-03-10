@@ -106,6 +106,26 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		return err
 	}
 
+	jobrunRepoFac := &jobRunRepoFactory{
+		db: dbConn,
+	}
+
+	// registered project store repository factory, it's a wrapper over a storage
+	// interface
+	projectRepoFac := &projectRepoFactory{
+		db:   dbConn,
+		hash: appHash,
+	}
+
+	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
+	namespaceSpecRepoFac := &namespaceRepoFactory{
+		db:   dbConn,
+		hash: appHash,
+	}
+	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
+		db: dbConn,
+	}
+
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
 	switch conf.Scheduler.Name {
@@ -124,9 +144,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	default:
 		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
-	jobrunRepoFac := &jobRunRepoFactory{
-		db: dbConn,
-	}
+
 	models.ManualScheduler = prime.NewScheduler(
 		jobrunRepoFac,
 		func() time.Time {
@@ -134,12 +152,6 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		},
 	)
 
-	// registered project store repository factory, it's a wrapper over a storage
-	// interface
-	projectRepoFac := &projectRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
 	if !conf.Scheduler.SkipInit {
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
@@ -157,15 +169,6 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			l.Info("bootstrapped project", "project name", proj.Name)
 			cancel()
 		}
-	}
-
-	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
-	namespaceSpecRepoFac := &namespaceRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
-	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
-		db: dbConn,
 	}
 
 	// services
