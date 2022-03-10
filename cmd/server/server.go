@@ -231,44 +231,10 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 
-	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
-	defer grpcDialCancel()
-
-	// prepare http proxy
-	gwmux := runtime.NewServeMux(
-		runtime.WithErrorHandler(runtime.DefaultHTTPErrorHandler),
-	)
-	// gRPC dialup options to proxy http connections
-	grpcConn, err := grpc.DialContext(timeoutGrpcDialCtx, grpcAddr, []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(GRPCMaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(GRPCMaxSendMsgSize),
-		),
-	}...)
+	srv, cleanup, err := prepareHTTPProxy(grpcAddr, grpcServer)
+	defer cleanup()
 	if err != nil {
-		return fmt.Errorf("grpc.DialContext: %w", err)
-	}
-	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
-	defer runtimeCancel()
-	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
-	}
-
-	// base router
-	baseMux := http.NewServeMux()
-	baseMux.HandleFunc("/ping", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "pong")
-	}), "Ping").ServeHTTP)
-	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
-
-	//nolint: gomnd
-	srv := &http.Server{
-		Handler:      grpcHandlerFunc(grpcServer, baseMux),
-		Addr:         grpcAddr,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		return err
 	}
 
 	// run our server in a goroutine so that it doesn't block to wait for termination requests
@@ -346,6 +312,54 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 
 	l.Info("bye")
 	return terminalError
+}
+
+func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, func(), error) {
+	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
+	defer grpcDialCancel()
+
+	// prepare http proxy
+	gwmux := runtime.NewServeMux(
+		runtime.WithErrorHandler(runtime.DefaultHTTPErrorHandler),
+	)
+	// gRPC dialup options to proxy http connections
+	grpcConn, err := grpc.DialContext(timeoutGrpcDialCtx, grpcAddr, []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(GRPCMaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(GRPCMaxSendMsgSize),
+		),
+	}...)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("grpc.DialContext: %w", err)
+	}
+	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
+	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		runtimeCancel()
+		return nil, func() {}, fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
+	}
+
+	// base router
+	baseMux := http.NewServeMux()
+	baseMux.HandleFunc("/ping", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "pong")
+	}), "Ping").ServeHTTP)
+	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
+
+	//nolint: gomnd
+	srv := &http.Server{
+		Handler:      grpcHandlerFunc(grpcServer, baseMux),
+		Addr:         grpcAddr,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	cleanup := func() {
+		runtimeCancel()
+	}
+
+	return srv, cleanup, nil
 }
 
 func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
