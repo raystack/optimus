@@ -126,10 +126,11 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		db: dbConn,
 	}
 
-	err = initSchedulers(l, conf, jobrunRepoFac, projectRepoFac)
+	scheduler, err := initScheduler(l, conf, projectRepoFac)
 	if err != nil {
 		return err
 	}
+	models.BatchScheduler = scheduler // TODO: remove global
 
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
@@ -164,15 +165,15 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 	replayWorkerFactory := &replayWorkerFact{
 		replaySpecRepoFac: replaySpecRepoFac,
-		scheduler:         models.BatchScheduler,
+		scheduler:         scheduler,
 		logger:            l,
 	}
-	replayValidator := job.NewReplayValidator(models.BatchScheduler)
+	replayValidator := job.NewReplayValidator(scheduler)
 	replaySyncer := job.NewReplaySyncer(
 		l,
 		replaySpecRepoFac,
 		projectRepoFac,
-		models.BatchScheduler,
+		scheduler,
 		func() time.Time {
 			return time.Now().UTC()
 		},
@@ -182,7 +183,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		NumWorkers:    conf.Server.ReplayNumWorkers,
 		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
 		RunTimeout:    conf.Server.ReplayRunTimeout,
-	}, models.BatchScheduler, replayValidator, replaySyncer)
+	}, scheduler, replayValidator, replaySyncer)
 
 	backupRepoFac := backupRepoFactory{
 		db: dbConn,
@@ -205,7 +206,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		config.Version,
 		job.NewService(
 			&jobSpecRepoFac,
-			models.BatchScheduler,
+			scheduler,
 			models.ManualScheduler,
 			jobSpecAssetDump(),
 			dependencyResolver,
@@ -228,7 +229,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			},
 			run.NewGoEngine(),
 		),
-		models.BatchScheduler,
+		scheduler,
 	))
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
@@ -393,43 +394,37 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 	return srv, cleanup, nil
 }
 
-func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, projectRepoFac *projectRepoFactory) error {
+func initScheduler(l log.Logger, conf config.Optimus, projectRepoFac *projectRepoFactory) (models.SchedulerUnit, error) {
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
+	var scheduler models.SchedulerUnit
 	switch conf.Scheduler.Name {
 	case "airflow":
-		models.BatchScheduler = airflow.NewScheduler(
+		scheduler = airflow.NewScheduler(
 			&airflowBucketFactory{},
 			&http.Client{},
 			jobCompiler,
 		)
 	case "airflow2":
-		models.BatchScheduler = airflow2.NewScheduler(
+		scheduler = airflow2.NewScheduler(
 			&airflowBucketFactory{},
 			&http.Client{},
 			jobCompiler,
 		)
 	default:
-		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
+		return nil, fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
-
-	models.ManualScheduler = prime.NewScheduler( // careful global variable
-		jobrunRepoFac,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-	)
 
 	if !conf.Scheduler.SkipInit {
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
-			return fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
+			return nil, fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
 		}
 		// bootstrap scheduler for registered projects
 		for _, proj := range registeredProjects {
 			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
 			l.Info("bootstrapping project", "project name", proj.Name)
-			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil { // careful global variable
+			if err := scheduler.Bootstrap(bootstrapCtx, proj); err != nil {
 				// Major ERROR, but we can't make this fatal
 				// other projects might be working fine
 				l.Error("no bootstrapping project", "error", err)
@@ -438,10 +433,17 @@ func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepo
 			cancel()
 		}
 	}
-	return nil
+	return scheduler, nil
 }
 
 func initPrimeCluster(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
+	models.ManualScheduler = prime.NewScheduler( // careful global variable
+		jobrunRepoFac,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+	)
+
 	clusterCtx, clusterCancel := context.WithCancel(context.Background())
 	clusterServer := gossip.NewServer(l)
 	clusterPlanner := prime.NewPlanner(
