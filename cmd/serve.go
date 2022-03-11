@@ -1,6 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/salt/log"
@@ -16,7 +21,16 @@ func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			"group:other": "dev",
 		},
 		RunE: func(c *cli.Command, args []string) error {
-			return server.Initialize(l, conf)
+			optimusServer, err := server.New(l, conf)
+			if err != nil {
+				return fmt.Errorf("unable to create server: %w", err)
+			}
+
+			sigc := make(chan os.Signal, 1)
+			signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+			<-sigc
+			l.Info("Shutting down server")
+			return optimusServer.Shutdown()
 		},
 	}
 	return c

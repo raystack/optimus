@@ -6,13 +6,26 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
+	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/datastore"
+	"github.com/odpf/optimus/ext/notify/slack"
+	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/run"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/utils"
 )
 
 var (
@@ -43,6 +56,7 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		return nil, err
 	}
 
+	l.Info("Starting optimus", "version", config.Version)
 	addr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	server := &OptimusServer{
 		conf:       conf,
@@ -55,6 +69,8 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		server.setupAppKey,
 		server.setupDB,
 		server.setupGRPCServer,
+		server.setupRuntimeServer,
+		server.setupMonitoring,
 		server.setupHTTPProxy,
 		server.startListening,
 	}
@@ -89,6 +105,12 @@ func (s *OptimusServer) setupGRPCServer() error {
 	return err
 }
 
+func (s *OptimusServer) setupMonitoring() error {
+	grpc_prometheus.Register(s.grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
+	return nil
+}
+
 func (s *OptimusServer) setupHTTPProxy() error {
 	srv, cleanup, err := prepareHTTPProxy(s.serverAddr, s.grpcServer)
 	s.httpServer = srv
@@ -102,7 +124,7 @@ func (s *OptimusServer) startListening() error {
 		s.logger.Info("starting listening at", "address", s.serverAddr)
 		if err := s.httpServer.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
-				s.logger.Error("server error", "error", err)
+				s.logger.Fatal("server error", "error", err)
 			}
 		}
 	}()
@@ -138,6 +160,148 @@ func (s *OptimusServer) Shutdown() error {
 	}
 
 	s.logger.Info("Server shutdown complete")
+
+	return nil
+}
+
+func (s *OptimusServer) setupRuntimeServer() error {
+	progressObs := &pipelineLogObserver{
+		log: s.logger,
+	}
+
+	jobrunRepoFac := &jobRunRepoFactory{
+		db: s.dbConn,
+	}
+
+	projectRepoFac := &projectRepoFactory{
+		db:   s.dbConn,
+		hash: s.appKey,
+	}
+
+	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
+	namespaceSpecRepoFac := &namespaceRepoFactory{
+		db:   s.dbConn,
+		hash: s.appKey,
+	}
+	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
+		db: s.dbConn,
+	}
+
+	scheduler, err := initScheduler(s.logger, s.conf, projectRepoFac)
+	if err != nil {
+		return err
+	}
+	models.BatchScheduler = scheduler // TODO: remove global
+
+	// services
+	projectService := service.NewProjectService(projectRepoFac)
+	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
+	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
+
+	// registered job store repository factory
+	jobSpecRepoFac := jobSpecRepoFactory{
+		db:                    s.dbConn,
+		projectJobSpecRepoFac: *projectJobSpecRepoFac,
+	}
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
+	priorityResolver := job.NewPriorityResolver()
+
+	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
+		db: s.dbConn,
+	}
+	resourceSpecRepoFac := resourceSpecRepoFactory{
+		db:                         s.dbConn,
+		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
+	}
+
+	replaySpecRepoFac := &replaySpecRepoRepository{
+		db:             s.dbConn,
+		jobSpecRepoFac: jobSpecRepoFac,
+	}
+	replayWorkerFactory := &replayWorkerFact{
+		replaySpecRepoFac: replaySpecRepoFac,
+		scheduler:         scheduler,
+		logger:            s.logger,
+	}
+	replayValidator := job.NewReplayValidator(scheduler)
+	replaySyncer := job.NewReplaySyncer(
+		s.logger,
+		replaySpecRepoFac,
+		projectRepoFac,
+		scheduler,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+	)
+
+	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+		NumWorkers:    s.conf.Server.ReplayNumWorkers,
+		WorkerTimeout: s.conf.Server.ReplayWorkerTimeout,
+		RunTimeout:    s.conf.Server.ReplayRunTimeout,
+	}, scheduler, replayValidator, replaySyncer)
+
+	backupRepoFac := backupRepoFactory{
+		db: s.dbConn,
+	}
+
+	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
+	s.cleanupFn = append(s.cleanupFn, cancelNotifiers)
+	eventService := job.NewEventService(s.logger, map[string]models.Notifier{
+		"slack": slack.NewNotifier(notificationContext, slackapi.APIURL,
+			slack.DefaultEventBatchInterval,
+			func(err error) {
+				s.logger.Error("slack error accumulator", "error", err)
+			},
+		),
+	})
+
+	// runtime service instance over grpc
+	manualScheduler := models.ManualScheduler
+	jobService := job.NewService(
+		&jobSpecRepoFac,
+		scheduler,
+		manualScheduler,
+		jobSpecAssetDump(),
+		dependencyResolver,
+		priorityResolver,
+		projectJobSpecRepoFac,
+		replayManager,
+	)
+	jobRunService := run.NewService(
+		jobrunRepoFac,
+		secretService,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+		run.NewGoEngine(),
+	)
+	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
+		s.logger,
+		config.Version,
+		jobService,
+		eventService,
+		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
+		projectService,
+		namespaceService,
+		secretService,
+		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
+		progressObs,
+		jobRunService,
+		scheduler,
+	))
+
+	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobrunRepoFac, s.dbConn)
+	if err != nil {
+		return err
+	}
+
+	s.cleanupFn = append(s.cleanupFn, func() {
+		replayManager.Close()
+	})
+	s.cleanupFn = append(s.cleanupFn, cleanupCluster)
+	s.cleanupFn = append(s.cleanupFn, func() {
+		eventService.Close()
+	})
 
 	return nil
 }
