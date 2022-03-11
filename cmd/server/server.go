@@ -177,11 +177,13 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return time.Now().UTC()
 		},
 	)
+
 	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    conf.Server.ReplayNumWorkers,
 		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
 		RunTimeout:    conf.Server.ReplayRunTimeout,
 	}, models.BatchScheduler, replayValidator, replaySyncer)
+
 	backupRepoFac := backupRepoFactory{
 		db: dbConn,
 	}
@@ -295,39 +297,52 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	return terminalError
 }
 
-func initPrimeCluster(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
-	clusterCtx, clusterCancel := context.WithCancel(context.Background())
-	clusterServer := gossip.NewServer(l)
-	clusterPlanner := prime.NewPlanner(
-		l,
-		clusterServer, jobrunRepoFac, &instanceRepoFactory{
-			db: dbConn,
-		},
-		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-	cleanup := func() {
-		// shutdown cluster
-		clusterCancel()
-		if clusterPlanner != nil {
-			clusterPlanner.Close()
-		}
-		if clusterServer != nil {
-			clusterServer.Shutdown()
-		}
+func setupDB(l log.Logger, conf config.Optimus) (*gorm.DB, error) {
+	// setup db
+	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
+		return nil, fmt.Errorf("postgres.Migrate: %w", err)
 	}
-
-	if conf.Scheduler.NodeID != "" {
-		// start optimus cluster
-		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
-			return cleanup, err
-		}
-
-		clusterPlanner.Init(clusterCtx)
+	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
+		conf.Server.DB.MaxOpenConnection, l.Writer())
+	if err != nil {
+		return nil, fmt.Errorf("postgres.Connect: %w", err)
 	}
+	return dbConn, nil
+}
 
-	return cleanup, nil
+func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
+	// Logrus entry is used, allowing pre-definition of certain fields by the user.
+	grpcLogLevel, err := logrus.ParseLevel(l.Level())
+	if err != nil {
+		return nil, err
+	}
+	grpcLogrus := logrus.New()
+	grpcLogrus.SetLevel(grpcLogLevel)
+	grpcLogrusEntry := logrus.NewEntry(grpcLogrus)
+	// Shared options for the logger, with a custom gRPC code to log level function.
+	opts := []grpc_logrus.Option{
+		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
+	}
+	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
+	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
+
+	grpcOpts := []grpc.ServerOption{
+		grpc_middleware.WithUnaryServerChain(
+			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
+			grpc_logrus.UnaryServerInterceptor(grpcLogrusEntry, opts...),
+			otelgrpc.UnaryServerInterceptor(),
+			grpc_prometheus.UnaryServerInterceptor,
+		),
+		grpc_middleware.WithStreamServerChain(
+			otelgrpc.StreamServerInterceptor(),
+			grpc_prometheus.StreamServerInterceptor,
+		),
+		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
+		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
+	}
+	grpcServer := grpc.NewServer(grpcOpts...)
+	reflection.Register(grpcServer)
+	return grpcServer, nil
 }
 
 func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, func(), error) {
@@ -378,41 +393,6 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 	return srv, cleanup, nil
 }
 
-func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
-	// Logrus entry is used, allowing pre-definition of certain fields by the user.
-	grpcLogLevel, err := logrus.ParseLevel(l.Level())
-	if err != nil {
-		return nil, err
-	}
-	grpcLogrus := logrus.New()
-	grpcLogrus.SetLevel(grpcLogLevel)
-	grpcLogrusEntry := logrus.NewEntry(grpcLogrus)
-	// Shared options for the logger, with a custom gRPC code to log level function.
-	opts := []grpc_logrus.Option{
-		grpc_logrus.WithLevels(grpc_logrus.DefaultCodeToLevel),
-	}
-	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
-	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
-
-	grpcOpts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(
-			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
-			grpc_logrus.UnaryServerInterceptor(grpcLogrusEntry, opts...),
-			otelgrpc.UnaryServerInterceptor(),
-			grpc_prometheus.UnaryServerInterceptor,
-		),
-		grpc_middleware.WithStreamServerChain(
-			otelgrpc.StreamServerInterceptor(),
-			grpc_prometheus.StreamServerInterceptor,
-		),
-		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
-		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
-	}
-	grpcServer := grpc.NewServer(grpcOpts...)
-	reflection.Register(grpcServer)
-	return grpcServer, nil
-}
-
 func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, projectRepoFac *projectRepoFactory) error {
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
@@ -461,17 +441,39 @@ func initSchedulers(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepo
 	return nil
 }
 
-func setupDB(l log.Logger, conf config.Optimus) (*gorm.DB, error) {
-	// setup db
-	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
-		return nil, fmt.Errorf("postgres.Migrate: %w", err)
+func initPrimeCluster(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
+	clusterCtx, clusterCancel := context.WithCancel(context.Background())
+	clusterServer := gossip.NewServer(l)
+	clusterPlanner := prime.NewPlanner(
+		l,
+		clusterServer, jobrunRepoFac, &instanceRepoFactory{
+			db: dbConn,
+		},
+		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
+			return time.Now().UTC()
+		},
+	)
+	cleanup := func() {
+		// shutdown cluster
+		clusterCancel()
+		if clusterPlanner != nil {
+			clusterPlanner.Close()
+		}
+		if clusterServer != nil {
+			clusterServer.Shutdown()
+		}
 	}
-	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
-		conf.Server.DB.MaxOpenConnection, l.Writer())
-	if err != nil {
-		return nil, fmt.Errorf("postgres.Connect: %w", err)
+
+	if conf.Scheduler.NodeID != "" {
+		// start optimus cluster
+		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
+			return cleanup, err
+		}
+
+		clusterPlanner.Init(clusterCtx)
 	}
-	return dbConn, nil
+
+	return cleanup, nil
 }
 
 // grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.
