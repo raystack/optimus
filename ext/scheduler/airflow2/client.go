@@ -144,12 +144,14 @@ func getDagRunReqBody(param models.JobQuery) DagRunReqBody {
 func getJobRunList(res DagRunList) []models.JobRun {
 	var jobRunList []models.JobRun
 	for _, dag := range res.DagRuns {
-		jobRun := models.JobRun{
-			Status:      models.JobRunState(dag.State),
-			ScheduledAt: dag.ExecutionDate,
-			ExecutedAt:  dag.StartDate,
+		if !dag.ExternalTrigger {
+			jobRun := models.JobRun{
+				Status:      models.JobRunState(dag.State),
+				ScheduledAt: dag.ExecutionDate,
+				ExecutedAt:  dag.StartDate,
+			}
+			jobRunList = append(jobRunList, jobRun)
 		}
-		jobRunList = append(jobRunList, jobRun)
 	}
 	return jobRunList
 }

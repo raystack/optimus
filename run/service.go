@@ -227,20 +227,21 @@ func buildExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time
 }
 
 func merge(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
-	var list []models.JobRun
-	if len(expected) < len(actual) {
-		list = expected
-	} else {
-		list = actual
-	}
-	for index, value := range list {
-		if actual[index].ScheduledAt.Equal(value.ScheduledAt) {
-			value.Status = actual[index].Status
+	m := actualRunMap(actual)
+	for _, exp := range expected {
+		if act, ok := m[exp.ScheduledAt.UTC().String()]; ok {
+			exp.Status = act.Status
 		}
 	}
 	return expected
 }
-
+func actualRunMap(runs []models.JobRun) map[string]models.JobRun {
+	m := map[string]models.JobRun{}
+	for _, v := range runs {
+		m[v.ScheduledAt.UTC().String()] = v
+	}
+	return m
+}
 func filter(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
 	var filteredRuns []models.JobRun
 	for _, v := range runs {
@@ -250,7 +251,6 @@ func filter(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
 	}
 	return filteredRuns
 }
-
 func filterMap(filter []string) map[string]struct{} {
 	m := map[string]struct{}{}
 	for _, v := range filter {
