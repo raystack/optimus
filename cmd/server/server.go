@@ -6,42 +6,29 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/go-multierror"
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
-	"github.com/odpf/optimus/datastore"
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/ext/executor/noop"
-	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/ext/scheduler/prime"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	_ "github.com/odpf/optimus/plugin"
-	"github.com/odpf/optimus/run"
-	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	"github.com/sirupsen/logrus"
-	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/net/http2"
@@ -51,16 +38,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// termChan listen for sigterm
-var termChan = make(chan os.Signal, 1)
-
 const (
 	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
-)
 
-const (
 	DialTimeout      = time.Second * 5
 	BootstrapTimeout = time.Second * 10
 )
@@ -84,218 +66,6 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 		}
 	}
 	return nil
-}
-
-func Initialize(l log.Logger, conf config.Optimus) error {
-	if err := checkRequiredConfigs(conf.Server); err != nil {
-		return err
-	}
-	l.Info("starting optimus", "version", config.Version)
-	progressObs := &pipelineLogObserver{
-		log: l,
-	}
-
-	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
-	if err != nil {
-		return fmt.Errorf("NewApplicationSecret: %w", err)
-	}
-
-	dbConn, err := setupDB(l, conf)
-	if err != nil {
-		return err
-	}
-
-	jobrunRepoFac := &jobRunRepoFactory{
-		db: dbConn,
-	}
-
-	// registered project store repository factory, it's a wrapper over a storage
-	// interface
-	projectRepoFac := &projectRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
-
-	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
-	namespaceSpecRepoFac := &namespaceRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
-	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
-		db: dbConn,
-	}
-
-	scheduler, err := initScheduler(l, conf, projectRepoFac)
-	if err != nil {
-		return err
-	}
-	models.BatchScheduler = scheduler // TODO: remove global
-
-	// services
-	projectService := service.NewProjectService(projectRepoFac)
-	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
-	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-
-	// registered job store repository factory
-	jobSpecRepoFac := jobSpecRepoFactory{
-		db:                    dbConn,
-		projectJobSpecRepoFac: *projectJobSpecRepoFac,
-	}
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
-	priorityResolver := job.NewPriorityResolver()
-
-	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
-	grpcServer, err := setupGRPCServer(l)
-	if err != nil {
-		return err
-	}
-
-	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
-		db: dbConn,
-	}
-	resourceSpecRepoFac := resourceSpecRepoFactory{
-		db:                         dbConn,
-		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
-	}
-
-	replaySpecRepoFac := &replaySpecRepoRepository{
-		db:             dbConn,
-		jobSpecRepoFac: jobSpecRepoFac,
-	}
-	replayWorkerFactory := &replayWorkerFact{
-		replaySpecRepoFac: replaySpecRepoFac,
-		scheduler:         scheduler,
-		logger:            l,
-	}
-	replayValidator := job.NewReplayValidator(scheduler)
-	replaySyncer := job.NewReplaySyncer(
-		l,
-		replaySpecRepoFac,
-		projectRepoFac,
-		scheduler,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-
-	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    conf.Server.ReplayNumWorkers,
-		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
-		RunTimeout:    conf.Server.ReplayRunTimeout,
-	}, scheduler, replayValidator, replaySyncer)
-
-	backupRepoFac := backupRepoFactory{
-		db: dbConn,
-	}
-
-	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
-	defer cancelNotifiers()
-	eventService := job.NewEventService(l, map[string]models.Notifier{
-		"slack": slack.NewNotifier(notificationContext, slackapi.APIURL,
-			slack.DefaultEventBatchInterval,
-			func(err error) {
-				l.Error("slack error accumulator", "error", err)
-			},
-		),
-	})
-
-	// runtime service instance over grpc
-	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
-		l,
-		config.Version,
-		job.NewService(
-			&jobSpecRepoFac,
-			scheduler,
-			models.ManualScheduler,
-			jobSpecAssetDump(),
-			dependencyResolver,
-			priorityResolver,
-			projectJobSpecRepoFac,
-			replayManager,
-		),
-		eventService,
-		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
-		projectService,
-		namespaceService,
-		secretService,
-		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
-		progressObs,
-		run.NewService(
-			jobrunRepoFac,
-			secretService,
-			func() time.Time {
-				return time.Now().UTC()
-			},
-			run.NewGoEngine(),
-		),
-		scheduler,
-	))
-	grpc_prometheus.Register(grpcServer)
-	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
-
-	srv, cleanup, err := prepareHTTPProxy(grpcAddr, grpcServer)
-	defer cleanup()
-	if err != nil {
-		return err
-	}
-
-	// run our server in a goroutine so that it doesn't block to wait for termination requests
-	go func() {
-		l.Info("starting listening at", "address", grpcAddr)
-		if err := srv.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
-				l.Fatal("server error", "error", err)
-			}
-		}
-	}()
-
-	cleanupCluster, err := initPrimeCluster(l, conf, jobrunRepoFac, dbConn)
-	if err != nil {
-		return err
-	}
-
-	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-
-	// Block until we receive our signal.
-	<-termChan
-	l.Info("termination request received")
-	var terminalError error
-
-	if err = replayManager.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("replayManager.Close: %w", err))
-	}
-
-	// Create a deadline to wait for server
-	ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
-	defer cancelProxy()
-
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline.
-	if err := srv.Shutdown(ctxProxy); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("srv.Shutdown: %w", err))
-	}
-	grpcServer.GracefulStop()
-
-	// gracefully shutdown event service, e.g. slack notifiers flush in memory batches
-	cancelNotifiers()
-	if err := eventService.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("eventService.Close: %w", err))
-	}
-
-	cleanupCluster()
-
-	sqlConn, err := dbConn.DB()
-	if err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("dbConn.DB: %w", err))
-	}
-	if err := sqlConn.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("sqlConn.Close: %w", err))
-	}
-
-	l.Info("bye")
-	return terminalError
 }
 
 func setupDB(l log.Logger, conf config.Optimus) (*gorm.DB, error) {
@@ -415,7 +185,7 @@ func initScheduler(l log.Logger, conf config.Optimus, projectRepoFac *projectRep
 		return nil, fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 
-	if !conf.Scheduler.SkipInit {
+	if !conf.Scheduler.SkipInit { // TODO: This should not be required
 		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
@@ -459,10 +229,10 @@ func initPrimeCluster(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRe
 		// shutdown cluster
 		clusterCancel()
 		if clusterPlanner != nil {
-			clusterPlanner.Close()
+			clusterPlanner.Close() // err is nil
 		}
 		if clusterServer != nil {
-			clusterServer.Shutdown()
+			clusterServer.Shutdown() // TODO: log error
 		}
 	}
 

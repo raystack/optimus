@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -26,11 +25,6 @@ import (
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
-)
-
-var (
-	ErrMissingConfig       = errors.New("required config missing")
-	ErrUnsupportedDBScheme = errors.New("unsupported database scheme, use 'postgres'")
 )
 
 type setupFn func() error
@@ -296,11 +290,14 @@ func (s *OptimusServer) setupRuntimeServer() error {
 	}
 
 	s.cleanupFn = append(s.cleanupFn, func() {
-		replayManager.Close()
+		replayManager.Close() // err is nil
 	})
 	s.cleanupFn = append(s.cleanupFn, cleanupCluster)
 	s.cleanupFn = append(s.cleanupFn, func() {
-		eventService.Close()
+		err = eventService.Close()
+		if err != nil {
+			s.logger.Error("Error while closing event service: %s", err)
+		}
 	})
 
 	return nil
