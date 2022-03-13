@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -239,8 +240,8 @@ func (sv *RuntimeServiceServer) JobRun(ctx context.Context, req *pb.JobRunReques
 	}
 	query, err := buildJobQuery(req)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to find the job %s for project %s", err.Error(),
-			req.GetJobName(), req.GetProjectName())
+		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to build query %s", err.Error(),
+			req.GetJobName())
 	}
 	jobRuns, err := sv.runSvc.GetJobRunList(ctx, projSpec, jobSpec, query)
 	if err != nil {
@@ -373,25 +374,23 @@ func NewRuntimeServiceServer(
 
 func buildJobQuery(req *pb.JobRunRequest) (*models.JobQuery, error) {
 	var query *models.JobQuery
-	if req.GetStartDate() == "" && req.GetEndDate() == "" {
+	if req.GetStartDate().AsTime().Unix() == 0 && req.GetEndDate().AsTime().Unix() == 0 {
 		query = &models.JobQuery{
 			Name:        req.GetJobName(),
 			OnlyLastRun: true,
 		}
 		return query, nil
 	}
-	start, err := time.Parse(time.RFC3339, req.GetStartDate())
-	if err != nil {
-		return nil, err
+	if req.GetStartDate().AsTime().Unix() == 0 {
+		return nil, errors.New("empty start date is given")
 	}
-	end, err := time.Parse(time.RFC3339, req.GetEndDate())
-	if err != nil {
-		return nil, err
+	if req.GetEndDate().AsTime().Unix() == 0 {
+		return nil, errors.New("empty end date is given")
 	}
 	query = &models.JobQuery{
 		Name:      req.GetJobName(),
-		StartDate: start,
-		EndDate:   end,
+		StartDate: req.GetStartDate().AsTime(),
+		EndDate:   req.GetEndDate().AsTime(),
 		Filter:    req.GetFilter(),
 	}
 	return query, nil

@@ -47,8 +47,8 @@ type DagRunReqBody struct {
 	PageOffset       int      `json:"page_offset"`
 	PageLimit        int      `json:"page_limit"`
 	DagIds           []string `json:"dag_ids"`
-	ExecutionDateGte string   `json:"execution_date_gte"`
-	ExecutionDateLte string   `json:"execution_date_lte"`
+	ExecutionDateGte string   `json:"execution_date_gte,omitempty"`
+	ExecutionDateLte string   `json:"execution_date_lte,omitempty"`
 }
 
 type airflowClient struct {
@@ -71,9 +71,10 @@ func (ac airflowClient) invoke(ctx context.Context, r airflowRequest, projectSpe
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
-	HTTPResp, err := ac.client.Do(request)
-	if err != nil {
-		return resp, fmt.Errorf("failed to call airflow %s due to %w", r.URL, err)
+
+	HTTPResp, respErr := ac.client.Do(request)
+	if respErr != nil {
+		return resp, fmt.Errorf("failed to call airflow %s due to %w", r.URL, respErr)
 	}
 	if HTTPResp.StatusCode != http.StatusOK {
 		HTTPResp.Body.Close()
@@ -107,16 +108,16 @@ func (ac airflowClient) parseResponse(resp *http.Response) ([]byte, error) {
 
 func (ac airflowClient) buildEndPoint(host string, URL string, pathParam string) string {
 	host = strings.Trim(host, "/")
-	url := &url.URL{
+	u := &url.URL{
 		Scheme: "http",
 		Host:   host,
 	}
 	if pathParam != "" {
-		url.Path = "/" + strings.ReplaceAll(URL, "%s", pathParam)
+		u.Path = "/" + strings.ReplaceAll(URL, "%s", pathParam)
 	} else {
-		url.Path = "/" + URL
+		u.Path = "/" + URL
 	}
-	return url.String()
+	return u.String()
 }
 
 func toJobStatus(list DagRunList) ([]models.JobStatus, error) {
@@ -130,7 +131,7 @@ func toJobStatus(list DagRunList) ([]models.JobStatus, error) {
 	return jobStatus, nil
 }
 
-func getDagRunReqBody(param models.JobQuery) DagRunReqBody {
+func getDagRunReqBody(param *models.JobQuery) DagRunReqBody {
 	if param.OnlyLastRun {
 		return DagRunReqBody{
 			OrderBy:    "-execution_date",

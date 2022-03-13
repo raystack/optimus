@@ -22,6 +22,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	AirflowDateFormat = "2006-01-02T15:04:05+00:00"
+)
+
 func TestRuntimeServiceServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
@@ -686,11 +690,15 @@ func TestRuntimeServiceServer(t *testing.T) {
 	})
 
 	t.Run("JobRun", func(t *testing.T) {
+		date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
+		if err != nil {
+			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		}
+		//emptyDate, err := time.Parse(time.RFC3339, "1970-01-01T00:00:00Z")
+		//if err != nil {
+		//	t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		//}
 		t.Run("should return all job run via scheduler if valid inputs are given", func(t *testing.T) {
-			date, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
-			if err != nil {
-				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
-			}
 			Version := "1.0.0"
 
 			projectSpec := models.ProjectSpec{
@@ -750,8 +758,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				StartDate:   "2022-03-25T02:00:00+00:00",
-				EndDate:     "2022-03-26T02:00:00+00:00",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
 				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
@@ -799,8 +807,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     "transform-tables",
-				StartDate:   "2022-03-25T02:00:00+00:00",
-				EndDate:     "2022-03-26T02:00:00+00:00",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
 				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
@@ -843,8 +851,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     "transform-tables",
-				StartDate:   "2022-03-25T02:00:00+00:00",
-				EndDate:     "2022-03-26T02:00:00+00:00",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
 				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
@@ -895,9 +903,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				StartDate:   "",
-				EndDate:     "2022-03-26T02:00:00+00:00",
-				Filter:      []string{"success"},
+				//make empty
+				StartDate: timestamppb.New(time.Unix(0, 0)),
+				EndDate:   timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:    []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.NotNil(t, err)
@@ -944,16 +953,17 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				StartDate:   "2022-03-26T02:00:00+00:00",
-				EndDate:     "",
-				Filter:      []string{"success"},
+				StartDate:   timestamppb.New(date),
+				//make empty
+				EndDate: timestamppb.New(time.Unix(0, 0)),
+				Filter:  []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.NotNil(t, err)
 			assert.Nil(t, resp)
 		})
 		t.Run("should not return job runs if scheduler is not reachable", func(t *testing.T) {
-			date, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+			date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
 			if err != nil {
 				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
 			}
@@ -1005,8 +1015,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				StartDate:   "2022-03-25T02:00:00+00:00",
-				EndDate:     "2022-03-26T02:00:00+00:00",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
 				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
@@ -1014,7 +1024,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 		t.Run("should not return job runs if scheduler return empty response", func(t *testing.T) {
-			date, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+			date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
 			if err != nil {
 				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
 			}
@@ -1066,8 +1076,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				StartDate:   "2022-03-25T02:00:00+00:00",
-				EndDate:     "2022-03-26T02:00:00+00:00",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
 				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
@@ -1075,7 +1085,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 		t.Run("should return job runs if date range is empty", func(t *testing.T) {
-			date, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+			date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
 			if err != nil {
 				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
 			}
@@ -1135,9 +1145,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				StartDate:   "",
-				EndDate:     "",
-				Filter:      []string{"success"},
+				//empty
+				StartDate: timestamppb.New(time.Unix(0, 0)),
+				//empty
+				EndDate: timestamppb.New(time.Unix(0, 0)),
+				Filter:  []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.Nil(t, err)

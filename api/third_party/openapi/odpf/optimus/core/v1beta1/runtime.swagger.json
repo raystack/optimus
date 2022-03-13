@@ -250,13 +250,15 @@
             "name": "startDate",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           },
           {
             "name": "endDate",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           },
           {
             "name": "filter",

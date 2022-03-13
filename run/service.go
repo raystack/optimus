@@ -221,15 +221,15 @@ func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec) (*cron.S
 		return nil, fmt.Errorf("unable to parse the interval from DB %w", err)
 	}
 	duration := sch.Interval(jobStartDate)
-	jobQuery.StartDate = givenStartDate.Add(-duration)
-	jobQuery.EndDate = givenEndDate.Add(-duration)
+	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
+	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
 	return sch, err
 }
 
 func buildExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
 	var jobRuns []models.JobRun
-	start := spec.Next(startTime)
-	end := spec.Next(endTime)
+	start := startTime
+	end := endTime
 	exit := spec.Next(end)
 	for !start.Equal(exit) {
 		jobRuns = append(jobRuns, models.JobRun{
