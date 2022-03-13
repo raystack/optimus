@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/odpf/optimus/core/cron"
 	"testing"
 	"time"
 
 	"github.com/odpf/optimus/store"
 
 	"github.com/google/uuid"
-
+	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
