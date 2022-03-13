@@ -159,13 +159,6 @@ func (s *OptimusServer) Shutdown() error {
 }
 
 func (s *OptimusServer) setupRuntimeServer() error {
-	progressObs := &pipelineLogObserver{
-		log: s.logger,
-	}
-
-	jobrunRepoFac := &jobRunRepoFactory{
-		db: s.dbConn,
-	}
 
 	projectRepoFac := &projectRepoFactory{
 		db:   s.dbConn,
@@ -200,14 +193,6 @@ func (s *OptimusServer) setupRuntimeServer() error {
 	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
-	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
-		db: s.dbConn,
-	}
-	resourceSpecRepoFac := resourceSpecRepoFactory{
-		db:                         s.dbConn,
-		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
-	}
-
 	replaySpecRepoFac := &replaySpecRepoRepository{
 		db:             s.dbConn,
 		jobSpecRepoFac: jobSpecRepoFac,
@@ -234,10 +219,6 @@ func (s *OptimusServer) setupRuntimeServer() error {
 		RunTimeout:    s.conf.Server.ReplayRunTimeout,
 	}, scheduler, replayValidator, replaySyncer)
 
-	backupRepoFac := backupRepoFactory{
-		db: s.dbConn,
-	}
-
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	s.cleanupFn = append(s.cleanupFn, cancelNotifiers)
 	eventService := job.NewEventService(s.logger, map[string]models.Notifier{
@@ -261,6 +242,10 @@ func (s *OptimusServer) setupRuntimeServer() error {
 		projectJobSpecRepoFac,
 		replayManager,
 	)
+
+	jobrunRepoFac := &jobRunRepoFactory{
+		db: s.dbConn,
+	}
 	jobRunService := run.NewService(
 		jobrunRepoFac,
 		secretService,
@@ -269,12 +254,29 @@ func (s *OptimusServer) setupRuntimeServer() error {
 		},
 		run.NewGoEngine(),
 	)
+
+	progressObs := &pipelineLogObserver{
+		log: s.logger,
+	}
+
+	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
+		db: s.dbConn,
+	}
+	resourceSpecRepoFac := resourceSpecRepoFactory{
+		db:                         s.dbConn,
+		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
+	}
+	backupRepoFac := backupRepoFactory{
+		db: s.dbConn,
+	}
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
+
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,
 		config.Version,
 		jobService,
 		eventService,
-		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
+		dataStoreService,
 		projectService,
 		namespaceService,
 		secretService,
