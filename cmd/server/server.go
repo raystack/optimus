@@ -16,9 +16,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
-	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/plugin"
-	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/salt/log"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -27,7 +24,6 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"gorm.io/gorm"
 )
 
 const (
@@ -58,19 +54,6 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 		}
 	}
 	return nil
-}
-
-func setupDB(l log.Logger, conf config.Optimus) (*gorm.DB, error) {
-	// setup db
-	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
-		return nil, fmt.Errorf("postgres.Migrate: %w", err)
-	}
-	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
-		conf.Server.DB.MaxOpenConnection, l.Writer())
-	if err != nil {
-		return nil, fmt.Errorf("postgres.Connect: %w", err)
-	}
-	return dbConn, nil
 }
 
 func setupGRPCServer(l log.Logger) (*grpc.Server, error) {

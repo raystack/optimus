@@ -50,7 +50,6 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		return nil, err
 	}
 
-	l.Info("Starting optimus", "version", config.Version)
 	addr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	server := &OptimusServer{
 		conf:       conf,
@@ -89,8 +88,17 @@ func (s *OptimusServer) setupAppKey() error {
 
 func (s *OptimusServer) setupDB() error {
 	var err error
-	s.dbConn, err = setupDB(s.logger, s.conf)
-	return err
+	if err := postgres.Migrate(s.conf.Server.DB.DSN); err != nil {
+		return fmt.Errorf("postgres.Migrate: %w", err)
+	}
+	// TODO: Connect should accept DBConfig
+	s.dbConn, err = postgres.Connect(s.conf.Server.DB.DSN, s.conf.Server.DB.MaxIdleConnection,
+		s.conf.Server.DB.MaxOpenConnection, s.logger.Writer())
+	if err != nil {
+		return fmt.Errorf("postgres.Connect: %w", err)
+	}
+
+	return nil
 }
 
 func (s *OptimusServer) setupGRPCServer() error {
@@ -115,7 +123,7 @@ func (s *OptimusServer) setupHTTPProxy() error {
 func (s *OptimusServer) startListening() error {
 	// run our server in a goroutine so that it doesn't block to wait for termination requests
 	go func() {
-		s.logger.Info("starting listening at", "address", s.serverAddr)
+		s.logger.Info("Listening at", "address", s.serverAddr)
 		if err := s.httpServer.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
 				s.logger.Fatal("server error", "error", err)
