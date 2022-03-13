@@ -131,6 +131,14 @@ func toJobStatus(list DagRunList) ([]models.JobStatus, error) {
 }
 
 func getDagRunReqBody(param models.JobQuery) DagRunReqBody {
+	if param.OnlyLastRun {
+		return DagRunReqBody{
+			OrderBy:    "-execution_date",
+			PageOffset: 0,
+			PageLimit:  1,
+			DagIds:     []string{param.Name},
+		}
+	}
 	return DagRunReqBody{
 		OrderBy:          "execution_date",
 		PageOffset:       0,

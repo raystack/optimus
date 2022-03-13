@@ -637,27 +637,27 @@ func TestAirflow2(t *testing.T) {
 			EndDate:   date.Add(time.Hour * 24),
 			Filter:    nil,
 		}
-		t.Run("should return job status with valid args", func(t *testing.T) {
-			run := airflow2.DagRun{
-				DagRunID:        "scheduled__2022-03-25T02:00:00+00:00",
-				DagID:           "sample_select",
-				LogicalDate:     date,
-				ExecutionDate:   date,
-				StartDate:       date.Add(time.Hour * 1),
-				EndDate:         date.Add(time.Hour * 2),
-				State:           "success",
-				ExternalTrigger: false,
-				Conf:            struct{}{},
-			}
-			list := airflow2.DagRunList{
-				DagRuns:      []airflow2.DagRun{run, run},
-				TotalEntries: 0,
-			}
-			resp, err := json.Marshal(list)
-			if err != nil {
-				t.Errorf("unable to parse the response to test GetJobRuns %v", err)
-			}
+		run := airflow2.DagRun{
+			DagRunID:        "scheduled__2022-03-25T02:00:00+00:00",
+			DagID:           "sample_select",
+			LogicalDate:     date,
+			ExecutionDate:   date,
+			StartDate:       date.Add(time.Hour * 1),
+			EndDate:         date.Add(time.Hour * 2),
+			State:           "success",
+			ExternalTrigger: false,
+			Conf:            struct{}{},
+		}
+		list := airflow2.DagRunList{
+			DagRuns:      []airflow2.DagRun{run, run},
+			TotalEntries: 2,
+		}
+		resp, err := json.Marshal(list)
+		if err != nil {
+			t.Errorf("unable to parse the response to test GetJobRuns %v", err)
+		}
 
+		t.Run("should return job runs with valid args", func(t *testing.T) {
 			// create a new reader with JSON
 			r := ioutil.NopCloser(bytes.NewReader(resp))
 			client := &MockHTTPClient{
@@ -670,7 +670,7 @@ func TestAirflow2(t *testing.T) {
 			}
 
 			air := airflow2.NewScheduler(nil, client, nil)
-			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
@@ -685,7 +685,37 @@ func TestAirflow2(t *testing.T) {
 			}, &params)
 
 			assert.Nil(t, err)
-			assert.Len(t, status, 2)
+			assert.Len(t, runStatus, 2)
+		})
+		t.Run("should return job runs when LastRunOnly is true", func(t *testing.T) {
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader(resp))
+			client := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+			params.OnlyLastRun = true
+			air := airflow2.NewScheduler(nil, client, nil)
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+					models.ProjectSchedulerAuth: "admin:admin",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params)
+
+			assert.Nil(t, err)
+			assert.Len(t, runStatus, 2)
 		})
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := "INTERNAL ERROR"
@@ -700,7 +730,7 @@ func TestAirflow2(t *testing.T) {
 			}
 
 			air := airflow2.NewScheduler(nil, client, nil)
-			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
@@ -714,8 +744,9 @@ func TestAirflow2(t *testing.T) {
 			}, &params)
 
 			assert.NotNil(t, err)
-			assert.Len(t, status, 0)
+			assert.Len(t, runStatus, 0)
 		})
+
 		t.Run("should fail if host faulty json response", func(t *testing.T) {
 			respString := "INTERNAL ERROR"
 			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
@@ -729,7 +760,7 @@ func TestAirflow2(t *testing.T) {
 			}
 
 			air := airflow2.NewScheduler(nil, client, nil)
-			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
@@ -743,12 +774,12 @@ func TestAirflow2(t *testing.T) {
 			}, &params)
 
 			assert.NotNil(t, err)
-			assert.Len(t, status, 0)
+			assert.Len(t, runStatus, 0)
 		})
 		t.Run("should fail if host is not reachable", func(t *testing.T) {
 			client := &http.Client{}
 			air := airflow2.NewScheduler(nil, client, nil)
-			status, err := air.GetJobRuns(ctx, models.ProjectSpec{
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
 				Name: "test-proj",
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
@@ -762,23 +793,14 @@ func TestAirflow2(t *testing.T) {
 			}, &params)
 
 			assert.NotNil(t, err)
-			assert.Len(t, status, 0)
+			assert.Len(t, runStatus, 0)
 		})
 		t.Run("should fail if host is not configured", func(t *testing.T) {
 			client := &http.Client{}
 			air := airflow2.NewScheduler(nil, client, nil)
-			status, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params)
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params)
 			assert.NotNil(t, err)
-			assert.Len(t, status, 0)
-		})
-		t.Run("should fail if host is not configured", func(t *testing.T) {
-			//respString := "INTERNAL ERROR"
-			//r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
-			client := &http.Client{}
-			air := airflow2.NewScheduler(nil, client, nil)
-			status, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params)
-			assert.NotNil(t, err)
-			assert.Len(t, status, 0)
+			assert.Len(t, runStatus, 0)
 		})
 		t.Run("should fail if not scheduler secret registered", func(t *testing.T) {
 			air := airflow2.NewScheduler(nil, nil, nil)

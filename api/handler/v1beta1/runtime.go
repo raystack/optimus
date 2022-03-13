@@ -210,7 +210,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 
 	jobStatuses, err := sv.scheduler.GetJobStatus(ctx, projSpec, req.GetJobName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobStatus %s", err.Error(),
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobRun %s", err.Error(),
 			req.GetJobName())
 	}
 
@@ -232,34 +232,25 @@ func (sv *RuntimeServiceServer) JobRun(ctx context.Context, req *pb.JobRunReques
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
 	}
-
 	jobSpec, _, err := sv.jobSvc.GetByNameForProject(ctx, req.GetJobName(), projSpec)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "%s\nfailed to find the job %s for project %s", err.Error(),
 			req.GetJobName(), req.GetProjectName())
 	}
-	start, err := time.Parse(time.RFC3339, req.GetStartDate())
+	query, err := buildJobQuery(req)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to find the job %s for project %s", err.Error(),
 			req.GetJobName(), req.GetProjectName())
-	}
-	end, err := time.Parse(time.RFC3339, req.GetEndDate())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to find the job %s for project %s", err.Error(),
-			req.GetJobName(), req.GetProjectName())
-	}
-	query := &models.JobQuery{
-		Name:      req.GetJobName(),
-		StartDate: start,
-		EndDate:   end,
-		Filter:    req.GetFilter(),
 	}
 	jobRuns, err := sv.runSvc.GetJobRunList(ctx, projSpec, jobSpec, query)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobStatus %s", err.Error(),
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch job run %s", err.Error(),
 			req.GetJobName())
 	}
-
+	if len(jobRuns) == 0 {
+		return nil, status.Errorf(codes.NotFound, "%s\n job runs not found ",
+			req.GetJobName())
+	}
 	var runStatus []*pb.RunStatus
 	for _, run := range jobRuns {
 		ts := timestamppb.New(run.ScheduledAt)
@@ -378,4 +369,30 @@ func NewRuntimeServiceServer(
 		namespaceService: namespaceService,
 		projectService:   projectService,
 	}
+}
+
+func buildJobQuery(req *pb.JobRunRequest) (*models.JobQuery, error) {
+	var query *models.JobQuery
+	if req.GetStartDate() == "" && req.GetEndDate() == "" {
+		query = &models.JobQuery{
+			Name:        req.GetJobName(),
+			OnlyLastRun: true,
+		}
+		return query, nil
+	}
+	start, err := time.Parse(time.RFC3339, req.GetStartDate())
+	if err != nil {
+		return nil, err
+	}
+	end, err := time.Parse(time.RFC3339, req.GetEndDate())
+	if err != nil {
+		return nil, err
+	}
+	query = &models.JobQuery{
+		Name:      req.GetJobName(),
+		StartDate: start,
+		EndDate:   end,
+		Filter:    req.GetFilter(),
+	}
+	return query, nil
 }

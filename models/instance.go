@@ -51,6 +51,7 @@ const (
 	// non assignment, non terminating states
 	RunStateAccepted JobRunState = "accepted"
 	RunStateRunning  JobRunState = "running"
+	RunStateQueued   JobRunState = "queued"
 
 	// terminate states
 	RunStateSuccess JobRunState = "success"
