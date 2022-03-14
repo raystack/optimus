@@ -25,7 +25,7 @@ type airflowRequest struct {
 	param  string
 }
 
-type DagRunList struct {
+type DagRunListResponse struct {
 	DagRuns      []DagRun `json:"dag_runs"`
 	TotalEntries int      `json:"total_entries"`
 }
@@ -42,7 +42,7 @@ type DagRun struct {
 	Conf            struct{}  `json:"conf"`
 }
 
-type DagRunReqBody struct {
+type DagRunRequest struct {
 	OrderBy          string   `json:"order_by"`
 	PageOffset       int      `json:"page_offset"`
 	PageLimit        int      `json:"page_limit"`
@@ -55,10 +55,7 @@ type airflowClient struct {
 	client HTTPClient
 }
 
-func newClient(client HTTPClient) airflowClient {
-	return airflowClient{client: client}
-}
-
+//TODO : remove project spec
 func (ac airflowClient) invoke(ctx context.Context, r airflowRequest, projectSpec models.ProjectSpec) ([]byte, error) {
 	var resp []byte
 	host, authToken, err := ac.getHostAuth(projectSpec)
@@ -120,7 +117,7 @@ func (ac airflowClient) buildEndPoint(host string, URL string, pathParam string)
 	return u.String()
 }
 
-func toJobStatus(list DagRunList) ([]models.JobStatus, error) {
+func toJobStatus(list DagRunListResponse) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	for _, status := range list.DagRuns {
 		jobStatus = append(jobStatus, models.JobStatus{
@@ -131,16 +128,16 @@ func toJobStatus(list DagRunList) ([]models.JobStatus, error) {
 	return jobStatus, nil
 }
 
-func getDagRunReqBody(param *models.JobQuery) DagRunReqBody {
+func getDagRunRequest(param *models.JobQuery) DagRunRequest {
 	if param.OnlyLastRun {
-		return DagRunReqBody{
+		return DagRunRequest{
 			OrderBy:    "-execution_date",
 			PageOffset: 0,
 			PageLimit:  1,
 			DagIds:     []string{param.Name},
 		}
 	}
-	return DagRunReqBody{
+	return DagRunRequest{
 		OrderBy:          "execution_date",
 		PageOffset:       0,
 		PageLimit:        Hundred,
@@ -150,7 +147,7 @@ func getDagRunReqBody(param *models.JobQuery) DagRunReqBody {
 	}
 }
 
-func getJobRunList(res DagRunList) []models.JobRun {
+func getJobRuns(res DagRunListResponse) []models.JobRun {
 	var jobRunList []models.JobRun
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger {
@@ -161,6 +158,19 @@ func getJobRunList(res DagRunList) []models.JobRun {
 			}
 			jobRunList = append(jobRunList, jobRun)
 		}
+	}
+	return jobRunList
+}
+
+func getJobRunsWIthManualRuns(res DagRunListResponse) []models.JobRun {
+	var jobRunList []models.JobRun
+	for _, dag := range res.DagRuns {
+		jobRun := models.JobRun{
+			Status:      models.JobRunState(dag.State),
+			ScheduledAt: dag.ExecutionDate,
+			ExecutedAt:  dag.StartDate,
+		}
+		jobRunList = append(jobRunList, jobRun)
 	}
 	return jobRunList
 }

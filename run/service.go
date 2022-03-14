@@ -86,28 +86,41 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 
 func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
 	var jobRuns []models.JobRun
-
 	if jobQuery.OnlyLastRun {
 		return s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery)
 	}
-	//modify the date at query according on execution date
-	sch, err := modifyDateRange(jobQuery, jobSpec)
+	//validate job query
+	err := validateJobQuery(jobQuery, jobSpec)
 	if err != nil {
 		return jobRuns, err
 	}
-
-	//get expected runs
-	expectedRuns := buildExpectedRun(sch, jobQuery.StartDate, jobQuery.EndDate)
-
+	//check for manual runs
+	jobInterval := jobSpec.Schedule.Interval
+	var expectedRuns []models.JobRun
+	if jobInterval != "" {
+		sch, err := cron.ParseCronSchedule(jobInterval)
+		if err != nil {
+			return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
+		}
+		//modify job query
+		jobQuery = modifyDateRange(jobQuery, jobSpec, sch)
+		//get expected runs
+		expectedRuns = getExpectedRun(sch, jobQuery.StartDate, jobQuery.EndDate)
+	} else {
+		jobQuery.IncludeManualRun = true
+	}
 	//call to airflow for get runs
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery)
 	if err != nil {
 		return jobRuns, fmt.Errorf("unable to get job runs from airflow %w", err)
 	}
-	//merge
-	runs := merge(expectedRuns, actualRuns)
-	//filter
-	result := filter(runs, filterMap(jobQuery.Filter))
+	//mergeRuns
+	var totalRuns []models.JobRun
+	if len(expectedRuns) > 0 {
+		totalRuns = mergeRuns(expectedRuns, actualRuns)
+	}
+	//filterRuns
+	result := filterRuns(totalRuns, createFilterSet(jobQuery.Filter))
 	return result, nil
 }
 
@@ -200,33 +213,93 @@ func NewService(repoFac SpecRepoFactory, secretService service.SecretService, ti
 	}
 }
 
-func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec) (*cron.ScheduleSpec, error) {
-	var sch *cron.ScheduleSpec
+//func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec) (*cron.ScheduleSpec, *models.JobQuery, error) {
+//	var sch *cron.ScheduleSpec
+//	jobStartDate := jobSpec.Schedule.StartDate
+//	jobInterval := jobSpec.Schedule.Interval
+//	if jobInterval == "" {
+//		return nil, jobQuery, nil
+//	}
+//	givenStartDate := jobQuery.StartDate
+//	givenEndDate := jobQuery.EndDate
+//
+//	sch, err := cron.ParseCronSchedule(jobInterval)
+//	if err != nil {
+//		return nil, jobQuery, fmt.Errorf("unable to parse the interval from DB %w", err)
+//	}
+//	duration := sch.Interval(jobStartDate)
+//	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
+//	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
+//	modifiedJobQuery := &models.JobQuery{
+//		Name:        jobQuery.Name,
+//		StartDate:   jobQuery.StartDate,
+//		EndDate:     jobQuery.EndDate,
+//		Filter:      jobQuery.Filter,
+//		OnlyLastRun: false,
+//	}
+//	return sch, modifiedJobQuery,err
+//}
+//func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec) (*cron.ScheduleSpec, *models.JobQuery, error) {
+//	var sch *cron.ScheduleSpec
+//	jobStartDate := jobSpec.Schedule.StartDate
+//	jobInterval := jobSpec.Schedule.Interval
+//	if jobInterval == "" {
+//		return nil, jobQuery, nil
+//	}
+//	givenStartDate := jobQuery.StartDate
+//	givenEndDate := jobQuery.EndDate
+//
+//	sch, err := cron.ParseCronSchedule(jobInterval)
+//	if err != nil {
+//		return nil, jobQuery, fmt.Errorf("unable to parse the interval from DB %w", err)
+//	}
+//	duration := sch.Interval(jobStartDate)
+//	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
+//	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
+//	modifiedJobQuery := &models.JobQuery{
+//		Name:        jobQuery.Name,
+//		StartDate:   jobQuery.StartDate,
+//		EndDate:     jobQuery.EndDate,
+//		Filter:      jobQuery.Filter,
+//		OnlyLastRun: false,
+//	}
+//	return sch, modifiedJobQuery,err
+//}
+
+func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 	jobStartDate := jobSpec.Schedule.StartDate
-	jobInterval := jobSpec.Schedule.Interval
 	if jobStartDate.IsZero() {
-		return nil, errors.New("job start time not found at DB")
-	}
-	if jobInterval == "" {
-		return nil, errors.New("job scheduled time not found at DB")
+		return errors.New("job start time not found at DB")
 	}
 	givenStartDate := jobQuery.StartDate
 	givenEndDate := jobQuery.EndDate
 
 	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
-		return nil, errors.New("invalid date range")
+		return errors.New("invalid date range")
 	}
-	sch, err := cron.ParseCronSchedule(jobInterval)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse the interval from DB %w", err)
-	}
+	return nil
+}
+
+func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec, sch *cron.ScheduleSpec) *models.JobQuery {
+	jobStartDate := jobSpec.Schedule.StartDate
+	givenStartDate := jobQuery.StartDate
+	givenEndDate := jobQuery.EndDate
+
 	duration := sch.Interval(jobStartDate)
 	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
 	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
-	return sch, err
+
+	modifiedJobQuery := &models.JobQuery{
+		Name:        jobQuery.Name,
+		StartDate:   jobQuery.StartDate,
+		EndDate:     jobQuery.EndDate,
+		Filter:      jobQuery.Filter,
+		OnlyLastRun: false,
+	}
+	return modifiedJobQuery
 }
 
-func buildExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
+func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
 	var jobRuns []models.JobRun
 	start := startTime
 	end := endTime
@@ -241,7 +314,7 @@ func buildExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time
 	return jobRuns
 }
 
-func merge(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
+func mergeRuns(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
 	var mergeRuns []models.JobRun
 	m := actualRunMap(actual)
 	for _, exp := range expected {
@@ -262,7 +335,7 @@ func actualRunMap(runs []models.JobRun) map[string]models.JobRun {
 	return m
 }
 
-func filter(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
+func filterRuns(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
 	var filteredRuns []models.JobRun
 	if len(filter) == 0 {
 		return runs
@@ -275,7 +348,7 @@ func filter(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
 	return filteredRuns
 }
 
-func filterMap(filter []string) map[string]struct{} {
+func createFilterSet(filter []string) map[string]struct{} {
 	m := map[string]struct{}{}
 	for _, v := range filter {
 		m[models.JobRunState(v).String()] = struct{}{}

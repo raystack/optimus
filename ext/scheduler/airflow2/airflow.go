@@ -205,7 +205,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec,
 	jobName string) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
-	var list DagRunList
+	var list DagRunListResponse
 	req := airflowRequest{
 		URL:    dagStatusURL,
 		method: http.MethodGet,
@@ -243,7 +243,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
 	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
-	var list DagRunList
+	var list DagRunListResponse
 	pageOffset := 0
 	req := airflowRequest{
 		URL:    dagStatusBatchURL,
@@ -286,8 +286,8 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 
 func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
 	var jobRuns []models.JobRun
-	var list DagRunList
-	reqBody, err := json.Marshal(getDagRunReqBody(param))
+	var list DagRunListResponse
+	reqBody, err := json.Marshal(getDagRunRequest(param))
 	if err != nil {
 		return jobRuns, err
 	}
@@ -303,7 +303,10 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 	if err := json.Unmarshal(resp, &list); err != nil {
 		return jobRuns, fmt.Errorf("json error: %s: %w", string(resp), err)
 	}
-	return getJobRunList(list), nil
+	if param.IncludeManualRun {
+		return getJobRunsWIthManualRuns(list), nil
+	}
+	return getJobRuns(list), nil
 }
 
 func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
@@ -336,6 +339,6 @@ func NewScheduler(bucketFac BucketFactory, httpClient HTTPClient, compiler model
 	return &scheduler{
 		bucketFac: bucketFac,
 		compiler:  compiler,
-		client:    newClient(httpClient),
+		client:    airflowClient{client: httpClient},
 	}
 }

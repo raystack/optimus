@@ -648,7 +648,7 @@ func TestAirflow2(t *testing.T) {
 			ExternalTrigger: false,
 			Conf:            struct{}{},
 		}
-		list := airflow2.DagRunList{
+		list := airflow2.DagRunListResponse{
 			DagRuns:      []airflow2.DagRun{run, run},
 			TotalEntries: 2,
 		}
@@ -699,6 +699,36 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 			params.OnlyLastRun = true
+			air := airflow2.NewScheduler(nil, client, nil)
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+					models.ProjectSchedulerAuth: "admin:admin",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params)
+
+			assert.Nil(t, err)
+			assert.Len(t, runStatus, 2)
+		})
+		t.Run("should return job runs when IncludeManualRun is true", func(t *testing.T) {
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader(resp))
+			client := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+			params.IncludeManualRun = true
 			air := airflow2.NewScheduler(nil, client, nil)
 			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
 				Name: "test-proj",

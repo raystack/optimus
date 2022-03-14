@@ -465,7 +465,7 @@ func TestService(t *testing.T) {
 					expectedResult: nil,
 				},
 				{
-					description: "no filter applied",
+					description: "no filterRuns applied",
 					input: &models.JobQuery{
 						Name:      "sample_select",
 						StartDate: startDate,
@@ -513,7 +513,7 @@ func TestService(t *testing.T) {
 					expectedResult: runsFromSchFor3days,
 				},
 				{
-					description: "when some job instances are not started by scheduler and no filter applied",
+					description: "when some job instances are not started by scheduler and no filterRuns applied",
 					input: &models.JobQuery{
 						Name:      "sample_select",
 						StartDate: startDate,
@@ -598,7 +598,11 @@ func TestService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedSpec)
 		})
-		t.Run("should not able to get job runs when no cron interval is present at DB", func(t *testing.T) {
+		t.Run("should able to get manual job runs when no cron interval is present at DB", func(t *testing.T) {
+			sch := new(mock.Scheduler)
+			spec := models.ProjectSpec{
+				Name: "proj",
+			}
 			jobSpec := models.JobSpec{
 				Schedule: models.JobSpecSchedule{
 					StartDate: startDate.Add(-time.Hour * 24),
@@ -606,17 +610,21 @@ func TestService(t *testing.T) {
 				},
 			}
 			param := &models.JobQuery{
-				Name:      "sample_select",
-				StartDate: startDate,
-				EndDate:   endDate,
-				Filter:    []string{"success"},
+				Name:        "sample_select",
+				OnlyLastRun: true,
 			}
-
-			sch := new(mock.Scheduler)
+			runs := []models.JobRun{
+				{
+					Status:      models.JobRunState("success"),
+					ScheduledAt: endDate,
+				},
+			}
+			sch.On("GetJobRuns", ctx, spec, param).Return(runs, nil)
+			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
 			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
-			assert.NotNil(t, err)
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, err)
+			assert.Equal(t, runs, returnedSpec)
 		})
 		t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
 			sch := new(mock.Scheduler)
