@@ -33,7 +33,7 @@ func taskRunBlockComparator(a, b interface{}) int {
 	return strings.Compare(aAsserted.name, bAsserted.name)
 }
 
-//formatRunsPerJobInstance returns a hashmap with Job -> Runs[] mapping
+// formatRunsPerJobInstance returns a hashmap with Job -> Runs[] mapping
 func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
 	if _, ok := taskReruns[instance.JobName]; !ok {
 		taskReruns[instance.JobName] = taskRunBlock{

@@ -22,9 +22,7 @@ import (
 	"github.com/odpf/salt/log"
 )
 
-var (
-	errRequestFail = errors.New("🔥 unable to complete request successfully")
-)
+var errRequestFail = errors.New("🔥 unable to complete request successfully")
 
 type PlainFormatter struct{}
 

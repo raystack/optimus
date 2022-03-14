@@ -88,7 +88,7 @@ func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes
 		return fmt.Errorf("failed to create output dir: %w", err)
 	}
 
-	//prepare entrypoint string blob
+	// prepare entrypoint string blob
 	entrypointLines := []string{}
 	for _, line := range strings.Split(EntrypointTemplate, "\n") {
 		if len(line) == 0 {
@@ -113,7 +113,7 @@ func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes
 			return err
 		}
 		destPath = filepath.Join(taskPlugin.Path, "Dockerfile")
-		if err := ioutil.WriteFile(destPath, []byte(dockerFile), 0655); err != nil {
+		if err := ioutil.WriteFile(destPath, []byte(dockerFile), 0o655); err != nil {
 			return err
 		}
 
@@ -186,7 +186,7 @@ func BuildHelper(l log.Logger, templateEngine models.TemplateEngine, configBytes
 			return err
 		}
 		destPath := filepath.Join(hookPlugin.Path, "Dockerfile")
-		if err := ioutil.WriteFile(destPath, []byte(dockerFile), 0655); err != nil {
+		if err := ioutil.WriteFile(destPath, []byte(dockerFile), 0o655); err != nil {
 			return err
 		}
 

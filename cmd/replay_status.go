@@ -15,9 +15,7 @@ import (
 )
 
 func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
-	var (
-		projectName string
-	)
+	var projectName string
 
 	reCmd := &cli.Command{
 		Use:     "status",

@@ -104,7 +104,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 
 			repo := NewProjectRepository(db, hash)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -112,7 +112,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
-			//try for update
+			// try for update
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
@@ -129,7 +129,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 
 			repo := NewProjectRepository(db, hash)
 
-			//try for create
+			// try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
@@ -138,7 +138,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
-			//try for update
+			// try for update
 			testModelA.Config["bucket"] = "gs://another_folder"
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
@@ -156,7 +156,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 
 			repo := NewProjectRepository(db, hash)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 

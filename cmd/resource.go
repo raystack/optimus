@@ -17,10 +17,8 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-var (
-	validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
-		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
-)
+var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
+	`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
 func resourceCommand(l log.Logger, datastoreSpecsFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
@@ -87,7 +85,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			resourceDirectory := filepath.Join(rwd, newDirName)
 			resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirectory, "/", "."), "\\", ".")
 
-			var qs = []*survey.Question{
+			qs := []*survey.Question{
 				{
 					Name: "name",
 					Prompt: &survey.Input{

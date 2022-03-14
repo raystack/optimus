@@ -42,11 +42,11 @@ type SecretService struct {
 	mock.Mock
 }
 
-func (s *SecretService) Save(ctx context.Context, prjName string, nsName string, item models.ProjectSecretItem) error {
+func (s *SecretService) Save(ctx context.Context, prjName, nsName string, item models.ProjectSecretItem) error {
 	return s.Called(ctx, prjName, nsName, item).Error(0)
 }
 
-func (s *SecretService) Update(ctx context.Context, prjName string, nsName string, item models.ProjectSecretItem) error {
+func (s *SecretService) Update(ctx context.Context, prjName, nsName string, item models.ProjectSecretItem) error {
 	return s.Called(ctx, prjName, nsName, item).Error(0)
 }
 

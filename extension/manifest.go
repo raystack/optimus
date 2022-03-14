@@ -54,7 +54,7 @@ func FlushManifest(manifest *Manifest, dirPath string) error {
 		return fmt.Errorf("error creating dir: %v", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
-	f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return fmt.Errorf("error opening file: %v", err)
 	}

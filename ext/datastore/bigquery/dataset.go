@@ -13,9 +13,7 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-var (
-	datasetMutex sync.Mutex
-)
+var datasetMutex sync.Mutex
 
 func createDataset(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
 	bqResource, ok := spec.Spec.(BQDataset)

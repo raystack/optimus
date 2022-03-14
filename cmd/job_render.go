@@ -40,7 +40,7 @@ func jobRenderTemplateCommand(l log.Logger, jobSpecRepo JobSpecRepository) *cli.
 
 		// create temporary directory
 		renderedPath := filepath.Join(".", "render", jobSpec.Name)
-		_ = os.MkdirAll(renderedPath, 0770)
+		_ = os.MkdirAll(renderedPath, 0o770)
 		l.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
 
 		now := time.Now()

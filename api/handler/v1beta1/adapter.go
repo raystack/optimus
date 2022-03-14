@@ -221,7 +221,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		})
 	}
 
-	//prep external dependencies for proto
+	// prep external dependencies for proto
 	for _, httpDep := range spec.ExternalDependencies.HTTPDependencies {
 		conf.Dependencies = append(conf.Dependencies, &pb.JobDependency{
 			HttpDependency: &pb.HttpDependency{

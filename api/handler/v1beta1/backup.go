@@ -38,7 +38,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 	jobSpecs = append(jobSpecs, downstreamSpecs...)
 
-	//should add config
+	// should add config
 	backupRequest := models.BackupRequest{
 		ResourceName:                req.ResourceName,
 		Project:                     namespaceSpec.ProjectSpec,

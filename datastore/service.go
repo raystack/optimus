@@ -21,7 +21,7 @@ const (
 	ConcurrentTicketPerSec = 5
 	ConcurrentLimit        = 20
 
-	//backupListWindow window interval to fetch recent backups
+	// backupListWindow window interval to fetch recent backups
 	backupListWindow = -3 * 30 * 24 * time.Hour
 )
 
@@ -206,7 +206,7 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			}
 		}
 
-		//do backup in storer
+		// do backup in storer
 		_, err = datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
@@ -270,7 +270,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			}
 		}
 
-		//do backup in storer
+		// do backup in storer
 		backupResp, err := datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
@@ -295,7 +295,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		}
 	}
 
-	//save the backup
+	// save the backup
 	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
 	if err := backupRepo.Save(ctx, backupSpec); err != nil {
 		return models.BackupResult{}, err

@@ -12,9 +12,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-var (
-	ErrEmptyTemplateFile = errors.New("empty template file for job")
-)
+var ErrEmptyTemplateFile = errors.New("empty template file for job")
 
 // Compiler converts generic job spec data to scheduler specific file that will
 // be consumed by the target scheduler

@@ -157,7 +157,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Once()
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -165,7 +165,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.datas.test", checkModel.Name)
 
-			//try for create
+			// try for create
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
@@ -185,7 +185,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -193,7 +193,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 
-			//try for update
+			// try for update
 			testModelA.Version = 6
 			dsTypeTableAdapter.On("ToYaml", testModelA).Return([]byte("some binary data testModelA"), nil)
 			dsTypeTableAdapter.On("FromYaml", []byte("some binary data testModelA")).Return(testModelA, nil)
@@ -253,7 +253,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
-			//try for create
+			// try for create
 			err := resourceSpecNamespace1.Save(ctx, testModelA)
 			assert.Nil(t, err)
 

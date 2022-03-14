@@ -15,9 +15,7 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-var (
-	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
-)
+var tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
 
 const (
 	errorReadTableSpec      = "failed to read table spec for bigquery"
@@ -198,7 +196,7 @@ func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest
 	}
 }
 
-func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc BQTable, bqResourceDst BQTable) (bqiface.Table, error) {
+func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc, bqResourceDst BQTable) (bqiface.Table, error) {
 	// make sure dataset is present
 	datasetDst := client.DatasetInProject(bqResourceDst.Project, bqResourceDst.Dataset)
 	if err := ensureDataset(ctx, datasetDst, BQDataset{

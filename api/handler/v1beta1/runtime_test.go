@@ -157,7 +157,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
-					}}, nil)
+					},
+				}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -223,7 +224,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
-					}}, nil)
+					},
+				}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(

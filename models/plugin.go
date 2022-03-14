@@ -31,8 +31,10 @@ var (
 	PluginTypeHook = PluginType(InstanceTypeHook.String())
 )
 
-type PluginType string
-type PluginMod string
+type (
+	PluginType string
+	PluginMod  string
+)
 
 func (pm PluginMod) String() string {
 	return string(pm)
@@ -201,7 +203,6 @@ func (c PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
 	taskPluginConfigs := PluginConfigs{}
 	for _, c := range jobSpecConfig {
 		taskPluginConfigs = append(taskPluginConfigs, PluginConfig{
-
 			Name:  c.Name,
 			Value: c.Value,
 		})

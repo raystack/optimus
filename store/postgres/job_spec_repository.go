@@ -80,7 +80,7 @@ func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobS
 	return specs, nil
 }
 
-func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, projName string, jobName string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, projName, jobName string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
 	var p Project
 	if err := repo.db.WithContext(ctx).Where("name = ?", projName).First(&p).Error; err != nil {

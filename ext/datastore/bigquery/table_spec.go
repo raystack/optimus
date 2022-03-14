@@ -123,8 +123,7 @@ type BQPartitioningRange struct {
 }
 
 // tableSpecHandler helps serializing/deserializing datastore resource for table
-type tableSpecHandler struct {
-}
+type tableSpecHandler struct{}
 
 func (s tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
 	if optResource.Spec == nil {

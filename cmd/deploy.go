@@ -76,9 +76,9 @@ func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecReposit
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
+func postDeploymentRequest(l log.Logger, projectName, namespaceName string, jobSpecRepo JobSpecRepository,
 	conf config.Optimus, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
-	ignoreJobDeployment, ignoreResources bool, verbose bool) (err error) {
+	ignoreJobDeployment, ignoreResources, verbose bool) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 

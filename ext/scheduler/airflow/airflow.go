@@ -303,7 +303,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	return nil
 }
 
-func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time,
+func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate, endDate time.Time,
 	batchSize int) ([]models.JobStatus, error) {
 	allJobStatus, err := s.GetJobStatus(ctx, projectSpec, jobName)
 	if err != nil {

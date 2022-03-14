@@ -84,6 +84,7 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 	}
 	return fm, nil
 }
+
 func bqGoogleSheetsOptionsTo(m map[string]interface{}) *bqapi.GoogleSheetsOptions {
 	var skipLeadingRows int64
 	var sheetRange string

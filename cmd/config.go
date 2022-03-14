@@ -135,7 +135,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0655); err != nil {
+			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0o655); err != nil {
 				return err
 			}
 			l.Info(coloredSuccess("Configuration initialised successfully"))

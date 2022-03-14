@@ -52,7 +52,7 @@ func createHookSurvey(jobSpec models.JobSpec, pluginRepo models.PluginRepository
 		return emptyJobSpec, errors.New("no supported hook plugin found")
 	}
 
-	var qs = []*survey.Question{
+	qs := []*survey.Question{
 		{
 			Name: "hook",
 			Prompt: &survey.Select{

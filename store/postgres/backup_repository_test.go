@@ -94,7 +94,7 @@ func TestIntegrationBackupRepository(t *testing.T) {
 		projectName := "project"
 		destinationDataset := "optimus_backup"
 		destinationTable := fmt.Sprintf("backup_playground_table_%s", backupUUID)
-		//urn := fmt.Sprintf("store://%s:%s.%s", projectName, destinationDataset, destinationTable)
+		// urn := fmt.Sprintf("store://%s:%s.%s", projectName, destinationDataset, destinationTable)
 
 		backupResult := make(map[string]interface{})
 		backupResult["project"] = projectName
