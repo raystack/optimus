@@ -1,29 +1,32 @@
 package config_test
 
 import (
-	"errors"
-	"fmt"
-	"path/filepath"
+	"os"
+	"path"
 	"testing"
+	"time"
 
 	"github.com/odpf/optimus/config"
-	"github.com/spf13/afero"
+
 	"github.com/stretchr/testify/assert"
 )
 
-type ConfigType int
-
 const (
-	server ConfigType = iota
-	project
-	namespace
-)
-
-const (
-	rawServer string = `
+	configFileName          = ".optimus.yaml"
+	optimusConfigDirName    = "./optimus"
+	namespaceConfigADirName = "./namespace-a"
+	namespaceConfigBDirName = "./namespace-b"
+	optimusConfigContent    = `
 version: 1
 log:
   level: info
+host: "localhost:9100"
+project:
+  name: sample_project
+  config:
+    environment: integration
+    scheduler_host: http://example.io/
+    storage_path: file://absolute_path_to_a_directory
 serve:
   port: 9100
   host: localhost
@@ -43,135 +46,126 @@ telemetry:
   profile_addr: ":9110"
   jaeger_addr: "http://localhost:14268/api/traces"
 `
-	rawProject string = `
-version: 1
-host: localhost:9100
-project:
-  name: sample_project
-  config:
-    environment: integration
-    scheduler_host: http://example.io/
-    storage_path: file://absolute_path_to_a_directory
-`
-	rawNamespace string = `
+	namespaceConfigAContent = `
 version: 1
 namespace:
-  name: sample_namespace_%s
+  name: namespace-a
   job:
-    path: "./job"
-  datastore:
-    type: bigquery
-    path: "./bq"
-  config: {}
+    path: ./jobs
+`
+	namespaceConfigBContent = `
+version: 1
+namespace:
+  name: namespace-b
+  job:
+    path: ./jobs
 `
 )
 
-func createConfig(fs afero.Fs, filePath string, confType ConfigType) error {
-	switch confType {
-	case server:
-		return afero.WriteFile(fs, filePath, []byte(rawServer), 0644)
-	case project:
-		return afero.WriteFile(fs, filePath, []byte(rawProject), 0644)
-	case namespace:
-		return afero.WriteFile(fs, filePath, []byte(fmt.Sprintf(rawNamespace, "")), 0644)
+func setup() {
+	teardown()
+	if err := os.Mkdir(optimusConfigDirName, os.ModePerm); err != nil {
+		panic(err)
 	}
-	return errors.New("")
+	if err := os.MkdirAll(path.Join(optimusConfigDirName, namespaceConfigADirName), os.ModePerm); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll(path.Join(optimusConfigDirName, namespaceConfigBDirName), os.ModePerm); err != nil {
+		panic(err)
+	}
+	confPath := path.Join(optimusConfigDirName, configFileName)
+	if err := os.WriteFile(confPath, []byte(optimusConfigContent), os.ModePerm); err != nil {
+		panic(err)
+	}
+	confPath = path.Join(optimusConfigDirName, namespaceConfigADirName, configFileName)
+	if err := os.WriteFile(confPath, []byte(namespaceConfigAContent), os.ModePerm); err != nil {
+		panic(err)
+	}
+	confPath = path.Join(optimusConfigDirName, namespaceConfigBDirName, configFileName)
+	if err := os.WriteFile(confPath, []byte(namespaceConfigBContent), os.ModePerm); err != nil {
+		panic(err)
+	}
 }
 
-func TestLoadConfig(t *testing.T) {
-	testCases := []struct {
-		name       string
-		path       string
-		configType ConfigType
-		err        error
-	}{
-		{
-			name:       "LoadFromRoot_NoError",
-			path:       "/",
-			configType: server,
-			err:        nil,
-		},
-		{
-			name:       "LoadFromRootProject_NoError",
-			path:       "/home/projects/project1",
-			configType: server,
-			err:        nil,
-		},
-		{
-			name:       "LoadFromExecutionFolder_NoError",
-			path:       "/usr/bin",
-			configType: server,
-			err:        nil,
-		},
-		{
-			name:       "LoadAsProjectStructure_NoError",
-			path:       "/",
-			configType: project,
-			err:        nil,
-		},
+func teardown() {
+	if err := os.RemoveAll(optimusConfigDirName); err != nil {
+		panic(err)
 	}
-	fs := afero.NewMemMapFs()
+}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := createConfig(fs, filepath.Join(tc.path, ".optimus.yaml"), tc.configType)
-			assert.NoError(t, err)
+func TestLoadOptimusConfig(t *testing.T) {
+	setup()
+	defer teardown()
 
-			optimus := config.Optimus{}
-			err = config.LoadConfig(&optimus, fs, tc.path)
-			assert.NoError(t, err)
-			// TODO: check the value
-		})
-	}
+	t.Run("should return config and nil if no error is found", func(t *testing.T) {
+		expectedConf := &config.Optimus{
+			Version: 1,
+			Log: config.LogConfig{
+				Level: "info",
+			},
+			Host: "localhost:9100",
+			Project: config.Project{
+				Name: "sample_project",
+				Config: map[string]string{
+					"environment":    "integration",
+					"scheduler_host": "http://example.io/",
+					"storage_path":   "file://absolute_path_to_a_directory",
+				},
+			},
+			Server: config.ServerConfig{
+				Port:                9100,
+				Host:                "localhost",
+				IngressHost:         "optimus.example.io:80",
+				AppKey:              "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc",
+				ReplayNumWorkers:    1,
+				ReplayWorkerTimeout: 100 * time.Second,
+				ReplayRunTimeout:    10 * time.Second,
+				DB: config.DBConfig{
+					DSN:               "postgres://user:password@localhost:5432/database?sslmode=disable",
+					MaxIdleConnection: 5,
+					MaxOpenConnection: 10,
+				},
+			},
+			Scheduler: config.SchedulerConfig{
+				Name:     "airflow2",
+				SkipInit: true,
+			},
+			Telemetry: config.TelemetryConfig{
+				ProfileAddr: ":9110",
+				JaegerAddr:  "http://localhost:14268/api/traces",
+			},
+		}
+
+		actualConf, actualErr := config.LoadOptimusConfig(optimusConfigDirName)
+
+		assert.EqualValues(t, expectedConf, actualConf)
+		assert.NoError(t, actualErr)
+	})
 }
 
 func TestLoadNamespaceConfig(t *testing.T) {
-	t.Run("NoNamespacesDetected", func(t *testing.T) {
-		fs := afero.NewMemMapFs()
-		path := "/project1"
-		fs.MkdirAll(filepath.Join(path, "folder_1"), 0755)
-		fs.MkdirAll(filepath.Join(path, "folder_2"), 0755)
-		fs.MkdirAll(filepath.Join(path, "folder_3"), 0755)
+	setup()
+	defer teardown()
 
-		namespaces := map[string]*config.Namespace{}
-		err := config.LoadNamespacesConfig(namespaces, fs, path)
-		assert.NoError(t, err)
-		assert.Len(t, namespaces, 0)
-	})
+	t.Run("should return config and nil if no error is found", func(t *testing.T) {
+		expectedConf := map[string]*config.Namespace{
+			"namespace-a": {
+				Name: "namespace-a",
+				Job: config.Job{
+					Path: "optimus/namespace-a/jobs",
+				},
+			},
+			"namespace-b": {
+				Name: "namespace-b",
+				Job: config.Job{
+					Path: "optimus/namespace-b/jobs",
+				},
+			},
+		}
 
-	t.Run("WithNamespaces", func(t *testing.T) {
-		fs := afero.NewMemMapFs()
-		path := "/project2"
-		fs.MkdirAll(filepath.Join(path, "ns1"), 0755)
-		fs.MkdirAll(filepath.Join(path, "ns2"), 0755)
-		fs.MkdirAll(filepath.Join(path, "ns3"), 0755)
+		actualConf, actualErr := config.LoadNamespacesConfig("./optimus")
 
-		assert.NoError(t, afero.WriteFile(fs, "/project2/ns1/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "ns1")), 0644))
-		assert.NoError(t, afero.WriteFile(fs, "/project2/ns2/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "ns2")), 0644))
-		assert.NoError(t, afero.WriteFile(fs, "/project2/ns3/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "ns3")), 0644))
-
-		namespaces := map[string]*config.Namespace{}
-		err := config.LoadNamespacesConfig(namespaces, fs, path)
-		assert.NoError(t, err)
-		assert.Len(t, namespaces, 3)
-		// TODO: check the value
-	})
-
-	t.Run("WithDuplicatedNamespaces", func(t *testing.T) {
-		fs := afero.NewMemMapFs()
-		path := "/project2"
-		fs.MkdirAll(filepath.Join(path, "ns1"), 0755)
-		fs.MkdirAll(filepath.Join(path, "ns2"), 0755)
-		fs.MkdirAll(filepath.Join(path, "ns3"), 0755)
-
-		assert.NoError(t, afero.WriteFile(fs, "/project2/ns1/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "dup")), 0644))
-		assert.NoError(t, afero.WriteFile(fs, "/project2/ns2/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "dup")), 0644))
-		assert.NoError(t, afero.WriteFile(fs, "/project2/ns3/.optimus.yaml", []byte(fmt.Sprintf(rawNamespace, "dup")), 0644))
-
-		namespaces := map[string]*config.Namespace{}
-		err := config.LoadNamespacesConfig(namespaces, fs, path)
-		assert.NoError(t, err)
-		assert.Len(t, namespaces, 1)
-		// TODO: check the value
+		assert.EqualValues(t, expectedConf, actualConf)
+		assert.NoError(t, actualErr)
 	})
 }
