@@ -97,7 +97,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				Ack:     true,
 				Message: err.Error(),
 			})
-			return mapToGRPCErr(err, "unable to get namespace")
+			return mapToGRPCErr(sv.l, err, "unable to get namespace")
 		}
 		var resourceSpecs []models.ResourceSpec
 		for _, resourceProto := range request.GetResources() {
