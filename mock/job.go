@@ -172,8 +172,8 @@ func (srv *JobService) Check(ctx context.Context, namespaceSpec models.Namespace
 	return args.Error(0)
 }
 
-func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job models.JobSpec) error {
-	args := srv.Called(ctx, c, job)
+func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, jobSpec models.JobSpec) error {
+	args := srv.Called(ctx, c, jobSpec)
 	return args.Error(0)
 }
 

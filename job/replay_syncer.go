@@ -36,10 +36,10 @@ type Syncer struct {
 	l                  log.Logger
 }
 
-func NewReplaySyncer(log log.Logger, replaySpecFactory ReplaySpecRepoFactory, projectRepoFactory ProjectRepoFactory, scheduler models.SchedulerUnit,
+func NewReplaySyncer(l log.Logger, replaySpecFactory ReplaySpecRepoFactory, projectRepoFactory ProjectRepoFactory, scheduler models.SchedulerUnit,
 	timeFn func() time.Time) *Syncer {
 	return &Syncer{
-		l:                  log,
+		l:                  l,
 		replaySpecFactory:  replaySpecFactory,
 		projectRepoFactory: projectRepoFactory,
 		scheduler:          scheduler,

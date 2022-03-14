@@ -188,7 +188,7 @@ func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec) 
 	if err != nil {
 		return err
 	}
-	if len(resource.Name) == 0 {
+	if resource.Name == "" {
 		return errors.New("name cannot be empty")
 	}
 	// if soft deleted earlier

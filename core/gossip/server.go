@@ -164,17 +164,17 @@ func newSerfConfig(serfAddr, raftAddress, nodeID string, eventCh chan serf.Event
 		return nil, err
 	}
 
-	config := serf.DefaultConfig()
-	config.Init()
-	config.MemberlistConfig.BindAddr = serfHost
-	config.MemberlistConfig.BindPort = serfPortInt
-	config.NodeName = nodeID
-	config.Tags = map[string]string{}
-	config.Tags["raftAddr"] = raftAddress
-	config.Tags["nodeID"] = nodeID
-	config.EventCh = eventCh
-	config.EnableNameConflictResolution = false
-	return config, nil
+	serfConfig := serf.DefaultConfig()
+	serfConfig.Init()
+	serfConfig.MemberlistConfig.BindAddr = serfHost
+	serfConfig.MemberlistConfig.BindPort = serfPortInt
+	serfConfig.NodeName = nodeID
+	serfConfig.Tags = map[string]string{}
+	serfConfig.Tags["raftAddr"] = raftAddress
+	serfConfig.Tags["nodeID"] = nodeID
+	serfConfig.EventCh = eventCh
+	serfConfig.EnableNameConflictResolution = false
+	return serfConfig, nil
 }
 
 // raft manages the leadership/follower state in cluster
