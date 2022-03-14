@@ -27,7 +27,6 @@ linters:
     - gofumpt
     - godox
     - godot
-    - gochecknoinits
     - gci
     - forbidigo
     - errcheck
