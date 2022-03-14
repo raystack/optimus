@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -80,7 +81,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 	for {
 		request, err := stream.Recv()
 		if err != nil {
-			if err != io.EOF {
+			if err == io.EOF {
 				break
 			}
 			stream.Send(&pb.DeployResourceSpecificationResponse{
@@ -88,7 +89,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				Ack:     true,
 				Message: err.Error(),
 			})
-			return err
+			continue
 		}
 		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), request.GetProjectName(), request.GetNamespaceName())
 		if err != nil {
@@ -97,7 +98,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				Ack:     true,
 				Message: err.Error(),
 			})
-			return mapToGRPCErr(sv.l, err, "unable to get namespace")
+			continue
 		}
 		var resourceSpecs []models.ResourceSpec
 		for _, resourceProto := range request.GetResources() {
@@ -106,9 +107,9 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				stream.Send(&pb.DeployResourceSpecificationResponse{
 					Success: false,
 					Ack:     true,
-					Message: err.Error(),
+					Message: fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName()),
 				})
-				return status.Errorf(codes.Internal, "%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+				continue
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
 		}
@@ -125,11 +126,10 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 			stream.Send(&pb.DeployResourceSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: err.Error(),
+				Message: fmt.Sprintf("failed to update resources: \n%s", err.Error()),
 			})
-			return status.Errorf(codes.Internal, "failed to update resources: \n%s", err.Error())
+			continue
 		}
-
 		runtimeDeployResourceSpecificationCounter.Add(float64(len(request.Resources)))
 		stream.Send(&pb.DeployResourceSpecificationResponse{
 			Success: true,

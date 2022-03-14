@@ -27,7 +27,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				Ack:     true,
 				Message: err.Error(),
 			})
-			return err
+			continue
 		}
 		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), req.GetProjectName(), req.GetNamespaceName())
 		if err != nil {
@@ -36,7 +36,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				Ack:     true,
 				Message: err.Error(),
 			})
-			return mapToGRPCErr(sv.l, err, "unable to get namespace")
+			continue
 		}
 
 		var jobsToKeep []models.JobSpec
@@ -46,9 +46,9 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				stream.Send(&pb.DeployJobSpecificationResponse{
 					Success: false,
 					Ack:     true,
-					Message: err.Error(),
+					Message: fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()),
 				})
-				return status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), reqJob.GetName())
+				continue
 			}
 
 			err = sv.jobSvc.Create(stream.Context(), namespaceSpec, adaptJob)
@@ -56,9 +56,9 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				stream.Send(&pb.DeployJobSpecificationResponse{
 					Success: false,
 					Ack:     true,
-					Message: err.Error(),
+					Message: fmt.Sprintf("%s: failed to save %s", err.Error(), adaptJob.Name),
 				})
-				return status.Errorf(codes.Internal, "%s: failed to save %s", err.Error(), adaptJob.Name)
+				continue
 			}
 			jobsToKeep = append(jobsToKeep, adaptJob)
 		}
@@ -76,20 +76,18 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: err.Error(),
+				Message: fmt.Sprintf("failed to delete jobs: \n%s", err.Error()),
 			})
-			return status.Errorf(codes.Internal, "failed to delete jobs: \n%s", err.Error())
+			continue
 		}
-
 		if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: err.Error(),
+				Message: fmt.Sprintf("failed to sync jobs: \n%s", err.Error()),
 			})
-			return status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
+			continue
 		}
-
 		runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
 		stream.Send(&pb.DeployJobSpecificationResponse{
 			Success: true,
