@@ -88,7 +88,9 @@ func LoadNamespacesConfig(namespaces map[string]*Namespace, fs afero.Fs, currPat
 		}
 		namespace := optimus.Namespace
 
-		// skip conflicted namespace
+		if namespace.Name == "" {
+			continue
+		}
 		if namespaces[namespace.Name] != nil {
 			fmt.Printf("warning! namespace [%s] from [%s] is already used\n", namespace.Name, filePath)
 			continue

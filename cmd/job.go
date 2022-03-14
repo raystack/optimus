@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/odpf/optimus/config"
 
 	"github.com/odpf/optimus/models"
@@ -20,21 +17,11 @@ func jobCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepos
 		},
 	}
 
-	var namespaceName string
-	cmd.PersistentFlags().StringVarP(&namespaceName, "namespace", "n", "", "targetted namespace for job creation")
-	cmd.MarkPersistentFlagRequired("namespace")
-
-	if conf.Namespaces[namespaceName] == nil {
-		fmt.Printf("namespace [%s] is not found\n", namespaceName)
-		os.Exit(1)
-	}
-	if namespace := conf.Namespaces[namespaceName]; namespace.Job.Path != "" {
-		cmd.AddCommand(jobCreateCommand(l, namespace, pluginRepo))
-		cmd.AddCommand(jobAddHookCommand(l, namespace, pluginRepo))
-		cmd.AddCommand(jobRenderTemplateCommand(l, namespace, pluginRepo))
-		cmd.AddCommand(jobValidateCommand(l, namespace, pluginRepo, conf.Project.Name, conf.Host))
-		cmd.AddCommand(jobRunCommand(l, namespace, pluginRepo, conf.Project.Name, conf.Host))
-	}
+	cmd.AddCommand(jobCreateCommand(l, conf, pluginRepo))
+	cmd.AddCommand(jobAddHookCommand(l, conf, pluginRepo))
+	cmd.AddCommand(jobRenderTemplateCommand(l, conf, pluginRepo))
+	cmd.AddCommand(jobValidateCommand(l, conf, pluginRepo, conf.Project.Name, conf.Host))
+	cmd.AddCommand(jobRunCommand(l, conf, pluginRepo, conf.Project.Name, conf.Host))
 	cmd.AddCommand(jobStatusCommand(l, conf.Project.Name, conf.Host))
 	return cmd
 }

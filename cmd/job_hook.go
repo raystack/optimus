@@ -15,12 +15,8 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func jobAddHookCommand(l log.Logger, namespace *config.Namespace, pluginRepo models.PluginRepository) *cli.Command {
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
+func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "addhook",
 		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},
@@ -28,6 +24,15 @@ func jobAddHookCommand(l log.Logger, namespace *config.Namespace, pluginRepo mod
 		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
 		Example: "optimus addhook",
 		RunE: func(cmd *cli.Command, args []string) error {
+			namespace := conf.Namespaces[namespaceName]
+			if namespace == nil {
+				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			}
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
 			selectJobName, err := selectJobSurvey(jobSpecRepo)
 			if err != nil {
 				return err
@@ -47,6 +52,8 @@ func jobAddHookCommand(l log.Logger, namespace *config.Namespace, pluginRepo mod
 			return nil
 		},
 	}
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for adding hook")
+	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 

@@ -22,37 +22,43 @@ const (
 	validateTimeout = time.Minute * 5
 )
 
-func jobValidateCommand(l log.Logger, namespace *config.Namespace, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
+func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
 	var (
-		verbose bool
-		cmd     = &cli.Command{
-			Use:     "validate",
-			Short:   "Run basic checks on all jobs",
-			Long:    "Check if specifications are valid for deployment",
-			Example: "optimus job validate",
-		}
+		verbose       bool
+		namespaceName string
 	)
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
+	cmd := &cli.Command{
+		Use:     "validate",
+		Short:   "Run basic checks on all jobs",
+		Long:    "Check if specifications are valid for deployment",
+		Example: "optimus job validate",
+		RunE: func(c *cli.Command, args []string) error {
+			namespace := conf.Namespaces[namespaceName]
+			if namespace == nil {
+				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			}
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
+			l.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name))
+			start := time.Now()
+			jobSpecs, err := jobSpecRepo.GetAll()
+			if err != nil {
+				return fmt.Errorf("directory '%s': %v", namespace.Job.Path, err)
+			}
 
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.RunE = func(c *cli.Command, args []string) error {
-		l.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name))
-		start := time.Now()
-		jobSpecs, err := jobSpecRepo.GetAll()
-		if err != nil {
-			return fmt.Errorf("directory '%s': %v", namespace.Job.Path, err)
-		}
-
-		if err := validateJobSpecificationRequest(l, projectName, namespace.Name, pluginRepo, jobSpecs, host, verbose); err != nil {
-			return err
-		}
-		l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
-		return nil
+			if err := validateJobSpecificationRequest(l, projectName, namespace.Name, pluginRepo, jobSpecs, host, verbose); err != nil {
+				return err
+			}
+			l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
+			return nil
+		},
 	}
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for validating job")
+	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 

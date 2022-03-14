@@ -93,6 +93,7 @@ func main() {
 	if err := command.Execute(); err != nil {
 		hPlugin.CleanupClients()
 		// no need to print err here, `command` does that already
+		fmt.Println(err)
 		fmt.Println(errRequestFail)
 		os.Exit(1)
 	}

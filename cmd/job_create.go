@@ -32,17 +32,22 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, namespace *config.Namespace, pluginRepo models.PluginRepository) *cli.Command {
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
-	return &cli.Command{
+func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+	var namespaceName string
+	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			namespace := conf.Namespaces[namespaceName]
+			if namespace == nil {
+				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			}
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
 			jwd, err := getWorkingDirectory(jobSpecFs, "")
 			if err != nil {
 				return err
@@ -70,6 +75,9 @@ func jobCreateCommand(l log.Logger, namespace *config.Namespace, pluginRepo mode
 			return nil
 		},
 	}
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for creating job")
+	cmd.MarkFlagRequired("namespace")
+	return cmd
 }
 
 // getWorkingDirectory returns the directory where the new spec folder should be created
