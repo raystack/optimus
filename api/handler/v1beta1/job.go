@@ -18,7 +18,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 
 	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return mapToGRPCErr(err, "unable to get namespace")
+		return mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	var jobsToKeep []models.JobSpec
@@ -60,7 +60,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecific
 func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpecs, err := sv.jobSvc.GetAll(ctx, namespaceSpec)
@@ -84,7 +84,7 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	j, err := sv.adapter.FromJobProto(req.GetJob())
@@ -102,7 +102,7 @@ func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *
 func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, respStream pb.RuntimeService_CheckJobSpecificationsServer) error {
 	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return mapToGRPCErr(err, "unable to get namespace")
+		return mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	observers := new(progress.ObserverChain)
@@ -131,7 +131,7 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpec, err := sv.adapter.FromJobProto(req.GetSpec())
@@ -163,7 +163,7 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -184,7 +184,7 @@ func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb
 func (sv *RuntimeServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to get namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	jobSpecToDelete, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)

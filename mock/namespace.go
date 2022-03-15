@@ -26,6 +26,11 @@ func (pr *NamespaceRepository) GetAll(ctx context.Context) ([]models.NamespaceSp
 	return args.Get(0).([]models.NamespaceSpec), args.Error(1)
 }
 
+func (pr *NamespaceRepository) Get(ctx context.Context, prjName, nsName string) (models.NamespaceSpec, error) {
+	args := pr.Called(ctx, prjName, nsName)
+	return args.Get(0).(models.NamespaceSpec), args.Error(1)
+}
+
 type NamespaceRepoFactory struct {
 	mock.Mock
 }

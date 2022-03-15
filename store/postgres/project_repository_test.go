@@ -18,7 +18,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestProjectRepository(t *testing.T) {
+func TestIntegrationProjectRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {
@@ -195,7 +195,7 @@ func TestProjectRepository(t *testing.T) {
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = postgres.NewSecretRepository(db, testModels[0], hash).Save(ctx, models.NamespaceSpec{}, models.ProjectSecretItem{
+		err = postgres.NewSecretRepository(db, hash).Save(ctx, testModels[0], models.NamespaceSpec{}, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
@@ -220,12 +220,12 @@ func TestProjectRepository(t *testing.T) {
 		assert.Nil(t, repo.Insert(ctx, testModels[2]))
 		assert.Nil(t, repo.Insert(ctx, testModels[3]))
 
-		err := postgres.NewSecretRepository(db, testModels[2], hash).Save(ctx, models.NamespaceSpec{}, models.ProjectSecretItem{
+		err := postgres.NewSecretRepository(db, hash).Save(ctx, testModels[2], models.NamespaceSpec{}, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
 		assert.Nil(t, err)
-		err = postgres.NewSecretRepository(db, testModels[3], hash).Save(ctx, models.NamespaceSpec{}, models.ProjectSecretItem{
+		err = postgres.NewSecretRepository(db, hash).Save(ctx, testModels[3], models.NamespaceSpec{}, models.ProjectSecretItem{
 			Name:  "t2",
 			Value: "v2",
 		})

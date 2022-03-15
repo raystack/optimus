@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestBackupRepository(t *testing.T) {
+func TestIntegrationBackupRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-project",

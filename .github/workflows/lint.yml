@@ -17,8 +17,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: generate dependencies
-        run: make pack-files
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:

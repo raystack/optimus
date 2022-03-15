@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestJobRunRepository(t *testing.T) {
+func TestIntegrationJobRunRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),

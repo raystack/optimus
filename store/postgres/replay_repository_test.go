@@ -38,7 +38,7 @@ func treeIsEqual(treeNode *tree.TreeNode, treeNodeComparator *tree.TreeNode) boo
 	return true
 }
 
-func TestReplayRepository(t *testing.T) {
+func TestIntegrationReplayRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
