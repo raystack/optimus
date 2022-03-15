@@ -109,7 +109,7 @@ func TestProjectService(t *testing.T) {
 
 			_, err := svc.GetAll(ctx)
 			assert.NotNil(t, err)
-			assert.Equal(t, ": internal error for entity project", err.Error())
+			assert.Equal(t, "internal error: internal error for entity project", err.Error())
 		})
 		t.Run("return projects successfully", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)

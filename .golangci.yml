@@ -40,7 +40,6 @@ linters:
     - noctx
     - ireturn
     - gosimple
-    - gomnd
     - goerr113
     - nilerr
     - errorlint
@@ -64,5 +63,18 @@ linters-settings:
   goconst:
     ignore-tests: true
     numbers: true
+  gomnd:
+    ignored-numbers: # Why we have a big range of file permissions
+      - '0644'
+      - '0655'
+      - '0666'
+      - '0770'
+      - '0755'
+      - '0765'
+      - '0777'
+    ignored-functions:
+      - 'survey.MinLength'
+      - 'survey.MaxLength'
+      - 'args.Error'
 severity:
   default-severity: error

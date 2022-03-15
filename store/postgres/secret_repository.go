@@ -24,7 +24,7 @@ type Secret struct {
 	NamespaceID uuid.UUID `gorm:"default:null"`
 	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
-	Name  string `gorm:"not null"`
+	Name  string `gorm:"not null;default:null"`
 	Value string
 
 	Type string
@@ -36,7 +36,7 @@ type Secret struct {
 
 func (p Secret) FromSpec(spec models.ProjectSecretItem, proj models.ProjectSpec, namespace models.NamespaceSpec,
 	hash models.ApplicationKey) (Secret, error) {
-	// encrypt secret
+	// encrypt secret, TODO: What to do when the Value is empty ?
 	cipher, err := cryptopasta.Encrypt([]byte(spec.Value), hash.GetKey())
 	if err != nil {
 		return Secret{}, err
@@ -114,40 +114,36 @@ func (p Secret) ToSecretItemInfo() (models.SecretItemInfo, error) {
 }
 
 type secretRepository struct {
-	db      *gorm.DB
-	project models.ProjectSpec
+	db *gorm.DB
 
 	hash models.ApplicationKey
 }
 
-func (repo *secretRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, resource models.ProjectSecretItem) error {
-	p, err := Secret{}.FromSpec(resource, repo.project, namespace, repo.hash)
+func (repo *secretRepository) Insert(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, resource models.ProjectSecretItem) error {
+	p, err := Secret{}.FromSpec(resource, project, namespace, repo.hash)
 	if err != nil {
 		return err
-	}
-	if len(p.Name) == 0 { // TODO: already checked in service
-		return errors.New("name cannot be empty")
 	}
 	return repo.db.WithContext(ctx).Save(&p).Error
 }
 
-func (repo *secretRepository) Save(ctx context.Context, namespace models.NamespaceSpec, spec models.ProjectSecretItem) error {
-	_, err := repo.GetByName(ctx, spec.Name)
+func (repo *secretRepository) Save(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, spec models.ProjectSecretItem) error {
+	_, err := repo.GetByName(ctx, project, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, namespace, spec)
+		return repo.Insert(ctx, project, namespace, spec)
 	} else if err != nil {
 		return fmt.Errorf("unable to find secret by name: %w", err)
 	}
 	return store.ErrResourceExists
 }
 
-func (repo *secretRepository) Update(ctx context.Context, namespace models.NamespaceSpec, spec models.ProjectSecretItem) error {
-	existingResource, err := repo.GetByName(ctx, spec.Name)
+func (repo *secretRepository) Update(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, spec models.ProjectSecretItem) error {
+	existingResource, err := repo.GetByName(ctx, project, spec.Name)
 	if err != nil {
 		return err
 	}
 
-	resource, err := Secret{}.FromSpec(spec, repo.project, namespace, repo.hash)
+	resource, err := Secret{}.FromSpec(spec, project, namespace, repo.hash)
 	if err != nil {
 		return err
 	}
@@ -156,10 +152,10 @@ func (repo *secretRepository) Update(ctx context.Context, namespace models.Names
 	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
 }
 
-func (repo *secretRepository) GetByName(ctx context.Context, name string) (models.ProjectSecretItem, error) {
+func (repo *secretRepository) GetByName(ctx context.Context, project models.ProjectSpec, name string) (models.ProjectSecretItem, error) {
 	var r Secret
 	if err := repo.db.WithContext(ctx).
-		Where("project_id = ?", repo.project.ID).
+		Where("project_id = ?", project.ID).
 		Where("name = ?", name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSecretItem{}, store.ErrResourceNotFound
@@ -181,12 +177,12 @@ func (repo *secretRepository) GetByID(ctx context.Context, id uuid.UUID) (models
 	return r.ToSpec(repo.hash)
 }
 
-func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemInfo, error) {
+func (repo *secretRepository) GetAll(ctx context.Context, project models.ProjectSpec) ([]models.SecretItemInfo, error) {
 	var secretItems []models.SecretItemInfo
 	var resources []Secret
 	if err := repo.db.WithContext(ctx).Preload("Namespace").
 		Joins("LEFT JOIN namespace ON secret.namespace_id = namespace.id").
-		Where("secret.project_id = ?", repo.project.ID).
+		Where("secret.project_id = ?", project.ID).
 		Where("secret.type = ?", models.SecretTypeUserDefined).
 		Find(&resources).Error; err != nil {
 		return secretItems, err
@@ -202,11 +198,11 @@ func (repo *secretRepository) GetAll(ctx context.Context) ([]models.SecretItemIn
 	return secretItems, nil
 }
 
-func (repo secretRepository) GetSecrets(ctx context.Context, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
+func (repo secretRepository) GetSecrets(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec) ([]models.ProjectSecretItem, error) {
 	var secretItems []models.ProjectSecretItem
 	var resources []Secret
 	if err := repo.db.WithContext(ctx).
-		Where("project_id = ?", repo.project.ID).
+		Where("project_id = ?", project.ID).
 		Where("type = ?", models.SecretTypeUserDefined).
 		Where("namespace_id is null or namespace_id = ?", namespace.ID).
 		Find(&resources).Error; err != nil {
@@ -223,9 +219,9 @@ func (repo secretRepository) GetSecrets(ctx context.Context, namespace models.Na
 	return secretItems, nil
 }
 
-func (repo *secretRepository) Delete(ctx context.Context, namespace models.NamespaceSpec, secretName string) error {
+func (repo *secretRepository) Delete(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, secretName string) error {
 	query := repo.db.WithContext(ctx).
-		Where("project_id = ?", repo.project.ID).
+		Where("project_id = ?", project.ID).
 		Where("name = ?", secretName)
 
 	var result *gorm.DB
@@ -246,10 +242,9 @@ func (repo *secretRepository) Delete(ctx context.Context, namespace models.Names
 	return nil
 }
 
-func NewSecretRepository(db *gorm.DB, project models.ProjectSpec, hash models.ApplicationKey) *secretRepository {
+func NewSecretRepository(db *gorm.DB, hash models.ApplicationKey) *secretRepository {
 	return &secretRepository{
-		db:      db,
-		project: project,
-		hash:    hash,
+		db:   db,
+		hash: hash,
 	}
 }

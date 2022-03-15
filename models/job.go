@@ -29,6 +29,7 @@ const (
 
 	// assuming all month are 30 days long for simplicity
 	HoursInMonth = time.Duration(30) * 24 * time.Hour
+	HoursInDay   = 24 * time.Hour
 
 	// within a project
 	JobSpecDependencyTypeIntra JobSpecDependencyType = "intra"
@@ -162,12 +163,12 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 		floatingEnd = floatingEnd.Truncate(time.Hour)
 	} else if windowTruncateTo == "d" {
 		// remove time upto day
-		floatingEnd = floatingEnd.Truncate(24 * time.Hour)
+		floatingEnd = floatingEnd.Truncate(HoursInDay)
 	} else if windowTruncateTo == "w" {
 		// shift current window to nearest Sunday
-		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * 24 * time.Hour
+		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * HoursInDay
 		floatingEnd = floatingEnd.Add(nearestSunday)
-		floatingEnd = floatingEnd.Truncate(24 * time.Hour)
+		floatingEnd = floatingEnd.Truncate(HoursInDay)
 	}
 
 	windowEnd := floatingEnd.Add(windowOffset)
@@ -190,7 +191,7 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 		floatingEnd = floatingEnd.AddDate(0, 1, -1)
 
 		// final end is computed
-		windowEnd = floatingEnd.Truncate(time.Hour * 24)
+		windowEnd = floatingEnd.Truncate(HoursInDay)
 
 		// truncate days/hours from window start as well
 		floatingStart := time.Date(floatingEnd.Year(), floatingEnd.Month(), 1, 0, 0, 0, 0, time.UTC)

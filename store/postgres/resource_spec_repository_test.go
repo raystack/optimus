@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestResourceSpecRepository(t *testing.T) {
+func TestIntegrationResourceSpecRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
@@ -289,7 +289,7 @@ func TestResourceSpecRepository(t *testing.T) {
 	})
 }
 
-func TestProjectResourceSpecRepository(t *testing.T) {
+func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
