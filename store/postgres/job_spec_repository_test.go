@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestJobRepository(t *testing.T) {
+func TestIntegrationJobRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {
@@ -575,7 +575,7 @@ func TestJobRepository(t *testing.T) {
 	})
 }
 
-func TestProjectJobRepository(t *testing.T) {
+func TestIntegrationProjectJobRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
 		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
 		if !ok {

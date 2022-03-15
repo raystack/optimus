@@ -43,13 +43,13 @@ type ProjectRepository interface {
 	GetAll(context.Context) ([]models.ProjectSpec, error)
 }
 
-// ProjectSecretRepository stores secrets attached to projects
-type ProjectSecretRepository interface {
-	GetSecrets(context.Context, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
-	Save(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
-	Update(ctx context.Context, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
-	GetAll(context.Context) ([]models.SecretItemInfo, error)
-	Delete(context.Context, models.NamespaceSpec, string) error
+// SecretRepository stores secrets attached to projects
+type SecretRepository interface {
+	GetSecrets(context.Context, models.ProjectSpec, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
+	Save(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
+	Update(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, item models.ProjectSecretItem) error
+	GetAll(context.Context, models.ProjectSpec) ([]models.SecretItemInfo, error)
+	Delete(context.Context, models.ProjectSpec, models.NamespaceSpec, string) error
 }
 
 // NamespaceRepository represents a storage interface for registered namespaces
@@ -57,6 +57,7 @@ type NamespaceRepository interface {
 	Save(context.Context, models.NamespaceSpec) error
 	GetByName(context.Context, string) (models.NamespaceSpec, error)
 	GetAll(context.Context) ([]models.NamespaceSpec, error)
+	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
 }
 
 // JobRunSpecRepository represents a storage interface for Job runs generated to

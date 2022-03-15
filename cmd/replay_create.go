@@ -44,7 +44,7 @@ Date ranges are inclusive.
 			if len(args) < 1 {
 				return errors.New("job name is required")
 			}
-			if len(args) < 2 {
+			if len(args) < 2 { //nolint: gomnd
 				return errors.New("replay start date is required")
 			}
 			return nil
@@ -60,7 +60,7 @@ Date ranges are inclusive.
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		endDate := args[1]
-		if len(args) >= 3 {
+		if len(args) >= 3 { //nolint: gomnd
 			endDate = args[2]
 		}
 

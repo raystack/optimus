@@ -124,7 +124,7 @@ func (e *Extension) downloadAsset(url, destPath string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= 300 { //nolint: gomnd
 		return e.getResponseError(resp)
 	}
 
