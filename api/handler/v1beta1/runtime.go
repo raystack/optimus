@@ -252,16 +252,16 @@ func (sv *RuntimeServiceServer) JobRun(ctx context.Context, req *pb.JobRunReques
 		return nil, status.Errorf(codes.NotFound, "%s\n job runs not found ",
 			req.GetJobName())
 	}
-	var runStatus []*pb.RunStatus
+	var runs []*pb.JobRun
 	for _, run := range jobRuns {
 		ts := timestamppb.New(run.ScheduledAt)
-		runStatus = append(runStatus, &pb.RunStatus{
+		runs = append(runs, &pb.JobRun{
 			State:       run.Status.String(),
 			ScheduledAt: ts,
 		})
 	}
 	return &pb.JobRunResponse{
-		RunStatus: runStatus,
+		JobRun: runs,
 	}, nil
 }
 

@@ -2046,13 +2046,25 @@
         }
       }
     },
+    "v1beta1JobRun": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "v1beta1JobRunResponse": {
       "type": "object",
       "properties": {
-        "runStatus": {
+        "jobRun": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1beta1RunStatus"
+            "$ref": "#/definitions/v1beta1JobRun"
           }
         }
       }
@@ -2560,18 +2572,6 @@
     },
     "v1beta1RunJobResponse": {
       "type": "object"
-    },
-    "v1beta1RunStatus": {
-      "type": "object",
-      "properties": {
-        "state": {
-          "type": "string"
-        },
-        "scheduledAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      }
     },
     "v1beta1UpdateResourceResponse": {
       "type": "object",
