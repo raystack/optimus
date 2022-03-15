@@ -205,7 +205,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		}
 		t.Run("should register a new job instance with run for scheduled triggers", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
@@ -275,7 +275,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 		})
 		t.Run("should find the existing job run if manually triggered", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			instanceService := new(mock.RunService)
@@ -565,7 +565,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)

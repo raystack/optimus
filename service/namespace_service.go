@@ -41,7 +41,7 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 	}
 
 	nsRepo := s.namespaceRepoFac.New(models.ProjectSpec{}) // Intentional empty object
-	nsSpec, err := nsRepo.Get(ctx, projectName, namespaceName)
+	nsSpec, err := nsRepo.GetByName(ctx, projectName, namespaceName)
 	if err != nil {
 		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
@@ -51,7 +51,7 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 
 // GetNamespaceOptionally is used for optionally getting namespace if name is present, otherwise get only project
 func (s namespaceService) GetNamespaceOptionally(ctx context.Context, projectName string, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
-	projectSpec, err := s.projectService.Get(ctx, projectName)
+	projectSpec, err := s.projectService.GetByName(ctx, projectName)
 	if err != nil {
 		return models.ProjectSpec{}, models.NamespaceSpec{}, err
 	}
@@ -74,7 +74,7 @@ func (s namespaceService) Save(ctx context.Context, projName string, namespace m
 		return NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
-	projectSpec, err := s.projectService.Get(ctx, projName)
+	projectSpec, err := s.projectService.GetByName(ctx, projName)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (s namespaceService) Save(ctx context.Context, projName string, namespace m
 }
 
 func (s namespaceService) GetAll(ctx context.Context, projName string) ([]models.NamespaceSpec, error) {
-	projectSpec, err := s.projectService.Get(ctx, projName)
+	projectSpec, err := s.projectService.GetByName(ctx, projName)
 	if err != nil {
 		return []models.NamespaceSpec{}, err
 	}

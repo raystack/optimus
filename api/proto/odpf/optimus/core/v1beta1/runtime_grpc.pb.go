@@ -89,6 +89,10 @@ type RuntimeServiceClient interface {
 	// RunJob creates a job run and executes all included tasks/hooks instantly
 	// this doesn't necessarily deploy the job in db first
 	RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error)
+	// RefreshJobs do redeployment using the current persisted state.
+	// It will returns a stream of messages which can be used to track the progress.
+	// Message containing ack are status events other are progress events
+	RefreshJobs(ctx context.Context, in *RefreshJobsRequest, opts ...grpc.CallOption) (RuntimeService_RefreshJobsClient, error)
 }
 
 type runtimeServiceClient struct {
@@ -481,6 +485,38 @@ func (c *runtimeServiceClient) RunJob(ctx context.Context, in *RunJobRequest, op
 	return out, nil
 }
 
+func (c *runtimeServiceClient) RefreshJobs(ctx context.Context, in *RefreshJobsRequest, opts ...grpc.CallOption) (RuntimeService_RefreshJobsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &RuntimeService_ServiceDesc.Streams[3], "/odpf.optimus.core.v1beta1.RuntimeService/RefreshJobs", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &runtimeServiceRefreshJobsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type RuntimeService_RefreshJobsClient interface {
+	Recv() (*RefreshJobsResponse, error)
+	grpc.ClientStream
+}
+
+type runtimeServiceRefreshJobsClient struct {
+	grpc.ClientStream
+}
+
+func (x *runtimeServiceRefreshJobsClient) Recv() (*RefreshJobsResponse, error) {
+	m := new(RefreshJobsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // RuntimeServiceServer is the server API for RuntimeService service.
 // All implementations must embed UnimplementedRuntimeServiceServer
 // for forward compatibility
@@ -556,6 +592,10 @@ type RuntimeServiceServer interface {
 	// RunJob creates a job run and executes all included tasks/hooks instantly
 	// this doesn't necessarily deploy the job in db first
 	RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error)
+	// RefreshJobs do redeployment using the current persisted state.
+	// It will returns a stream of messages which can be used to track the progress.
+	// Message containing ack are status events other are progress events
+	RefreshJobs(*RefreshJobsRequest, RuntimeService_RefreshJobsServer) error
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -667,6 +707,9 @@ func (UnimplementedRuntimeServiceServer) GetBackup(context.Context, *GetBackupRe
 }
 func (UnimplementedRuntimeServiceServer) RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunJob not implemented")
+}
+func (UnimplementedRuntimeServiceServer) RefreshJobs(*RefreshJobsRequest, RuntimeService_RefreshJobsServer) error {
+	return status.Errorf(codes.Unimplemented, "method RefreshJobs not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
 
@@ -1330,6 +1373,27 @@ func _RuntimeService_RunJob_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeService_RefreshJobs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RefreshJobsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RuntimeServiceServer).RefreshJobs(m, &runtimeServiceRefreshJobsServer{stream})
+}
+
+type RuntimeService_RefreshJobsServer interface {
+	Send(*RefreshJobsResponse) error
+	grpc.ServerStream
+}
+
+type runtimeServiceRefreshJobsServer struct {
+	grpc.ServerStream
+}
+
+func (x *runtimeServiceRefreshJobsServer) Send(m *RefreshJobsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // RuntimeService_ServiceDesc is the grpc.ServiceDesc for RuntimeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1483,6 +1547,11 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _RuntimeService_DeployResourceSpecification_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "RefreshJobs",
+			Handler:       _RuntimeService_RefreshJobs_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "odpf/optimus/core/v1beta1/runtime.proto",

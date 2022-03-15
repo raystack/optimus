@@ -269,3 +269,40 @@ func (sv *RuntimeServiceServer) DeleteJobSpecification(ctx context.Context, req 
 		Message: fmt.Sprintf("job %s has been deleted", jobSpecToDelete.Name),
 	}, nil
 }
+
+func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.RuntimeService_RefreshJobsServer) error {
+	startTime := time.Now()
+
+	var namespaceJobNamePairs []models.NamespaceJobNamePair
+	for _, namespaceJobs := range req.NamespaceJobs {
+		namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), namespaceJobs.NamespaceName)
+		if err != nil {
+			return mapToGRPCErr(err, "unable to get namespace")
+		}
+
+		namespaceJobNamePairs = append(namespaceJobNamePairs, models.NamespaceJobNamePair{
+			Namespace: namespaceSpec,
+			JobNames:  namespaceJobs.JobNames,
+		})
+	}
+
+	observers := new(progress.ObserverChain)
+	observers.Join(sv.progressObserver)
+	observers.Join(&jobRefreshObserver{
+		stream: respStream,
+		log:    sv.l,
+		mu:     new(sync.Mutex),
+	})
+
+	projectSpec, err := sv.projectService.GetByName(respStream.Context(), req.ProjectName)
+	if err != nil {
+		return mapToGRPCErr(err, "unable to get project")
+	}
+
+	if err = sv.jobSvc.Refresh(respStream.Context(), projectSpec, namespaceJobNamePairs, observers); err != nil {
+		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
+	}
+
+	sv.l.Info("finished job refresh", "time", time.Since(startTime))
+	return nil
+}

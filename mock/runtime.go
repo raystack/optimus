@@ -246,3 +246,37 @@ func (_m *DeployResourceSpecificationServer) SetHeader(_a0 metadata.MD) error {
 func (_m *DeployResourceSpecificationServer) SetTrailer(_a0 metadata.MD) {
 	_m.Called(_a0)
 }
+
+type RuntimeService_RefreshJobsServer struct {
+	mock.Mock
+}
+
+func (r *RuntimeService_RefreshJobsServer) Send(response *pb.RefreshJobsResponse) error {
+	args := r.Called(response)
+	return args.Error(0)
+}
+
+func (r *RuntimeService_RefreshJobsServer) SetHeader(md metadata.MD) error {
+	panic("implement me")
+}
+
+func (r *RuntimeService_RefreshJobsServer) SendHeader(md metadata.MD) error {
+	panic("implement me")
+}
+
+func (r *RuntimeService_RefreshJobsServer) SetTrailer(md metadata.MD) {
+	panic("implement me")
+}
+
+func (r *RuntimeService_RefreshJobsServer) Context() context.Context {
+	args := r.Called()
+	return args.Get(0).(context.Context)
+}
+
+func (r *RuntimeService_RefreshJobsServer) SendMsg(m interface{}) error {
+	panic("implement me")
+}
+
+func (r *RuntimeService_RefreshJobsServer) RecvMsg(m interface{}) error {
+	panic("implement me")
+}

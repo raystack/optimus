@@ -32,7 +32,7 @@ type ProjectJobSpecRepository interface {
 	// note: be warned to handle this carefully in multi tenant situations
 	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
 
-	GetByID(context.Context, uuid.UUID)
+	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)
 
 	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
@@ -42,6 +42,7 @@ type ProjectJobSpecRepository interface {
 type ProjectRepository interface {
 	Save(context.Context, models.ProjectSpec) error
 	GetByName(context.Context, string) (models.ProjectSpec, error)
+	GetByID(context.Context, uuid.UUID) (models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.ProjectSpec, error)
 }
 
@@ -128,9 +129,10 @@ type JobDependencyRepository interface {
 }
 
 type JobDependency struct {
-	JobID          uuid.UUID `gorm:"not null" json:"job_id"`
-	JobProjectID   uuid.UUID `gorm:"not null" json:"job_project_id"`
-	JobDependentID uuid.UUID `gorm:"not null" json:"job_dependent_id"`
+	JobID              uuid.UUID `gorm:"not null" json:"job_id"`
+	ProjectID          uuid.UUID `gorm:"not null" json:"project_id"`
+	DependentJobID     uuid.UUID `gorm:"not null" json:"dependent_job_id"`
+	DependentProjectID uuid.UUID `gorm:"not null" json:"dependent_project_id"`
 
 	Type string
 

@@ -16,3 +16,8 @@ type NamespaceSpec struct {
 }
 
 const AllNamespace = "*"
+
+type NamespaceJobNamePair struct {
+	Namespace NamespaceSpec
+	JobNames  []string
+}

@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"github.com/google/uuid"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -19,6 +20,11 @@ func (pr *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec) 
 
 func (pr *ProjectRepository) GetByName(ctx context.Context, name string) (models.ProjectSpec, error) {
 	args := pr.Called(ctx, name)
+	return args.Get(0).(models.ProjectSpec), args.Error(1)
+}
+
+func (pr *ProjectRepository) GetByID(ctx context.Context, projectID uuid.UUID) (models.ProjectSpec, error) {
+	args := pr.Called(ctx, projectID)
 	return args.Get(0).(models.ProjectSpec), args.Error(1)
 }
 
@@ -48,8 +54,13 @@ type ProjectService struct {
 	mock.Mock
 }
 
-func (pr *ProjectService) Get(ctx context.Context, name string) (models.ProjectSpec, error) {
+func (pr *ProjectService) GetByName(ctx context.Context, name string) (models.ProjectSpec, error) {
 	args := pr.Called(ctx, name)
+	return args.Get(0).(models.ProjectSpec), args.Error(1)
+}
+
+func (pr *ProjectService) GetByID(ctx context.Context, jobID uuid.UUID) (models.ProjectSpec, error) {
+	args := pr.Called(ctx, jobID)
 	return args.Get(0).(models.ProjectSpec), args.Error(1)
 }
 

@@ -2226,6 +2226,20 @@
         }
       }
     },
+    "v1beta1NamespaceJobs": {
+      "type": "object",
+      "properties": {
+        "namespaceName": {
+          "type": "string"
+        },
+        "jobNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1beta1NamespaceSpecification": {
       "type": "object",
       "properties": {
@@ -2271,6 +2285,27 @@
         },
         "resource": {
           "$ref": "#/definitions/v1beta1ResourceSpecification"
+        }
+      }
+    },
+    "v1beta1RefreshJobsResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "ack": {
+          "type": "boolean",
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+        },
+        "message": {
+          "type": "string"
+        },
+        "namespaceName": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
         }
       }
     },

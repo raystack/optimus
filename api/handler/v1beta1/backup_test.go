@@ -1265,7 +1265,7 @@ func TestBackupOnServer(t *testing.T) {
 		}
 		t.Run("should return list of backups", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1314,7 +1314,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			errorMsg := "unable to get project spec"
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).
+			projectService.On("GetByName", ctx, projectName).
 				Return(models.ProjectSpec{}, errors.New(errorMsg))
 			defer projectService.AssertExpectations(t)
 
@@ -1338,7 +1338,7 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return error when unable to get list of backups", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1399,7 +1399,7 @@ func TestBackupOnServer(t *testing.T) {
 		}
 		t.Run("should return backup detail", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1437,7 +1437,7 @@ func TestBackupOnServer(t *testing.T) {
 		t.Run("should return error when unable to get project spec", func(t *testing.T) {
 			errorMsg := "unable to get project spec"
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, errors.New(errorMsg))
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, errors.New(errorMsg))
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1463,7 +1463,7 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return error when unable to get backup detail", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1492,7 +1492,7 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return error when backup is not found", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1520,7 +1520,7 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return error when backup URN is not found", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)
@@ -1562,7 +1562,7 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return error when backup URN is invalid", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			resourceSvc := new(mock.DatastoreService)

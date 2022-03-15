@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"testing"
 	"time"
 
 	"github.com/odpf/optimus/store"
+
+	"github.com/pkg/errors"
 
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
@@ -125,7 +128,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -242,7 +245,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -356,7 +359,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -456,7 +459,7 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 			execUnit.On("GenerateDependencies", ctx, unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -526,7 +529,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(
 				&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
@@ -568,7 +571,7 @@ func TestDependencyResolver(t *testing.T) {
 			unitData := models.GenerateDependenciesRequest{Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets), Project: projectSpec}
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, "random error", err.Error())
@@ -611,7 +614,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table3_destination"}}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
 				"project.dataset.table3_destination", jobSpec1.Name),
@@ -676,7 +679,7 @@ func TestDependencyResolver(t *testing.T) {
 				Dependencies: []string{"project.dataset.table1_destination"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
 			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
 		})
@@ -738,7 +741,7 @@ func TestDependencyResolver(t *testing.T) {
 				Dependencies: []string{"project.dataset.table1_destination"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
 			assert.Equal(t, "unsupported dependency type: bad", err.Error())
 		})
@@ -831,7 +834,7 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 			execUnit.On("GenerateDependencies", ctx, unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -970,7 +973,7 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 			execUnit.On("GenerateDependencies", context.Background(), unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -981,6 +984,1073 @@ func TestDependencyResolver(t *testing.T) {
 			assert.Equal(t, models.JobSpecDependency{Job: &jobSpecExternal, Project: &externalProjectSpec, Type: models.JobSpecDependencyTypeInter}, resolvedJobSpec1.Dependencies[jobSpecExternal.Name])
 			assert.Equal(t, models.JobSpecDependency{Job: &jobSpec3, Project: &externalProjectSpec, Type: models.JobSpecDependencyTypeInter}, resolvedJobSpec1.Dependencies[externalProjectName+"/"+jobSpec3.Name])
 			assert.Equal(t, map[string]models.JobSpecDependency{}, resolvedJobSpec2.Dependencies)
+		})
+	})
+
+	t.Run("ResolveAndPersist", func(t *testing.T) {
+		ctx := context.Background()
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+
+		t.Run("should able to resolve and persist successfully", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			unitData := models.GenerateDependenciesRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets),
+				Project: projectSpec,
+			}
+			jobDependency := store.JobDependency{
+				JobID:              jobSpec1.ID,
+				ProjectID:          projectSpec.ID,
+				DependentJobID:     jobSpec2.ID,
+				DependentProjectID: jobSpec2.ID,
+				Type:               models.JobSpecDependencyTypeIntra.String(),
+			}
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
+			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			jobSpecRepository.On("GetByDestination", ctx, "project.dataset.table2_destination").Return([]store.ProjectJobPair{{
+				Project: projectSpec, Job: jobSpec2,
+			}}, nil)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			jobDependencyRepository.On("DeleteByJobID", ctx, jobSpec1.ID).Return(nil)
+			jobDependencyRepository.On("Save", ctx, jobDependency).Return(nil)
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
+
+			assert.Nil(t, err)
+		})
+		t.Run("should return fail when unable to generate dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			unitData := models.GenerateDependenciesRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets),
+				Project: projectSpec,
+			}
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
+			errorMsg := "generate dependencies failed"
+			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{}, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
+
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should return fail when unable to get by destination", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			unitData := models.GenerateDependenciesRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets),
+				Project: projectSpec,
+			}
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
+			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			errorMsg := "internal error"
+			jobSpecRepository.On("GetByDestination", ctx, "project.dataset.table2_destination").Return(nil, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
+
+			assert.Equal(t, fmt.Sprintf("runtime dependency evaluation failed: %s", errorMsg), err.Error())
+		})
+		t.Run("should return fail when failed to delete dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			unitData := models.GenerateDependenciesRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets),
+				Project: projectSpec,
+			}
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
+			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			jobSpecRepository.On("GetByDestination", ctx, "project.dataset.table2_destination").Return([]store.ProjectJobPair{{
+				Project: projectSpec, Job: jobSpec2,
+			}}, nil)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			errorMsg := "internal error"
+			jobDependencyRepository.On("DeleteByJobID", ctx, jobSpec1.ID).Return(errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
+
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should return fail when failed to save dependency", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			unitData := models.GenerateDependenciesRequest{
+				Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets),
+				Project: projectSpec,
+			}
+			jobDependency := store.JobDependency{
+				JobID:              jobSpec1.ID,
+				ProjectID:          projectSpec.ID,
+				DependentJobID:     jobSpec2.ID,
+				DependentProjectID: jobSpec2.ID,
+				Type:               models.JobSpecDependencyTypeIntra.String(),
+			}
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
+			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			jobSpecRepository.On("GetByDestination", ctx, "project.dataset.table2_destination").Return([]store.ProjectJobPair{{
+				Project: projectSpec, Job: jobSpec2,
+			}}, nil)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			jobDependencyRepository.On("DeleteByJobID", ctx, jobSpec1.ID).Return(nil)
+			errorMsg := "internal error"
+			jobDependencyRepository.On("Save", ctx, jobDependency).Return(errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
+
+			assert.Equal(t, errorMsg, err.Error())
+		})
+	})
+
+	t.Run("Fetch", func(t *testing.T) {
+		ctx := context.Background()
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+
+		t.Run("should able to fetch dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+			expectedDependency := map[string]models.JobSpecDependency{
+				jobSpec2.Name: {
+					Project: &projectSpec,
+					Job:     &jobSpec2,
+					Type:    models.JobSpecDependencyTypeIntra,
+				},
+			}
+			jobSpec1.Dependencies = expectedDependency
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			persistedDependencies := []store.JobDependency{
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec2.ID,
+					DependentProjectID: projectSpec.ID,
+					Type:               models.JobSpecDependencyTypeIntra.String(),
+				},
+			}
+			jobDependencyRepository.On("GetAll", ctx).Return(persistedDependencies, nil)
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			actual, err := resolver.Fetch(ctx, projectSpec, jobSpecs)
+
+			assert.Nil(t, err)
+			assert.EqualValues(t, expectedDependency[jobSpec2.Name], actual[jobSpec1.Name][0])
+		})
+		t.Run("should able to fetch dependencies including inter dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			otherProjectSpec := models.ProjectSpec{
+				Name: "b-data-project",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpec3 := models.JobSpec{
+				Version: 1,
+				Name:    "test3",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpecs := []models.JobSpec{jobSpec1}
+			dependencies := []models.JobSpecDependency{
+				{
+					Project: &otherProjectSpec,
+					Job:     &jobSpec2,
+					Type:    models.JobSpecDependencyTypeInter,
+				},
+				{
+					Project: &otherProjectSpec,
+					Job:     &jobSpec3,
+					Type:    models.JobSpecDependencyTypeInter,
+				},
+			}
+			jobSpec1.Dependencies = map[string]models.JobSpecDependency{
+				jobSpec2.Name: dependencies[0],
+				jobSpec3.Name: dependencies[1],
+			}
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			persistedDependencies := []store.JobDependency{
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec2.ID,
+					DependentProjectID: otherProjectSpec.ID,
+					Type:               models.JobSpecDependencyTypeInter.String(),
+				},
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec3.ID,
+					DependentProjectID: otherProjectSpec.ID,
+					Type:               models.JobSpecDependencyTypeInter.String(),
+				},
+			}
+			jobDependencyRepository.On("GetAll", ctx).Return(persistedDependencies, nil)
+
+			projectService.On("GetByID", ctx, otherProjectSpec.ID).Return(otherProjectSpec, nil)
+			projectJobSpecRepoFactory.On("New", otherProjectSpec).Return(jobSpecRepository)
+			jobSpecRepository.On("GetByIDs", ctx, []uuid.UUID{jobSpec2.ID, jobSpec3.ID}).Return([]models.JobSpec{jobSpec2, jobSpec3}, nil)
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, projectService)
+			actual, err := resolver.Fetch(ctx, projectSpec, jobSpecs)
+
+			assert.Nil(t, err)
+			assert.EqualValues(t, dependencies, []models.JobSpecDependency{actual[jobSpec1.Name][0], actual[jobSpec1.Name][1]})
+		})
+		t.Run("should failed when unable to get persisted dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpecs := []models.JobSpec{jobSpec1, jobSpec2}
+			expectedDependency := map[string]models.JobSpecDependency{
+				jobSpec2.Name: {
+					Project: &projectSpec,
+					Job:     &jobSpec2,
+					Type:    models.JobSpecDependencyTypeIntra,
+				},
+			}
+			jobSpec1.Dependencies = expectedDependency
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+
+			errorMsg := "internal error"
+			jobDependencyRepository.On("GetAll", ctx).Return([]store.JobDependency{}, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			actual, err := resolver.Fetch(ctx, projectSpec, jobSpecs)
+
+			assert.Nil(t, actual)
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should failed when unable to get dependency project of inter dependencies", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			otherProjectSpec := models.ProjectSpec{
+				Name: "b-data-project",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpec3 := models.JobSpec{
+				Version: 1,
+				Name:    "test3",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpecs := []models.JobSpec{jobSpec1}
+			expectedDependency := map[string]models.JobSpecDependency{
+				jobSpec2.Name: {
+					Project: &otherProjectSpec,
+					Job:     &jobSpec2,
+					Type:    models.JobSpecDependencyTypeInter,
+				},
+				jobSpec3.Name: {
+					Project: &otherProjectSpec,
+					Job:     &jobSpec3,
+					Type:    models.JobSpecDependencyTypeInter,
+				},
+			}
+			jobSpec1.Dependencies = expectedDependency
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			jobDependencies := []store.JobDependency{
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec2.ID,
+					DependentProjectID: otherProjectSpec.ID,
+					Type:               models.JobSpecDependencyTypeInter.String(),
+				},
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec3.ID,
+					DependentProjectID: otherProjectSpec.ID,
+					Type:               models.JobSpecDependencyTypeInter.String(),
+				},
+			}
+			jobDependencyRepository.On("GetAll", ctx).Return(jobDependencies, nil)
+
+			errorMsg := "internal error"
+			projectService.On("GetByID", ctx, otherProjectSpec.ID).Return(models.ProjectSpec{}, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, projectService)
+			actual, err := resolver.Fetch(ctx, projectSpec, jobSpecs)
+
+			assert.Nil(t, actual)
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should failed when unable to get inter dependent jobspec", func(t *testing.T) {
+			execUnit1 := new(mock.DependencyResolverMod)
+			defer execUnit1.AssertExpectations(t)
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version: 1,
+				Name:    "test1",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "bar",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			otherProjectSpec := models.ProjectSpec{
+				Name: "b-data-project",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+			jobSpec2 := models.JobSpec{
+				Version: 1,
+				Name:    "test2",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpec3 := models.JobSpec{
+				Version: 1,
+				Name:    "test3",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{DependencyMod: execUnit1},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "foo",
+							Value: "baz",
+						},
+					},
+				},
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpecs := []models.JobSpec{jobSpec1}
+			expectedDependency := map[string]models.JobSpecDependency{
+				jobSpec2.Name: {
+					Project: &otherProjectSpec,
+					Job:     &jobSpec2,
+					Type:    models.JobSpecDependencyTypeInter,
+				},
+				jobSpec3.Name: {
+					Project: &otherProjectSpec,
+					Job:     &jobSpec3,
+					Type:    models.JobSpecDependencyTypeInter,
+				},
+			}
+			jobSpec1.Dependencies = expectedDependency
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			jobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobDependencyRepoFactory := new(mock.JobDependencyRepoFactory)
+			defer jobDependencyRepoFactory.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
+			jobDependencies := []store.JobDependency{
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec2.ID,
+					DependentProjectID: otherProjectSpec.ID,
+					Type:               models.JobSpecDependencyTypeInter.String(),
+				},
+				{
+					JobID:              jobSpec1.ID,
+					ProjectID:          projectSpec.ID,
+					DependentJobID:     jobSpec3.ID,
+					DependentProjectID: otherProjectSpec.ID,
+					Type:               models.JobSpecDependencyTypeInter.String(),
+				},
+			}
+			jobDependencyRepository.On("GetAll", ctx).Return(jobDependencies, nil)
+
+			projectService.On("GetByID", ctx, otherProjectSpec.ID).Return(otherProjectSpec, nil)
+			projectJobSpecRepoFactory.On("New", otherProjectSpec).Return(jobSpecRepository)
+			errorMsg := "internal error"
+			jobSpecRepository.On("GetByIDs", ctx, []uuid.UUID{jobSpec2.ID, jobSpec3.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, projectService)
+			actual, err := resolver.Fetch(ctx, projectSpec, jobSpecs)
+
+			assert.Nil(t, actual)
+			assert.Equal(t, errorMsg, err.Error())
 		})
 	})
 }

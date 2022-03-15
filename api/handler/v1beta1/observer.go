@@ -115,3 +115,31 @@ func (obs *jobCheckObserver) Notify(e progress.Event) {
 		}
 	}
 }
+
+type jobRefreshObserver struct {
+	stream pb.RuntimeService_RefreshJobsServer
+	log    log.Logger
+	mu     *sync.Mutex
+}
+
+func (obs *jobRefreshObserver) Notify(e progress.Event) {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
+	switch evt := e.(type) {
+	case *models.EventJobUpload:
+		resp := &pb.RefreshJobsResponse{
+			Success: true,
+			Ack:     true,
+			JobName: evt.Name,
+		}
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Message = evt.Err.Error()
+		}
+
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send refresh ack", "evt", evt.String(), "error", err)
+		}
+	}
+}

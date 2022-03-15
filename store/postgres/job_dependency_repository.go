@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"gorm.io/gorm"
@@ -23,6 +24,10 @@ func (repo *jobDependencyRepository) GetAll(ctx context.Context) ([]store.JobDep
 	}
 
 	return jobDependencies, nil
+}
+
+func (repo *jobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
+	return repo.db.WithContext(ctx).Where("job_id = ?", jobID).Delete(&store.JobDependency{}).Error
 }
 
 func NewJobDependencyRepository(db *gorm.DB, projectSpec models.ProjectSpec) *jobDependencyRepository {

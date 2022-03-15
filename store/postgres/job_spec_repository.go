@@ -63,6 +63,27 @@ func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string
 	return jobSpec, namespaceSpec, nil
 }
 
+func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uuid.UUID) ([]models.JobSpec, error) {
+	var jobs []Job
+	if err := repo.db.WithContext(ctx).Where("project_id = ? AND job.id in ?", jobIDs).First(&jobs).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, store.ErrResourceNotFound
+		}
+		return nil, err
+	}
+
+	var jobSpecs []models.JobSpec
+	for _, job := range jobs {
+		jobSpec, err := repo.adapter.ToSpec(job)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+
+	return jobSpecs, nil
+}
+
 func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
 	var specs []models.JobSpec
 	var jobs []Job

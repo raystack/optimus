@@ -64,7 +64,7 @@ func (s secretService) Update(ctx context.Context, projectName string, namespace
 }
 
 func (s secretService) List(ctx context.Context, projectName string) ([]models.SecretItemInfo, error) {
-	projectSpec, err := s.projService.Get(ctx, projectName)
+	projectSpec, err := s.projService.GetByName(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}

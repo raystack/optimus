@@ -180,6 +180,14 @@ func (fac *backupRepoFactory) New(projectSpec models.ProjectSpec, storer models.
 	return postgres.NewBackupRepository(fac.db, projectSpec, storer)
 }
 
+type jobDependencyRepoFactory struct {
+	db *gorm.DB
+}
+
+func (fac *jobDependencyRepoFactory) New(project models.ProjectSpec) store.JobDependencyRepository {
+	return postgres.NewJobDependencyRepository(fac.db, project)
+}
+
 type airflowBucketFactory struct{}
 
 func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
@@ -356,6 +364,9 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: dbConn,
 	}
+	jobDependencyRepoFac := &jobDependencyRepoFactory{
+		db: dbConn,
+	}
 
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
@@ -367,7 +378,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		db:                    dbConn,
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepoFac, projectService)
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
@@ -463,6 +474,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			priorityResolver,
 			projectJobSpecRepoFac,
 			replayManager,
+			namespaceService,
 		),
 		eventService,
 		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),

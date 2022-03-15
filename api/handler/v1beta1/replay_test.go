@@ -702,7 +702,7 @@ func TestReplayOnServer(t *testing.T) {
 			}
 
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
@@ -740,7 +740,7 @@ func TestReplayOnServer(t *testing.T) {
 		})
 		t.Run("should failed when unable to get status of a replay", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			errMessage := "internal error"
@@ -845,7 +845,7 @@ func TestReplayOnServer(t *testing.T) {
 			}
 
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			jobService := new(mock.JobService)
@@ -878,7 +878,7 @@ func TestReplayOnServer(t *testing.T) {
 		})
 		t.Run("should failed when unable to get status of a replay", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
-			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+			projectService.On("GetByName", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
 			errMessage := "internal error"

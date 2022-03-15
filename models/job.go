@@ -348,6 +348,8 @@ type JobService interface {
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
+	// Refresh Redeploy current persisted state of jobs
+	Refresh(context.Context, ProjectSpec, []NamespaceJobNamePair, progress.Observer) error
 }
 
 // JobCompiler takes template file of a scheduler and after applying

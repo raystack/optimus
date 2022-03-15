@@ -30,6 +30,10 @@ var (
 		Name: "runtime_deploy_resourcespec",
 		Help: "Number of resources requested for deployment by runtime",
 	})
+	runtimeRefreshJobsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "runtime_refresh_jobs",
+		Help: "Number of jobs requested to be refreshed by runtime",
+	})
 )
 
 type JobEventService interface {
@@ -130,7 +134,7 @@ func (sv *RuntimeServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTa
 // same time but that should never be the case in our use cases that's why
 // for performance reasons we are choosing not to do so.
 func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.RegisterInstanceResponse, error) {
-	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	projSpec, err := sv.projectService.GetByName(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
 	}
@@ -197,7 +201,7 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 }
 
 func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusRequest) (*pb.JobStatusResponse, error) {
-	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	projSpec, err := sv.projectService.GetByName(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
 	}

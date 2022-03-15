@@ -85,7 +85,7 @@ func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.Get
 }
 
 func (sv *RuntimeServiceServer) parseReplayStatusRequest(ctx context.Context, req *pb.GetReplayStatusRequest) (models.ReplayRequest, error) {
-	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	projSpec, err := sv.projectService.GetByName(ctx, req.GetProjectName())
 	if err != nil {
 		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
@@ -103,7 +103,7 @@ func (sv *RuntimeServiceServer) parseReplayStatusRequest(ctx context.Context, re
 }
 
 func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListReplaysRequest) (*pb.ListReplaysResponse, error) {
-	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	projSpec, err := sv.projectService.GetByName(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}

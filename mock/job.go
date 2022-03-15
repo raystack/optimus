@@ -23,7 +23,7 @@ func (repo *ProjectJobSpecRepoFactory) New(proj models.ProjectSpec) store.Projec
 	return repo.Called(proj).Get(0).(store.ProjectJobSpecRepository)
 }
 
-// JobSpecRepoFactory to store raw specs
+// ProjectJobSpecRepository to store raw specs
 type ProjectJobSpecRepository struct {
 	mock.Mock
 }
@@ -34,6 +34,11 @@ func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 	}
 	return models.JobSpec{}, models.NamespaceSpec{}, args.Error(1)
+}
+
+func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uuid.UUID) ([]models.JobSpec, error) {
+	args := repo.Called(ctx, jobIDs)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
 func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, job, project string) (models.JobSpec, models.ProjectSpec, error) {
@@ -208,6 +213,11 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
+func (j *JobService) Refresh(ctx context.Context, projectSpec models.ProjectSpec, namespaceJobNamePairs []models.NamespaceJobNamePair, progressObserver progress.Observer) (err error) {
+	args := j.Called(ctx, projectSpec, namespaceJobNamePairs, progressObserver)
+	return args.Error(0)
+}
+
 type DependencyResolver struct {
 	mock.Mock
 }
@@ -216,6 +226,17 @@ func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.P
 	jobSpec models.JobSpec, obs progress.Observer) (models.JobSpec, error) {
 	args := srv.Called(ctx, projectSpec, jobSpec, obs)
 	return args.Get(0).(models.JobSpec), args.Error(1)
+}
+
+func (srv *DependencyResolver) ResolveAndPersist(ctx context.Context, projectSpec models.ProjectSpec,
+	jobSpec models.JobSpec, obs progress.Observer) error {
+	args := srv.Called(ctx, projectSpec, jobSpec, obs)
+	return args.Error(0)
+}
+
+func (srv *DependencyResolver) Fetch(ctx context.Context, projectSpec models.ProjectSpec, jobSpecs []models.JobSpec) (map[string][]models.JobSpecDependency, error) {
+	args := srv.Called(ctx, projectSpec, jobSpecs)
+	return args.Get(0).(map[string][]models.JobSpecDependency), args.Error(1)
 }
 
 type PriorityResolver struct {
@@ -245,4 +266,33 @@ func (n *Notifier) Close() error {
 
 func (n *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 	return n.Called(ctx, attr).Error(0)
+}
+
+// JobDependencyRepoFactory to create repo for storing job dependencies
+type JobDependencyRepoFactory struct {
+	mock.Mock
+}
+
+func (repo *JobDependencyRepoFactory) New(proj models.ProjectSpec) store.JobDependencyRepository {
+	return repo.Called(proj).Get(0).(store.JobDependencyRepository)
+}
+
+// JobDependencyRepository to store job dependencies
+type JobDependencyRepository struct {
+	mock.Mock
+}
+
+func (repo *JobDependencyRepository) Save(ctx context.Context, jobDependency store.JobDependency) error {
+	args := repo.Called(ctx, jobDependency)
+	return args.Error(0)
+}
+
+func (repo *JobDependencyRepository) GetAll(ctx context.Context) ([]store.JobDependency, error) {
+	args := repo.Called(ctx)
+	return args.Get(0).([]store.JobDependency), args.Error(1)
+}
+
+func (repo *JobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
+	args := repo.Called(ctx, jobID)
+	return args.Error(0)
 }
