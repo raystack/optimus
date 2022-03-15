@@ -39,7 +39,7 @@ func (f *VFactory) NewFromRegex(re, message string) survey.Validator {
 		}
 		val := v.(string)
 		matched := regex.Match([]byte(val))
-		if !matched {
+		if matched == false {
 			return fmt.Errorf(message)
 		}
 		return nil

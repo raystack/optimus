@@ -147,7 +147,7 @@ func (conf *Job) MergeFrom(parent Job) {
 		conf.Schedule.EndDate = parent.Schedule.EndDate
 	}
 
-	if !conf.Behavior.Retry.ExponentialBackoff {
+	if conf.Behavior.Retry.ExponentialBackoff == false {
 		conf.Behavior.Retry.ExponentialBackoff = parent.Behavior.Retry.ExponentialBackoff
 	}
 	if conf.Behavior.Retry.Delay == "" {
@@ -156,10 +156,10 @@ func (conf *Job) MergeFrom(parent Job) {
 	if conf.Behavior.Retry.Count == 0 {
 		conf.Behavior.Retry.Count = parent.Behavior.Retry.Count
 	}
-	if !conf.Behavior.DependsOnPast {
+	if conf.Behavior.DependsOnPast == false {
 		conf.Behavior.DependsOnPast = parent.Behavior.DependsOnPast
 	}
-	if !conf.Behavior.Catchup {
+	if conf.Behavior.Catchup == false {
 		conf.Behavior.Catchup = parent.Behavior.Catchup
 	}
 	for _, pNotify := range parent.Behavior.Notify {

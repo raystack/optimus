@@ -53,11 +53,11 @@ func (t BQTable) FullyQualifiedName() string {
 
 func (t BQTable) Validate() error {
 	switch {
-	case !validProjectName.MatchString(t.Project):
+	case validProjectName.MatchString(t.Project) == false:
 		return fmt.Errorf("invalid project name (must match %q)", validProjectName.String())
-	case !validDatasetName.MatchString(t.Dataset):
+	case validDatasetName.MatchString(t.Dataset) == false:
 		return fmt.Errorf("invalid dataset name (must match %q)", validDatasetName.String())
-	case !validTableName.MatchString(t.Table):
+	case validTableName.MatchString(t.Table) == false:
 		return fmt.Errorf("invalid table name (must match %q)", validTableName.String())
 	}
 	return nil
