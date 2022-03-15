@@ -123,7 +123,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]map[strin
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", "", "targetted namespace for resource creation")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", "", "targeted namespace for resource creation")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }

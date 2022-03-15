@@ -46,7 +46,7 @@ func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 			return runJobSpecificationRequest(l, projectName, namespace.Name, host, jobSpec, pluginRepo)
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for running job")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for running job")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }

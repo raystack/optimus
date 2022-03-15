@@ -57,7 +57,7 @@ func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plu
 		},
 	}
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for validating job")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for validating job")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }

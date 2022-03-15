@@ -338,10 +338,10 @@ func registerAllNamespaces(
 
 	ch := make(chan error, len(selectedNamespaceNames))
 	defer close(ch)
-	for i, namespaceName := range selectedNamespaceNames {
-		go func(idx int, name string) {
+	for _, namespaceName := range selectedNamespaceNames {
+		go func(name string) {
 			ch <- registerNamespace(deployTimeoutCtx, runtime, l, conf, name)
-		}(i, namespaceName)
+		}(namespaceName)
 	}
 	var errMsg string
 	for i := 0; i < len(selectedNamespaceNames); i++ {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -16,16 +15,16 @@ const (
 	defaultHost = "localhost"
 )
 
-func configCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
+func configCommand(l log.Logger) *cli.Command {
 	c := &cli.Command{
 		Use:   "config",
 		Short: "Manage optimus configuration required to deploy specifications",
 	}
-	c.AddCommand(configInitCommand(l, dsRepo))
+	c.AddCommand(configInitCommand(l))
 	return c
 }
 
-func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
+func configInitCommand(l log.Logger) *cli.Command {
 	c := &cli.Command{
 		Use:   "init",
 		Short: "Initialize optimus configuration file",

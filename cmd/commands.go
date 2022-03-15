@@ -121,7 +121,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 	}
 
 	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))
-	cmd.AddCommand(configCommand(plainLog, dsRepo))
+	cmd.AddCommand(configCommand(plainLog))
 	cmd.AddCommand(jobCommand(plainLog, conf, pluginRepo))
 	cmd.AddCommand(deployCommand(plainLog, conf, pluginRepo, dsRepo, datastoreSpecFs))
 	cmd.AddCommand(resourceCommand(plainLog, dsRepo, datastoreSpecFs))

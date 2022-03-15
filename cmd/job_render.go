@@ -16,10 +16,6 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-var (
-	templateEngine = run.NewGoEngine()
-)
-
 func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
 	var namespaceName string
 	cmd := &cli.Command{
@@ -79,7 +75,7 @@ func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo mode
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for renderring template")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for renderring template")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }

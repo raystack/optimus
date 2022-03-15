@@ -75,7 +75,7 @@ func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plugi
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for creating job")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for creating job")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }

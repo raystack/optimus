@@ -52,7 +52,7 @@ func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plug
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targetted namespace for adding hook")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for adding hook")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
