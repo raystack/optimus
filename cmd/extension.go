@@ -28,28 +28,28 @@ func addExtensionCommand(cmd *cli.Command) {
 	}
 	reservedCommands := getUsedCommands(cmd)
 
-	extension, _ := extension.NewExtension(
+	ext, _ := extension.NewExtension(
 		manifest,
 		githubClient.Repositories, httpClient,
 		extensionDir,
 		reservedCommands...,
 	)
 
-	cmd.AddCommand(extensionCommand(ctx, extension))
-	commands := generateCommands(manifest, extension.Run)
+	cmd.AddCommand(extensionCommand(ctx, ext))
+	commands := generateCommands(manifest, ext.Run)
 	for _, c := range commands {
 		cmd.AddCommand(c)
 	}
 }
 
-func extensionCommand(ctx context.Context, extension *extension.Extension) *cli.Command {
+func extensionCommand(ctx context.Context, ext *extension.Extension) *cli.Command {
 	l := initDefaultLogger()
 	c := &cli.Command{
 		Use:     "extension SUBCOMMAND",
 		Aliases: []string{"ext"},
 		Short:   "Operate with extension",
 	}
-	c.AddCommand(extensionInstallCommand(ctx, extension, l))
+	c.AddCommand(extensionInstallCommand(ctx, ext, l))
 	return c
 }
 

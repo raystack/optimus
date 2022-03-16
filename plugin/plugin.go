@@ -205,10 +205,10 @@ func Serve(f Factory) {
 	servePlugin(f(logger), logger)
 }
 
-func servePlugin(plugin interface{}, logger hclog.Logger) {
-	switch p := plugin.(type) {
+func servePlugin(optimusPlugin interface{}, logger hclog.Logger) {
+	switch p := optimusPlugin.(type) {
 	case models.DependencyResolverMod:
-		if cliPlugin, ok := plugin.(models.CommandLineMod); ok {
+		if cliPlugin, ok := optimusPlugin.(models.CommandLineMod); ok {
 			dependencyresolver.ServeWithCLI(p, cliPlugin, logger)
 		} else {
 			dependencyresolver.Serve(p, logger)

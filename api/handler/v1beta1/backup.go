@@ -149,15 +149,15 @@ func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupR
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
-	uuid, err := uuid.Parse(req.Id)
+	id, err := uuid.Parse(req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error while parsing backup ID: %v", err)
 	}
 
-	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
+	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, id)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
-			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
+			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), id.String())
 		}
 		return nil, status.Errorf(codes.Internal, "error while getting backup detail: %v", err)
 	}

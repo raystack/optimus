@@ -199,15 +199,15 @@ func (e *Extension) validateInstall(owner, repo, alias string) error {
 
 // Run executes extension
 func (e *Extension) Run(name string, args []string) error {
-	var path string
+	var localPath string
 	for _, metadata := range e.manifest.Metadatas {
 		for _, a := range metadata.Aliases {
 			if name == a {
-				path = metadata.LocalPath
+				localPath = metadata.LocalPath
 			}
 		}
 	}
-	cmd := exec.Command(path, args...)
+	cmd := exec.Command(localPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr

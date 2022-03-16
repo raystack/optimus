@@ -40,8 +40,8 @@ func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uui
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, job, project string) (models.JobSpec, models.ProjectSpec, error) {
-	args := repo.Called(ctx, job, project)
+func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, jobName, project string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(ctx, jobName, project)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
 	}
