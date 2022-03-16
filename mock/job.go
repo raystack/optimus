@@ -234,9 +234,9 @@ func (srv *DependencyResolver) ResolveAndPersist(ctx context.Context, projectSpe
 	return args.Error(0)
 }
 
-func (srv *DependencyResolver) Fetch(ctx context.Context, projectSpec models.ProjectSpec, jobSpecs []models.JobSpec) (map[string][]models.JobSpecDependency, error) {
-	args := srv.Called(ctx, projectSpec, jobSpecs)
-	return args.Get(0).(map[string][]models.JobSpecDependency), args.Error(1)
+func (srv *DependencyResolver) Fetch(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
+	args := srv.Called(ctx, projectSpec)
+	return args.Get(0).(map[uuid.UUID][]models.JobSpecDependency), args.Error(1)
 }
 
 type PriorityResolver struct {

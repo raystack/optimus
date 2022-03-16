@@ -37,7 +37,7 @@ type DependencyResolver interface {
 	ResolveAndPersist(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) error
 
 	//Fetch persisted dependencies
-	Fetch(ctx context.Context, projectSpec models.ProjectSpec, jobSpecs []models.JobSpec) (map[string][]models.JobSpecDependency, error)
+	Fetch(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error)
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -782,7 +782,7 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 	}
 
 	//Fetch dependency and enrich
-	jobDependencies, err := srv.dependencyResolver.Fetch(ctx, projectSpec, jobSpecs)
+	jobDependencies, err := srv.dependencyResolver.Fetch(ctx, projectSpec)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch job dependencies")
 	}
@@ -790,7 +790,7 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 
 	//enrich dependency
 	for _, jobSpec := range jobSpecs {
-		dependencies := jobDependencies[jobSpec.Name]
+		dependencies := jobDependencies[jobSpec.ID]
 		for _, dependency := range dependencies {
 			jobSpec.Dependencies[dependency.Job.Name] = dependency
 		}
