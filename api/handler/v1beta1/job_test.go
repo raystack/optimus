@@ -152,6 +152,23 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 		s.Assert().Error(err)
 		stream.AssertExpectations(s.T())
 	})
+
+	s.Run("NamespaceServiceGetError", func() {
+		stream := new(mock.DeployJobSpecificationServer)
+		stream.On("Context").Return(s.ctx)
+		stream.On("Recv").Return(s.req, nil).Once()
+		stream.On("Recv").Return(nil, io.EOF).Once()
+
+		s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
+		stream.On("Send", mock2.Anything).Return(nil).Once()
+
+		runtimeServiceServer := s.newRuntimeServiceServer()
+		err := runtimeServiceServer.DeployJobSpecification(stream)
+
+		s.Assert().Error(err)
+		stream.AssertExpectations(s.T())
+		s.namespaceService.AssertExpectations(s.T())
+	})
 }
 
 // TODO: refactor to test suite
