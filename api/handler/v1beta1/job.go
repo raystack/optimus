@@ -16,6 +16,8 @@ import (
 
 func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
+	errNamespaces := []string{}
+
 	for {
 		req, err := stream.Recv()
 		if err != nil {
@@ -27,7 +29,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				Ack:     true,
 				Message: err.Error(),
 			})
-			continue
+			return err // immediate error returned (grpc error level)
 		}
 		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), req.GetProjectName(), req.GetNamespaceName())
 		if err != nil {
@@ -36,6 +38,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				Ack:     true,
 				Message: err.Error(),
 			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
 			continue
 		}
 
@@ -48,6 +51,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 					Ack:     true,
 					Message: fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()),
 				})
+				errNamespaces = append(errNamespaces, req.NamespaceName)
 				continue
 			}
 
@@ -58,6 +62,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 					Ack:     true,
 					Message: fmt.Sprintf("%s: failed to save %s", err.Error(), adaptJob.Name),
 				})
+				errNamespaces = append(errNamespaces, req.NamespaceName)
 				continue
 			}
 			jobsToKeep = append(jobsToKeep, adaptJob)
@@ -78,6 +83,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				Ack:     true,
 				Message: fmt.Sprintf("failed to delete jobs: \n%s", err.Error()),
 			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
 			continue
 		}
 		if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
@@ -86,6 +92,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 				Ack:     true,
 				Message: fmt.Sprintf("failed to sync jobs: \n%s", err.Error()),
 			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
 			continue
 		}
 		runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
@@ -96,6 +103,10 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 		})
 	}
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))
+	if len(errNamespaces) > 0 {
+		sv.l.Warn("there's error while deploying namespaces: %v", errNamespaces)
+		return fmt.Errorf("error when deploying: %v", errNamespaces)
+	}
 	return nil
 }
 

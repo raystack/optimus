@@ -2,6 +2,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"testing"
 	"time"
@@ -140,6 +141,17 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success() {
 }
 
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
+	s.Run("StreamRecvError", func() {
+		stream := new(mock.DeployJobSpecificationServer)
+		stream.On("Recv").Return(nil, errors.New("any error")).Once()
+		stream.On("Send", mock2.Anything).Return(nil).Once()
+
+		runtimeServiceServer := s.newRuntimeServiceServer()
+		err := runtimeServiceServer.DeployJobSpecification(stream)
+
+		s.Assert().Error(err)
+		stream.AssertExpectations(s.T())
+	})
 }
 
 // TODO: refactor to test suite
