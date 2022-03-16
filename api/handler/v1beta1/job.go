@@ -97,8 +97,13 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 }
 
 func (sv *RuntimeServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec models.NamespaceSpec, req *pb.DeployJobSpecificationRequest) ([]models.JobSpec, error) {
+	jobs := req.GetJobs()
+	if len(jobs) == 0 {
+		return []models.JobSpec{}, nil
+	}
+
 	var jobsToKeep []models.JobSpec
-	for _, reqJob := range req.GetJobs() {
+	for _, reqJob := range jobs {
 		adaptJob, err := sv.adapter.FromJobProto(reqJob)
 		if err != nil {
 			sv.l.Error(fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()))

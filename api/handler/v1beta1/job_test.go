@@ -87,6 +87,7 @@ func (s *RuntimeServiceServerTestSuite) newRuntimeServiceServer() *v1.RuntimeSer
 
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success() {
 	s.Run("NoJobSpec", func() {
+		s.SetupTest()
 		stream := new(mock.DeployJobSpecificationServer)
 		stream.On("Context").Return(s.ctx)
 		stream.On("Recv").Return(s.req, nil).Once()
@@ -107,6 +108,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success() {
 	})
 
 	s.Run("TwoJobSpec", func() {
+		s.SetupTest()
 		jobSpecs := []*pb.JobSpecification{}
 		jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 		jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-2"})
@@ -142,6 +144,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success() {
 
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 	s.Run("StreamRecvError", func() {
+		s.SetupTest()
 		stream := new(mock.DeployJobSpecificationServer)
 		stream.On("Recv").Return(nil, errors.New("any error")).Once()
 		stream.On("Send", mock2.Anything).Return(nil).Once()
@@ -154,6 +157,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 	})
 
 	s.Run("NamespaceServiceGetError", func() {
+		s.SetupTest()
 		stream := new(mock.DeployJobSpecificationServer)
 		stream.On("Context").Return(s.ctx)
 		stream.On("Recv").Return(s.req, nil).Once()
@@ -171,6 +175,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 	})
 
 	s.Run("AdapterFromJobProtoError", func() {
+		s.SetupTest()
 		jobSpecs := []*pb.JobSpecification{}
 		jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 		s.req.Jobs = jobSpecs
@@ -194,6 +199,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 	})
 
 	s.Run("JobServiceCreateError", func() {
+		s.SetupTest()
 		jobSpecs := []*pb.JobSpecification{}
 		jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 		s.req.Jobs = jobSpecs
@@ -220,6 +226,25 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 		s.jobService.AssertExpectations(s.T())
 	})
 
+	s.Run("JobServiceKeepOnlyError", func() {
+		s.SetupTest()
+		stream := new(mock.DeployJobSpecificationServer)
+		stream.On("Context").Return(s.ctx)
+		stream.On("Recv").Return(s.req, nil).Once()
+		stream.On("Recv").Return(nil, io.EOF).Once()
+
+		s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+		s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
+		stream.On("Send", mock2.Anything).Return(nil).Once()
+
+		runtimeServiceServer := s.newRuntimeServiceServer()
+		err := runtimeServiceServer.DeployJobSpecification(stream)
+
+		s.Assert().Error(err)
+		stream.AssertExpectations(s.T())
+		s.namespaceService.AssertExpectations(s.T())
+		s.jobService.AssertExpectations(s.T())
+	})
 }
 
 // TODO: refactor to test suite
