@@ -245,6 +245,27 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 		s.namespaceService.AssertExpectations(s.T())
 		s.jobService.AssertExpectations(s.T())
 	})
+
+	s.Run("JobServiceSyncError", func() {
+		s.SetupTest()
+		stream := new(mock.DeployJobSpecificationServer)
+		stream.On("Context").Return(s.ctx)
+		stream.On("Recv").Return(s.req, nil).Once()
+		stream.On("Recv").Return(nil, io.EOF).Once()
+
+		s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+		s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
+		s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(errors.New("any error")).Once()
+		stream.On("Send", mock2.Anything).Return(nil).Once()
+
+		runtimeServiceServer := s.newRuntimeServiceServer()
+		err := runtimeServiceServer.DeployJobSpecification(stream)
+
+		s.Assert().Error(err)
+		stream.AssertExpectations(s.T())
+		s.namespaceService.AssertExpectations(s.T())
+		s.jobService.AssertExpectations(s.T())
+	})
 }
 
 // TODO: refactor to test suite
