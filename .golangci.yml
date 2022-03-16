@@ -23,7 +23,6 @@ linters:
     - scopelint
     - promlinter
     - interfacer
-    - gosec
     - gofumpt
     - godox
     - godot
@@ -64,6 +63,7 @@ linters-settings:
     numbers: true
   gomnd:
     ignored-numbers: # Why we have a big range of file permissions
+      - '0600'
       - '0644'
       - '0655'
       - '0666'
