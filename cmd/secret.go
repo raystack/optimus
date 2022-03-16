@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -209,7 +209,7 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 		}
 		secretValue = args[1]
 	} else {
-		secretValueBytes, err := ioutil.ReadFile(filePath)
+		secretValueBytes, err := os.ReadFile(filePath)
 		if err != nil {
 			return "", fmt.Errorf("%w: failed when reading secret file %s", err, filePath)
 		}

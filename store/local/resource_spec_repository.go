@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,7 +189,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 	}
 
 	// need to parse type of the resource before it can proceed and pass on to datastore
-	resourceBytes, err := ioutil.ReadAll(resourceFD)
+	resourceBytes, err := io.ReadAll(resourceFD)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
@@ -237,7 +237,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 				return resourceSpec, err
 			}
 
-			fileContent, err := ioutil.ReadAll(assetFd)
+			fileContent, err := io.ReadAll(assetFd)
 			if err != nil {
 				return resourceSpec, err
 			}

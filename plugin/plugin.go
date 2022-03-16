@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,7 +140,7 @@ func DiscoverPlugins(pluginLogger hclog.Logger) []string {
 	dirs = append(dirs, []string{"/usr/bin", "/usr/local/bin"}...)
 
 	for _, dirPath := range dirs {
-		fileInfos, err := ioutil.ReadDir(dirPath)
+		fileInfos, err := os.ReadDir(dirPath)
 		if err != nil {
 			continue
 		}

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -83,7 +82,7 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 		return err
 	}
 	destDirPath := path.Join(e.dirPath, owner, repo)
-	if err := os.MkdirAll(destDirPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(destDirPath, os.ModePerm); err != nil { // Dangerous 0777 permission
 		return fmt.Errorf("error creating dir: %w", err)
 	}
 	tag := repo
@@ -142,7 +141,7 @@ func (e *Extension) downloadAsset(ctx context.Context, url, destPath string) err
 }
 
 func (e *Extension) getResponseError(resp *http.Response) error {
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading body: %w", err)
 	}
