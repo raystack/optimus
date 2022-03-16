@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -42,30 +43,15 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 			continue
 		}
 
-		var jobsToKeep []models.JobSpec
-		for _, reqJob := range req.GetJobs() {
-			adaptJob, err := sv.adapter.FromJobProto(reqJob)
-			if err != nil {
-				stream.Send(&pb.DeployJobSpecificationResponse{
-					Success: false,
-					Ack:     true,
-					Message: fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()),
-				})
-				errNamespaces = append(errNamespaces, req.NamespaceName)
-				continue
-			}
-
-			err = sv.jobSvc.Create(stream.Context(), namespaceSpec, adaptJob)
-			if err != nil {
-				stream.Send(&pb.DeployJobSpecificationResponse{
-					Success: false,
-					Ack:     true,
-					Message: fmt.Sprintf("%s: failed to save %s", err.Error(), adaptJob.Name),
-				})
-				errNamespaces = append(errNamespaces, req.NamespaceName)
-				continue
-			}
-			jobsToKeep = append(jobsToKeep, adaptJob)
+		jobsToKeep, err := sv.getJobsToKeep(stream.Context(), namespaceSpec, req)
+		if err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
+			continue
 		}
 
 		observers := new(progress.ObserverChain)
@@ -108,6 +94,31 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 		return fmt.Errorf("error when deploying: %v", errNamespaces)
 	}
 	return nil
+}
+
+func (sv *RuntimeServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec models.NamespaceSpec, req *pb.DeployJobSpecificationRequest) ([]models.JobSpec, error) {
+	var jobsToKeep []models.JobSpec
+	for _, reqJob := range req.GetJobs() {
+		adaptJob, err := sv.adapter.FromJobProto(reqJob)
+		if err != nil {
+			sv.l.Error(fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()))
+			continue
+		}
+
+		err = sv.jobSvc.Create(ctx, namespaceSpec, adaptJob)
+		if err != nil {
+			sv.l.Error(fmt.Sprintf("%s: failed to save %s", err.Error(), adaptJob.Name))
+			continue
+		}
+		jobsToKeep = append(jobsToKeep, adaptJob)
+	}
+
+	if jobsToKeep == nil {
+		return nil, errors.New("job spec creation is failed")
+	}
+
+	return jobsToKeep, nil
+
 }
 
 func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {

@@ -169,6 +169,57 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail() {
 		stream.AssertExpectations(s.T())
 		s.namespaceService.AssertExpectations(s.T())
 	})
+
+	s.Run("AdapterFromJobProtoError", func() {
+		jobSpecs := []*pb.JobSpecification{}
+		jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
+		s.req.Jobs = jobSpecs
+
+		stream := new(mock.DeployJobSpecificationServer)
+		stream.On("Context").Return(s.ctx)
+		stream.On("Recv").Return(s.req, nil).Once()
+		stream.On("Recv").Return(nil, io.EOF).Once()
+
+		s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+		s.adapter.On("FromJobProto", jobSpecs[0]).Return(models.JobSpec{}, errors.New("any error")).Once()
+		stream.On("Send", mock2.Anything).Return(nil).Once()
+
+		runtimeServiceServer := s.newRuntimeServiceServer()
+		err := runtimeServiceServer.DeployJobSpecification(stream)
+
+		s.Assert().Error(err)
+		stream.AssertExpectations(s.T())
+		s.adapter.AssertExpectations(s.T())
+		s.namespaceService.AssertExpectations(s.T())
+	})
+
+	s.Run("JobServiceCreateError", func() {
+		jobSpecs := []*pb.JobSpecification{}
+		jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
+		s.req.Jobs = jobSpecs
+		adaptedJobs := []models.JobSpec{}
+		adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-1"})
+
+		stream := new(mock.DeployJobSpecificationServer)
+		stream.On("Context").Return(s.ctx)
+		stream.On("Recv").Return(s.req, nil).Once()
+		stream.On("Recv").Return(nil, io.EOF).Once()
+
+		s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+		s.adapter.On("FromJobProto", jobSpecs[0]).Return(adaptedJobs[0], nil).Once()
+		s.jobService.On("Create", s.ctx, s.namespaceSpec, adaptedJobs[0]).Return(errors.New("any error")).Once()
+		stream.On("Send", mock2.Anything).Return(nil).Once()
+
+		runtimeServiceServer := s.newRuntimeServiceServer()
+		err := runtimeServiceServer.DeployJobSpecification(stream)
+
+		s.Assert().Error(err)
+		stream.AssertExpectations(s.T())
+		s.adapter.AssertExpectations(s.T())
+		s.namespaceService.AssertExpectations(s.T())
+		s.jobService.AssertExpectations(s.T())
+	})
+
 }
 
 // TODO: refactor to test suite
