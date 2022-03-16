@@ -123,7 +123,6 @@ func (sv *RuntimeServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec
 	}
 
 	return jobsToKeep, nil
-
 }
 
 func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {

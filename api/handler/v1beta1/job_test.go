@@ -23,7 +23,7 @@ import (
 type RuntimeServiceServerTestSuite struct {
 	suite.Suite
 	version          string
-	ctx              context.Context
+	ctx              context.Context //nolint:containedctx
 	namespaceService *mock.NamespaceService
 	projectService   *mock.ProjectService
 	secretService    *mock.SecretService
