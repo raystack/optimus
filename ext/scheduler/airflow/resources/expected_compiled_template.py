@@ -45,7 +45,7 @@ dag = DAG(
     catchup=True,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags = [ 
-            "optimus"
+           "optimus"
            ]
 )
 
