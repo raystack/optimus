@@ -128,7 +128,7 @@ type JobService struct {
 }
 
 func (srv *JobService) Create(ctx context.Context, spec2 models.NamespaceSpec, spec models.JobSpec) error {
-	args := srv.Called(ctx, spec, spec2)
+	args := srv.Called(ctx, spec2, spec)
 	return args.Error(0)
 }
 
