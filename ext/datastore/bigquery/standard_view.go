@@ -10,8 +10,9 @@ import (
 
 	bqapi "cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/odpf/optimus/models"
 	"google.golang.org/api/googleapi"
+
+	"github.com/odpf/optimus/models"
 )
 
 func createStandardView(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {

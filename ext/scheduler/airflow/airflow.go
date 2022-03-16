@@ -2,6 +2,7 @@ package airflow
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,15 +15,11 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
-
-	"github.com/odpf/optimus/core/progress"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
-
-	_ "embed"
-
 	"github.com/odpf/optimus/models"
 )
 

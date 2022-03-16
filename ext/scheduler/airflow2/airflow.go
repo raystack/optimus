@@ -3,6 +3,7 @@ package airflow2
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -17,15 +18,11 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
-
-	"github.com/odpf/optimus/core/progress"
-
+	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
-	"gocloud.dev/blob"
-
-	_ "embed"
 )
 
 //go:embed resources/__lib.py

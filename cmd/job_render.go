@@ -6,14 +6,15 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
+	cli "github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
-	"github.com/spf13/afero"
-	cli "github.com/spf13/cobra"
 )
 
 func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {

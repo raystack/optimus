@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
 )
 
 func TestIntegrationInstanceRepository(t *testing.T) {

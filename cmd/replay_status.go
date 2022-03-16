@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {

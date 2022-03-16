@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
+	"github.com/stretchr/testify/assert"
 
+	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 //go:embed resources/expected_compiled_template.py

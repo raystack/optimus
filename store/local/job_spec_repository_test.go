@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
+	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/odpf/optimus/mock"
 )
 
 const testJobContents = `version: 1

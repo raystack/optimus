@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/odpf/optimus/core/progress"
-
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/models"
 )
 
 type Scheduler struct {

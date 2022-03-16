@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	cli "github.com/spf13/cobra"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 func replayListCommand(l log.Logger, conf config.Optimus) *cli.Command {

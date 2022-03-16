@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/config"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/utils"
 )
 
 const (

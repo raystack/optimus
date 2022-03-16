@@ -3,8 +3,9 @@ package run_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/run"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/run"
 )
 
 func TestGoEngine(t *testing.T) {

@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/models"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/models"
 )
 
 func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {

@@ -7,6 +7,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
@@ -14,11 +20,6 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
-	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type RuntimeServiceServerTestSuite struct {

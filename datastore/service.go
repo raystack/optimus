@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/odpf/optimus/utils"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/utils"
 )
 
 const (

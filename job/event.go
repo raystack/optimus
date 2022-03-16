@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/salt/log"
 )
 
 var (

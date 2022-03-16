@@ -26,7 +26,6 @@ linters:
     - gosec
     - godox
     - godot
-    - gci
     - forbidigo
     - errcheck
     - maintidx
@@ -78,6 +77,13 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  goimports:
+    local-prefixes: github.com/odpf/optimus
+  gci:
+    sections:
+      - standard # Captures all standard packages if they do not match another section.
+      - default # Contains all imports that could not be matched to another section type.
+      - prefix(github.com/odpf/optimus) # Groups all imports with the specified Prefix.
   unparam:
     # Inspect exported functions.
     # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:

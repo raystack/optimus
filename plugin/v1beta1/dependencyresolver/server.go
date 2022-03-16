@@ -3,11 +3,9 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/odpf/optimus/plugin/v1beta1/cli"
-
-	"github.com/odpf/optimus/models"
-
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin/v1beta1/cli"
 )
 
 // GRPCServer will be used by plugins this is working as proto adapter

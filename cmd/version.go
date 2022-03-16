@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/version"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 const (

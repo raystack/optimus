@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"gorm.io/gorm"
 )
 
 type JobRunRepository struct {

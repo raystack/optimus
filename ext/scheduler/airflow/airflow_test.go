@@ -10,20 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/ext/scheduler/airflow2"
-
 	"github.com/google/uuid"
-
-	"github.com/odpf/optimus/ext/scheduler/airflow"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/memblob"
 
+	"github.com/odpf/optimus/ext/scheduler/airflow"
+	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/job"
-
-	"github.com/stretchr/testify/mock"
-
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 type MockHTTPClient struct {

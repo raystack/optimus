@@ -3,8 +3,9 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/utils"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/utils"
 )
 
 func TestUUID(t *testing.T) {

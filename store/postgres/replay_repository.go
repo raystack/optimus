@@ -6,14 +6,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
-	"gorm.io/datatypes"
-
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"gorm.io/gorm"
 )
 
 type Replay struct {

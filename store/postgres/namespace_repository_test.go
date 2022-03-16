@@ -7,12 +7,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 func TestIntegrationNamespaceRepository(t *testing.T) {

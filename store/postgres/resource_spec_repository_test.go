@@ -8,13 +8,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/odpf/optimus/mock"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	testMock "github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
 )
 
 func TestIntegrationResourceSpecRepository(t *testing.T) {
