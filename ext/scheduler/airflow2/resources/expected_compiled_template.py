@@ -43,7 +43,10 @@ dag = DAG(
     schedule_interval="* * * * *",
     sla_miss_callback=optimus_sla_miss_notify,
     catchup=True,
-    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS)
+    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
+    tags = [ 
+           "optimus"
+           ]
 )
 
 transformation_secret = Secret(
