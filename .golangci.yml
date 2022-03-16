@@ -90,9 +90,12 @@ linters-settings:
     disabled-checks:
       - ifElseChain
       - singleCaseSwitch
+      - unnamedResult
+      - whyNoLint
+      - regexpSimplify
     enabled-tags:
       - diagnostic
-#      - style
+      - style
 #      - opinionated
 #      - performance
   unparam:

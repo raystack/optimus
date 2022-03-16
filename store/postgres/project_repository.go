@@ -81,7 +81,7 @@ type ProjectRepository struct {
 func (repo *ProjectRepository) Insert(ctx context.Context, resource models.ProjectSpec) error {
 	p := Project{}.FromSpec(resource)
 
-	if len(p.Name) == 0 {
+	if p.Name == "" {
 		return errors.New("name cannot be empty")
 	}
 	return repo.db.WithContext(ctx).Create(&p).Error

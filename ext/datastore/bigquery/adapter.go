@@ -77,7 +77,7 @@ func bqFieldModeTo(field BQField) (fieldMode, error) {
 		fm.required = true
 	} else if strings.EqualFold(field.Mode, "repeated") {
 		fm.repeated = true
-	} else if len(field.Mode) == 0 || strings.EqualFold(field.Mode, "nullable") {
+	} else if field.Mode == "" || strings.EqualFold(field.Mode, "nullable") {
 		fm.required = false
 	} else {
 		return fm, fmt.Errorf("field %v mode should be required,repeated or nullable ", field.Name)
@@ -253,7 +253,7 @@ func bqCreateTableMetaAdapter(t BQTable) (*bqapi.TableMetadata, error) {
 
 func bqUpdateTableMetaAdapter(t BQTable) (bqapi.TableMetadataToUpdate, error) {
 	meta := bqapi.TableMetadataToUpdate{}
-	if len(t.Table) == 0 {
+	if t.Table == "" {
 		return meta, errors.New("table name cannot be empty")
 	}
 

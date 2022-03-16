@@ -123,19 +123,17 @@ func DiscoverPlugins(pluginLogger hclog.Logger) []string {
 	if p, err := os.Getwd(); err == nil {
 		dirs = append(dirs, p)
 	}
-	{
-		// look in the same directory as the executable
-		if exePath, err := os.Executable(); err != nil {
-			pluginLogger.Debug(fmt.Sprintf("Error discovering exe directory: %s", err))
-		} else {
-			dirs = append(dirs, filepath.Dir(exePath))
-		}
+
+	// look in the same directory as the executable
+	if exePath, err := os.Executable(); err != nil {
+		pluginLogger.Debug(fmt.Sprintf("Error discovering exe directory: %s", err))
+	} else {
+		dirs = append(dirs, filepath.Dir(exePath))
 	}
-	{
-		// add user home directory
-		if currentHomeDir, err := os.UserHomeDir(); err == nil {
-			dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
-		}
+
+	// add user home directory
+	if currentHomeDir, err := os.UserHomeDir(); err == nil {
+		dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
 	}
 	dirs = append(dirs, []string{"/usr/bin", "/usr/local/bin"}...)
 

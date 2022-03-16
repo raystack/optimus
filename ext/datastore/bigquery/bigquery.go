@@ -49,7 +49,7 @@ func (b BigQuery) Types() map[models.ResourceType]models.DatastoreTypeController
 
 func (b *BigQuery) CreateResource(ctx context.Context, request models.CreateResourceRequest) error {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
-	if !ok || len(svcAcc) == 0 {
+	if !ok || svcAcc == "" {
 		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
@@ -73,7 +73,7 @@ func (b *BigQuery) CreateResource(ctx context.Context, request models.CreateReso
 
 func (b *BigQuery) UpdateResource(ctx context.Context, request models.UpdateResourceRequest) error {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
-	if !ok || len(svcAcc) == 0 {
+	if !ok || svcAcc == "" {
 		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
@@ -97,7 +97,7 @@ func (b *BigQuery) UpdateResource(ctx context.Context, request models.UpdateReso
 
 func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResourceRequest) (models.ReadResourceResponse, error) {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
-	if !ok || len(svcAcc) == 0 {
+	if !ok || svcAcc == "" {
 		return models.ReadResourceResponse{}, fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
@@ -137,7 +137,7 @@ func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResource
 
 func (b *BigQuery) DeleteResource(ctx context.Context, request models.DeleteResourceRequest) error {
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
-	if !ok || len(svcAcc) == 0 {
+	if !ok || svcAcc == "" {
 		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
@@ -167,7 +167,7 @@ func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupReso
 	}
 
 	svcAcc, ok := request.BackupSpec.Project.Secret.GetByName(SecretName)
-	if !ok || len(svcAcc) == 0 {
+	if !ok || svcAcc == "" {
 		return models.BackupResourceResponse{}, fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 

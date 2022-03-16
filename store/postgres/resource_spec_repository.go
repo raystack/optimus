@@ -221,7 +221,7 @@ type resourceSpecRepository struct {
 }
 
 func (repo *resourceSpecRepository) Insert(ctx context.Context, resource models.ResourceSpec) error {
-	if len(resource.Name) == 0 {
+	if resource.Name == "" {
 		return errors.New("name cannot be empty")
 	}
 	p, err := Resource{}.FromSpecWithNamespace(resource, repo.namespace)

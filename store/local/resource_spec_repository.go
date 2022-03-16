@@ -40,7 +40,7 @@ type resourceRepository struct {
 }
 
 func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir string) error {
-	if len(resourceSpec.Name) == 0 || len(resourceSpec.Type) == 0 {
+	if resourceSpec.Name == "" || resourceSpec.Type == "" {
 		return fmt.Errorf("resource is missing required fields")
 	}
 
@@ -68,7 +68,8 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 	}
 
 	// save resource
-	if afero.WriteFile(repo.fs, repo.resourceFilePath(rootDir), specBytes, os.FileMode(0o755)); err != nil {
+	err = afero.WriteFile(repo.fs, repo.resourceFilePath(rootDir), specBytes, os.FileMode(0o755))
+	if err != nil {
 		return err
 	}
 
