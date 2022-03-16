@@ -141,39 +141,6 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 	return nil
 }
 
-func (sv *RuntimeServiceServer) DeployResourceSpecification0(req *pb.DeployResourceSpecificationRequest, respStream pb.RuntimeService_DeployResourceSpecificationServer) error {
-	startTime := time.Now()
-
-	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
-	if err != nil {
-		return mapToGRPCErr(sv.l, err, "unable to get namespace")
-	}
-	var resourceSpecs []models.ResourceSpec
-	for _, resourceProto := range req.GetResources() {
-		adapted, err := sv.adapter.FromResourceProto(resourceProto, req.DatastoreName)
-		if err != nil {
-			return status.Errorf(codes.Internal, "%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
-		}
-		resourceSpecs = append(resourceSpecs, adapted)
-	}
-
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
-	observers.Join(&resourceObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
-
-	if err := sv.resourceSvc.UpdateResource(respStream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to update resources: \n%s", err.Error())
-	}
-
-	runtimeDeployResourceSpecificationCounter.Add(float64(len(req.Resources)))
-	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
-	return nil
-}
-
 func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
