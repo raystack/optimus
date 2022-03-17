@@ -67,6 +67,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Success_
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
+	s.adapter.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 	s.resourceService.AssertExpectations(s.T())
 }
@@ -98,6 +99,29 @@ func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_Nam
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_AdapterFromResourceProtoError() {
+	resourceSpecs := []*pb.ResourceSpecification{}
+	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-1"})
+	s.resourceReq.Resources = resourceSpecs
+
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.adapter.On("FromResourceProto", resourceSpecs[0], s.resourceReq.DatastoreName).Return(models.ResourceSpec{}, errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+	s.adapter.AssertExpectations(s.T())
 }
 
 // TODO: refactor to test suite
