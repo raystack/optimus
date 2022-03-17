@@ -273,19 +273,6 @@ func (sv *RuntimeServiceServer) DeleteJobSpecification(ctx context.Context, req 
 func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.RuntimeService_RefreshJobsServer) error {
 	startTime := time.Now()
 
-	var namespaceJobNamePairs []models.NamespaceJobNamePair
-	for _, namespaceJobs := range req.NamespaceJobs {
-		namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), namespaceJobs.NamespaceName)
-		if err != nil {
-			return mapToGRPCErr(err, "unable to get namespace")
-		}
-
-		namespaceJobNamePairs = append(namespaceJobNamePairs, models.NamespaceJobNamePair{
-			Namespace: namespaceSpec,
-			JobNames:  namespaceJobs.JobNames,
-		})
-	}
-
 	observers := new(progress.ObserverChain)
 	observers.Join(sv.progressObserver)
 	observers.Join(&jobRefreshObserver{
@@ -293,6 +280,11 @@ func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 		log:    sv.l,
 		mu:     new(sync.Mutex),
 	})
+
+	namespaceJobNamePairs, err := sv.prepareNamespaceJobNamePair(respStream.Context(), req)
+	if err != nil {
+		return err
+	}
 
 	projectSpec, err := sv.projectService.GetByName(respStream.Context(), req.ProjectName)
 	if err != nil {
@@ -305,4 +297,20 @@ func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
 	return nil
+}
+
+func (sv *RuntimeServiceServer) prepareNamespaceJobNamePair(ctx context.Context, req *pb.RefreshJobsRequest) ([]models.NamespaceJobNamePair, error) {
+	var namespaceJobNamePairs []models.NamespaceJobNamePair
+	for _, namespaceJobs := range req.NamespaceJobs {
+		namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), namespaceJobs.NamespaceName)
+		if err != nil {
+			return nil, mapToGRPCErr(err, "unable to get namespace")
+		}
+
+		namespaceJobNamePairs = append(namespaceJobNamePairs, models.NamespaceJobNamePair{
+			Namespace: namespaceSpec,
+			JobNames:  namespaceJobs.JobNames,
+		})
+	}
+	return namespaceJobNamePairs, nil
 }

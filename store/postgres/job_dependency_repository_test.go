@@ -5,13 +5,13 @@ package postgres
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 	"os"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/odpf/optimus/models"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestJobDependencyRepository(t *testing.T) {
@@ -55,38 +55,39 @@ func TestJobDependencyRepository(t *testing.T) {
 		sqlDB, _ := db.DB()
 		defer sqlDB.Close()
 
-		jobDependencies := []store.JobDependency{
+		jobID1 := uuid.Must(uuid.NewRandom())
+		jobID2 := uuid.Must(uuid.NewRandom())
+		jobID3 := uuid.Must(uuid.NewRandom())
+		jobDependencies := []models.JobSpecDependency{
 			{
-				JobID:          uuid.Must(uuid.NewRandom()),
-				ProjectID:      projectSpec.ID,
-				DependentJobID: uuid.Must(uuid.NewRandom()),
-				Type:           models.JobSpecDependencyTypeIntra.String(),
+				Job:     &models.JobSpec{ID: jobID2},
+				Project: &projectSpec,
+				Type:    models.JobSpecDependencyTypeIntra,
 			},
 			{
-				JobID:          uuid.Must(uuid.NewRandom()),
-				ProjectID:      projectSpec.ID,
-				DependentJobID: uuid.Must(uuid.NewRandom()),
-				Type:           models.JobSpecDependencyTypeIntra.String(),
+				Job:     &models.JobSpec{ID: jobID3},
+				Project: &projectSpec,
+				Type:    models.JobSpecDependencyTypeIntra,
 			},
 		}
 		repo := NewJobDependencyRepository(db, projectSpec)
 
-		err := repo.Save(ctx, jobDependencies[0])
+		err := repo.Save(ctx, projectSpec.ID, jobID1, jobDependencies[0])
 		assert.Nil(t, err)
 
-		err = repo.Save(ctx, jobDependencies[1])
+		err = repo.Save(ctx, projectSpec.ID, jobID2, jobDependencies[1])
 		assert.Nil(t, err)
 
-		var storedJobDependencies []store.JobDependency
+		var storedJobDependencies []models.JobIDDependenciesPair
 		storedJobDependencies, err = repo.GetAll(ctx)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobDependencies[0].JobID, jobDependencies[1].JobID}, []uuid.UUID{storedJobDependencies[0].JobID, storedJobDependencies[1].JobID})
+		assert.EqualValues(t, []uuid.UUID{jobDependencies[0].Job.ID, jobDependencies[1].Job.ID}, []uuid.UUID{storedJobDependencies[0].JobID, storedJobDependencies[1].JobID})
 
-		err = repo.DeleteByJobID(ctx, jobDependencies[0].JobID)
+		err = repo.DeleteByJobID(ctx, jobID1)
 		assert.Nil(t, err)
 
 		storedJobDependencies, err = repo.GetAll(ctx)
 		assert.Nil(t, err)
-		assert.Equal(t, jobDependencies[1].JobID, storedJobDependencies[0].JobID)
+		assert.Equal(t, jobDependencies[1].Job.ID, storedJobDependencies[0].JobID)
 	})
 }

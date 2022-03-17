@@ -404,3 +404,10 @@ type JobSpecResourceConfig struct {
 	Memory string
 	CPU    string
 }
+
+type JobIDDependenciesPair struct {
+	JobID            uuid.UUID
+	DependentProject ProjectSpec
+	DependentJobID   uuid.UUID
+	Type             JobSpecDependencyType
+}

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/service"
-	"strings"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -92,14 +93,7 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 
 	for _, dependency := range jobSpec.Dependencies {
 		// insert the new ones
-		jobDependency := store.JobDependency{
-			JobID:              jobSpec.ID,
-			ProjectID:          projectSpec.ID,
-			DependentJobID:     dependency.Job.ID,
-			DependentProjectID: dependency.Project.ID,
-			Type:               dependency.Type.String(),
-		}
-		err := dependencyRepo.Save(ctx, jobDependency)
+		err := dependencyRepo.Save(ctx, projectSpec.ID, jobSpec.ID, dependency)
 		if err != nil {
 			return err
 		}
@@ -107,21 +101,14 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 	return nil
 }
 
-func (r *dependencyResolver) Fetch(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
+func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
 	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
 	jobDependencies, err := dependencyRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	interDependenciesMap := getInterDependencies(jobDependencies)
-
-	projects, err := r.prepareProjects(ctx, projectSpec, interDependenciesMap)
-	if err != nil {
-		return nil, err
-	}
-
-	jobSpecMap, err := r.prepareJobSpecMap(ctx, projectSpec, projects, interDependenciesMap)
+	jobSpecMap, err := r.prepareJobSpecMap(ctx, projectSpec, jobDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -129,27 +116,25 @@ func (r *dependencyResolver) Fetch(ctx context.Context, projectSpec models.Proje
 	jobDependenciesMap := make(map[uuid.UUID][]models.JobSpecDependency)
 	for _, dep := range jobDependencies {
 		dependentJob := jobSpecMap[dep.DependentJobID]
-		dependentProject := projects[dep.DependentProjectID]
+		dependentProject := dep.DependentProject
 		jobDependenciesMap[dep.JobID] = append(jobDependenciesMap[dep.JobID], models.JobSpecDependency{
 			Project: &dependentProject,
 			Job:     &dependentJob,
-			Type:    models.JobSpecDependencyType(dep.Type),
+			Type:    dep.Type,
 		})
 	}
-
 	return jobDependenciesMap, nil
 }
 
 func (r *dependencyResolver) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec,
-	projects map[uuid.UUID]models.ProjectSpec, interDependenciesMap map[uuid.UUID][]store.JobDependency) (map[uuid.UUID]models.JobSpec, error) {
-
+	jobDependencies []models.JobIDDependenciesPair) (map[uuid.UUID]models.JobSpec, error) {
 	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
 	intraProjectJobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	interProjectJobSpecs, err := r.prepareExternalJobs(ctx, projects, interDependenciesMap)
+	interProjectJobSpecs, err := r.prepareExternalJobSpecMap(ctx, jobDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -165,52 +150,23 @@ func (r *dependencyResolver) prepareJobSpecMap(ctx context.Context, projectSpec 
 	return jobSpecMap, nil
 }
 
-func getInterDependencies(jobDependencies []store.JobDependency) map[uuid.UUID][]store.JobDependency {
-	interDependenciesMap := make(map[uuid.UUID][]store.JobDependency)
+func getInterProjectDependencies(jobDependencies []models.JobIDDependenciesPair) map[uuid.UUID][]models.JobIDDependenciesPair {
+	interDependenciesMap := make(map[uuid.UUID][]models.JobIDDependenciesPair)
 	for _, dep := range jobDependencies {
-		if dep.Type == models.JobSpecDependencyTypeInter.String() {
-			interDependenciesMap[dep.DependentProjectID] = append(interDependenciesMap[dep.DependentProjectID], dep)
+		if dep.Type == models.JobSpecDependencyTypeInter {
+			interDependenciesMap[dep.DependentProject.ID] = append(interDependenciesMap[dep.DependentProject.ID], dep)
 		}
 	}
 	return interDependenciesMap
 }
 
-func (r *dependencyResolver) prepareProjects(ctx context.Context, projectSpec models.ProjectSpec,
-	interDependenciesMap map[uuid.UUID][]store.JobDependency) (map[uuid.UUID]models.ProjectSpec, error) {
-
-	projects, err := r.prepareExternalProjects(ctx, interDependenciesMap)
-	if err != nil {
-		return nil, err
-	}
-
-	// include requested project in the map
-	projects[projectSpec.ID] = projectSpec
-
-	return projects, nil
-}
-
-func (r *dependencyResolver) prepareExternalProjects(ctx context.Context,
-	interDependenciesMap map[uuid.UUID][]store.JobDependency) (map[uuid.UUID]models.ProjectSpec, error) {
-
-	projectSpecMap := make(map[uuid.UUID]models.ProjectSpec)
-	for externalProjectID, _ := range interDependenciesMap {
-		dependencyProjectSpec, err := r.projectService.GetByID(ctx, externalProjectID)
-		if err != nil {
-			return nil, err
-		}
-		projectSpecMap[dependencyProjectSpec.ID] = dependencyProjectSpec
-	}
-	return projectSpecMap, nil
-}
-
-func (r *dependencyResolver) prepareExternalJobs(ctx context.Context,
-	externalProjects map[uuid.UUID]models.ProjectSpec,
-	interDependenciesMap map[uuid.UUID][]store.JobDependency) (map[uuid.UUID]models.JobSpec, error) {
-
+func (r *dependencyResolver) prepareExternalJobSpecMap(ctx context.Context,
+	jobDependencies []models.JobIDDependenciesPair) (map[uuid.UUID]models.JobSpec, error) {
 	externalJobMap := make(map[uuid.UUID]models.JobSpec)
-	for externalProjectID, dependencies := range interDependenciesMap {
-		projectSpec := externalProjects[externalProjectID]
-		projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
+
+	interProjectDependencies := getInterProjectDependencies(jobDependencies)
+	for _, dependencies := range interProjectDependencies {
+		projectJobSpecRepo := r.projectJobSpecRepoFactory.New(dependencies[0].DependentProject)
 
 		var dependencyJobIDs []uuid.UUID
 		for _, dependency := range dependencies {
@@ -227,22 +183,6 @@ func (r *dependencyResolver) prepareExternalJobs(ctx context.Context,
 		}
 	}
 	return externalJobMap, nil
-}
-
-func (r *dependencyResolver) getDependencyMap(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]store.JobDependency, error) {
-	// get all dependencies per project
-	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
-	jobDependencies, err := dependencyRepo.GetAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// create map of dependencies per job ID
-	jobDependencyMap := make(map[uuid.UUID][]store.JobDependency)
-	for _, dependency := range jobDependencies {
-		jobDependencyMap[dependency.JobID] = append(jobDependencyMap[dependency.JobID], dependency)
-	}
-	return jobDependencyMap, nil
 }
 
 func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
@@ -382,20 +322,20 @@ func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) mod
 	return jobSpec
 }
 
-//func (r *dependencyResolver) ResolveHookDependencies(jobSpec models.JobSpec) (map[string][]models.JobSpecHook, error) {
-//	jobSpecHooks := make(map[string][]models.JobSpecHook)
-//	for hookIdx, jobHook := range jobSpec.Hooks {
-//		var jobHooks []*models.JobSpecHook
-//		for _, depends := range jobHook.Unit.Info().DependsOn {
-//			dependentHook, err := jobSpec.GetHookByName(depends)
-//			if err == nil {
-//				jobHooks = append(jobHooks, &dependentHook)
-//			}
-//		}
-//		jobSpecHooks[hookIdx] = jobHook
-//	}
-//	return jobSpec, nil
-//}
+func (r *dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) ([]models.JobSpecHook, error) {
+	var hooks []models.JobSpecHook
+	for _, jobHook := range jobSpec.Hooks {
+		jobHook.DependsOn = nil
+		for _, depends := range jobHook.Unit.Info().DependsOn {
+			dependentHook, err := jobSpec.GetHookByName(depends)
+			if err == nil {
+				jobHook.DependsOn = append(jobHook.DependsOn, &dependentHook)
+			}
+		}
+		hooks = append(hooks, jobHook)
+	}
+	return hooks, nil
+}
 
 func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {
 	if observer == nil {

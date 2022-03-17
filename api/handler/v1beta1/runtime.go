@@ -30,10 +30,6 @@ var (
 		Name: "runtime_deploy_resourcespec",
 		Help: "Number of resources requested for deployment by runtime",
 	})
-	runtimeRefreshJobsCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "runtime_refresh_jobs",
-		Help: "Number of jobs requested to be refreshed by runtime",
-	})
 )
 
 type JobEventService interface {

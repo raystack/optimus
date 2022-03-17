@@ -234,9 +234,14 @@ func (srv *DependencyResolver) ResolveAndPersist(ctx context.Context, projectSpe
 	return args.Error(0)
 }
 
-func (srv *DependencyResolver) Fetch(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
+func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
 	args := srv.Called(ctx, projectSpec)
 	return args.Get(0).(map[uuid.UUID][]models.JobSpecDependency), args.Error(1)
+}
+
+func (srv *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) ([]models.JobSpecHook, error) {
+	args := srv.Called(jobSpec)
+	return args.Get(0).([]models.JobSpecHook), args.Error(1)
 }
 
 type PriorityResolver struct {
@@ -282,14 +287,14 @@ type JobDependencyRepository struct {
 	mock.Mock
 }
 
-func (repo *JobDependencyRepository) Save(ctx context.Context, jobDependency store.JobDependency) error {
-	args := repo.Called(ctx, jobDependency)
+func (repo *JobDependencyRepository) Save(ctx context.Context, projectID uuid.UUID, jobID uuid.UUID, dependency models.JobSpecDependency) error {
+	args := repo.Called(ctx, projectID, jobID, dependency)
 	return args.Error(0)
 }
 
-func (repo *JobDependencyRepository) GetAll(ctx context.Context) ([]store.JobDependency, error) {
+func (repo *JobDependencyRepository) GetAll(ctx context.Context) ([]models.JobIDDependenciesPair, error) {
 	args := repo.Called(ctx)
-	return args.Get(0).([]store.JobDependency), args.Error(1)
+	return args.Get(0).([]models.JobIDDependenciesPair), args.Error(1)
 }
 
 func (repo *JobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {

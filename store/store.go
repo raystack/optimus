@@ -123,18 +123,7 @@ type BackupRepository interface {
 
 // JobDependencyRepository represents a storage interface for job dependencies
 type JobDependencyRepository interface {
-	Save(context.Context, JobDependency) error
-	GetAll(context.Context) ([]JobDependency, error)
+	Save(ctx context.Context, projectID uuid.UUID, jobID uuid.UUID, dependency models.JobSpecDependency) error
+	GetAll(context.Context) ([]models.JobIDDependenciesPair, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
-}
-
-type JobDependency struct {
-	JobID              uuid.UUID `gorm:"not null" json:"job_id"`
-	ProjectID          uuid.UUID `gorm:"not null" json:"project_id"`
-	DependentJobID     uuid.UUID `gorm:"not null" json:"dependent_job_id"`
-	DependentProjectID uuid.UUID `gorm:"not null" json:"dependent_project_id"`
-
-	Type string
-
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 }

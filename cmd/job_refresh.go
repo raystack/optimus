@@ -34,8 +34,8 @@ func jobRefreshCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
 
-	namespaces := cmd.Flags().StringArrayP("namespaces", "n", []string{}, "Namespace of Optimus project")
-	jobs := cmd.Flags().StringArrayP("jobs", "j", []string{}, "Job names")
+	namespaces := cmd.Flags().StringArrayP("namespaces", "N", []string{}, "Namespaces of Optimus project")
+	jobs := cmd.Flags().StringArrayP("jobs", "J", []string{}, "Job names")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		if projectName == "" {
@@ -49,9 +49,9 @@ func jobRefreshCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		}
 
 		if len(*namespaces) > 0 || len(*jobs) > 0 {
-			l.Info(fmt.Sprintf("Refreshing job dependencies of selected jobs / namespaces"))
+			l.Info(fmt.Sprintf("Refreshing job dependencies of selected jobs/namespaces"))
 		}
-		l.Info(fmt.Sprintf("Redeploy all jobs in %s project", projectName))
+		l.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
 		start := time.Now()
 
 		if err := refreshJobSpecificationRequest(l, projectName, *namespaces, *jobs, conf.Host, verbose); err != nil {
@@ -118,7 +118,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			// ack for the job spec
 			if !resp.GetSuccess() {
 				failedCounter++
-				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to validate: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
+				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to refresh: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
 			}
 			ackCounter++
 			if verbose {
