@@ -190,6 +190,40 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.jobService.AssertExpectations(s.T())
 }
 
+func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Success() {
+	req := &pb.GetJobSpecificationRequest{}
+	req.ProjectName = s.projectSpec.Name
+	req.NamespaceName = s.namespaceSpec.Name
+	req.JobName = "job-1"
+	jobSpec := models.JobSpec{Name: req.JobName}
+	jobSpecProto := &pb.JobSpecification{Name: req.JobName}
+
+	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
+	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
+	s.adapter.On("ToJobProto", jobSpec).Return(jobSpecProto, nil)
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
+
+	s.Assert().NoError(err)
+	s.Assert().NotNil(resp)
+}
+
+func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_NamespaceServiceGetError() {
+	req := &pb.GetJobSpecificationRequest{}
+	req.ProjectName = s.projectSpec.Name
+	req.NamespaceName = s.namespaceSpec.Name
+	req.JobName = "job-1"
+
+	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
+
+	s.Assert().Error(err)
+	s.Assert().Nil(resp)
+}
+
 // TODO: refactor to test suite
 func TestJobSpecificationOnServer(t *testing.T) {
 	log := log.NewNoop()
