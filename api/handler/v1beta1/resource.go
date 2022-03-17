@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -78,6 +79,8 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 
 func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeService_DeployResourceSpecificationServer) error {
 	startTime := time.Now()
+	errNamespaces := []string{}
+
 	for {
 		request, err := stream.Recv()
 		if err != nil {
@@ -98,20 +101,29 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				Ack:     true,
 				Message: err.Error(),
 			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue
 		}
 		var resourceSpecs []models.ResourceSpec
+		err = nil
 		for _, resourceProto := range request.GetResources() {
 			adapted, err := sv.adapter.FromResourceProto(resourceProto, request.DatastoreName)
 			if err != nil {
-				stream.Send(&pb.DeployResourceSpecificationResponse{
-					Success: false,
-					Ack:     true,
-					Message: fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName()),
-				})
+				sv.l.Error(fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName()))
+				err = errors.New("resource adapt is failed")
 				continue
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
+		}
+
+		if err != nil {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
 		}
 
 		observers := new(progress.ObserverChain)
@@ -128,6 +140,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				Ack:     true,
 				Message: fmt.Sprintf("failed to update resources: \n%s", err.Error()),
 			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue
 		}
 		runtimeDeployResourceSpecificationCounter.Add(float64(len(request.Resources)))
@@ -138,6 +151,10 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 		})
 	}
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
+	if len(errNamespaces) > 0 {
+		sv.l.Warn("there's error while deploying namespaces: %v", errNamespaces)
+		return fmt.Errorf("error when deploying: %v", errNamespaces)
+	}
 	return nil
 }
 

@@ -83,6 +83,23 @@ func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_Str
 	stream.AssertExpectations(s.T())
 }
 
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_NamespaceServiceGetError() {
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+}
+
 // TODO: refactor to test suite
 func TestResourcesOnServer(t *testing.T) {
 	log := log.NewNoop()
