@@ -200,7 +200,7 @@ func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Success() {
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
-	s.adapter.On("ToJobProto", jobSpec).Return(jobSpecProto, nil)
+	s.adapter.On("ToJobProto", jobSpec).Return(jobSpecProto, nil).Once()
 
 	runtimeServiceServer := s.newRuntimeServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
@@ -224,99 +224,44 @@ func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_NamespaceSe
 	s.Assert().Nil(resp)
 }
 
+func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceGetByNameError() {
+	req := &pb.GetJobSpecificationRequest{}
+	req.ProjectName = s.projectSpec.Name
+	req.NamespaceName = s.namespaceSpec.Name
+	req.JobName = "job-1"
+
+	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
+	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(models.JobSpec{}, errors.New("any error")).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
+
+	s.Assert().Error(err)
+	s.Assert().Nil(resp)
+}
+
+func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_AdapterToJobProtoError() {
+	req := &pb.GetJobSpecificationRequest{}
+	req.ProjectName = s.projectSpec.Name
+	req.NamespaceName = s.namespaceSpec.Name
+	req.JobName = "job-1"
+	jobSpec := models.JobSpec{Name: req.JobName}
+
+	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
+	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
+	s.adapter.On("ToJobProto", jobSpec).Return(&pb.JobSpecification{}, errors.New("any error")).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
+
+	s.Assert().Error(err)
+	s.Assert().Nil(resp)
+}
+
 // TODO: refactor to test suite
 func TestJobSpecificationOnServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
-	t.Run("GetJobSpecification", func(t *testing.T) {
-		t.Run("should read a job spec", func(t *testing.T) {
-			Version := "1.0.1"
-
-			projectName := "a-data-project"
-			jobName1 := "a-data-job"
-			taskName := "a-data-task"
-
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: "dev-test-namespace-1",
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-				ProjectSpec: projectSpec,
-			}
-
-			execUnit1 := new(mock.BasePlugin)
-			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: taskName,
-			}, nil)
-			defer execUnit1.AssertExpectations(t)
-
-			jobSpecs := []models.JobSpec{
-				{
-					Name: jobName1,
-					Task: models.JobSpecTask{
-						Unit: &models.Plugin{
-							Base: execUnit1,
-						},
-						Config: models.JobSpecConfigs{
-							{
-								Name:  "do",
-								Value: "this",
-							},
-						},
-					},
-					Assets: *models.JobAssets{}.New(
-						[]models.JobSpecAsset{
-							{
-								Name:  "query.sql",
-								Value: "select * from 1",
-							},
-						}),
-				},
-			}
-
-			allTasksRepo := new(mock.SupportedPluginRepo)
-			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
-			adapter := v1.NewAdapter(allTasksRepo, nil)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
-
-			jobService := new(mock.JobService)
-			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
-			defer jobService.AssertExpectations(t)
-
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				Version,
-				jobService,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
-				nil,
-			)
-
-			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
-			deployRequest := pb.GetJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
-			jobSpecResp, err := runtimeServiceServer.GetJobSpecification(context.Background(), &deployRequest)
-			assert.Nil(t, err)
-			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
-		})
-	})
-
 	t.Run("RegisterJobSpecification", func(t *testing.T) {
 		t.Run("should save a job specification", func(t *testing.T) {
 			projectName := "a-data-project"
