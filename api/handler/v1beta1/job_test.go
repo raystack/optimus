@@ -15,15 +15,21 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
+
+func TestRuntimeServiceServerJobTestSuite(t *testing.T) {
+	s := new(RuntimeServiceServerTestSuite)
+	suite.Run(t, s)
+}
 
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_NoJobSpec() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
 	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
@@ -40,17 +46,17 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-2"})
-	s.req.Jobs = jobSpecs
+	s.jobReq.Jobs = jobSpecs
 	adaptedJobs := []models.JobSpec{}
 	adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-1"})
 	adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-2"})
 
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	for i := range jobSpecs {
 		s.adapter.On("FromJobProto", jobSpecs[i]).Return(adaptedJobs[i], nil).Once()
 		s.jobService.On("Create", s.ctx, s.namespaceSpec, adaptedJobs[i]).Return(nil).Once()
@@ -83,10 +89,10 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRe
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_NamespaceServiceGetError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newRuntimeServiceServer()
@@ -99,14 +105,14 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_Namespac
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterFromJobProtoError() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
-	s.req.Jobs = jobSpecs
+	s.jobReq.Jobs = jobSpecs
 
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	s.adapter.On("FromJobProto", jobSpecs[0]).Return(models.JobSpec{}, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
@@ -122,16 +128,16 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterF
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceCreateError() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
-	s.req.Jobs = jobSpecs
+	s.jobReq.Jobs = jobSpecs
 	adaptedJobs := []models.JobSpec{}
 	adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-1"})
 
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	s.adapter.On("FromJobProto", jobSpecs[0]).Return(adaptedJobs[0], nil).Once()
 	s.jobService.On("Create", s.ctx, s.namespaceSpec, adaptedJobs[0]).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
@@ -148,10 +154,10 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceKeepOnlyError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
@@ -167,10 +173,10 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceSyncError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.req, nil).Once()
+	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.req.GetProjectName(), s.req.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
 	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()

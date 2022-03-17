@@ -28,16 +28,17 @@ type RuntimeServiceServerTestSuite struct {
 	namespaceService *mock.NamespaceService
 	projectService   *mock.ProjectService
 	secretService    *mock.SecretService
-	runService       *mock.RunService        // TODO: refactor to service package
-	jobService       *mock.JobService        // TODO: refactor to service package
-	resourceService  models.DatastoreService // TODO: refactor to service package
-	jobEventService  v1.JobEventService      // TODO: refactor to service package
+	runService       *mock.RunService       // TODO: refactor to service package
+	jobService       *mock.JobService       // TODO: refactor to service package
+	resourceService  *mock.DatastoreService // TODO: refactor to service package
+	jobEventService  v1.JobEventService     // TODO: refactor to service package
 	adapter          *mock.ProtoAdapter
 	scheduler        models.SchedulerUnit
 	log              log.Logger
 	progressObserver progress.Observer
 
-	req           *pb.DeployJobSpecificationRequest
+	jobReq        *pb.DeployJobSpecificationRequest
+	resourceReq   *pb.DeployResourceSpecificationRequest
 	projectSpec   models.ProjectSpec
 	namespaceSpec models.NamespaceSpec
 }
@@ -48,6 +49,7 @@ func (s *RuntimeServiceServerTestSuite) SetupTest() {
 	s.namespaceService = new(mock.NamespaceService)
 	s.adapter = new(mock.ProtoAdapter)
 	s.jobService = new(mock.JobService)
+	s.resourceService = new(mock.DatastoreService)
 	s.log = log.NewNoop()
 	// ... etdc
 
@@ -59,14 +61,14 @@ func (s *RuntimeServiceServerTestSuite) SetupTest() {
 	s.namespaceSpec.Name = "ns1"
 	s.namespaceSpec.ID = uuid.MustParse("ceba7919-e07d-48b4-a4ce-141d79a3b59d")
 
-	s.req = &pb.DeployJobSpecificationRequest{}
-	s.req.ProjectName = s.projectSpec.Name
-	s.req.NamespaceName = s.namespaceSpec.Name
-}
+	s.jobReq = &pb.DeployJobSpecificationRequest{}
+	s.jobReq.ProjectName = s.projectSpec.Name
+	s.jobReq.NamespaceName = s.namespaceSpec.Name
 
-func TestRuntimeServiceServerTestSuite(t *testing.T) {
-	s := new(RuntimeServiceServerTestSuite)
-	suite.Run(t, s)
+	s.resourceReq = &pb.DeployResourceSpecificationRequest{}
+	s.resourceReq.DatastoreName = "datastore-1"
+	s.resourceReq.ProjectName = s.projectSpec.Name
+	s.resourceReq.NamespaceName = s.namespaceSpec.Name
 }
 
 func (s *RuntimeServiceServerTestSuite) newRuntimeServiceServer() *v1.RuntimeServiceServer {
