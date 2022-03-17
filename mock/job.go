@@ -213,8 +213,8 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (j *JobService) Refresh(ctx context.Context, projectSpec models.ProjectSpec, namespaceJobNamePairs []models.NamespaceJobNamePair, progressObserver progress.Observer) (err error) {
-	args := j.Called(ctx, projectSpec, namespaceJobNamePairs, progressObserver)
+func (srv *JobService) Refresh(ctx context.Context, projectSpec models.ProjectSpec, namespaceJobNamePairs []models.NamespaceJobNamePair, progressObserver progress.Observer) (err error) {
+	args := srv.Called(ctx, projectSpec, namespaceJobNamePairs, progressObserver)
 	return args.Error(0)
 }
 

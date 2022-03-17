@@ -378,7 +378,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		db:                    dbConn,
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepoFac, projectService)
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.

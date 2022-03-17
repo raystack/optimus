@@ -454,11 +454,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 	t.Run("RefreshJobs", func(t *testing.T) {
 		t.Run("should refresh jobs successfully", func(t *testing.T) {
 			Version := "1.0.1"
-
 			projectName := "a-data-project"
-			jobName1 := "a-data-job"
-			taskName := "a-data-task"
-
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
 				Name: projectName,
@@ -466,7 +462,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 					"bucket": "gs://some_folder",
 				},
 			}
-
 			namespaceSpec := models.NamespaceSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
 				Name: "dev-test-namespace-1",
@@ -474,36 +469,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 					"bucket": "gs://some_folder",
 				},
 				ProjectSpec: projectSpec,
-			}
-
-			execUnit1 := new(mock.BasePlugin)
-			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: taskName,
-			}, nil)
-			defer execUnit1.AssertExpectations(t)
-
-			jobSpecs := []models.JobSpec{
-				{
-					Name: jobName1,
-					Task: models.JobSpecTask{
-						Unit: &models.Plugin{
-							Base: execUnit1,
-						},
-						Config: models.JobSpecConfigs{
-							{
-								Name:  "do",
-								Value: "this",
-							},
-						},
-					},
-					Assets: *models.JobAssets{}.New(
-						[]models.JobSpecAsset{
-							{
-								Name:  "query.sql",
-								Value: "select * from 1",
-							},
-						}),
-				},
 			}
 			namespaceJobNamePairs := []models.NamespaceJobNamePair{
 				{
@@ -518,9 +483,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			pluginRepo := new(mock.SupportedPluginRepo)
-			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-				Base: execUnit1,
-			}, nil)
 			adapter := v1.NewAdapter(pluginRepo, nil)
 
 			nsService := new(mock.NamespaceService)
@@ -538,7 +500,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 
-			grpcRespStream := new(mock.RuntimeService_RefreshJobsServer)
+			grpcRespStream := new(mock.RefreshJobsServer)
 			defer grpcRespStream.AssertExpectations(t)
 
 			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -560,11 +522,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobSpecsAdapted := []*pb.JobSpecification{}
-			for _, jobSpec := range jobSpecs {
-				jobSpecAdapted, _ := adapter.ToJobProto(jobSpec)
-				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
-			}
 			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceJobs: []*pb.NamespaceJobs{
 				{
 					NamespaceName: namespaceSpec.Name,

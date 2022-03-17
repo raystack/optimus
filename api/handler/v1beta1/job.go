@@ -288,7 +288,7 @@ func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 
 	projectSpec, err := sv.projectService.GetByName(respStream.Context(), req.ProjectName)
 	if err != nil {
-		return mapToGRPCErr(err, "unable to get project")
+		return mapToGRPCErr(sv.l, err, "unable to get project")
 	}
 
 	if err = sv.jobSvc.Refresh(respStream.Context(), projectSpec, namespaceJobNamePairs, observers); err != nil {
@@ -304,7 +304,7 @@ func (sv *RuntimeServiceServer) prepareNamespaceJobNamePair(ctx context.Context,
 	for _, namespaceJobs := range req.NamespaceJobs {
 		namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), namespaceJobs.NamespaceName)
 		if err != nil {
-			return nil, mapToGRPCErr(err, "unable to get namespace")
+			return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 		}
 
 		namespaceJobNamePairs = append(namespaceJobNamePairs, models.NamespaceJobNamePair{

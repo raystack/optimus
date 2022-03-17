@@ -7,12 +7,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/service"
-
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -29,7 +26,6 @@ const InterJobDependencyNameSections = 2
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	dependencyRepoFactory     DependencyRepoFactory
-	projectService            service.ProjectService
 }
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
@@ -346,11 +342,9 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 
 // NewDependencyResolver creates a new instance of Resolver
 func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	dependencyRepoFactory DependencyRepoFactory,
-	projectService service.ProjectService) *dependencyResolver {
+	dependencyRepoFactory DependencyRepoFactory) *dependencyResolver {
 	return &dependencyResolver{
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
 		dependencyRepoFactory:     dependencyRepoFactory,
-		projectService:            projectService,
 	}
 }

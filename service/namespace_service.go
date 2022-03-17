@@ -41,7 +41,7 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 	}
 
 	nsRepo := s.namespaceRepoFac.New(models.ProjectSpec{}) // Intentional empty object
-	nsSpec, err := nsRepo.GetByName(ctx, projectName, namespaceName)
+	nsSpec, err := nsRepo.Get(ctx, projectName, namespaceName)
 	if err != nil {
 		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}

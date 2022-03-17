@@ -793,7 +793,7 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 	//Fetch dependency and enrich
 	jobDependencies, err := srv.dependencyResolver.FetchJobDependencies(ctx, projectSpec)
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch job dependencies")
+		return fmt.Errorf("failed to fetch job dependencies: %s", err)
 	}
 	srv.notifyProgress(progressObserver, &EventJobSpecDependencyFetch{})
 
@@ -846,7 +846,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 	// compile assets before resolving in parallel
 	for i, jSpec := range jobSpecs {
 		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return errors.Wrap(err, "asset compilation")
+			return fmt.Errorf("asset compilation: %s", err)
 		}
 	}
 
@@ -857,8 +857,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 			return func() (interface{}, error) {
 				err := srv.dependencyResolver.ResolveAndPersist(ctx, projectSpec, currentSpec, progressObserver)
 				if err != nil {
-					wrappedErr := errors.Wrap(errDependencyResolution, err.Error())
-					return nil, errors.Wrap(wrappedErr, currentSpec.Name)
+					return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 				}
 				return nil, nil
 			}
@@ -898,7 +897,7 @@ func prepareNamespaceJobsMap(ctx context.Context, projectJobSpecRepo store.Proje
 func prepareJobToNamespaceMap(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]string, error) {
 	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve namespace to job mapping")
+		return nil, fmt.Errorf("failed to retrieve namespace to job mapping: %s", err)
 	}
 	// generate a reverse map for namespace
 	jobsToNamespace := map[string]string{}
@@ -944,7 +943,7 @@ func (srv *Service) prepareJobSpecs(ctx context.Context, projectSpec models.Proj
 		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
 		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to retrieve jobs")
+			return nil, fmt.Errorf("failed to retrieve jobs: %s", err)
 		}
 		return jobSpecs, nil
 	} else {

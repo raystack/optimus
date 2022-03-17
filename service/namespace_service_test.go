@@ -47,7 +47,7 @@ func TestNamespaceService(t *testing.T) {
 		})
 		t.Run("return error when repo returns error", func(t *testing.T) {
 			namespaceRepository := new(mock.NamespaceRepository)
-			namespaceRepository.On("GetByName", ctx, project.Name, "nonexistent").
+			namespaceRepository.On("Get", ctx, project.Name, "nonexistent").
 				Return(models.NamespaceSpec{}, store.ErrResourceNotFound)
 			defer namespaceRepository.AssertExpectations(t)
 

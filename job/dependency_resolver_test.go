@@ -11,8 +11,6 @@ import (
 
 	"github.com/odpf/optimus/store"
 
-	"github.com/pkg/errors"
-
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -129,7 +127,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -246,7 +244,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -360,7 +358,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -460,7 +458,7 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 			execUnit.On("GenerateDependencies", ctx, unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -530,7 +528,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(
 				&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
@@ -572,7 +570,7 @@ func TestDependencyResolver(t *testing.T) {
 			unitData := models.GenerateDependenciesRequest{Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets), Project: projectSpec}
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, "random error", err.Error())
@@ -615,7 +613,7 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table3_destination"}}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
 				"project.dataset.table3_destination", jobSpec1.Name),
@@ -680,7 +678,7 @@ func TestDependencyResolver(t *testing.T) {
 				Dependencies: []string{"project.dataset.table1_destination"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
 			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
 		})
@@ -742,7 +740,7 @@ func TestDependencyResolver(t *testing.T) {
 				Dependencies: []string{"project.dataset.table1_destination"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
 			assert.Equal(t, "unsupported dependency type: bad", err.Error())
 		})
@@ -835,7 +833,7 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 			execUnit.On("GenerateDependencies", ctx, unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -974,7 +972,7 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 			execUnit.On("GenerateDependencies", context.Background(), unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -1088,7 +1086,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 			jobDependencyRepository.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpecDependency).Return(nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Nil(t, err)
@@ -1153,7 +1151,7 @@ func TestDependencyResolver(t *testing.T) {
 			errorMsg := "generate dependencies failed"
 			execUnit1.On("GenerateDependencies", ctx, unitData).Return(&models.GenerateDependenciesResponse{}, errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1219,7 +1217,7 @@ func TestDependencyResolver(t *testing.T) {
 			errorMsg := "internal error"
 			jobSpecRepository.On("GetByDestination", ctx, "project.dataset.table2_destination").Return(nil, errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, fmt.Sprintf("runtime dependency evaluation failed: %s", errorMsg), err.Error())
@@ -1309,7 +1307,7 @@ func TestDependencyResolver(t *testing.T) {
 			errorMsg := "internal error"
 			jobDependencyRepository.On("DeleteByJobID", ctx, jobSpec1.ID).Return(errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1405,7 +1403,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 			jobDependencyRepository.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpecDependency).Return(errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			err := resolver.ResolveAndPersist(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1520,7 +1518,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 			jobDependencyRepository.On("GetAll", ctx).Return(persistedDependencies, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, err)
@@ -1675,7 +1673,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory.On("New", otherProjectSpec).Return(jobSpecRepository)
 			jobSpecRepository.On("GetByIDs", ctx, []uuid.UUID{jobSpec2.ID, jobSpec3.ID}).Return([]models.JobSpec{jobSpec2, jobSpec3}, nil)
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, projectService)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, err)
@@ -1765,7 +1763,7 @@ func TestDependencyResolver(t *testing.T) {
 			errorMsg := "internal error"
 			jobDependencyRepository.On("GetAll", ctx).Return([]models.JobIDDependenciesPair{}, errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, nil)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, actual)
@@ -1915,7 +1913,7 @@ func TestDependencyResolver(t *testing.T) {
 			errorMsg := "internal error"
 			jobSpecRepository.On("GetByIDs", ctx, []uuid.UUID{jobSpec2.ID, jobSpec3.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory, projectService)
+			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, actual)
