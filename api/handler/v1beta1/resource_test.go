@@ -2,6 +2,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"testing"
 
@@ -68,6 +69,18 @@ func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Success_
 	stream.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 	s.resourceService.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_StreamRecvError() {
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Recv").Return(nil, errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
 }
 
 // TODO: refactor to test suite

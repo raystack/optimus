@@ -89,7 +89,7 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 				Ack:     true,
 				Message: err.Error(),
 			})
-			continue
+			return err // immediate error returned (grpc error level)
 		}
 		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), request.GetProjectName(), request.GetNamespaceName())
 		if err != nil {
