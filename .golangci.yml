@@ -96,7 +96,7 @@ linters-settings:
     enabled-tags:
       - diagnostic
       - style
-#      - opinionated
+      - opinionated
 #      - performance
   unparam:
     # Inspect exported functions.
