@@ -17,23 +17,20 @@ import (
 )
 
 func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
-	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE: func(c *cli.Command, args []string) error {
-			namespace, err := conf.GetNamespaceByName(namespaceName)
-			if err != nil {
-				return err
-			}
+			namespace := askToSelectNamespace(l, conf)
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
 				local.NewJobSpecAdapter(pluginRepo),
 			)
 			var jobName string
+			var err error
 			if len(args) == 0 {
 				// doing it locally for now, ideally using optimus service will give
 				// more accurate results
@@ -74,7 +71,5 @@ func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo mode
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for renderring template")
-	cmd.MarkFlagRequired("namespace")
 	return cmd
 }

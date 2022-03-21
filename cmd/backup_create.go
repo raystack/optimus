@@ -22,7 +22,6 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 			Short:   "Create a backup",
 			Example: "optimus backup create --resource <sample_resource_name>",
 		}
-		namespaceName    string
 		dryRun           = false
 		ignoreDownstream = false
 		allDownstream    = false
@@ -31,8 +30,6 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 		description      string
 		storerName       string
 	)
-	backupCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of the resource within project")
-	backupCmd.MarkFlagRequired("namespace")
 
 	backupCmd.Flags().StringVarP(&resourceName, "resource", "r", resourceName, "Resource name created inside the datastore")
 	backupCmd.Flags().StringVarP(&description, "description", "i", description, "Describe intention to help identify the backup")
@@ -44,10 +41,8 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
-		namespace, err := conf.GetNamespaceByName(namespaceName)
-		if err != nil {
-			return err
-		}
+		namespace := askToSelectNamespace(l, conf)
+		var err error
 		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
 			return err
 		}
@@ -63,13 +58,13 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 			if allDownstream {
 				allowedDownstreamNamespaces = []string{"*"}
 			} else {
-				allowedDownstreamNamespaces = []string{namespaceName}
+				allowedDownstreamNamespaces = []string{namespace.Name}
 			}
 		}
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
 			ProjectName:                 conf.Project.Name,
-			NamespaceName:               namespaceName,
+			NamespaceName:               namespace.Name,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
@@ -101,7 +96,7 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 
 		backupRequest := &pb.CreateBackupRequest{
 			ProjectName:                 conf.Project.Name,
-			NamespaceName:               namespaceName,
+			NamespaceName:               namespace.Name,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,

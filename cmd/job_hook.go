@@ -16,7 +16,6 @@ import (
 )
 
 func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
-	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "addhook",
 		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},
@@ -24,10 +23,7 @@ func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plug
 		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
 		Example: "optimus addhook",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace, err := conf.GetNamespaceByName(namespaceName)
-			if err != nil {
-				return err
-			}
+			namespace := askToSelectNamespace(l, conf)
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -52,8 +48,6 @@ func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plug
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for adding hook")
-	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 

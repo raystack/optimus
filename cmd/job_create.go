@@ -33,16 +33,12 @@ var (
 )
 
 func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
-	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace, err := conf.GetNamespaceByName(namespaceName)
-			if err != nil {
-				return err
-			}
+			namespace := askToSelectNamespace(l, conf)
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -75,8 +71,6 @@ func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plugi
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for creating job")
-	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 

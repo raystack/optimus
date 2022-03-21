@@ -23,20 +23,14 @@ const (
 )
 
 func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
-	var (
-		verbose       bool
-		namespaceName string
-	)
+	var verbose bool
 	cmd := &cli.Command{
 		Use:     "validate",
 		Short:   "Run basic checks on all jobs",
 		Long:    "Check if specifications are valid for deployment",
 		Example: "optimus job validate",
 		RunE: func(c *cli.Command, args []string) error {
-			namespace, err := conf.GetNamespaceByName(namespaceName)
-			if err != nil {
-				return err
-			}
+			namespace := askToSelectNamespace(l, conf)
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -57,8 +51,6 @@ func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plu
 		},
 	}
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "targeted namespace for validating job")
-	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
