@@ -47,8 +47,8 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 					Name: "RegisterProjectConfig",
 					Prompt: &survey.Select{
 						Message: "Register project configs?",
-						Options: []string{"Yes", "No"},
-						Default: "No",
+						Options: []string{AnswerYes, AnswerNo},
+						Default: AnswerNo,
 					},
 				},
 			}
@@ -59,7 +59,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 			conf.Project.Name = answers["ProjectName"].(string)
 
 			// for project config
-			if option, ok := answers["RegisterProjectConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+			if option, ok := answers["RegisterProjectConfig"]; ok && option.(survey.OptionAnswer).Value == AnswerYes {
 				conf, err = projectConfigQuestions(conf)
 				if err != nil {
 					return err
@@ -80,8 +80,8 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 					Name: "RegisterNamespaceConfig",
 					Prompt: &survey.Select{
 						Message: "Register namespace configs?",
-						Options: []string{"Yes", "No"},
-						Default: "No",
+						Options: []string{AnswerYes, AnswerNo},
+						Default: AnswerNo,
 					},
 				},
 			}
@@ -92,7 +92,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 
 			conf.Namespace.Name = answers["NamespaceName"].(string)
 			// for namespace config
-			if option, ok := answers["RegisterNamespaceConfig"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+			if option, ok := answers["RegisterNamespaceConfig"]; ok && option.(survey.OptionAnswer).Value == AnswerYes {
 				conf, err = namespaceConfigQuestions(conf)
 				if err != nil {
 					return err
@@ -114,8 +114,8 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 					Name: "RegisterDatastore",
 					Prompt: &survey.Select{
 						Message: "Register datastore configs?",
-						Options: []string{"Yes", "No"},
-						Default: "No",
+						Options: []string{AnswerYes, AnswerNo},
+						Default: AnswerNo,
 					},
 				},
 			}
@@ -124,7 +124,7 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 				return err
 			}
 			conf.Namespace.Job.Path = answers["JobPath"].(string)
-			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == "Yes" {
+			if option, ok := answers["RegisterDatastore"]; ok && option.(survey.OptionAnswer).Value == AnswerYes {
 				conf, err = datastoreConfigQuestions(conf, dsRepo)
 				if err != nil {
 					return err
@@ -147,8 +147,8 @@ func configInitCommand(l log.Logger, dsRepo models.DatastoreRepo) *cli.Command {
 
 func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 	conf.Project.Config = map[string]string{}
-	registerMore := "Yes"
-	for registerMore == "Yes" {
+	registerMore := AnswerYes
+	for registerMore == AnswerNo {
 		configAnswers := map[string]interface{}{}
 		if err := survey.Ask([]*survey.Question{
 			{
@@ -171,8 +171,8 @@ func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 
 		if err := survey.AskOne(&survey.Select{
 			Message: "Add one more?",
-			Options: []string{"Yes", "No"},
-			Default: "Yes",
+			Options: []string{AnswerYes, AnswerNo},
+			Default: AnswerYes,
 		}, &registerMore); err != nil {
 			return conf, err
 		}
@@ -184,8 +184,8 @@ func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 
 func namespaceConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 	conf.Namespace.Config = map[string]string{}
-	registerMore := "Yes"
-	for registerMore == "Yes" {
+	registerMore := AnswerYes
+	for registerMore == AnswerYes {
 		configAnswers := map[string]interface{}{}
 		if err := survey.Ask([]*survey.Question{
 			{
@@ -208,8 +208,8 @@ func namespaceConfigQuestions(conf config.Optimus) (config.Optimus, error) {
 
 		if err := survey.AskOne(&survey.Select{
 			Message: "Add one more?",
-			Options: []string{"Yes", "No"},
-			Default: "Yes",
+			Options: []string{AnswerYes, AnswerNo},
+			Default: AnswerYes,
 		}, &registerMore); err != nil {
 			return conf, err
 		}

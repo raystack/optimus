@@ -93,17 +93,17 @@ Use base64 flag if the value has been encoded.
 		err = registerSecret(l, conf.Host, registerSecretReq)
 		if err != nil {
 			if status.Code(err) == codes.AlreadyExists {
-				proceedWithUpdate := "Yes"
+				proceedWithUpdate := AnswerYes
 				if !skipConfirm {
 					if err := survey.AskOne(&survey.Select{
 						Message: "Secret already exists, proceed with update?",
-						Options: []string{"Yes", "No"},
-						Default: "No",
+						Options: []string{AnswerYes, AnswerNo},
+						Default: AnswerNo,
 					}, &proceedWithUpdate); err != nil {
 						return err
 					}
 				}
-				if proceedWithUpdate == "Yes" {
+				if proceedWithUpdate == AnswerYes {
 					updateSecretRequest := &pb.UpdateSecretRequest{
 						ProjectName:   projectName,
 						SecretName:    secretName,
