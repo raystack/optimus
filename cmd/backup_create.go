@@ -44,9 +44,9 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
-		var err error
-		if conf.Namespaces[namespaceName] == nil {
-			return fmt.Errorf("[%s] namespace is not found in config", namespaceName)
+		namespace, err := conf.GetNamespaceByName(namespaceName)
+		if err != nil {
+			return err
 		}
 		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
 			return err
@@ -107,7 +107,7 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 			Description:                 description,
 			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 		}
-		for _, ds := range conf.Namespaces[namespaceName].Datastore {
+		for _, ds := range namespace.Datastore {
 			if ds.Type == storerName {
 				backupRequest.Config = ds.Backup
 			}

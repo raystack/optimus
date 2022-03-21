@@ -134,8 +134,8 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	if len(namespaceNames) > 0 {
 		selectedNamespaceNames = namespaceNames
 	} else {
-		for name := range conf.Namespaces {
-			selectedNamespaceNames = append(selectedNamespaceNames, name)
+		for _, namespace := range conf.Namespaces {
+			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
 	}
 
@@ -148,7 +148,11 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	}
 	var specFound bool
 	for _, namespaceName := range selectedNamespaceNames {
-		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.Namespaces[namespaceName].Job.Path)
+		namespace, err := conf.GetNamespaceByName(namespaceName)
+		if err != nil {
+			return err
+		}
+		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 		jobSpecRepo := local.NewJobSpecRepository(
 			jobSpecFs,
 			local.NewJobSpecAdapter(pluginRepo),
@@ -232,8 +236,8 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	if len(namespaceNames) > 0 {
 		selectedNamespaceNames = namespaceNames
 	} else {
-		for name := range conf.Namespaces {
-			selectedNamespaceNames = append(selectedNamespaceNames, name)
+		for _, namespace := range conf.Namespaces {
+			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
 	}
 
@@ -331,8 +335,8 @@ func registerAllNamespaces(
 	if len(namespaceNames) > 0 {
 		selectedNamespaceNames = namespaceNames
 	} else {
-		for name := range conf.Namespaces {
-			selectedNamespaceNames = append(selectedNamespaceNames, name)
+		for _, namespace := range conf.Namespaces {
+			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
 	}
 
@@ -358,9 +362,9 @@ func registerAllNamespaces(
 func registerNamespace(deployTimeoutCtx context.Context, runtime pb.RuntimeServiceClient,
 	l log.Logger, conf config.Optimus, namespaceName string,
 ) error {
-	namespace := conf.Namespaces[namespaceName]
-	if namespace == nil {
-		return fmt.Errorf("[%s] namespace is not found", namespaceName)
+	namespace, err := conf.GetNamespaceByName(namespaceName)
+	if err != nil {
+		return err
 	}
 	registerResponse, err := runtime.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
 		ProjectName: conf.Project.Name,
@@ -414,7 +418,7 @@ func validateNamespaces(datastoreSpecFs map[string]map[string]afero.Fs, selected
 		}
 	}
 	if len(unknownNamespaceNames) > 0 {
-		return fmt.Errorf("[%s] namespaces are not found in config", strings.Join(unknownNamespaceNames, ", "))
+		return fmt.Errorf("namespaces [%s] are not found", strings.Join(unknownNamespaceNames, ", "))
 	}
 	return nil
 }

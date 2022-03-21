@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/odpf/salt/config"
@@ -29,95 +27,45 @@ type LoadConfigFunc func(interface{}, afero.Fs, ...string) error
 func LoadOptimusConfig(dirPaths ...string) (*Optimus, error) {
 	fs := afero.NewReadOnlyFs(afero.NewOsFs())
 
-	var targetPaths []string
-	currPath, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("error getting current work directory path: %w", err)
-	}
+	var targetPath string
 	if len(dirPaths) > 0 {
-		targetPaths = dirPaths
+		targetPath = dirPaths[0]
 	} else {
-		execPath, err := os.Executable()
+		currPath, err := os.Getwd()
 		if err != nil {
-			return nil, errors.New("error getting the executable path")
+			return nil, fmt.Errorf("error getting current work directory path: %w", err)
 		}
-		currentHomeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, errors.New("error getting the home directory")
-		}
-		optimusDir := filepath.Join(currentHomeDir, ".optimus")
-		targetPaths = []string{currPath, filepath.Dir(execPath), optimusDir}
+		targetPath = currPath
 	}
 
 	optimus := Optimus{}
-	if err := loadConfig(&optimus, fs, targetPaths...); err != nil {
+	if err := loadConfig(&optimus, fs, targetPath); err != nil {
 		return nil, errors.New("error loading config")
 	}
-
-	// Load namespaces config
-	namespaces, err := LoadNamespacesConfig(currPath)
-	if err != nil {
-		return nil, errors.New("error loading namespaces config")
+	if err := validateNamespaceDuplication(&optimus); err != nil {
+		return nil, err
 	}
-	optimus.Namespaces = namespaces
 	return &optimus, nil
 }
 
-// LoadNamespacesConfig loads namespace config from 1 level deep of project directory
-// |_ .optimus.yaml -> project
-// |_ ns1
-//    |_ .optimus.yaml -> namespaces 1
-// |_ ns2
-//    |_ .optimus.yaml -> namespaces 2
-// |_ ...
-func LoadNamespacesConfig(currPath string) (map[string]*Namespace, error) {
-	fs := afero.NewReadOnlyFs(afero.NewOsFs())
-	fileInfos, err := afero.ReadDir(fs, currPath)
-	if err != nil {
-		return nil, err
+func validateNamespaceDuplication(optimus *Optimus) error {
+	nameToAppearance := make(map[string]int)
+	for _, namespace := range optimus.Namespaces {
+		nameToAppearance[namespace.Name]++
 	}
-	output := make(map[string]*Namespace)
-	for _, fileInfo := range fileInfos {
-		// check if .optimus.yaml exist
-		dirPath := path.Join(currPath, fileInfo.Name())
-		filePath := path.Join(dirPath, FileName+"."+FileExtension)
-		if _, err := fs.Stat(filePath); os.IsNotExist(err) {
-			continue
+	var duplicateNames []string
+	for name, appearance := range nameToAppearance {
+		if appearance > 1 {
+			duplicateNames = append(duplicateNames, name)
 		}
-
-		// load namespace config
-		// TODO: find a proper way to load namespace value without introducing additional fields
-		optimus := struct {
-			Version   string    `mapstructure:"version"`
-			Namespace Namespace `mapstructure:"namespace"`
-		}{}
-		if err := loadConfig(&optimus, fs, dirPath); err != nil {
-			return nil, err
-		}
-		namespace := optimus.Namespace
-
-		if namespace.Name == "" {
-			continue
-		}
-		if output[namespace.Name] != nil {
-			fmt.Printf("warning! namespace [%s] from [%s] is already used\n", namespace.Name, filePath)
-			continue
-		}
-
-		// assigning absolute path for job & datastore
-		namespace.Job.Path = path.Join(currPath, fileInfo.Name(), namespace.Job.Path)
-		for i, d := range namespace.Datastore {
-			namespace.Datastore[i].Path = path.Join(currPath, fileInfo.Name(), d.Path)
-		}
-		output[namespace.Name] = &namespace
 	}
-	if len(output) == 0 {
-		output = nil
+	if len(duplicateNames) > 0 {
+		return fmt.Errorf("namespaces [%s] are duplicate", strings.Join(duplicateNames, ", "))
 	}
-	return output, nil
+	return nil
 }
 
-func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
+func loadConfig(cfg interface{}, fs afero.Fs, dirPath string) error {
 	// getViperWithDefault + SetFs
 	v := viper.New()
 	v.SetConfigName("config")
@@ -131,9 +79,7 @@ func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
 		config.WithType(FileExtension),
 		config.WithEnvPrefix("OPTIMUS"),
 		config.WithEnvKeyReplacer(".", "_"),
-	}
-	for _, path := range paths {
-		opts = append(opts, config.WithPath(path))
+		config.WithPath(dirPath),
 	}
 
 	l := config.NewLoader(opts...)

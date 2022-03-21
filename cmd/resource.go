@@ -42,7 +42,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]map[strin
 		Example: "optimus resource create",
 		RunE: func(cmd *cli.Command, args []string) error {
 			if datastoreSpecFs[namespaceName] == nil {
-				return fmt.Errorf("[%s] namespace is not found in config", namespaceName)
+				return fmt.Errorf("namespace [%s] is not found", namespaceName)
 			}
 			availableStorer := []string{}
 			for _, s := range datastoreRepo.GetAll() {

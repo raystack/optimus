@@ -24,16 +24,15 @@ func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo mode
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE: func(c *cli.Command, args []string) error {
-			namespace := conf.Namespaces[namespaceName]
-			if namespace == nil {
-				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			namespace, err := conf.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
 			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
 				local.NewJobSpecAdapter(pluginRepo),
 			)
-			var err error
 			var jobName string
 			if len(args) == 0 {
 				// doing it locally for now, ideally using optimus service will give

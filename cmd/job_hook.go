@@ -24,9 +24,9 @@ func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plug
 		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
 		Example: "optimus addhook",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace := conf.Namespaces[namespaceName]
-			if namespace == nil {
-				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			namespace, err := conf.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
 			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(

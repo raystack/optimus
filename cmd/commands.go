@@ -112,12 +112,12 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 
 	//init local specs
 	datastoreSpecFs := make(map[string]map[string]afero.Fs)
-	for name, namespace := range conf.Namespaces {
+	for _, namespace := range conf.Namespaces {
 		dtSpec := make(map[string]afero.Fs)
 		for _, dsConfig := range namespace.Datastore {
 			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 		}
-		datastoreSpecFs[name] = dtSpec
+		datastoreSpecFs[namespace.Name] = dtSpec
 	}
 
 	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))

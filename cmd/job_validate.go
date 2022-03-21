@@ -33,9 +33,9 @@ func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plu
 		Long:    "Check if specifications are valid for deployment",
 		Example: "optimus job validate",
 		RunE: func(c *cli.Command, args []string) error {
-			namespace := conf.Namespaces[namespaceName]
-			if namespace == nil {
-				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			namespace, err := conf.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
 			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(

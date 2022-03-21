@@ -30,9 +30,9 @@ func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 		Example: "optimus job run <job_name>",
 		Hidden:  true,
 		RunE: func(c *cli.Command, args []string) error {
-			namespace := conf.Namespaces[namespaceName]
-			if namespace == nil {
-				return fmt.Errorf("namespace [%s] is not found", namespaceName)
+			namespace, err := conf.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
 			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(

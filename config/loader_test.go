@@ -12,11 +12,9 @@ import (
 )
 
 const (
-	configFileName          = ".optimus.yaml"
-	optimusConfigDirName    = "./optimus"
-	namespaceConfigADirName = "./namespace-a"
-	namespaceConfigBDirName = "./namespace-b"
-	optimusConfigContent    = `
+	configFileName       = ".optimus.yaml"
+	optimusConfigDirName = "./optimus"
+	optimusConfigContent = `
 version: 1
 log:
   level: info
@@ -45,44 +43,23 @@ scheduler:
 telemetry:
   profile_addr: ":9110"
   jaeger_addr: "http://localhost:14268/api/traces"
-`
-	namespaceConfigAContent = `
-version: 1
-namespace:
-  name: namespace-a
+namespaces:
+- name: namespace-a
   job:
-    path: ./jobs
-`
-	namespaceConfigBContent = `
-version: 1
-namespace:
-  name: namespace-b
+    path: ./jobs-a
+- name: namespace-b
   job:
-    path: ./jobs
+    path: ./jobs-b
 `
 )
 
-func setup() {
+func setup(content string) {
 	teardown()
 	if err := os.Mkdir(optimusConfigDirName, os.ModePerm); err != nil {
 		panic(err)
 	}
-	if err := os.MkdirAll(path.Join(optimusConfigDirName, namespaceConfigADirName), os.ModePerm); err != nil {
-		panic(err)
-	}
-	if err := os.MkdirAll(path.Join(optimusConfigDirName, namespaceConfigBDirName), os.ModePerm); err != nil {
-		panic(err)
-	}
 	confPath := path.Join(optimusConfigDirName, configFileName)
-	if err := os.WriteFile(confPath, []byte(optimusConfigContent), os.ModePerm); err != nil {
-		panic(err)
-	}
-	confPath = path.Join(optimusConfigDirName, namespaceConfigADirName, configFileName)
-	if err := os.WriteFile(confPath, []byte(namespaceConfigAContent), os.ModePerm); err != nil {
-		panic(err)
-	}
-	confPath = path.Join(optimusConfigDirName, namespaceConfigBDirName, configFileName)
-	if err := os.WriteFile(confPath, []byte(namespaceConfigBContent), os.ModePerm); err != nil {
+	if err := os.WriteFile(confPath, []byte(content), os.ModePerm); err != nil {
 		panic(err)
 	}
 }
@@ -94,10 +71,26 @@ func teardown() {
 }
 
 func TestLoadOptimusConfig(t *testing.T) {
-	setup()
-	defer teardown()
+	t.Run("should return config and nil if no error is found", func(t *testing.T) {
+		setup(optimusConfigContent + `
+- name: namespace-b
+  job:
+    path: ./jobs-b
+`)
+		defer teardown()
+
+		expectedErrMsg := "namespaces [namespace-b] are duplicate"
+
+		actualConf, actualErr := config.LoadOptimusConfig(optimusConfigDirName)
+
+		assert.Nil(t, actualConf)
+		assert.EqualError(t, actualErr, expectedErrMsg)
+	})
 
 	t.Run("should return config and nil if no error is found", func(t *testing.T) {
+		setup(optimusConfigContent)
+		defer teardown()
+
 		expectedConf := &config.Optimus{
 			Version: 1,
 			Log: config.LogConfig{
@@ -134,36 +127,23 @@ func TestLoadOptimusConfig(t *testing.T) {
 				ProfileAddr: ":9110",
 				JaegerAddr:  "http://localhost:14268/api/traces",
 			},
+			Namespaces: []config.Namespace{
+				{
+					Name: "namespace-a",
+					Job: config.Job{
+						Path: "./jobs-a",
+					},
+				},
+				{
+					Name: "namespace-b",
+					Job: config.Job{
+						Path: "./jobs-b",
+					},
+				},
+			},
 		}
 
 		actualConf, actualErr := config.LoadOptimusConfig(optimusConfigDirName)
-
-		assert.EqualValues(t, expectedConf, actualConf)
-		assert.NoError(t, actualErr)
-	})
-}
-
-func TestLoadNamespaceConfig(t *testing.T) {
-	setup()
-	defer teardown()
-
-	t.Run("should return config and nil if no error is found", func(t *testing.T) {
-		expectedConf := map[string]*config.Namespace{
-			"namespace-a": {
-				Name: "namespace-a",
-				Job: config.Job{
-					Path: "optimus/namespace-a/jobs",
-				},
-			},
-			"namespace-b": {
-				Name: "namespace-b",
-				Job: config.Job{
-					Path: "optimus/namespace-b/jobs",
-				},
-			},
-		}
-
-		actualConf, actualErr := config.LoadNamespacesConfig("./optimus")
 
 		assert.EqualValues(t, expectedConf, actualConf)
 		assert.NoError(t, actualErr)
