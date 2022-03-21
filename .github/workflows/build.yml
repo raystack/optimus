@@ -48,12 +48,12 @@ jobs:
         run: cd docs && yarn build
       - name: Deploy docs
         env:
-          GIT_USER: kushsharma
-          GIT_PASS: ${{ secrets.GH_PAT }}
+          GIT_USER: github-actions[bot]
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
           DEPLOYMENT_BRANCH: gh-pages
           CURRENT_BRANCH: main
         working-directory: docs
         run: |
-          git config --global user.email "3647166+kushsharma@users.noreply.github.com"
-          git config --global user.name "kushsharma"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           yarn deploy
