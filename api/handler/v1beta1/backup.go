@@ -3,6 +3,9 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -14,7 +17,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.BackupDryRunRequest) (*pb.BackupDryRunResponse, error) {
+//JobSpecServiceServer
+type BackupServiceServer struct {
+	l                log.Logger
+	jobSvc 			 models.JobService
+	resourceSvc 	 models.DatastoreService
+	namespaceService service.NamespaceService
+	projectService   service.ProjectService
+	pb.UnimplementedBackupServiceServer
+}
+
+func (sv *BackupServiceServer) BackupDryRun(ctx context.Context, req *pb.BackupDryRunRequest) (*pb.BackupDryRunResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -58,7 +71,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.CreateBackupRequest) (*pb.CreateBackupResponse, error) {
+func (sv *BackupServiceServer) CreateBackup(ctx context.Context, req *pb.CreateBackupRequest) (*pb.CreateBackupResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -104,7 +117,7 @@ func (sv *RuntimeServiceServer) CreateBackup(ctx context.Context, req *pb.Create
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBackupsRequest) (*pb.ListBackupsResponse, error) {
+func (sv *BackupServiceServer) ListBackups(ctx context.Context, req *pb.ListBackupsRequest) (*pb.ListBackupsResponse, error) {
 	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
@@ -130,7 +143,7 @@ func (sv *RuntimeServiceServer) ListBackups(ctx context.Context, req *pb.ListBac
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
+func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
 	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
@@ -179,4 +192,15 @@ func (sv *RuntimeServiceServer) GetBackup(ctx context.Context, req *pb.GetBackup
 		},
 		Urn: results,
 	}, nil
+}
+
+//BackupServiceServer
+func NewBackupServiceServer(l log.Logger, jobService models.JobService,resourceSvc models.DatastoreService, namespaceService service.NamespaceService, progressObserver progress.Observer,projectService service.ProjectService) *BackupServiceServer {
+	return &BackupServiceServer{
+		l:                l,
+		jobSvc: 		  jobService,
+		resourceSvc: 	  resourceSvc,
+		namespaceService: namespaceService,
+		projectService:   projectService,
+	}
 }

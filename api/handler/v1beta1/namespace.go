@@ -2,11 +2,19 @@ package v1beta1
 
 import (
 	"context"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 )
 
-func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, req *pb.RegisterProjectNamespaceRequest) (*pb.RegisterProjectNamespaceResponse, error) {
+type NamespaceServiceServer struct {
+	l                log.Logger
+	adapter          ProtoAdapter
+	namespaceService service.NamespaceService
+	pb.UnimplementedNamespaceServiceServer
+}
+func (sv *NamespaceServiceServer) RegisterProjectNamespace(ctx context.Context, req *pb.RegisterProjectNamespaceRequest) (*pb.RegisterProjectNamespaceResponse, error) {
 	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
 	err := sv.namespaceService.Save(ctx, req.GetProjectName(), namespaceSpec)
 	if err != nil {
@@ -19,7 +27,7 @@ func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, re
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *pb.ListProjectNamespacesRequest) (*pb.ListProjectNamespacesResponse, error) {
+func (sv *NamespaceServiceServer) ListProjectNamespaces(ctx context.Context, req *pb.ListProjectNamespacesRequest) (*pb.ListProjectNamespacesResponse, error) {
 	namespaceSpecs, err := sv.namespaceService.GetAll(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "not able to list namespaces")
@@ -33,4 +41,12 @@ func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *
 	return &pb.ListProjectNamespacesResponse{
 		Namespaces: namespaceSpecsProto,
 	}, nil
+}
+
+func NewNamespaceServiceServer(l log.Logger, adapter ProtoAdapter, namespaceService service.NamespaceService) *NamespaceServiceServer {
+	return &NamespaceServiceServer{
+		l:                l,
+		adapter:          adapter,
+		namespaceService: namespaceService,
+	}
 }
