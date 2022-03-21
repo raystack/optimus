@@ -200,11 +200,7 @@ func (c PluginConfigs) Get(name string) (PluginConfig, bool) {
 func (c PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
 	taskPluginConfigs := PluginConfigs{}
 	for _, c := range jobSpecConfig {
-		taskPluginConfigs = append(taskPluginConfigs, PluginConfig{
-
-			Name:  c.Name,
-			Value: c.Value,
-		})
+		taskPluginConfigs = append(taskPluginConfigs, PluginConfig(c))
 	}
 	return taskPluginConfigs
 }
@@ -212,10 +208,7 @@ func (c PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
 func (c PluginConfigs) ToJobSpec() JobSpecConfigs {
 	jsConfigs := JobSpecConfigs{}
 	for _, c := range c {
-		jsConfigs = append(jsConfigs, JobSpecConfigItem{
-			Name:  c.Name,
-			Value: c.Value,
-		})
+		jsConfigs = append(jsConfigs, JobSpecConfigItem(c))
 	}
 	return jsConfigs
 }
@@ -249,10 +242,7 @@ func (c PluginAssets) Get(name string) (PluginAsset, bool) {
 func (c PluginAssets) FromJobSpec(jobSpecAssets JobAssets) PluginAssets {
 	taskPluginAssets := PluginAssets{}
 	for _, c := range jobSpecAssets.GetAll() {
-		taskPluginAssets = append(taskPluginAssets, PluginAsset{
-			Name:  c.Name,
-			Value: c.Value,
-		})
+		taskPluginAssets = append(taskPluginAssets, PluginAsset(c))
 	}
 	return taskPluginAssets
 }
@@ -260,10 +250,7 @@ func (c PluginAssets) FromJobSpec(jobSpecAssets JobAssets) PluginAssets {
 func (c PluginAssets) ToJobSpec() *JobAssets {
 	jsAssets := []JobSpecAsset{}
 	for _, c := range c {
-		jsAssets = append(jsAssets, JobSpecAsset{
-			Name:  c.Name,
-			Value: c.Value,
-		})
+		jsAssets = append(jsAssets, JobSpecAsset(c))
 	}
 	return JobAssets{}.New(jsAssets)
 }

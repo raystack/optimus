@@ -180,7 +180,7 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 
 	//print tree
 	l.Info(coloredNotice("\n> Dependency tree"))
-	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New())))
+	l.Info(printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New()).String())
 
 	//ignored jobs
 	if len(replayDryRunResponse.IgnoredJobs) > 0 {

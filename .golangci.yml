@@ -39,7 +39,6 @@ linters:
     - cyclop
     - noctx
     - ireturn
-    - gosimple
     - goerr113
     - nilerr
     - errorlint
@@ -76,5 +75,10 @@ linters-settings:
       - 'survey.MinLength'
       - 'survey.MaxLength'
       - 'args.Error'
+  gosimple:
+    go: "1.17"
+    checks:
+      - "all"
+      - "-S1002"
 severity:
   default-severity: error

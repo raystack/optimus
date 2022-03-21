@@ -72,7 +72,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			}, &resourceType); err != nil {
 				return err
 			}
-			typeController, _ := datastore.Types()[models.ResourceType(resourceType)]
+			typeController := datastore.Types()[models.ResourceType(resourceType)]
 
 			// find directory to store spec
 			rwd, err := getWorkingDirectory(repoFS, "")
