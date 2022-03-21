@@ -1,0 +1,189 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/core/v1beta1/project.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "ProjectService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1beta1/project": {
+      "get": {
+        "summary": "ListProjects returns list of registered projects and configurations",
+        "operationId": "ProjectService_ListProjects",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ListProjectsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "ProjectService"
+        ]
+      },
+      "post": {
+        "summary": "RegisterProject creates a new optimus project",
+        "operationId": "ProjectService_RegisterProject",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1RegisterProjectResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1beta1RegisterProjectRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProjectService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "ProjectSpecificationProjectSecret": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1ListProjectsResponse": {
+      "type": "object",
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1ProjectSpecification"
+          }
+        }
+      }
+    },
+    "v1beta1NamespaceSpecification": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1ProjectSpecification": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ProjectSpecificationProjectSecret"
+          }
+        }
+      }
+    },
+    "v1beta1RegisterProjectRequest": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "$ref": "#/definitions/v1beta1ProjectSpecification"
+        },
+        "namespace": {
+          "$ref": "#/definitions/v1beta1NamespaceSpecification"
+        }
+      }
+    },
+    "v1beta1RegisterProjectResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Project Service"
+  }
+}

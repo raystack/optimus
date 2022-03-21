@@ -22,7 +22,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 	t.Run("DeployJobSpecification", func(t *testing.T) {
 		t.Run("should deploy the job", func(t *testing.T) {
-			Version := "1.0.1"
+			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
@@ -107,17 +107,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			grpcRespStream.On("Context").Return(context.Background())
 			defer grpcRespStream.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				Version,
 				jobService,
-				nil, nil,
-				nil,
-				nsService,
-				nil,
-				adapter,
-				nil,
-				nil,
+				adapter, nsService,
 				nil,
 			)
 
@@ -127,14 +120,14 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobSpecsAdapted = append(jobSpecsAdapted, jobSpecAdapted)
 			}
 			deployRequest := pb.DeployJobSpecificationRequest{ProjectName: projectName, Jobs: jobSpecsAdapted, NamespaceName: namespaceSpec.Name}
-			err := runtimeServiceServer.DeployJobSpecification(&deployRequest, grpcRespStream)
+			err := jobSpecServiceServer.DeployJobSpecification(&deployRequest, grpcRespStream)
 			assert.Nil(t, err)
 		})
 	})
 
 	t.Run("GetJobSpecification", func(t *testing.T) {
 		t.Run("should read a job spec", func(t *testing.T) {
-			Version := "1.0.1"
+			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
@@ -199,23 +192,16 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
 			defer jobService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				Version,
 				jobService,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
+				adapter, namespaceService,
 				nil,
 			)
 
 			jobSpecAdapted, _ := adapter.ToJobProto(jobSpecs[0])
 			deployRequest := pb.GetJobSpecificationRequest{ProjectName: projectName, JobName: jobSpecs[0].Name, NamespaceName: namespaceSpec.Name}
-			jobSpecResp, err := runtimeServiceServer.GetJobSpecification(context.Background(), &deployRequest)
+			jobSpecResp, err := jobSpecServiceServer.GetJobSpecification(context.Background(), &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpecAdapted, jobSpecResp.Spec)
 		})
@@ -290,17 +276,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				"someVersion1.0",
 				jobSvc,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
+				adapter, namespaceService,
 				nil,
 			)
 
@@ -310,7 +289,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 				Spec:          jobProto,
 			}
-			resp, err := runtimeServiceServer.CreateJobSpecification(context.Background(), &request)
+			resp, err := jobSpecServiceServer.CreateJobSpecification(context.Background(), &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,
@@ -321,7 +300,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
 		t.Run("should delete the job", func(t *testing.T) {
-			Version := "1.0.1"
+			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
@@ -389,22 +368,15 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobService.On("Delete", mock2.Anything, namespaceSpec, jobSpec).Return(nil)
 			defer jobService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				Version,
 				jobService,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
+				adapter, namespaceService,
 				nil,
 			)
 
 			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, NamespaceName: namespaceSpec.Name}
-			resp, err := runtimeServiceServer.DeleteJobSpecification(ctx, &deployRequest)
+			resp, err := jobSpecServiceServer.DeleteJobSpecification(ctx, &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, "job a-data-job has been deleted", resp.GetMessage())
 		})

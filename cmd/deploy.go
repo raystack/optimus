@@ -94,14 +94,14 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 	deployTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), deploymentTimeout)
 	defer deployCancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	resource := pb.NewResourceServiceClient(conn)
 	adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 
 	projectSpec := &pb.ProjectSpecification{
 		Name:   projectName,
 		Config: conf.Project.Config,
 	}
-	if err = registerProject(deployTimeoutCtx, l, runtime, projectSpec); err != nil {
+	if err = registerProject(deployTimeoutCtx, l, conn, projectSpec); err != nil {
 		return err
 	}
 
@@ -109,7 +109,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 		Name:   namespaceName,
 		Config: conf.Namespace.Config,
 	}
-	if err = registerNamespace(deployTimeoutCtx, l, runtime, projectSpec.Name, namespaceSpec); err != nil {
+	if err = registerNamespace(deployTimeoutCtx, l, conn, projectSpec.Name, namespaceSpec); err != nil {
 		return err
 	}
 
@@ -142,7 +142,7 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			}
 
 			// send call
-			respStream, err := runtime.DeployResourceSpecification(deployTimeoutCtx, &pb.DeployResourceSpecificationRequest{
+			respStream, err := resource.DeployResourceSpecification(deployTimeoutCtx, &pb.DeployResourceSpecificationRequest{
 				Resources:     adaptedSpecs,
 				ProjectName:   projectSpec.Name,
 				DatastoreName: storeName,
@@ -210,7 +210,8 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			}
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
-		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
+		job := pb.NewJobSpecificationServiceClient(conn)
+		respStream, err := job.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
 			Jobs:          adaptedJobSpecs,
 			ProjectName:   projectSpec.Name,
 			NamespaceName: namespaceSpec.Name,
@@ -279,9 +280,10 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 	return nil
 }
 
-func registerProject(deployTimeoutCtx context.Context, l log.Logger, runtime pb.RuntimeServiceClient,
+func registerProject(deployTimeoutCtx context.Context, l log.Logger, conn *grpc.ClientConn,
 	projectSpec *pb.ProjectSpecification) (err error) {
-	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
+	project := pb.NewProjectServiceClient(conn)
+	registerResponse, err := project.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
 		Project: projectSpec,
 	})
 	if err != nil {
@@ -297,9 +299,10 @@ func registerProject(deployTimeoutCtx context.Context, l log.Logger, runtime pb.
 	return nil
 }
 
-func registerNamespace(deployTimeoutCtx context.Context, l log.Logger, runtime pb.RuntimeServiceClient,
+func registerNamespace(deployTimeoutCtx context.Context, l log.Logger, conn *grpc.ClientConn,
 	projectName string, namespaceSpec *pb.NamespaceSpecification) (err error) {
-	registerResponse, err := runtime.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
+	namespace := pb.NewNamespaceServiceClient(conn)
+	registerResponse, err := namespace.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
 		ProjectName: projectName,
 		Namespace:   namespaceSpec,
 	})

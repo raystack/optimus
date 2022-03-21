@@ -124,7 +124,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
 	defer replayRequestCancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	replay := pb.NewReplayServiceClient(conn)
 	replayRequest := &pb.ReplayDryRunRequest{
 		ProjectName:                 projectName,
 		JobName:                     jobName,
@@ -136,7 +136,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	replayDryRunResponse, err := runtime.ReplayDryRun(replayRequestTimeout, replayRequest)
+	replayDryRunResponse, err := replay.ReplayDryRun(replayRequestTimeout, replayRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -233,7 +233,7 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 	if forceRun {
 		l.Info(coloredNotice("> Force running replay even if its already in progress"))
 	}
-	runtime := pb.NewRuntimeServiceClient(conn)
+	replay := pb.NewReplayServiceClient(conn)
 	replayRequest := &pb.ReplayRequest{
 		ProjectName:                 projectName,
 		JobName:                     jobName,
@@ -246,7 +246,7 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	replayResponse, err := runtime.Replay(replayRequestTimeout, replayRequest)
+	replayResponse, err := replay.Replay(replayRequestTimeout, replayRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

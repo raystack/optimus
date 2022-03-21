@@ -1,0 +1,370 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/core/v1beta1/backup.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "BackupService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/backup/{id}": {
+      "get": {
+        "operationId": "BackupService_GetBackup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetBackupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "BackupService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/backup": {
+      "get": {
+        "operationId": "BackupService_ListBackups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ListBackupsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "BackupService"
+        ]
+      },
+      "post": {
+        "operationId": "BackupService_CreateBackup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1CreateBackupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "resourceName": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "ignoreDownstream": {
+                  "type": "boolean"
+                },
+                "config": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "allowedDownstreamNamespaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "represents which downstream to be backed up.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "BackupService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/backupDryrun": {
+      "post": {
+        "operationId": "BackupService_BackupDryRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1BackupDryRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "resourceName": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "ignoreDownstream": {
+                  "type": "boolean"
+                },
+                "allowedDownstreamNamespaces": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "represents which downstream to be backed up.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "BackupService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1BackupDryRunResponse": {
+      "type": "object",
+      "properties": {
+        "resourceName": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignoredResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1BackupSpec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "resourceName": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1CreateBackupResponse": {
+      "type": "object",
+      "properties": {
+        "urn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignoredResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1GetBackupResponse": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "$ref": "#/definitions/v1beta1BackupSpec"
+        },
+        "urn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1ListBackupsResponse": {
+      "type": "object",
+      "properties": {
+        "backups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1BackupSpec"
+          }
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Backup Service"
+  }
+}

@@ -96,8 +96,8 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	defer cancel()
 
 	// fetch Instance by calling the optimus API
-	runtime := pb.NewRuntimeServiceClient(conn)
-	jobResponse, err := runtime.RegisterInstance(timeoutCtx, &pb.RegisterInstanceRequest{
+	jobRun := pb.NewJobRunServiceClient(conn)
+	jobResponse, err := jobRun.RegisterInstance(timeoutCtx, &pb.RegisterInstanceRequest{
 		ProjectName:  projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,

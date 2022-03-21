@@ -68,8 +68,8 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 	}
 
 	l.Info("please wait...")
-	runtime := pb.NewRuntimeServiceClient(conn)
-	jobResponse, err := runtime.RunJob(runTimeoutCtx, &pb.RunJobRequest{
+	jobRun := pb.NewJobRunServiceClient(conn)
+	jobResponse, err := jobRun.RunJob(runTimeoutCtx, &pb.RunJobRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespace,
 		Specifications: []*pb.JobSpecification{

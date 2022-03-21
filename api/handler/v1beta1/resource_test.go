@@ -86,21 +86,14 @@ func TestResourcesOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			resourceServiceServer := v1.NewResourceServiceServer(
 				log,
-				"Version",
-				nil, nil,
 				resourceSvc,
-				nil,
-				namespaceService,
-				nil,
-				v1.NewAdapter(nil, dsRepo),
-				nil,
-				nil,
+				namespaceService, v1.NewAdapter(nil, dsRepo),
 				nil,
 			)
 
-			resp, err := runtimeServiceServer.CreateResource(ctx, &req)
+			resp, err := resourceServiceServer.CreateResource(ctx, &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 		})
@@ -173,21 +166,14 @@ func TestResourcesOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			resourceServiceServer := v1.NewResourceServiceServer(
 				log,
-				"Version",
-				nil, nil,
 				resourceSvc,
-				nil,
-				namespaceService,
-				nil,
-				v1.NewAdapter(nil, dsRepo),
-				nil,
-				nil,
+				namespaceService, v1.NewAdapter(nil, dsRepo),
 				nil,
 			)
 
-			resp, err := runtimeServiceServer.UpdateResource(ctx, &req)
+			resp, err := resourceServiceServer.UpdateResource(ctx, &req)
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.GetSuccess())
 		})
