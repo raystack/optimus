@@ -109,7 +109,7 @@ func tracerProvider(url string) (*tracesdk.TracerProvider, error) {
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(AppName()),
-			semconv.ServiceVersionKey.String(Version),
+			semconv.ServiceVersionKey.String(BuildVersion),
 			attribute.String("build_commit", BuildCommit),
 			attribute.String("build_date", BuildDate),
 		)),
