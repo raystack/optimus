@@ -1,46 +1,19 @@
 version: 1
 
+########################################
+# COMMON CONFIG (APPLIED FOR SERVER & CLIENT)
+########################################
 # logging configuration
 log:
   # debug, info, warning, error, fatal - default 'info'
   level: info
 
-#
-# cli configurations
-#
 
-# used to connect optimus service
-#host: localhost:9100
 
-# for configuring optimus project
-#project:
-#  name: sample_project
-#  # project variables usable in specifications
-#  config:
-#    environment: integration
-#    scheduler_host: http://example.io/
-#    # storage_path is used for storing compiled job specifications that can be
-#    # consumed by schedulers like Airflow
-#    # it supports multiple schemes like: file://, gcs://
-#    storage_path: file://absolute_path_to_a_directory
 
-# for configuring optimus namespace
-#namespace:
-#  name: sample_namespace
-#  job:
-#    # relative path pointing to folder where job specifications are stored
-#    path: "job"
-#  datastore:
-#    # optimus is capable of supporting multiple datastores
-#    type: bigquery
-#    # relative path where resource spec for BQ are stored
-#    path: "bq"
-#  # namespace variables usable in specifications
-#  config: {}
-
-#
-# server configurations
-#
+########################################
+# SERVER CONFIG
+########################################
 
 # for configuring optimus service
 #serve:
@@ -84,3 +57,40 @@ log:
 #
 #  # jaeger collector address to send application traces
 #  jaeger_addr: "http://localhost:14268/api/traces"
+
+
+
+
+########################################
+# PROJECT CONFIG
+########################################
+
+# used to connect optimus service
+#host: localhost:9100
+
+# for configuring optimus project
+#project:
+#  name: sample_project
+#  # project variables usable in specifications
+#  config:
+#    environment: integration
+#    scheduler_host: http://example.io/
+#    # storage_path is used for storing compiled job specifications that can be
+#    # consumed by schedulers like Airflow
+#    # it supports multiple schemes like: file://, gcs://
+#    storage_path: file://absolute_path_to_a_directory
+
+# for configuring optimus namespace
+#namespace:
+#  name: sample_namespace
+#  job:
+#    # relative path pointing to folder where job specifications are stored
+#    path: "job"
+#  datastore:
+#    # optimus is capable of supporting multiple datastores
+#    type: bigquery
+#    # relative path where resource spec for BQ are stored
+#    path: "bq"
+#  # namespace variables usable in specifications
+#  config: {}
+
