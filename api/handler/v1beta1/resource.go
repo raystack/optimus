@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -105,22 +104,22 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 			continue
 		}
 		var resourceSpecs []models.ResourceSpec
-		var errAdaptedResource error
+		var errMsg string
 		for _, resourceProto := range request.GetResources() {
 			adapted, err := sv.adapter.FromResourceProto(resourceProto, request.DatastoreName)
 			if err != nil {
-				sv.l.Error(fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName()))
-				errAdaptedResource = errors.New("resource adapt is failed")
-				continue
+				errMsg = fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+				sv.l.Error(errMsg)
+				break
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
 		}
 
-		if errAdaptedResource != nil {
+		if len(errMsg) > 0 {
 			stream.Send(&pb.DeployResourceSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: errAdaptedResource.Error(),
+				Message: errMsg,
 			})
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue

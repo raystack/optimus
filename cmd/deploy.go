@@ -163,7 +163,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			return err
 		}
 		if len(jobSpecs) == 0 {
-			fmt.Printf("[%s] skipping as job spec is empty\n", namespaceName)
+			l.Warn("[%s] skipping as job spec is empty\n", namespaceName)
 			continue
 		}
 
@@ -217,7 +217,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	spinner.Stop()
 	if len(streamErrs) > 0 {
 		for _, e := range streamErrs {
-			fmt.Println(e)
+			l.Error(e.Error())
 		}
 		return errors.New("one or more errors are encountered during deploy")
 	}
@@ -320,7 +320,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	spinner.Stop()
 	if len(streamErrs) > 0 {
 		for _, e := range streamErrs {
-			fmt.Println(e)
+			l.Error(e.Error())
 		}
 		return errors.New("one or more errors are encountered during deploy")
 	}
