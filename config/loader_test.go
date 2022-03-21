@@ -127,7 +127,7 @@ func TestLoadOptimusConfig(t *testing.T) {
 				ProfileAddr: ":9110",
 				JaegerAddr:  "http://localhost:14268/api/traces",
 			},
-			Namespaces: []config.Namespace{
+			Namespaces: []*config.Namespace{
 				{
 					Name: "namespace-a",
 					Job: config.Job{

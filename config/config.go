@@ -16,8 +16,8 @@ type Optimus struct {
 	// optimus server host
 	Host string `mapstructure:"host"`
 
-	Project    Project     `mapstructure:"project"`
-	Namespaces []Namespace `mapstructure:"namespaces"`
+	Project    Project      `mapstructure:"project"`
+	Namespaces []*Namespace `mapstructure:"namespaces"`
 
 	Server    ServerConfig    `mapstructure:"serve"`
 	Log       LogConfig       `mapstructure:"log"`
@@ -31,7 +31,7 @@ func (o *Optimus) GetNamespaceByName(name string) (*Namespace, error) {
 	if o.namespaceNameToNamespace == nil {
 		o.namespaceNameToNamespace = make(map[string]*Namespace)
 		for _, namespace := range o.Namespaces {
-			o.namespaceNameToNamespace[namespace.Name] = &namespace
+			o.namespaceNameToNamespace[namespace.Name] = namespace
 		}
 	}
 	if o.namespaceNameToNamespace[name] == nil {
