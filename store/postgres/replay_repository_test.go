@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -37,7 +36,7 @@ func treeIsEqual(treeNode *tree.TreeNode, treeNodeComparator *tree.TreeNode) boo
 	return true
 }
 
-func TestReplayRepository(t *testing.T) {
+func TestIntegrationReplayRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
@@ -133,24 +132,8 @@ func TestReplayRepository(t *testing.T) {
 	}
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		return dbConn
 	}
@@ -158,8 +141,6 @@ func TestReplayRepository(t *testing.T) {
 
 	t.Run("Insert and GetByID", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		execUnit1 := new(mock.BasePlugin)
 		defer execUnit1.AssertExpectations(t)
@@ -198,8 +179,7 @@ func TestReplayRepository(t *testing.T) {
 
 	t.Run("UpdateStatus", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
@@ -245,8 +225,7 @@ func TestReplayRepository(t *testing.T) {
 	t.Run("GetByStatus", func(t *testing.T) {
 		t.Run("should return list of job specs given list of status", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
@@ -303,8 +282,7 @@ func TestReplayRepository(t *testing.T) {
 	t.Run("GetByJobIDAndStatus", func(t *testing.T) {
 		t.Run("should return list of replay specs given job_id and list of status", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
@@ -357,8 +335,7 @@ func TestReplayRepository(t *testing.T) {
 	t.Run("GetByProjectIDAndStatus", func(t *testing.T) {
 		t.Run("should return list of replay specs given project_id and list of status", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
@@ -415,8 +392,7 @@ func TestReplayRepository(t *testing.T) {
 	t.Run("GetByProjectID", func(t *testing.T) {
 		t.Run("should return list of replay specs given project_id", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 			expectedUUIDs := []uuid.UUID{testModels[0].ID, testModels[1].ID, testModels[2].ID}
@@ -471,8 +447,7 @@ func TestReplayRepository(t *testing.T) {
 		})
 		t.Run("should return not found if no recent replay is found", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 

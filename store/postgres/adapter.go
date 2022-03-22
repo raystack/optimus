@@ -168,10 +168,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	//prep external dependencies
 	externalDependencies := models.ExternalDependency{}
-	if err := json.Unmarshal(conf.ExternalDependencies, &externalDependencies); err != nil {
-		return models.JobSpec{}, err
+	if conf.ExternalDependencies != nil {
+		if err := json.Unmarshal(conf.ExternalDependencies, &externalDependencies); err != nil {
+			return models.JobSpec{}, err
+		}
 	}
-
 	// prep task conf
 	taskConf := models.JobSpecConfigs{}
 	if err := json.Unmarshal(conf.TaskConfig, &taskConf); err != nil {

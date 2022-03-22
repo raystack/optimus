@@ -39,8 +39,6 @@ linters:
     - cyclop
     - noctx
     - ireturn
-    - gosimple
-    - gomnd
     - goerr113
     - nilerr
     - bodyclose
@@ -50,7 +48,6 @@ linters:
     - maligned
     - golint
     - gocritic
-    - goconst
     - gocognit
     - funlen
     - gocyclo
@@ -59,5 +56,26 @@ linters-settings:
   revive:
     ignore-generated-header: true
     severity: warning
+  goconst:
+    ignore-tests: true
+    numbers: true
+  gomnd:
+    ignored-numbers: # Why we have a big range of file permissions
+      - '0644'
+      - '0655'
+      - '0666'
+      - '0770'
+      - '0755'
+      - '0765'
+      - '0777'
+    ignored-functions:
+      - 'survey.MinLength'
+      - 'survey.MaxLength'
+      - 'args.Error'
+  gosimple:
+    go: "1.17"
+    checks:
+      - "all"
+      - "-S1002"
 severity:
   default-severity: error

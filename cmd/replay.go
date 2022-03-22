@@ -60,7 +60,7 @@ func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(replayRunCommand(l, conf))
+	cmd.AddCommand(replayCreateCommand(l, conf))
 	cmd.AddCommand(replayStatusCommand(l, conf))
 	cmd.AddCommand(replayListCommand(l, conf))
 	return cmd

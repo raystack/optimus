@@ -136,6 +136,22 @@ func (repo *namespaceRepository) GetByName(ctx context.Context, name string) (mo
 	return r.ToSpecWithProjectSecrets(repo.hash)
 }
 
+func (repo *namespaceRepository) Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error) {
+	var r Namespace
+	if err := repo.db.WithContext(ctx).
+		Preload("Project").
+		Preload("Project.Secrets").
+		Joins("join project on namespace.project_id = project.id").
+		Where("namespace.name = ? AND project.name = ?", namespaceName, projectName).
+		First(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.NamespaceSpec{}, store.ErrResourceNotFound
+		}
+		return models.NamespaceSpec{}, err
+	}
+	return r.ToSpecWithProjectSecrets(repo.hash)
+}
+
 func (repo *namespaceRepository) GetAll(ctx context.Context) ([]models.NamespaceSpec, error) {
 	var specs []models.NamespaceSpec
 	var namespaces []Namespace

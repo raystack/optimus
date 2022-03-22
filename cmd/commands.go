@@ -14,7 +14,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
@@ -46,6 +45,7 @@ const (
 	GRPCMaxRetry          uint = 3
 
 	OptimusDialTimeout = time.Second * 2
+	BackoffDuration    = 100 * time.Millisecond
 )
 
 // JobSpecRepository represents a storage interface for Job specifications locally
@@ -111,27 +111,23 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
 	//init local specs
-	var jobSpecRepo JobSpecRepository
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), conf.Namespace.Job.Path)
-	if conf.Namespace.Job.Path != "" {
-		jobSpecRepo = local.NewJobSpecRepository(
-			jobSpecFs,
-			local.NewJobSpecAdapter(pluginRepo),
-		)
-	}
-	datastoreSpecsFs := map[string]afero.Fs{}
-	for _, dsConfig := range conf.Namespace.Datastore {
-		datastoreSpecsFs[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+	datastoreSpecFs := make(map[string]map[string]afero.Fs)
+	for _, namespace := range conf.Namespaces {
+		dtSpec := make(map[string]afero.Fs)
+		for _, dsConfig := range namespace.Datastore {
+			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+		}
+		datastoreSpecFs[namespace.Name] = dtSpec
 	}
 
 	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))
-	cmd.AddCommand(configCommand(plainLog, dsRepo))
-	cmd.AddCommand(jobCommand(plainLog, jobSpecFs, jobSpecRepo, pluginRepo, conf))
-	cmd.AddCommand(deployCommand(plainLog, conf, jobSpecRepo, pluginRepo, dsRepo, datastoreSpecsFs))
-	cmd.AddCommand(resourceCommand(plainLog, datastoreSpecsFs, dsRepo))
+	cmd.AddCommand(configCommand(plainLog))
+	cmd.AddCommand(jobCommand(plainLog, conf, pluginRepo))
+	cmd.AddCommand(deployCommand(plainLog, conf, pluginRepo, dsRepo, datastoreSpecFs))
+	cmd.AddCommand(resourceCommand(plainLog, conf, dsRepo, datastoreSpecFs))
 	cmd.AddCommand(serveCommand(jsonLog, conf))
 	cmd.AddCommand(replayCommand(plainLog, conf))
-	cmd.AddCommand(backupCommand(plainLog, dsRepo, conf))
+	cmd.AddCommand(backupCommand(plainLog, conf, dsRepo))
 	cmd.AddCommand(adminCommand(plainLog, conf))
 	cmd.AddCommand(secretCommand(plainLog, conf))
 
@@ -141,7 +137,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 
 func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
 	retryOpts := []grpc_retry.CallOption{
-		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(GRPCMaxRetry),
 	}
 	var opts []grpc.DialOption

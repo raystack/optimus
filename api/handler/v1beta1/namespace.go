@@ -10,7 +10,7 @@ func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, re
 	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
 	err := sv.namespaceService.Save(ctx, req.GetProjectName(), namespaceSpec)
 	if err != nil {
-		return nil, mapToGRPCErr(err, "unable to store namespace")
+		return nil, mapToGRPCErr(sv.l, err, "unable to store namespace")
 	}
 
 	return &pb.RegisterProjectNamespaceResponse{
@@ -22,7 +22,7 @@ func (sv *RuntimeServiceServer) RegisterProjectNamespace(ctx context.Context, re
 func (sv *RuntimeServiceServer) ListProjectNamespaces(ctx context.Context, req *pb.ListProjectNamespacesRequest) (*pb.ListProjectNamespacesResponse, error) {
 	namespaceSpecs, err := sv.namespaceService.GetAll(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(err, "not able to list namespaces")
+		return nil, mapToGRPCErr(sv.l, err, "not able to list namespaces")
 	}
 
 	namespaceSpecsProto := []*pb.NamespaceSpecification{}

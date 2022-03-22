@@ -3,7 +3,6 @@ project_name: optimus
 before:
   hooks:
     - make install
-    - make generate
 builds:
   - main: ./main.go
     id: "optimus"

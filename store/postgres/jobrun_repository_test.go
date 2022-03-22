@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestJobRunRepository(t *testing.T) {
+func TestIntegrationJobRunRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
@@ -96,24 +95,8 @@ func TestJobRunRepository(t *testing.T) {
 	execUnit2.On("GenerateDestination", context.TODO(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 		prepo := NewProjectRepository(dbConn, hash)
@@ -164,8 +147,6 @@ func TestJobRunRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
@@ -193,8 +174,6 @@ func TestJobRunRepository(t *testing.T) {
 	t.Run("Save", func(t *testing.T) {
 		t.Run("should save and delete fresh runs correctly", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			testModels := []models.JobRun{}
 			testModels = append(testModels, testSpecs...)
@@ -221,8 +200,6 @@ func TestJobRunRepository(t *testing.T) {
 		})
 		t.Run("should upsert existing runs correctly", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			testModels := []models.JobRun{}
 			testModels = append(testModels, testSpecs...)
@@ -250,8 +227,6 @@ func TestJobRunRepository(t *testing.T) {
 	})
 	t.Run("ClearInstance", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
@@ -271,8 +246,6 @@ func TestJobRunRepository(t *testing.T) {
 	})
 	t.Run("GetByStatus", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
@@ -287,8 +260,6 @@ func TestJobRunRepository(t *testing.T) {
 	})
 	t.Run("AddInstance", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
@@ -306,8 +277,6 @@ func TestJobRunRepository(t *testing.T) {
 	})
 	t.Run("Clear", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)

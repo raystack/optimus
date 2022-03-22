@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -27,11 +27,10 @@ const (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecRepository,
-	pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs) *cli.Command {
+func deployCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo,
+	datastoreSpecFs map[string]map[string]afero.Fs) *cli.Command {
 	var (
-		projectName     string
-		namespace       string
+		namespaces      []string
 		ignoreJobs      bool
 		ignoreResources bool
 		verbose         bool
@@ -46,26 +45,20 @@ func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecReposit
 			},
 		}
 	)
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.Namespace.Name, "Namespace of optimus project")
+	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		if projectName == "" || namespace == "" {
-			return fmt.Errorf("project and namespace configurations are required")
-		}
-
-		l.Info(fmt.Sprintf("Deploying project: %s for namespace: %s at %s", projectName, namespace, conf.Host))
+		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
-		if jobSpecRepo == nil {
-			// job repo not configured
-			ignoreJobs = true
-		}
 
-		if err := postDeploymentRequest(l, projectName, namespace, jobSpecRepo, conf, pluginRepo, datastoreRepo,
-			datastoreSpecFs, ignoreJobs, ignoreResources, verbose); err != nil {
+		if err := validateNamespaces(datastoreSpecFs, namespaces); err != nil {
+			return err
+		}
+		err := postDeploymentRequest(l, conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
+		if err != nil {
 			return err
 		}
 		l.Info(coloredSuccess("\nDeployment completed, took %s", time.Since(start).Round(time.Second)))
@@ -76,14 +69,14 @@ func deployCommand(l log.Logger, conf config.Optimus, jobSpecRepo JobSpecReposit
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l log.Logger, projectName string, namespaceName string, jobSpecRepo JobSpecRepository,
-	conf config.Optimus, pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]afero.Fs,
-	ignoreJobDeployment, ignoreResources bool, verbose bool) (err error) {
+func postDeploymentRequest(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
+	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaceNames []string,
+	ignoreJobDeployment, ignoreResources bool, verbose bool) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, conf.Host); err != nil {
+	conn, err := createConnection(dialTimeoutCtx, conf.Host)
+	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(ErrServerNotReachable(conf.Host).Error())
 		}
@@ -95,40 +88,184 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 	defer deployCancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
-	adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
-
-	projectSpec := &pb.ProjectSpecification{
-		Name:   projectName,
-		Config: conf.Project.Config,
-	}
-	if err = registerProject(deployTimeoutCtx, l, runtime, projectSpec); err != nil {
+	if err := registerProject(deployTimeoutCtx, runtime, l, conf); err != nil {
 		return err
 	}
-
-	namespaceSpec := &pb.NamespaceSpecification{
-		Name:   namespaceName,
-		Config: conf.Namespace.Config,
-	}
-	if err = registerNamespace(deployTimeoutCtx, l, runtime, projectSpec.Name, namespaceSpec); err != nil {
+	if err := registerAllNamespaces(deployTimeoutCtx, runtime, l, conf, namespaceNames); err != nil {
 		return err
 	}
 
 	if !ignoreResources {
-		// deploy datastore resources
-		for storeName, repoFS := range datastoreSpecFs {
-			l.Info(fmt.Sprintf("\n> Deploying resources for %s", storeName))
+		if err := deployAllResources(deployTimeoutCtx,
+			runtime, l, conf,
+			pluginRepo, datastoreRepo,
+			datastoreSpecFs,
+			namespaceNames,
+			verbose,
+		); err != nil {
+			return err
+		}
+	} else {
+		l.Info("> Skipping resource deployment")
+	}
+	if !ignoreJobDeployment {
+		if err := deployAllJobs(deployTimeoutCtx,
+			runtime, l,
+			conf, pluginRepo,
+			datastoreRepo, namespaceNames,
+			verbose,
+		); err != nil {
+			return err
+		}
+	} else {
+		l.Info("> Skipping job deployment")
+	}
+	return nil
+}
+
+func deployAllJobs(deployTimeoutCtx context.Context,
+	runtime pb.RuntimeServiceClient,
+	l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
+	datastoreRepo models.DatastoreRepo,
+	namespaceNames []string,
+	verbose bool,
+) error {
+	var selectedNamespaceNames []string
+	if len(namespaceNames) > 0 {
+		selectedNamespaceNames = namespaceNames
+	} else {
+		for _, namespace := range conf.Namespaces {
+			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
+		}
+	}
+
+	stream, err := runtime.DeployJobSpecification(deployTimeoutCtx)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(coloredError("Deployment process took too long, timing out"))
+		}
+		return errors.New("deployement failed")
+	}
+	var specFound bool
+	for _, namespaceName := range selectedNamespaceNames {
+		namespace, err := conf.GetNamespaceByName(namespaceName)
+		if err != nil {
+			return err
+		}
+		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+		jobSpecRepo := local.NewJobSpecRepository(
+			jobSpecFs,
+			local.NewJobSpecAdapter(pluginRepo),
+		)
+		l.Info(fmt.Sprintf("\n> [%s] Deploying jobs", namespaceName))
+		jobSpecs, err := jobSpecRepo.GetAll()
+		if err != nil {
+			return err
+		}
+		if len(jobSpecs) == 0 {
+			l.Warn("[%s] skipping as job spec is empty\n", namespaceName)
+			continue
+		}
+
+		var adaptedJobSpecs []*pb.JobSpecification
+		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
+		for _, spec := range jobSpecs {
+			adaptJob, err := adapt.ToJobProto(spec)
+			if err != nil {
+				return fmt.Errorf("[%s] failed to serialize: %s - %w", namespaceName, spec.Name, err)
+			}
+			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
+		}
+		specFound = true
+		if err := stream.Send(&pb.DeployJobSpecificationRequest{
+			Jobs:          adaptedJobSpecs,
+			ProjectName:   conf.Project.Name,
+			NamespaceName: namespaceName,
+		}); err != nil {
+			return fmt.Errorf("[%s] deployment failed: %w", namespaceName, err)
+		}
+	}
+	if err := stream.CloseSend(); err != nil {
+		return err
+	}
+	if !specFound {
+		return nil
+	}
+
+	var counter int
+	var streamErrs []error
+	spinner := NewProgressBar()
+	if !verbose {
+		spinner.StartProgress(len(selectedNamespaceNames), "please wait")
+	}
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		if resp.GetAck() {
+			if !resp.GetSuccess() {
+				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
+			}
+			counter++
+			spinner.SetProgress(counter)
+		}
+	}
+	spinner.Stop()
+	if len(streamErrs) > 0 {
+		for _, e := range streamErrs {
+			l.Error(e.Error())
+		}
+		return errors.New("one or more errors are encountered during deploy")
+	}
+	return nil
+}
+
+func deployAllResources(deployTimeoutCtx context.Context,
+	runtime pb.RuntimeServiceClient,
+	l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
+	datastoreRepo models.DatastoreRepo,
+	datastoreSpecFs map[string]map[string]afero.Fs,
+	namespaceNames []string,
+	verbose bool,
+) error {
+	var selectedNamespaceNames []string
+	if len(namespaceNames) > 0 {
+		selectedNamespaceNames = namespaceNames
+	} else {
+		for _, namespace := range conf.Namespaces {
+			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
+		}
+	}
+
+	// send call
+	stream, err := runtime.DeployResourceSpecification(deployTimeoutCtx)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(coloredError("Deployment process took too long, timing out"))
+		}
+		return fmt.Errorf("deployement failed: %w", err)
+	}
+	var specFound bool
+	for _, namespaceName := range selectedNamespaceNames {
+		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
+		for storeName, repoFS := range datastoreSpecFs[namespaceName] {
+			l.Info(fmt.Sprintf("\n> [%s] Deploying resources for %s", namespaceName, storeName))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				return fmt.Errorf("unsupported datastore: %s", storeName)
+				return fmt.Errorf("[%s] unsupported datastore: %s", namespaceName, storeName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
 			if errors.Is(err, models.ErrNoResources) {
-				l.Info(coloredNotice("no resource specifications found"))
+				l.Info(coloredNotice("[%s] no resource specifications found", namespaceName))
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("resourceSpecRepo.GetAll(): %w", err)
+				return fmt.Errorf("[%s] resourceSpecRepo.GetAll(): %w", namespaceName, err)
 			}
 
 			// prepare specs
@@ -136,151 +273,127 @@ func postDeploymentRequest(l log.Logger, projectName string, namespaceName strin
 			for _, spec := range resourceSpecs {
 				adapted, err := adapt.ToResourceProto(spec)
 				if err != nil {
-					return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
+					return fmt.Errorf("[%s] failed to serialize: %s - %w", namespaceName, spec.Name, err)
 				}
 				adaptedSpecs = append(adaptedSpecs, adapted)
 			}
-
-			// send call
-			respStream, err := runtime.DeployResourceSpecification(deployTimeoutCtx, &pb.DeployResourceSpecificationRequest{
+			specFound = true
+			if err := stream.Send(&pb.DeployResourceSpecificationRequest{
 				Resources:     adaptedSpecs,
-				ProjectName:   projectSpec.Name,
+				ProjectName:   conf.Project.Name,
 				DatastoreName: storeName,
-				NamespaceName: namespaceSpec.Name,
-			})
-			if err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					l.Error(coloredError("Deployment process took too long, timing out"))
-				}
-				return fmt.Errorf("deployement failed: %w", err)
+				NamespaceName: namespaceName,
+			}); err != nil {
+				return fmt.Errorf("[%s] deployment failed: %w", namespaceName, err)
 			}
-
-			// track progress
-			deployCounter := 0
-			totalSpecs := len(adaptedSpecs)
-			spinner := NewProgressBar()
-			if !verbose {
-				spinner.StartProgress(totalSpecs, "please wait")
-			}
-			for {
-				resp, err := respStream.Recv()
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
-					return fmt.Errorf("failed to receive deployment ack: %w", err)
-				}
-				if resp.Ack {
-					// ack for the resource spec
-					if !resp.GetSuccess() {
-						return fmt.Errorf("unable to deploy resource: %s %s", resp.GetResourceName(), resp.GetMessage())
-					}
-					deployCounter++
-					spinner.SetProgress(deployCounter)
-					if verbose {
-						l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", deployCounter, totalSpecs, resp.GetResourceName()))
-					}
-				} else {
-					if verbose {
-						// ordinary progress event
-						l.Info(fmt.Sprintf("info '%s': %s", resp.GetResourceName(), resp.GetMessage()))
-					}
-				}
-			}
-			spinner.Stop()
-			l.Info(coloredSuccess("Successfully deployed %d/%d resources.", deployCounter, totalSpecs))
 		}
-	} else {
-		l.Info("> Skipping resource deployment")
+	}
+	if err := stream.CloseSend(); err != nil {
+		return err
+	}
+	if !specFound {
+		return nil
 	}
 
-	if !ignoreJobDeployment {
-		// deploy job specifications
-		l.Info("\n> Deploying jobs")
-		jobSpecs, err := jobSpecRepo.GetAll()
+	var counter int
+	var streamErrs []error
+	spinner := NewProgressBar()
+	if !verbose {
+		spinner.StartProgress(len(selectedNamespaceNames), "please wait")
+	}
+	for {
+		resp, err := stream.Recv()
 		if err != nil {
-			return err
-		}
-
-		var adaptedJobSpecs []*pb.JobSpecification
-		for _, spec := range jobSpecs {
-			adaptJob, err := adapt.ToJobProto(spec)
-			if err != nil {
-				return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
-			}
-			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
-		}
-		respStream, err := runtime.DeployJobSpecification(deployTimeoutCtx, &pb.DeployJobSpecificationRequest{
-			Jobs:          adaptedJobSpecs,
-			ProjectName:   projectSpec.Name,
-			NamespaceName: namespaceSpec.Name,
-		})
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(coloredError("Deployment process took too long, timing out"))
-			}
-			return fmt.Errorf("deployement failed: %w", err)
-		}
-
-		ackCounter := 0
-		totalJobs := len(jobSpecs)
-		spinner := NewProgressBar()
-		if !verbose {
-			spinner.StartProgress(totalJobs, "please wait")
-			spinner.SetProgress(0)
-		}
-		var streamError error
-		for {
-			resp, err := respStream.Recv()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				streamError = err
+			if errors.Is(err, io.EOF) {
 				break
 			}
-			if resp.Ack {
-				// ack for the job spec
-				if !resp.GetSuccess() {
-					return fmt.Errorf("unable to deploy: %s %s", resp.GetJobName(), resp.GetMessage())
-				}
-				ackCounter++
-				spinner.SetProgress(ackCounter)
-				if verbose {
-					l.Info(fmt.Sprintf("%d/%d. %s successfully deployed", ackCounter, totalJobs, resp.GetJobName()))
-				}
-			} else {
-				if verbose {
-					// ordinary progress event
-					if resp.GetJobName() != "" {
-						l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
-					} else {
-						l.Info(fmt.Sprintf("info: %s", resp.GetMessage()))
-					}
-				}
-			}
+			return err
 		}
-		spinner.Stop()
-
-		if streamError != nil {
-			if ackCounter == totalJobs {
-				// if we have uploaded all jobs successfully, further steps in pipeline
-				// should not cause errors to fail and should end with warnings if any.
-				l.Warn(coloredNotice("jobs deployed with warning"), "err", streamError)
-			} else {
-				return fmt.Errorf("failed to receive success deployment ack: %w", streamError)
+		if resp.GetAck() {
+			if !resp.GetSuccess() {
+				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
 			}
+			counter++
+			spinner.SetProgress(counter)
 		}
-		l.Info(coloredSuccess("Successfully deployed %d/%d jobs.", ackCounter, totalJobs))
-	} else {
-		l.Info("> Skipping job deployment")
 	}
-
+	spinner.Stop()
+	if len(streamErrs) > 0 {
+		for _, e := range streamErrs {
+			l.Error(e.Error())
+		}
+		return errors.New("one or more errors are encountered during deploy")
+	}
 	return nil
 }
 
-func registerProject(deployTimeoutCtx context.Context, l log.Logger, runtime pb.RuntimeServiceClient,
-	projectSpec *pb.ProjectSpecification) (err error) {
+func registerAllNamespaces(
+	deployTimeoutCtx context.Context, runtime pb.RuntimeServiceClient,
+	l log.Logger, conf config.Optimus, namespaceNames []string,
+) error {
+	var selectedNamespaceNames []string
+	if len(namespaceNames) > 0 {
+		selectedNamespaceNames = namespaceNames
+	} else {
+		for _, namespace := range conf.Namespaces {
+			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
+		}
+	}
+
+	ch := make(chan error, len(selectedNamespaceNames))
+	defer close(ch)
+	for _, namespaceName := range selectedNamespaceNames {
+		go func(name string) {
+			ch <- registerNamespace(deployTimeoutCtx, runtime, l, conf, name)
+		}(namespaceName)
+	}
+	var errMsg string
+	for i := 0; i < len(selectedNamespaceNames); i++ {
+		if err := <-ch; err != nil {
+			errMsg += err.Error() + "\n"
+		}
+	}
+	if len(errMsg) > 0 {
+		return errors.New(errMsg)
+	}
+	return nil
+}
+
+func registerNamespace(deployTimeoutCtx context.Context, runtime pb.RuntimeServiceClient,
+	l log.Logger, conf config.Optimus, namespaceName string,
+) error {
+	namespace, err := conf.GetNamespaceByName(namespaceName)
+	if err != nil {
+		return err
+	}
+	registerResponse, err := runtime.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
+		ProjectName: conf.Project.Name,
+		Namespace: &pb.NamespaceSpecification{
+			Name:   namespaceName,
+			Config: namespace.Config,
+		},
+	})
+	if err != nil {
+		if status.Code(err) == codes.FailedPrecondition {
+			l.Warn(coloredNotice("[%s] Ignoring namespace config changes: %s", namespaceName, err.Error()))
+			return nil
+		}
+		return fmt.Errorf("failed to update namespace configurations: %w", err)
+	} else if !registerResponse.Success {
+		return fmt.Errorf("failed to update namespace configurations, %s", registerResponse.Message)
+	}
+	l.Info("\n> Updated namespace configuration")
+	return nil
+}
+
+func registerProject(
+	deployTimeoutCtx context.Context, runtime pb.RuntimeServiceClient,
+	l log.Logger, conf config.Optimus,
+) (err error) {
+	projectSpec := &pb.ProjectSpecification{
+		Name:   conf.Project.Name,
+		Config: conf.Project.Config,
+	}
 	registerResponse, err := runtime.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
 		Project: projectSpec,
 	})
@@ -297,21 +410,15 @@ func registerProject(deployTimeoutCtx context.Context, l log.Logger, runtime pb.
 	return nil
 }
 
-func registerNamespace(deployTimeoutCtx context.Context, l log.Logger, runtime pb.RuntimeServiceClient,
-	projectName string, namespaceSpec *pb.NamespaceSpecification) (err error) {
-	registerResponse, err := runtime.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
-		ProjectName: projectName,
-		Namespace:   namespaceSpec,
-	})
-	if err != nil {
-		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(coloredNotice("> Ignoring namespace config changes: %s", err.Error()))
-			return nil
+func validateNamespaces(datastoreSpecFs map[string]map[string]afero.Fs, selectedNamespaceNames []string) error {
+	var unknownNamespaceNames []string
+	for _, namespaceName := range selectedNamespaceNames {
+		if datastoreSpecFs[namespaceName] == nil {
+			unknownNamespaceNames = append(unknownNamespaceNames, namespaceName)
 		}
-		return fmt.Errorf("failed to update namespace configurations: %w", err)
-	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to update namespace configurations, %s", registerResponse.Message)
 	}
-	l.Info("\n> Updated namespace configuration")
+	if len(unknownNamespaceNames) > 0 {
+		return fmt.Errorf("namespaces [%s] are not found", strings.Join(unknownNamespaceNames, ", "))
+	}
 	return nil
 }

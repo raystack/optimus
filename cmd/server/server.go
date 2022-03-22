@@ -70,6 +70,11 @@ const (
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
 )
 
+const (
+	DialTimeout      = time.Second * 5
+	BootstrapTimeout = time.Second * 10
+)
+
 // projectJobSpecRepoFactory stores raw specifications
 type projectJobSpecRepoFactory struct {
 	db *gorm.DB
@@ -129,15 +134,6 @@ type namespaceRepoFactory struct {
 
 func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
 	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
-}
-
-type projectSecretRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *projectSecretRepoFactory) New(projectSpec models.ProjectSpec) store.ProjectSecretRepository {
-	return postgres.NewSecretRepository(fac.db, projectSpec, fac.hash)
 }
 
 type jobRunRepoFactory struct {
@@ -259,7 +255,7 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
 	if conf.ReplayNumWorkers < 1 {
-		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
+		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
 	}
 	if conf.DB.DSN == "" {
 		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
@@ -340,7 +336,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		}
 		// bootstrap scheduler for registered projects
 		for _, proj := range registeredProjects {
-			bootstrapCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
 			l.Info("bootstrapping project", "project name", proj.Name)
 			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil {
 				// Major ERROR, but we can't make this fatal
@@ -352,10 +348,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		}
 	}
 
-	projectSecretRepoFac := &projectSecretRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
+	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
 	namespaceSpecRepoFac := &namespaceRepoFactory{
 		db:   dbConn,
 		hash: appHash,
@@ -367,7 +360,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
-	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepoFac)
+	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{
@@ -491,7 +484,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
 
-	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), time.Second*5)
+	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
 	defer grpcDialCancel()
 
 	// prepare http proxy
@@ -522,6 +515,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}), "Ping").ServeHTTP)
 	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
 
+	//nolint: gomnd
 	srv := &http.Server{
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,

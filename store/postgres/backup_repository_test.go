@@ -6,7 +6,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/odpf/optimus/mock"
@@ -18,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestBackupRepository(t *testing.T) {
+func TestIntegrationBackupRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
 		Name: "t-optimus-project",
@@ -41,24 +40,8 @@ func TestBackupRepository(t *testing.T) {
 	datastorer.On("Name").Return("DS")
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		projRepo := NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
@@ -73,8 +56,6 @@ func TestBackupRepository(t *testing.T) {
 
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		resourceSpec := models.ResourceSpec{
 			ID:        uuid.Must(uuid.NewRandom()),

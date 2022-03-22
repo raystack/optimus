@@ -12,6 +12,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
@@ -19,6 +20,8 @@ import (
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 )
+
+const NumberOfWordsToGenerate = 2
 
 var (
 	validateDate    = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
@@ -29,13 +32,18 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepository,
-	pluginRepo models.PluginRepository) *cli.Command {
-	return &cli.Command{
+func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			namespace := askToSelectNamespace(l, conf)
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
 			jwd, err := getWorkingDirectory(jobSpecFs, "")
 			if err != nil {
 				return err
@@ -63,6 +71,7 @@ func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepos
 			return nil
 		},
 	}
+	return cmd
 }
 
 // getWorkingDirectory returns the directory where the new spec folder should be created
@@ -125,7 +134,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 
 // getDirectoryName returns the directory name of the new spec folder
 func getDirectoryName(root string) (string, error) {
-	sampleDirectoryName := petname.Generate(2, "_")
+	sampleDirectoryName := petname.Generate(NumberOfWordsToGenerate, "_")
 
 	var selectedDir string
 	if err := survey.AskOne(&survey.Input{

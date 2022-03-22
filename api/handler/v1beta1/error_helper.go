@@ -4,11 +4,12 @@ import (
 	"errors"
 
 	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func mapToGRPCErr(err error, msg string) error {
+func mapToGRPCErr(l log.Logger, err error, msg string) error {
 	code := codes.Internal
 	var de *service.DomainError
 	if errors.As(err, &de) {
@@ -22,8 +23,9 @@ func mapToGRPCErr(err error, msg string) error {
 		case service.ErrFailedPrecond:
 			code = codes.FailedPrecondition
 		}
+
+		l.Error(de.DebugString())
 	}
 
-	// TODO: Log the full error before returning
 	return status.Errorf(code, "%s: %s", err.Error(), msg)
 }

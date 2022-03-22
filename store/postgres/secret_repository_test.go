@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,7 +14,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestSecretRepository(t *testing.T) {
+func TestIntegrationSecretRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   uuid.Must(uuid.NewRandom()),
@@ -38,24 +37,8 @@ func TestSecretRepository(t *testing.T) {
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		projRepo := NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
@@ -99,20 +82,18 @@ func TestSecretRepository(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 		t.Run("should able to insert secret without namespace set", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModels := []models.ProjectSecretItem{}
 			testModels = append(testModels, testConfigs...)
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
-			err := repo.Insert(ctx, models.NamespaceSpec{}, testModels[0])
+			err := repo.Insert(ctx, projectSpec, models.NamespaceSpec{}, testModels[0])
 			assert.Nil(t, err)
 
-			err = repo.Insert(ctx, models.NamespaceSpec{}, testModels[1])
+			err = repo.Insert(ctx, projectSpec, models.NamespaceSpec{}, testModels[1])
 			assert.NotNil(t, err)
 
-			err = repo.Insert(ctx, models.NamespaceSpec{}, testModels[3])
+			err = repo.Insert(ctx, projectSpec, models.NamespaceSpec{}, testModels[3])
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
@@ -127,20 +108,18 @@ func TestSecretRepository(t *testing.T) {
 		})
 		t.Run("should able to insert secret with namespace set", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModels := []models.ProjectSecretItem{}
 			testModels = append(testModels, testConfigs...)
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
-			err := repo.Insert(ctx, namespaceSpec, testModels[0])
+			err := repo.Insert(ctx, projectSpec, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
-			err = repo.Insert(ctx, namespaceSpec, testModels[1])
+			err = repo.Insert(ctx, projectSpec, namespaceSpec, testModels[1])
 			assert.NotNil(t, err)
 
-			err = repo.Insert(ctx, namespaceSpec, testModels[3])
+			err = repo.Insert(ctx, projectSpec, namespaceSpec, testModels[3])
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
@@ -157,15 +136,13 @@ func TestSecretRepository(t *testing.T) {
 	t.Run("Save", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
 			//try for create
-			err := repo.Save(ctx, namespaceSpec, testModelA)
+			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModelA.ID)
@@ -173,7 +150,7 @@ func TestSecretRepository(t *testing.T) {
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
 			//try for update
-			err = repo.Save(ctx, namespaceSpec, testModelB)
+			err = repo.Save(ctx, projectSpec, namespaceSpec, testModelB)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(ctx, testModelB.ID)
@@ -183,15 +160,13 @@ func TestSecretRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should throw error", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
 			//try for create
 			testModelA.Value = "gs://some_folder"
-			err := repo.Save(ctx, namespaceSpec, testModelA)
+			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModelA.ID)
@@ -200,22 +175,20 @@ func TestSecretRepository(t *testing.T) {
 
 			//try for create the same secret
 			testModelA.Value = "gs://another_folder"
-			err = repo.Save(ctx, namespaceSpec, testModelA)
+			err = repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Equal(t, "resource already exists", err.Error())
 		})
 	})
 	t.Run("Update", func(t *testing.T) {
 		t.Run("update same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
 			//try for create
 			testModelA.Value = "gs://some_folder"
-			err := repo.Save(ctx, namespaceSpec, testModelA)
+			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModelA.ID)
@@ -224,7 +197,7 @@ func TestSecretRepository(t *testing.T) {
 
 			//try for update
 			testModelA.Value = "gs://another_folder"
-			err = repo.Update(ctx, namespaceSpec, testModelA)
+			err = repo.Update(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(ctx, testModelA.ID)
@@ -233,52 +206,46 @@ func TestSecretRepository(t *testing.T) {
 		})
 		t.Run("update not existing secret should return error", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
 			//try for update
-			err := repo.Update(ctx, namespaceSpec, testModelA)
+			err := repo.Update(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Equal(t, "resource not found", err.Error())
 		})
 	})
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.ProjectSecretItem{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewSecretRepository(db, projectSpec, hash)
+		repo := NewSecretRepository(db, hash)
 
-		err := repo.Insert(ctx, namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, projectSpec, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, projectSpec, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("should get all the secrets for a project", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			var otherModels []models.ProjectSecretItem
 			otherModels = append(otherModels, testConfigs...)
-			repo := NewSecretRepository(db, projectSpec, hash)
-			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[0]))
-			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[3]))
+			repo := NewSecretRepository(db, hash)
+			assert.Nil(t, repo.Insert(ctx, projectSpec, otherNamespaceSpec, otherModels[0]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, otherNamespaceSpec, otherModels[3]))
 
 			var testModels []models.ProjectSecretItem
 			testModels = append(testModels, testConfigs...)
-			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
-			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[4]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, namespaceSpec, testModels[2]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, namespaceSpec, testModels[4]))
 			repo.db.Table("secret").Delete(&testModels[4])
 
-			allSecrets, err := repo.GetAll(ctx)
+			allSecrets, err := repo.GetAll(ctx, projectSpec)
 			assert.Nil(t, err)
 			assert.Len(t, allSecrets, 2)
 
@@ -296,25 +263,23 @@ func TestSecretRepository(t *testing.T) {
 	t.Run("GetSecrets", func(t *testing.T) {
 		t.Run("should get all the secrets for a namespace", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
 			var otherModels []models.ProjectSecretItem
 			otherModels = append(otherModels, testConfigs...)
 			// Other namespace
-			assert.Nil(t, repo.Insert(ctx, otherNamespaceSpec, otherModels[0]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, otherNamespaceSpec, otherModels[0]))
 			// No namespace
-			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, otherModels[4]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, models.NamespaceSpec{}, otherModels[4]))
 
 			var testModels []models.ProjectSecretItem
 			testModels = append(testModels, testConfigs...)
-			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[2]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, namespaceSpec, testModels[2]))
 			// System defined secret
-			assert.Nil(t, repo.Insert(ctx, namespaceSpec, testModels[3]))
+			assert.Nil(t, repo.Insert(ctx, projectSpec, namespaceSpec, testModels[3]))
 
-			allSecrets, err := repo.GetSecrets(ctx, namespaceSpec)
+			allSecrets, err := repo.GetSecrets(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 			assert.Equal(t, len(allSecrets), 2)
 
@@ -332,8 +297,6 @@ func TestSecretRepository(t *testing.T) {
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes the secret for namespace", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			secret := models.ProjectSecretItem{
 				ID:    uuid.Must(uuid.NewRandom()),
@@ -341,23 +304,21 @@ func TestSecretRepository(t *testing.T) {
 				Value: "super-secret",
 				Type:  models.SecretTypeUserDefined,
 			}
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
-			assert.Nil(t, repo.Insert(ctx, namespaceSpec, secret))
-			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, repo.Insert(ctx, projectSpec, namespaceSpec, secret))
+			_, err := repo.GetByName(ctx, projectSpec, secret.Name)
 			assert.Nil(t, err)
 
-			err = repo.Delete(ctx, namespaceSpec, secret.Name)
+			err = repo.Delete(ctx, projectSpec, namespaceSpec, secret.Name)
 			assert.Nil(t, err)
 
-			_, err = repo.GetByName(ctx, secret.Name)
+			_, err = repo.GetByName(ctx, projectSpec, secret.Name)
 			assert.NotNil(t, err)
 			assert.Equal(t, store.ErrResourceNotFound, err)
 		})
 		t.Run("deletes the secret for project", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			secret := models.ProjectSecretItem{
 				ID:    uuid.Must(uuid.NewRandom()),
@@ -365,40 +326,27 @@ func TestSecretRepository(t *testing.T) {
 				Value: "super-secret",
 				Type:  models.SecretTypeUserDefined,
 			}
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
-			assert.Nil(t, repo.Insert(ctx, models.NamespaceSpec{}, secret))
-			_, err := repo.GetByName(ctx, secret.Name)
+			assert.Nil(t, repo.Insert(ctx, projectSpec, models.NamespaceSpec{}, secret))
+			_, err := repo.GetByName(ctx, projectSpec, secret.Name)
 			assert.Nil(t, err)
 
-			err = repo.Delete(ctx, models.NamespaceSpec{}, secret.Name)
+			err = repo.Delete(ctx, projectSpec, models.NamespaceSpec{}, secret.Name)
 			assert.Nil(t, err)
 
-			_, err = repo.GetByName(ctx, secret.Name)
+			_, err = repo.GetByName(ctx, projectSpec, secret.Name)
 			assert.NotNil(t, err)
 			assert.Equal(t, store.ErrResourceNotFound, err)
 		})
 		t.Run("returns error when non existing is deleted", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
-			repo := NewSecretRepository(db, projectSpec, hash)
+			repo := NewSecretRepository(db, hash)
 
-			err := repo.Delete(ctx, namespaceSpec, "invalid")
+			err := repo.Delete(ctx, projectSpec, namespaceSpec, "invalid")
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource not found", err.Error())
-		})
-		t.Run("returns error when delete has error", func(t *testing.T) {
-			db := DBSetup()
-			sqlDB, _ := db.DB()
-			sqlDB.Close() // Closing the connection
-
-			repo := NewSecretRepository(db, projectSpec, hash)
-
-			err := repo.Delete(ctx, namespaceSpec, "valid-secret")
-			assert.NotNil(t, err)
-			assert.Equal(t, "sql: database is closed", err.Error())
 		})
 	})
 }

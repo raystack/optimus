@@ -16,7 +16,10 @@ var (
 	datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)
 )
 
-const datasetURNFormat = "%s://%s:%s"
+const (
+	ExpectedDatasetNameSegments = 3
+	datasetURNFormat            = "%s://%s:%s"
+)
 
 // DatasetResourceSpec is how dataset should be represented in yaml
 type DatasetResourceSpec struct {
@@ -74,7 +77,7 @@ func (s datasetSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	}
 
 	parsedNames := datasetNameParseRegex.FindStringSubmatch(yamlResource.Name)
-	if len(parsedNames) < 3 {
+	if len(parsedNames) < ExpectedDatasetNameSegments {
 		return models.ResourceSpec{}, fmt.Errorf("invalid resource name %s", yamlResource.Name)
 	}
 
@@ -125,7 +128,7 @@ func (s datasetSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) 
 	}
 
 	parsedNames := datasetNameParseRegex.FindStringSubmatch(baseSpec.Name)
-	if len(parsedNames) < 3 {
+	if len(parsedNames) < ExpectedDatasetNameSegments {
 		return models.ResourceSpec{}, fmt.Errorf("invalid resource name %s", baseSpec.Name)
 	}
 
