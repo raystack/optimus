@@ -5,7 +5,6 @@ package postgres_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/odpf/optimus/store"
@@ -19,24 +18,8 @@ import (
 
 func TestIntegrationNamespaceRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := postgres.NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := postgres.Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		return dbConn
 	}
@@ -101,8 +84,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
@@ -134,8 +115,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := namespaceSpecs[0]
 			testModelB := namespaceSpecs[2]
 
@@ -160,8 +139,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := namespaceSpecs[2]
 
 			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
@@ -186,8 +163,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := namespaceSpecs[0]
 			testModelA.ID = uuid.Nil
 
@@ -204,8 +179,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		})
 		t.Run("should not update empty config", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
@@ -224,8 +197,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
@@ -241,8 +212,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("Get", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
@@ -263,8 +232,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 

@@ -19,24 +19,9 @@ import (
 
 func TestIntegrationJobRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := postgres.NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := postgres.Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
+
 		return dbConn
 	}
 	ctx := context.Background()
@@ -176,8 +161,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
 			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
@@ -217,8 +200,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 		})
 		t.Run("insert when previously soft deleted should hard delete first along with foreign key cascade", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			unitData1 := models.GenerateDestinationRequest{
 				Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
@@ -262,8 +243,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
@@ -305,8 +284,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
@@ -353,8 +330,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
@@ -371,8 +346,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 		})
 		t.Run("should update same job with hooks when provided separately", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModel := testConfigs[2]
 			testModel.Task.Unit.DependencyMod = nil
 			execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
@@ -466,8 +439,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 		})
 		t.Run("should fail if job is already registered for a project with different namespace", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
@@ -498,8 +469,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 		})
 		t.Run("should properly insert spec behavior, reading and writing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
@@ -538,8 +507,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -557,8 +524,6 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -725,8 +690,6 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -752,8 +715,6 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -786,8 +747,6 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	t.Run("GetByDestination", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		unitData1 := models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
@@ -815,8 +774,6 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	t.Run("GetByNameForProject", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		unitData1 := models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config),
@@ -846,8 +803,6 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	t.Run("GetJobNamespaces", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 

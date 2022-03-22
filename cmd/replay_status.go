@@ -81,7 +81,7 @@ func printReplayStatusResponse(l log.Logger, replayStatusResponse *pb.GetReplayS
 		l.Info(fmt.Sprintf("\nThis replay has been marked as %s", coloredSuccess(models.ReplayStatusSuccess)))
 	}
 	l.Info(coloredNotice("Latest Instances Status"))
-	l.Info(fmt.Sprintf("%s", printStatusTree(replayStatusResponse.Response, treeprint.New())))
+	l.Info(printStatusTree(replayStatusResponse.Response, treeprint.New()).String())
 }
 
 func printStatusTree(instance *pb.ReplayStatusTreeNode, tree treeprint.Tree) treeprint.Tree {

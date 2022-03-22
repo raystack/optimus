@@ -5,7 +5,6 @@ package postgres_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/odpf/optimus/store/postgres"
@@ -40,24 +39,8 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := postgres.NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := postgres.Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
@@ -101,8 +84,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 		t.Run("should able to insert secret without namespace set", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModels := []models.ProjectSecretItem{}
 			testModels = append(testModels, testConfigs...)
 
@@ -129,8 +110,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		})
 		t.Run("should able to insert secret with namespace set", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModels := []models.ProjectSecretItem{}
 			testModels = append(testModels, testConfigs...)
 
@@ -159,8 +138,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	t.Run("Save", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
@@ -185,8 +162,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should throw error", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
 			repo := postgres.NewSecretRepository(db, hash)
@@ -209,8 +184,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		t.Run("update same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[2]
 
 			repo := postgres.NewSecretRepository(db, hash)
@@ -235,8 +208,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		})
 		t.Run("update not existing secret should return error", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := testConfigs[0]
 
 			repo := postgres.NewSecretRepository(db, hash)
@@ -248,8 +219,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	})
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.ProjectSecretItem{}
 		testModels = append(testModels, testConfigs...)
 
@@ -265,8 +234,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("should get all the secrets for a project", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			var otherModels []models.ProjectSecretItem
 			otherModels = append(otherModels, testConfigs...)
@@ -300,8 +267,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	t.Run("GetSecrets", func(t *testing.T) {
 		t.Run("should get all the secrets for a namespace", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			repo := postgres.NewSecretRepository(db, hash)
 
@@ -336,8 +301,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes the secret for namespace", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			secret := models.ProjectSecretItem{
 				ID:    uuid.Must(uuid.NewRandom()),
@@ -360,8 +323,6 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		})
 		t.Run("deletes the secret for project", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			secret := models.ProjectSecretItem{
 				ID:    uuid.Must(uuid.NewRandom()),
@@ -384,25 +345,12 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		})
 		t.Run("returns error when non existing is deleted", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			repo := postgres.NewSecretRepository(db, hash)
 
 			err := repo.Delete(ctx, projectSpec, namespaceSpec, "invalid")
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource not found", err.Error())
-		})
-		t.Run("returns error when delete has error", func(t *testing.T) {
-			db := DBSetup()
-			sqlDB, _ := db.DB()
-			sqlDB.Close() // Closing the connection
-
-			repo := postgres.NewSecretRepository(db, hash)
-
-			err := repo.Delete(ctx, projectSpec, namespaceSpec, "valid-secret")
-			assert.NotNil(t, err)
-			assert.Equal(t, "sql: database is closed", err.Error())
 		})
 	})
 }

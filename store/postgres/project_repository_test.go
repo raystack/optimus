@@ -5,7 +5,6 @@ package postgres_test
 
 import (
 	"context"
-	"os"
 	"sort"
 	"testing"
 
@@ -20,24 +19,8 @@ import (
 
 func TestIntegrationProjectRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := postgres.NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := postgres.Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		return dbConn
 	}
@@ -78,8 +61,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ProjectSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -98,8 +80,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
@@ -124,8 +105,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			testModelA := testConfigs[2]
 
 			repo := postgres.NewProjectRepository(db, hash)
@@ -150,8 +130,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
@@ -167,8 +146,6 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		})
 		t.Run("should not update empty config", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			repo := postgres.NewProjectRepository(db, hash)
 
@@ -185,8 +162,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 	})
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ProjectSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -210,8 +186,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		var testModels []models.ProjectSpec
 		testModels = append(testModels, testConfigs...)
 

@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16.7'
+          go-version: '1.17.6'
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2.6.1
         with:
@@ -48,12 +48,12 @@ jobs:
         run: cd docs && yarn build
       - name: Deploy docs
         env:
-          GIT_USER: kushsharma
-          GIT_PASS: ${{ secrets.GH_PAT }}
+          GIT_USER: github-actions[bot]
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
           DEPLOYMENT_BRANCH: gh-pages
           CURRENT_BRANCH: main
         working-directory: docs
         run: |
-          git config --global user.email "3647166+kushsharma@users.noreply.github.com"
-          git config --global user.name "kushsharma"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
           yarn deploy

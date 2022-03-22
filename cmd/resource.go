@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -22,7 +23,7 @@ var (
 		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 )
 
-func resourceCommand(l log.Logger, datastoreSpecsFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+func resourceCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo, datastoreSpecsFs map[string]map[string]afero.Fs) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
@@ -30,16 +31,17 @@ func resourceCommand(l log.Logger, datastoreSpecsFs map[string]afero.Fs, datasto
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
+	cmd.AddCommand(createResourceSubCommand(l, conf, datastoreSpecsFs, datastoreRepo))
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
-	return &cli.Command{
+func createResourceSubCommand(l log.Logger, conf config.Optimus, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			namespace := askToSelectNamespace(l, conf)
 			availableStorer := []string{}
 			for _, s := range datastoreRepo.GetAll() {
 				availableStorer = append(availableStorer, s.Name())
@@ -51,7 +53,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			}, &storerName); err != nil {
 				return err
 			}
-			repoFS, ok := datastoreSpecFs[storerName]
+			repoFS, ok := datastoreSpecFs[namespace.Name][storerName]
 			if !ok {
 				return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
 			}
@@ -72,7 +74,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			}, &resourceType); err != nil {
 				return err
 			}
-			typeController, _ := datastore.Types()[models.ResourceType(resourceType)]
+			typeController := datastore.Types()[models.ResourceType(resourceType)]
 
 			// find directory to store spec
 			rwd, err := getWorkingDirectory(repoFS, "")
@@ -119,6 +121,7 @@ func createResourceSubCommand(l log.Logger, datastoreSpecFs map[string]afero.Fs,
 			return nil
 		},
 	}
+	return cmd
 }
 
 // IsResourceNameUnique return a validator that checks if the resource already exists with the same name

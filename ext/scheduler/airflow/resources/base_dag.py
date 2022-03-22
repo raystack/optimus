@@ -44,7 +44,12 @@ dag = DAG(
     schedule_interval={{ if eq .Job.Schedule.Interval "" }}None{{- else -}} {{ .Job.Schedule.Interval | quote}}{{end}},
     sla_miss_callback=optimus_sla_miss_notify,
     catchup={{ if .Job.Behavior.CatchUp }}True{{ else }}False{{ end }},
-    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS)
+    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
+    tags = [ 
+            {{- range $key, $value := $.Job.Labels}}
+            "{{ $value }}",
+            {{- end}}
+           ]
 )
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
