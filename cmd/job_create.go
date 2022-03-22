@@ -12,6 +12,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
@@ -31,13 +32,18 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepository,
-	pluginRepo models.PluginRepository) *cli.Command {
-	return &cli.Command{
+func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			namespace := askToSelectNamespace(l, conf)
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
 			jwd, err := getWorkingDirectory(jobSpecFs, "")
 			if err != nil {
 				return err
@@ -65,6 +71,7 @@ func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepos
 			return nil
 		},
 	}
+	return cmd
 }
 
 // getWorkingDirectory returns the directory where the new spec folder should be created

@@ -291,7 +291,7 @@ func NewNotifier(ctx context.Context, slackURL string, eventBatchInterval time.D
 	this := &Notifier{
 		slackURL:           slackURL,
 		routeMsgBatch:      map[route][]event{},
-		workerErrChan:      make(chan error, 0),
+		workerErrChan:      make(chan error),
 		eventBatchInterval: eventBatchInterval,
 	}
 

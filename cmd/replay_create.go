@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayCreateCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false
@@ -27,7 +27,7 @@ func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		allDownstream    = false
 		skipConfirm      = false
 		projectName      = conf.Project.Name
-		namespaceName    = conf.Namespace.Name
+		namespaceName    string
 	)
 
 	reCmd := &cli.Command{
@@ -52,6 +52,8 @@ Date ranges are inclusive.
 	}
 	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
 	reCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of job that needs to be replayed")
+	reCmd.MarkFlagRequired("namespace")
+
 	reCmd.Flags().BoolVarP(&dryRun, "dry-run", "d", dryRun, "Only do a trial run with no permanent changes")
 	reCmd.Flags().BoolVarP(&forceRun, "force", "f", forceRun, "Run replay even if a previous run is in progress")
 	reCmd.Flags().BoolVar(&skipConfirm, "confirm", skipConfirm, "Skip asking for confirmation")
@@ -82,15 +84,15 @@ Date ranges are inclusive.
 		}
 
 		if !skipConfirm {
-			proceedWithReplay := "Yes"
+			proceedWithReplay := AnswerYes
 			if err := survey.AskOne(&survey.Select{
 				Message: "Proceed with replay?",
-				Options: []string{"Yes", "No"},
-				Default: "No",
+				Options: []string{AnswerYes, AnswerNo},
+				Default: AnswerNo,
 			}, &proceedWithReplay); err != nil {
 				return err
 			}
-			if proceedWithReplay == "No" {
+			if proceedWithReplay == AnswerNo {
 				l.Info("Aborting...")
 				return nil
 			}
@@ -180,7 +182,7 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 
 	// print tree
 	l.Info(coloredNotice("\n> Dependency tree"))
-	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New())))
+	l.Info(printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New()).String())
 
 	// ignored jobs
 	if len(replayDryRunResponse.IgnoredJobs) > 0 {
