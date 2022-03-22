@@ -13,6 +13,7 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/mattn/go-isatty"
+	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
@@ -20,9 +21,6 @@ import (
 	cli "github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
-
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
 var (
@@ -62,7 +60,7 @@ type JobSpecRepository interface {
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
-func New(plainLog, jsonLog log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func New(plainLog log.Logger, jsonLog log.Logger, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
 
 	cmd := &cli.Command{
@@ -122,7 +120,7 @@ func New(plainLog, jsonLog log.Logger, conf config.Optimus, pluginRepo models.Pl
 		datastoreSpecFs[namespace.Name] = dtSpec
 	}
 
-	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))
+	cmd.AddCommand(versionCommand(plainLog, pluginRepo))
 	cmd.AddCommand(configCommand(plainLog))
 	cmd.AddCommand(jobCommand(plainLog, conf, pluginRepo))
 	cmd.AddCommand(deployCommand(plainLog, conf, pluginRepo, dsRepo, datastoreSpecFs))
