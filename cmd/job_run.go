@@ -22,6 +22,7 @@ const (
 )
 
 func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
+	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "run",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
@@ -29,7 +30,10 @@ func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 		Example: "optimus job run <job_name>",
 		Hidden:  true,
 		RunE: func(c *cli.Command, args []string) error {
-			namespace := askToSelectNamespace(l, conf)
+			namespace, err := conf.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
+			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -42,6 +46,8 @@ func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 			return runJobSpecificationRequest(l, projectName, namespace.Name, host, jobSpec, pluginRepo)
 		},
 	}
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of the resource within project")
+	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
