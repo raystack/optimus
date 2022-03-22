@@ -60,8 +60,16 @@ func MustLoadProjectConfig(filepath ...string) *ProjectConfig {
 // 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
 // 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
 func LoadProjectConfig(filepath ...string) (*ProjectConfig, error) {
-	cfg := &ProjectConfig{}
 	fs := afero.NewReadOnlyFs(afero.NewOsFs())
+	return loadProjectConfigFs(fs, filepath...)
+}
+
+func loadProjectConfigFs(fs afero.Fs, filepath ...string) (*ProjectConfig, error) {
+	cfg := &ProjectConfig{}
+
+	if len(filepath) == 0 {
+		filepath = append(filepath, "")
+	}
 
 	err := loadConfig(cfg, fs, filepath[0], currPath)
 	if err != nil {
@@ -87,8 +95,16 @@ func MustLoadServerConfig(filepath ...string) *ServerConfig {
 // 3. executable binary location
 // 4. home dir
 func LoadServerConfig(filepath ...string) (*ServerConfig, error) {
-	cfg := &ServerConfig{}
 	fs := afero.NewReadOnlyFs(afero.NewOsFs())
+	return loadServerConfigFs(fs, filepath...)
+}
+
+func loadServerConfigFs(fs afero.Fs, filepath ...string) (*ServerConfig, error) {
+	cfg := &ServerConfig{}
+
+	if len(filepath) == 0 {
+		filepath = append(filepath, "")
+	}
 
 	err := loadConfig(cfg, fs, filepath[0], execPath, homePath)
 	if err != nil {
@@ -133,10 +149,16 @@ func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
 	}
 
 	if len(paths) > 0 {
-		filepath := paths[0]
+		fpath := paths[0]
 		dirPaths := paths[1:]
 
-		opts = append(opts, config.WithFile(filepath))
+		if fpath != "" {
+			if err := validateFilepath(fs, fpath); err != nil {
+				return err
+			}
+			opts = append(opts, config.WithFile(fpath))
+		}
+
 		for _, path := range dirPaths {
 			opts = append(opts, config.WithPath(path))
 		}
@@ -144,6 +166,17 @@ func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
 
 	l := config.NewLoader(opts...)
 	return l.Load(cfg)
+}
+
+func validateFilepath(fs afero.Fs, fpath string) error {
+	f, err := fs.Stat(fpath)
+	if err != nil {
+		return err
+	}
+	if !f.Mode().IsRegular() {
+		return errors.New("not a file")
+	}
+	return nil
 }
 
 // type LoadConfigFunc func(interface{}, afero.Fs, ...string) error
