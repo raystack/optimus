@@ -7,21 +7,17 @@ LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
 PROTON_COMMIT := "16fe06d529687d7f545ea10602222ce774dc49d0"
 
-.PHONY: build test test-ci pack-files generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
+.PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
 
-build: pack-files # build optimus binary
+build: # build optimus binary
 	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
 	@echo " > building optimus version ${OPMS_VERSION}"
 	@go build -ldflags "-X ${NAME}/config.Version=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 
 test-ci: smoke-test unit-test-ci vet ## run tests
-
-pack-files:
-	@echo " > packing resources"
-	@go generate ./..
 
 generate-proto: ## regenerate protos
 	@echo " > generating protobuf from odpf/proton"

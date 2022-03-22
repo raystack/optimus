@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -106,24 +105,8 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 	execUnit2.On("GenerateDestination", context.Background(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 		prepo := NewProjectRepository(dbConn, hash)
@@ -135,7 +118,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1]).Error())
 
 		jobRunRepo := NewJobRunRepository(dbConn, adapter)
-		err = jobRunRepo.Save(ctx, namespaceSpec, jobRuns[0])
+		err := jobRunRepo.Save(ctx, namespaceSpec, jobRuns[0])
 		assert.Nil(t, err)
 		return dbConn
 	}
@@ -158,8 +141,6 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		var testModels []models.InstanceSpec
 		testModels = append(testModels, testSpecs...)
@@ -175,8 +156,6 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 	})
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
@@ -205,8 +184,6 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 	})
 	t.Run("UpdateStatus", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 
 		testModels := []models.InstanceSpec{}
 		testModels = append(testModels, testSpecs...)
