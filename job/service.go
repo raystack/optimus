@@ -667,7 +667,7 @@ type (
 )
 
 func (e *EventJobSpecFetch) String() string {
-	return fmt.Sprintf("fetching job specs")
+	return "fetching job specs"
 }
 
 func (e *EventSavedJobDelete) String() string {
@@ -675,7 +675,7 @@ func (e *EventSavedJobDelete) String() string {
 }
 
 func (e *EventJobPriorityWeightAssign) String() string {
-	return fmt.Sprintf("assigned priority weights")
+	return "assigned priority weights"
 }
 
 func (e *EventJobPriorityWeightAssignmentFailed) String() string {
@@ -683,7 +683,7 @@ func (e *EventJobPriorityWeightAssignmentFailed) String() string {
 }
 
 func (e *EventJobSpecDependencyResolve) String() string {
-	return fmt.Sprintf("dependencies resolved")
+	return "dependencies resolved"
 }
 
 func (e *EventJobSpecUnknownDependencyUsed) String() string {

@@ -78,7 +78,6 @@ func (rm *ReplayManager) Replay(ctx context.Context, reqInput models.ReplayReque
 
 func (rm *ReplayManager) Init() {
 	rm.Called()
-	return
 }
 
 func (rm *ReplayManager) GetReplay(ctx context.Context, uuid uuid.UUID) (models.ReplaySpec, error) {
@@ -126,7 +125,7 @@ type ReplayWorker struct {
 
 func NewReplayWorker() *ReplayWorker {
 	return &ReplayWorker{
-		finish: make(chan bool, 0),
+		finish: make(chan bool),
 	}
 }
 
