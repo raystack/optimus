@@ -14,7 +14,9 @@ import (
 const (
 	configFileName       = ".optimus.yaml"
 	optimusConfigDirName = "./optimus"
-	optimusConfigContent = `
+)
+
+const optimusConfigContent = `
 version: 1
 log:
   level: info
@@ -51,15 +53,14 @@ namespaces:
   job:
     path: ./jobs-b
 `
-)
 
 func setup(content string) {
 	teardown()
-	if err := os.Mkdir(optimusConfigDirName, os.ModePerm); err != nil {
+	if err := os.Mkdir(optimusConfigDirName, 0o750); err != nil {
 		panic(err)
 	}
 	confPath := path.Join(optimusConfigDirName, configFileName)
-	if err := os.WriteFile(confPath, []byte(content), os.ModePerm); err != nil {
+	if err := os.WriteFile(confPath, []byte(content), 0o660); err != nil {
 		panic(err)
 	}
 }

@@ -104,22 +104,23 @@ func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeSer
 			continue
 		}
 		var resourceSpecs []models.ResourceSpec
-		var errMsg string
+		var errMsgs string
 		for _, resourceProto := range request.GetResources() {
 			adapted, err := sv.adapter.FromResourceProto(resourceProto, request.DatastoreName)
 			if err != nil {
-				errMsg = fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
-				sv.l.Error(errMsg)
-				break
+				currentMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+				sv.l.Error(currentMsg)
+				errMsgs += currentMsg + "\n"
+				continue
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
 		}
 
-		if len(errMsg) > 0 {
+		if errMsgs != "" {
 			stream.Send(&pb.DeployResourceSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: errMsg,
+				Message: errMsgs,
 			})
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue
