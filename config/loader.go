@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"strings"
+	"os"
 
 	"github.com/odpf/salt/config"
 	"github.com/spf13/afero"
@@ -13,42 +13,89 @@ const (
 	ErrFailedToRead      = "unable to read optimus config file %v (%s)"
 	DefaultFilename      = ".optimus"
 	DefaultFileExtension = "yaml"
+	DefaultEnvPrefix     = "OPTIMUS"
 )
 
 var (
 	filename      = DefaultFilename
 	fileExtension = DefaultFileExtension // ASK: are we providing file extension other than yaml?
+	envPrefix     = DefaultEnvPrefix
+	currPath      string
+	execPath      string
+	homePath      string
 )
 
+func init() {
+	p, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	currPath = p
+
+	p, err = os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	execPath = p
+
+	p, err = os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	homePath = p
+}
+
 // MustLoadProjectConfig load the project specific config (see LoadProjectConfig) with panic
-func MustLoadProjectConfig(path ...string) *ProjectConfig {
-	// implement this
-	return nil
+func MustLoadProjectConfig(filepath ...string) *ProjectConfig {
+	cfg, err := LoadProjectConfig(filepath...)
+	if err != nil {
+		panic(err)
+	}
+
+	return cfg
 }
 
 // LoadProjectConfig load the project specific config from these locations:
 // 1. env var. eg. OPTIMUS_PROJECT, OPTIMUS_NAMESPACES, etc
-// 2. path. ./optimus <client_command> -c "path/to/config/optimus.yaml"
+// 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
 // 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
-func LoadProjectConfig(path ...string) (*ProjectConfig, error) {
-	// implement this
-	return nil, nil
+func LoadProjectConfig(filepath ...string) (*ProjectConfig, error) {
+	cfg := &ProjectConfig{}
+	fs := afero.NewReadOnlyFs(afero.NewOsFs())
+
+	err := loadConfig(cfg, fs, filepath[0], currPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 // MustLoadServerConfig load the server specific config (see LoadServerConfig) with panic
-func MustLoadServerConfig(path ...string) *ServerConfig {
-	// implement this
-	return nil
+func MustLoadServerConfig(filepath ...string) *ServerConfig {
+	cfg, err := LoadServerConfig(filepath...)
+	if err != nil {
+		panic(err)
+	}
+
+	return cfg
 }
 
 // LoadServerConfig load the server specific config from these locations:
 // 1. env var. eg. OPTIMUS_SERVE_PORT, etc
-// 2. path. ./optimus <server_command> -c "path/to/config.yaml"
+// 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
 // 3. executable binary location
 // 4. home dir
-func LoadServerConfig(path ...string) (*ServerConfig, error) {
-	// implement this
-	return nil, nil
+func LoadServerConfig(filepath ...string) (*ServerConfig, error) {
+	cfg := &ServerConfig{}
+	fs := afero.NewReadOnlyFs(afero.NewOsFs())
+
+	err := loadConfig(cfg, fs, filepath[0], execPath, homePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 // Validate validate the config as an input. If not valid, it returns error
@@ -72,24 +119,27 @@ func validateServerConfig(conf ServerConfig) error {
 	return nil
 }
 
-func loadConfig(cfg interface{}, fs afero.Fs, dirPaths ...string) error {
+func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
 	// getViperWithDefault + SetFs
 	v := viper.New()
-	v.SetConfigName("config")
-	v.SetConfigType("yaml")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.SetFs(fs)
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
 		config.WithName(filename),
 		config.WithType(fileExtension),
-		config.WithEnvPrefix("OPTIMUS"),
+		config.WithEnvPrefix(envPrefix),
 		config.WithEnvKeyReplacer(".", "_"),
 	}
 
-	for _, path := range dirPaths {
-		opts = append(opts, config.WithPath(path))
+	if len(paths) > 0 {
+		filepath := paths[0]
+		dirPaths := paths[1:]
+
+		opts = append(opts, config.WithFile(filepath))
+		for _, path := range dirPaths {
+			opts = append(opts, config.WithPath(path))
+		}
 	}
 
 	l := config.NewLoader(opts...)

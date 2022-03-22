@@ -1,7 +1,7 @@
 package config
 
 type ProjectConfig struct {
-	Version    int          `mapstructure:"version"`
+	Version    Version      `mapstructure:"version"`
 	Log        LogConfig    `mapstructure:"log"`
 	Host       string       `mapstructure:"host"` // optimus server host
 	Project    Project      `mapstructure:"project"`
