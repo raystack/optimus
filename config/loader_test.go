@@ -6,13 +6,13 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 )
 
-const (
-	projectConfig = `
+const projectConfig = `
 version: 1
 log:
   level: info
@@ -31,7 +31,7 @@ namespaces:
   job:
     path: ./jobs-b
 `
-	serverConfig = `
+const serverConfig = `
 version: 1
 log:
   level: info
@@ -85,33 +85,8 @@ func (s *ConfigTestSuite) SetupTest() {
 	s.homePath = p
 	s.a.Fs.MkdirAll(s.homePath, fs.ModeTemporary)
 
-	s.expectedProjectConfig = &ProjectConfig{}
-	s.expectedProjectConfig.Version = Version(1)
-	s.expectedProjectConfig.Log = LogConfig{Level: "info"}
-
-	s.expectedProjectConfig.Host = "localhost:9100"
-	s.expectedProjectConfig.Project = Project{
-		Name: "sample_project",
-		Config: map[string]string{
-			"environment":    "integration",
-			"scheduler_host": "http://example.io/",
-			"storage_path":   "file://absolute_path_to_a_directory",
-		},
-	}
-	namespaces := []*Namespace{}
-	namespaces = append(namespaces, &Namespace{
-		Name: "namespace-a",
-		Job: Job{
-			Path: "./jobs-a",
-		},
-	})
-	namespaces = append(namespaces, &Namespace{
-		Name: "namespace-b",
-		Job: Job{
-			Path: "./jobs-b",
-		},
-	})
-	s.expectedProjectConfig.Namespaces = namespaces
+	s.initExpectedProjectConfig()
+	s.initExpectedServerConfig()
 }
 
 func (s *ConfigTestSuite) TearDownTest() {
@@ -159,7 +134,41 @@ func (s *ConfigTestSuite) TestInternal_LoadProjectConfigFs() {
 }
 
 func (s *ConfigTestSuite) TestInternal_LoadServerConfigFs() {
-	// TODO: implement this
+	s.a.WriteFile(path.Join(s.execPath, filename+"."+fileExtension), []byte(serverConfig), fs.ModeTemporary)
+	s.a.WriteFile(path.Join(s.homePath, filename+"."+fileExtension), []byte(`version: 3`), fs.ModeTemporary)
+
+	s.Run("WhenFilepathIsEmpty", func() {
+		conf, err := loadServerConfigFs(s.a.Fs)
+		s.Assert().NoError(err)
+		s.Assert().NotNil(conf)
+		s.Assert().Equal(s.expectedServerConfig, conf) // should load from exec path
+
+		s.a.Remove(path.Join(s.execPath, filename+"."+fileExtension))
+		defer s.a.WriteFile(path.Join(s.execPath, filename+"."+fileExtension), []byte(serverConfig), fs.ModeTemporary)
+		conf, err = loadServerConfigFs(s.a.Fs)
+		s.Assert().NoError(err)
+		s.Assert().NotNil(conf)
+		s.Assert().Equal("3", conf.Version.String()) // should load from home dir
+	})
+
+	s.Run("WhenFilepathIsExist", func() {
+		samplePath := "./sample/path/config.yaml"
+		s.a.WriteFile(samplePath, []byte("version: 2"), os.ModeTemporary)
+
+		conf, err := loadServerConfigFs(s.a.Fs, samplePath)
+		s.Assert().NoError(err)
+		s.Assert().NotNil(conf)
+		s.Assert().Equal("2", conf.Version.String())
+	})
+
+	s.Run("WhenLoadConfigIsFailed", func() {
+		dirPath := "./sample/path"
+		s.a.Fs.MkdirAll(dirPath, os.ModeTemporary)
+
+		conf, err := loadServerConfigFs(s.a.Fs, dirPath)
+		s.Assert().Error(err)
+		s.Assert().Nil(conf)
+	})
 }
 
 func (s *ConfigTestSuite) TestLoadProjectConfig() {
@@ -178,99 +187,59 @@ func (s *ConfigTestSuite) TestMustLoadServerConfig() {
 	// TODO: implement this
 }
 
-// func setup(content string) {
-// 	teardown()
-// 	if err := os.Mkdir(optimusConfigDirName, os.ModePerm); err != nil {
-// 		panic(err)
-// 	}
-// 	confPath := path.Join(optimusConfigDirName, configFileName)
-// 	if err := os.WriteFile(confPath, []byte(content), os.ModePerm); err != nil {
-// 		panic(err)
-// 	}
-// }
+func (s *ConfigTestSuite) initExpectedProjectConfig() {
+	s.expectedProjectConfig = &ProjectConfig{}
+	s.expectedProjectConfig.Version = Version(1)
+	s.expectedProjectConfig.Log = LogConfig{Level: "info"}
 
-// func teardown() {
-// 	if err := os.RemoveAll(optimusConfigDirName); err != nil {
-// 		panic(err)
-// 	}
-// }
+	s.expectedProjectConfig.Host = "localhost:9100"
+	s.expectedProjectConfig.Project = Project{
+		Name: "sample_project",
+		Config: map[string]string{
+			"environment":    "integration",
+			"scheduler_host": "http://example.io/",
+			"storage_path":   "file://absolute_path_to_a_directory",
+		},
+	}
+	namespaces := []*Namespace{}
+	namespaces = append(namespaces, &Namespace{
+		Name: "namespace-a",
+		Job: Job{
+			Path: "./jobs-a",
+		},
+	})
+	namespaces = append(namespaces, &Namespace{
+		Name: "namespace-b",
+		Job: Job{
+			Path: "./jobs-b",
+		},
+	})
+	s.expectedProjectConfig.Namespaces = namespaces
+}
 
-// func TestLoadOptimusConfig(t *testing.T) {
-// 	t.Run("should return config and nil if no error is found", func(t *testing.T) {
-// 		setup(optimusConfigContent + `
-// - name: namespace-b
-//   job:
-//     path: ./jobs-b
-// `)
-// 		defer teardown()
+func (s *ConfigTestSuite) initExpectedServerConfig() {
+	s.expectedServerConfig = &ServerConfig{}
+	s.expectedServerConfig.Version = Version(1)
+	s.expectedServerConfig.Log = LogConfig{Level: "info"}
 
-// 		expectedErrMsg := "namespaces [namespace-b] are duplicate"
+	s.expectedServerConfig.Serve = Serve{}
+	s.expectedServerConfig.Serve.Port = 9100
+	s.expectedServerConfig.Serve.Host = "localhost"
+	s.expectedServerConfig.Serve.IngressHost = "optimus.example.io:80"
+	s.expectedServerConfig.Serve.AppKey = "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc"
+	s.expectedServerConfig.Serve.ReplayNumWorkers = 1
+	s.expectedServerConfig.Serve.ReplayWorkerTimeout = 100 * time.Second
+	s.expectedServerConfig.Serve.ReplayRunTimeout = 10 * time.Second
+	s.expectedServerConfig.Serve.DB = DBConfig{}
+	s.expectedServerConfig.Serve.DB.DSN = "postgres://user:password@localhost:5432/database?sslmode=disable"
+	s.expectedServerConfig.Serve.DB.MaxIdleConnection = 5
+	s.expectedServerConfig.Serve.DB.MaxOpenConnection = 10
 
-// 		actualConf, actualErr := config.LoadOptimusConfig(optimusConfigDirName)
+	s.expectedServerConfig.Scheduler = SchedulerConfig{}
+	s.expectedServerConfig.Scheduler.Name = "airflow2"
+	s.expectedServerConfig.Scheduler.SkipInit = true
 
-// 		assert.Nil(t, actualConf)
-// 		assert.EqualError(t, actualErr, expectedErrMsg)
-// 	})
-
-// 	t.Run("should return config and nil if no error is found", func(t *testing.T) {
-// 		setup(optimusConfigContent)
-// 		defer teardown()
-
-// 		expectedConf := &config.Optimus{
-// 			Version: 1,
-// 			Log: config.LogConfig{
-// 				Level: "info",
-// 			},
-// 			Host: "localhost:9100",
-// 			Project: config.Project{
-// 				Name: "sample_project",
-// 				Config: map[string]string{
-// 					"environment":    "integration",
-// 					"scheduler_host": "http://example.io/",
-// 					"storage_path":   "file://absolute_path_to_a_directory",
-// 				},
-// 			},
-// 			Server: config.ServerConfig{
-// 				Port:                9100,
-// 				Host:                "localhost",
-// 				IngressHost:         "optimus.example.io:80",
-// 				AppKey:              "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc",
-// 				ReplayNumWorkers:    1,
-// 				ReplayWorkerTimeout: 100 * time.Second,
-// 				ReplayRunTimeout:    10 * time.Second,
-// 				DB: config.DBConfig{
-// 					DSN:               "postgres://user:password@localhost:5432/database?sslmode=disable",
-// 					MaxIdleConnection: 5,
-// 					MaxOpenConnection: 10,
-// 				},
-// 			},
-// 			Scheduler: config.SchedulerConfig{
-// 				Name:     "airflow2",
-// 				SkipInit: true,
-// 			},
-// 			Telemetry: config.TelemetryConfig{
-// 				ProfileAddr: ":9110",
-// 				JaegerAddr:  "http://localhost:14268/api/traces",
-// 			},
-// 			Namespaces: []*config.Namespace{
-// 				{
-// 					Name: "namespace-a",
-// 					Job: config.Job{
-// 						Path: "./jobs-a",
-// 					},
-// 				},
-// 				{
-// 					Name: "namespace-b",
-// 					Job: config.Job{
-// 						Path: "./jobs-b",
-// 					},
-// 				},
-// 			},
-// 		}
-
-// 		actualConf, actualErr := config.LoadOptimusConfig(optimusConfigDirName)
-
-// 		assert.EqualValues(t, expectedConf, actualConf)
-// 		assert.NoError(t, actualErr)
-// 	})
-// }
+	s.expectedServerConfig.Telemetry = TelemetryConfig{}
+	s.expectedServerConfig.Telemetry.ProfileAddr = ":9110"
+	s.expectedServerConfig.Telemetry.JaegerAddr = "http://localhost:14268/api/traces"
+}
