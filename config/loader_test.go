@@ -1,16 +1,18 @@
-package config_test
+package config
 
 import (
+	"io/fs"
 	"os"
 	"path"
+	"strings"
+	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/suite"
 )
 
 const (
-	configFileName       = ".optimus.yaml"
-	optimusConfigDirName = "./optimus"
-)
-
-const optimusConfigContent = `
+	projectConfig = `
 version: 1
 log:
   level: info
@@ -21,6 +23,18 @@ project:
     environment: integration
     scheduler_host: http://example.io/
     storage_path: file://absolute_path_to_a_directory
+namespaces:
+- name: namespace-a
+  job:
+    path: ./jobs-a
+- name: namespace-b
+  job:
+    path: ./jobs-b
+`
+	serverConfig = `
+version: 1
+log:
+  level: info
 serve:
   port: 9100
   host: localhost
@@ -39,31 +53,147 @@ scheduler:
 telemetry:
   profile_addr: ":9110"
   jaeger_addr: "http://localhost:14268/api/traces"
-namespaces:
-- name: namespace-a
-  job:
-    path: ./jobs-a
-- name: namespace-b
-  job:
-    path: ./jobs-b
 `
 
-func setup(content string) {
-	teardown()
-	if err := os.Mkdir(optimusConfigDirName, 0o750); err != nil {
-		panic(err)
-	}
-	confPath := path.Join(optimusConfigDirName, configFileName)
-	if err := os.WriteFile(confPath, []byte(content), 0o600); err != nil {
-		panic(err)
-	}
+type ConfigTestSuite struct {
+	suite.Suite
+	a        afero.Afero
+	currPath string
+	execPath string
+	homePath string
+
+	expectedProjectConfig *ProjectConfig
+	expectedServerConfig  *ServerConfig
 }
 
-func teardown() {
-	if err := os.RemoveAll(optimusConfigDirName); err != nil {
-		panic(err)
+func (s *ConfigTestSuite) SetupTest() {
+	s.a = afero.Afero{}
+	s.a.Fs = afero.NewMemMapFs()
+
+	p, err := os.Getwd()
+	s.Require().NoError(err)
+	s.currPath = p
+	s.a.Fs.MkdirAll(s.currPath, fs.ModeTemporary)
+
+	p, err = os.Executable()
+	s.Require().NoError(err)
+	s.execPath = p
+	s.a.Fs.MkdirAll(s.execPath, fs.ModeTemporary)
+
+	p, err = os.UserHomeDir()
+	s.Require().NoError(err)
+	s.homePath = p
+	s.a.Fs.MkdirAll(s.homePath, fs.ModeTemporary)
+
+	s.expectedProjectConfig = &ProjectConfig{}
+	s.expectedProjectConfig.Version = Version(1)
+	s.expectedProjectConfig.Log = LogConfig{Level: "info"}
+
+	s.expectedProjectConfig.Host = "localhost:9100"
+	s.expectedProjectConfig.Project = Project{
+		Name: "sample_project",
+		Config: map[string]string{
+			"environment":    "integration",
+			"scheduler_host": "http://example.io/",
+			"storage_path":   "file://absolute_path_to_a_directory",
+		},
 	}
+	namespaces := []*Namespace{}
+	namespaces = append(namespaces, &Namespace{
+		Name: "namespace-a",
+		Job: Job{
+			Path: "./jobs-a",
+		},
+	})
+	namespaces = append(namespaces, &Namespace{
+		Name: "namespace-b",
+		Job: Job{
+			Path: "./jobs-b",
+		},
+	})
+	s.expectedProjectConfig.Namespaces = namespaces
 }
+
+func (s *ConfigTestSuite) TearDownTest() {
+	s.a.Fs.RemoveAll(s.currPath)
+	s.a.Fs.RemoveAll(s.execPath)
+	s.a.Fs.RemoveAll(s.homePath)
+}
+
+func TestConfig(t *testing.T) {
+	suite.Run(t, new(ConfigTestSuite))
+}
+
+func (s *ConfigTestSuite) TestInternal_LoadProjectConfigFs() {
+	s.a.WriteFile(path.Join(s.currPath, filename+"."+fileExtension), []byte(projectConfig), fs.ModeTemporary)
+
+	s.Run("WhenFilepathIsEmpty", func() {
+		p, err := loadProjectConfigFs(s.a.Fs)
+		s.Assert().NoError(err)
+		s.Assert().NotNil(p)
+		s.Assert().Equal(s.expectedProjectConfig, p)
+	})
+
+	s.Run("WhenFilepathIsExist", func() {
+		samplePath := "./sample/path/config.yaml"
+		b := strings.Builder{}
+		b.WriteString(projectConfig)
+		b.WriteString(`- name: namespace-c
+  job:
+    path: ./jobs-c
+    `)
+		s.a.WriteFile(samplePath, []byte(b.String()), fs.ModeTemporary)
+		defer s.a.Fs.RemoveAll(samplePath)
+
+		p, err := loadProjectConfigFs(s.a.Fs, samplePath)
+		s.Assert().NoError(err)
+		s.Assert().NotNil(p)
+		s.Assert().Len(p.Namespaces, 3)
+	})
+
+	s.Run("WhenLoadConfigIsFailed", func() {
+		p, err := loadProjectConfigFs(s.a.Fs, "/path/not/exist")
+		s.Assert().Error(err)
+		s.Assert().Nil(p)
+	})
+}
+
+func (s *ConfigTestSuite) TestInternal_LoadServerConfigFs() {
+	// TODO: implement this
+}
+
+func (s *ConfigTestSuite) TestLoadProjectConfig() {
+	// TODO: implement this
+}
+
+func (s *ConfigTestSuite) TestMustLoadProjectConfig() {
+	// TODO: implement this
+}
+
+func (s *ConfigTestSuite) TestLoadServerConfig() {
+	// TODO: implement this
+}
+
+func (s *ConfigTestSuite) TestMustLoadServerConfig() {
+	// TODO: implement this
+}
+
+// func setup(content string) {
+// 	teardown()
+// 	if err := os.Mkdir(optimusConfigDirName, os.ModePerm); err != nil {
+// 		panic(err)
+// 	}
+// 	confPath := path.Join(optimusConfigDirName, configFileName)
+// 	if err := os.WriteFile(confPath, []byte(content), os.ModePerm); err != nil {
+// 		panic(err)
+// 	}
+// }
+
+// func teardown() {
+// 	if err := os.RemoveAll(optimusConfigDirName); err != nil {
+// 		panic(err)
+// 	}
+// }
 
 // func TestLoadOptimusConfig(t *testing.T) {
 // 	t.Run("should return config and nil if no error is found", func(t *testing.T) {
