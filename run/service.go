@@ -213,59 +213,6 @@ func NewService(repoFac SpecRepoFactory, secretService service.SecretService, ti
 	}
 }
 
-//func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec) (*cron.ScheduleSpec, *models.JobQuery, error) {
-//	var sch *cron.ScheduleSpec
-//	jobStartDate := jobSpec.Schedule.StartDate
-//	jobInterval := jobSpec.Schedule.Interval
-//	if jobInterval == "" {
-//		return nil, jobQuery, nil
-//	}
-//	givenStartDate := jobQuery.StartDate
-//	givenEndDate := jobQuery.EndDate
-//
-//	sch, err := cron.ParseCronSchedule(jobInterval)
-//	if err != nil {
-//		return nil, jobQuery, fmt.Errorf("unable to parse the interval from DB %w", err)
-//	}
-//	duration := sch.Interval(jobStartDate)
-//	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
-//	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
-//	modifiedJobQuery := &models.JobQuery{
-//		Name:        jobQuery.Name,
-//		StartDate:   jobQuery.StartDate,
-//		EndDate:     jobQuery.EndDate,
-//		Filter:      jobQuery.Filter,
-//		OnlyLastRun: false,
-//	}
-//	return sch, modifiedJobQuery,err
-//}
-//func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec) (*cron.ScheduleSpec, *models.JobQuery, error) {
-//	var sch *cron.ScheduleSpec
-//	jobStartDate := jobSpec.Schedule.StartDate
-//	jobInterval := jobSpec.Schedule.Interval
-//	if jobInterval == "" {
-//		return nil, jobQuery, nil
-//	}
-//	givenStartDate := jobQuery.StartDate
-//	givenEndDate := jobQuery.EndDate
-//
-//	sch, err := cron.ParseCronSchedule(jobInterval)
-//	if err != nil {
-//		return nil, jobQuery, fmt.Errorf("unable to parse the interval from DB %w", err)
-//	}
-//	duration := sch.Interval(jobStartDate)
-//	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
-//	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
-//	modifiedJobQuery := &models.JobQuery{
-//		Name:        jobQuery.Name,
-//		StartDate:   jobQuery.StartDate,
-//		EndDate:     jobQuery.EndDate,
-//		Filter:      jobQuery.Filter,
-//		OnlyLastRun: false,
-//	}
-//	return sch, modifiedJobQuery,err
-//}
-
 func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 	jobStartDate := jobSpec.Schedule.StartDate
 	if jobStartDate.IsZero() {
