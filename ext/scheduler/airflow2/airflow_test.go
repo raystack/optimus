@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
+
 	"github.com/google/uuid"
 
 	"gocloud.dev/blob"
@@ -620,7 +622,7 @@ func TestAirflow2(t *testing.T) {
 			status, err := air.GetJobRunStatus(ctx, projectSpec, jobName, startDateTime, endDateTime, batchSize)
 
 			assert.NotNil(t, err)
-			assert.Contains(t, err.Error(), fmt.Sprint("failure reason for fetching airflow dag runs"))
+			assert.Contains(t, err.Error(), "failure reason for fetching airflow dag runs")
 			assert.Len(t, status, 0)
 		})
 	})
@@ -652,9 +654,21 @@ func TestAirflow2(t *testing.T) {
 			DagRuns:      []airflow2.DagRun{run, run},
 			TotalEntries: 2,
 		}
+		invalidList := airflow2.DagRunListResponse{
+			DagRuns:      []airflow2.DagRun{run, run},
+			TotalEntries: 3,
+		}
 		resp, err := json.Marshal(list)
 		if err != nil {
 			t.Errorf("unable to parse the response to test GetJobRuns %v", err)
+		}
+		invalidResp, err := json.Marshal(invalidList)
+		if err != nil {
+			t.Errorf("unable to parse the invalid response to test GetJobRuns %v", err)
+		}
+		sch, err := cron.ParseCronSchedule("0 12 * * *")
+		if err != nil {
+			t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
 		}
 
 		t.Run("should return job runs with valid args", func(t *testing.T) {
@@ -682,10 +696,40 @@ func TestAirflow2(t *testing.T) {
 						Value: "admin:admin",
 					},
 				},
-			}, &params)
+			}, &params, sch)
 
 			assert.Nil(t, err)
 			assert.Len(t, runStatus, 2)
+		})
+		t.Run("should fail if response has more entries than limit", func(t *testing.T) {
+			// create a new reader with JSON
+			r := ioutil.NopCloser(bytes.NewReader(invalidResp))
+			client := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       r,
+					}, nil
+				},
+			}
+
+			air := airflow2.NewScheduler(nil, client, nil)
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
+				Name: "test-proj",
+				Config: map[string]string{
+					models.ProjectSchedulerHost: host,
+					models.ProjectSchedulerAuth: "admin:admin",
+				},
+				Secret: []models.ProjectSecretItem{
+					{
+						Name:  models.ProjectSchedulerAuth,
+						Value: "admin:admin",
+					},
+				},
+			}, &params, sch)
+
+			assert.NotNil(t, err)
+			assert.Nil(t, runStatus)
 		})
 		t.Run("should return job runs when LastRunOnly is true", func(t *testing.T) {
 			// create a new reader with JSON
@@ -712,37 +756,7 @@ func TestAirflow2(t *testing.T) {
 						Value: "admin:admin",
 					},
 				},
-			}, &params)
-
-			assert.Nil(t, err)
-			assert.Len(t, runStatus, 2)
-		})
-		t.Run("should return job runs when IncludeManualRun is true", func(t *testing.T) {
-			// create a new reader with JSON
-			r := ioutil.NopCloser(bytes.NewReader(resp))
-			client := &MockHTTPClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       r,
-					}, nil
-				},
-			}
-			params.IncludeManualRun = true
-			air := airflow2.NewScheduler(nil, client, nil)
-			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{
-				Name: "test-proj",
-				Config: map[string]string{
-					models.ProjectSchedulerHost: host,
-					models.ProjectSchedulerAuth: "admin:admin",
-				},
-				Secret: []models.ProjectSecretItem{
-					{
-						Name:  models.ProjectSchedulerAuth,
-						Value: "admin:admin",
-					},
-				},
-			}, &params)
+			}, &params, nil)
 
 			assert.Nil(t, err)
 			assert.Len(t, runStatus, 2)
@@ -771,7 +785,7 @@ func TestAirflow2(t *testing.T) {
 						Value: "admin:admin",
 					},
 				},
-			}, &params)
+			}, &params, sch)
 
 			assert.NotNil(t, err)
 			assert.Len(t, runStatus, 0)
@@ -801,7 +815,7 @@ func TestAirflow2(t *testing.T) {
 						Value: "admin:admin",
 					},
 				},
-			}, &params)
+			}, &params, sch)
 
 			assert.NotNil(t, err)
 			assert.Len(t, runStatus, 0)
@@ -820,7 +834,7 @@ func TestAirflow2(t *testing.T) {
 						Value: "admin:admin",
 					},
 				},
-			}, &params)
+			}, &params, sch)
 
 			assert.NotNil(t, err)
 			assert.Len(t, runStatus, 0)
@@ -828,7 +842,7 @@ func TestAirflow2(t *testing.T) {
 		t.Run("should fail if host is not configured", func(t *testing.T) {
 			client := &http.Client{}
 			air := airflow2.NewScheduler(nil, client, nil)
-			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params)
+			runStatus, err := air.GetJobRuns(ctx, models.ProjectSpec{}, &params, sch)
 			assert.NotNil(t, err)
 			assert.Len(t, runStatus, 0)
 		})
@@ -839,7 +853,7 @@ func TestAirflow2(t *testing.T) {
 				Config: map[string]string{
 					models.ProjectSchedulerHost: host,
 				},
-			}, &params)
+			}, &params, sch)
 			assert.NotNil(t, err)
 		})
 	})

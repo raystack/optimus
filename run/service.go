@@ -87,40 +87,32 @@ func (s *Service) GetScheduledRun(ctx context.Context, namespace models.Namespac
 func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
 	var jobRuns []models.JobRun
 	if jobQuery.OnlyLastRun {
-		return s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery)
+		return s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, nil)
 	}
 	//validate job query
 	err := validateJobQuery(jobQuery, jobSpec)
 	if err != nil {
 		return jobRuns, err
 	}
-	//check for manual runs
-	jobInterval := jobSpec.Schedule.Interval
-	var expectedRuns []models.JobRun
-	if jobInterval != "" {
-		sch, err := cron.ParseCronSchedule(jobInterval)
-		if err != nil {
-			return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
-		}
-		//modify job query
-		jobQuery = modifyDateRange(jobQuery, jobSpec, sch)
-		//get expected runs
-		expectedRuns = getExpectedRun(sch, jobQuery.StartDate, jobQuery.EndDate)
-	} else {
-		jobQuery.IncludeManualRun = true
+
+	sch, err := cron.ParseCronSchedule(jobSpec.Schedule.Interval)
+	if err != nil {
+		return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
 	}
+	//get expected runs StartDate and EndDate inclusive
+	expectedRuns := getExpectedRun(sch, jobQuery.StartDate, jobQuery.EndDate)
+
 	//call to airflow for get runs
-	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery)
+	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, sch)
 	if err != nil {
 		return jobRuns, fmt.Errorf("unable to get job runs from airflow %w", err)
 	}
 	//mergeRuns
-	var totalRuns []models.JobRun
-	if len(expectedRuns) > 0 {
-		totalRuns = mergeRuns(expectedRuns, actualRuns)
-	}
+	totalRuns := mergeRuns(expectedRuns, actualRuns)
+
 	//filterRuns
 	result := filterRuns(totalRuns, createFilterSet(jobQuery.Filter))
+
 	return result, nil
 }
 
@@ -224,31 +216,15 @@ func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
 		return errors.New("invalid date range")
 	}
-	return nil
-}
-
-func modifyDateRange(jobQuery *models.JobQuery, jobSpec models.JobSpec, sch *cron.ScheduleSpec) *models.JobQuery {
-	jobStartDate := jobSpec.Schedule.StartDate
-	givenStartDate := jobQuery.StartDate
-	givenEndDate := jobQuery.EndDate
-
-	duration := sch.Interval(jobStartDate)
-	jobQuery.StartDate = sch.Next(givenStartDate.Add(-duration))
-	jobQuery.EndDate = sch.Next(givenEndDate.Add(-duration))
-
-	modifiedJobQuery := &models.JobQuery{
-		Name:        jobQuery.Name,
-		StartDate:   jobQuery.StartDate,
-		EndDate:     jobQuery.EndDate,
-		Filter:      jobQuery.Filter,
-		OnlyLastRun: false,
+	if jobSpec.Schedule.Interval == "" {
+		return errors.New("job interval not found at DB")
 	}
-	return modifiedJobQuery
+	return nil
 }
 
 func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
 	var jobRuns []models.JobRun
-	start := startTime
+	start := spec.Next(startTime.Add(-time.Second * 1))
 	end := endTime
 	exit := spec.Next(end)
 	for !start.Equal(exit) {

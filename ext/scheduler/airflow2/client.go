@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,11 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
+
 	"github.com/odpf/optimus/models"
 )
 
 const (
-	Hundred = 100
+	pageLimit = 99999
 )
 
 type airflowRequest struct {
@@ -114,9 +117,13 @@ func (ac airflowClient) buildEndPoint(host string, URL string, pathParam string)
 	} else {
 		u.Path = "/" + URL
 	}
+	if URL == dagStatusURL {
+		params := url.Values{}
+		params.Add("limit", "99999")
+		u.RawQuery = params.Encode()
+	}
 	return u.String()
 }
-
 func toJobStatus(list DagRunListResponse) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	for _, status := range list.DagRuns {
@@ -140,37 +147,36 @@ func getDagRunRequest(param *models.JobQuery) DagRunRequest {
 	return DagRunRequest{
 		OrderBy:          "execution_date",
 		PageOffset:       0,
-		PageLimit:        Hundred,
+		PageLimit:        pageLimit,
 		DagIds:           []string{param.Name},
 		ExecutionDateGte: param.StartDate.Format(airflowDateFormat),
 		ExecutionDateLte: param.EndDate.Format(airflowDateFormat),
 	}
 }
 
-func getJobRuns(res DagRunListResponse) []models.JobRun {
+func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRunList []models.JobRun
+	if res.TotalEntries > len(res.DagRuns) {
+		return jobRunList, errors.New("total number of entries exceed page limit")
+	}
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger {
-			jobRun := models.JobRun{
-				Status:      models.JobRunState(dag.State),
-				ScheduledAt: dag.ExecutionDate,
-				ExecutedAt:  dag.StartDate,
+			var jobRun models.JobRun
+			if spec != nil {
+				//schedule run
+				jobRun = models.JobRun{
+					Status:      models.JobRunState(dag.State),
+					ScheduledAt: spec.Next(dag.ExecutionDate),
+				}
+			} else {
+				//only for last run
+				jobRun = models.JobRun{
+					Status:      models.JobRunState(dag.State),
+					ScheduledAt: dag.ExecutionDate,
+				}
 			}
 			jobRunList = append(jobRunList, jobRun)
 		}
 	}
-	return jobRunList
-}
-
-func getJobRunsWIthManualRuns(res DagRunListResponse) []models.JobRun {
-	var jobRunList []models.JobRun
-	for _, dag := range res.DagRuns {
-		jobRun := models.JobRun{
-			Status:      models.JobRunState(dag.State),
-			ScheduledAt: dag.ExecutionDate,
-			ExecutedAt:  dag.StartDate,
-		}
-		jobRunList = append(jobRunList, jobRun)
-	}
-	return jobRunList
+	return jobRunList, nil
 }

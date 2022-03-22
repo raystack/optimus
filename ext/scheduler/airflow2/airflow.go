@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
 
@@ -284,9 +286,13 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	return jobStatus, nil
 }
 
-func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
+func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRuns []models.JobRun
 	var list DagRunListResponse
+	if spec != nil {
+		paramWithExecDate := covertToExecDate(param, spec)
+		param = paramWithExecDate
+	}
 	reqBody, err := json.Marshal(getDagRunRequest(param))
 	if err != nil {
 		return jobRuns, err
@@ -303,12 +309,27 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 	if err := json.Unmarshal(resp, &list); err != nil {
 		return jobRuns, fmt.Errorf("json error: %s: %w", string(resp), err)
 	}
-	if param.IncludeManualRun {
-		return getJobRunsWIthManualRuns(list), nil
-	}
-	return getJobRuns(list), nil
+	//throw an error if the pagination limit exceed total entries
+	return getJobRuns(list, spec)
 }
 
+func covertToExecDate(jobQuery *models.JobQuery, sch *cron.ScheduleSpec) *models.JobQuery {
+	givenStartDate := jobQuery.StartDate
+	givenEndDate := jobQuery.EndDate
+
+	duration := sch.Interval(givenStartDate)
+	jobQuery.StartDate = givenStartDate.Add(-duration)
+	jobQuery.EndDate = givenEndDate.Add(-duration)
+
+	modifiedJobQuery := &models.JobQuery{
+		Name:        jobQuery.Name,
+		StartDate:   jobQuery.StartDate,
+		EndDate:     jobQuery.EndDate,
+		Filter:      jobQuery.Filter,
+		OnlyLastRun: false,
+	}
+	return modifiedJobQuery
+}
 func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return

@@ -405,10 +405,9 @@ type JobSpecResourceConfig struct {
 
 // JobQuery  represents the query to get run status from scheduler
 type JobQuery struct {
-	Name             string
-	StartDate        time.Time
-	EndDate          time.Time
-	Filter           []string
-	OnlyLastRun      bool
-	IncludeManualRun bool
+	Name        string
+	StartDate   time.Time
+	EndDate     time.Time
+	Filter      []string
+	OnlyLastRun bool
 }

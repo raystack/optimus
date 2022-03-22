@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
 
@@ -320,7 +322,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	return requestedJobStatus, nil
 }
 
-func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery) ([]models.JobRun, error) {
+func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	return []models.JobRun{}, nil
 }
 
