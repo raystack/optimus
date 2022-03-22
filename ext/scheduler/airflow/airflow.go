@@ -96,19 +96,19 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 				if err != nil {
 					return nil, err
 				}
-				s.notifyProgress(progressObserver, &models.EventJobSpecCompiled{
+				s.notifyProgress(progressObserver, &models.ProgressJobSpecCompiled{
 					Name: compiledJob.Name,
 				})
 
 				blobKey := airflow2.PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
 				if err := bucket.WriteAll(ctx, blobKey, compiledJob.Contents, nil); err != nil {
-					s.notifyProgress(progressObserver, &models.EventJobUpload{
+					s.notifyProgress(progressObserver, &models.ProgressJobUpload{
 						Name: compiledJob.Name,
 						Err:  err,
 					})
 					return nil, err
 				}
-				s.notifyProgress(progressObserver, &models.EventJobUpload{
+				s.notifyProgress(progressObserver, &models.ProgressJobUpload{
 					Name: compiledJob.Name,
 					Err:  nil,
 				})
@@ -141,7 +141,7 @@ func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSp
 				return err
 			}
 		}
-		s.notifyProgress(progressObserver, &models.EventJobRemoteDelete{
+		s.notifyProgress(progressObserver, &models.ProgressJobRemoteDelete{
 			Name: jobName,
 		})
 	}

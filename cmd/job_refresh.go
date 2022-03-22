@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/odpf/optimus/models"
+
 	"github.com/odpf/optimus/config"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -97,13 +99,15 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Refresh process took too long, timing out"))
 		}
-		return errors.Wrapf(err, "Refresh request failed")
+		return fmt.Errorf("refresh request failed: %w", err)
 	}
 
-	ackCounter := 0
-	failedCounter := 0
-
 	var refreshErrors []string
+	refreshCounter, refreshSuccessCounter, refreshFailedCounter := 0, 0, 0
+
+	var deployErrors []string
+	deployCounter, deploySuccessCounter, deployFailedCounter := 0, 0, 0
+
 	var streamError error
 	for {
 		resp, err := respStream.Recv()
@@ -114,17 +118,37 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			streamError = err
 			break
 		}
-		if resp.Ack {
-			// ack for the job spec
+
+		switch models.ProgressType(resp.Type) {
+		case models.ProgressTypeJobUpload:
+			deployCounter++
 			if !resp.GetSuccess() {
-				failedCounter++
-				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to refresh: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
+				deployFailedCounter++
+				if verbose {
+					l.Info(coloredError(fmt.Sprintf("%d. %s failed to be deployed: %s", deployCounter, resp.GetJobName(), resp.GetMessage())))
+				}
+				deployErrors = append(deployErrors, fmt.Sprintf("failed to deploy: %s, %s", resp.GetJobName(), resp.GetMessage()))
+			} else {
+				deploySuccessCounter++
+				if verbose {
+					l.Info(fmt.Sprintf("%d. %s successfully deployed", deployCounter, resp.GetJobName()))
+				}
 			}
-			ackCounter++
-			if verbose {
-				l.Info(fmt.Sprintf("%d. %s successfully refreshed", ackCounter, resp.GetJobName()))
+		case models.ProgressTypeJobDependencyResolution:
+			refreshCounter++
+			if !resp.GetSuccess() {
+				refreshFailedCounter++
+				if verbose {
+					l.Info(coloredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", resp.GetJobName(), resp.GetMessage())))
+				}
+				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to refresh: %s, %s", resp.GetJobName(), resp.GetMessage()))
+			} else {
+				refreshSuccessCounter++
+				if verbose {
+					l.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", resp.GetJobName()))
+				}
 			}
-		} else {
+		default:
 			if verbose {
 				// ordinary progress event
 				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
@@ -133,15 +157,22 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 	}
 
 	if len(refreshErrors) > 0 {
-		if verbose {
-			for i, reqErr := range refreshErrors {
-				l.Error(fmt.Sprintf("%d. %s", i+1, reqErr))
-			}
+		l.Error(coloredError(fmt.Sprintf("Refreshed %d/%d jobs.", refreshSuccessCounter, refreshSuccessCounter+refreshFailedCounter)))
+		for _, reqErr := range refreshErrors {
+			l.Error(coloredError(fmt.Sprintf("%s", reqErr)))
 		}
-	} else if streamError != nil && failedCounter == 0 {
-		// notify warnings if any.
-		l.Warn(coloredNotice("request ended with warning"), "err", streamError)
-		return nil
+	} else {
+		l.Info(coloredSuccess("Refreshed %d jobs.", refreshSuccessCounter))
 	}
+
+	if len(deployErrors) > 0 {
+		l.Error(coloredError("Deployed %d/%d jobs.", deploySuccessCounter, deploySuccessCounter+deployFailedCounter))
+		for _, reqErr := range deployErrors {
+			l.Error(coloredError(fmt.Sprintf("%s", reqErr)))
+		}
+	} else {
+		l.Info(coloredSuccess("Deployed %d jobs.", deploySuccessCounter))
+	}
+
 	return streamError
 }

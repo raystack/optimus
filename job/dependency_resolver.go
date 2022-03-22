@@ -206,7 +206,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 		if len(projectJobPairs) == 0 {
 			// should not fail for unknown dependency, its okay to not have a upstream job
 			// registered in optimus project and still refer to them in our job
-			r.notifyProgress(observer, &EventJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
+			r.notifyProgress(observer, &models.ProgressJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
 			continue
 		}
 		dep := extractDependency(projectJobPairs, projectSpec)

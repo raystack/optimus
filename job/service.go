@@ -179,7 +179,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 						},
 					}); err != nil {
 						if obs != nil {
-							obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
+							obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
 						}
 						return nil, fmt.Errorf("%s %s: %w", errDependencyResolution.Error(), currentSpec.Name, err)
 					}
@@ -188,13 +188,13 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 				// check compilation
 				if err := srv.batchScheduler.VerifyJob(ctx, namespace, currentSpec); err != nil {
 					if obs != nil {
-						obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
+						obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
 					}
 					return nil, fmt.Errorf("failed to compile %s: %w", currentSpec.Name, err)
 				}
 
 				if obs != nil {
-					obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
+					obs.Notify(&models.ProgressJobCheckSuccess{Name: currentSpec.Name})
 				}
 				return nil, nil
 			}
@@ -290,13 +290,13 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 			return err
 		}
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyResolve{})
 
 	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
 		return err
 	}
-	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 
 	jobSpecs, err = srv.filterJobSpecForNamespace(ctx, projectJobSpecRepo, jobSpecs, namespace)
 	if err != nil {
@@ -358,7 +358,7 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
 			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
 		}
-		srv.notifyProgress(progressObserver, &EventSavedJobDelete{jobName})
+		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobName})
 	}
 	return nil
 }
@@ -387,7 +387,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
 
 	// compile assets first
 	for i, jSpec := range jobSpecs {
@@ -656,85 +656,6 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	}
 }
 
-type (
-	// EventJobSpecFetch represents a specification being
-	// read from the storage
-	EventJobSpecFetch struct{}
-
-	// EventJobSpecDependencyResolve represents dependencies are being
-	// successfully resolved
-	EventJobSpecDependencyResolve struct{}
-
-	// EventJobSpecUnknownDependencyUsed represents a job spec has used
-	// dependencies which are unknown/unresolved
-	EventJobSpecUnknownDependencyUsed struct {
-		Job        string
-		Dependency string
-	}
-
-	// EventJobSpecDependencyFetch represents dependencies are being
-	// read from the storage
-	EventJobSpecDependencyFetch struct{}
-
-	// EventSavedJobDelete signifies that a raw
-	// job from a repository is being deleted
-	EventSavedJobDelete struct{ Name string }
-
-	// EventJobPriorityWeightAssign signifies that a
-	// job is being assigned a priority weight
-	EventJobPriorityWeightAssign struct{}
-	// EventJobPriorityWeightAssignmentFailed signifies that a
-	// job is failed during priority weight assignment
-	EventJobPriorityWeightAssignmentFailed struct {
-		Err error
-	}
-
-	// job check events
-	EventJobCheckFailed struct {
-		Name   string
-		Reason string
-	}
-	EventJobCheckSuccess struct {
-		Name string
-	}
-)
-
-func (e *EventJobSpecFetch) String() string {
-	return "fetching job specs"
-}
-
-func (e *EventSavedJobDelete) String() string {
-	return fmt.Sprintf("deleting: %s", e.Name)
-}
-
-func (e *EventJobPriorityWeightAssign) String() string {
-	return "assigned priority weights"
-}
-
-func (e *EventJobPriorityWeightAssignmentFailed) String() string {
-	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
-}
-
-func (e *EventJobSpecDependencyResolve) String() string {
-	return "dependencies resolved"
-}
-
-func (e *EventJobSpecUnknownDependencyUsed) String() string {
-	return fmt.Sprintf("could not find registered destination '%s' during compiling dependencies for the provided job %s", e.Dependency, e.Job)
-}
-
-func (e *EventJobSpecDependencyFetch) String() string {
-	return fmt.Sprintf("fetching job dependencies")
-}
-
-func (e *EventJobCheckFailed) String() string {
-	return fmt.Sprintf("check for job failed: %s, reason: %s", e.Name, e.Reason)
-}
-
-func (e *EventJobCheckSuccess) String() string {
-	return fmt.Sprintf("check for job passed: %s", e.Name)
-}
-
 func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, jobSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
 	for _, childSpec := range jobSpecMap {
 		childNode := findOrCreateDAGNode(dagTree, childSpec)
@@ -788,14 +709,14 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 			return err
 		}
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyResolve{})
 
 	//Fetch dependency and enrich
 	jobDependencies, err := srv.dependencyResolver.FetchJobDependencies(ctx, projectSpec)
 	if err != nil {
 		return fmt.Errorf("failed to fetch job dependencies: %s", err)
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecDependencyFetch{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyFetch{})
 
 	//Get all job specs and enrich with dependencies
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
@@ -809,7 +730,7 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 	if err != nil {
 		return err
 	}
-	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 
 	//Group per namespace
 	namespaceJobSpecMap, err := prepareNamespaceJobsMap(ctx, projectJobSpecRepo, jobSpecs)
@@ -841,7 +762,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 	if err != nil {
 		return err
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
 
 	// compile assets before resolving in parallel
 	for i, jSpec := range jobSpecs {
@@ -857,9 +778,9 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 			return func() (interface{}, error) {
 				err := srv.dependencyResolver.ResolveAndPersist(ctx, projectSpec, currentSpec, progressObserver)
 				if err != nil {
-					return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+					return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 				}
-				return nil, nil
+				return currentSpec.Name, nil
 			}
 		}(jobSpec))
 	}
@@ -869,8 +790,10 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 		if state.Err != nil {
 			err = multierror.Append(err, state.Err)
 			failure++
+			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFailed{Job: fmt.Sprintf("%v", state.Val)})
 		} else {
 			succeed++
+			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionSuccess{Job: fmt.Sprintf("%v", state.Val)})
 		}
 	}
 	resolveDependencySuccessGauge.Set(float64(succeed))

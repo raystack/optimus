@@ -123,7 +123,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 					// if its intra dependency, ideally this should not happen but instead of failing
 					// its better to simply soft fail by notifying about this action
 					// this will cause us to treat it as a dummy job with a unique root
-					notify(progressObserver, &EventJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)})
+					notify(progressObserver, &models.ProgressJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)})
 				}
 
 				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't

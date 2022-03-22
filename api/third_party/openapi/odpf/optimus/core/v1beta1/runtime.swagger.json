@@ -2306,6 +2306,10 @@
         },
         "jobName": {
           "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "title": "response type differentiate events"
         }
       }
     },
