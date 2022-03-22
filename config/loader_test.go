@@ -184,10 +184,6 @@ func (s *ConfigTestSuite) TestLoadProjectConfig() {
 	s.Assert().Equal(s.expectedProjectConfig, conf)
 }
 
-func (s *ConfigTestSuite) TestMustLoadProjectConfig() {
-	// TODO: implement this
-}
-
 func (s *ConfigTestSuite) TestLoadServerConfig() {
 	path := os.TempDir()
 	fpath := filepath.Join(path, filename+"."+fileExtension)
@@ -198,10 +194,6 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 	s.Assert().NoError(err)
 	s.Assert().NotNil(conf)
 	s.Assert().Equal(s.expectedServerConfig, conf)
-}
-
-func (s *ConfigTestSuite) TestMustLoadServerConfig() {
-	// TODO: implement this
 }
 
 func (s *ConfigTestSuite) initExpectedProjectConfig() {
