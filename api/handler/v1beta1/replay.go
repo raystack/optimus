@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
-	"time"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,12 +18,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
 type ReplayServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
 	namespaceService service.NamespaceService
 	adapter          ProtoAdapter
-	projectService service.ProjectService
+	projectService   service.ProjectService
 	pb.UnimplementedReplayServiceServer
 }
 
@@ -186,6 +188,6 @@ func NewReplayServiceServer(l log.Logger, jobService models.JobService, namespac
 		jobSvc:           jobService,
 		adapter:          adapter,
 		namespaceService: namespaceService,
-		projectService: projectService,
+		projectService:   projectService,
 	}
 }

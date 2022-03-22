@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
 
@@ -14,6 +15,7 @@ type NamespaceServiceServer struct {
 	namespaceService service.NamespaceService
 	pb.UnimplementedNamespaceServiceServer
 }
+
 func (sv *NamespaceServiceServer) RegisterProjectNamespace(ctx context.Context, req *pb.RegisterProjectNamespaceRequest) (*pb.RegisterProjectNamespaceResponse, error) {
 	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
 	err := sv.namespaceService.Save(ctx, req.GetProjectName(), namespaceSpec)

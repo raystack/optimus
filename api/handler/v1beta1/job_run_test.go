@@ -23,9 +23,7 @@ import (
 func TestJobRunServiceServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
-
 	t.Run("RegisterInstance", func(t *testing.T) {
-
 		projectName := "a-data-project"
 		jobName := "a-data-job"
 		taskName := "a-data-task"
@@ -240,7 +238,6 @@ func TestJobRunServiceServer(t *testing.T) {
 
 	t.Run("GetJobTask", func(t *testing.T) {
 		t.Run("should read a job spec task details", func(t *testing.T) {
-
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
 			taskName := "a-data-task"
@@ -434,7 +431,6 @@ func TestJobRunServiceServer(t *testing.T) {
 
 	t.Run("JobStatus", func(t *testing.T) {
 		t.Run("should return all job status via scheduler if valid inputs", func(t *testing.T) {
-
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
 				Name: "a-data-project",
@@ -507,7 +503,6 @@ func TestJobRunServiceServer(t *testing.T) {
 
 	t.Run("GetWindow", func(t *testing.T) {
 		t.Run("should return the correct window date range", func(t *testing.T) {
-
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				nil, nil, nil,
@@ -515,6 +510,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 			)
+
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 			scheduledAtTimestamp := timestamppb.New(scheduledAt)
 			req := pb.GetWindowRequest{
@@ -529,9 +525,8 @@ func TestJobRunServiceServer(t *testing.T) {
 			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
 			assert.Equal(t, "2020-11-12T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
 		})
-		t.Run("should return error if any of the required fields in request is missing", func(t *testing.T) {
-			//Version := "1.0.1"
 
+		t.Run("should return error if any of the required fields in request is missing", func(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				nil, nil,

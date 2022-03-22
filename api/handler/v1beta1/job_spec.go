@@ -3,12 +3,13 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"sync"
-	"time"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
@@ -23,10 +24,11 @@ var (
 		Help: "Number of jobs requested for deployment by runtime",
 	})
 )
+
 //JobSpecServiceServer
 type JobSpecServiceServer struct {
 	l                log.Logger
-	jobSvc 			 models.JobService
+	jobSvc           models.JobService
 	adapter          ProtoAdapter
 	namespaceService service.NamespaceService
 	progressObserver progress.Observer
@@ -225,7 +227,7 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
 	return &JobSpecServiceServer{
 		l:                l,
-		jobSvc: 		  jobService,
+		jobSvc:           jobService,
 		adapter:          adapter,
 		namespaceService: namespaceService,
 		progressObserver: progressObserver,

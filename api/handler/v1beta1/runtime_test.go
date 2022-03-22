@@ -2,6 +2,8 @@ package v1beta1_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -10,7 +12,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
-	"testing"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {

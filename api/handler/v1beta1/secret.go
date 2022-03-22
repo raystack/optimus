@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -14,8 +15,8 @@ import (
 )
 
 type SecretServiceServer struct {
-	secretService    service.SecretService
-	l                log.Logger
+	secretService service.SecretService
+	l             log.Logger
 	pb.UnimplementedSecretServiceServer
 }
 
@@ -93,7 +94,7 @@ func getDecodedSecret(encodedString string) (string, error) {
 
 func NewSecretServiceServer(l log.Logger, secretService service.SecretService) *SecretServiceServer {
 	return &SecretServiceServer{
-		l:                l,
-		secretService:    secretService,
+		l:             l,
+		secretService: secretService,
 	}
 }

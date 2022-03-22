@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
@@ -20,8 +21,8 @@ import (
 //JobSpecServiceServer
 type BackupServiceServer struct {
 	l                log.Logger
-	jobSvc 			 models.JobService
-	resourceSvc 	 models.DatastoreService
+	jobSvc           models.JobService
+	resourceSvc      models.DatastoreService
 	namespaceService service.NamespaceService
 	projectService   service.ProjectService
 	pb.UnimplementedBackupServiceServer
@@ -195,11 +196,11 @@ func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupR
 }
 
 //BackupServiceServer
-func NewBackupServiceServer(l log.Logger, jobService models.JobService,resourceSvc models.DatastoreService, namespaceService service.NamespaceService, progressObserver progress.Observer,projectService service.ProjectService) *BackupServiceServer {
+func NewBackupServiceServer(l log.Logger, jobService models.JobService, resourceSvc models.DatastoreService, namespaceService service.NamespaceService, progressObserver progress.Observer, projectService service.ProjectService) *BackupServiceServer {
 	return &BackupServiceServer{
 		l:                l,
-		jobSvc: 		  jobService,
-		resourceSvc: 	  resourceSvc,
+		jobSvc:           jobService,
+		resourceSvc:      resourceSvc,
 		namespaceService: namespaceService,
 		projectService:   projectService,
 	}

@@ -3,14 +3,15 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
 )
 
 type ProjectServiceServer struct {
-	l                log.Logger
-	adapter          ProtoAdapter
+	l              log.Logger
+	adapter        ProtoAdapter
 	projectService service.ProjectService
 	pb.UnimplementedProjectServiceServer
 }
@@ -47,11 +48,10 @@ func (sv *ProjectServiceServer) ListProjects(ctx context.Context, _ *pb.ListProj
 	}, nil
 }
 
-func NewProjectServiceServer(l log.Logger ,adapter ProtoAdapter, projectService service.ProjectService) *ProjectServiceServer {
+func NewProjectServiceServer(l log.Logger, adapter ProtoAdapter, projectService service.ProjectService) *ProjectServiceServer {
 	return &ProjectServiceServer{
-		l: 				  l,
-		adapter:          adapter,
+		l:              l,
+		adapter:        adapter,
 		projectService: projectService,
 	}
 }
-

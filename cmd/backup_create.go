@@ -184,7 +184,6 @@ func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupD
 
 	backup := pb.NewBackupServiceClient(conn)
 
-
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
 	backupDryRunResponse, err := backup.BackupDryRun(requestTimeoutCtx, backupRequest)

@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
@@ -23,7 +24,6 @@ type JobRunServiceServer struct {
 	l                log.Logger
 	pb.UnimplementedJobRunServiceServer
 }
-
 
 func (sv *JobRunServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
@@ -228,4 +228,3 @@ func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectServi
 		projectService:   projectService,
 	}
 }
-

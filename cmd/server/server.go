@@ -511,7 +511,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		namespaceService,
 		progressObs))
 	//job run service
-	pb.RegisterJobRunServiceServer(grpcServer,v1handler.NewJobRunServiceServer(l,
+	pb.RegisterJobRunServiceServer(grpcServer, v1handler.NewJobRunServiceServer(l,
 		jobService,
 		projectService,
 		namespaceService,
