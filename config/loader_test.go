@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -172,7 +173,15 @@ func (s *ConfigTestSuite) TestInternal_LoadServerConfigFs() {
 }
 
 func (s *ConfigTestSuite) TestLoadProjectConfig() {
-	// TODO: implement this
+	path := os.TempDir()
+	fpath := filepath.Join(path, filename+"."+fileExtension)
+	defer os.Remove(fpath)
+	os.WriteFile(fpath, []byte(projectConfig), 0400)
+
+	conf, err := LoadProjectConfig(fpath)
+	s.Assert().NoError(err)
+	s.Assert().NotNil(conf)
+	s.Assert().Equal(s.expectedProjectConfig, conf)
 }
 
 func (s *ConfigTestSuite) TestMustLoadProjectConfig() {
@@ -180,7 +189,15 @@ func (s *ConfigTestSuite) TestMustLoadProjectConfig() {
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
-	// TODO: implement this
+	path := os.TempDir()
+	fpath := filepath.Join(path, filename+"."+fileExtension)
+	defer os.Remove(fpath)
+	os.WriteFile(fpath, []byte(serverConfig), 0400)
+
+	conf, err := LoadServerConfig(fpath)
+	s.Assert().NoError(err)
+	s.Assert().NotNil(conf)
+	s.Assert().Equal(s.expectedServerConfig, conf)
 }
 
 func (s *ConfigTestSuite) TestMustLoadServerConfig() {
