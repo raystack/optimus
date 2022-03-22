@@ -41,8 +41,8 @@ var (
 )
 
 const (
-	GRPCMaxClientSendSize      = 45 << 20 // 45MB
-	GRPCMaxClientRecvSize      = 45 << 20 // 45MB
+	GRPCMaxClientSendSize      = 64 << 20 // 64MB
+	GRPCMaxClientRecvSize      = 64 << 20 // 64MB
 	GRPCMaxRetry          uint = 3
 
 	OptimusDialTimeout = time.Second * 2
