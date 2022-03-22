@@ -2,19 +2,148 @@ package v1beta1_test
 
 import (
 	"context"
+	"errors"
+	"io"
 	"testing"
 
+	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-
-	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
+func TestRuntimeServiceServerResourceTestSuite(t *testing.T) {
+	s := new(RuntimeServiceServerTestSuite)
+	suite.Run(t, s)
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Success_NoResourceSpec() {
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().NoError(err)
+	stream.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+	s.resourceService.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Success_TwoResourceSpec() {
+	resourceSpecs := []*pb.ResourceSpecification{}
+	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-1"})
+	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-2"})
+	s.resourceReq.Resources = resourceSpecs
+	adaptedResources := []models.ResourceSpec{}
+	adaptedResources = append(adaptedResources, models.ResourceSpec{Name: "resource-1"})
+	adaptedResources = append(adaptedResources, models.ResourceSpec{Name: "resource-2"})
+
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	for i := range resourceSpecs {
+		s.adapter.On("FromResourceProto", resourceSpecs[i], s.resourceReq.DatastoreName).Return(adaptedResources[i], nil).Once()
+	}
+	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().NoError(err)
+	stream.AssertExpectations(s.T())
+	s.adapter.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+	s.resourceService.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_StreamRecvError() {
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Recv").Return(nil, errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_NamespaceServiceGetError() {
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_AdapterFromResourceProtoError() {
+	resourceSpecs := []*pb.ResourceSpecification{}
+	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-1"})
+	s.resourceReq.Resources = resourceSpecs
+
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.adapter.On("FromResourceProto", resourceSpecs[0], s.resourceReq.DatastoreName).Return(models.ResourceSpec{}, errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+	s.adapter.AssertExpectations(s.T())
+}
+
+func (s *RuntimeServiceServerTestSuite) TestDeployResourceSpecification_Fail_ResourceServiceUpdateResourceError() {
+	stream := new(mock.DeployResourceSpecificationServer)
+	stream.On("Context").Return(s.ctx)
+	stream.On("Recv").Return(s.resourceReq, nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
+
+	runtimeServiceServer := s.newRuntimeServiceServer()
+	err := runtimeServiceServer.DeployResourceSpecification(stream)
+
+	s.Assert().Error(err)
+	stream.AssertExpectations(s.T())
+	s.namespaceService.AssertExpectations(s.T())
+	s.resourceService.AssertExpectations(s.T())
+}
+
+// TODO: refactor to test suite
 func TestResourcesOnServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()

@@ -58,7 +58,7 @@ Use base64 flag if the value has been encoded.
 		`,
 	}
 	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
-	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", conf.Namespace.Name, "Namespace of deployee")
+	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of deployee")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
 	secretCmd.Flags().StringVarP(&filePath, "file", "f", filePath, "Provide file path to create secret from file instead")
@@ -111,13 +111,11 @@ Use base64 flag if the value has been encoded.
 						NamespaceName: namespaceName,
 					}
 					return updateSecret(l, conf.Host, updateSecretRequest)
-				} else {
-					l.Info(coloredNotice("Aborting..."))
-					return nil
 				}
-			} else {
-				return fmt.Errorf("%s: request failed for creating secret %s", err, secretName)
+				l.Info(coloredNotice("Aborting..."))
+				return nil
 			}
+			return fmt.Errorf("%s: request failed for creating secret %s", err, secretName)
 		}
 		return nil
 	}
@@ -145,7 +143,7 @@ func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 }
 
 func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
-	var projectName string
+	var projectName, namespaceName string
 
 	cmd := &cli.Command{
 		Use:     "delete",
@@ -154,6 +152,7 @@ func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		Long:    `This operation deletes a secret registered with optimus.`,
 	}
 	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace name of optimus managed repository")
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
 		secretName, err := getSecretName(args)
@@ -164,7 +163,7 @@ func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		deleteSecretRequest := &pb.DeleteSecretRequest{
 			ProjectName:   projectName,
 			SecretName:    secretName,
-			NamespaceName: conf.Namespace.Name,
+			NamespaceName: namespaceName,
 		}
 		return deleteSecret(l, conf.Host, deleteSecretRequest)
 	}

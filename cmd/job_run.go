@@ -10,7 +10,9 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -19,29 +21,26 @@ const (
 	runJobTimeout = time.Minute * 1
 )
 
-func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
-	conf config.Optimus) *cli.Command {
-	var (
-		projectName = conf.Project.Name
-		namespace   = conf.Namespace.Name
-	)
+func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "run",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
 		Args:    cli.MinimumNArgs(1),
-		Example: "optimus job run <job_name> [--project g-optimus]",
+		Example: "optimus job run <job_name>",
 		Hidden:  true,
-	}
-	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of job that needs to run")
-
-	cmd.RunE = func(c *cli.Command, args []string) error {
-		jobSpec, err := jobSpecRepo.GetByName(args[0])
-		if err != nil {
-			return err
-		}
-
-		return runJobSpecificationRequest(l, projectName, namespace, conf.Host, jobSpec, pluginRepo)
+		RunE: func(c *cli.Command, args []string) error {
+			namespace := askToSelectNamespace(l, conf)
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
+			jobSpec, err := jobSpecRepo.GetByName(args[0])
+			if err != nil {
+				return err
+			}
+			return runJobSpecificationRequest(l, projectName, namespace.Name, host, jobSpec, pluginRepo)
+		},
 	}
 	return cmd
 }

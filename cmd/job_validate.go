@@ -7,12 +7,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/odpf/optimus/config"
-
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -21,40 +22,35 @@ const (
 	validateTimeout = time.Minute * 5
 )
 
-func jobValidateCommand(l log.Logger, pluginRepo models.PluginRepository, jobSpecRepo JobSpecRepository,
-	conf config.Optimus) *cli.Command {
-	var (
-		projectName string
-		namespace   string
-		verbose     bool
-		cmd         = &cli.Command{
-			Use:     "validate",
-			Short:   "Run basic checks on all jobs",
-			Long:    "Check if specifications are valid for deployment",
-			Example: "optimus job validate",
-		}
-	)
+func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
+	var verbose bool
+	cmd := &cli.Command{
+		Use:     "validate",
+		Short:   "Run basic checks on all jobs",
+		Long:    "Check if specifications are valid for deployment",
+		Example: "optimus job validate",
+		RunE: func(c *cli.Command, args []string) error {
+			namespace := askToSelectNamespace(l, conf)
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
+			l.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name))
+			start := time.Now()
+			jobSpecs, err := jobSpecRepo.GetAll()
+			if err != nil {
+				return fmt.Errorf("directory '%s': %v", namespace.Job.Path, err)
+			}
 
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", conf.Namespace.Name, "Namespace of optimus project")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.RunE = func(c *cli.Command, args []string) error {
-		if projectName == "" || namespace == "" {
-			return fmt.Errorf("project and namespace configurations are required")
-		}
-		l.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace))
-		start := time.Now()
-		jobSpecs, err := jobSpecRepo.GetAll()
-		if err != nil {
-			return fmt.Errorf("directory '%s': %v", conf.Namespace.Job.Path, err)
-		}
-
-		if err := validateJobSpecificationRequest(l, projectName, namespace, pluginRepo, jobSpecs, conf.Host, verbose); err != nil {
-			return err
-		}
-		l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
-		return nil
+			if err := validateJobSpecificationRequest(l, projectName, namespace.Name, pluginRepo, jobSpecs, host, verbose); err != nil {
+				return err
+			}
+			l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
+			return nil
+		},
 	}
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
 	return cmd
 }
 
