@@ -6,20 +6,87 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/utils"
-
-	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type RuntimeServiceServerTestSuite struct {
+	suite.Suite
+	version          string
+	ctx              context.Context //nolint:containedctx
+	namespaceService *mock.NamespaceService
+	projectService   *mock.ProjectService
+	secretService    *mock.SecretService
+	runService       *mock.RunService       // TODO: refactor to service package
+	jobService       *mock.JobService       // TODO: refactor to service package
+	resourceService  *mock.DatastoreService // TODO: refactor to service package
+	jobEventService  v1.JobEventService     // TODO: refactor to service package
+	adapter          *mock.ProtoAdapter
+	scheduler        models.SchedulerUnit
+	log              log.Logger
+	progressObserver progress.Observer
+
+	jobReq        *pb.DeployJobSpecificationRequest
+	resourceReq   *pb.DeployResourceSpecificationRequest
+	projectSpec   models.ProjectSpec
+	namespaceSpec models.NamespaceSpec
+}
+
+func (s *RuntimeServiceServerTestSuite) SetupTest() {
+	s.version = "v1.0.0"
+	s.ctx = context.Background()
+	s.namespaceService = new(mock.NamespaceService)
+	s.adapter = new(mock.ProtoAdapter)
+	s.jobService = new(mock.JobService)
+	s.resourceService = new(mock.DatastoreService)
+	s.log = log.NewNoop()
+	// ... etdc
+
+	s.projectSpec = models.ProjectSpec{}
+	s.projectSpec.Name = "project-a"
+	s.projectSpec.ID = uuid.MustParse("26a0d6a0-13c6-4b30-ae6f-29233df70f31")
+
+	s.namespaceSpec = models.NamespaceSpec{}
+	s.namespaceSpec.Name = "ns1"
+	s.namespaceSpec.ID = uuid.MustParse("ceba7919-e07d-48b4-a4ce-141d79a3b59d")
+
+	s.jobReq = &pb.DeployJobSpecificationRequest{}
+	s.jobReq.ProjectName = s.projectSpec.Name
+	s.jobReq.NamespaceName = s.namespaceSpec.Name
+
+	s.resourceReq = &pb.DeployResourceSpecificationRequest{}
+	s.resourceReq.DatastoreName = "datastore-1"
+	s.resourceReq.ProjectName = s.projectSpec.Name
+	s.resourceReq.NamespaceName = s.namespaceSpec.Name
+}
+
+func (s *RuntimeServiceServerTestSuite) newRuntimeServiceServer() *v1.RuntimeServiceServer {
+	return v1.NewRuntimeServiceServer(
+		s.log,
+		s.version,
+		s.jobService,
+		s.jobEventService,
+		s.resourceService,
+		s.projectService,
+		s.namespaceService,
+		s.secretService,
+		s.adapter,
+		s.progressObserver,
+		s.runService,
+		s.scheduler,
+	)
+}
 
 func TestRuntimeServiceServer(t *testing.T) {
 	log := log.NewNoop()

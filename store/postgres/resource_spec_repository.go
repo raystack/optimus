@@ -245,7 +245,7 @@ func (repo *resourceSpecRepository) Save(ctx context.Context, spec models.Resour
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
-		return errors.New(fmt.Sprintf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name))
+		return fmt.Errorf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
 	resource, err := Resource{}.FromSpec(spec)

@@ -43,7 +43,7 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 		return fmt.Errorf("resource is missing required fields")
 	}
 
-	typeController, _ := resourceSpec.Datastore.Types()[resourceSpec.Type]
+	typeController := resourceSpec.Datastore.Types()[resourceSpec.Type]
 	specBytes, err := typeController.Adapter().ToYaml(resourceSpec)
 	if err != nil {
 		return err

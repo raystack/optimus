@@ -186,7 +186,7 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) er
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
-		return errors.New(fmt.Sprintf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name))
+		return fmt.Errorf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
 	resource, err := repo.adapter.FromJobSpec(spec)
@@ -266,9 +266,7 @@ func NewJobSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJo
 func cloneStringMap(source map[string][]string) map[string][]string {
 	mp := map[string][]string{}
 	for k, v := range source {
-		for _, item := range v {
-			mp[k] = append(mp[k], item)
-		}
+		mp[k] = append(mp[k], v...)
 	}
 	return mp
 }
