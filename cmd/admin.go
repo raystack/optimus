@@ -7,18 +7,26 @@ import (
 )
 
 // adminCommand registers internal administration commands
-func adminCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func adminCommand(l log.Logger) *cli.Command {
 	cmd := &cli.Command{
 		Use:    "admin",
 		Short:  "Internal administration commands",
 		Hidden: true,
 	}
-	cmd.AddCommand(adminBuildCommand(l, conf))
+
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadProjectConfig()
+	if err != nil {
+		l.Error(err.Error())
+		return nil
+	}
+
+	cmd.AddCommand(adminBuildCommand(l, *conf))
 	return cmd
 }
 
 // adminBuildCommand builds a run instance
-func adminBuildCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func adminBuildCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "build",
 		Short: "Register a job run and get required assets",

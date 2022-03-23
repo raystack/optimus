@@ -16,7 +16,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+func jobRenderTemplateCommand(l log.Logger, conf config.ProjectConfig, pluginRepo models.PluginRepository) *cli.Command {
 	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "render",

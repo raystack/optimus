@@ -51,7 +51,7 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 	}
 }
 
-func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayCommand(l log.Logger) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "replay",
 		Short: "Re-running jobs in order to update data for older dates/partitions",
@@ -60,8 +60,16 @@ func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(replayCreateCommand(l, conf))
-	cmd.AddCommand(replayStatusCommand(l, conf))
-	cmd.AddCommand(replayListCommand(l, conf))
+
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadProjectConfig()
+	if err != nil {
+		l.Error(err.Error())
+		return nil
+	}
+
+	cmd.AddCommand(replayCreateCommand(l, *conf))
+	cmd.AddCommand(replayStatusCommand(l, *conf))
+	cmd.AddCommand(replayListCommand(l, *conf))
 	return cmd
 }

@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func replayCreateCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayCreateCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false

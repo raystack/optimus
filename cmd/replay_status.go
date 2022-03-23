@@ -14,7 +14,7 @@ import (
 	"github.com/xlab/treeprint"
 )
 
-func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayStatusCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
 	var (
 		projectName string
 	)

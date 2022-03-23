@@ -14,7 +14,7 @@ const (
 	backupTimeout = time.Minute * 15
 )
 
-func backupCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "backup",
 		Short: "Backup a resource and its downstream",
@@ -26,8 +26,16 @@ func backupCommand(l log.Logger, conf config.Optimus, datastoreRepo models.Datas
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(backupCreateCommand(l, conf, datastoreRepo))
-	cmd.AddCommand(backupListCommand(l, conf, datastoreRepo))
-	cmd.AddCommand(backupStatusCommand(l, conf, datastoreRepo))
+
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadProjectConfig()
+	if err != nil {
+		l.Error(err.Error())
+		return nil
+	}
+
+	cmd.AddCommand(backupCreateCommand(l, *conf, datastoreRepo))
+	cmd.AddCommand(backupListCommand(l, *conf, datastoreRepo))
+	cmd.AddCommand(backupStatusCommand(l, *conf, datastoreRepo))
 	return cmd
 }

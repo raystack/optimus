@@ -7,7 +7,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func serveCommand(l log.Logger) *cli.Command {
 	c := &cli.Command{
 		Use:     "serve",
 		Short:   "Starts optimus service",
@@ -15,9 +15,18 @@ func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		Annotations: map[string]string{
 			"group:other": "dev",
 		},
-		RunE: func(c *cli.Command, args []string) error {
-			return server.Initialize(l, conf)
-		},
 	}
+
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadServerConfig()
+	if err != nil {
+		l.Error(err.Error())
+		return nil
+	}
+
+	c.RunE = func(c *cli.Command, args []string) error {
+		return server.Initialize(l, *conf)
+	}
+
 	return c
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -22,7 +23,7 @@ var (
 		`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 )
 
-func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo, datastoreSpecsFs map[string]map[string]afero.Fs) *cli.Command {
+func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
@@ -30,7 +31,25 @@ func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo, datastore
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecsFs, datastoreRepo))
+
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadProjectConfig()
+	if err != nil {
+		l.Error(err.Error())
+		return nil
+	}
+
+	//init local specs
+	datastoreSpecFs := make(map[string]map[string]afero.Fs)
+	for _, namespace := range conf.Namespaces {
+		dtSpec := make(map[string]afero.Fs)
+		for _, dsConfig := range namespace.Datastore {
+			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+		}
+		datastoreSpecFs[namespace.Name] = dtSpec
+	}
+
+	cmd.AddCommand(createResourceSubCommand(l, datastoreSpecFs, datastoreRepo))
 	return cmd
 }
 

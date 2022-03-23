@@ -14,7 +14,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func replayListCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayListCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
 	var (
 		projectName string
 		reCmd       = &cli.Command{

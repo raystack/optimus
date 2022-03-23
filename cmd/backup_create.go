@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupCreateCommand(l log.Logger, conf config.ProjectConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "create",
