@@ -12,7 +12,7 @@ const extensionDirName = ".optimus/extensions"
 func GetDefaultDir() (string, error) {
 	dir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("error getting user home dir: %v", err)
+		return "", fmt.Errorf("error getting user home dir: %w", err)
 	}
 	return path.Join(dir, extensionDirName), nil
 }

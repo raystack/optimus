@@ -22,7 +22,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 	for {
 		req, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			stream.Send(&pb.DeployJobSpecificationResponse{

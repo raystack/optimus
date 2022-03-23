@@ -244,7 +244,8 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		// if err is caused during dependency resolution in a job spec that belong to
 		// different namespace then the current, on which this operation is being performed,
 		// then don't treat this as error
-		if merrs, ok := err.(*multierror.Error); ok {
+		var merrs *multierror.Error
+		if errors.As(err, &merrs) {
 			var newErr error
 			for _, cerr := range merrs.Errors {
 				fmt.Printf("%v", cerr)

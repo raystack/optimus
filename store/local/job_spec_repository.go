@@ -264,7 +264,7 @@ func (repo *jobRepository) scanDirs(path string, inheritedSpec Job) ([]models.Jo
 	// find job in this folder
 	spec, err := repo.findInDir(path, thisSpec)
 	if err != nil {
-		if !os.IsNotExist(err) && err != models.ErrNoSuchSpec {
+		if !os.IsNotExist(err) && !errors.Is(err, models.ErrNoSuchSpec) {
 			return nil, err
 		}
 	} else {

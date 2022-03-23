@@ -198,7 +198,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err
@@ -257,7 +257,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
-			if err == models.ErrNoResources {
+			if errors.Is(err, models.ErrNoResources) {
 				l.Info(coloredNotice("[%s] no resource specifications found", namespaceName))
 				continue
 			}
@@ -301,7 +301,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err

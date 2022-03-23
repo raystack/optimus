@@ -228,7 +228,8 @@ func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
 func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) error {
 	// find the base job
 	var r Job
-	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
+	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).
+		Find(&r).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		// no job exists, inserting for the first time
 		return nil
 	} else if err != nil {

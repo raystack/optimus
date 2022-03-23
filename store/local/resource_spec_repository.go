@@ -276,7 +276,7 @@ func (repo *resourceRepository) scanDirs(path string) ([]models.ResourceSpec, er
 	// find resources in this folder
 	spec, err := repo.findInDir(path)
 	if err != nil {
-		if !os.IsNotExist(err) && err != models.ErrNoSuchSpec {
+		if !os.IsNotExist(err) && !errors.Is(err, models.ErrNoSuchSpec) {
 			return nil, err
 		}
 	} else {
