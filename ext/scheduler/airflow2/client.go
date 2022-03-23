@@ -58,7 +58,7 @@ type airflowClient struct {
 	client HTTPClient
 }
 
-//TODO : remove project spec
+// TODO : remove project spec
 func (ac airflowClient) invoke(ctx context.Context, r airflowRequest, projectSpec models.ProjectSpec) ([]byte, error) {
 	var resp []byte
 	host, authToken, err := ac.getHostAuth(projectSpec)
@@ -106,7 +106,7 @@ func (ac airflowClient) parseResponse(resp *http.Response) ([]byte, error) {
 	return body, nil
 }
 
-func (ac airflowClient) buildEndPoint(host string, URL string, pathParam string) string {
+func (ac airflowClient) buildEndPoint(host, URL, pathParam string) string {
 	host = strings.Trim(host, "/")
 	u := &url.URL{
 		Scheme: "http",
@@ -124,6 +124,7 @@ func (ac airflowClient) buildEndPoint(host string, URL string, pathParam string)
 	}
 	return u.String()
 }
+
 func toJobStatus(list DagRunListResponse) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	for _, status := range list.DagRuns {
@@ -163,13 +164,13 @@ func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRu
 		if !dag.ExternalTrigger {
 			var jobRun models.JobRun
 			if spec != nil {
-				//schedule run
+				// schedule run
 				jobRun = models.JobRun{
 					Status:      models.JobRunState(dag.State),
 					ScheduledAt: spec.Next(dag.ExecutionDate),
 				}
 			} else {
-				//only for last run
+				// only for last run
 				jobRun = models.JobRun{
 					Status:      models.JobRunState(dag.State),
 					ScheduledAt: dag.ExecutionDate,
