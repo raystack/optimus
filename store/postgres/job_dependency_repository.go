@@ -44,7 +44,7 @@ func (d JobDependencies) ToSpec() ([]models.JobIDDependenciesPair, error) {
 	return jobDependencies, nil
 }
 
-func (d JobDependency) FromSpec(projectID uuid.UUID, jobID uuid.UUID, jobDependency models.JobSpecDependency) JobDependency {
+func (d JobDependency) FromSpec(projectID, jobID uuid.UUID, jobDependency models.JobSpecDependency) JobDependency {
 	return JobDependency{
 		JobID:              jobID,
 		ProjectID:          projectID,
@@ -54,7 +54,7 @@ func (d JobDependency) FromSpec(projectID uuid.UUID, jobID uuid.UUID, jobDepende
 	}
 }
 
-func (repo *jobDependencyRepository) Save(ctx context.Context, projectID uuid.UUID, jobID uuid.UUID, jobDependencySpec models.JobSpecDependency) error {
+func (repo *jobDependencyRepository) Save(ctx context.Context, projectID, jobID uuid.UUID, jobDependencySpec models.JobSpecDependency) error {
 	jobDependency := JobDependency{}.FromSpec(projectID, jobID, jobDependencySpec)
 	return repo.db.WithContext(ctx).Create(&jobDependency).Error
 }

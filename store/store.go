@@ -32,6 +32,7 @@ type ProjectJobSpecRepository interface {
 	// note: be warned to handle this carefully in multi tenant situations
 	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
 
+	// GetByIDs returns all the jobs as requested by its ID
 	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)
 
 	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
@@ -121,7 +122,7 @@ type BackupRepository interface {
 
 // JobDependencyRepository represents a storage interface for job dependencies
 type JobDependencyRepository interface {
-	Save(ctx context.Context, projectID uuid.UUID, jobID uuid.UUID, dependency models.JobSpecDependency) error
+	Save(ctx context.Context, projectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
 	GetAll(context.Context) ([]models.JobIDDependenciesPair, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
 }

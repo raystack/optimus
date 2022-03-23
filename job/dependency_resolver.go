@@ -63,7 +63,7 @@ func (r *dependencyResolver) ResolveAndPersist(ctx context.Context, projectSpec 
 
 	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
 
-	//resolve inter/intra dependencies inferred by optimus
+	// resolve inter/intra dependencies inferred by optimus
 	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) mod
 	return jobSpec
 }
 
-func (r *dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) ([]models.JobSpecHook, error) {
+func (r *dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {
 	var hooks []models.JobSpecHook
 	for _, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
@@ -332,7 +332,7 @@ func (r *dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) (
 		}
 		hooks = append(hooks, jobHook)
 	}
-	return hooks, nil
+	return hooks
 }
 
 func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {

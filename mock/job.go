@@ -240,9 +240,9 @@ func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, project
 	return args.Get(0).(map[uuid.UUID][]models.JobSpecDependency), args.Error(1)
 }
 
-func (srv *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) ([]models.JobSpecHook, error) {
+func (srv *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {
 	args := srv.Called(jobSpec)
-	return args.Get(0).([]models.JobSpecHook), args.Error(1)
+	return args.Get(0).([]models.JobSpecHook)
 }
 
 type PriorityResolver struct {
@@ -288,7 +288,7 @@ type JobDependencyRepository struct {
 	mock.Mock
 }
 
-func (repo *JobDependencyRepository) Save(ctx context.Context, projectID uuid.UUID, jobID uuid.UUID, dependency models.JobSpecDependency) error {
+func (repo *JobDependencyRepository) Save(ctx context.Context, projectID, jobID uuid.UUID, dependency models.JobSpecDependency) error {
 	args := repo.Called(ctx, projectID, jobID, dependency)
 	return args.Error(0)
 }

@@ -52,9 +52,9 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	ResolveAndPersist(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) error
 
-	//FetchJobDependencies from dependency persistence
+	// FetchJobDependencies from dependency persistence
 	FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error)
-	FetchHookWithDependencies(jobSpec models.JobSpec) ([]models.JobSpecHook, error)
+	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -82,7 +82,7 @@ type ProjectRepoFactory interface {
 	New() store.ProjectRepository
 }
 
-//DependencyRepoFactory
+// DependencyRepoFactory is used to manage job dependencies from store
 type DependencyRepoFactory interface {
 	New(proj models.ProjectSpec) store.JobDependencyRepository
 }
@@ -703,40 +703,41 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 // compile all jobs in the project and upload them to the destination store.
 func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec, namespaceJobNamePairs []models.NamespaceJobNamePair,
 	progressObserver progress.Observer) (err error) {
-	//Resolve dependency
+	// Resolve dependency
 	if err = srv.resolveAndPersistDependency(ctx, projectSpec, namespaceJobNamePairs, progressObserver); err != nil {
 		// if err is caused by dependency resolution, ignore this as error.
-		if _, ok := err.(*multierror.Error); !ok {
+		var merrs *multierror.Error
+		if !errors.As(err, &merrs) {
 			return err
 		}
 	}
 
-	//Fetch dependency and enrich
+	// Fetch dependency and enrich
 	jobDependencies, err := srv.dependencyResolver.FetchJobDependencies(ctx, projectSpec, progressObserver)
 	if err != nil {
-		return fmt.Errorf("failed to fetch job dependencies: %s", err)
+		return fmt.Errorf("failed to fetch job dependencies: %w", err)
 	}
 
-	//Get all job specs and enrich with dependencies
+	// Get all job specs and enrich with dependencies
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
 	jobSpecs, err := srv.prepareAllJobsInProject(ctx, jobDependencies, projectJobSpecRepo)
 	if err != nil {
 		return err
 	}
 
-	//Resolve priority
+	// Resolve priority
 	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
 		return err
 	}
 
-	//Group per namespace
+	// Group per namespace
 	namespaceJobSpecMap, err := prepareNamespaceJobsMap(ctx, projectJobSpecRepo, jobSpecs)
 	if err != nil {
 		return err
 	}
 
-	//Compile & Deploy
+	// Compile & Deploy
 	for namespace, namespaceJobSpecs := range namespaceJobSpecMap {
 		namespaceSpec, err := srv.namespaceService.Get(ctx, projectSpec.Name, namespace)
 		if err != nil {
@@ -765,7 +766,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 	// compile assets before resolving in parallel
 	for i, jSpec := range jobSpecs {
 		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return fmt.Errorf("asset compilation: %s", err)
+			return fmt.Errorf("asset compilation: %w", err)
 		}
 	}
 
@@ -803,7 +804,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 
 func prepareNamespaceJobsMap(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository,
 	jobSpecs []models.JobSpec) (map[string][]models.JobSpec, error) {
-	//Group per namespace
+	// Group per namespace
 	jobsToNamespace, err := prepareJobToNamespaceMap(ctx, projectJobSpecRepo)
 	if err != nil {
 		return nil, err
@@ -819,7 +820,7 @@ func prepareNamespaceJobsMap(ctx context.Context, projectJobSpecRepo store.Proje
 func prepareJobToNamespaceMap(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]string, error) {
 	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve namespace to job mapping: %s", err)
+		return nil, fmt.Errorf("failed to retrieve namespace to job mapping: %w", err)
 	}
 	// generate a reverse map for namespace
 	jobsToNamespace := map[string]string{}
@@ -848,11 +849,7 @@ func (srv *Service) prepareAllJobsInProject(ctx context.Context, jobDependencies
 
 	// enrich hook dependencies
 	for _, jobSpec := range jobSpecs {
-		hooks, err := srv.dependencyResolver.FetchHookWithDependencies(jobSpec)
-		if err != nil {
-			return nil, err
-		}
-		jobSpec.Hooks = hooks
+		jobSpec.Hooks = srv.dependencyResolver.FetchHookWithDependencies(jobSpec)
 	}
 
 	return jobSpecs, nil
@@ -865,7 +862,7 @@ func (srv *Service) prepareJobSpecs(ctx context.Context, projectSpec models.Proj
 		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
 		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve jobs: %s", err)
+			return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 		}
 		return jobSpecs, nil
 	} else {

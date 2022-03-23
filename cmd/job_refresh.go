@@ -65,8 +65,8 @@ func jobRefreshCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	return cmd
 }
 
-func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces []string, jobs []string,
-	host string, verbose bool) (err error) {
+func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces, jobs []string, host string, verbose bool,
+) (err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -112,7 +112,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 	for {
 		resp, err := respStream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			streamError = err

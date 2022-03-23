@@ -1011,7 +1011,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1042,7 +1042,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1106,7 +1106,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1171,7 +1171,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1237,7 +1237,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1268,7 +1268,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1327,7 +1327,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1358,7 +1358,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1436,7 +1436,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1467,7 +1467,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1540,7 +1540,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1578,7 +1578,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1598,7 +1598,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test3",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1694,7 +1694,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1725,7 +1725,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1784,7 +1784,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1822,7 +1822,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -1841,7 +1841,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test3",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{

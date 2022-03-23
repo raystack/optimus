@@ -1147,7 +1147,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1159,7 +1159,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1171,7 +1171,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1191,7 +1191,7 @@ func TestService(t *testing.T) {
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 
-			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 
@@ -1238,7 +1238,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1250,7 +1250,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1262,7 +1262,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1287,7 +1287,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 
@@ -1334,7 +1334,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1346,7 +1346,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1358,7 +1358,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1385,7 +1385,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 
@@ -1500,7 +1500,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1547,7 +1547,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1557,7 +1557,7 @@ func TestService(t *testing.T) {
 					Name:    "test-2",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1569,7 +1569,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1579,7 +1579,7 @@ func TestService(t *testing.T) {
 					Name:    "test-2",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1591,7 +1591,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1603,7 +1603,7 @@ func TestService(t *testing.T) {
 					Name:    "test-2",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1623,8 +1623,8 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[1]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
+			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[1]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 
@@ -1668,7 +1668,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1714,7 +1714,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1761,7 +1761,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1773,7 +1773,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1788,7 +1788,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return([]models.JobSpec{}, errors.New(errorMsg))
 
@@ -1823,7 +1823,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1835,7 +1835,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1847,7 +1847,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1864,7 +1864,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 
@@ -1901,7 +1901,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1913,7 +1913,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{},
@@ -1925,7 +1925,7 @@ func TestService(t *testing.T) {
 					Name:    "test",
 					Owner:   "optimus",
 					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
 					Task: models.JobSpecTask{
@@ -1944,7 +1944,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
+			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
 
