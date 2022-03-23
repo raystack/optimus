@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
@@ -61,7 +61,7 @@ type RuntimeServiceServer struct {
 	namespaceService service.NamespaceService
 	secretService    service.SecretService
 	runSvc           service.JobRunService
-	assetCompiler    run.JobRunInputCompiler
+	assetCompiler    compiler.JobRunInputCompiler
 	scheduler        models.SchedulerUnit
 	l                log.Logger
 
@@ -309,7 +309,7 @@ func NewRuntimeServiceServer(
 	adapter ProtoAdapter,
 	progressObserver progress.Observer,
 	instSvc service.JobRunService,
-	assetCompiler run.JobRunInputCompiler,
+	assetCompiler compiler.JobRunInputCompiler,
 	scheduler models.SchedulerUnit,
 ) *RuntimeServiceServer {
 	return &RuntimeServiceServer{

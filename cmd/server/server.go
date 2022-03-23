@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	job_compiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/core/progress"
@@ -36,7 +37,6 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	_ "github.com/odpf/optimus/plugin"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
@@ -237,9 +237,9 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 }
 
 func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-	engine := run.NewGoEngine()
+	engine := job_compiler.NewGoEngine()
 	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := run.DumpAssets(jobSpec, scheduledAt, engine, false)
+		aMap, err := job_compiler.DumpAssets(jobSpec, scheduledAt, engine, false)
 		if err != nil {
 			return models.JobAssets{}, err
 		}
@@ -472,7 +472,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		service.NewJobRunService(jobrunRepoFac, func() time.Time {
 			return time.Now().UTC()
 		}),
-		run.NewAssetCompiler(secretService, run.NewGoEngine()),
+		job_compiler.NewAssetCompiler(secretService, job_compiler.NewGoEngine()),
 		models.BatchScheduler,
 	))
 	grpc_prometheus.Register(grpcServer)

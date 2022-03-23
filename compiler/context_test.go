@@ -1,4 +1,4 @@
-package run_test
+package compiler_test
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -137,8 +137,8 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			jobRunInput, err := run.NewContextManager(namespaceSpec, nil, jobRun,
-				run.NewGoEngine()).Generate(instanceSpec)
+			jobRunInput, err := compiler.NewContextManager(namespaceSpec, nil, jobRun,
+				compiler.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -297,7 +297,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			jobRunInput, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
+			jobRunInput, err := compiler.NewContextManager(namespaceSpec, nil, jobRun, compiler.NewGoEngine()).
 				Generate(instanceSpec)
 			assert.Nil(t, err)
 
@@ -437,7 +437,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			assets, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
+			assets, err := compiler.NewContextManager(namespaceSpec, nil, jobRun, compiler.NewGoEngine()).
 				Generate(instanceSpec)
 			assert.Nil(t, err)
 
@@ -587,8 +587,8 @@ func TestContextManager(t *testing.T) {
 				},
 			}}, nil)
 
-			assets, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
-				run.NewGoEngine()).Generate(instanceSpec)
+			assets, err := compiler.NewContextManager(namespaceSpec, secrets, jobRun,
+				compiler.NewGoEngine()).Generate(instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", assets.ConfigMap["DEND"])
