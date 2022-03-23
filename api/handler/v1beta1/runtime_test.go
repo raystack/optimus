@@ -972,10 +972,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				//make empty
-				StartDate: timestamppb.New(time.Unix(0, 0)),
-				EndDate:   timestamppb.New(date.Add(time.Hour * 24)),
-				Filter:    []string{"success"},
+				StartDate:   timestamppb.New(time.Unix(0, 0)),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.NotNil(t, err)
@@ -1023,9 +1022,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
 				StartDate:   timestamppb.New(date),
-				//make empty
-				EndDate: timestamppb.New(time.Unix(0, 0)),
-				Filter:  []string{"success"},
+				EndDate:     timestamppb.New(time.Unix(0, 0)),
+				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.NotNil(t, err)
@@ -1214,11 +1212,9 @@ func TestRuntimeServiceServer(t *testing.T) {
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
 				JobName:     jobSpec.Name,
-				//empty
-				StartDate: timestamppb.New(time.Unix(0, 0)),
-				//empty
-				EndDate: timestamppb.New(time.Unix(0, 0)),
-				Filter:  []string{"success"},
+				StartDate:   timestamppb.New(time.Unix(0, 0)),
+				EndDate:     timestamppb.New(time.Unix(0, 0)),
+				Filter:      []string{"success"},
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.Nil(t, err)
