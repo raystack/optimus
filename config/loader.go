@@ -6,6 +6,7 @@ import (
 
 	"github.com/odpf/salt/config"
 	"github.com/spf13/afero"
+
 	"github.com/spf13/viper"
 )
 
@@ -92,27 +93,6 @@ func loadServerConfigFs(fs afero.Fs, filepath ...string) (*ServerConfig, error) 
 	}
 
 	return cfg, nil
-}
-
-// Validate validate the config as an input. If not valid, it returns error
-func Validate(conf interface{}) error {
-	switch c := conf.(type) {
-	case ProjectConfig:
-		return validateProjectConfig(c)
-	case ServerConfig:
-		return validateServerConfig(c)
-	}
-	return errors.New("error")
-}
-
-func validateProjectConfig(conf ProjectConfig) error {
-	// implement this
-	return nil
-}
-
-func validateServerConfig(conf ServerConfig) error {
-	// implement this
-	return nil
 }
 
 func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
