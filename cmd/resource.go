@@ -23,7 +23,7 @@ import (
 var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
 	`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
-func resourceCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo, datastoreSpecsFs map[string]map[string]afero.Fs) *cli.Command {
+func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
@@ -31,11 +31,29 @@ func resourceCommand(l log.Logger, conf config.Optimus, datastoreRepo models.Dat
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(createResourceSubCommand(l, conf, datastoreSpecsFs, datastoreRepo))
+
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadProjectConfig()
+	if err != nil {
+		l.Error(err.Error())
+		return nil
+	}
+
+	//init local specs
+	datastoreSpecFs := make(map[string]map[string]afero.Fs)
+	for _, namespace := range conf.Namespaces {
+		dtSpec := make(map[string]afero.Fs)
+		for _, dsConfig := range namespace.Datastore {
+			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+		}
+		datastoreSpecFs[namespace.Name] = dtSpec
+	}
+
+	cmd.AddCommand(createResourceSubCommand(l, *conf, datastoreSpecFs, datastoreRepo))
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, conf config.Optimus, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+func createResourceSubCommand(l log.Logger, conf config.ProjectConfig, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",

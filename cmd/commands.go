@@ -17,7 +17,6 @@ import (
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
-	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -110,26 +109,16 @@ func New(plainLog log.Logger, jsonLog log.Logger, pluginRepo models.PluginReposi
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	// init local specs
-	datastoreSpecFs := make(map[string]map[string]afero.Fs)
-	for _, namespace := range conf.Namespaces {
-		dtSpec := make(map[string]afero.Fs)
-		for _, dsConfig := range namespace.Datastore {
-			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-		}
-		datastoreSpecFs[namespace.Name] = dtSpec
-	}
-
 	cmd.AddCommand(versionCommand(plainLog, pluginRepo))
 	cmd.AddCommand(configCommand(plainLog))
-	cmd.AddCommand(jobCommand(plainLog, conf, pluginRepo))
-	cmd.AddCommand(deployCommand(plainLog, conf, pluginRepo, dsRepo, datastoreSpecFs))
-	cmd.AddCommand(resourceCommand(plainLog, conf, dsRepo, datastoreSpecFs))
-	cmd.AddCommand(serveCommand(jsonLog, conf))
-	cmd.AddCommand(replayCommand(plainLog, conf))
-	cmd.AddCommand(backupCommand(plainLog, conf, dsRepo))
-	cmd.AddCommand(adminCommand(plainLog, conf))
-	cmd.AddCommand(secretCommand(plainLog, conf))
+	cmd.AddCommand(jobCommand(plainLog, pluginRepo))
+	cmd.AddCommand(deployCommand(plainLog, pluginRepo, dsRepo))
+	cmd.AddCommand(resourceCommand(plainLog, dsRepo))
+	cmd.AddCommand(serveCommand(jsonLog))
+	cmd.AddCommand(replayCommand(plainLog))
+	cmd.AddCommand(backupCommand(plainLog, dsRepo))
+	cmd.AddCommand(adminCommand(plainLog))
+	cmd.AddCommand(secretCommand(plainLog))
 
 	addExtensionCommand(cmd, plainLog)
 	return cmd

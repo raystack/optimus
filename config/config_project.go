@@ -1,5 +1,7 @@
 package config
 
+import "fmt"
+
 type ProjectConfig struct {
 	Version    Version      `mapstructure:"version"`
 	Log        LogConfig    `mapstructure:"log"`
@@ -30,4 +32,22 @@ type Namespace struct {
 	Config    map[string]string `mapstructure:"config"`
 	Job       Job               `mapstructure:"job"`
 	Datastore []Datastore       `mapstructure:"datastore"`
+}
+
+func (c *ProjectConfig) GetNamespaceByName(name string) (*Namespace, error) {
+	if c.namespaceNameToNamespace == nil {
+		c.namespaceNameToNamespace = map[string]*Namespace{}
+		for _, namespace := range c.Namespaces {
+			if namespace == nil {
+				continue
+			}
+			c.namespaceNameToNamespace[namespace.Name] = namespace
+		}
+	}
+
+	if c.namespaceNameToNamespace[name] == nil {
+		return nil, fmt.Errorf("namespace [%s] is not found", name)
+	}
+
+	return c.namespaceNameToNamespace[name], nil
 }

@@ -33,7 +33,7 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+func jobCreateCommand(l log.Logger, conf config.ProjectConfig, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",

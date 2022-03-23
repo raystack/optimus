@@ -23,10 +23,12 @@ const (
 	validateTimeout = time.Minute * 5
 )
 
-func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
+func jobValidateCommand(l log.Logger, conf config.ProjectConfig, pluginRepo models.PluginRepository) *cli.Command {
 	var (
 		verbose       bool
 		namespaceName string
+		projectName   = conf.Project.Name
+		host          = conf.Host
 	)
 	cmd := &cli.Command{
 		Use:     "validate",

@@ -17,7 +17,7 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+func jobRenderTemplateCommand(l log.Logger, conf config.ProjectConfig, pluginRepo models.PluginRepository) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",

@@ -13,7 +13,7 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func serveCommand(l log.Logger) *cli.Command {
 	c := &cli.Command{
 		Use:     "serve",
 		Short:   "Starts optimus service",
@@ -22,7 +22,14 @@ func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			"group:other": "dev",
 		},
 		RunE: func(c *cli.Command, args []string) error {
-			l.Info(coloredSuccess("Starting Optimus"), "version", config.Version)
+			// TODO: find a way to load the config in one place
+			conf, err := config.LoadServerConfig()
+			if err != nil {
+				l.Error(err.Error())
+				return nil
+			}
+
+			l.Info(coloredSuccess("Starting Optimus"), "version", config.BuildVersion)
 			optimusServer, err := server.New(l, conf)
 			defer optimusServer.Shutdown()
 			if err != nil {
@@ -36,5 +43,6 @@ func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			return nil
 		},
 	}
+
 	return c
 }

@@ -27,7 +27,7 @@ const (
 
 const unsubstitutedValue = "<no value>"
 
-func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func adminBuildInstanceCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
 	var (
 		optimusHost    = conf.Host
 		projectName    = conf.Project.Name

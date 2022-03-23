@@ -77,7 +77,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 		JobSpecDependencyTypeInter: string(models.JobSpecDependencyTypeInter),
 		JobSpecDependencyTypeExtra: string(models.JobSpecDependencyTypeExtra),
 		SLAMissDurationInSec:       slaMissDurationInSec,
-		Version:                    config.Version,
+		Version:                    config.BuildVersion,
 		Metadata:                   jobSpec.Metadata,
 	}); err != nil {
 		return models.Job{}, fmt.Errorf("failed to templatize job: %w", err)

@@ -38,7 +38,7 @@ const (
 	BootstrapTimeout = time.Second * 10
 )
 
-func checkRequiredConfigs(conf config.ServerConfig) error {
+func checkRequiredConfigs(conf config.Serve) error {
 	errRequiredMissing := errors.New("required config missing")
 	if conf.IngressHost == "" {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)

@@ -30,8 +30,8 @@ func configInitCommand(l log.Logger) *cli.Command {
 		Use:   "init",
 		Short: "Initialize optimus configuration file",
 		RunE: func(c *cli.Command, args []string) (err error) {
-			conf := config.Optimus{
-				Version: 1,
+			conf := config.ProjectConfig{
+				Version: config.Version(1),
 				Host:    defaultHost,
 			}
 			questions := []*survey.Question{
@@ -93,7 +93,7 @@ func configInitCommand(l log.Logger) *cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0o600); err != nil {
+			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension), confMarshaled, 0655); err != nil {
 				return err
 			}
 			l.Info(coloredSuccess("Configuration initialised successfully"))
@@ -103,7 +103,7 @@ func configInitCommand(l log.Logger) *cli.Command {
 	return c
 }
 
-func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
+func projectConfigQuestions(conf config.ProjectConfig) (config.ProjectConfig, error) {
 	conf.Project.Config = map[string]string{}
 	registerMore := AnswerYes
 	for registerMore == AnswerNo {
