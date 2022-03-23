@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/hashicorp/go-hclog"
@@ -12,7 +11,6 @@ import (
 	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/plugin"
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 )
 
@@ -32,16 +30,8 @@ func serveCommand() *cli.Command {
 			}
 
 			// initiate jsonLogger
-			var jsonLogger log.Logger
+			l := initLogger(jsonLogger, conf.Log)
 			pluginLogLevel := hclog.Info
-			if conf.Log.Level != "" {
-				jsonLogger = log.NewLogrus(log.LogrusWithLevel(conf.Log.Level), log.LogrusWithWriter(os.Stderr))
-				if strings.ToLower(conf.Log.Level) == "debug" {
-					pluginLogLevel = hclog.Debug
-				}
-			} else {
-				jsonLogger = log.NewLogrus(log.LogrusWithLevel("INFO"), log.LogrusWithWriter(os.Stderr))
-			}
 
 			// discover and load plugins. TODO: refactor this
 			if err := plugin.Initialize(hclog.New(&hclog.LoggerOptions{
@@ -57,7 +47,7 @@ func serveCommand() *cli.Command {
 			defer hPlugin.CleanupClients()
 
 			// init telemetry
-			teleShutdown, err := config.InitTelemetry(jsonLogger, conf.Telemetry)
+			teleShutdown, err := config.InitTelemetry(l, conf.Telemetry)
 			if err != nil {
 				fmt.Printf("ERROR: %s\n", err.Error())
 				os.Exit(1)
