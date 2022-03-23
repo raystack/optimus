@@ -15,7 +15,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/cmdx"
-	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
 	cli "github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -59,7 +58,7 @@ type JobSpecRepository interface {
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
-func New(plainLog log.Logger, jsonLog log.Logger, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func New(pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
 
 	cmd := &cli.Command{
