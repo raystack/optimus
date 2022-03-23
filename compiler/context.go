@@ -208,19 +208,6 @@ func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {
 	return envMap
 }
 
-func getInstanceFiles(instanceSpec models.InstanceSpec) map[string]string {
-	if instanceSpec.Data == nil {
-		return nil
-	}
-	fileMap := map[string]string{}
-	for _, jobRunData := range instanceSpec.Data {
-		if jobRunData.Type == models.InstanceDataTypeFile {
-			fileMap[jobRunData.Name] = jobRunData.Value
-		}
-	}
-	return fileMap
-}
-
 func NewContextManager(namespace models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, engine models.TemplateEngine) *ContextManager {
 	return &ContextManager{
 		namespace: namespace,
