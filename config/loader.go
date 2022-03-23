@@ -55,6 +55,16 @@ func LoadProjectConfig(filepath ...string) (*ProjectConfig, error) {
 	return loadProjectConfigFs(fs, filepath...)
 }
 
+// LoadServerConfig load the server specific config from these locations:
+// 1. env var. eg. OPTIMUS_SERVE_PORT, etc
+// 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
+// 3. executable binary location
+// 4. home dir
+func LoadServerConfig(filepath ...string) (*ServerConfig, error) {
+	fs := afero.NewReadOnlyFs(afero.NewOsFs())
+	return loadServerConfigFs(fs, filepath...)
+}
+
 func loadProjectConfigFs(fs afero.Fs, filepath ...string) (*ProjectConfig, error) {
 	cfg := &ProjectConfig{}
 
@@ -68,16 +78,6 @@ func loadProjectConfigFs(fs afero.Fs, filepath ...string) (*ProjectConfig, error
 	}
 
 	return cfg, nil
-}
-
-// LoadServerConfig load the server specific config from these locations:
-// 1. env var. eg. OPTIMUS_SERVE_PORT, etc
-// 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
-// 3. executable binary location
-// 4. home dir
-func LoadServerConfig(filepath ...string) (*ServerConfig, error) {
-	fs := afero.NewReadOnlyFs(afero.NewOsFs())
-	return loadServerConfigFs(fs, filepath...)
 }
 
 func loadServerConfigFs(fs afero.Fs, filepath ...string) (*ServerConfig, error) {
