@@ -38,19 +38,14 @@ type JobEventService interface {
 
 type ProtoAdapter interface {
 	FromJobProto(*pb.JobSpecification) (models.JobSpec, error)
-	ToJobProto(models.JobSpec) (*pb.JobSpecification, error)
-
+	ToJobProto(models.JobSpec) *pb.JobSpecification
 	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
 	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
-
 	FromNamespaceProto(specification *pb.NamespaceSpecification) models.NamespaceSpec
 	ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification
-
-	ToInstanceProto(models.InstanceSpec) (*pb.InstanceSpec, error)
-
+	ToInstanceProto(models.InstanceSpec) *pb.InstanceSpec
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
-
 	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
 	ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error)
 }
@@ -74,7 +69,7 @@ type RuntimeServiceServer struct {
 	pb.UnimplementedRuntimeServiceServer
 }
 
-func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) {
+func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) { // nolint: unparam
 	sv.l.Info("client requested for ping", "version", version.Client)
 	response := &pb.VersionResponse{
 		Server: sv.version,
@@ -175,14 +170,10 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
 
-	jobProto, err := sv.adapter.ToJobProto(jobRun.Spec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobRun.Spec.Name)
-	}
-	instanceProto, err := sv.adapter.ToInstanceProto(instance)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt instance for job %s", err.Error(), jobRun.Spec.Name)
-	}
+	jobProto := sv.adapter.ToJobProto(jobRun.Spec)
+
+	instanceProto := sv.adapter.ToInstanceProto(instance)
+
 	return &pb.RegisterInstanceResponse{
 		Project:   sv.adapter.ToProjectProto(projSpec),
 		Job:       jobProto,
@@ -257,7 +248,7 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 	return &pb.RegisterJobEventResponse{}, nil
 }
 
-func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+func (sv *RuntimeServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	scheduledTime := req.ScheduledAt.AsTime()
 	err := req.ScheduledAt.CheckValid()
 	if err != nil {

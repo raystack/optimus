@@ -30,7 +30,7 @@ func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFac
 	}
 }
 
-func (s namespaceService) Get(ctx context.Context, projectName string, namespaceName string) (models.NamespaceSpec, error) {
+func (s namespaceService) Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error) {
 	if projectName == "" {
 		return models.NamespaceSpec{},
 			NewError(models.ProjectEntity, ErrInvalidArgument, "project name cannot be empty")
@@ -50,7 +50,7 @@ func (s namespaceService) Get(ctx context.Context, projectName string, namespace
 }
 
 // GetNamespaceOptionally is used for optionally getting namespace if name is present, otherwise get only project
-func (s namespaceService) GetNamespaceOptionally(ctx context.Context, projectName string, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
+func (s namespaceService) GetNamespaceOptionally(ctx context.Context, projectName, namespaceName string) (models.ProjectSpec, models.NamespaceSpec, error) {
 	projectSpec, err := s.projectService.GetByName(ctx, projectName)
 	if err != nil {
 		return models.ProjectSpec{}, models.NamespaceSpec{}, err

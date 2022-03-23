@@ -8,6 +8,7 @@ package postgres
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	stdlog "log"
@@ -34,15 +35,13 @@ const (
 	tracingSpanKey = "otel:span"
 )
 
-var (
-	tracer = otel.Tracer("optimus/store/postgres")
-)
+var tracer = otel.Tracer("optimus/store/postgres")
 
 // NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
 func NewHTTPFSMigrator(DBConnURL string) (*migrate.Migrate, error) {
 	src, err := httpfs.New(http.FS(migrationFs), resourcePath)
 	if err != nil {
-		return &migrate.Migrate{}, fmt.Errorf("db migrator: %v", err)
+		return &migrate.Migrate{}, fmt.Errorf("db migrator: %w", err)
 	}
 	return migrate.NewWithSourceInstance("httpfs", src, DBConnURL)
 }
@@ -88,7 +87,7 @@ func Migrate(connURL string) error {
 	}
 	defer m.Close()
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("db migrator: %w", err)
 	}
 	return nil

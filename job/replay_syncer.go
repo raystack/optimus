@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -56,7 +57,7 @@ func (s Syncer) Sync(ctx context.Context, runTimeout time.Duration) error {
 	for _, projectSpec := range projectSpecs {
 		replaySpecs, err := replaySpecRepo.GetByProjectIDAndStatus(ctx, projectSpec.ID, ReplayStatusToSynced)
 		if err != nil {
-			if err == store.ErrResourceNotFound {
+			if errors.Is(err, store.ErrResourceNotFound) {
 				return nil
 			}
 			return err

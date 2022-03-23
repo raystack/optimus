@@ -101,9 +101,9 @@ func TestResourceSpecRepository(t *testing.T) {
 		t.Run("should open the file ${ROOT}/${name}.yaml and parse its contents", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(specTable.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName), []byte(testResourceContents), 0644)
-			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0644)
+			appFS.MkdirAll(specTable.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName), []byte(testResourceContents), 0o644)
+			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0o644)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
 			returnedSpec, err := repo.GetByName(ctx, specTable.Name)
@@ -113,9 +113,9 @@ func TestResourceSpecRepository(t *testing.T) {
 		t.Run("should use cache if file is requested more than once", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(specTable.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName), []byte(testResourceContents), 0644)
-			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0644)
+			appFS.MkdirAll(specTable.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName), []byte(testResourceContents), 0o644)
+			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0o644)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
 			returnedSpec, err := repo.GetByName(ctx, specTable.Name)
@@ -136,7 +136,7 @@ func TestResourceSpecRepository(t *testing.T) {
 		})
 		t.Run("should return ErrNoSuchSpec in case the folder exist but no resource file exist", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(specTable.Name, 0755)
+			appFS.MkdirAll(specTable.Name, 0o755)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
 			_, err := repo.GetByName(ctx, specTable.Name)
@@ -150,9 +150,9 @@ func TestResourceSpecRepository(t *testing.T) {
 		t.Run("should return error if yaml source is incorrect and failed to validate", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(specTable.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName), []byte("name:a"), 0644)
-			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0644)
+			appFS.MkdirAll(specTable.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(specTable.Name, local.ResourceSpecFileName), []byte("name:a"), 0o644)
+			afero.WriteFile(appFS, filepath.Join(specTable.Name, "query.sql"), []byte(specTable.Assets["query.sql"]), 0o644)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
 			_, err := repo.GetByName(ctx, specTable.Name)
@@ -209,8 +209,8 @@ spec:
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
 			for idx, resSpec := range resSpecs {
-				appFS.MkdirAll(resSpec.Name, 0755)
-				afero.WriteFile(appFS, filepath.Join(resSpec.Name, local.ResourceSpecFileName), []byte(content[idx]), 0644)
+				appFS.MkdirAll(resSpec.Name, 0o755)
+				afero.WriteFile(appFS, filepath.Join(resSpec.Name, local.ResourceSpecFileName), []byte(content[idx]), 0o644)
 			}
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
@@ -229,7 +229,7 @@ spec:
 		})
 		t.Run("should return ErrNoResources if the root directory has no files", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll("test", 0755)
+			appFS.MkdirAll("test", 0o755)
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)
 			_, err := repo.GetAll(ctx)
@@ -239,8 +239,8 @@ spec:
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
 			for idx, resSpec := range resSpecs {
-				appFS.MkdirAll(resSpec.Name, 0755)
-				afero.WriteFile(appFS, filepath.Join(resSpec.Name, local.ResourceSpecFileName), []byte(content[idx]), 0644)
+				appFS.MkdirAll(resSpec.Name, 0o755)
+				afero.WriteFile(appFS, filepath.Join(resSpec.Name, local.ResourceSpecFileName), []byte(content[idx]), 0o644)
 			}
 
 			repo := local.NewResourceSpecRepository(appFS, datastorer)

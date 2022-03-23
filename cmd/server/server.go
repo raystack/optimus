@@ -59,10 +59,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	// termChan listen for sigterm
-	termChan = make(chan os.Signal, 1)
-)
+// termChan listen for sigterm
+var termChan = make(chan os.Signal, 1)
 
 const (
 	shutdownWait       = 30 * time.Second
@@ -564,10 +562,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return err
 		}
 
-		if err := clusterPlanner.Init(clusterCtx); err != nil {
-			clusterCancel()
-			return err
-		}
+		clusterPlanner.Init(clusterCtx)
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)

@@ -18,14 +18,11 @@ import (
 )
 
 func Initialize(pluginLogger hclog.Logger) error {
-	discoveredPlugins, err := DiscoverPlugins(pluginLogger)
-	if err != nil {
-		return fmt.Errorf("DiscoverPlugins: %w", err)
-	}
+	discoveredPlugins := DiscoverPlugins(pluginLogger)
 	pluginLogger.Debug(fmt.Sprintf("discovering plugins(%d)...", len(discoveredPlugins)))
 
 	// pluginMap is the map of plugins we can dispense.
-	var pluginMap = map[string]plugin.Plugin{
+	pluginMap := map[string]plugin.Plugin{
 		models.PluginTypeBase:                     base.NewPluginClient(pluginLogger),
 		models.ModTypeCLI.String():                cli.NewPluginClient(pluginLogger),
 		models.ModTypeDependencyResolver.String(): dependencyresolver.NewPluginClient(pluginLogger),
@@ -114,7 +111,7 @@ func modSupported(mods []models.PluginMod, mod models.PluginMod) bool {
 //
 // for duplicate binaries(even with different versions for now), only the first found will be used
 // sample plugin name: optimus-myplugin_linux_amd64
-func DiscoverPlugins(pluginLogger hclog.Logger) ([]string, error) {
+func DiscoverPlugins(pluginLogger hclog.Logger) []string {
 	var (
 		prefix            = "optimus-"
 		suffix            = fmt.Sprintf("_%s_%s", runtime.GOOS, runtime.GOARCH)
@@ -193,7 +190,7 @@ func DiscoverPlugins(pluginLogger hclog.Logger) ([]string, error) {
 			}
 		}
 	}
-	return discoveredPlugins, nil
+	return discoveredPlugins
 }
 
 // Factory returns a new plugin instance

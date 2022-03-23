@@ -158,7 +158,7 @@ func createJobSurvey(jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepo
 		return local.Job{}, errors.New("no supported task plugin found")
 	}
 
-	var qs = []*survey.Question{
+	qs := []*survey.Question{
 		{
 			Name: "name",
 			Prompt: &survey.Input{
@@ -364,7 +364,7 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 		}
 	}
 
-	//default
+	// default
 	return local.JobTaskWindow{
 		Size:       "24h",
 		Offset:     "0",

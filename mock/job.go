@@ -142,7 +142,7 @@ func (srv *JobService) GetByName(ctx context.Context, s string, spec models.Name
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) KeepOnly(ctx context.Context, spec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
+func (srv *JobService) KeepOnly(ctx context.Context, spec models.NamespaceSpec, specs []models.JobSpec, _ progress.Observer) error {
 	args := srv.Called(ctx, spec, specs)
 	return args.Error(0)
 }
@@ -203,7 +203,7 @@ func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []mo
 	return args.Error(0)
 }
 
-func (srv *JobService) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+func (srv *JobService) GetByDestination(_ context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	args := srv.Called(projectSpec, destination)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }

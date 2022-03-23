@@ -22,7 +22,6 @@ var (
 // SchedulerUnit is implemented by supported schedulers
 type SchedulerUnit interface {
 	GetName() string
-
 	VerifyJob(ctx context.Context, namespace NamespaceSpec, job JobSpec) error
 	ListJobs(ctx context.Context, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
 	DeployJobs(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec, obs progress.Observer) error
@@ -55,7 +54,7 @@ type JobStatus struct {
 // ExecutorUnit executes the actual job instance
 type ExecutorUnit interface {
 	// Start initiates the instance execution
-	Start(ctx context.Context, req ExecutorStartRequest) (*ExecutorStartResponse, error)
+	Start(ctx context.Context, req ExecutorStartRequest) *ExecutorStartResponse
 
 	// Stop aborts the execution
 	Stop(ctx context.Context, req ExecutorStopRequest) error
@@ -81,8 +80,7 @@ type ExecutorStopRequest struct {
 	Signal string
 }
 
-type ExecutorStartResponse struct {
-}
+type ExecutorStartResponse struct{}
 
 type ExecutorStats struct {
 	Logs   []byte

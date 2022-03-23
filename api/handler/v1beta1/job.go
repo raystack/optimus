@@ -22,7 +22,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 	for {
 		req, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			stream.Send(&pb.DeployJobSpecificationResponse{
@@ -138,10 +138,8 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 
 	jobProtos := []*pb.JobSpecification{}
 	for _, jobSpec := range jobSpecs {
-		jobProto, err := sv.adapter.ToJobProto(jobSpec)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to parse job spec %s", err.Error(), jobSpec.Name)
-		}
+		jobProto := sv.adapter.ToJobProto(jobSpec)
+
 		jobProtos = append(jobProtos, jobProto)
 	}
 	return &pb.ListJobSpecificationResponse{
@@ -239,10 +237,7 @@ func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb
 		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
 	}
 
-	jobSpecAdapt, err := sv.adapter.ToJobProto(jobSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot serialize job: \n%s", err.Error())
-	}
+	jobSpecAdapt := sv.adapter.ToJobProto(jobSpec)
 
 	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,

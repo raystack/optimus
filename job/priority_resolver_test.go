@@ -24,7 +24,7 @@ func getDependencyObject(specs map[string]models.JobSpec, dependencySpecs ...str
 	return dependenciesMap
 }
 
-func getMultiDependencyObject(specs map[string]models.JobSpec, dependencySpec1 string, dependencySpec2 string) map[string]models.JobSpecDependency {
+func getMultiDependencyObject(specs map[string]models.JobSpec, dependencySpec1, dependencySpec2 string) map[string]models.JobSpecDependency {
 	depSpec1 := specs[dependencySpec1]
 	depSpec2 := specs[dependencySpec2]
 	return map[string]models.JobSpecDependency{dependencySpec1: {Job: &depSpec1}, dependencySpec2: {Job: &depSpec2}}
@@ -238,8 +238,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 		externalSpecName := "external-dag-dep"
 		externalSpec := models.JobSpec{Name: externalSpecName, Dependencies: noDependency}
 		deps2 := getDependencyObject(specs, spec1)
-		deps2[externalSpecName] = models.JobSpecDependency{Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
-			Type: models.JobSpecDependencyTypeInter}
+		deps2[externalSpecName] = models.JobSpecDependency{
+			Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
+			Type: models.JobSpecDependencyTypeInter,
+		}
 		specs[spec2] = models.JobSpec{Name: spec2, Dependencies: deps2}
 		jobSpecs = append(jobSpecs, specs[spec2])
 
@@ -255,8 +257,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 		// for the spec2, we'll add external spec as dependency
 		jobnameWithExternalDep := "job-with-1-external-dep"
 		jobnameWithExternalDepDependencies := map[string]models.JobSpecDependency{
-			externalSpecName: {Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
-				Type: models.JobSpecDependencyTypeInter},
+			externalSpecName: {
+				Job: &externalSpec, Project: &models.ProjectSpec{Name: "external-project-name"},
+				Type: models.JobSpecDependencyTypeInter,
+			},
 		}
 		jobSpecs = append(jobSpecs, models.JobSpec{Name: jobnameWithExternalDep, Dependencies: jobnameWithExternalDepDependencies})
 
@@ -267,8 +271,10 @@ func TestPriorityWeightResolver(t *testing.T) {
 		max := job.MaxPriorityWeight
 		max1 := max - job.PriorityWeightGap*1
 		max2 := max - job.PriorityWeightGap*2
-		expectedWeights := map[string]int{spec1: max, spec2: max1, spec3: max2, spec4: max, spec5: max1,
-			jobnameWithExternalDep: max1}
+		expectedWeights := map[string]int{
+			spec1: max, spec2: max1, spec3: max2, spec4: max, spec5: max1,
+			jobnameWithExternalDep: max1,
+		}
 
 		for _, jobSpec := range resolvedJobSpecs {
 			assert.Equal(t, expectedWeights[jobSpec.Name], jobSpec.Task.Priority)

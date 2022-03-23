@@ -28,34 +28,28 @@ type Namespace struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (p Namespace) FromSpec(spec models.NamespaceSpec) (Namespace, error) {
+func (p Namespace) FromSpec(spec models.NamespaceSpec) Namespace {
 	jsonBytes, err := json.Marshal(spec.Config)
 	if err != nil {
-		return Namespace{}, nil
+		return Namespace{}
 	}
 
 	return Namespace{
 		ID:     spec.ID,
 		Name:   spec.Name,
 		Config: jsonBytes,
-	}, nil
+	}
 }
 
-func (p Namespace) FromSpecWithProject(spec models.NamespaceSpec, proj models.ProjectSpec) (Namespace, error) {
-	adaptNamespace, err := p.FromSpec(spec)
-	if err != nil {
-		return adaptNamespace, err
-	}
+func (p Namespace) FromSpecWithProject(spec models.NamespaceSpec, proj models.ProjectSpec) Namespace {
+	adaptNamespace := p.FromSpec(spec)
 
-	adaptProject, err := Project{}.FromSpec(proj)
-	if err != nil {
-		return adaptNamespace, err
-	}
+	adaptProject := Project{}.FromSpec(proj)
 
 	adaptNamespace.Project = adaptProject
 	adaptNamespace.ProjectID = adaptProject.ID
 
-	return adaptNamespace, nil
+	return adaptNamespace
 }
 
 func (p Namespace) ToSpec(project models.ProjectSpec) (models.NamespaceSpec, error) {
@@ -97,10 +91,8 @@ type namespaceRepository struct {
 }
 
 func (repo *namespaceRepository) Insert(ctx context.Context, resource models.NamespaceSpec) error {
-	c, err := Namespace{}.FromSpecWithProject(resource, repo.project)
-	if err != nil {
-		return err
-	}
+	c := Namespace{}.FromSpecWithProject(resource, repo.project)
+
 	if len(c.Name) == 0 {
 		return errors.New("name cannot be empty")
 	}
@@ -117,10 +109,8 @@ func (repo *namespaceRepository) Save(ctx context.Context, spec models.Namespace
 	if len(spec.Config) == 0 {
 		return store.ErrEmptyConfig
 	}
-	resource, err := Namespace{}.FromSpec(spec)
-	if err != nil {
-		return err
-	}
+	resource := Namespace{}.FromSpec(spec)
+
 	resource.ID = existingResource.ID
 	return repo.db.WithContext(ctx).Model(resource).Updates(resource).Error
 }

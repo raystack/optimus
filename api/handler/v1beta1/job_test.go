@@ -42,6 +42,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJobSpecs() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
@@ -86,6 +87,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRe
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_NamespaceServiceGetError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
@@ -102,6 +104,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_Namespac
 	stream.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterFromJobProtoError() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
@@ -151,6 +154,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceKeepOnlyError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
@@ -232,24 +236,6 @@ func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceG
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(models.JobSpec{}, errors.New("any error")).Once()
-
-	runtimeServiceServer := s.newRuntimeServiceServer()
-	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
-
-	s.Assert().Error(err)
-	s.Assert().Nil(resp)
-}
-
-func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_AdapterToJobProtoError() {
-	req := &pb.GetJobSpecificationRequest{}
-	req.ProjectName = s.projectSpec.Name
-	req.NamespaceName = s.namespaceSpec.Name
-	req.JobName = "job-1"
-	jobSpec := models.JobSpec{Name: req.JobName}
-
-	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
-	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
-	s.adapter.On("ToJobProto", jobSpec).Return(&pb.JobSpecification{}, errors.New("any error")).Once()
 
 	runtimeServiceServer := s.newRuntimeServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
@@ -345,7 +331,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobProto, _ := adapter.ToJobProto(jobSpec)
+			jobProto := adapter.ToJobProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,

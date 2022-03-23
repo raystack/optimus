@@ -29,7 +29,7 @@ func NewSecretService(projectService ProjectService, namespaceService NamespaceS
 	}
 }
 
-func (s secretService) Save(ctx context.Context, projectName string, namespaceName string, item models.ProjectSecretItem) error {
+func (s secretService) Save(ctx context.Context, projectName, namespaceName string, item models.ProjectSecretItem) error {
 	if item.Name == "" {
 		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}
@@ -46,7 +46,7 @@ func (s secretService) Save(ctx context.Context, projectName string, namespaceNa
 	return nil
 }
 
-func (s secretService) Update(ctx context.Context, projectName string, namespaceName string, item models.ProjectSecretItem) error {
+func (s secretService) Update(ctx context.Context, projectName, namespaceName string, item models.ProjectSecretItem) error {
 	if item.Name == "" {
 		return NewError(models.SecretEntity, ErrInvalidArgument, "secret name cannot be empty")
 	}

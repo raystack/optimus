@@ -15,9 +15,7 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-var (
-	tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
-)
+var tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)
 
 const (
 	errorReadTableSpec      = "failed to read table spec for bigquery"
@@ -59,7 +57,8 @@ func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.C
 func ensureTable(ctx context.Context, tableHandle bqiface.Table, t BQTable, upsert bool) error {
 	meta, err := tableHandle.Metadata(ctx)
 	if err != nil {
-		if metaErr, ok := err.(*googleapi.Error); !ok || metaErr.Code != http.StatusNotFound {
+		var metaErr *googleapi.Error
+		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
 			return err
 		}
 		m, err := bqCreateTableMetaAdapter(t)
@@ -198,7 +197,7 @@ func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest
 	}
 }
 
-func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc BQTable, bqResourceDst BQTable) (bqiface.Table, error) {
+func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc, bqResourceDst BQTable) (bqiface.Table, error) {
 	// make sure dataset is present
 	datasetDst := client.DatasetInProject(bqResourceDst.Project, bqResourceDst.Dataset)
 	if err := ensureDataset(ctx, datasetDst, BQDataset{

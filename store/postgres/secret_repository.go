@@ -211,7 +211,7 @@ func (repo secretRepository) GetSecrets(ctx context.Context, project models.Proj
 	for _, res := range resources {
 		adapted, err := res.ToSpec(repo.hash)
 		if err != nil {
-			return secretItems, fmt.Errorf("failed to adapt secret, %s", err)
+			return secretItems, fmt.Errorf("failed to adapt secret: %w", err)
 		}
 		secretItems = append(secretItems, adapted)
 	}

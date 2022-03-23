@@ -84,7 +84,7 @@ func (_m *ProtoAdapter) FromResourceProto(res *optimus.ResourceSpecification, st
 }
 
 // ToInstanceProto provides a mock function with given fields: _a0
-func (_m *ProtoAdapter) ToInstanceProto(_a0 models.InstanceSpec) (*optimus.InstanceSpec, error) {
+func (_m *ProtoAdapter) ToInstanceProto(_a0 models.InstanceSpec) *optimus.InstanceSpec {
 	ret := _m.Called(_a0)
 
 	var r0 *optimus.InstanceSpec
@@ -96,18 +96,11 @@ func (_m *ProtoAdapter) ToInstanceProto(_a0 models.InstanceSpec) (*optimus.Insta
 		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(models.InstanceSpec) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // ToJobProto provides a mock function with given fields: _a0
-func (_m *ProtoAdapter) ToJobProto(_a0 models.JobSpec) (*optimus.JobSpecification, error) {
+func (_m *ProtoAdapter) ToJobProto(_a0 models.JobSpec) *optimus.JobSpecification {
 	ret := _m.Called(_a0)
 
 	var r0 *optimus.JobSpecification
@@ -119,14 +112,7 @@ func (_m *ProtoAdapter) ToJobProto(_a0 models.JobSpec) (*optimus.JobSpecificatio
 		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(models.JobSpec) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // ToNamespaceProto provides a mock function with given fields: spec

@@ -49,7 +49,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -80,7 +80,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -153,7 +153,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -184,7 +184,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -232,7 +232,8 @@ func TestDependencyResolver(t *testing.T) {
 				Dependencies: []string{
 					"project.dataset.tablex_destination",
 					"project.dataset.table2_destination",
-				}}, nil)
+				},
+			}, nil)
 			execUnit1.On("GenerateDependencies", ctx, unitData2).Return(&models.GenerateDependenciesResponse{}, nil)
 
 			// hook dependency
@@ -270,7 +271,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -301,7 +302,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -381,7 +382,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test3",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -400,7 +401,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -419,7 +420,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -480,7 +481,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -499,7 +500,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -546,7 +547,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -586,7 +587,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -611,7 +612,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			unitData := models.GenerateDependenciesRequest{Config: models.PluginConfigs{}.FromJobSpec(jobSpec1.Task.Config), Assets: models.PluginAssets{}.FromJobSpec(jobSpec1.Assets), Project: projectSpec}
 			execUnit.On("GenerateDependencies", context.Background(), unitData).Return(&models.GenerateDependenciesResponse{
-				Dependencies: []string{"project.dataset.table3_destination"}}, nil)
+				Dependencies: []string{"project.dataset.table3_destination"},
+			}, nil)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
@@ -629,7 +631,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -648,7 +650,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -692,7 +694,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -711,7 +713,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -754,7 +756,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test3",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -773,7 +775,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -793,7 +795,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -864,7 +866,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test3",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -883,7 +885,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test1",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -905,7 +907,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{
@@ -926,7 +928,7 @@ func TestDependencyResolver(t *testing.T) {
 				Name:    "test2-external",
 				Owner:   "optimus",
 				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 02, 0, 0, 0, 0, time.UTC),
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
 				Task: models.JobSpecTask{

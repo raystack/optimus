@@ -89,18 +89,14 @@ func (r Resource) FromSpecWithNamespace(resourceSpec models.ResourceSpec, namesp
 	}
 
 	// namespace
-	adaptNamespace, err := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
-	if err != nil {
-		return Resource{}, err
-	}
+	adaptNamespace := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
+
 	adaptResource.NamespaceID = adaptNamespace.ID
 	adaptResource.Namespace = adaptNamespace
 
 	// project
-	adaptProject, err := Project{}.FromSpec(namespace.ProjectSpec)
-	if err != nil {
-		return Resource{}, err
-	}
+	adaptProject := Project{}.FromSpec(namespace.ProjectSpec)
+
 	adaptResource.ProjectID = adaptProject.ID
 	adaptResource.Project = adaptProject
 

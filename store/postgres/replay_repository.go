@@ -40,7 +40,7 @@ type ExecutionTree struct {
 }
 
 func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
-	//only store necessary job spec data in tree
+	// only store necessary job spec data in tree
 	treeNodeJob := treeNode.Data.(models.JobSpec)
 	jobSpec := Job{
 		ID:          treeNodeJob.ID,
@@ -234,7 +234,7 @@ func (repo *replayRepository) GetByStatus(ctx context.Context, status []string) 
 
 func (repo *replayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Find(&replays).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
