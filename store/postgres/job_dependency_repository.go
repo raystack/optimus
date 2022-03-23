@@ -33,10 +33,7 @@ type JobDependencies []JobDependency
 func (d JobDependencies) ToSpec() ([]models.JobIDDependenciesPair, error) {
 	var jobDependencies []models.JobIDDependenciesPair
 	for _, dependency := range d {
-		dependentProject, err := dependency.DependentProject.ToSpec()
-		if err != nil {
-			return nil, err
-		}
+		dependentProject := dependency.DependentProject.ToSpec()
 		jobDependencies = append(jobDependencies, models.JobIDDependenciesPair{
 			JobID:            dependency.JobID,
 			DependentProject: dependentProject,
