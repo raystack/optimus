@@ -22,9 +22,7 @@ const (
 	AssetFolderName   = "assets"
 )
 
-var (
-	specSuffixRegex = regexp.MustCompile(`\.(yaml|cfg|sql|txt)$`)
-)
+var specSuffixRegex = regexp.MustCompile(`\.(yaml|cfg|sql|txt)$`)
 
 type cacheItem struct {
 	path string
@@ -58,20 +56,20 @@ func (repo *jobRepository) SaveAt(job models.JobSpec, rootDir string) error {
 	}
 
 	// create necessary folders
-	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0765)|os.ModeDir); err != nil {
+	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0o765)|os.ModeDir); err != nil {
 		return fmt.Errorf("repo.fs.MkdirAll: %s: %w", rootDir, err)
 	}
 
 	// save assets
 	for assetName, assetValue := range config.Asset {
-		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
+		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0o755)); err != nil {
 			return fmt.Errorf("WriteFile.Asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
 		}
 	}
 	config.Asset = nil
 
 	// save job
-	fd, err := repo.fs.OpenFile(repo.jobFilePath(rootDir), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(0755))
+	fd, err := repo.fs.OpenFile(repo.jobFilePath(rootDir), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(0o755))
 	if err != nil {
 		return err
 	}
@@ -345,7 +343,7 @@ func (repo *jobRepository) assetFolderPath(name string) string {
 
 // assetFilePath generates the path to asset directory files
 // for a given job
-func (repo *jobRepository) assetFilePath(job string, file string) string {
+func (repo *jobRepository) assetFilePath(job, file string) string {
 	return filepath.Join(repo.assetFolderPath(job), file)
 }
 

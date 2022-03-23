@@ -55,19 +55,19 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 	}
 
 	// create necessary folders
-	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0765)|os.ModeDir); err != nil {
+	if err = repo.fs.MkdirAll(repo.assetFolderPath(rootDir), os.FileMode(0o765)|os.ModeDir); err != nil {
 		return fmt.Errorf("repo.fs.MkdirAll: %s: %w", rootDir, err)
 	}
 
 	// save assets
 	for assetName, assetValue := range resourceSpec.Assets {
-		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0755)); err != nil {
+		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0o755)); err != nil {
 			return fmt.Errorf("WriteFile.Asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
 		}
 	}
 
 	// save resource
-	if afero.WriteFile(repo.fs, repo.resourceFilePath(rootDir), specBytes, os.FileMode(0755)); err != nil {
+	if afero.WriteFile(repo.fs, repo.resourceFilePath(rootDir), specBytes, os.FileMode(0o755)); err != nil {
 		return err
 	}
 
@@ -330,7 +330,7 @@ func (repo *resourceRepository) assetFolderPath(name string) string {
 }
 
 // assetFilePath generates the path to asset directory files
-func (repo *resourceRepository) assetFilePath(job string, file string) string {
+func (repo *resourceRepository) assetFilePath(job, file string) string {
 	return filepath.Join(repo.assetFolderPath(job), file)
 }
 

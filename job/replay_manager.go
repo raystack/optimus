@@ -25,13 +25,13 @@ var (
 )
 
 const (
-	//ReplayRunTimeout signifies type of replay failure caused by timeout
+	// ReplayRunTimeout signifies type of replay failure caused by timeout
 	ReplayRunTimeout = "long running replay timeout"
 	// TimestampLogFormat format of a timestamp will be used in logs
 	TimestampLogFormat = "2006-01-02T15:04:05+00:00"
 	// schedulerBatchSize number of run instances to be checked per request
 	schedulerBatchSize = 100
-	//replayListWindow window interval to fetch recent replays
+	// replayListWindow window interval to fetch recent replays
 	replayListWindow = -3 * 30 * 24 * time.Hour
 )
 
@@ -201,17 +201,17 @@ func (m *Manager) GetRunStatus(ctx context.Context, projectSpec models.ProjectSp
 	return m.scheduler.GetJobRunStatus(ctx, projectSpec, jobName, startDate, batchEndDate, schedulerBatchSize)
 }
 
-//Close stops consuming any new request
+// Close stops consuming any new request
 func (m *Manager) Close() error { // nolint: unparam
 	if m.requestQ != nil {
-		//stop accepting any more requests
+		// stop accepting any more requests
 		close(m.requestQ)
 	}
-	//wait for request worker to finish
+	// wait for request worker to finish
 	m.wg.Wait()
 
 	if m.syncerScheduler != nil {
-		//wait for syncer to finish
+		// wait for syncer to finish
 		<-m.syncerScheduler.Stop().Done()
 	}
 	return nil

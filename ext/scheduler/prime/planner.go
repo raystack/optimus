@@ -162,7 +162,7 @@ func (p *Planner) getJobAllocations(ctx context.Context) (string, []uuid.UUID, e
 			}
 		}
 	}
-	var mostCapSize = PeerPoolSize
+	mostCapSize := PeerPoolSize
 	var mostCapNodeID string
 	for nodeID, utilization := range peerUtilization {
 		if utilization < mostCapSize {

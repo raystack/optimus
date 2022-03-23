@@ -40,7 +40,7 @@ type ExecutionTree struct {
 }
 
 func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
-	//only store necessary job spec data in tree
+	// only store necessary job spec data in tree
 	treeNodeJob := treeNode.Data.(models.JobSpec)
 	jobSpec := Job{
 		ID:          treeNodeJob.ID,

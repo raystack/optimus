@@ -22,11 +22,9 @@ const (
 	SecretsStringToMatch = ".secret."
 )
 
-var (
-	// IgnoreTemplateRenderExtension used as extension on a file will skip template
-	// rendering of it
-	IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
-)
+// IgnoreTemplateRenderExtension used as extension on a file will skip template
+// rendering of it
+var IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
 
 // ContextManager fetches all config data for a given instanceSpec and compiles all
 // macros/templates.
@@ -100,7 +98,7 @@ func (fm *ContextManager) createContextForTask(instanceConfig map[string]string)
 	return contextForTask
 }
 
-func (fm *ContextManager) createContextForHook(initialContext map[string]interface{}, taskConfigs map[string]string, taskSecretConfigs map[string]string) map[string]interface{} {
+func (fm *ContextManager) createContextForHook(initialContext map[string]interface{}, taskConfigs, taskSecretConfigs map[string]string) map[string]interface{} {
 	// Merge taskConfig and secret config for the context
 	mergedTaskConfigs := utils.MergeMaps(taskConfigs, taskSecretConfigs)
 

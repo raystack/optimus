@@ -37,14 +37,14 @@ type Job struct {
 
 	TaskName         string
 	TaskConfig       datatypes.JSON
-	WindowSize       *int64 //duration in nanos
+	WindowSize       *int64 // duration in nanos
 	WindowOffset     *int64
 	WindowTruncateTo *string
 
 	Assets               datatypes.JSON
 	Hooks                datatypes.JSON
 	Metadata             datatypes.JSON
-	ExternalDependencies datatypes.JSON //store external dependencies
+	ExternalDependencies datatypes.JSON // store external dependencies
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -166,7 +166,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
-	//prep external dependencies
+	// prep external dependencies
 	externalDependencies := models.ExternalDependency{}
 	if conf.ExternalDependencies != nil {
 		if err := json.Unmarshal(conf.ExternalDependencies, &externalDependencies); err != nil {
@@ -179,7 +179,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
-	//prep assets
+	// prep assets
 	jobAssets := []models.JobSpecAsset{}
 	assetsRaw := []JobAsset{}
 	if err := json.Unmarshal(conf.Assets, &assetsRaw); err != nil {
@@ -189,7 +189,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		jobAssets = append(jobAssets, asset.ToSpec())
 	}
 
-	//prep hooks
+	// prep hooks
 	jobHooks := []models.JobSpecHook{}
 	hooksRaw := []JobHook{}
 	if err := json.Unmarshal(conf.Hooks, &hooksRaw); err != nil {

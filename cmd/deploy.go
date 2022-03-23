@@ -71,7 +71,7 @@ func deployCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaceNames []string,
-	ignoreJobDeployment, ignoreResources bool, verbose bool) error {
+	ignoreJobDeployment, ignoreResources, verbose bool) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 

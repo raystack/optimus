@@ -121,7 +121,6 @@ func TestGoEngine(t *testing.T) {
 
 				comp := run.NewGoEngine()
 				compiledExpr, err := comp.CompileFiles(testCase.Input, values)
-
 				if err != nil {
 					t.Error(err)
 				}

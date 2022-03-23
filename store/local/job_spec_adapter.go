@@ -28,7 +28,7 @@ var (
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
-func init() {
+func init() { //nolint:gochecknoinits
 	_ = validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
 }
 

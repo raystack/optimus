@@ -24,10 +24,8 @@ linters:
     - promlinter
     - interfacer
     - gosec
-    - gofumpt
     - godox
     - godot
-    - gochecknoinits
     - gci
     - forbidigo
     - errcheck
@@ -53,6 +51,9 @@ linters:
     - gocyclo
     - dupl
 linters-settings:
+  gofumpt:
+    lang-version: "1.17"
+    extra-rules: true
   revive:
     ignore-generated-header: true
     severity: warning
@@ -61,13 +62,13 @@ linters-settings:
     numbers: true
   gomnd:
     ignored-numbers: # Why we have a big range of file permissions
-      - '0644'
-      - '0655'
-      - '0666'
-      - '0770'
-      - '0755'
-      - '0765'
-      - '0777'
+      - '0o644'
+      - '0o655'
+      - '0o666'
+      - '0o770'
+      - '0o755'
+      - '0o765'
+      - '0o777'
     ignored-functions:
       - 'survey.MinLength'
       - 'survey.MaxLength'

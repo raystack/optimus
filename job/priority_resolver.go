@@ -46,8 +46,7 @@ type PriorityResolver interface {
 // dag2, dag6 will get weight of maxWeight-1
 // dag3 will get maxWeight-2
 // Note: it's crucial that dependencies of all Jobs are already resolved
-type priorityResolver struct {
-}
+type priorityResolver struct{}
 
 // NewPriorityResolver create an instance of priorityResolver
 func NewPriorityResolver() *priorityResolver {
@@ -116,7 +115,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	for _, childSpec := range jobSpecMap {
 		childNode := a.findOrCreateDAGNode(tree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
-			var missingParent = false
+			missingParent := false
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {

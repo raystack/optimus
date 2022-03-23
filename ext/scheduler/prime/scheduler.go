@@ -71,7 +71,7 @@ func (s *Scheduler) Clear(context.Context, models.ProjectSpec, string, time.Time
 	return nil
 }
 
-func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
+func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
 	panic("implement me")
 }
 

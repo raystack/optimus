@@ -23,7 +23,6 @@ var (
 // SchedulerUnit is implemented by supported schedulers
 type SchedulerUnit interface {
 	GetName() string
-
 	VerifyJob(ctx context.Context, namespace NamespaceSpec, job JobSpec) error
 	ListJobs(ctx context.Context, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
 	DeployJobs(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec, obs progress.Observer) error
@@ -115,8 +114,7 @@ type ExecutorStopRequest struct {
 	Signal string
 }
 
-type ExecutorStartResponse struct {
-}
+type ExecutorStartResponse struct{}
 
 type ExecutorStats struct {
 	Logs   []byte

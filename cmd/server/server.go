@@ -59,10 +59,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	// termChan listen for sigterm
-	termChan = make(chan os.Signal, 1)
-)
+// termChan listen for sigterm
+var termChan = make(chan os.Signal, 1)
 
 const (
 	shutdownWait       = 30 * time.Second

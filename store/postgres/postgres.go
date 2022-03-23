@@ -35,9 +35,7 @@ const (
 	tracingSpanKey = "otel:span"
 )
 
-var (
-	tracer = otel.Tracer("optimus/store/postgres")
-)
+var tracer = otel.Tracer("optimus/store/postgres")
 
 // NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
 func NewHTTPFSMigrator(DBConnURL string) (*migrate.Migrate, error) {

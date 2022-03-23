@@ -245,10 +245,10 @@ func TestJobSpecRepository(t *testing.T) {
 		t.Run("should open the file and parse its contents", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(spec.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte(testJobContents), 0644)
-			appFS.MkdirAll(filepath.Join(spec.Name, local.AssetFolderName), 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0644)
+			appFS.MkdirAll(spec.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte(testJobContents), 0o644)
+			appFS.MkdirAll(filepath.Join(spec.Name, local.AssetFolderName), 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0o644)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			returnedSpec, err := repo.GetByName(spec.Name)
@@ -286,11 +286,11 @@ task:
 			// ./spec/job.yaml
 			// ./spec/asset/query.sql
 			appFS := afero.NewMemMapFs()
-			afero.WriteFile(appFS, local.JobSpecParentName, []byte(thisYamlContent), 0644)
-			appFS.MkdirAll(spec.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte(testJobContentsLocal), 0644)
-			appFS.MkdirAll(filepath.Join(spec.Name, local.AssetFolderName), 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0644)
+			afero.WriteFile(appFS, local.JobSpecParentName, []byte(thisYamlContent), 0o644)
+			appFS.MkdirAll(spec.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte(testJobContentsLocal), 0o644)
+			appFS.MkdirAll(filepath.Join(spec.Name, local.AssetFolderName), 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0o644)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			returnedSpec, err := repo.GetByName(spec.Name)
@@ -337,15 +337,15 @@ task:
 			// ./secret_jobs/spec/job.yaml
 			// ./secret_jobs/spec/asset/query.sql
 			appFS := afero.NewMemMapFs()
-			afero.WriteFile(appFS, local.JobSpecParentName, []byte(thisYamlContentRoot), 0644)
-			appFS.MkdirAll("secret_jobs", 0755)
+			afero.WriteFile(appFS, local.JobSpecParentName, []byte(thisYamlContentRoot), 0o644)
+			appFS.MkdirAll("secret_jobs", 0o755)
 
-			appFS.MkdirAll(filepath.Join("secret_jobs", spec.Name), 0755)
-			afero.WriteFile(appFS, filepath.Join("secret_jobs", local.JobSpecParentName), []byte(thisYamlContentSubFolder), 0644)
+			appFS.MkdirAll(filepath.Join("secret_jobs", spec.Name), 0o755)
+			afero.WriteFile(appFS, filepath.Join("secret_jobs", local.JobSpecParentName), []byte(thisYamlContentSubFolder), 0o644)
 
-			afero.WriteFile(appFS, filepath.Join("secret_jobs", spec.Name, local.JobSpecFileName), []byte(testJobContentsLocal), 0644)
-			appFS.MkdirAll(filepath.Join("secret_jobs", spec.Name, local.AssetFolderName), 0755)
-			afero.WriteFile(appFS, filepath.Join("secret_jobs", spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0644)
+			afero.WriteFile(appFS, filepath.Join("secret_jobs", spec.Name, local.JobSpecFileName), []byte(testJobContentsLocal), 0o644)
+			appFS.MkdirAll(filepath.Join("secret_jobs", spec.Name, local.AssetFolderName), 0o755)
+			afero.WriteFile(appFS, filepath.Join("secret_jobs", spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0o644)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			returnedSpec, err := repo.GetByName(spec.Name)
@@ -361,10 +361,10 @@ task:
 		t.Run("should use cache if file is requested more than once", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(spec.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte(testJobContents), 0644)
-			appFS.MkdirAll(filepath.Join(spec.Name, local.AssetFolderName), 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0644)
+			appFS.MkdirAll(spec.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte(testJobContents), 0o644)
+			appFS.MkdirAll(filepath.Join(spec.Name, local.AssetFolderName), 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.AssetFolderName, "query.sql"), []byte(jobConfig.Asset["query.sql"]), 0o644)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			returnedSpec, err := repo.GetByName(spec.Name)
@@ -388,7 +388,7 @@ task:
 		})
 		t.Run("should return ErrNoSuchSpec in case the job folder exist but no job file exist", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(spec.Name, 0755)
+			appFS.MkdirAll(spec.Name, 0o755)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			_, err := repo.GetByName(spec.Name)
@@ -402,8 +402,8 @@ task:
 		t.Run("should return error if yaml source is incorrect and failed to validate", func(t *testing.T) {
 			// create test files and directories
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll(spec.Name, 0755)
-			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte("name:a"), 0644)
+			appFS.MkdirAll(spec.Name, 0o755)
+			afero.WriteFile(appFS, filepath.Join(spec.Name, local.JobSpecFileName), []byte("name:a"), 0o644)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			_, err := repo.GetByName(spec.Name)
@@ -503,9 +503,9 @@ hooks: []`,
 			appFS := afero.NewMemMapFs()
 
 			for idx, jobspec := range jobspecs {
-				appFS.MkdirAll(jobspec.Name, 0755)
-				afero.WriteFile(appFS, filepath.Join(jobspec.Name, local.JobSpecFileName), []byte(content[idx]), 0644)
-				appFS.MkdirAll(filepath.Join(jobspec.Name, local.AssetFolderName), 0755)
+				appFS.MkdirAll(jobspec.Name, 0o755)
+				afero.WriteFile(appFS, filepath.Join(jobspec.Name, local.JobSpecFileName), []byte(content[idx]), 0o644)
+				appFS.MkdirAll(filepath.Join(jobspec.Name, local.AssetFolderName), 0o755)
 			}
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
@@ -524,7 +524,7 @@ hooks: []`,
 		})
 		t.Run("should return ErrNoSpecsFound if the root directory has no files", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
-			appFS.MkdirAll("test", 0755)
+			appFS.MkdirAll("test", 0o755)
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			_, err := repo.GetAll()
@@ -534,9 +534,9 @@ hooks: []`,
 			appFS := afero.NewMemMapFs()
 
 			for idx, jobspec := range jobspecs {
-				appFS.MkdirAll(jobspec.Name, 0755)
-				afero.WriteFile(appFS, filepath.Join(jobspec.Name, local.JobSpecFileName), []byte(content[idx]), 0644)
-				appFS.MkdirAll(filepath.Join(jobspec.Name, local.AssetFolderName), 0755)
+				appFS.MkdirAll(jobspec.Name, 0o755)
+				afero.WriteFile(appFS, filepath.Join(jobspec.Name, local.JobSpecFileName), []byte(content[idx]), 0o644)
+				appFS.MkdirAll(filepath.Join(jobspec.Name, local.AssetFolderName), 0o755)
 			}
 
 			repo := local.NewJobSpecRepository(appFS, adapter)

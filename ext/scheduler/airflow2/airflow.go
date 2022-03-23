@@ -34,9 +34,7 @@ var SharedLib []byte
 //go:embed resources/base_dag.py
 var resBaseDAG []byte
 
-var (
-	ErrEmptyJobName = errors.New("job name cannot be an empty string")
-)
+var ErrEmptyJobName = errors.New("job name cannot be an empty string")
 
 const (
 	baseLibFileName   = "__lib.py"
@@ -265,7 +263,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	}
 
 	schdHost = strings.Trim(schdHost, "/")
-	var jsonStr = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
+	jsonStr := []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
 	postURL := fmt.Sprintf(
@@ -315,7 +313,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		"execution_date_gte": "%s",
 		"execution_date_lte": "%s"
 		}`, pageOffset, batchSize, jobName, startDate.UTC().Format(airflowDateFormat), endDate.UTC().Format(airflowDateFormat))
-		var jsonStr = []byte(dagRunBatchReq)
+		jsonStr := []byte(dagRunBatchReq)
 		request, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewBuffer(jsonStr))
 		if err != nil {
 			return nil, fmt.Errorf("failed to build http request for %s: %w", dagStatusBatchURL, err)

@@ -377,7 +377,7 @@ func TestService(t *testing.T) {
 }
 
 // Copy exported fields
-func Copy(dst interface{}, src interface{}) error {
+func Copy(dst, src interface{}) error {
 	bytes, err := json.Marshal(src)
 	if err != nil {
 		return fmt.Errorf("failed to marshal src: %w", err)

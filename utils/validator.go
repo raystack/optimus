@@ -31,7 +31,7 @@ func CronIntervalValidator(val interface{}, _ string) error {
 type VFactory struct{}
 
 func (f *VFactory) NewFromRegex(re, message string) survey.Validator {
-	var regex = regexp.MustCompile(re)
+	regex := regexp.MustCompile(re)
 	return func(v interface{}) error {
 		k := reflect.ValueOf(v).Kind()
 		if k != reflect.String {

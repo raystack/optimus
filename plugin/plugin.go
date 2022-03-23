@@ -22,7 +22,7 @@ func Initialize(pluginLogger hclog.Logger) error {
 	pluginLogger.Debug(fmt.Sprintf("discovering plugins(%d)...", len(discoveredPlugins)))
 
 	// pluginMap is the map of plugins we can dispense.
-	var pluginMap = map[string]plugin.Plugin{
+	pluginMap := map[string]plugin.Plugin{
 		models.PluginTypeBase:                     base.NewPluginClient(pluginLogger),
 		models.ModTypeCLI.String():                cli.NewPluginClient(pluginLogger),
 		models.ModTypeDependencyResolver.String(): dependencyresolver.NewPluginClient(pluginLogger),

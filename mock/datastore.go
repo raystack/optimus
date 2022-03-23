@@ -20,25 +20,32 @@ type Datastorer struct {
 func (d *Datastorer) Name() string {
 	return d.Called().Get(0).(string)
 }
+
 func (d *Datastorer) Description() string {
 	return d.Called().Get(0).(string)
 }
+
 func (d *Datastorer) Types() map[models.ResourceType]models.DatastoreTypeController {
 	return d.Called().Get(0).(map[models.ResourceType]models.DatastoreTypeController)
 }
+
 func (d *Datastorer) CreateResource(ctx context.Context, inp models.CreateResourceRequest) error {
 	return d.Called(ctx, inp).Error(0)
 }
+
 func (d *Datastorer) UpdateResource(ctx context.Context, inp models.UpdateResourceRequest) error {
 	return d.Called(ctx, inp).Error(0)
 }
+
 func (d *Datastorer) ReadResource(ctx context.Context, inp models.ReadResourceRequest) (models.ReadResourceResponse, error) {
 	args := d.Called(ctx, inp)
 	return args.Get(0).(models.ReadResourceResponse), args.Error(1)
 }
+
 func (d *Datastorer) DeleteResource(ctx context.Context, inp models.DeleteResourceRequest) error {
 	return d.Called(ctx, inp).Error(0)
 }
+
 func (d *Datastorer) BackupResource(ctx context.Context, inp models.BackupResourceRequest) (models.BackupResourceResponse, error) {
 	args := d.Called(ctx, models.BackupResourceRequest{
 		Resource:   inp.Resource,

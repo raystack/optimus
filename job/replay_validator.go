@@ -11,10 +11,8 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-var (
-	// ReplayStatusToValidate signifies list of status to be used when checking active replays
-	ReplayStatusToValidate = []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted, models.ReplayStatusReplayed}
-)
+// ReplayStatusToValidate signifies list of status to be used when checking active replays
+var ReplayStatusToValidate = []string{models.ReplayStatusInProgress, models.ReplayStatusAccepted, models.ReplayStatusReplayed}
 
 type Validator struct {
 	scheduler models.SchedulerUnit
@@ -29,12 +27,12 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 	if !reqInput.Force {
 		reqReplayNodes := replayTree.GetAllNodes()
 
-		//check if this dag have running instance in the batchScheduler
+		// check if this dag have running instance in the batchScheduler
 		if err := v.validateRunningInstance(ctx, reqReplayNodes, reqInput); err != nil {
 			return err
 		}
 
-		//check another replay active for this dag
+		// check another replay active for this dag
 		activeReplaySpecs, err := replaySpecRepo.GetByStatus(ctx, ReplayStatusToValidate)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
@@ -44,7 +42,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 		}
 		return validateReplayJobsConflict(activeReplaySpecs, reqReplayNodes)
 	}
-	//check and cancel if found conflicted replays for same job ID
+	// check and cancel if found conflicted replays for same job ID
 	return cancelConflictedReplays(ctx, replaySpecRepo, reqInput)
 }
 
@@ -93,7 +91,7 @@ func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqReplay
 	return nil
 }
 
-func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree.TreeNode) error {
+func checkAnyConflictedDags(activeNodes, reqReplayNodes []*tree.TreeNode) error {
 	activeNodesMap := make(map[string]*tree.TreeNode)
 	for _, activeNode := range activeNodes {
 		activeNodesMap[activeNode.GetName()] = activeNode
@@ -109,7 +107,7 @@ func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree
 	return nil
 }
 
-func checkAnyConflictedRuns(activeNode *tree.TreeNode, reqNode *tree.TreeNode) error {
+func checkAnyConflictedRuns(activeNode, reqNode *tree.TreeNode) error {
 	for _, reqNodeRun := range reqNode.Runs.Values() {
 		if activeNode.Runs.Contains(reqNodeRun.(time.Time)) {
 			return ErrConflictedJobRun

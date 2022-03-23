@@ -62,7 +62,7 @@ func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plu
 	return cmd
 }
 
-func validateJobSpecificationRequest(l log.Logger, projectName string, namespace string,
+func validateJobSpecificationRequest(l log.Logger, projectName, namespace string,
 	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string, verbose bool) (err error) {
 	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 

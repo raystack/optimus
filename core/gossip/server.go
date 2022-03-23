@@ -27,9 +27,9 @@ const (
 	connectionTimeout   = 10 * time.Second
 
 	applyTimeout = 10 * time.Second
-	//leaderWaitDelay  = 100 * time.Millisecond
-	//appliedWaitDelay = 100 * time.Millisecond
-	//raftLogCacheSize = 512
+	// leaderWaitDelay  = 100 * time.Millisecond
+	// appliedWaitDelay = 100 * time.Millisecond
+	// raftLogCacheSize = 512
 )
 
 type Server struct {
@@ -180,7 +180,7 @@ func newSerfConfig(serfAddr, raftAddress, nodeID string, eventCh chan serf.Event
 // raft manages the leadership/follower state in cluster
 // minimum 3 nodes are required to work properly to have 1 node
 // fail-over resistant
-func (s *Server) initRaft(_ context.Context, devMode bool, bootstrapCluster bool, schedulerConf config.SchedulerConfig, fsm raft.FSM) error {
+func (s *Server) initRaft(_ context.Context, devMode, bootstrapCluster bool, schedulerConf config.SchedulerConfig, fsm raft.FSM) error {
 	c := raft.DefaultConfig()
 	c.LocalID = raft.ServerID(schedulerConf.NodeID)
 
@@ -232,7 +232,7 @@ func (s *Server) initRaftStore(devMode bool, baseDir string) (raft.LogStore, raf
 	}
 
 	// prepare directory for data
-	if err := os.MkdirAll(baseDir, 0777); err != nil {
+	if err := os.MkdirAll(baseDir, 0o777); err != nil {
 		return nil, nil, nil, err
 	}
 

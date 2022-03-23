@@ -42,6 +42,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJobSpecs() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
@@ -86,6 +87,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRe
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_NamespaceServiceGetError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
@@ -102,6 +104,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_Namespac
 	stream.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterFromJobProtoError() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
@@ -151,6 +154,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
+
 func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceKeepOnlyError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)

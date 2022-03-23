@@ -128,7 +128,7 @@ func (e *Extension) downloadAsset(url, destPath string) error {
 		return e.getResponseError(resp)
 	}
 
-	f, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	f, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
 	}

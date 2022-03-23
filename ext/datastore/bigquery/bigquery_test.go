@@ -545,7 +545,7 @@ func TestBigquery(t *testing.T) {
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", spec.Project, spec.Dataset).Return(bQDatasetHandle).Once()
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
@@ -555,11 +555,11 @@ func TestBigquery(t *testing.T) {
 			bQCopier.On("Run", testingContext).Return(bQJob, nil)
 			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
 
-			//update expiry
+			// update expiry
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
 			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
 
-			//verify
+			// verify
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
 			bq := BigQuery{
 				ClientFac: bQClientFactory,
