@@ -1519,7 +1519,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobDependencyRepository.On("GetAll", ctx).Return(persistedDependencies, nil)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
-			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
+			actual, err := resolver.FetchJobDependencies(ctx, projectSpec, nil)
 
 			assert.Nil(t, err)
 			assert.EqualValues(t, expectedDependency[jobSpec2.Name], actual[jobSpec1.ID][0])
@@ -1674,7 +1674,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByIDs", ctx, []uuid.UUID{jobSpec2.ID, jobSpec3.ID}).Return([]models.JobSpec{jobSpec2, jobSpec3}, nil)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
-			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
+			actual, err := resolver.FetchJobDependencies(ctx, projectSpec, nil)
 
 			assert.Nil(t, err)
 			assert.EqualValues(t, dependencies, []models.JobSpecDependency{actual[jobSpec1.ID][0], actual[jobSpec1.ID][1]})
@@ -1764,7 +1764,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobDependencyRepository.On("GetAll", ctx).Return([]models.JobIDDependenciesPair{}, errors.New(errorMsg))
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
-			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
+			actual, err := resolver.FetchJobDependencies(ctx, projectSpec, nil)
 
 			assert.Nil(t, actual)
 			assert.Equal(t, errorMsg, err.Error())
@@ -1914,7 +1914,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByIDs", ctx, []uuid.UUID{jobSpec2.ID, jobSpec3.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
-			actual, err := resolver.FetchJobDependencies(ctx, projectSpec)
+			actual, err := resolver.FetchJobDependencies(ctx, projectSpec, nil)
 
 			assert.Nil(t, actual)
 			assert.Equal(t, errorMsg, err.Error())

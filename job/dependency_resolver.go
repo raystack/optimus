@@ -97,7 +97,8 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 	return nil
 }
 
-func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
+func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
+	observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
 	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
 	jobDependencies, err := dependencyRepo.GetAll(ctx)
 	if err != nil {
@@ -119,6 +120,7 @@ func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSp
 			Type:    dep.Type,
 		})
 	}
+	r.notifyProgress(observer, &models.ProgressJobSpecDependencyFetch{})
 	return jobDependenciesMap, nil
 }
 

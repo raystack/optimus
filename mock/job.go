@@ -234,8 +234,9 @@ func (srv *DependencyResolver) ResolveAndPersist(ctx context.Context, projectSpe
 	return args.Error(0)
 }
 
-func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error) {
-	args := srv.Called(ctx, projectSpec)
+func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
+	obs progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
+	args := srv.Called(ctx, projectSpec, obs)
 	return args.Get(0).(map[uuid.UUID][]models.JobSpecDependency), args.Error(1)
 }
 

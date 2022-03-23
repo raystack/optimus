@@ -1189,7 +1189,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 
 			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{}, nil)
 
@@ -1286,7 +1286,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{}, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
@@ -1384,7 +1384,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
@@ -1622,7 +1622,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[1]).Return([]models.JobSpecHook{}, nil)
 
@@ -1679,7 +1679,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil).Once()
 
 			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 
 			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
@@ -1728,7 +1728,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, errors.New(errorMsg))
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
 				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
@@ -1787,7 +1787,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return([]models.JobSpec{}, errors.New(errorMsg))
@@ -1863,7 +1863,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
@@ -1943,7 +1943,7 @@ func TestService(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
+			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
 			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{}, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)

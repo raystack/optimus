@@ -53,7 +53,7 @@ type DependencyResolver interface {
 	ResolveAndPersist(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) error
 
 	//FetchJobDependencies from dependency persistence
-	FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]models.JobSpecDependency, error)
+	FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error)
 	FetchHookWithDependencies(jobSpec models.JobSpec) ([]models.JobSpecHook, error)
 }
 
@@ -709,14 +709,12 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 			return err
 		}
 	}
-	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyResolve{})
 
 	//Fetch dependency and enrich
-	jobDependencies, err := srv.dependencyResolver.FetchJobDependencies(ctx, projectSpec)
+	jobDependencies, err := srv.dependencyResolver.FetchJobDependencies(ctx, projectSpec, progressObserver)
 	if err != nil {
 		return fmt.Errorf("failed to fetch job dependencies: %s", err)
 	}
-	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyFetch{})
 
 	//Get all job specs and enrich with dependencies
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
@@ -730,7 +728,6 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 	if err != nil {
 		return err
 	}
-	srv.notifyProgress(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 
 	//Group per namespace
 	namespaceJobSpecMap, err := prepareNamespaceJobsMap(ctx, projectJobSpecRepo, jobSpecs)
@@ -798,7 +795,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 	}
 	resolveDependencySuccessGauge.Set(float64(succeed))
 	resolveDependencyFailureGauge.Set(float64(failure))
-
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyResolve{})
 	return err
 }
 

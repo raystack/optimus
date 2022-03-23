@@ -60,7 +60,7 @@ func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpe
 	if err := a.resolvePriorities(jobSpecs, progressObserver); err != nil {
 		return nil, fmt.Errorf("error occurred while resolving priority: %w", err)
 	}
-
+	notify(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 	return jobSpecs, nil
 }
 
