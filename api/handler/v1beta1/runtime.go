@@ -61,7 +61,7 @@ type RuntimeServiceServer struct {
 	namespaceService service.NamespaceService
 	secretService    service.SecretService
 	runSvc           service.JobRunService
-	assetCompiler    run.AssetCompiler
+	assetCompiler    run.JobRunInputCompiler
 	scheduler        models.SchedulerUnit
 	l                log.Logger
 
@@ -309,7 +309,7 @@ func NewRuntimeServiceServer(
 	adapter ProtoAdapter,
 	progressObserver progress.Observer,
 	instSvc service.JobRunService,
-	assetCompiler run.AssetCompiler,
+	assetCompiler run.JobRunInputCompiler,
 	scheduler models.SchedulerUnit,
 ) *RuntimeServiceServer {
 	return &RuntimeServiceServer{

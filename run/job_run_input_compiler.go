@@ -7,7 +7,7 @@ import (
 	"github.com/odpf/optimus/service"
 )
 
-type AssetCompiler interface {
+type JobRunInputCompiler interface {
 	// Compile prepares instance execution context environment
 	Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error)
 }
