@@ -119,7 +119,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			break
 		}
 
-		switch models.ProgressType(resp.Type) {
+		switch resp.Type {
 		case models.ProgressTypeJobUpload:
 			deployCounter++
 			if !resp.GetSuccess() {

@@ -2,14 +2,20 @@ package models
 
 import "fmt"
 
+const (
+	ProgressTypeJobSpecUnknownDependencyUsed = "unknown dependency used"
+	ProgressTypeJobDependencyResolution      = "dependency resolution"
+	ProgressTypeJobUpload                    = "job upload"
+)
+
 type (
 	// ProgressJobSpecFetch represents a specification being
 	// read from the storage
 	ProgressJobSpecFetch struct{}
 
-	// ProgressJobSpecDependencyResolve represents dependencies are being
+	// ProgressJobDependencyResolutionFinished represents dependencies are being
 	// successfully resolved
-	ProgressJobSpecDependencyResolve struct{}
+	ProgressJobDependencyResolutionFinished struct{}
 
 	// ProgressJobSpecUnknownDependencyUsed represents a job spec has used
 	// dependencies which are unknown/unresolved
@@ -18,15 +24,11 @@ type (
 		Dependency string
 	}
 
-	// ProgressJobDependencyResolutionFailed represents a job dependency is failed to be
+	// ProgressJobDependencyResolution represents a job dependency is failed to be
 	// refreshed thus deployed using the persisted dependencies
-	ProgressJobDependencyResolutionFailed struct {
+	ProgressJobDependencyResolution struct {
 		Job string
-	}
-
-	// ProgressJobDependencyResolutionSuccess represents a job dependency has been successfully refreshed
-	ProgressJobDependencyResolutionSuccess struct {
-		Job string
+		Err error
 	}
 
 	// ProgressJobSpecDependencyFetch represents dependencies are being
@@ -91,7 +93,7 @@ func (e *ProgressJobPriorityWeightAssignmentFailed) String() string {
 	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
 }
 
-func (e *ProgressJobSpecDependencyResolve) String() string {
+func (e *ProgressJobDependencyResolutionFinished) String() string {
 	return "dependencies resolved"
 }
 
@@ -99,12 +101,16 @@ func (e *ProgressJobSpecUnknownDependencyUsed) String() string {
 	return fmt.Sprintf("could not find registered destination '%s' during compiling dependencies for the provided job %s", e.Dependency, e.Job)
 }
 
-func (e *ProgressJobDependencyResolutionFailed) String() string {
+func (e *ProgressJobSpecUnknownDependencyUsed) Type() string {
+	return ProgressTypeJobSpecUnknownDependencyUsed
+}
+
+func (e *ProgressJobDependencyResolution) String() string {
 	return fmt.Sprintf("failed to resolve job dependencies of '%s', job will be deployed using the last working state", e.Job)
 }
 
-func (e *ProgressJobDependencyResolutionSuccess) String() string {
-	return fmt.Sprintf("job dependencies of '%s' has been successfully refreshed", e.Job)
+func (e *ProgressJobDependencyResolution) Type() string {
+	return ProgressTypeJobDependencyResolution
 }
 
 func (e *ProgressJobSpecDependencyFetch) String() string {
@@ -130,18 +136,10 @@ func (e *ProgressJobUpload) String() string {
 	return fmt.Sprintf("uploaded: %s", e.Name)
 }
 
+func (e *ProgressJobUpload) Type() string {
+	return ProgressTypeJobUpload
+}
+
 func (e *ProgressJobRemoteDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
 }
-
-type ProgressType string
-
-func (p ProgressType) String() string {
-	return string(p)
-}
-
-const (
-	ProgressTypeJobSpecUnknownDependencyUsed ProgressType = "unknown dependency used"
-	ProgressTypeJobDependencyResolution      ProgressType = "dependency resolution"
-	ProgressTypeJobUpload                    ProgressType = "job upload"
-)

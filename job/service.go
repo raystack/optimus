@@ -290,7 +290,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 			return err
 		}
 	}
-	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyResolve{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 
 	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
@@ -787,15 +787,16 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 		if state.Err != nil {
 			err = multierror.Append(err, state.Err)
 			failure++
-			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFailed{Job: fmt.Sprintf("%v", state.Val)})
+			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val), Err: state.Err})
 		} else {
 			succeed++
-			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionSuccess{Job: fmt.Sprintf("%v", state.Val)})
+			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val)})
 		}
 	}
+
 	resolveDependencySuccessGauge.Set(float64(succeed))
 	resolveDependencyFailureGauge.Set(float64(failure))
-	srv.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyResolve{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 	return err
 }
 
