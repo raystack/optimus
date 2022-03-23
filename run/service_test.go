@@ -384,6 +384,10 @@ func TestService(t *testing.T) {
 		if err != nil {
 			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
 		}
+		cronSch, err := cron.ParseCronSchedule("0 12 * * *")
+		if err != nil {
+			t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
+		}
 		t.Run("should not able to get job runs when scheduler returns empty response", func(t *testing.T) {
 			sch := new(mock.Scheduler)
 			spec := models.ProjectSpec{
@@ -403,7 +407,7 @@ func TestService(t *testing.T) {
 				Filter:    []string{"success"},
 			}
 
-			sch.On("GetJobRuns", ctx, spec, param).Return([]models.JobRun{}, nil)
+			sch.On("GetJobRuns", ctx, spec, param, cronSch).Return([]models.JobRun{}, nil)
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
 			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
@@ -421,15 +425,15 @@ func TestService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			runsFromScheduler, err := buildMockGetJobRuns(5, startDate, jobSpec.Schedule.Interval, models.RunStateSuccess.String())
+			runsFromScheduler, err := mockGetJobRuns(5, startDate, jobSpec.Schedule.Interval, models.RunStateSuccess.String())
 			if err != nil {
 				t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
 			}
-			runsFromSchFor3days, err := buildMockGetJobRuns(3, startDate, jobSpec.Schedule.Interval, models.RunStateSuccess.String())
+			runsFromSchFor3days, err := mockGetJobRuns(3, startDate, jobSpec.Schedule.Interval, models.RunStateSuccess.String())
 			if err != nil {
 				t.Errorf("unable to build mock job runs to test GetJobRunList for success state %v", err)
 			}
-			expPendingRuns, err := buildMockGetJobRuns(2, startDate.Add(time.Hour*24*3), jobSpec.Schedule.Interval, models.RunStatePending.String())
+			expPendingRuns, err := mockGetJobRuns(2, startDate.Add(time.Hour*24*3), jobSpec.Schedule.Interval, models.RunStatePending.String())
 			if err != nil {
 				t.Errorf("unable to build mock job runs to test GetJobRunList for pending state %v", err)
 			}
@@ -527,7 +531,7 @@ func TestService(t *testing.T) {
 			} {
 				t.Run(scenario.description, func(t *testing.T) {
 					sch := new(mock.Scheduler)
-					sch.On("GetJobRuns", ctx, spec, scenario.input).Return(scenario.runs, nil)
+					sch.On("GetJobRuns", ctx, spec, scenario.input, cronSch).Return(scenario.runs, nil)
 					defer sch.AssertExpectations(t)
 					runService := run.NewService(nil, nil, nil, sch, nil)
 					returnedRuns, err := runService.GetJobRunList(ctx, projSpec, scenario.job, scenario.input)
@@ -638,7 +642,7 @@ func TestService(t *testing.T) {
 				Filter:    []string{"success"},
 			}
 
-			sch.On("GetJobRuns", ctx, spec, param).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
+			sch.On("GetJobRuns", ctx, spec, param, cronSch).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
 			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
@@ -667,8 +671,8 @@ func TestService(t *testing.T) {
 					ScheduledAt: endDate,
 				},
 			}
-
-			sch.On("GetJobRuns", ctx, spec, param).Return(runs, nil)
+			var cronSchNil *cron.ScheduleSpec
+			sch.On("GetJobRuns", ctx, spec, param, cronSchNil).Return(runs, nil)
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
 			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
@@ -691,7 +695,7 @@ func Copy(dst, src interface{}) error {
 	return nil
 }
 
-func buildMockGetJobRuns(afterDays int, date time.Time, interval string, status string) ([]models.JobRun, error) {
+func mockGetJobRuns(afterDays int, date time.Time, interval, status string) ([]models.JobRun, error) {
 	var expRuns []models.JobRun
 	schSpec, err := cron.ParseCronSchedule(interval)
 	if err != nil {
@@ -705,9 +709,5 @@ func buildMockGetJobRuns(afterDays int, date time.Time, interval string, status 
 		})
 		nextStart = schSpec.Next(nextStart)
 	}
-	for _, v := range expRuns {
-		fmt.Printf("mock runs :%v status :%v\n", v.ScheduledAt, v.Status)
-	}
-
 	return expRuns, nil
 }

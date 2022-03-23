@@ -40,8 +40,7 @@ type Service struct {
 }
 
 func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	*models.JobRunInput, error,
-) {
+	*models.JobRunInput, error) {
 	secrets, err := s.secretService.GetSecrets(ctx, namespace)
 	if err != nil {
 		return nil, err
@@ -50,8 +49,7 @@ func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 }
 
 func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
-	scheduledAt time.Time,
-) (models.JobRun, error) {
+	scheduledAt time.Time) (models.JobRun, error) {
 	newJobRun := models.JobRun{
 		Spec:        jobSpec,
 		Trigger:     models.TriggerSchedule,
@@ -102,7 +100,7 @@ func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectS
 		return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
 	}
 	// get expected runs StartDate and EndDate inclusive
-	expectedRuns := getExpectedRun(sch, jobQuery.StartDate, jobQuery.EndDate)
+	expectedRuns := getExpectedRuns(sch, jobQuery.StartDate, jobQuery.EndDate)
 
 	// call to airflow for get runs
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, sch)
@@ -119,8 +117,7 @@ func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectS
 }
 
 func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
-	instanceType models.InstanceType, instanceName string,
-) (models.InstanceSpec, error) {
+	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
 	jobRunRepo := s.repoFac.New()
 
 	// clear old run
@@ -150,8 +147,7 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 }
 
 func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
-	instanceName string, executedAt time.Time,
-) (models.InstanceSpec, error) {
+	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {
 		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
@@ -226,8 +222,7 @@ func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 	return nil
 }
 
-// get the expected run based on the given user input date
-func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
+func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []models.JobRun {
 	var jobRuns []models.JobRun
 	start := spec.Next(startTime.Add(-time.Second * 1))
 	end := endTime
@@ -242,8 +237,7 @@ func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.T
 	return jobRuns
 }
 
-// merge the scheduled runs and expected runs
-func mergeRuns(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
+func mergeRuns(expected, actual []models.JobRun) []models.JobRun {
 	var mergeRuns []models.JobRun
 	m := actualRunMap(actual)
 	for _, exp := range expected {
