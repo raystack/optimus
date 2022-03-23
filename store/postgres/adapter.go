@@ -396,18 +396,14 @@ func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace
 	}
 
 	// namespace
-	adaptNamespace, err := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
-	if err != nil {
-		return adaptJob, err
-	}
+	adaptNamespace := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
+
 	adaptJob.NamespaceID = adaptNamespace.ID
 	adaptJob.Namespace = adaptNamespace
 
 	// project
-	adaptProject, err := Project{}.FromSpec(namespace.ProjectSpec)
-	if err != nil {
-		return adaptJob, err
-	}
+	adaptProject := Project{}.FromSpec(namespace.ProjectSpec)
+
 	adaptJob.ProjectID = adaptProject.ID
 	adaptJob.Project = adaptProject
 
@@ -459,10 +455,7 @@ func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.Namespace
 	}
 
 	// namespace
-	adaptNamespace, err := Namespace{}.FromSpecWithProject(nsSpec, nsSpec.ProjectSpec)
-	if err != nil {
-		return JobRun{}, err
-	}
+	adaptNamespace := Namespace{}.FromSpecWithProject(nsSpec, nsSpec.ProjectSpec)
 
 	var instances []Instance
 	for _, instanceSpec := range jr.Instances {
@@ -526,10 +519,7 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 	var adaptNamespace models.NamespaceSpec
 
 	if jr.Namespace.Name != "" {
-		adaptProject, err = jr.Namespace.Project.ToSpec()
-		if err != nil {
-			return models.JobRun{}, models.NamespaceSpec{}, err
-		}
+		adaptProject = jr.Namespace.Project.ToSpec()
 
 		// namespace
 		adaptNamespace, err = jr.Namespace.ToSpec(adaptProject)

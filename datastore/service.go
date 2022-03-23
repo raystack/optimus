@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -186,7 +187,7 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
 		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
-			if err == store.ErrResourceNotFound {
+			if errors.Is(err, store.ErrResourceNotFound) {
 				continue
 			}
 			return models.BackupPlan{}, err
@@ -212,7 +213,7 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			BackupSpec: backupRequest,
 		})
 		if err != nil {
-			if err == models.ErrUnsupportedResource {
+			if errors.Is(err, models.ErrUnsupportedResource) {
 				continue
 			}
 			return models.BackupPlan{}, err
@@ -250,7 +251,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
 		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
-			if err == store.ErrResourceNotFound {
+			if errors.Is(err, store.ErrResourceNotFound) {
 				continue
 			}
 			return models.BackupResult{}, err
@@ -277,7 +278,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			BackupTime: backupTime,
 		})
 		if err != nil {
-			if err == models.ErrUnsupportedResource {
+			if errors.Is(err, models.ErrUnsupportedResource) {
 				continue
 			}
 			return models.BackupResult{}, err
@@ -316,7 +317,7 @@ func (srv Service) ListResourceBackups(ctx context.Context, projectSpec models.P
 	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
 	backupSpecs, err := backupRepo.GetAll(ctx)
 	if err != nil {
-		if err == store.ErrResourceNotFound {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return []models.BackupSpec{}, nil
 		}
 		return []models.BackupSpec{}, err

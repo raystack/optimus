@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -128,7 +129,7 @@ func IsResourceNameUnique(repository store.ResourceSpecRepository) survey.Valida
 		if str, ok := val.(string); ok {
 			if _, err := repository.GetByName(context.Background(), str); err == nil {
 				return fmt.Errorf("resource with the provided name already exists")
-			} else if err != models.ErrNoSuchSpec && err != models.ErrNoResources {
+			} else if !errors.Is(err, models.ErrNoSuchSpec) && !errors.Is(err, models.ErrNoResources) {
 				return err
 			}
 		} else {

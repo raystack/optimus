@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -34,7 +35,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 		// check another replay active for this dag
 		activeReplaySpecs, err := replaySpecRepo.GetByStatus(ctx, ReplayStatusToValidate)
 		if err != nil {
-			if err == store.ErrResourceNotFound {
+			if errors.Is(err, store.ErrResourceNotFound) {
 				return nil
 			}
 			return err
@@ -48,7 +49,7 @@ func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpe
 func cancelConflictedReplays(ctx context.Context, replaySpecRepo store.ReplaySpecRepository, reqInput models.ReplayRequest) error {
 	duplicatedReplaySpecs, err := replaySpecRepo.GetByJobIDAndStatus(ctx, reqInput.Job.ID, ReplayStatusToValidate)
 	if err != nil {
-		if err == store.ErrResourceNotFound {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return nil
 		}
 		return err

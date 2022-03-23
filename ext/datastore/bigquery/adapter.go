@@ -213,8 +213,8 @@ func bqSchemaFrom(schema bqapi.Schema) (BQSchema, error) {
 	return sc, nil
 }
 
-func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) {
-	meta = new(bqapi.TableMetadata)
+func bqCreateTableMetaAdapter(t BQTable) (*bqapi.TableMetadata, error) {
+	meta := new(bqapi.TableMetadata)
 	meta.Name = t.Table
 	if t.Metadata.Cluster != nil {
 		meta.Clustering = bqClusteringTo(t.Metadata.Cluster)
@@ -230,6 +230,7 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 		}
 	}
 
+	var err error
 	if t.Metadata.Source != nil {
 		meta.ExternalDataConfig, err = bqExternalDataConfigTo(*t.Metadata.Source)
 		if err != nil {
@@ -247,10 +248,11 @@ func bqCreateTableMetaAdapter(t BQTable) (meta *bqapi.TableMetadata, err error) 
 	if meta.Schema, err = bqSchemaTo(t.Metadata.Schema); err != nil {
 		return nil, err
 	}
-	return
+	return meta, nil
 }
 
-func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err error) {
+func bqUpdateTableMetaAdapter(t BQTable) (bqapi.TableMetadataToUpdate, error) {
+	meta := bqapi.TableMetadataToUpdate{}
 	if len(t.Table) == 0 {
 		return meta, errors.New("table name cannot be empty")
 	}
@@ -265,8 +267,9 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 			meta.TimePartitioning = bqPartitioningTimeTo(*t.Metadata.Partition)
 		} // updating range based partition after creation is not supported
 	}
+	var err error
 	if meta.Schema, err = bqSchemaTo(t.Metadata.Schema); err != nil {
-		return
+		return meta, err
 	}
 	for key, value := range t.Metadata.Labels {
 		meta.SetLabel(key, value)
@@ -279,5 +282,5 @@ func bqUpdateTableMetaAdapter(t BQTable) (meta bqapi.TableMetadataToUpdate, err 
 		}
 		meta.ExpirationTime = expiryTime
 	}
-	return
+	return meta, nil
 }

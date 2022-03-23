@@ -200,7 +200,7 @@ func (s *Server) initRaft(_ context.Context, devMode, bootstrapCluster bool, sch
 
 	s.raft, err = raft.NewRaft(c, fsm, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
-		return fmt.Errorf("raft.InitRaft: %v", err)
+		return fmt.Errorf("raft.InitRaft: %w", err)
 	}
 
 	if s.raftBootstrapped, err = raft.HasExistingState(logStore, stableStore, snapshotStore); err != nil {
@@ -218,7 +218,7 @@ func (s *Server) initRaft(_ context.Context, devMode, bootstrapCluster bool, sch
 		}
 		f := s.raft.BootstrapCluster(cfg)
 		if err := f.Error(); err != nil {
-			return fmt.Errorf("raft.raft.BootstrapCluster: %v", err)
+			return fmt.Errorf("raft.raft.BootstrapCluster: %w", err)
 		}
 	}
 	return nil
@@ -239,13 +239,13 @@ func (s *Server) initRaftStore(devMode bool, baseDir string) (raft.LogStore, raf
 	// use embedded boltdb
 	boltDB, err := boltdb.NewBoltStore(filepath.Join(baseDir, raftLogDBPath))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, raftLogDBPath), err)
+		return nil, nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %w`, filepath.Join(baseDir, raftLogDBPath), err)
 	}
 
 	// use embedded filesystem
 	fss, err := raft.NewFileSnapshotStore(baseDir, retainSnapshotCount, os.Stderr)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q, ...): %v`, baseDir, err)
+		return nil, nil, nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q, ...): %w`, baseDir, err)
 	}
 	return boltDB, boltDB, fss, nil
 }

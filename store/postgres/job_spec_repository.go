@@ -101,10 +101,7 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
 
-	pSpec, err := p.ToSpec()
-	if err != nil {
-		return models.JobSpec{}, models.ProjectSpec{}, err
-	}
+	pSpec := p.ToSpec()
 
 	return jSpec, pSpec, err
 }
@@ -124,10 +121,8 @@ func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest
 		if err != nil {
 			return nil, err
 		}
-		pSpec, err := job.Project.ToSpec()
-		if err != nil {
-			return nil, err
-		}
+		pSpec := job.Project.ToSpec()
+
 		pairs = append(pairs, store.ProjectJobPair{
 			Project: pSpec,
 			Job:     jSpec,
@@ -233,7 +228,8 @@ func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
 func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) error {
 	// find the base job
 	var r Job
-	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
+	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).
+		Find(&r).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		// no job exists, inserting for the first time
 		return nil
 	} else if err != nil {

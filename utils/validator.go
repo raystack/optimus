@@ -11,7 +11,7 @@ import (
 
 // CronIntervalValidator return a nil value when a valid cron string is passed
 // used in gopkg.in/validator.v2
-func CronIntervalValidator(val interface{}, param string) error {
+func CronIntervalValidator(val interface{}, _ string) error {
 	value, ok := val.(string)
 	if !ok {
 		return fmt.Errorf("invalid crontab entry, not a valid string")

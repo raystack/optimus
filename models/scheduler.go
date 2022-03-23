@@ -88,7 +88,7 @@ func (e *EventJobRemoteDelete) String() string {
 // ExecutorUnit executes the actual job instance
 type ExecutorUnit interface {
 	// Start initiates the instance execution
-	Start(ctx context.Context, req ExecutorStartRequest) (*ExecutorStartResponse, error)
+	Start(ctx context.Context, req ExecutorStartRequest) *ExecutorStartResponse
 
 	// Stop aborts the execution
 	Stop(ctx context.Context, req ExecutorStopRequest) error

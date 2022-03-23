@@ -39,14 +39,11 @@ linters:
     - ireturn
     - goerr113
     - nilerr
-    - errorlint
     - bodyclose
-    - ifshort
     - prealloc
     - nestif
     - lll
     - maligned
-    - nakedret
     - golint
     - gocritic
     - gocognit
@@ -81,5 +78,9 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  unparam:
+    # Inspect exported functions.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    check-exported: true
 severity:
   default-severity: error

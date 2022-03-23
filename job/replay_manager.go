@@ -179,7 +179,7 @@ func (m *Manager) GetReplay(ctx context.Context, replayUUID uuid.UUID) (models.R
 func (m *Manager) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
 	replays, err := m.replaySpecRepoFac.New().GetByProjectID(ctx, projectUUID)
 	if err != nil {
-		if err == store.ErrResourceNotFound {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return []models.ReplaySpec{}, nil
 		}
 		return []models.ReplaySpec{}, err
@@ -202,7 +202,7 @@ func (m *Manager) GetRunStatus(ctx context.Context, projectSpec models.ProjectSp
 }
 
 // Close stops consuming any new request
-func (m *Manager) Close() error {
+func (m *Manager) Close() error { // nolint: unparam
 	if m.requestQ != nil {
 		// stop accepting any more requests
 		close(m.requestQ)

@@ -170,10 +170,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		var adaptedJobSpecs []*pb.JobSpecification
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for _, spec := range jobSpecs {
-			adaptJob, err := adapt.ToJobProto(spec)
-			if err != nil {
-				return fmt.Errorf("[%s] failed to serialize: %s - %w", namespaceName, spec.Name, err)
-			}
+			adaptJob := adapt.ToJobProto(spec)
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
 		specFound = true
@@ -201,7 +198,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err
@@ -260,7 +257,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
-			if err == models.ErrNoResources {
+			if errors.Is(err, models.ErrNoResources) {
 				l.Info(coloredNotice("[%s] no resource specifications found", namespaceName))
 				continue
 			}
@@ -304,7 +301,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err

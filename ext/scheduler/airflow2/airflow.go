@@ -89,7 +89,7 @@ func (s *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 	return bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
 }
 
-func (s *scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
+func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
 	_, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
 	return err
 }
@@ -178,7 +178,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	for {
 		obj, err := it.Next(ctx)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
