@@ -3,7 +3,7 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"strings"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 )
@@ -16,8 +16,6 @@ const (
 	// ProjectConfigPrefix will be used to prefix all the config variables of
 	// a project, i.e. registered entities
 	ProjectConfigPrefix = "GLOBAL__"
-
-	SecretsStringToMatch = ".secret."
 )
 
 // IgnoreTemplateRenderExtension used as extension on a file will skip template
@@ -187,20 +185,6 @@ func getSecretsMap(secrets models.ProjectSecrets) map[string]string {
 		secretsMap[s.Name] = s.Value
 	}
 	return secretsMap
-}
-
-func splitConfigForSecrets(jobSpecConfig models.JobSpecConfigs) (map[string]string, map[string]string) {
-	configs := map[string]string{}
-	configWithSecrets := map[string]string{}
-	for _, val := range jobSpecConfig {
-		if strings.Contains(val.Value, SecretsStringToMatch) {
-			configWithSecrets[val.Name] = val.Value
-			continue
-		}
-		configs[val.Name] = val.Value
-	}
-
-	return configs, configWithSecrets
 }
 
 func prefixKeysOf(configMap map[string]string, prefix string) map[string]string {
