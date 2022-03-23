@@ -76,7 +76,7 @@ type (
 )
 
 func (e *ProgressJobSpecFetch) String() string {
-	return fmt.Sprintf("fetching job specs")
+	return "fetching job specs"
 }
 
 func (e *ProgressSavedJobDelete) String() string {
@@ -84,7 +84,7 @@ func (e *ProgressSavedJobDelete) String() string {
 }
 
 func (e *ProgressJobPriorityWeightAssign) String() string {
-	return fmt.Sprintf("assigned priority weights")
+	return "assigned priority weights"
 }
 
 func (e *ProgressJobPriorityWeightAssignmentFailed) String() string {
@@ -92,7 +92,7 @@ func (e *ProgressJobPriorityWeightAssignmentFailed) String() string {
 }
 
 func (e *ProgressJobSpecDependencyResolve) String() string {
-	return fmt.Sprintf("dependencies resolved")
+	return "dependencies resolved"
 }
 
 func (e *ProgressJobSpecUnknownDependencyUsed) String() string {
@@ -108,7 +108,7 @@ func (e *ProgressJobDependencyResolutionSuccess) String() string {
 }
 
 func (e *ProgressJobSpecDependencyFetch) String() string {
-	return fmt.Sprintf("fetching job dependencies")
+	return "fetching job dependencies"
 }
 
 func (e *ProgressJobCheckFailed) String() string {

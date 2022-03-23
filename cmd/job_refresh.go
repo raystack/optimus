@@ -51,7 +51,7 @@ func jobRefreshCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		}
 
 		if len(*namespaces) > 0 || len(*jobs) > 0 {
-			l.Info(fmt.Sprintf("Refreshing job dependencies of selected jobs/namespaces"))
+			l.Info("Refreshing job dependencies of selected jobs/namespaces")
 		}
 		l.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
 		start := time.Now()
@@ -59,7 +59,7 @@ func jobRefreshCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		if err := refreshJobSpecificationRequest(l, projectName, *namespaces, *jobs, conf.Host, verbose); err != nil {
 			return err
 		}
-		l.Info(coloredSuccess("Jobs refreshed successfully, took %s", time.Since(start).Round(time.Second)))
+		l.Info(coloredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
 	return cmd
@@ -159,7 +159,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 	if len(refreshErrors) > 0 {
 		l.Error(coloredError(fmt.Sprintf("Refreshed %d/%d jobs.", refreshSuccessCounter, refreshSuccessCounter+refreshFailedCounter)))
 		for _, reqErr := range refreshErrors {
-			l.Error(coloredError(fmt.Sprintf("%s", reqErr)))
+			l.Error(coloredError(reqErr))
 		}
 	} else {
 		l.Info(coloredSuccess("Refreshed %d jobs.", refreshSuccessCounter))
@@ -168,7 +168,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 	if len(deployErrors) > 0 {
 		l.Error(coloredError("Deployed %d/%d jobs.", deploySuccessCounter, deploySuccessCounter+deployFailedCounter))
 		for _, reqErr := range deployErrors {
-			l.Error(coloredError(fmt.Sprintf("%s", reqErr)))
+			l.Error(coloredError(reqErr))
 		}
 	} else {
 		l.Info(coloredSuccess("Deployed %d jobs.", deploySuccessCounter))

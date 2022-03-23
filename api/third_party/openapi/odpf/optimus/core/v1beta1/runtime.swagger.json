@@ -2294,22 +2294,15 @@
         "success": {
           "type": "boolean"
         },
-        "ack": {
-          "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+        "type": {
+          "type": "string",
+          "title": "response type differentiate events"
         },
         "message": {
           "type": "string"
         },
-        "namespaceName": {
-          "type": "string"
-        },
         "jobName": {
           "type": "string"
-        },
-        "type": {
-          "type": "string",
-          "title": "response type differentiate events"
         }
       }
     },

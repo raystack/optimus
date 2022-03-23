@@ -129,7 +129,6 @@ func (obs *jobRefreshObserver) Notify(e progress.Event) {
 	case *models.ProgressJobUpload:
 		resp := &pb.RefreshJobsResponse{
 			Success: true,
-			Ack:     true,
 			JobName: evt.Name,
 			Type:    models.ProgressTypeJobUpload.String(),
 		}

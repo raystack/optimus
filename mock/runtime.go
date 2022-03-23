@@ -251,32 +251,93 @@ type RefreshJobsServer struct {
 	mock.Mock
 }
 
-func (r *RefreshJobsServer) Send(response *pb.RefreshJobsResponse) error {
-	args := r.Called(response)
-	return args.Error(0)
+// Send provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) Send(_a0 *optimus.RefreshJobsResponse) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*optimus.RefreshJobsResponse) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
-func (r *RefreshJobsServer) SetHeader(md metadata.MD) error {
-	panic("implement me")
+// SetHeader provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) SetHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
-func (r *RefreshJobsServer) SendHeader(md metadata.MD) error {
-	panic("implement me")
+// SendHeader provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) SendHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
-func (r *RefreshJobsServer) SetTrailer(md metadata.MD) {
-	panic("implement me")
+// SetTrailer provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) SetTrailer(_a0 metadata.MD) {
+	_m.Called(_a0)
 }
 
-func (r *RefreshJobsServer) Context() context.Context {
-	args := r.Called()
-	return args.Get(0).(context.Context)
+// Context provides a mock function with given fields:
+func (_m *RefreshJobsServer) Context() context.Context {
+	ret := _m.Called()
+
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func() context.Context); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(context.Context)
+		}
+	}
+
+	return r0
 }
 
-func (r *RefreshJobsServer) SendMsg(m interface{}) error {
-	panic("implement me")
+// SendMsg provides a mock function with given fields: m
+func (_m *RefreshJobsServer) SendMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
-func (r *RefreshJobsServer) RecvMsg(m interface{}) error {
-	panic("implement me")
+// RecvMsg provides a mock function with given fields: m
+func (_m *RefreshJobsServer) RecvMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
