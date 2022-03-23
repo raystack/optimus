@@ -2,7 +2,7 @@ package config
 
 import "fmt"
 
-type ProjectConfig struct {
+type ClientConfig struct {
 	Version    Version      `mapstructure:"version"`
 	Log        LogConfig    `mapstructure:"log"`
 	Host       string       `mapstructure:"host"` // optimus server host
@@ -34,7 +34,7 @@ type Namespace struct {
 	Datastore []Datastore       `mapstructure:"datastore"`
 }
 
-func (c *ProjectConfig) GetNamespaceByName(name string) (*Namespace, error) {
+func (c *ClientConfig) GetNamespaceByName(name string) (*Namespace, error) {
 	if c.namespaceNameToNamespace == nil {
 		c.namespaceNameToNamespace = map[string]*Namespace{}
 		for _, namespace := range c.Namespaces {

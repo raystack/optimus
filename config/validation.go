@@ -11,15 +11,15 @@ import (
 // Validate validate the config as an input. If not valid, it returns error
 func Validate(conf interface{}) error {
 	switch c := conf.(type) {
-	case ProjectConfig:
-		return validateProjectConfig(c)
+	case ClientConfig:
+		return validateClientConfig(c)
 	case ServerConfig:
 		return validateServerConfig(c)
 	}
 	return errors.New("error")
 }
 
-func validateProjectConfig(conf ProjectConfig) error {
+func validateClientConfig(conf ClientConfig) error {
 	// implement this
 	return validation.ValidateStruct(&conf,
 		validation.Field(&conf.Version, validation.Required),

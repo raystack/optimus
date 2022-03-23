@@ -22,7 +22,7 @@ const (
 	runJobTimeout = time.Minute * 1
 )
 
-func jobRunCommand(l log.Logger, conf config.ProjectConfig, pluginRepo models.PluginRepository) *cli.Command {
+func jobRunCommand(l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository) *cli.Command {
 	var (
 		namespaceName string
 		projectName   = conf.Project.Name

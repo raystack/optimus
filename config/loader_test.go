@@ -63,8 +63,8 @@ type ConfigTestSuite struct {
 	execPath string
 	homePath string
 
-	expectedProjectConfig *ProjectConfig
-	expectedServerConfig  *ServerConfig
+	expectedClientConfig *ClientConfig
+	expectedServerConfig *ServerConfig
 }
 
 func (s *ConfigTestSuite) SetupTest() {
@@ -100,14 +100,14 @@ func TestConfig(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }
 
-func (s *ConfigTestSuite) TestInternal_LoadProjectConfigFs() {
+func (s *ConfigTestSuite) TestLoadClientConfigFs() {
 	s.a.WriteFile(path.Join(s.currPath, filename+"."+fileExtension), []byte(projectConfig), fs.ModeTemporary)
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		p, err := loadProjectConfigFs(s.a.Fs)
 		s.Assert().NoError(err)
 		s.Assert().NotNil(p)
-		s.Assert().Equal(s.expectedProjectConfig, p)
+		s.Assert().Equal(s.expectedClientConfig, p)
 	})
 
 	s.Run("WhenFilepathIsExist", func() {
@@ -134,7 +134,7 @@ func (s *ConfigTestSuite) TestInternal_LoadProjectConfigFs() {
 	})
 }
 
-func (s *ConfigTestSuite) TestInternal_LoadServerConfigFs() {
+func (s *ConfigTestSuite) TestLoadServerConfigFs() {
 	s.a.WriteFile(path.Join(s.execPath, filename+"."+fileExtension), []byte(serverConfig), fs.ModeTemporary)
 	s.a.WriteFile(path.Join(s.homePath, filename+"."+fileExtension), []byte(`version: 3`), fs.ModeTemporary)
 
@@ -178,10 +178,10 @@ func (s *ConfigTestSuite) TestLoadProjectConfig() {
 	defer os.Remove(fpath)
 	os.WriteFile(fpath, []byte(projectConfig), 0400)
 
-	conf, err := LoadProjectConfig(fpath)
-	s.Assert().NoError(err)
+	conf, err := LoadClientConfig(fpath)
+	s.NoError(err)
 	s.Assert().NotNil(conf)
-	s.Assert().Equal(s.expectedProjectConfig, conf)
+	s.Assert().Equal(s.expectedClientConfig, conf)
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
@@ -197,12 +197,12 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 }
 
 func (s *ConfigTestSuite) initExpectedProjectConfig() {
-	s.expectedProjectConfig = &ProjectConfig{}
-	s.expectedProjectConfig.Version = Version(1)
-	s.expectedProjectConfig.Log = LogConfig{Level: "info"}
+	s.expectedClientConfig = &ClientConfig{}
+	s.expectedClientConfig.Version = Version(1)
+	s.expectedClientConfig.Log = LogConfig{Level: "info"}
 
-	s.expectedProjectConfig.Host = "localhost:9100"
-	s.expectedProjectConfig.Project = Project{
+	s.expectedClientConfig.Host = "localhost:9100"
+	s.expectedClientConfig.Project = Project{
 		Name: "sample_project",
 		Config: map[string]string{
 			"environment":    "integration",
@@ -223,7 +223,7 @@ func (s *ConfigTestSuite) initExpectedProjectConfig() {
 			Path: "./jobs-b",
 		},
 	})
-	s.expectedProjectConfig.Namespaces = namespaces
+	s.expectedClientConfig.Namespaces = namespaces
 }
 
 func (s *ConfigTestSuite) initExpectedServerConfig() {

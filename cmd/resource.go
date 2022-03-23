@@ -33,7 +33,7 @@ func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Comm
 	}
 
 	// TODO: find a way to load the config in one place
-	conf, err := config.LoadProjectConfig()
+	conf, err := config.LoadClientConfig()
 	if err != nil {
 		l.Error(err.Error())
 		return nil
@@ -53,7 +53,7 @@ func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Comm
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, conf config.ProjectConfig, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+func createResourceSubCommand(l log.Logger, conf config.ClientConfig, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",

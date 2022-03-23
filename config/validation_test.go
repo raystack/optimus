@@ -8,7 +8,7 @@ import (
 
 type ValidationTestSuite struct {
 	suite.Suite
-	defaultProjectConfig ProjectConfig
+	defaultProjectConfig ClientConfig
 }
 
 func (s *ValidationTestSuite) SetupTest() {
@@ -86,7 +86,7 @@ func (s *ValidationTestSuite) TestValidate_Fail() {
 }
 
 func (s *ValidationTestSuite) initDefaultProjectConfig() {
-	s.defaultProjectConfig = ProjectConfig{}
+	s.defaultProjectConfig = ClientConfig{}
 	s.defaultProjectConfig.Version = Version(1)
 	s.defaultProjectConfig.Log = LogConfig{Level: "info"}
 

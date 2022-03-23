@@ -12,7 +12,7 @@ import (
 
 const (
 	ErrFailedToRead      = "unable to read optimus config file %v (%s)"
-	DefaultFilename      = ".optimus"
+	DefaultFilename      = "optimus"
 	DefaultFileExtension = "yaml"
 	DefaultEnvPrefix     = "OPTIMUS"
 )
@@ -46,11 +46,11 @@ func init() {
 	homePath = p
 }
 
-// LoadProjectConfig load the project specific config from these locations:
-// 1. env var. eg. OPTIMUS_PROJECT, OPTIMUS_NAMESPACES, etc
+// LoadClientConfig load the project specific config from these locations:
+// 1. env var. eg. OPTIMUS_PROJECT, OPTIMUS_NAMESPACES, etc TODO: skip this part
 // 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
 // 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
-func LoadProjectConfig(filepath ...string) (*ProjectConfig, error) {
+func LoadClientConfig(filepath ...string) (*ClientConfig, error) {
 	fs := afero.NewReadOnlyFs(afero.NewOsFs())
 	return loadProjectConfigFs(fs, filepath...)
 }
@@ -65,8 +65,8 @@ func LoadServerConfig(filepath ...string) (*ServerConfig, error) {
 	return loadServerConfigFs(fs, filepath...)
 }
 
-func loadProjectConfigFs(fs afero.Fs, filepath ...string) (*ProjectConfig, error) {
-	cfg := &ProjectConfig{}
+func loadProjectConfigFs(fs afero.Fs, filepath ...string) (*ClientConfig, error) {
+	cfg := &ClientConfig{}
 
 	if len(filepath) == 0 {
 		filepath = append(filepath, "")

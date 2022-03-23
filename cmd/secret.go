@@ -33,7 +33,7 @@ func secretCommand(l log.Logger) *cli.Command {
 	}
 
 	// TODO: find a way to load the config in one place
-	conf, err := config.LoadProjectConfig()
+	conf, err := config.LoadClientConfig()
 	if err != nil {
 		l.Error(err.Error())
 		return nil
@@ -45,7 +45,7 @@ func secretCommand(l log.Logger) *cli.Command {
 	return cmd
 }
 
-func secretSetSubCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
+func secretSetSubCommand(l log.Logger, conf config.ClientConfig) *cli.Command {
 	var (
 		projectName   string
 		namespaceName string
@@ -130,7 +130,7 @@ Use base64 flag if the value has been encoded.
 	return secretCmd
 }
 
-func secretListSubCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
+func secretListSubCommand(l log.Logger, conf config.ClientConfig) *cli.Command {
 	var projectName string
 
 	secretListCmd := &cli.Command{
@@ -150,7 +150,7 @@ func secretListSubCommand(l log.Logger, conf config.ProjectConfig) *cli.Command 
 	return secretListCmd
 }
 
-func secretDeleteSubCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
+func secretDeleteSubCommand(l log.Logger, conf config.ClientConfig) *cli.Command {
 	var projectName, namespaceName string
 
 	cmd := &cli.Command{

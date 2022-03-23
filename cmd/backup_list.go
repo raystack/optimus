@@ -16,7 +16,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func backupListCommand(l log.Logger, conf config.ProjectConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupListCommand(l log.Logger, conf config.ClientConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "list",

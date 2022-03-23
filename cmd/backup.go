@@ -29,7 +29,7 @@ func backupCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Comman
 	}
 
 	// TODO: find a way to load the config in one place
-	conf, err := config.LoadProjectConfig()
+	conf, err := config.LoadClientConfig()
 	if err != nil {
 		l.Error(err.Error())
 		return nil

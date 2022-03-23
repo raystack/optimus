@@ -30,7 +30,7 @@ func configInitCommand(l log.Logger) *cli.Command {
 		Use:   "init",
 		Short: "Initialize optimus configuration file",
 		RunE: func(c *cli.Command, args []string) (err error) {
-			conf := config.ProjectConfig{
+			conf := config.ClientConfig{
 				Version: config.Version(1),
 				Host:    defaultHost,
 			}
@@ -103,7 +103,7 @@ func configInitCommand(l log.Logger) *cli.Command {
 	return c
 }
 
-func projectConfigQuestions(conf config.ProjectConfig) (config.ProjectConfig, error) {
+func projectConfigQuestions(conf config.ClientConfig) (config.ClientConfig, error) {
 	conf.Project.Config = map[string]string{}
 	registerMore := AnswerYes
 	for registerMore == AnswerNo {

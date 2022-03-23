@@ -38,7 +38,7 @@ func versionCommand(l log.Logger, pluginRepo models.PluginRepository) *cli.Comma
 		// Print server version
 		if isWithServer {
 			// TODO: find a way to load the config in one place
-			conf, err := config.LoadProjectConfig()
+			conf, err := config.LoadClientConfig()
 			if err != nil {
 				return err
 			}

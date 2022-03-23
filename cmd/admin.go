@@ -16,7 +16,7 @@ func adminCommand(l log.Logger) *cli.Command {
 	}
 
 	// TODO: find a way to load the config in one place
-	conf, err := config.LoadProjectConfig()
+	conf, err := config.LoadClientConfig()
 	if err != nil {
 		l.Error(err.Error())
 		return nil
@@ -27,7 +27,7 @@ func adminCommand(l log.Logger) *cli.Command {
 }
 
 // adminBuildCommand builds a run instance
-func adminBuildCommand(l log.Logger, conf config.ProjectConfig) *cli.Command {
+func adminBuildCommand(l log.Logger, conf config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "build",
 		Short: "Register a job run and get required assets",
