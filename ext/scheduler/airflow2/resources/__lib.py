@@ -174,8 +174,8 @@ class SuperExternalTaskSensor(BaseSensorOperator):
                                        '{} was deleted.'.format(self.upstream_dag))
 
         # calculate windows
-        schedule_time = context['next_execution_date']
-        window_start, window_end = self.generate_window(schedule_time)
+        execution_date = context['execution_date']
+        window_start, window_end = self.generate_window(execution_date, self.window_size)
         self.log.info(
             "consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
         self.log.info("upstream interval: {}".format(dag_to_wait.schedule_interval))
@@ -208,12 +208,12 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
         return True
 
-    def generate_window(self, schedule_time):
+    def generate_window(self, execution_date, window_size):
         format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
-        schedule_time_str = schedule_time.strftime(format_rfc3339)
+        execution_date_str = execution_date.strftime(format_rfc3339)
         # ignore offset & truncateto
-        task_window = JobSpecTaskWindow(self.window_size, self.window_offset, self.window_truncate_to, self._optimus_client)
-        return task_window.get(schedule_time_str)
+        task_window = JobSpecTaskWindow(window_size, 0, "m", self._optimus_client)
+        return task_window.get(execution_date_str)
 
     def _get_expected_upstream_executions(self, schedule_interval, window_start, window_end):
         expected_upstream_executions = []
@@ -325,8 +325,6 @@ class CrossTenantDependencySensor(BaseSensorOperator):
             upstream_optimus_project: str,
             upstream_optimus_job: str,
             window_size: str,
-            window_offset: str,
-            window_truncate_to: str,
             *args,
             **kwargs) -> None:
         kwargs['mode'] = kwargs.get('mode', 'reschedule')
@@ -334,19 +332,17 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         self.optimus_project = upstream_optimus_project
         self.optimus_job = upstream_optimus_job
         self.window_size = window_size
-        self.window_offset = window_offset
-        self.window_truncate_to = window_truncate_to
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def poke(self, context):
-        schedule_time = context['next_execution_date']
-        schedule_time_str = schedule_time.strftime(self.TIMESTAMP_FORMAT)
+        execution_date = context['execution_date']
+        execution_date_str = execution_date.strftime(self.TIMESTAMP_FORMAT)
 
         # parse relevant metadata from the job metadata to build the task window
-        job_metadata = self._optimus_client.get_job_metadata(schedule_time_str, self.optimus_project, self.optimus_job)
+        job_metadata = self._optimus_client.get_job_metadata(execution_date_str, self.optimus_project, self.optimus_job)
         cron_schedule = lookup_non_standard_cron_expression(job_metadata['job']['interval'])
 
-        window_start, window_end = self.generate_window(schedule_time)
+        window_start, window_end = self.generate_window(execution_date, self.window_size)
         self.log.info(
             "consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
         expected_upstream_executions = self._get_expected_upstream_executions(cron_schedule, window_start, window_end)
@@ -392,11 +388,12 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         except ValueError:
             return datetime.strptime(timestamp, self.TIMESTAMP_MS_FORMAT)
 
-    def generate_window(self, schedule_time):
+    def generate_window(self, execution_date, window_size):
         format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
-        schedule_time_str = schedule_time.strftime(format_rfc3339)
-        task_window = JobSpecTaskWindow(self.window_size, self.window_offset, self.window_truncate_to, self._optimus_client)
-        return task_window.get(schedule_time_str)
+        execution_date_str = execution_date.strftime(format_rfc3339)
+        # ignore offset & truncate to
+        task_window = JobSpecTaskWindow(window_size, 0, "m", self._optimus_client)
+        return task_window.get(execution_date_str)
 
 
 def optimus_failure_notify(context):
