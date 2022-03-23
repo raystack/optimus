@@ -83,10 +83,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
-		adaptJob, err := adapt.ToJobProto(spec)
-		if err != nil {
-			return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
-		}
+		adaptJob := adapt.ToJobProto(spec)
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
 

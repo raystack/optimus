@@ -136,7 +136,7 @@ func (rm *ReplayWorker) Process(ctx context.Context, replayRequest models.Replay
 	return args.Error(0)
 }
 
-func (rm *ReplayWorker) Close() error {
+func (rm *ReplayWorker) Close() error { // nolint: unparam
 	close(rm.finish)
 	return nil
 }

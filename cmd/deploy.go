@@ -170,10 +170,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		var adaptedJobSpecs []*pb.JobSpecification
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for _, spec := range jobSpecs {
-			adaptJob, err := adapt.ToJobProto(spec)
-			if err != nil {
-				return fmt.Errorf("[%s] failed to serialize: %s - %w", namespaceName, spec.Name, err)
-			}
+			adaptJob := adapt.ToJobProto(spec)
 			adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 		}
 		specFound = true

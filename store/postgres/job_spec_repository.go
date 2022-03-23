@@ -101,10 +101,7 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
 
-	pSpec, err := p.ToSpec()
-	if err != nil {
-		return models.JobSpec{}, models.ProjectSpec{}, err
-	}
+	pSpec := p.ToSpec()
 
 	return jSpec, pSpec, err
 }
@@ -124,10 +121,8 @@ func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest
 		if err != nil {
 			return nil, err
 		}
-		pSpec, err := job.Project.ToSpec()
-		if err != nil {
-			return nil, err
-		}
+		pSpec := job.Project.ToSpec()
+
 		pairs = append(pairs, store.ProjectJobPair{
 			Project: pSpec,
 			Job:     jSpec,

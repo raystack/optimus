@@ -281,7 +281,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 	}
 }
 
-func (s *Notifier) Close() error {
+func (s *Notifier) Close() error { // nolint: unparam
 	// drain batches
 	s.wg.Wait()
 	return nil

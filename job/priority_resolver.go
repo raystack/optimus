@@ -55,7 +55,7 @@ func NewPriorityResolver() *priorityResolver {
 }
 
 // Resolve takes jobSpecs and returns them with resolved priorities
-func (a *priorityResolver) Resolve(ctx context.Context, jobSpecs []models.JobSpec,
+func (a *priorityResolver) Resolve(_ context.Context, jobSpecs []models.JobSpec,
 	progressObserver progress.Observer) ([]models.JobSpec, error) {
 	if err := a.resolvePriorities(jobSpecs, progressObserver); err != nil {
 		return nil, fmt.Errorf("error occurred while resolving priority: %w", err)

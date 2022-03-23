@@ -253,8 +253,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
-			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
-			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
+			jobSpecProto := adapter.ToJobProto(jobSpec)
+			instanceSpecProto := adapter.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
@@ -319,8 +319,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
-			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
-			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
+			jobSpecProto := adapter.ToJobProto(jobSpec)
+			instanceSpecProto := adapter.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,

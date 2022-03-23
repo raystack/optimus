@@ -202,7 +202,7 @@ func (m *Manager) GetRunStatus(ctx context.Context, projectSpec models.ProjectSp
 }
 
 //Close stops consuming any new request
-func (m *Manager) Close() error {
+func (m *Manager) Close() error { // nolint: unparam
 	if m.requestQ != nil {
 		//stop accepting any more requests
 		close(m.requestQ)

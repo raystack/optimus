@@ -80,5 +80,9 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  unparam:
+    # Inspect exported functions.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    check-exported: true
 severity:
   default-severity: error

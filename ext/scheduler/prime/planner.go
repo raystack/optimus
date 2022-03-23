@@ -57,7 +57,7 @@ type Planner struct {
 	now     func() time.Time
 }
 
-func (p *Planner) Init(ctx context.Context) error {
+func (p *Planner) Init(ctx context.Context) {
 	go func() {
 		for err := range p.errChan {
 			p.l.Error("planner error accumulator", "error", err)
@@ -66,10 +66,9 @@ func (p *Planner) Init(ctx context.Context) error {
 	go p.leaderJobAllocation(ctx)
 	go p.leaderJobReconcile(ctx)
 	go p.peerJobExecution(ctx)
-	return nil
 }
 
-func (p *Planner) Close() error {
+func (p *Planner) Close() error { // nolint: unparam
 	p.wg.Wait()
 	return nil
 }
@@ -388,14 +387,12 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 
 	// send it to executor for execution
 	p.l.Info("starting executing job", "job name", jobRun.Spec.Name)
-	_, err = p.executor.Start(ctx, models.ExecutorStartRequest{
+	p.executor.Start(ctx, models.ExecutorStartRequest{
 		ID:        newInstance.ID.String(),
 		Job:       jobRun.Spec,
 		Namespace: namespace,
 	})
-	if err != nil {
-		return err
-	}
+
 	if err := p.instanceRepoFac.New().UpdateStatus(ctx, instanceID, models.RunStateRunning); err != nil {
 		return err
 	}
