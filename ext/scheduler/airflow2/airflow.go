@@ -305,7 +305,7 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 	}
 	resp, err := s.client.invoke(ctx, req, projectSpec)
 	if err != nil {
-		return jobRuns, fmt.Errorf("failure reason for fetching airflow dag runs: %v", err)
+		return jobRuns, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
 	}
 	if err := json.Unmarshal(resp, &list); err != nil {
 		return jobRuns, fmt.Errorf("json error: %s: %w", string(resp), err)

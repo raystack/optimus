@@ -40,7 +40,8 @@ type Service struct {
 }
 
 func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	*models.JobRunInput, error) {
+	*models.JobRunInput, error,
+) {
 	secrets, err := s.secretService.GetSecrets(ctx, namespace)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,8 @@ func (s *Service) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 }
 
 func (s *Service) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
-	scheduledAt time.Time) (models.JobRun, error) {
+	scheduledAt time.Time,
+) (models.JobRun, error) {
 	newJobRun := models.JobRun{
 		Spec:        jobSpec,
 		Trigger:     models.TriggerSchedule,
@@ -89,7 +91,7 @@ func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectS
 	if jobQuery.OnlyLastRun {
 		return s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, nil)
 	}
-	//validate job query
+	// validate job query
 	err := validateJobQuery(jobQuery, jobSpec)
 	if err != nil {
 		return jobRuns, err
@@ -99,25 +101,26 @@ func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectS
 	if err != nil {
 		return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
 	}
-	//get expected runs StartDate and EndDate inclusive
+	// get expected runs StartDate and EndDate inclusive
 	expectedRuns := getExpectedRun(sch, jobQuery.StartDate, jobQuery.EndDate)
 
-	//call to airflow for get runs
+	// call to airflow for get runs
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, sch)
 	if err != nil {
 		return jobRuns, fmt.Errorf("unable to get job runs from airflow %w", err)
 	}
-	//mergeRuns
+	// mergeRuns
 	totalRuns := mergeRuns(expectedRuns, actualRuns)
 
-	//filterRuns
+	// filterRuns
 	result := filterRuns(totalRuns, createFilterSet(jobQuery.Filter))
 
 	return result, nil
 }
 
 func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
-	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
+	instanceType models.InstanceType, instanceName string,
+) (models.InstanceSpec, error) {
 	jobRunRepo := s.repoFac.New()
 
 	// clear old run
@@ -147,7 +150,8 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 }
 
 func (s *Service) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
-	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
+	instanceName string, executedAt time.Time,
+) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {
 		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
@@ -222,6 +226,7 @@ func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 	return nil
 }
 
+// get the expected run based on the given user input date
 func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.Time) []models.JobRun {
 	var jobRuns []models.JobRun
 	start := spec.Next(startTime.Add(-time.Second * 1))
@@ -237,6 +242,15 @@ func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.T
 	return jobRuns
 }
 
+func actualRunMap(runs []models.JobRun) map[string]models.JobRun {
+	m := map[string]models.JobRun{}
+	for _, v := range runs {
+		m[v.ScheduledAt.UTC().String()] = v
+	}
+	return m
+}
+
+// merge the scheduled runs and expected runs
 func mergeRuns(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
 	var mergeRuns []models.JobRun
 	m := actualRunMap(actual)
@@ -248,14 +262,6 @@ func mergeRuns(expected []models.JobRun, actual []models.JobRun) []models.JobRun
 		}
 	}
 	return mergeRuns
-}
-
-func actualRunMap(runs []models.JobRun) map[string]models.JobRun {
-	m := map[string]models.JobRun{}
-	for _, v := range runs {
-		m[v.ScheduledAt.UTC().String()] = v
-	}
-	return m
 }
 
 func filterRuns(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
