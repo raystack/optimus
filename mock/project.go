@@ -60,11 +60,6 @@ func (pr *ProjectService) GetByName(ctx context.Context, name string) (models.Pr
 	return args.Get(0).(models.ProjectSpec), args.Error(1)
 }
 
-func (pr *ProjectService) GetByID(ctx context.Context, jobID uuid.UUID) (models.ProjectSpec, error) {
-	args := pr.Called(ctx, jobID)
-	return args.Get(0).(models.ProjectSpec), args.Error(1)
-}
-
 func (pr *ProjectService) Save(ctx context.Context, project models.ProjectSpec) error {
 	args := pr.Called(ctx, project)
 	return args.Error(0)

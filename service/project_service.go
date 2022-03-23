@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -15,7 +13,6 @@ type ProjectRepoFactory interface {
 
 type ProjectService interface {
 	GetByName(context.Context, string) (models.ProjectSpec, error)
-	GetByID(context.Context, uuid.UUID) (models.ProjectSpec, error)
 	Save(context.Context, models.ProjectSpec) error
 	GetAll(context.Context) ([]models.ProjectSpec, error)
 }
@@ -38,15 +35,6 @@ func (s projectService) GetByName(ctx context.Context, projectName string) (mode
 
 	projectRepo := s.projectRepoFac.New()
 	projSpec, err := projectRepo.GetByName(ctx, projectName)
-	if err != nil {
-		return models.ProjectSpec{}, FromError(err, models.ProjectEntity, "")
-	}
-	return projSpec, nil
-}
-
-func (s projectService) GetByID(ctx context.Context, projectID uuid.UUID) (models.ProjectSpec, error) {
-	projectRepo := s.projectRepoFac.New()
-	projSpec, err := projectRepo.GetByID(ctx, projectID)
 	if err != nil {
 		return models.ProjectSpec{}, FromError(err, models.ProjectEntity, "")
 	}
