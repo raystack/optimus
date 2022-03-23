@@ -75,7 +75,7 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 			return err
 		}
 		if dryRun {
-			//if only dry run, exit now
+			// if only dry run, exit now
 			return nil
 		}
 

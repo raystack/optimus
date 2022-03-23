@@ -34,11 +34,11 @@ func LoadManifest(dirPath string) (*Manifest, error) {
 	if _, err := os.Stat(manifestPath); err == nil {
 		content, err := ioutil.ReadFile(manifestPath)
 		if err != nil {
-			return nil, fmt.Errorf("error reading file: %v", err)
+			return nil, fmt.Errorf("error reading file: %w", err)
 		}
 		err = yaml.Unmarshal(content, manifest)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling content: %v", err)
+			return nil, fmt.Errorf("error unmarshalling content: %w", err)
 		}
 	}
 	return manifest, nil
@@ -48,21 +48,21 @@ func LoadManifest(dirPath string) (*Manifest, error) {
 func FlushManifest(manifest *Manifest, dirPath string) error {
 	content, err := yaml.Marshal(manifest)
 	if err != nil {
-		return fmt.Errorf("error marshalling manifest: %v", err)
+		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
 	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-		return fmt.Errorf("error creating dir: %v", err)
+		return fmt.Errorf("error creating dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
-	f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
-		return fmt.Errorf("error opening file: %v", err)
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 
 	_, err = f.Write(content)
 	if err != nil {
-		return fmt.Errorf("error writing file: %v", err)
+		return fmt.Errorf("error writing file: %w", err)
 	}
 	return nil
 }

@@ -58,7 +58,7 @@ type JobSpec struct {
 	Assets               JobAssets
 	Hooks                []JobSpecHook
 	Metadata             JobSpecMetadata
-	ExternalDependencies ExternalDependency //external dependencies for http
+	ExternalDependencies ExternalDependency // external dependencies for http
 }
 
 func (js JobSpec) GetName() string {
@@ -202,7 +202,7 @@ func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOff
 			floatingStart = floatingStart.AddDate(0, int(-sizeMonths), 0)
 		}
 
-		//final start is computed
+		// final start is computed
 		windowStart = floatingStart
 	}
 
@@ -342,7 +342,7 @@ type JobService interface {
 	Replay(context.Context, ReplayRequest) (ReplayResult, error)
 	// GetReplayStatus of a replay using its ID
 	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
-	//GetReplayList of a project
+	// GetReplayList of a project
 	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]ReplaySpec, error)
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)

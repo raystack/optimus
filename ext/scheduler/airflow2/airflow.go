@@ -33,9 +33,7 @@ var SharedLib []byte
 //go:embed resources/base_dag.py
 var resBaseDAG []byte
 
-var (
-	ErrEmptyJobName = errors.New("job name cannot be an empty string")
-)
+var ErrEmptyJobName = errors.New("job name cannot be an empty string")
 
 const (
 	baseLibFileName   = "__lib.py"
@@ -90,13 +88,14 @@ func (s *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) erro
 	return bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
 }
 
-func (s *scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
+func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
 	_, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
 	return err
 }
 
 func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec,
-	progressObserver progress.Observer) error {
+	progressObserver progress.Observer,
+) error {
 	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
 	if err != nil {
 		return err
@@ -140,7 +139,8 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 }
 
 func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string,
-	progressObserver progress.Observer) error {
+	progressObserver progress.Observer,
+) error {
 	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
 	if err != nil {
 		return err
@@ -179,7 +179,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	for {
 		obj, err := it.Next(ctx)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
@@ -205,7 +205,8 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 }
 
 func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec,
-	jobName string) ([]models.JobStatus, error) {
+	jobName string,
+) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	var list DagRunListResponse
 	req := airflowRequest{
@@ -226,7 +227,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 }
 
 func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
-	var data = []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
+	data := []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
 	req := airflowRequest{
@@ -243,7 +244,8 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 }
 
 func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
-	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
+	endDate time.Time, batchSize int,
+) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	var list DagRunListResponse
 	pageOffset := 0
@@ -264,9 +266,8 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		req.body = []byte(dagRunBatchReq)
 		resp, err := s.client.invoke(ctx, req, projectSpec)
 		if err != nil {
-			return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %v", err)
+			return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
 		}
-
 		if err := json.Unmarshal(resp, &list); err != nil {
 			return nil, fmt.Errorf("json error: %s: %w", string(resp), err)
 		}
@@ -309,7 +310,6 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 	if err := json.Unmarshal(resp, &list); err != nil {
 		return jobRuns, fmt.Errorf("json error: %s: %w", string(resp), err)
 	}
-	//throw an error if the pagination limit exceed total entries
 	return getJobRuns(list, spec)
 }
 
@@ -330,6 +330,7 @@ func covertToExecDate(jobQuery *models.JobQuery, sch *cron.ScheduleSpec) *models
 	}
 	return modifiedJobQuery
 }
+
 func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return

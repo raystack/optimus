@@ -27,9 +27,9 @@ const (
 	connectionTimeout   = 10 * time.Second
 
 	applyTimeout = 10 * time.Second
-	//leaderWaitDelay  = 100 * time.Millisecond
-	//appliedWaitDelay = 100 * time.Millisecond
-	//raftLogCacheSize = 512
+	// leaderWaitDelay  = 100 * time.Millisecond
+	// appliedWaitDelay = 100 * time.Millisecond
+	// raftLogCacheSize = 512
 )
 
 type Server struct {
@@ -180,7 +180,7 @@ func newSerfConfig(serfAddr, raftAddress, nodeID string, eventCh chan serf.Event
 // raft manages the leadership/follower state in cluster
 // minimum 3 nodes are required to work properly to have 1 node
 // fail-over resistant
-func (s *Server) initRaft(_ context.Context, devMode bool, bootstrapCluster bool, schedulerConf config.SchedulerConfig, fsm raft.FSM) error {
+func (s *Server) initRaft(_ context.Context, devMode, bootstrapCluster bool, schedulerConf config.SchedulerConfig, fsm raft.FSM) error {
 	c := raft.DefaultConfig()
 	c.LocalID = raft.ServerID(schedulerConf.NodeID)
 
@@ -200,7 +200,7 @@ func (s *Server) initRaft(_ context.Context, devMode bool, bootstrapCluster bool
 
 	s.raft, err = raft.NewRaft(c, fsm, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
-		return fmt.Errorf("raft.InitRaft: %v", err)
+		return fmt.Errorf("raft.InitRaft: %w", err)
 	}
 
 	if s.raftBootstrapped, err = raft.HasExistingState(logStore, stableStore, snapshotStore); err != nil {
@@ -218,7 +218,7 @@ func (s *Server) initRaft(_ context.Context, devMode bool, bootstrapCluster bool
 		}
 		f := s.raft.BootstrapCluster(cfg)
 		if err := f.Error(); err != nil {
-			return fmt.Errorf("raft.raft.BootstrapCluster: %v", err)
+			return fmt.Errorf("raft.raft.BootstrapCluster: %w", err)
 		}
 	}
 	return nil
@@ -232,20 +232,20 @@ func (s *Server) initRaftStore(devMode bool, baseDir string) (raft.LogStore, raf
 	}
 
 	// prepare directory for data
-	if err := os.MkdirAll(baseDir, 0777); err != nil {
+	if err := os.MkdirAll(baseDir, 0o777); err != nil {
 		return nil, nil, nil, err
 	}
 
 	// use embedded boltdb
 	boltDB, err := boltdb.NewBoltStore(filepath.Join(baseDir, raftLogDBPath))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, raftLogDBPath), err)
+		return nil, nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %w`, filepath.Join(baseDir, raftLogDBPath), err)
 	}
 
 	// use embedded filesystem
 	fss, err := raft.NewFileSnapshotStore(baseDir, retainSnapshotCount, os.Stderr)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q, ...): %v`, baseDir, err)
+		return nil, nil, nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q, ...): %w`, baseDir, err)
 	}
 	return boltDB, boltDB, fss, nil
 }

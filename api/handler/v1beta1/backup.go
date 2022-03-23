@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -38,7 +39,7 @@ func (sv *RuntimeServiceServer) BackupDryRun(ctx context.Context, req *pb.Backup
 	}
 	jobSpecs = append(jobSpecs, downstreamSpecs...)
 
-	//should add config
+	// should add config
 	backupRequest := models.BackupRequest{
 		ResourceName:                req.ResourceName,
 		Project:                     namespaceSpec.ProjectSpec,
@@ -143,7 +144,7 @@ func (sv *RuntimeServiceServer) GetBackup(ctx context.Context, req *pb.GetBackup
 
 	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
 	if err != nil {
-		if err == store.ErrResourceNotFound {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
 		}
 		return nil, status.Errorf(codes.Internal, "error while getting backup detail: %v", err)

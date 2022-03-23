@@ -20,7 +20,7 @@ func TestReplayValidator(t *testing.T) {
 	t.Run("Validate", func(t *testing.T) {
 		ctx := context.TODO()
 		reqBatchSize := 100
-		dagStartTime := time.Date(2020, time.Month(4), 05, 0, 0, 0, 0, time.UTC)
+		dagStartTime := time.Date(2020, time.Month(4), 5, 0, 0, 0, 0, time.UTC)
 		startDate := time.Date(2020, time.Month(8), 22, 0, 0, 0, 0, time.UTC)
 		endDate := time.Date(2020, time.Month(8), 26, 0, 0, 0, 0, time.UTC)
 		batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
