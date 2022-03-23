@@ -242,14 +242,6 @@ func getExpectedRun(spec *cron.ScheduleSpec, startTime time.Time, endTime time.T
 	return jobRuns
 }
 
-func actualRunMap(runs []models.JobRun) map[string]models.JobRun {
-	m := map[string]models.JobRun{}
-	for _, v := range runs {
-		m[v.ScheduledAt.UTC().String()] = v
-	}
-	return m
-}
-
 // merge the scheduled runs and expected runs
 func mergeRuns(expected []models.JobRun, actual []models.JobRun) []models.JobRun {
 	var mergeRuns []models.JobRun
@@ -262,6 +254,14 @@ func mergeRuns(expected []models.JobRun, actual []models.JobRun) []models.JobRun
 		}
 	}
 	return mergeRuns
+}
+
+func actualRunMap(runs []models.JobRun) map[string]models.JobRun {
+	m := map[string]models.JobRun{}
+	for _, v := range runs {
+		m[v.ScheduledAt.UTC().String()] = v
+	}
+	return m
 }
 
 func filterRuns(runs []models.JobRun, filter map[string]struct{}) []models.JobRun {
