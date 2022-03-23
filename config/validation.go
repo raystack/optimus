@@ -9,7 +9,7 @@ import (
 )
 
 // Validate validate the config as an input. If not valid, it returns error
-func Validate(conf interface{}) error {
+func Validate(conf Config) error {
 	switch c := conf.(type) {
 	case ClientConfig:
 		return validateClientConfig(c)
@@ -24,6 +24,13 @@ func validateClientConfig(conf ClientConfig) error {
 	return validation.ValidateStruct(&conf,
 		validation.Field(&conf.Version, validation.Required),
 		validation.Field(&conf.Host, validation.Required),
+		validation.Field(&conf.Log.Level, validation.In(
+			LogLevelDebug,
+			LogLevelInfo,
+			LogLevelWarning,
+			LogLevelError,
+			LogLevelFatal,
+		)),
 		validation.Field(&conf.Namespaces, validation.By(validateNamespaces)),
 		// ... etc
 	)
