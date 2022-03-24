@@ -230,7 +230,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 func (s *ConfigTestSuite) initExpectedClientConfig() {
 	s.expectedClientConfig = &config.ClientConfig{}
 	s.expectedClientConfig.Version = config.Version(1)
-	s.expectedClientConfig.Log = config.LogConfig{Level: "info"}
+	s.expectedClientConfig.Log = config.LogConfig{Level: config.LogLevelInfo}
 
 	s.expectedClientConfig.Host = "localhost:9100"
 	s.expectedClientConfig.Project = config.Project{
@@ -260,7 +260,7 @@ func (s *ConfigTestSuite) initExpectedClientConfig() {
 func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig = &config.ServerConfig{}
 	s.expectedServerConfig.Version = config.Version(1)
-	s.expectedServerConfig.Log = config.LogConfig{Level: "info"}
+	s.expectedServerConfig.Log = config.LogConfig{Level: config.LogLevelInfo}
 
 	s.expectedServerConfig.Serve = config.Serve{}
 	s.expectedServerConfig.Serve.Port = 9100
