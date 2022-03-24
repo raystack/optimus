@@ -291,7 +291,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
 	switch conf.Scheduler.Name {
-	case "airflow2":
+	case "airflow", "airflow2":
 		models.BatchScheduler = airflow2.NewScheduler(
 			&airflowBucketFactory{},
 			&http.Client{},
