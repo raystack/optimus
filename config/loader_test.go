@@ -1,14 +1,14 @@
-package config
+package config_test
 
 import (
 	"io/fs"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/odpf/optimus/config"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 )
@@ -63,8 +63,8 @@ type ConfigTestSuite struct {
 	execPath string
 	homePath string
 
-	expectedClientConfig *ClientConfig
-	expectedServerConfig *ServerConfig
+	expectedClientConfig *config.ClientConfig
+	expectedServerConfig *config.ServerConfig
 }
 
 func (s *ConfigTestSuite) SetupTest() {
@@ -86,6 +86,8 @@ func (s *ConfigTestSuite) SetupTest() {
 	s.homePath = p
 	s.a.Fs.MkdirAll(s.homePath, fs.ModeTemporary)
 
+	config.FS = s.a.Fs
+
 	s.initExpectedProjectConfig()
 	s.initExpectedServerConfig()
 }
@@ -100,109 +102,137 @@ func TestConfig(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }
 
-func (s *ConfigTestSuite) TestLoadClientConfigFs() {
-	s.a.WriteFile(path.Join(s.currPath, filename+"."+fileExtension), []byte(projectConfig), fs.ModeTemporary)
+func (s *ConfigTestSuite) TestLoadClientConfig() {
+	currFilePath := path.Join(s.currPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	s.a.WriteFile(currFilePath, []byte(projectConfig), fs.ModeTemporary)
 
 	s.Run("WhenFilepathIsEmpty", func() {
-		p, err := loadProjectConfigFs(s.a.Fs)
-		s.Assert().NoError(err)
-		s.Assert().NotNil(p)
-		s.Assert().Equal(s.expectedClientConfig, p)
+		s.Run("WhenConfigInCurrentPathIsExist", func() {
+			conf, err := config.LoadClientConfig(config.EmptyPath)
+
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+			s.Assert().Equal(s.expectedClientConfig, conf)
+		})
+
+		s.Run("WhenConfigInCurrentPathNotExist", func() {
+			s.a.Remove(currFilePath)
+			defer s.a.WriteFile(currFilePath, []byte(projectConfig), fs.ModeTemporary)
+
+			conf, err := config.LoadClientConfig(config.EmptyPath)
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+		})
 	})
 
 	s.Run("WhenFilepathIsExist", func() {
-		samplePath := "./sample/path/config.yaml"
-		b := strings.Builder{}
-		b.WriteString(projectConfig)
-		b.WriteString(`- name: namespace-c
+		s.Run("WhenFilePathIsvalid", func() {
+			samplePath := "./sample/path/config.yaml"
+			b := strings.Builder{}
+			b.WriteString(projectConfig)
+			b.WriteString(`- name: namespace-c
   job:
     path: ./jobs-c
     `)
-		s.a.WriteFile(samplePath, []byte(b.String()), fs.ModeTemporary)
-		defer s.a.Fs.RemoveAll(samplePath)
+			s.a.WriteFile(samplePath, []byte(b.String()), fs.ModeTemporary)
+			defer s.a.Fs.RemoveAll(samplePath)
 
-		p, err := loadProjectConfigFs(s.a.Fs, samplePath)
-		s.Assert().NoError(err)
-		s.Assert().NotNil(p)
-		s.Assert().Len(p.Namespaces, 3)
+			conf, err := config.LoadClientConfig(samplePath)
+
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+			s.Assert().Len(conf.Namespaces, 3)
+		})
+
+		s.Run("WhenFilePathIsNotValid", func() {
+			conf, err := config.LoadClientConfig("/path/not/exist")
+
+			s.Assert().Error(err)
+			s.Assert().Nil(conf)
+		})
 	})
 
-	s.Run("WhenLoadConfigIsFailed", func() {
-		p, err := loadProjectConfigFs(s.a.Fs, "/path/not/exist")
-		s.Assert().Error(err)
-		s.Assert().Nil(p)
-	})
-}
-
-func (s *ConfigTestSuite) TestLoadServerConfigFs() {
-	s.a.WriteFile(path.Join(s.execPath, filename+"."+fileExtension), []byte(serverConfig), fs.ModeTemporary)
-	s.a.WriteFile(path.Join(s.homePath, filename+"."+fileExtension), []byte(`version: 3`), fs.ModeTemporary)
-
-	s.Run("WhenFilepathIsEmpty", func() {
-		conf, err := loadServerConfigFs(s.a.Fs)
-		s.Assert().NoError(err)
-		s.Assert().NotNil(conf)
-		s.Assert().Equal(s.expectedServerConfig, conf) // should load from exec path
-
-		s.a.Remove(path.Join(s.execPath, filename+"."+fileExtension))
-		defer s.a.WriteFile(path.Join(s.execPath, filename+"."+fileExtension), []byte(serverConfig), fs.ModeTemporary)
-		conf, err = loadServerConfigFs(s.a.Fs)
-		s.Assert().NoError(err)
-		s.Assert().NotNil(conf)
-		s.Assert().Equal("3", conf.Version.String()) // should load from home dir
-	})
-
-	s.Run("WhenFilepathIsExist", func() {
-		samplePath := "./sample/path/config.yaml"
-		s.a.WriteFile(samplePath, []byte("version: 2"), os.ModeTemporary)
-
-		conf, err := loadServerConfigFs(s.a.Fs, samplePath)
-		s.Assert().NoError(err)
-		s.Assert().NotNil(conf)
-		s.Assert().Equal("2", conf.Version.String())
-	})
-
-	s.Run("WhenLoadConfigIsFailed", func() {
-		dirPath := "./sample/path"
-		s.a.Fs.MkdirAll(dirPath, os.ModeTemporary)
-
-		conf, err := loadServerConfigFs(s.a.Fs, dirPath)
-		s.Assert().Error(err)
-		s.Assert().Nil(conf)
-	})
-}
-
-func (s *ConfigTestSuite) TestLoadProjectConfig() {
-	path := os.TempDir()
-	fpath := filepath.Join(path, filename+"."+fileExtension)
-	defer os.Remove(fpath)
-	os.WriteFile(fpath, []byte(projectConfig), 0400)
-
-	conf, err := LoadClientConfig(fpath)
-	s.NoError(err)
-	s.Assert().NotNil(conf)
-	s.Assert().Equal(s.expectedClientConfig, conf)
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
-	path := os.TempDir()
-	fpath := filepath.Join(path, filename+"."+fileExtension)
-	defer os.Remove(fpath)
-	os.WriteFile(fpath, []byte(serverConfig), 0400)
+	execFilePath := path.Join(s.execPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	homeFilePath := path.Join(s.homePath, config.DefaultFilename+"."+config.DefaultFilename)
+	s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
+	s.a.WriteFile(homeFilePath, []byte(`version: 3`), fs.ModeTemporary)
+	s.initServerConfigEnv()
 
-	conf, err := LoadServerConfig(fpath)
-	s.Assert().NoError(err)
-	s.Assert().NotNil(conf)
-	s.Assert().Equal(s.expectedServerConfig, conf)
+	s.Run("WhenFilepathIsEmpty", func() {
+		s.Run("WhenEnvExist", func() {
+			conf, err := config.LoadServerConfig(config.EmptyPath)
+
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+			s.Assert().Equal("4", conf.Version.String()) // should load from env var
+		})
+
+		s.Run("WhenEnvNotExist", func() {
+			s.unsetServerConfigEnv()
+			defer s.initServerConfigEnv()
+
+			conf, err := config.LoadServerConfig(config.EmptyPath)
+
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+			s.Assert().Equal(s.expectedServerConfig, conf) // should load from exec dir
+		})
+
+		s.Run("WhenEnvNotExistAndExecDirNotExist", func() {
+			s.unsetServerConfigEnv()
+			s.a.Remove(execFilePath)
+			defer s.initServerConfigEnv()
+			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
+
+			conf, err := config.LoadServerConfig(config.EmptyPath)
+
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+			s.Assert().Equal("3", conf.Version.String()) // should load from home dir
+		})
+
+		s.Run("WhenConfigNotFound", func() {
+			s.a.Remove(execFilePath)
+			s.a.Remove(homeFilePath)
+			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
+			defer s.a.WriteFile(homeFilePath, []byte(`version: 3`), fs.ModeTemporary)
+
+			conf, err := config.LoadServerConfig(config.EmptyPath)
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+		})
+	})
+
+	s.Run("WhenFilepathIsExist", func() {
+		s.Run("WhenFilePathIsValid", func() {
+			samplePath := "./sample/path/config.yaml"
+			s.a.WriteFile(samplePath, []byte("version: 2"), os.ModeTemporary)
+
+			conf, err := config.LoadServerConfig(samplePath)
+
+			s.Assert().NoError(err)
+			s.Assert().NotNil(conf)
+			s.Assert().Equal("2", conf.Version.String())
+		})
+
+		s.Run("WhenFilePathIsNotValid", func() {
+			conf, err := config.LoadServerConfig("/path/not/exist")
+			s.Assert().Error(err)
+			s.Assert().Nil(conf)
+		})
+	})
 }
 
 func (s *ConfigTestSuite) initExpectedProjectConfig() {
-	s.expectedClientConfig = &ClientConfig{}
-	s.expectedClientConfig.Version = Version(1)
-	s.expectedClientConfig.Log = LogConfig{Level: "info"}
+	s.expectedClientConfig = &config.ClientConfig{}
+	s.expectedClientConfig.Version = config.Version(1)
+	s.expectedClientConfig.Log = config.LogConfig{Level: "info"}
 
 	s.expectedClientConfig.Host = "localhost:9100"
-	s.expectedClientConfig.Project = Project{
+	s.expectedClientConfig.Project = config.Project{
 		Name: "sample_project",
 		Config: map[string]string{
 			"environment":    "integration",
@@ -210,16 +240,16 @@ func (s *ConfigTestSuite) initExpectedProjectConfig() {
 			"storage_path":   "file://absolute_path_to_a_directory",
 		},
 	}
-	namespaces := []*Namespace{}
-	namespaces = append(namespaces, &Namespace{
+	namespaces := []*config.Namespace{}
+	namespaces = append(namespaces, &config.Namespace{
 		Name: "namespace-a",
-		Job: Job{
+		Job: config.Job{
 			Path: "./jobs-a",
 		},
 	})
-	namespaces = append(namespaces, &Namespace{
+	namespaces = append(namespaces, &config.Namespace{
 		Name: "namespace-b",
-		Job: Job{
+		Job: config.Job{
 			Path: "./jobs-b",
 		},
 	})
@@ -227,11 +257,11 @@ func (s *ConfigTestSuite) initExpectedProjectConfig() {
 }
 
 func (s *ConfigTestSuite) initExpectedServerConfig() {
-	s.expectedServerConfig = &ServerConfig{}
-	s.expectedServerConfig.Version = Version(1)
-	s.expectedServerConfig.Log = LogConfig{Level: "info"}
+	s.expectedServerConfig = &config.ServerConfig{}
+	s.expectedServerConfig.Version = config.Version(1)
+	s.expectedServerConfig.Log = config.LogConfig{Level: "info"}
 
-	s.expectedServerConfig.Serve = Serve{}
+	s.expectedServerConfig.Serve = config.Serve{}
 	s.expectedServerConfig.Serve.Port = 9100
 	s.expectedServerConfig.Serve.Host = "localhost"
 	s.expectedServerConfig.Serve.IngressHost = "optimus.example.io:80"
@@ -239,16 +269,55 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Serve.ReplayNumWorkers = 1
 	s.expectedServerConfig.Serve.ReplayWorkerTimeout = 100 * time.Second
 	s.expectedServerConfig.Serve.ReplayRunTimeout = 10 * time.Second
-	s.expectedServerConfig.Serve.DB = DBConfig{}
+	s.expectedServerConfig.Serve.DB = config.DBConfig{}
 	s.expectedServerConfig.Serve.DB.DSN = "postgres://user:password@localhost:5432/database?sslmode=disable"
 	s.expectedServerConfig.Serve.DB.MaxIdleConnection = 5
 	s.expectedServerConfig.Serve.DB.MaxOpenConnection = 10
 
-	s.expectedServerConfig.Scheduler = SchedulerConfig{}
+	s.expectedServerConfig.Scheduler = config.SchedulerConfig{}
 	s.expectedServerConfig.Scheduler.Name = "airflow2"
 	s.expectedServerConfig.Scheduler.SkipInit = true
 
-	s.expectedServerConfig.Telemetry = TelemetryConfig{}
+	s.expectedServerConfig.Telemetry = config.TelemetryConfig{}
 	s.expectedServerConfig.Telemetry.ProfileAddr = ":9110"
 	s.expectedServerConfig.Telemetry.JaegerAddr = "http://localhost:14268/api/traces"
+}
+
+func (s *ConfigTestSuite) initServerConfigEnv() {
+	os.Setenv("OPTIMUS_VERSION", "4")
+	os.Setenv("OPTIMUS_LOG_LEVEL", "info")
+	os.Setenv("OPTIMUS_SERVE_PORT", "9100")
+	os.Setenv("OPTIMUS_SERVE_HOST", "localhost")
+	os.Setenv("OPTIMUS_SERVE_INGRESS_HOST", "optimus.example.io:80")
+	os.Setenv("OPTIMUS_SERVE_APP_KEY", "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc")
+	os.Setenv("OPTIMUS_SERVE_REPLAY_NUM_WORKERS", "1")
+	os.Setenv("OPTIMUS_SERVE_REPLAY_WORKER_TIMEOUT", "100s")
+	os.Setenv("OPTIMUS_SERVE_REPLAY_RUN_TIMEOUT", "10s")
+	os.Setenv("OPTIMUS_SERVE_DB_DSN", "postgres://user:password@localhost:5432/database?sslmode=disable")
+	os.Setenv("OPTIMUS_SERVE_DB_MAX_IDLE_CONNECTION", "5")
+	os.Setenv("OPTIMUS_SERVE_DB_MAX_OPEN_CONNECTION", "10")
+	os.Setenv("OPTIMUS_SCHEDULER_NAME", "airflow2")
+	os.Setenv("OPTIMUS_SCHEDULER_SKIP_INIT", "true")
+	os.Setenv("OPTIMUS_TELEMETRY_PROFILE_ADDR", ":9110")
+	os.Setenv("OPTIMUS_TELEMETRY_JAEGER_ADDR", "http://localhost:14268/api/traces")
+}
+
+func (s *ConfigTestSuite) unsetServerConfigEnv() {
+	os.Unsetenv("OPTIMUS_VERSION")
+	os.Unsetenv("OPTIMUS_LOG_LEVEL")
+	os.Unsetenv("OPTIMUS_SERVE_PORT")
+	os.Unsetenv("OPTIMUS_SERVE_HOST")
+	os.Unsetenv("OPTIMUS_SERVE_INGRESS_HOST")
+	os.Unsetenv("OPTIMUS_SERVE_APP_KEY")
+	os.Unsetenv("OPTIMUS_SERVE_REPLAY_NUM_WORKERS")
+	os.Unsetenv("OPTIMUS_SERVE_REPLAY_WORKER_TIMEOUT")
+	os.Unsetenv("OPTIMUS_SERVE_REPLAY_RUN_TIMEOUT")
+	os.Unsetenv("OPTIMUS_SERVE_DB_DSN")
+	os.Unsetenv("OPTIMUS_SERVE_DB_MAX_IDLE_CONNECTION")
+	os.Unsetenv("OPTIMUS_SERVE_DB_MAX_OPEN_CONNECTION")
+	os.Unsetenv("OPTIMUS_SCHEDULER_NAME")
+	os.Unsetenv("OPTIMUS_SCHEDULER_SKIP_INIT")
+	os.Unsetenv("OPTIMUS_TELEMETRY_PROFILE_ADDR")
+	os.Unsetenv("OPTIMUS_TELEMETRY_JAEGER_ADDR")
+
 }

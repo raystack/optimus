@@ -1,7 +1,7 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/odpf/salt/config"
@@ -15,15 +15,14 @@ const (
 	DefaultFilename      = "optimus"
 	DefaultFileExtension = "yaml"
 	DefaultEnvPrefix     = "OPTIMUS"
+	EmptyPath            = ""
 )
 
 var (
-	filename      = DefaultFilename
-	fileExtension = DefaultFileExtension // ASK: are we providing file extension other than yaml?
-	envPrefix     = DefaultEnvPrefix
-	currPath      string
-	execPath      string
-	homePath      string
+	FS       = afero.NewReadOnlyFs(afero.NewOsFs())
+	currPath string
+	execPath string
+	homePath string
 )
 
 func init() {
@@ -47,85 +46,80 @@ func init() {
 }
 
 // LoadClientConfig load the project specific config from these locations:
-// 1. env var. eg. OPTIMUS_PROJECT, OPTIMUS_NAMESPACES, etc TODO: skip this part
-// 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
-// 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
-func LoadClientConfig(filepath ...string) (*ClientConfig, error) {
-	fs := afero.NewReadOnlyFs(afero.NewOsFs())
-	return loadProjectConfigFs(fs, filepath...)
-}
-
-// LoadServerConfig load the server specific config from these locations:
-// 1. env var. eg. OPTIMUS_SERVE_PORT, etc
-// 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
-// 3. executable binary location
-// 4. home dir
-func LoadServerConfig(filepath ...string) (*ServerConfig, error) {
-	fs := afero.NewReadOnlyFs(afero.NewOsFs())
-	return loadServerConfigFs(fs, filepath...)
-}
-
-func loadProjectConfigFs(fs afero.Fs, filepath ...string) (*ClientConfig, error) {
+// 1. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
+// 2. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
+func LoadClientConfig(filePath string) (*ClientConfig, error) {
 	cfg := &ClientConfig{}
 
-	if len(filepath) == 0 {
-		filepath = append(filepath, "")
-	}
-
-	err := loadConfig(cfg, fs, filepath[0], currPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-func loadServerConfigFs(fs afero.Fs, filepath ...string) (*ServerConfig, error) {
-	cfg := &ServerConfig{}
-
-	if len(filepath) == 0 {
-		filepath = append(filepath, "")
-	}
-
-	err := loadConfig(cfg, fs, filepath[0], execPath, homePath)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-func loadConfig(cfg interface{}, fs afero.Fs, paths ...string) error {
 	// getViperWithDefault + SetFs
 	v := viper.New()
-	v.SetFs(fs)
+	v.SetFs(FS)
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
-		config.WithName(filename),
-		config.WithType(fileExtension),
-		config.WithEnvPrefix(envPrefix),
-		config.WithEnvKeyReplacer(".", "_"),
+		config.WithName(DefaultFilename),
+		config.WithType(DefaultFileExtension),
 	}
 
-	if len(paths) > 0 {
-		fpath := paths[0]
-		dirPaths := paths[1:]
-
-		if fpath != "" {
-			if err := validateFilepath(fs, fpath); err != nil {
-				return err
-			}
-			opts = append(opts, config.WithFile(fpath))
+	// load opt from filepath if exist
+	if filePath != EmptyPath {
+		if err := validateFilepath(FS, filePath); err != nil {
+			return nil, err // if filepath not valid, returns err
 		}
-
-		for _, path := range dirPaths {
-			opts = append(opts, config.WithPath(path))
-		}
+		opts = append(opts, config.WithFile(filePath))
+	} else {
+		// load opt from current directory
+		opts = append(opts, config.WithPath(currPath))
 	}
 
+	// load the config
 	l := config.NewLoader(opts...)
-	return l.Load(cfg)
+	if err := l.Load(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// LoadServerConfig load the server specific config from these locations:
+// 1. filepath. ./optimus <server_command> -c "path/to/config.yaml"
+// 2. env var. eg. OPTIMUS_SERVE_PORT, etc
+// 3. executable binary location
+// 4. home dir
+func LoadServerConfig(filePath string) (*ServerConfig, error) {
+	cfg := &ServerConfig{}
+
+	// getViperWithDefault + SetFs
+	v := viper.New()
+	v.SetFs(FS)
+
+	opts := []config.LoaderOption{
+		config.WithViper(v),
+		config.WithName(DefaultFilename),
+		config.WithType(DefaultFileExtension),
+	}
+
+	// load opt from filepath if exist
+	if filePath != EmptyPath {
+		if err := validateFilepath(FS, filePath); err != nil {
+			return nil, err // if filepath not valid, returns err
+		}
+		opts = append(opts, config.WithFile(filePath))
+	} else {
+		// load opt from env var
+		opts = append(opts, config.WithEnvPrefix(DefaultEnvPrefix), config.WithEnvKeyReplacer(".", "_"))
+
+		// load opt from exec & home directory
+		opts = append(opts, config.WithPath(execPath), config.WithPath(homePath))
+	}
+
+	// load the config
+	l := config.NewLoader(opts...)
+	if err := l.Load(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 func validateFilepath(fs afero.Fs, fpath string) error {
@@ -134,7 +128,7 @@ func validateFilepath(fs afero.Fs, fpath string) error {
 		return err
 	}
 	if !f.Mode().IsRegular() {
-		return errors.New("not a file")
+		return fmt.Errorf("%s not a file", fpath)
 	}
 	return nil
 }
