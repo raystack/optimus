@@ -88,7 +88,7 @@ func (s *ConfigTestSuite) SetupTest() {
 
 	config.FS = s.a.Fs
 
-	s.initExpectedProjectConfig()
+	s.initExpectedClientConfig()
 	s.initExpectedServerConfig()
 }
 
@@ -156,7 +156,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
 	execFilePath := path.Join(s.execPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	homeFilePath := path.Join(s.homePath, config.DefaultFilename+"."+config.DefaultFilename)
+	homeFilePath := path.Join(s.homePath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 	s.a.WriteFile(homeFilePath, []byte(`version: 3`), fs.ModeTemporary)
 	s.initServerConfigEnv()
@@ -178,7 +178,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
-			s.Assert().Equal(s.expectedServerConfig, conf) // should load from exec dir
+			s.Assert().EqualValues(s.expectedServerConfig, conf) // should load from exec dir
 		})
 
 		s.Run("WhenEnvNotExistAndExecDirNotExist", func() {
@@ -226,7 +226,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 	})
 }
 
-func (s *ConfigTestSuite) initExpectedProjectConfig() {
+func (s *ConfigTestSuite) initExpectedClientConfig() {
 	s.expectedClientConfig = &config.ClientConfig{}
 	s.expectedClientConfig.Version = config.Version(1)
 	s.expectedClientConfig.Log = config.LogConfig{Level: "info"}
