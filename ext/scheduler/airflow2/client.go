@@ -162,9 +162,8 @@ func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRu
 	}
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger {
-			var jobRun models.JobRun
 			// schedule run
-			jobRun = models.JobRun{
+			jobRun := models.JobRun{
 				Status:      models.JobRunState(dag.State),
 				ScheduledAt: spec.Next(dag.ExecutionDate),
 			}
