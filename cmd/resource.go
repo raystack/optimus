@@ -25,8 +25,8 @@ var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-z
 
 func resourceCommand(datastoreRepo models.DatastoreRepo) *cli.Command {
 	var configFilePath string
-	var conf = &config.ClientConfig{}
-	var l log.Logger = initLogger(plainLoggerType, conf.Log)
+	conf := &config.ClientConfig{}
+	l := initLogger(plainLoggerType, conf.Log)
 
 	cmd := &cli.Command{
 		Use:   "resource",
@@ -60,7 +60,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastore
 	}
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
-		//init local specs
+		// init local specs
 		datastoreSpecFs := make(map[string]map[string]afero.Fs)
 		for _, namespace := range conf.Namespaces {
 			dtSpec := make(map[string]afero.Fs)
@@ -121,7 +121,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastore
 		resourceDirectory := filepath.Join(rwd, newDirName)
 		resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirectory, "/", "."), "\\", ".")
 
-		var qs = []*survey.Question{
+		qs := []*survey.Question{
 			{
 				Name: "name",
 				Prompt: &survey.Input{

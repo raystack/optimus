@@ -58,7 +58,7 @@ func serveCommand() *cli.Command {
 			}
 			defer teleShutdown()
 			l.Info(coloredSuccess("Starting Optimus"), "version", config.BuildVersion)
-			optimusServer, err := server.New(l, conf)
+			optimusServer, err := server.New(l, *conf)
 			defer optimusServer.Shutdown()
 			if err != nil {
 				return fmt.Errorf("unable to create server: %w", err)

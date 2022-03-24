@@ -27,6 +27,7 @@ var (
 	homePath string
 )
 
+//nolint:gochecknoinits
 func init() {
 	p, err := os.Getwd()
 	if err != nil {

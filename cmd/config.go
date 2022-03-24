@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	defaultHost = "localhost"
+	defaultHost               = "localhost"
+	defaultFilePermissionMode = 0o655
 )
 
 func configCommand() *cli.Command {
@@ -91,7 +92,7 @@ func configInitCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension), confMarshaled, 0655); err != nil {
+			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension), confMarshaled, defaultFilePermissionMode); err != nil {
 				return err
 			}
 

@@ -63,7 +63,7 @@ func deployCommand(pluginRepo models.PluginRepository, dsRepo models.DatastoreRe
 		// init logger
 		l := initLogger(plainLoggerType, conf.Log)
 
-		//init local specs
+		// init local specs
 		datastoreSpecFs := make(map[string]map[string]afero.Fs)
 		for _, namespace := range conf.Namespaces {
 			dtSpec := make(map[string]afero.Fs)

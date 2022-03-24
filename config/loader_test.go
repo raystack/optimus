@@ -32,6 +32,7 @@ namespaces:
   job:
     path: ./jobs-b
 `
+
 const serverConfig = `
 version: 1
 log:
@@ -151,7 +152,6 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			s.Assert().Nil(conf)
 		})
 	})
-
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
@@ -219,7 +219,8 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 		})
 
 		s.Run("WhenFilePathIsNotValid", func() {
-			conf, err := config.LoadServerConfig("/path/not/exist")
+			s.a.MkdirAll("/path/dir/", os.ModeTemporary)
+			conf, err := config.LoadServerConfig("/path/dir/")
 			s.Assert().Error(err)
 			s.Assert().Nil(conf)
 		})
@@ -319,5 +320,4 @@ func (s *ConfigTestSuite) unsetServerConfigEnv() {
 	os.Unsetenv("OPTIMUS_SCHEDULER_SKIP_INIT")
 	os.Unsetenv("OPTIMUS_TELEMETRY_PROFILE_ADDR")
 	os.Unsetenv("OPTIMUS_TELEMETRY_JAEGER_ADDR")
-
 }
