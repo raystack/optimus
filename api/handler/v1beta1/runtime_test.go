@@ -833,10 +833,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.Nil(t, err)
-			assert.Equal(t, len(jobRuns), len(resp.JobRun))
+			assert.Equal(t, len(jobRuns), len(resp.JobRuns))
 			for _, expectedStatus := range jobRuns {
 				var found bool
-				for _, respVal := range resp.JobRun {
+				for _, respVal := range resp.JobRuns {
 					if expectedStatus.ScheduledAt.Equal(respVal.ScheduledAt.AsTime()) &&
 						expectedStatus.Status.String() == respVal.State {
 						found = true
@@ -1218,10 +1218,10 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			resp, err := runtimeServiceServer.JobRun(ctx, req)
 			assert.Nil(t, err)
-			assert.Equal(t, len(jobRuns), len(resp.JobRun))
+			assert.Equal(t, len(jobRuns), len(resp.JobRuns))
 			for _, expectedStatus := range jobRuns {
 				var found bool
-				for _, respVal := range resp.JobRun {
+				for _, respVal := range resp.JobRuns {
 					if expectedStatus.ScheduledAt.Equal(respVal.ScheduledAt.AsTime()) &&
 						expectedStatus.Status.String() == respVal.State {
 						found = true
