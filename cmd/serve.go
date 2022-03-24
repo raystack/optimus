@@ -31,7 +31,8 @@ func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 			<-sigc
 			l.Info(coloredNotice("Shutting down server"))
-			return optimusServer.Shutdown()
+			optimusServer.Shutdown()
+			return nil
 		},
 	}
 	return c

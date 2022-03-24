@@ -133,11 +133,11 @@ func (s *OptimusServer) startListening() error {
 	return nil
 }
 
-func (s *OptimusServer) Shutdown() error {
+func (s *OptimusServer) Shutdown() {
 	s.shutdownLock.Lock()
 	defer s.shutdownLock.Unlock()
 	if s.shutdown {
-		return nil // already shutting down
+		return // already shutting down
 	}
 	s.shutdown = true
 
@@ -162,12 +162,9 @@ func (s *OptimusServer) Shutdown() error {
 	}
 
 	s.logger.Info("Server shutdown complete")
-
-	return nil
 }
 
 func (s *OptimusServer) setupRuntimeServer() error {
-
 	projectRepoFac := &projectRepoFactory{
 		db:   s.dbConn,
 		hash: s.appKey,
