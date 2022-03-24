@@ -18,10 +18,6 @@ const (
 	ProjectConfigPrefix = "GLOBAL__"
 )
 
-// IgnoreTemplateRenderExtension used as extension on a file will skip template
-// rendering of it
-var IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
-
 // ContextManager fetches all config data for a given instanceSpec and compiles all
 // macros/templates.
 // Context here is a term used for the input required for tasks to execute.
@@ -80,12 +76,12 @@ func (fm *ContextManager) createContextForTask(instanceConfig map[string]string)
 	contextForTask := map[string]interface{}{}
 
 	// Collect project config
-	projectConfig := fm.collectProjectConfigs()
+	projectConfig := utils.MergeMaps(fm.namespace.ProjectSpec.Config, fm.namespace.Config)
 	contextForTask["proj"] = projectConfig
 	utils.AppendToMap(contextForTask, prefixKeysOf(projectConfig, ProjectConfigPrefix))
 
 	// Collect secrets
-	secretMap := getSecretsMap(fm.secrets)
+	secretMap := fm.secrets.ToMap()
 	contextForTask["secret"] = secretMap
 
 	// Collect instance config for templating
@@ -125,12 +121,6 @@ func (fm *ContextManager) constructCompiledFileMap(instanceSpec models.InstanceS
 		return nil, err
 	}
 	return fileMap, nil
-}
-
-func (fm *ContextManager) collectProjectConfigs() map[string]string {
-	// project configs will be used for templating
-	// override project config with namespace's configs when present
-	return utils.MergeMaps(fm.namespace.ProjectSpec.Config, fm.namespace.Config)
 }
 
 func (fm *ContextManager) compileConfigs(config models.JobSpecConfigs, ctx map[string]interface{}) (map[string]string, map[string]string, error) {
@@ -176,23 +166,6 @@ func (fm *ContextManager) compileTemplates(templateValueMap map[string]string, t
 		templateValueMap[key] = compiledValue
 	}
 	return templateValueMap, nil
-}
-
-func getSecretsMap(secrets models.ProjectSecrets) map[string]string {
-	secretsMap := map[string]string{}
-
-	for _, s := range secrets {
-		secretsMap[s.Name] = s.Value
-	}
-	return secretsMap
-}
-
-func prefixKeysOf(configMap map[string]string, prefix string) map[string]string {
-	prefixedConfig := map[string]string{}
-	for key, val := range configMap {
-		prefixedConfig[fmt.Sprintf("%s%s", prefix, key)] = val
-	}
-	return prefixedConfig
 }
 
 func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {

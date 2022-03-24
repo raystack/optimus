@@ -69,6 +69,14 @@ func (s ProjectSecrets) String() string {
 	return "*redacted*"
 }
 
+func (s ProjectSecrets) ToMap() map[string]string {
+	var mapping map[string]string
+	for _, item := range s {
+		mapping[item.Name] = item.Value
+	}
+	return mapping
+}
+
 func (s ProjectSecrets) GetByName(name string) (string, bool) {
 	for _, v := range s {
 		if v.Name == name {

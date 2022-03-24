@@ -1,6 +1,10 @@
 package compiler
 
-import "github.com/odpf/optimus/utils"
+import (
+	"fmt"
+
+	"github.com/odpf/optimus/utils"
+)
 
 type ContextOpts struct {
 	conf   map[string]string
@@ -23,6 +27,14 @@ func PrepareContext(builders ...ContextOpts) map[string]interface{} {
 		}
 	}
 	return contextMap
+}
+
+func prefixKeysOf(configMap map[string]string, prefix string) map[string]string {
+	prefixedConfig := map[string]string{}
+	for key, val := range configMap {
+		prefixedConfig[fmt.Sprintf("%s%s", prefix, key)] = val
+	}
+	return prefixedConfig
 }
 
 func From(confs ...map[string]string) ContextOpts {
