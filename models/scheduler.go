@@ -45,7 +45,7 @@ type SchedulerUnit interface {
 		endDate time.Time, batchSize int) ([]JobStatus, error)
 
 	// GetJobRuns return all the job runs based on query
-	GetJobRuns(ctx context.Context, projectSpec ProjectSpec, param *JobQuery, spec *cron.ScheduleSpec) ([]JobRun, error)
+	GetJobRuns(ctx context.Context, projectSpec ProjectSpec, jobQuery *JobQuery, jobCron *cron.ScheduleSpec) ([]JobRun, error)
 }
 
 type SchedulerListOptions struct {

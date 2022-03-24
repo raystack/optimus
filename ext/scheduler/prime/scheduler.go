@@ -77,7 +77,7 @@ func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	panic("implement me")
 }
 
-func (s *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
+func (s *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobCron *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	return []models.JobRun{}, nil
 }
 

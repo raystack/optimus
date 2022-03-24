@@ -91,14 +91,14 @@ func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectS
 	if interval == "" {
 		return jobRuns, errors.New("job interval not found at DB")
 	}
-
-	sch, err := cron.ParseCronSchedule(interval)
+	// jobCron
+	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
 		return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
 	}
 
 	if jobQuery.OnlyLastRun {
-		return s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, sch)
+		return s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, jobCron)
 	}
 	// validate job query
 	err = validateJobQuery(jobQuery, jobSpec)
@@ -106,10 +106,10 @@ func (s *Service) GetJobRunList(ctx context.Context, projectSpec models.ProjectS
 		return jobRuns, err
 	}
 	// get expected runs StartDate and EndDate inclusive
-	expectedRuns := getExpectedRuns(sch, jobQuery.StartDate, jobQuery.EndDate)
+	expectedRuns := getExpectedRuns(jobCron, jobQuery.StartDate, jobQuery.EndDate)
 
 	// call to airflow for get runs
-	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, sch)
+	actualRuns, err := s.scheduler.GetJobRuns(ctx, projectSpec, jobQuery, jobCron)
 	if err != nil {
 		return jobRuns, fmt.Errorf("unable to get job runs from airflow %w", err)
 	}

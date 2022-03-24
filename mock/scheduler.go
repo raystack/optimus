@@ -61,7 +61,7 @@ func (ms *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobStatus), args.Error(1)
 }
 
-func (ms *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
-	args := ms.Called(ctx, projectSpec, param, spec)
+func (ms *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) ([]models.JobRun, error) {
+	args := ms.Called(ctx, projectSpec, jobQuery, jobCron)
 	return args.Get(0).([]models.JobRun), args.Error(1)
 }

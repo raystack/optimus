@@ -384,7 +384,7 @@ func TestService(t *testing.T) {
 		if err != nil {
 			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
 		}
-		cronSch, err := cron.ParseCronSchedule("0 12 * * *")
+		jobCron, err := cron.ParseCronSchedule("0 12 * * *")
 		if err != nil {
 			t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
 		}
@@ -400,19 +400,19 @@ func TestService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			param := &models.JobQuery{
+			jobQuery := &models.JobQuery{
 				Name:      "sample_select",
 				StartDate: startDate,
 				EndDate:   endDate,
 				Filter:    []string{"success"},
 			}
 
-			sch.On("GetJobRuns", ctx, spec, param, cronSch).Return([]models.JobRun{}, nil)
+			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, nil)
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.Nil(t, err)
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should able to get job runs when scheduler returns valid response", func(t *testing.T) {
 			spec := models.ProjectSpec{
@@ -531,7 +531,7 @@ func TestService(t *testing.T) {
 			} {
 				t.Run(scenario.description, func(t *testing.T) {
 					sch := new(mock.Scheduler)
-					sch.On("GetJobRuns", ctx, spec, scenario.input, cronSch).Return(scenario.runs, nil)
+					sch.On("GetJobRuns", ctx, spec, scenario.input, jobCron).Return(scenario.runs, nil)
 					defer sch.AssertExpectations(t)
 					runService := run.NewService(nil, nil, nil, sch, nil)
 					returnedRuns, err := runService.GetJobRunList(ctx, projSpec, scenario.job, scenario.input)
@@ -548,7 +548,7 @@ func TestService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			param := &models.JobQuery{
+			jobQuery := &models.JobQuery{
 				Name:      "sample_select",
 				StartDate: startDate.Add(-time.Hour * 24 * 2),
 				EndDate:   endDate,
@@ -557,9 +557,9 @@ func TestService(t *testing.T) {
 
 			sch := new(mock.Scheduler)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when invalid cron interval present at DB", func(t *testing.T) {
 			jobSpec := models.JobSpec{
@@ -569,7 +569,7 @@ func TestService(t *testing.T) {
 					Interval:  "invalid interval",
 				},
 			}
-			param := &models.JobQuery{
+			jobQuery := &models.JobQuery{
 				Name:      "sample_select",
 				StartDate: startDate,
 				EndDate:   endDate,
@@ -578,9 +578,9 @@ func TestService(t *testing.T) {
 
 			sch := new(mock.Scheduler)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when no cron interval present at DB", func(t *testing.T) {
 			jobSpec := models.JobSpec{
@@ -590,7 +590,7 @@ func TestService(t *testing.T) {
 					Interval:  "",
 				},
 			}
-			param := &models.JobQuery{
+			jobQuery := &models.JobQuery{
 				Name:      "sample_select",
 				StartDate: startDate,
 				EndDate:   endDate,
@@ -599,9 +599,9 @@ func TestService(t *testing.T) {
 
 			sch := new(mock.Scheduler)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when no start date present at DB", func(t *testing.T) {
 			jobSpec := models.JobSpec{
@@ -610,7 +610,7 @@ func TestService(t *testing.T) {
 					Interval: "0 12 * * *",
 				},
 			}
-			param := &models.JobQuery{
+			jobQuery := &models.JobQuery{
 				Name:      "sample_select",
 				StartDate: startDate,
 				EndDate:   endDate,
@@ -619,9 +619,9 @@ func TestService(t *testing.T) {
 
 			sch := new(mock.Scheduler)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
 			sch := new(mock.Scheduler)
@@ -635,19 +635,19 @@ func TestService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			param := &models.JobQuery{
+			jobQuery := &models.JobQuery{
 				Name:      "sample_select",
 				StartDate: startDate,
 				EndDate:   endDate,
 				Filter:    []string{"success"},
 			}
 
-			sch.On("GetJobRuns", ctx, spec, param, cronSch).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
+			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err, errors.New("failed: due to invalid URL"))
-			assert.Nil(t, nil, returnedSpec)
+			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
 			sch := new(mock.Scheduler)
@@ -661,7 +661,8 @@ func TestService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			param := &models.JobQuery{
+
+			jobQuery := &models.JobQuery{
 				Name:        "sample_select",
 				OnlyLastRun: true,
 			}
@@ -671,12 +672,12 @@ func TestService(t *testing.T) {
 					ScheduledAt: endDate,
 				},
 			}
-			sch.On("GetJobRuns", ctx, spec, param, cronSch).Return(runs, nil)
+			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return(runs, nil)
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
-			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.Nil(t, err)
-			assert.Equal(t, runs, returnedSpec)
+			assert.Equal(t, runs, returnedRuns)
 		})
 	})
 }

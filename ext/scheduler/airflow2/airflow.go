@@ -281,14 +281,17 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 	return jobStatus, nil
 }
 
-func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
+func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRuns []models.JobRun
-	var list DagRunListResponse
-	if !param.OnlyLastRun {
-		paramWithExecDate := covertToExecDate(param, spec)
-		param = paramWithExecDate
+	var dagRunList DagRunListResponse
+	var dagRunRequest DagRunRequest
+	if jobQuery.OnlyLastRun {
+		dagRunRequest = getDagRunRequest(jobQuery)
+	} else {
+		jobQueryWithExecDate := covertToExecDate(jobQuery, jobCron)
+		dagRunRequest = getDagRunRequest(jobQueryWithExecDate)
 	}
-	reqBody, err := json.Marshal(getDagRunRequest(param))
+	reqBody, err := json.Marshal(dagRunRequest)
 	if err != nil {
 		return jobRuns, err
 	}
@@ -301,17 +304,17 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 	if err != nil {
 		return jobRuns, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
 	}
-	if err := json.Unmarshal(resp, &list); err != nil {
-		return jobRuns, fmt.Errorf("json error: %s: %w", string(resp), err)
+	if err := json.Unmarshal(resp, &dagRunList); err != nil {
+		return jobRuns, fmt.Errorf("json error on parsing airflow dag runs: %s: %w", string(resp), err)
 	}
-	return getJobRuns(list, spec)
+	return getJobRuns(dagRunList, jobCron)
 }
 
-func covertToExecDate(jobQuery *models.JobQuery, sch *cron.ScheduleSpec) *models.JobQuery {
+func covertToExecDate(jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) *models.JobQuery {
 	givenStartDate := jobQuery.StartDate
 	givenEndDate := jobQuery.EndDate
 
-	duration := sch.Interval(givenStartDate)
+	duration := jobCron.Interval(givenStartDate)
 	jobQuery.StartDate = givenStartDate.Add(-duration)
 	jobQuery.EndDate = givenEndDate.Add(-duration)
 
