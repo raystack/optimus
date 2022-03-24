@@ -656,7 +656,7 @@ func TestAirflow2(t *testing.T) {
 		}
 		invalidList := airflow2.DagRunListResponse{
 			DagRuns:      []airflow2.DagRun{run, run},
-			TotalEntries: 3,
+			TotalEntries: 100000,
 		}
 		resp, err := json.Marshal(list)
 		if err != nil {

@@ -157,7 +157,7 @@ func getDagRunRequest(param *models.JobQuery) DagRunRequest {
 
 func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRunList []models.JobRun
-	if res.TotalEntries > len(res.DagRuns) {
+	if res.TotalEntries > pageLimit {
 		return jobRunList, errors.New("total number of entries exceed page limit")
 	}
 	for _, dag := range res.DagRuns {
