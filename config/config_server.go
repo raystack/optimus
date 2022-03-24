@@ -4,10 +4,6 @@ import (
 	"time"
 )
 
-const (
-	KeyServeReplayNumWorkers = "serve.replay_num_workers"
-)
-
 type ServerConfig struct {
 	Version   Version         `mapstructure:"version"`
 	Log       LogConfig       `mapstructure:"log"`

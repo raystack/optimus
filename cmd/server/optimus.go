@@ -29,7 +29,7 @@ import (
 type setupFn func() error
 
 type OptimusServer struct {
-	conf   config.Optimus
+	conf   config.ServerConfig
 	logger log.Logger
 
 	appKey models.ApplicationKey
@@ -42,15 +42,15 @@ type OptimusServer struct {
 	cleanupFn []func()
 }
 
-func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
-	addr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
+func New(l log.Logger, conf config.ServerConfig) (*OptimusServer, error) {
+	addr := fmt.Sprintf("%s:%d", conf.Serve.Host, conf.Serve.Port)
 	server := &OptimusServer{
 		conf:       conf,
 		logger:     l,
 		serverAddr: addr,
 	}
 
-	if err := checkRequiredConfigs(conf.Server); err != nil {
+	if err := checkRequiredConfigs(conf.Serve); err != nil {
 		return server, err
 	}
 
@@ -76,7 +76,7 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 
 func (s *OptimusServer) setupAppKey() error {
 	var err error
-	s.appKey, err = models.NewApplicationSecret(s.conf.Server.AppKey)
+	s.appKey, err = models.NewApplicationSecret(s.conf.Serve.AppKey)
 	if err != nil {
 		return fmt.Errorf("NewApplicationSecret: %w", err)
 	}
@@ -85,12 +85,12 @@ func (s *OptimusServer) setupAppKey() error {
 
 func (s *OptimusServer) setupDB() error {
 	var err error
-	if err := postgres.Migrate(s.conf.Server.DB.DSN); err != nil {
+	if err := postgres.Migrate(s.conf.Serve.DB.DSN); err != nil {
 		return fmt.Errorf("postgres.Migrate: %w", err)
 	}
 	// TODO: Connect should accept DBConfig
-	s.dbConn, err = postgres.Connect(s.conf.Server.DB.DSN, s.conf.Server.DB.MaxIdleConnection,
-		s.conf.Server.DB.MaxOpenConnection, s.logger.Writer())
+	s.dbConn, err = postgres.Connect(s.conf.Serve.DB.DSN, s.conf.Serve.DB.MaxIdleConnection,
+		s.conf.Serve.DB.MaxOpenConnection, s.logger.Writer())
 	if err != nil {
 		return fmt.Errorf("postgres.Connect: %w", err)
 	}
@@ -215,9 +215,9 @@ func (s *OptimusServer) setupHandlers() error {
 	)
 
 	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    s.conf.Server.ReplayNumWorkers,
-		WorkerTimeout: s.conf.Server.ReplayWorkerTimeout,
-		RunTimeout:    s.conf.Server.ReplayRunTimeout,
+		NumWorkers:    s.conf.Serve.ReplayNumWorkers,
+		WorkerTimeout: s.conf.Serve.ReplayWorkerTimeout,
+		RunTimeout:    s.conf.Serve.ReplayRunTimeout,
 	}, scheduler, replayValidator, replaySyncer)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
@@ -326,7 +326,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,
-		config.Version,
+		config.BuildVersion,
 		jobService,
 		eventService,
 		namespaceService,
