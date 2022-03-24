@@ -756,7 +756,7 @@ func TestAirflow2(t *testing.T) {
 						Value: "admin:admin",
 					},
 				},
-			}, &params, nil)
+			}, &params, sch)
 
 			assert.Nil(t, err)
 			assert.Len(t, runStatus, 2)

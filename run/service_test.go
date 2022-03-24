@@ -671,8 +671,7 @@ func TestService(t *testing.T) {
 					ScheduledAt: endDate,
 				},
 			}
-			var cronSchNil *cron.ScheduleSpec
-			sch.On("GetJobRuns", ctx, spec, param, cronSchNil).Return(runs, nil)
+			sch.On("GetJobRuns", ctx, spec, param, cronSch).Return(runs, nil)
 			defer sch.AssertExpectations(t)
 			runService := run.NewService(nil, nil, nil, sch, nil)
 			returnedSpec, err := runService.GetJobRunList(ctx, projSpec, jobSpec, param)

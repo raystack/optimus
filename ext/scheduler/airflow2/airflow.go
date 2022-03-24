@@ -284,7 +284,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, param *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRuns []models.JobRun
 	var list DagRunListResponse
-	if spec != nil {
+	if !param.OnlyLastRun {
 		paramWithExecDate := covertToExecDate(param, spec)
 		param = paramWithExecDate
 	}
