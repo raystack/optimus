@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/salt/log"
-	"github.com/odpf/salt/version"
-	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
-
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/version"
+	cli "github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -20,8 +18,9 @@ const (
 	githubRepo     = "odpf/optimus"
 )
 
-func versionCommand(l log.Logger, pluginRepo models.PluginRepository) *cli.Command {
+func versionCommand(pluginRepo models.PluginRepository) *cli.Command {
 	var isWithServer bool
+	var configFilePath string
 
 	c := &cli.Command{
 		Use:     "version",
@@ -29,20 +28,28 @@ func versionCommand(l log.Logger, pluginRepo models.PluginRepository) *cli.Comma
 		Example: "optimus version [--with-server]",
 	}
 
-	c.Flags().BoolVar(&isWithServer, "with-server", false, "Check for server version")
+	c.Flags().BoolVar(&isWithServer, "with-server", isWithServer, "Check for server version")
+	c.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	c.RunE = func(c *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		conf, err := config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+
+		if err := config.Validate(conf); err != nil {
+			return err
+		}
+
+		// initiate logger
+		l := initLogger(plainLoggerType, conf.Log)
+
 		// Print client version
 		l.Info(fmt.Sprintf("Client: %s-%s", coloredNotice(config.BuildVersion), coloredNotice(config.BuildCommit)))
 
 		// Print server version
 		if isWithServer {
-			// TODO: find a way to load the config in one place
-			conf, err := config.LoadClientConfig()
-			if err != nil {
-				return err
-			}
-
 			srvVer, err := getVersionRequest(config.BuildVersion, conf.Host)
 			if err != nil {
 				return err

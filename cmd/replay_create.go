@@ -19,7 +19,7 @@ import (
 	"github.com/odpf/optimus/core/set"
 )
 
-func replayCreateCommand(l log.Logger, conf config.ClientConfig) *cli.Command {
+func replayCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false

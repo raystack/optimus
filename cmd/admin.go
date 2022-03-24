@@ -8,26 +8,35 @@ import (
 )
 
 // adminCommand registers internal administration commands
-func adminCommand(l log.Logger) *cli.Command {
+func adminCommand() *cli.Command {
+	var configFilePath string
+	var conf = &config.ClientConfig{}
+	var l log.Logger = initLogger(plainLoggerType, conf.Log)
+
 	cmd := &cli.Command{
 		Use:    "admin",
 		Short:  "Internal administration commands",
 		Hidden: true,
 	}
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		var err error
 
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig()
-	if err != nil {
-		l.Error(err.Error())
+		conf, err = config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l = initLogger(plainLoggerType, conf.Log)
+
 		return nil
 	}
 
-	cmd.AddCommand(adminBuildCommand(l, *conf))
+	cmd.AddCommand(adminBuildCommand(l, conf))
 	return cmd
 }
 
 // adminBuildCommand builds a run instance
-func adminBuildCommand(l log.Logger, conf config.ClientConfig) *cli.Command {
+func adminBuildCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "build",
 		Short: "Register a job run and get required assets",

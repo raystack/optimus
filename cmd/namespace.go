@@ -9,7 +9,7 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-func askToSelectNamespace(l log.Logger, conf config.ClientConfig) (*config.Namespace, error) {
+func askToSelectNamespace(l log.Logger, conf *config.ClientConfig) (*config.Namespace, error) {
 	options := make([]string, len(conf.Namespaces))
 	if len(conf.Namespaces) == 0 {
 		return nil, errors.New("no namespace found in config file")

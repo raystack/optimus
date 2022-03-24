@@ -52,7 +52,11 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 	}
 }
 
-func replayCommand(l log.Logger) *cli.Command {
+func replayCommand() *cli.Command {
+	var configFilePath string
+	var conf = &config.ClientConfig{}
+	var l log.Logger = initLogger(plainLoggerType, conf.Log)
+
 	cmd := &cli.Command{
 		Use:   "replay",
 		Short: "Re-running jobs in order to update data for older dates/partitions",
@@ -61,16 +65,23 @@ func replayCommand(l log.Logger) *cli.Command {
 			"group:core": "true",
 		},
 	}
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		var err error
 
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig()
-	if err != nil {
-		l.Error(err.Error())
+		conf, err = config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l = initLogger(plainLoggerType, conf.Log)
+
 		return nil
 	}
 
-	cmd.AddCommand(replayCreateCommand(l, *conf))
-	cmd.AddCommand(replayStatusCommand(l, *conf))
-	cmd.AddCommand(replayListCommand(l, *conf))
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
+	cmd.AddCommand(replayCreateCommand(l, conf))
+	cmd.AddCommand(replayStatusCommand(l, conf))
+	cmd.AddCommand(replayListCommand(l, conf))
 	return cmd
 }

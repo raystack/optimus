@@ -27,57 +27,63 @@ const (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l log.Logger, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func deployCommand(pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	var (
 		namespaces      []string
 		ignoreJobs      bool
 		ignoreResources bool
 		verbose         bool
-		cmd             = &cli.Command{
-			Use:   "deploy",
-			Short: "Deploy current optimus project to server",
-			Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
-				jobs and creating/updating datastore resources`),
-			Example: "optimus deploy [--ignore-resources|--ignore-jobs]",
-			Annotations: map[string]string{
-				"group:core": "true",
-			},
-		}
+		configFilePath  string
 	)
 
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig()
-	if err != nil {
-		l.Error(err.Error())
-		return nil
+	cmd := &cli.Command{
+		Use:   "deploy",
+		Short: "Deploy current optimus project to server",
+		Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
+				jobs and creating/updating datastore resources`),
+		Example: "optimus deploy [--ignore-resources|--ignore-jobs]",
+		Annotations: map[string]string{
+			"group:core": "true",
+		},
 	}
 
-	//init local specs
-	datastoreSpecFs := make(map[string]map[string]afero.Fs)
-	for _, namespace := range conf.Namespaces {
-		dtSpec := make(map[string]afero.Fs)
-		for _, dsConfig := range namespace.Datastore {
-			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-		}
-		datastoreSpecFs[namespace.Name] = dtSpec
-	}
-
+	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		conf, err := config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+
+		// init logger
+		l := initLogger(plainLoggerType, conf.Log)
+
+		//init local specs
+		datastoreSpecFs := make(map[string]map[string]afero.Fs)
+		for _, namespace := range conf.Namespaces {
+			dtSpec := make(map[string]afero.Fs)
+			for _, dsConfig := range namespace.Datastore {
+				dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+			}
+			datastoreSpecFs[namespace.Name] = dtSpec
+		}
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 
 		if err := validateNamespaces(datastoreSpecFs, namespaces); err != nil {
 			return err
 		}
-		err := postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
+
+		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}
+
 		l.Info(coloredSuccess("\nDeployment completed, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func backupStatusCommand(l log.Logger, conf config.ClientConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupStatusCommand(l log.Logger, conf *config.ClientConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		project   string
 		backupCmd = &cli.Command{

@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/google/go-github/github"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/extension"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
-
-	"github.com/odpf/optimus/extension"
 )
 
-func addExtensionCommand(cmd *cli.Command, l log.Logger) {
+func addExtensionCommand(cmd *cli.Command) {
 	ctx := context.Background()
 	httpClient := &http.Client{}
 	githubClient := github.NewClient(nil)
@@ -35,25 +35,29 @@ func addExtensionCommand(cmd *cli.Command, l log.Logger) {
 		reservedCommands...,
 	)
 
-	cmd.AddCommand(extensionCommand(ctx, extension, l))
+	cmd.AddCommand(extensionCommand(ctx, extension))
 	commands := generateCommands(manifest, extension.Run)
 	for _, c := range commands {
 		cmd.AddCommand(c)
 	}
 }
 
-func extensionCommand(ctx context.Context, extension *extension.Extension, l log.Logger) *cli.Command {
+func extensionCommand(ctx context.Context, extension *extension.Extension) *cli.Command {
 	c := &cli.Command{
 		Use:     "extension SUBCOMMAND",
 		Aliases: []string{"ext"},
 		Short:   "Operate with extension",
 	}
-	c.AddCommand(extensionInstallCommand(ctx, extension, l))
+	c.AddCommand(extensionInstallCommand(ctx, extension))
 	return c
 }
 
-func extensionInstallCommand(ctx context.Context, installer extension.Installer, l log.Logger) *cli.Command {
-	var alias string
+func extensionInstallCommand(ctx context.Context, installer extension.Installer) *cli.Command {
+	var (
+		alias string
+		l     log.Logger = initLogger(plainLoggerType, config.LogConfig{})
+	)
+
 	installCmd := &cli.Command{
 		Use:   "install OWNER/REPO",
 		Short: "Install an extension",

@@ -23,7 +23,11 @@ import (
 var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
 	`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
-func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Command {
+func resourceCommand(datastoreRepo models.DatastoreRepo) *cli.Command {
+	var configFilePath string
+	var conf = &config.ClientConfig{}
+	var l log.Logger = initLogger(plainLoggerType, conf.Log)
+
 	cmd := &cli.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
@@ -31,117 +35,124 @@ func resourceCommand(l log.Logger, datastoreRepo models.DatastoreRepo) *cli.Comm
 			"group:core": "true",
 		},
 	}
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		var err error
 
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig()
-	if err != nil {
-		l.Error(err.Error())
+		conf, err = config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l = initLogger(plainLoggerType, conf.Log)
+
 		return nil
 	}
 
-	//init local specs
-	datastoreSpecFs := make(map[string]map[string]afero.Fs)
-	for _, namespace := range conf.Namespaces {
-		dtSpec := make(map[string]afero.Fs)
-		for _, dsConfig := range namespace.Datastore {
-			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-		}
-		datastoreSpecFs[namespace.Name] = dtSpec
-	}
-
-	cmd.AddCommand(createResourceSubCommand(l, *conf, datastoreSpecFs, datastoreRepo))
+	cmd.AddCommand(createResourceSubCommand(l, conf, datastoreRepo))
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, conf config.ClientConfig, datastoreSpecFs map[string]map[string]afero.Fs, datastoreRepo models.DatastoreRepo) *cli.Command {
+func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
-		RunE: func(cmd *cli.Command, args []string) error {
-			namespace, err := askToSelectNamespace(l, conf)
-			if err != nil {
-				return err
-			}
-			availableStorer := []string{}
-			for _, s := range datastoreRepo.GetAll() {
-				availableStorer = append(availableStorer, s.Name())
-			}
-			var storerName string
-			if err := survey.AskOne(&survey.Select{
-				Message: "Select supported datastores?",
-				Options: availableStorer,
-			}, &storerName); err != nil {
-				return err
-			}
-			repoFS, ok := datastoreSpecFs[namespace.Name][storerName]
-			if !ok {
-				return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
-			}
-
-			// find requested datastore
-			availableTypes := []string{}
-			datastore, _ := datastoreRepo.GetByName(storerName)
-			for dsType := range datastore.Types() {
-				availableTypes = append(availableTypes, dsType.String())
-			}
-			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, datastore)
-
-			// find resource type
-			var resourceType string
-			if err := survey.AskOne(&survey.Select{
-				Message: "Select supported resource type?",
-				Options: availableTypes,
-			}, &resourceType); err != nil {
-				return err
-			}
-			typeController := datastore.Types()[models.ResourceType(resourceType)]
-
-			// find directory to store spec
-			rwd, err := getWorkingDirectory(repoFS, "")
-			if err != nil {
-				return err
-			}
-			newDirName, err := getDirectoryName(rwd)
-			if err != nil {
-				return err
-			}
-
-			resourceDirectory := filepath.Join(rwd, newDirName)
-			resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirectory, "/", "."), "\\", ".")
-
-			qs := []*survey.Question{
-				{
-					Name: "name",
-					Prompt: &survey.Input{
-						Message: "What is the resource name?(should conform to selected resource type)",
-						Default: resourceNameDefault,
-					},
-					Validate: survey.ComposeValidators(validateNoSlash, survey.MinLength(3),
-						survey.MaxLength(1024), IsValidDatastoreSpec(typeController.Validator()),
-						IsResourceNameUnique(resourceSpecRepo)),
-				},
-			}
-			inputs := map[string]interface{}{}
-			if err := survey.Ask(qs, &inputs); err != nil {
-				return err
-			}
-			resourceName := inputs["name"].(string)
-
-			if err := resourceSpecRepo.SaveAt(models.ResourceSpec{
-				Version:   1,
-				Name:      resourceName,
-				Type:      models.ResourceType(resourceType),
-				Datastore: datastore,
-				Assets:    typeController.DefaultAssets(),
-			}, resourceDirectory); err != nil {
-				return err
-			}
-
-			l.Info(coloredSuccess("Resource created successfully %s", resourceName))
-			return nil
-		},
 	}
+
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		//init local specs
+		datastoreSpecFs := make(map[string]map[string]afero.Fs)
+		for _, namespace := range conf.Namespaces {
+			dtSpec := make(map[string]afero.Fs)
+			for _, dsConfig := range namespace.Datastore {
+				dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+			}
+			datastoreSpecFs[namespace.Name] = dtSpec
+		}
+
+		namespace, err := askToSelectNamespace(l, conf)
+		if err != nil {
+			return err
+		}
+		availableStorer := []string{}
+		for _, s := range datastoreRepo.GetAll() {
+			availableStorer = append(availableStorer, s.Name())
+		}
+		var storerName string
+		if err := survey.AskOne(&survey.Select{
+			Message: "Select supported datastores?",
+			Options: availableStorer,
+		}, &storerName); err != nil {
+			return err
+		}
+		repoFS, ok := datastoreSpecFs[namespace.Name][storerName]
+		if !ok {
+			return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
+		}
+
+		// find requested datastore
+		availableTypes := []string{}
+		datastore, _ := datastoreRepo.GetByName(storerName)
+		for dsType := range datastore.Types() {
+			availableTypes = append(availableTypes, dsType.String())
+		}
+		resourceSpecRepo := local.NewResourceSpecRepository(repoFS, datastore)
+
+		// find resource type
+		var resourceType string
+		if err := survey.AskOne(&survey.Select{
+			Message: "Select supported resource type?",
+			Options: availableTypes,
+		}, &resourceType); err != nil {
+			return err
+		}
+		typeController := datastore.Types()[models.ResourceType(resourceType)]
+
+		// find directory to store spec
+		rwd, err := getWorkingDirectory(repoFS, "")
+		if err != nil {
+			return err
+		}
+		newDirName, err := getDirectoryName(rwd)
+		if err != nil {
+			return err
+		}
+
+		resourceDirectory := filepath.Join(rwd, newDirName)
+		resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirectory, "/", "."), "\\", ".")
+
+		var qs = []*survey.Question{
+			{
+				Name: "name",
+				Prompt: &survey.Input{
+					Message: "What is the resource name?(should conform to selected resource type)",
+					Default: resourceNameDefault,
+				},
+				Validate: survey.ComposeValidators(validateNoSlash, survey.MinLength(3),
+					survey.MaxLength(1024), IsValidDatastoreSpec(typeController.Validator()),
+					IsResourceNameUnique(resourceSpecRepo)),
+			},
+		}
+		inputs := map[string]interface{}{}
+		if err := survey.Ask(qs, &inputs); err != nil {
+			return err
+		}
+		resourceName := inputs["name"].(string)
+
+		if err := resourceSpecRepo.SaveAt(models.ResourceSpec{
+			Version:   1,
+			Name:      resourceName,
+			Type:      models.ResourceType(resourceType),
+			Datastore: datastore,
+			Assets:    typeController.DefaultAssets(),
+		}, resourceDirectory); err != nil {
+			return err
+		}
+
+		l.Info(coloredSuccess("Resource created successfully %s", resourceName))
+		return nil
+	}
+
 	return cmd
 }
 

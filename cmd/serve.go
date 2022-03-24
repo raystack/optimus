@@ -31,8 +31,11 @@ func serveCommand() *cli.Command {
 			}
 
 			// initiate jsonLogger
-			l := initLogger(jsonLogger, conf.Log)
+			l := initLogger(jsonLoggerType, conf.Log)
 			pluginLogLevel := hclog.Info
+			if conf.Log.Level == config.LogLevelDebug {
+				pluginLogLevel = hclog.Debug
+			}
 
 			// discover and load plugins. TODO: refactor this
 			if err := plugin.Initialize(hclog.New(&hclog.LoggerOptions{

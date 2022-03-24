@@ -9,15 +9,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// conf -> client / server / ,, , ,,
-// logger -> json / plain / xml / ...
-// func -> 4
-
 type loggerType int
 
 const (
-	jsonLogger loggerType = iota
-	plainLogger
+	jsonLoggerType loggerType = iota
+	plainLoggerType
 )
 
 type plainFormatter int
@@ -39,14 +35,14 @@ func initLogger(t loggerType, conf config.LogConfig) log.Logger {
 	}
 
 	switch t {
-	case jsonLogger:
+	case jsonLoggerType:
 		return log.NewLogrus(
-			log.LogrusWithLevel(conf.Level),
+			log.LogrusWithLevel(conf.Level.String()),
 			log.LogrusWithWriter(os.Stderr),
 		)
-	case plainLogger:
+	case plainLoggerType:
 		return log.NewLogrus(
-			log.LogrusWithLevel(conf.Level),
+			log.LogrusWithLevel(conf.Level.String()),
 			log.LogrusWithFormatter(new(plainFormatter)),
 		)
 	}

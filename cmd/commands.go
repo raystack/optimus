@@ -108,19 +108,19 @@ func New(pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.C
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	cmd.AddCommand(versionCommand(plainLog, pluginRepo))
-	cmd.AddCommand(configCommand(plainLog))
-	cmd.AddCommand(jobCommand(plainLog, pluginRepo))
-	cmd.AddCommand(deployCommand(plainLog, pluginRepo, dsRepo))
-	cmd.AddCommand(resourceCommand(plainLog, dsRepo))
-	cmd.AddCommand(replayCommand(plainLog))
-	cmd.AddCommand(backupCommand(plainLog, dsRepo))
-	cmd.AddCommand(adminCommand(plainLog))
-	cmd.AddCommand(secretCommand(plainLog))
+	cmd.AddCommand(versionCommand(pluginRepo))
+	cmd.AddCommand(configCommand())
+	cmd.AddCommand(jobCommand(pluginRepo))
+	cmd.AddCommand(deployCommand(pluginRepo, dsRepo))
+	cmd.AddCommand(resourceCommand(dsRepo))
+	cmd.AddCommand(replayCommand())
+	cmd.AddCommand(backupCommand(dsRepo))
+	cmd.AddCommand(adminCommand())
+	cmd.AddCommand(secretCommand())
 
 	cmd.AddCommand(serveCommand())
 
-	addExtensionCommand(cmd, plainLog)
+	addExtensionCommand(cmd)
 	return cmd
 }
 
