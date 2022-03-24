@@ -252,7 +252,7 @@ func (sv *RuntimeServiceServer) JobRun(ctx context.Context, req *pb.JobRunReques
 		})
 	}
 	return &pb.JobRunResponse{
-		JobRun: runs,
+		JobRuns: runs,
 	}, nil
 }
 

@@ -138,9 +138,7 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return err
 }
 
-func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string,
-	progressObserver progress.Observer,
-) error {
+func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, progressObserver progress.Observer) error {
 	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
 	if err != nil {
 		return err
@@ -204,9 +202,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	return jobs, nil
 }
 
-func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec,
-	jobName string,
-) ([]models.JobStatus, error) {
+func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	var list DagRunListResponse
 	req := airflowRequest{
@@ -243,9 +239,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 	return nil
 }
 
-func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
-	endDate time.Time, batchSize int,
-) ([]models.JobStatus, error) {
+func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
 	var jobStatus []models.JobStatus
 	var list DagRunListResponse
 	pageOffset := 0
