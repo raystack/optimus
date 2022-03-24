@@ -14,17 +14,21 @@ type LogLevel string
 
 const (
 	LogLevelDebug   LogLevel = "DEBUG"
-	LogLevelInfo             = "INFO"
-	LogLevelWarning          = "INFO"
-	LogLevelError            = "ERROR"
-	LogLevelFatal            = "FATAL"
+	LogLevelInfo    LogLevel = "INFO"
+	LogLevelWarning LogLevel = "WARNING"
+	LogLevelError   LogLevel = "ERROR"
+	LogLevelFatal   LogLevel = "FATAL"
 )
 
 type LogConfig struct {
-	Level  string `mapstructure:"level" default:"info"` // log level - debug, info, warning, error, fatal
-	Format string `mapstructure:"format"`               // format strategy - plain, json
+	Level  LogLevel `mapstructure:"level" default:"INFO"` // log level - debug, info, warning, error, fatal
+	Format string   `mapstructure:"format"`               // format strategy - plain, json
 }
 
 func (v Version) String() string {
 	return strconv.Itoa(int(v))
+}
+
+func (l LogLevel) String() string {
+	return string(l)
 }

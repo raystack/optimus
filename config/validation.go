@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -24,13 +25,15 @@ func validateClientConfig(conf ClientConfig) error {
 	return validation.ValidateStruct(&conf,
 		validation.Field(&conf.Version, validation.Required),
 		validation.Field(&conf.Host, validation.Required),
-		validation.Field(&conf.Log.Level, validation.In(
-			LogLevelDebug,
-			LogLevelInfo,
-			LogLevelWarning,
-			LogLevelError,
-			LogLevelFatal,
-		)),
+		nestedFields(&conf.Log,
+			validation.Field(&conf.Log.Level, validation.In(
+				LogLevelDebug,
+				LogLevelInfo,
+				LogLevelWarning,
+				LogLevelError,
+				LogLevelFatal,
+			)),
+		),
 		validation.Field(&conf.Namespaces, validation.By(validateNamespaces)),
 		// ... etc
 	)
@@ -44,7 +47,7 @@ func validateServerConfig(conf ServerConfig) error {
 func validateNamespaces(value interface{}) error {
 	namespaces, ok := value.([]*Namespace)
 	if !ok {
-		return errors.New("error")
+		return errors.New("can't convert value to namespaces")
 	}
 
 	m := map[string]int{}
@@ -67,4 +70,17 @@ func validateNamespaces(value interface{}) error {
 	}
 
 	return nil
+}
+
+// ozzo-validation helper for nested validation struct
+// https://github.com/go-ozzo/ozzo-validation/issues/136
+func nestedFields(target interface{}, fieldRules ...*validation.FieldRules) *validation.FieldRules {
+	return validation.Field(target, validation.By(func(value interface{}) error {
+		valueV := reflect.Indirect(reflect.ValueOf(value))
+		if valueV.CanAddr() {
+			addr := valueV.Addr().Interface()
+			return validation.ValidateStruct(addr, fieldRules...)
+		}
+		return validation.ValidateStruct(target, fieldRules...)
+	}))
 }

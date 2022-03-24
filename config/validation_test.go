@@ -1,97 +1,63 @@
-package config
+package config_test
 
 import (
 	"testing"
 
+	"github.com/odpf/optimus/config"
 	"github.com/stretchr/testify/suite"
 )
 
 type ValidationTestSuite struct {
 	suite.Suite
-	defaultProjectConfig ClientConfig
+	defaultClientConfig config.ClientConfig
 }
 
 func (s *ValidationTestSuite) SetupTest() {
-	s.initDefaultProjectConfig()
+	s.initDefaultClientConfig()
 }
 
 func TestValidation(t *testing.T) {
 	suite.Run(t, new(ValidationTestSuite))
 }
 
-func (s *ValidationTestSuite) TestInternal_ValidateNamespaces_Success() {
-	namespaces := []*Namespace{
-		{
-			Name: "namespace-1",
-			Job:  Job{Path: "path-1"},
-		}, {
-			Name: "namespace-2",
-			Job:  Job{Path: "path-2"},
-		},
-		nil,
-	}
+func (s *ValidationTestSuite) TestValidate() {
+	s.Run("WhenValidateClientConfig", func() {
+		s.Run("WhenConfigIsValid", func() {
+			err := config.Validate(s.defaultClientConfig)
+			s.Assert().NoError(err)
+		})
 
-	err := validateNamespaces(namespaces)
-	s.Assert().NoError(err)
-}
+		s.Run("WhenNamespacesIsDuplicated", func() {
+			clientConfig := s.defaultClientConfig
+			namespaces := clientConfig.Namespaces
+			namespaces = append(namespaces, &config.Namespace{Name: "ns-dup"})
+			namespaces = append(namespaces, &config.Namespace{Name: "ns-dup"})
+			clientConfig.Namespaces = namespaces
 
-func (s *ValidationTestSuite) TestInternal_ValidateNamespaces_Fail() {
-	s.Run("WhenTypeAssertionIsFailed", func() {
-		invalidStruct := "this-is-string"
-		err := validateNamespaces(invalidStruct)
-		s.Assert().Error(err)
+			err := config.Validate(clientConfig)
+
+			s.Assert().Error(err)
+		})
 	})
 
-	s.Run("WhenDuplicationIsDetected", func() {
-		namespaces := []*Namespace{
-			{
-				Name: "other-ns",
-				Job:  Job{Path: "path-other"},
-			}, {
-				Name: "dup-ns",
-				Job:  Job{Path: "path-1"},
-			}, {
-				Name: "dup-ns",
-				Job:  Job{Path: "path-2"},
-			},
-		}
+	s.Run("WhenValidateServerConfig", func() {
+		// TODO: implement this
+		s.T().Skip()
+	})
 
-		err := validateNamespaces(namespaces)
+	s.Run("WhenValidateTypeIsInvalid", func() {
+		err := config.Validate("invalid-type")
 		s.Assert().Error(err)
 	})
 }
 
-func (s *ValidationTestSuite) TestValidate_ProjectConfig() {
-	s.Run("WhenStructIsValid", func() {
-		err := Validate(s.defaultProjectConfig)
-		s.Assert().NoError(err)
-	})
+func (s *ValidationTestSuite) initDefaultClientConfig() {
+	s.defaultClientConfig = config.ClientConfig{}
+	s.defaultClientConfig.Version = config.Version(1)
+	s.defaultClientConfig.Log = config.LogConfig{Level: config.LogLevelInfo}
 
-	s.Run("WhenStructIsInvalid", func() {
-		conf := s.defaultProjectConfig
-		conf.Host = ""
-
-		err := Validate(conf)
-		s.Assert().Error(err)
-	})
-}
-
-func (s *ValidationTestSuite) TestValidate_ServerConfig() {
-	// TODO: implement this
-}
-
-func (s *ValidationTestSuite) TestValidate_Fail() {
-	err := Validate("invalid-type")
-	s.Assert().Error(err)
-}
-
-func (s *ValidationTestSuite) initDefaultProjectConfig() {
-	s.defaultProjectConfig = ClientConfig{}
-	s.defaultProjectConfig.Version = Version(1)
-	s.defaultProjectConfig.Log = LogConfig{Level: "info"}
-
-	s.defaultProjectConfig.Host = "localhost:9100"
-	s.defaultProjectConfig.Project = Project{
+	s.defaultClientConfig.Host = "localhost:9100"
+	s.defaultClientConfig.Project = config.Project{
 		Name: "sample_project",
 		Config: map[string]string{
 			"environment":    "integration",
@@ -99,18 +65,19 @@ func (s *ValidationTestSuite) initDefaultProjectConfig() {
 			"storage_path":   "file://absolute_path_to_a_directory",
 		},
 	}
-	namespaces := []*Namespace{}
-	namespaces = append(namespaces, &Namespace{
+	namespaces := []*config.Namespace{}
+	namespaces = append(namespaces, &config.Namespace{
 		Name: "namespace-a",
-		Job: Job{
+		Job: config.Job{
 			Path: "./jobs-a",
 		},
 	})
-	namespaces = append(namespaces, &Namespace{
+	namespaces = append(namespaces, &config.Namespace{
 		Name: "namespace-b",
-		Job: Job{
+		Job: config.Job{
 			Path: "./jobs-b",
 		},
 	})
-	s.defaultProjectConfig.Namespaces = namespaces
+	namespaces = append(namespaces, nil)
+	s.defaultClientConfig.Namespaces = namespaces
 }
