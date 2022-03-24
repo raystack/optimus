@@ -10,7 +10,7 @@ log:
   level: info
 
 # used to connect optimus service
-#host: localhost:9100
+host: localhost:9100
 
 # for configuring optimus project
 #project:
