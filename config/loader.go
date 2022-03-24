@@ -148,6 +148,8 @@ func LoadClientConfig(filePath string) (*ClientConfig, error) {
 		return nil, err
 	}
 
+	cfg.Log.Level = LogLevel(strings.ToUpper(string(cfg.Log.Level)))
+
 	return cfg, nil
 }
 

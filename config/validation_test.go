@@ -9,7 +9,7 @@ import (
 
 type ValidationTestSuite struct {
 	suite.Suite
-	defaultClientConfig config.ClientConfig
+	defaultClientConfig *config.ClientConfig
 }
 
 func (s *ValidationTestSuite) SetupTest() {
@@ -52,7 +52,7 @@ func (s *ValidationTestSuite) TestValidate() {
 }
 
 func (s *ValidationTestSuite) initDefaultClientConfig() {
-	s.defaultClientConfig = config.ClientConfig{}
+	s.defaultClientConfig = &config.ClientConfig{}
 	s.defaultClientConfig.Version = config.Version(1)
 	s.defaultClientConfig.Log = config.LogConfig{Level: config.LogLevelInfo}
 

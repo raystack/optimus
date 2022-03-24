@@ -12,17 +12,17 @@ import (
 // Validate validate the config as an input. If not valid, it returns error
 func Validate(conf Config) error {
 	switch c := conf.(type) {
-	case ClientConfig:
+	case *ClientConfig:
 		return validateClientConfig(c)
-	case ServerConfig:
+	case *ServerConfig:
 		return validateServerConfig(c)
 	}
-	return errors.New("error")
+	return errors.New("config type is not valid, use ClientConfig or ServerConfig instead")
 }
 
-func validateClientConfig(conf ClientConfig) error {
+func validateClientConfig(conf *ClientConfig) error {
 	// implement this
-	return validation.ValidateStruct(&conf,
+	return validation.ValidateStruct(conf,
 		validation.Field(&conf.Version, validation.Required),
 		validation.Field(&conf.Host, validation.Required),
 		nestedFields(&conf.Log,
@@ -39,7 +39,7 @@ func validateClientConfig(conf ClientConfig) error {
 	)
 }
 
-func validateServerConfig(conf ServerConfig) error {
+func validateServerConfig(conf *ServerConfig) error {
 	// implement this
 	return nil
 }
