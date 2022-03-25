@@ -58,7 +58,7 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		server.setupAppKey,
 		server.setupDB,
 		server.setupGRPCServer,
-		server.setupRuntimeServer, // rename to setupHandlers
+		server.setupHandlers,
 		server.setupMonitoring,
 		server.setupHTTPProxy,
 		server.startListening,
@@ -158,7 +158,7 @@ func (s *OptimusServer) Shutdown() {
 	s.logger.Info("Server shutdown complete")
 }
 
-func (s *OptimusServer) setupRuntimeServer() error {
+func (s *OptimusServer) setupHandlers() error {
 	projectRepoFac := &projectRepoFactory{
 		db:   s.dbConn,
 		hash: s.appKey,
