@@ -78,15 +78,14 @@ func getVersionRequest(clientVer, host string) (ver string, err error) {
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
 	versionResponse, err := runtime.Version(ctx, &pb.VersionRequest{
 		Client: clientVer,
 	})
 	if err != nil {
 		return "", fmt.Errorf("request failed for version: %w", err)
 	}
-
-	spinner := NewProgressBar()
-	spinner.Start("please wait...")
 	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
