@@ -22,7 +22,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 	t.Run("DeployJobSpecification", func(t *testing.T) {
 		t.Run("should deploy the job", func(t *testing.T) {
-			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
@@ -127,7 +126,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 	t.Run("GetJobSpecification", func(t *testing.T) {
 		t.Run("should read a job spec", func(t *testing.T) {
-			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
@@ -300,7 +298,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
 		t.Run("should delete the job", func(t *testing.T) {
-			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"

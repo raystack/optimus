@@ -96,7 +96,6 @@ func TestNamespaceOnServer(t *testing.T) {
 
 	t.Run("ListProjectNamespaces", func(t *testing.T) {
 		t.Run("should read namespaces of a project", func(t *testing.T) {
-			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 

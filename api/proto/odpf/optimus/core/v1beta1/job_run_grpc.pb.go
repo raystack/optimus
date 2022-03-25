@@ -25,6 +25,8 @@ type JobRunServiceClient interface {
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
+	// JobRun returns the current and past run status of jobs on a given range
+	JobRun(ctx context.Context, in *JobRunRequest, opts ...grpc.CallOption) (*JobRunResponse, error)
 	// GetWindow provides the start and end dates provided a scheduled date
 	// of the execution window
 	GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error)
@@ -68,6 +70,15 @@ func (c *jobRunServiceClient) JobStatus(ctx context.Context, in *JobStatusReques
 	return out, nil
 }
 
+func (c *jobRunServiceClient) JobRun(ctx context.Context, in *JobRunRequest, opts ...grpc.CallOption) (*JobRunResponse, error) {
+	out := new(JobRunResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/JobRun", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *jobRunServiceClient) GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error) {
 	out := new(GetWindowResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/GetWindow", in, out, opts...)
@@ -97,6 +108,8 @@ type JobRunServiceServer interface {
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)
+	// JobRun returns the current and past run status of jobs on a given range
+	JobRun(context.Context, *JobRunRequest) (*JobRunResponse, error)
 	// GetWindow provides the start and end dates provided a scheduled date
 	// of the execution window
 	GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error)
@@ -118,6 +131,9 @@ func (UnimplementedJobRunServiceServer) RegisterInstance(context.Context, *Regis
 }
 func (UnimplementedJobRunServiceServer) JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JobStatus not implemented")
+}
+func (UnimplementedJobRunServiceServer) JobRun(context.Context, *JobRunRequest) (*JobRunResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JobRun not implemented")
 }
 func (UnimplementedJobRunServiceServer) GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWindow not implemented")
@@ -192,6 +208,24 @@ func _JobRunService_JobStatus_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _JobRunService_JobRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JobRunRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobRunServiceServer).JobRun(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/JobRun",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobRunServiceServer).JobRun(ctx, req.(*JobRunRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _JobRunService_GetWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWindowRequest)
 	if err := dec(in); err != nil {
@@ -246,6 +280,10 @@ var JobRunService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "JobStatus",
 			Handler:    _JobRunService_JobStatus_Handler,
+		},
+		{
+			MethodName: "JobRun",
+			Handler:    _JobRunService_JobRun_Handler,
 		},
 		{
 			MethodName: "GetWindow",

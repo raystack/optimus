@@ -339,7 +339,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			assert.Equal(t, taskSpecExpected, jobTaskResp.Task)
 		})
 		t.Run("task without dependency mod should skip destination and dependency fields", func(t *testing.T) {
-			//Version := "1.0.1"
 
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"

@@ -20,7 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type ResourceServiceClient interface {
 	// DeployResourceSpecification migrate all resource specifications of a datastore in project
 	// State of the world request
-	DeployResourceSpecification(ctx context.Context, in *DeployResourceSpecificationRequest, opts ...grpc.CallOption) (ResourceService_DeployResourceSpecificationClient, error)
+	DeployResourceSpecification(ctx context.Context, opts ...grpc.CallOption) (ResourceService_DeployResourceSpecificationClient, error)
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(ctx context.Context, in *ListResourceSpecificationRequest, opts ...grpc.CallOption) (*ListResourceSpecificationResponse, error)
 	// Database CRUD
@@ -40,28 +40,27 @@ func NewResourceServiceClient(cc grpc.ClientConnInterface) ResourceServiceClient
 	return &resourceServiceClient{cc}
 }
 
-func (c *resourceServiceClient) DeployResourceSpecification(ctx context.Context, in *DeployResourceSpecificationRequest, opts ...grpc.CallOption) (ResourceService_DeployResourceSpecificationClient, error) {
+func (c *resourceServiceClient) DeployResourceSpecification(ctx context.Context, opts ...grpc.CallOption) (ResourceService_DeployResourceSpecificationClient, error) {
 	stream, err := c.cc.NewStream(ctx, &ResourceService_ServiceDesc.Streams[0], "/odpf.optimus.core.v1beta1.ResourceService/DeployResourceSpecification", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &resourceServiceDeployResourceSpecificationClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 type ResourceService_DeployResourceSpecificationClient interface {
+	Send(*DeployResourceSpecificationRequest) error
 	Recv() (*DeployResourceSpecificationResponse, error)
 	grpc.ClientStream
 }
 
 type resourceServiceDeployResourceSpecificationClient struct {
 	grpc.ClientStream
+}
+
+func (x *resourceServiceDeployResourceSpecificationClient) Send(m *DeployResourceSpecificationRequest) error {
+	return x.ClientStream.SendMsg(m)
 }
 
 func (x *resourceServiceDeployResourceSpecificationClient) Recv() (*DeployResourceSpecificationResponse, error) {
@@ -114,7 +113,7 @@ func (c *resourceServiceClient) UpdateResource(ctx context.Context, in *UpdateRe
 type ResourceServiceServer interface {
 	// DeployResourceSpecification migrate all resource specifications of a datastore in project
 	// State of the world request
-	DeployResourceSpecification(*DeployResourceSpecificationRequest, ResourceService_DeployResourceSpecificationServer) error
+	DeployResourceSpecification(ResourceService_DeployResourceSpecificationServer) error
 	// ListResourceSpecification lists all resource specifications of a datastore in project
 	ListResourceSpecification(context.Context, *ListResourceSpecificationRequest) (*ListResourceSpecificationResponse, error)
 	// Database CRUD
@@ -131,7 +130,7 @@ type ResourceServiceServer interface {
 type UnimplementedResourceServiceServer struct {
 }
 
-func (UnimplementedResourceServiceServer) DeployResourceSpecification(*DeployResourceSpecificationRequest, ResourceService_DeployResourceSpecificationServer) error {
+func (UnimplementedResourceServiceServer) DeployResourceSpecification(ResourceService_DeployResourceSpecificationServer) error {
 	return status.Errorf(codes.Unimplemented, "method DeployResourceSpecification not implemented")
 }
 func (UnimplementedResourceServiceServer) ListResourceSpecification(context.Context, *ListResourceSpecificationRequest) (*ListResourceSpecificationResponse, error) {
@@ -160,15 +159,12 @@ func RegisterResourceServiceServer(s grpc.ServiceRegistrar, srv ResourceServiceS
 }
 
 func _ResourceService_DeployResourceSpecification_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(DeployResourceSpecificationRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ResourceServiceServer).DeployResourceSpecification(m, &resourceServiceDeployResourceSpecificationServer{stream})
+	return srv.(ResourceServiceServer).DeployResourceSpecification(&resourceServiceDeployResourceSpecificationServer{stream})
 }
 
 type ResourceService_DeployResourceSpecificationServer interface {
 	Send(*DeployResourceSpecificationResponse) error
+	Recv() (*DeployResourceSpecificationRequest, error)
 	grpc.ServerStream
 }
 
@@ -178,6 +174,14 @@ type resourceServiceDeployResourceSpecificationServer struct {
 
 func (x *resourceServiceDeployResourceSpecificationServer) Send(m *DeployResourceSpecificationResponse) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func (x *resourceServiceDeployResourceSpecificationServer) Recv() (*DeployResourceSpecificationRequest, error) {
+	m := new(DeployResourceSpecificationRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _ResourceService_ListResourceSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -281,6 +285,7 @@ var ResourceService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "DeployResourceSpecification",
 			Handler:       _ResourceService_DeployResourceSpecification_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "odpf/optimus/core/v1beta1/resource.proto",

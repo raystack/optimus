@@ -45,134 +45,6 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "job.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "job.name",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.owner",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.startDate",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.endDate",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.interval",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.dependsOnPast",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "job.catchUp",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "job.taskName",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.windowSize",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.windowOffset",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.windowTruncateTo",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.description",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.behavior.retry.count",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "job.behavior.retry.delay",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.behavior.retry.exponentialBackoff",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "job.metadata.resource.request.cpu",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.metadata.resource.request.memory",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.metadata.resource.limit.cpu",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "job.metadata.resource.limit.memory",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "namespaceName",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -405,11 +277,14 @@
     "protobufAny": {
       "type": "object",
       "properties": {
-        "@type": {
+        "typeUrl": {
           "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
         }
-      },
-      "additionalProperties": {}
+      }
     },
     "rpcStatus": {
       "type": "object",
