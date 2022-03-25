@@ -113,6 +113,7 @@ func setup(content string) {
 	if err := os.WriteFile(confPath, []byte(content), 0o660); err != nil {
 		panic(err)
 	}
+	unsetServerConfigEnv()
 }
 
 func teardown() {
@@ -311,6 +312,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
 			s.Assert().Equal("4", conf.Version.String()) // should load from env var
+			s.Assert().Equal("INFO", conf.Log.Level.String())
 		})
 
 		s.Run("WhenEnvNotExist", func() {
@@ -335,6 +337,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
 			s.Assert().Equal("3", conf.Version.String()) // should load from home dir
+			s.Assert().Equal("INFO", conf.Log.Level.String())
 		})
 
 		s.Run("WhenConfigNotFound", func() {
@@ -359,6 +362,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
 			s.Assert().Equal("2", conf.Version.String())
+			s.Assert().Equal("INFO", conf.Log.Level.String())
 		})
 
 		s.Run("WhenFilePathIsNotValid", func() {
@@ -447,6 +451,10 @@ func (s *ConfigTestSuite) initServerConfigEnv() {
 }
 
 func (s *ConfigTestSuite) unsetServerConfigEnv() {
+	unsetServerConfigEnv()
+}
+
+func unsetServerConfigEnv() {
 	os.Unsetenv("OPTIMUS_VERSION")
 	os.Unsetenv("OPTIMUS_LOG_LEVEL")
 	os.Unsetenv("OPTIMUS_SERVE_PORT")
