@@ -22,7 +22,7 @@ type compiler struct {
 
 func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
 	*models.JobRunInput, error) {
-	secretsMap, err := c.getSecretsMap(ctx, namespace)
+	secrets, err := c.getSecretsMap(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 	// Prepare template context and compile task config
 	taskContext := PrepareContext(
 		From(namespace.ProjectSpec.Config, namespace.Config).WithName("proj").WithKeyPrefix(ProjectConfigPrefix),
-		From(secretsMap).WithName("secret"),
+		From(secrets).WithName("secret"),
 		From(instanceConfig).WithName("inst").AddToContext(),
 	)
 
