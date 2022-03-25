@@ -2,7 +2,9 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -13,48 +15,114 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (sv *RuntimeServiceServer) DeployJobSpecification(req *pb.DeployJobSpecificationRequest, respStream pb.RuntimeService_DeployJobSpecificationServer) error {
+func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
+	errNamespaces := []string{}
 
-	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
-	if err != nil {
-		return mapToGRPCErr(sv.l, err, "unable to get namespace")
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return err // immediate error returned (grpc error level)
+		}
+		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), req.GetProjectName(), req.GetNamespaceName())
+		if err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
+			continue
+		}
+
+		jobsToKeep, err := sv.getJobsToKeep(stream.Context(), namespaceSpec, req)
+		if err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
+			continue
+		}
+
+		observers := new(progress.ObserverChain)
+		observers.Join(sv.progressObserver)
+		observers.Join(&jobSyncObserver{
+			stream: stream,
+			log:    sv.l,
+			mu:     new(sync.Mutex),
+		})
+
+		// delete specs not sent for deployment from internal repository
+		if err := sv.jobSvc.KeepOnly(stream.Context(), namespaceSpec, jobsToKeep, observers); err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: fmt.Sprintf("failed to delete jobs: \n%s", err.Error()),
+			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
+			continue
+		}
+		if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
+			stream.Send(&pb.DeployJobSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: fmt.Sprintf("failed to sync jobs: \n%s", err.Error()),
+			})
+			errNamespaces = append(errNamespaces, req.NamespaceName)
+			continue
+		}
+		runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
+		stream.Send(&pb.DeployJobSpecificationResponse{
+			Success: true,
+			Ack:     true,
+			Message: "success",
+		})
+	}
+	sv.l.Info("finished job deployment", "time", time.Since(startTime))
+	if len(errNamespaces) > 0 {
+		sv.l.Warn("there's error while deploying namespaces: %v", errNamespaces)
+		return fmt.Errorf("error when deploying: %v", errNamespaces)
+	}
+	return nil
+}
+
+func (sv *RuntimeServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec models.NamespaceSpec, req *pb.DeployJobSpecificationRequest) ([]models.JobSpec, error) {
+	jobs := req.GetJobs()
+	if len(jobs) == 0 {
+		return []models.JobSpec{}, nil
 	}
 
 	var jobsToKeep []models.JobSpec
-	for _, reqJob := range req.GetJobs() {
+	for _, reqJob := range jobs {
 		adaptJob, err := sv.adapter.FromJobProto(reqJob)
 		if err != nil {
-			return status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), reqJob.GetName())
+			sv.l.Error(fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()))
+			continue
 		}
 
-		err = sv.jobSvc.Create(respStream.Context(), namespaceSpec, adaptJob)
+		err = sv.jobSvc.Create(ctx, namespaceSpec, adaptJob)
 		if err != nil {
-			return status.Errorf(codes.Internal, "%s: failed to save %s", err.Error(), adaptJob.Name)
+			sv.l.Error(fmt.Sprintf("%s: failed to save %s", err.Error(), adaptJob.Name))
+			continue
 		}
 		jobsToKeep = append(jobsToKeep, adaptJob)
 	}
 
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
-	observers.Join(&jobSyncObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
-
-	// delete specs not sent for deployment from internal repository
-	if err := sv.jobSvc.KeepOnly(respStream.Context(), namespaceSpec, jobsToKeep, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete jobs: \n%s", err.Error())
+	if jobsToKeep == nil {
+		return nil, errors.New("job spec creation is failed")
 	}
 
-	if err := sv.jobSvc.Sync(respStream.Context(), namespaceSpec, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
-	}
-
-	runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
-	sv.l.Info("finished job deployment", "time", time.Since(startTime))
-	return nil
+	return jobsToKeep, nil
 }
 
 func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
@@ -70,10 +138,8 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 
 	jobProtos := []*pb.JobSpecification{}
 	for _, jobSpec := range jobSpecs {
-		jobProto, err := sv.adapter.ToJobProto(jobSpec)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to parse job spec %s", err.Error(), jobSpec.Name)
-		}
+		jobProto := sv.adapter.ToJobProto(jobSpec)
+
 		jobProtos = append(jobProtos, jobProto)
 	}
 	return &pb.ListJobSpecificationResponse{
@@ -171,10 +237,7 @@ func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb
 		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
 	}
 
-	jobSpecAdapt, err := sv.adapter.ToJobProto(jobSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot serialize job: \n%s", err.Error())
-	}
+	jobSpecAdapt := sv.adapter.ToJobProto(jobSpec)
 
 	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,

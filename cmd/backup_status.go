@@ -17,7 +17,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func backupStatusCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
+func backupStatusCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		project   string
 		backupCmd = &cli.Command{
@@ -86,7 +86,7 @@ func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupR
 	table.SetBorder(false)
 
 	ttl := backupDetailResponse.Spec.Config[models.ConfigTTL]
-	var expiry = backupDetailResponse.Spec.CreatedAt.AsTime()
+	expiry := backupDetailResponse.Spec.CreatedAt.AsTime()
 	if ttl != "" {
 		ttlDuration, err := time.ParseDuration(ttl)
 		if err != nil {

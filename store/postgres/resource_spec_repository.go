@@ -89,18 +89,14 @@ func (r Resource) FromSpecWithNamespace(resourceSpec models.ResourceSpec, namesp
 	}
 
 	// namespace
-	adaptNamespace, err := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
-	if err != nil {
-		return Resource{}, err
-	}
+	adaptNamespace := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
+
 	adaptResource.NamespaceID = adaptNamespace.ID
 	adaptResource.Namespace = adaptNamespace
 
 	// project
-	adaptProject, err := Project{}.FromSpec(namespace.ProjectSpec)
-	if err != nil {
-		return Resource{}, err
-	}
+	adaptProject := Project{}.FromSpec(namespace.ProjectSpec)
+
 	adaptResource.ProjectID = adaptProject.ID
 	adaptResource.Project = adaptProject
 
@@ -249,7 +245,7 @@ func (repo *resourceSpecRepository) Save(ctx context.Context, spec models.Resour
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
-		return errors.New(fmt.Sprintf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name))
+		return fmt.Errorf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
 	resource, err := Resource{}.FromSpec(spec)

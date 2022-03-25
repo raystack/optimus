@@ -66,12 +66,10 @@ type JobRunRepository interface {
 	// Save updates the run in place if it can else insert new
 	// Note: it doesn't insert the instances attached to job run in db
 	Save(context.Context, models.NamespaceSpec, models.JobRun) error
-
 	GetByScheduledAt(ctx context.Context, jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error)
 	GetByID(context.Context, uuid.UUID) (models.JobRun, models.NamespaceSpec, error)
 	UpdateStatus(context.Context, uuid.UUID, models.JobRunState) error
 	GetByTrigger(ctx context.Context, trigger models.JobRunTrigger, state ...models.JobRunState) ([]models.JobRun, error)
-
 	AddInstance(ctx context.Context, namespace models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error
 
 	// Clear will not delete the record but will reset all the run details

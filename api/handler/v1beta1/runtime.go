@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,19 +39,14 @@ type JobEventService interface {
 
 type ProtoAdapter interface {
 	FromJobProto(*pb.JobSpecification) (models.JobSpec, error)
-	ToJobProto(models.JobSpec) (*pb.JobSpecification, error)
-
+	ToJobProto(models.JobSpec) *pb.JobSpecification
 	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
 	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
-
 	FromNamespaceProto(specification *pb.NamespaceSpecification) models.NamespaceSpec
 	ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification
-
-	ToInstanceProto(models.InstanceSpec) (*pb.InstanceSpec, error)
-
+	ToInstanceProto(models.InstanceSpec) *pb.InstanceSpec
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
-
 	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
 	ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error)
 }
@@ -74,7 +70,7 @@ type RuntimeServiceServer struct {
 	pb.UnimplementedRuntimeServiceServer
 }
 
-func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) {
+func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) { // nolint: unparam
 	sv.l.Info("client requested for ping", "version", version.Client)
 	response := &pb.VersionResponse{
 		Server: sv.version,
@@ -175,14 +171,10 @@ func (sv *RuntimeServiceServer) RegisterInstance(ctx context.Context, req *pb.Re
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
 
-	jobProto, err := sv.adapter.ToJobProto(jobRun.Spec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobRun.Spec.Name)
-	}
-	instanceProto, err := sv.adapter.ToInstanceProto(instance)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt instance for job %s", err.Error(), jobRun.Spec.Name)
-	}
+	jobProto := sv.adapter.ToJobProto(jobRun.Spec)
+
+	instanceProto := sv.adapter.ToInstanceProto(instance)
+
 	return &pb.RegisterInstanceResponse{
 		Project:   sv.adapter.ToProjectProto(projSpec),
 		Job:       jobProto,
@@ -210,7 +202,7 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 
 	jobStatuses, err := sv.scheduler.GetJobStatus(ctx, projSpec, req.GetJobName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobStatus %s", err.Error(),
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobRun %s", err.Error(),
 			req.GetJobName())
 	}
 
@@ -224,6 +216,43 @@ func (sv *RuntimeServiceServer) JobStatus(ctx context.Context, req *pb.JobStatus
 	}
 	return &pb.JobStatusResponse{
 		Statuses: adaptedJobStatus,
+	}, nil
+}
+
+func (sv *RuntimeServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.JobRunResponse, error) {
+	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
+	}
+	jobSpec, _, err := sv.jobSvc.GetByNameForProject(ctx, req.GetJobName(), projSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to find the job %s for project %s", err.Error(),
+			req.GetJobName(), req.GetProjectName())
+	}
+	query, err := buildJobQuery(req)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to build query %s", err.Error(),
+			req.GetJobName())
+	}
+	jobRuns, err := sv.runSvc.GetJobRunList(ctx, projSpec, jobSpec, query)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch job run %s", err.Error(),
+			req.GetJobName())
+	}
+	if len(jobRuns) == 0 {
+		return nil, status.Errorf(codes.NotFound, "%s\n job runs not found ",
+			req.GetJobName())
+	}
+	var runs []*pb.JobRun
+	for _, run := range jobRuns {
+		ts := timestamppb.New(run.ScheduledAt)
+		runs = append(runs, &pb.JobRun{
+			State:       run.Status.String(),
+			ScheduledAt: ts,
+		})
+	}
+	return &pb.JobRunResponse{
+		JobRuns: runs,
 	}, nil
 }
 
@@ -257,7 +286,7 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 	return &pb.RegisterJobEventResponse{}, nil
 }
 
-func (sv *RuntimeServiceServer) GetWindow(ctx context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+func (sv *RuntimeServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	scheduledTime := req.ScheduledAt.AsTime()
 	err := req.ScheduledAt.CheckValid()
 	if err != nil {
@@ -332,4 +361,28 @@ func NewRuntimeServiceServer(
 		namespaceService: namespaceService,
 		projectService:   projectService,
 	}
+}
+
+func buildJobQuery(req *pb.JobRunRequest) (*models.JobQuery, error) {
+	var query *models.JobQuery
+	if req.GetStartDate().AsTime().Unix() == 0 && req.GetEndDate().AsTime().Unix() == 0 {
+		query = &models.JobQuery{
+			Name:        req.GetJobName(),
+			OnlyLastRun: true,
+		}
+		return query, nil
+	}
+	if req.GetStartDate().AsTime().Unix() == 0 {
+		return nil, errors.New("empty start date is given")
+	}
+	if req.GetEndDate().AsTime().Unix() == 0 {
+		return nil, errors.New("empty end date is given")
+	}
+	query = &models.JobQuery{
+		Name:      req.GetJobName(),
+		StartDate: req.GetStartDate().AsTime(),
+		EndDate:   req.GetEndDate().AsTime(),
+		Filter:    req.GetFilter(),
+	}
+	return query, nil
 }

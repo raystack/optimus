@@ -42,24 +42,8 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 	datastorer.On("Name").Return("DS")
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		projRepo := NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
@@ -122,8 +106,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -147,8 +130,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
@@ -157,7 +139,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Once()
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -165,7 +147,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.datas.test", checkModel.Name)
 
-			//try for create
+			// try for create
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
@@ -176,8 +158,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			testModelA := testConfigs[2]
 
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
@@ -185,7 +166,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -193,7 +174,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 
-			//try for update
+			// try for update
 			testModelA.Version = 6
 			dsTypeTableAdapter.On("ToYaml", testModelA).Return([]byte("some binary data testModelA"), nil)
 			dsTypeTableAdapter.On("FromYaml", []byte("some binary data testModelA")).Return(testModelA, nil)
@@ -207,8 +188,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			resourceSpecWithEmptyUUID := testConfigWithoutAssets[0]
 			resourceSpecWithEmptyUUID.ID = uuid.Nil
 
@@ -243,8 +223,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 		})
 		t.Run("should fail if resource is already registered for a project with different namespace", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
+
 			testModelA := testConfigs[2]
 
 			projectResourceSpecRepo := NewProjectResourceSpecRepository(db, projectSpec, datastorer)
@@ -253,7 +232,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 			dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModelA.URN, nil).Twice()
 
-			//try for create
+			// try for create
 			err := resourceSpecNamespace1.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -272,8 +251,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -388,8 +366,7 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -415,8 +392,7 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 
 	t.Run("GetByURN", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 
@@ -437,8 +413,7 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
+
 		testModels := []models.ResourceSpec{}
 		testModels = append(testModels, testConfigs...)
 

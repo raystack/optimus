@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -21,7 +22,7 @@ const (
 	ConcurrentTicketPerSec = 5
 	ConcurrentLimit        = 20
 
-	//backupListWindow window interval to fetch recent backups
+	// backupListWindow window interval to fetch recent backups
 	backupListWindow = -3 * 30 * 24 * time.Hour
 )
 
@@ -186,7 +187,7 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
 		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
-			if err == store.ErrResourceNotFound {
+			if errors.Is(err, store.ErrResourceNotFound) {
 				continue
 			}
 			return models.BackupPlan{}, err
@@ -206,13 +207,13 @@ func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest model
 			}
 		}
 
-		//do backup in storer
+		// do backup in storer
 		_, err = datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
 		})
 		if err != nil {
-			if err == models.ErrUnsupportedResource {
+			if errors.Is(err, models.ErrUnsupportedResource) {
 				continue
 			}
 			return models.BackupPlan{}, err
@@ -250,7 +251,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		projectResourceRepo := srv.projectResourceRepoFactory.New(backupRequest.Project, datastorer)
 		resourceSpec, namespaceSpec, err := projectResourceRepo.GetByURN(ctx, destination.URN())
 		if err != nil {
-			if err == store.ErrResourceNotFound {
+			if errors.Is(err, store.ErrResourceNotFound) {
 				continue
 			}
 			return models.BackupResult{}, err
@@ -270,14 +271,14 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 			}
 		}
 
-		//do backup in storer
+		// do backup in storer
 		backupResp, err := datastorer.BackupResource(ctx, models.BackupResourceRequest{
 			Resource:   resourceSpec,
 			BackupSpec: backupRequest,
 			BackupTime: backupTime,
 		})
 		if err != nil {
-			if err == models.ErrUnsupportedResource {
+			if errors.Is(err, models.ErrUnsupportedResource) {
 				continue
 			}
 			return models.BackupResult{}, err
@@ -295,7 +296,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 		}
 	}
 
-	//save the backup
+	// save the backup
 	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
 	if err := backupRepo.Save(ctx, backupSpec); err != nil {
 		return models.BackupResult{}, err
@@ -316,7 +317,7 @@ func (srv Service) ListResourceBackups(ctx context.Context, projectSpec models.P
 	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
 	backupSpecs, err := backupRepo.GetAll(ctx)
 	if err != nil {
-		if err == store.ErrResourceNotFound {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return []models.BackupSpec{}, nil
 		}
 		return []models.BackupSpec{}, err

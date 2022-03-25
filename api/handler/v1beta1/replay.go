@@ -131,8 +131,8 @@ func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListRep
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectName string, namespace string,
-	jobName string, startDate string, endDate string, forceFlag bool, allowedDownstreams []string) (models.ReplayRequest, error) {
+func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectName, namespace string,
+	jobName, startDate, endDate string, forceFlag bool, allowedDownstreams []string) (models.ReplayRequest, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, projectName, namespace)
 	if err != nil {
 		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, "unable to get namespace")

@@ -80,7 +80,7 @@ func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobS
 	return specs, nil
 }
 
-func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, projName string, jobName string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, projName, jobName string) (models.JobSpec, models.ProjectSpec, error) {
 	var r Job
 	var p Project
 	if err := repo.db.WithContext(ctx).Where("name = ?", projName).First(&p).Error; err != nil {
@@ -101,10 +101,7 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
 
-	pSpec, err := p.ToSpec()
-	if err != nil {
-		return models.JobSpec{}, models.ProjectSpec{}, err
-	}
+	pSpec := p.ToSpec()
 
 	return jSpec, pSpec, err
 }
@@ -124,10 +121,8 @@ func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, dest
 		if err != nil {
 			return nil, err
 		}
-		pSpec, err := job.Project.ToSpec()
-		if err != nil {
-			return nil, err
-		}
+		pSpec := job.Project.ToSpec()
+
 		pairs = append(pairs, store.ProjectJobPair{
 			Project: pSpec,
 			Job:     jSpec,
@@ -191,7 +186,7 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) er
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
-		return errors.New(fmt.Sprintf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name))
+		return fmt.Errorf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
 	resource, err := repo.adapter.FromJobSpec(spec)
@@ -233,7 +228,8 @@ func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
 func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) error {
 	// find the base job
 	var r Job
-	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).Find(&r).Error; err == gorm.ErrRecordNotFound {
+	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).
+		Find(&r).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		// no job exists, inserting for the first time
 		return nil
 	} else if err != nil {
@@ -271,9 +267,7 @@ func NewJobSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJo
 func cloneStringMap(source map[string][]string) map[string][]string {
 	mp := map[string][]string{}
 	for k, v := range source {
-		for _, item := range v {
-			mp[k] = append(mp[k], item)
-		}
+		mp[k] = append(mp[k], v...)
 	}
 	return mp
 }

@@ -58,10 +58,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	// termChan listen for sigterm
-	termChan = make(chan os.Signal, 1)
-)
+// termChan listen for sigterm
+var termChan = make(chan os.Signal, 1)
 
 const (
 	shutdownWait       = 30 * time.Second
@@ -254,7 +252,7 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
 	if conf.ReplayNumWorkers < 1 {
-		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
+		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
 	}
 	if conf.DB.DSN == "" {
 		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
@@ -470,6 +468,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			func() time.Time {
 				return time.Now().UTC()
 			},
+			models.BatchScheduler,
 			run.NewGoEngine(),
 		),
 		models.BatchScheduler,
@@ -545,10 +544,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return err
 		}
 
-		if err := clusterPlanner.Init(clusterCtx); err != nil {
-			clusterCancel()
-			return err
-		}
+		clusterPlanner.Init(clusterCtx)
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)

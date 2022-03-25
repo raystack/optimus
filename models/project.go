@@ -31,13 +31,11 @@ const (
 	KeyLength = 32
 )
 
-var (
-	// PluginSecretString generates plugin secret identifier using its type
-	// and name, e.g. task, bq2bq
-	PluginSecretString = func(pluginType InstanceType, pluginName string) string {
-		return strings.ToUpper(fmt.Sprintf("%s_%s", pluginType, pluginName))
-	}
-)
+// PluginSecretString generates plugin secret identifier using its type
+// and name, e.g. task, bq2bq
+var PluginSecretString = func(pluginType InstanceType, pluginName string) string {
+	return strings.ToUpper(fmt.Sprintf("%s_%s", pluginType, pluginName))
+}
 
 type ProjectSpec struct {
 	ID uuid.UUID

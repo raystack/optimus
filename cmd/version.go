@@ -64,7 +64,7 @@ func versionCommand(l log.Logger, host string, pluginRepo models.PluginRepositor
 }
 
 // getVersionRequest send a version request to service
-func getVersionRequest(clientVer string, host string) (ver string, err error) {
+func getVersionRequest(clientVer, host string) (ver string, err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 

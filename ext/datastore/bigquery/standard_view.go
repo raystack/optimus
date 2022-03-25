@@ -44,7 +44,8 @@ func createStandardView(ctx context.Context, spec models.ResourceSpec, client bq
 func ensureStandardView(ctx context.Context, tableHandle bqiface.Table, t BQTable, upsert bool) error {
 	meta, err := tableHandle.Metadata(ctx)
 	if err != nil {
-		if metaErr, ok := err.(*googleapi.Error); !ok || metaErr.Code != http.StatusNotFound {
+		var metaErr *googleapi.Error
+		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
 			return err
 		}
 		meta := &bqapi.TableMetadata{

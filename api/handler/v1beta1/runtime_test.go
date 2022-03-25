@@ -2,24 +2,96 @@ package v1beta1_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/utils"
-
-	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+const (
+	AirflowDateFormat = "2006-01-02T15:04:05+00:00"
+)
+
+type RuntimeServiceServerTestSuite struct {
+	suite.Suite
+	version          string
+	ctx              context.Context //nolint:containedctx
+	namespaceService *mock.NamespaceService
+	projectService   *mock.ProjectService
+	secretService    *mock.SecretService
+	runService       *mock.RunService       // TODO: refactor to service package
+	jobService       *mock.JobService       // TODO: refactor to service package
+	resourceService  *mock.DatastoreService // TODO: refactor to service package
+	jobEventService  v1.JobEventService     // TODO: refactor to service package
+	adapter          *mock.ProtoAdapter
+	scheduler        models.SchedulerUnit
+	log              log.Logger
+	progressObserver progress.Observer
+
+	jobReq        *pb.DeployJobSpecificationRequest
+	resourceReq   *pb.DeployResourceSpecificationRequest
+	projectSpec   models.ProjectSpec
+	namespaceSpec models.NamespaceSpec
+}
+
+func (s *RuntimeServiceServerTestSuite) SetupTest() {
+	s.version = "v1.0.0"
+	s.ctx = context.Background()
+	s.namespaceService = new(mock.NamespaceService)
+	s.adapter = new(mock.ProtoAdapter)
+	s.jobService = new(mock.JobService)
+	s.resourceService = new(mock.DatastoreService)
+	s.log = log.NewNoop()
+	// ... etdc
+
+	s.projectSpec = models.ProjectSpec{}
+	s.projectSpec.Name = "project-a"
+	s.projectSpec.ID = uuid.MustParse("26a0d6a0-13c6-4b30-ae6f-29233df70f31")
+
+	s.namespaceSpec = models.NamespaceSpec{}
+	s.namespaceSpec.Name = "ns1"
+	s.namespaceSpec.ID = uuid.MustParse("ceba7919-e07d-48b4-a4ce-141d79a3b59d")
+
+	s.jobReq = &pb.DeployJobSpecificationRequest{}
+	s.jobReq.ProjectName = s.projectSpec.Name
+	s.jobReq.NamespaceName = s.namespaceSpec.Name
+
+	s.resourceReq = &pb.DeployResourceSpecificationRequest{}
+	s.resourceReq.DatastoreName = "datastore-1"
+	s.resourceReq.ProjectName = s.projectSpec.Name
+	s.resourceReq.NamespaceName = s.namespaceSpec.Name
+}
+
+func (s *RuntimeServiceServerTestSuite) newRuntimeServiceServer() *v1.RuntimeServiceServer {
+	return v1.NewRuntimeServiceServer(
+		s.log,
+		s.version,
+		s.jobService,
+		s.jobEventService,
+		s.resourceService,
+		s.projectService,
+		s.namespaceService,
+		s.secretService,
+		s.adapter,
+		s.progressObserver,
+		s.runService,
+		s.scheduler,
+	)
+}
 
 func TestRuntimeServiceServer(t *testing.T) {
 	log := log.NewNoop()
@@ -157,7 +229,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
-					}}, nil)
+					},
+				}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -186,8 +259,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
-			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
-			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
+			jobSpecProto := adapter.ToJobProto(jobSpec)
+			instanceSpecProto := adapter.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
@@ -223,7 +296,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
-					}}, nil)
+					},
+				}, nil)
 			defer instanceService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
@@ -252,8 +326,8 @@ func TestRuntimeServiceServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 			projectSpecProto := adapter.ToProjectProto(projectSpec)
-			jobSpecProto, _ := adapter.ToJobProto(jobSpec)
-			instanceSpecProto, _ := adapter.ToInstanceProto(instanceSpec)
+			jobSpecProto := adapter.ToJobProto(jobSpec)
+			instanceSpecProto := adapter.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
@@ -681,6 +755,483 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 			_, err := runtimeServiceServer.GetWindow(ctx, &req)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
+		})
+	})
+
+	t.Run("JobRun", func(t *testing.T) {
+		date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
+		if err != nil {
+			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		}
+		//emptyDate, err := time.Parse(time.RFC3339, "1970-01-01T00:00:00Z")
+		//if err != nil {
+		//	t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		//}
+		t.Run("should return all job run via scheduler if valid inputs are given", func(t *testing.T) {
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			jobRuns := []models.JobRun{
+				{
+					ScheduledAt: date,
+					Status:      "success",
+				},
+			}
+			query := &models.JobQuery{
+				Name:      jobSpec.Name,
+				StartDate: date,
+				EndDate:   date.Add(time.Hour * 24),
+				Filter:    []string{"success"},
+			}
+			instsvc := new(mock.RunService)
+			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return(jobRuns, nil)
+			defer instsvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				instsvc,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.Nil(t, err)
+			assert.Equal(t, len(jobRuns), len(resp.JobRuns))
+			for _, expectedStatus := range jobRuns {
+				var found bool
+				for _, respVal := range resp.JobRuns {
+					if expectedStatus.ScheduledAt.Equal(respVal.ScheduledAt.AsTime()) &&
+						expectedStatus.Status.String() == respVal.State {
+						found = true
+						break
+					}
+				}
+				if !found {
+					assert.Fail(t, fmt.Sprintf("failed to find expected job Run status %v", expectedStatus))
+				}
+			}
+		})
+		t.Run("should not return job runs if project is not found at DB", func(t *testing.T) {
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(models.ProjectSpec{}, errors.New("no project found"))
+			defer projectService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				nil, nil, nil,
+				projectService,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     "transform-tables",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp, nil)
+		})
+		t.Run("should not return job runs if job spec is not found at DB", func(t *testing.T) {
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(models.JobSpec{}, models.NamespaceSpec{}, errors.New("no job spec found"))
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     "transform-tables",
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp, nil)
+		})
+		t.Run("should not return job runs if start date is empty", func(t *testing.T) {
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   timestamppb.New(time.Unix(0, 0)),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("should not return job runs if end date is empty", func(t *testing.T) {
+			Version := "1.0.0"
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				nil,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(time.Unix(0, 0)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("should not return job runs if scheduler is not reachable", func(t *testing.T) {
+			date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
+			if err != nil {
+				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+			}
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil)
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			query := &models.JobQuery{
+				Name:      jobSpec.Name,
+				StartDate: date,
+				EndDate:   date.Add(time.Hour * 24),
+				Filter:    []string{"success"},
+			}
+			instsvc := new(mock.RunService)
+			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return([]models.JobRun{}, errors.New("failed due to wrong URL"))
+			defer instsvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				instsvc,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("should not return job runs if scheduler return empty response", func(t *testing.T) {
+			date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
+			if err != nil {
+				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+			}
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+			adapter := v1.NewAdapter(nil, nil)
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			query := &models.JobQuery{
+				Name:      jobSpec.Name,
+				StartDate: date,
+				EndDate:   date.Add(time.Hour * 24),
+				Filter:    []string{"success"},
+			}
+			instsvc := new(mock.RunService)
+			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return([]models.JobRun{}, nil)
+			defer instsvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				instsvc,
+				nil,
+			)
+
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   timestamppb.New(date),
+				EndDate:     timestamppb.New(date.Add(time.Hour * 24)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("should return job runs if date range is empty", func(t *testing.T) {
+			date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
+			if err != nil {
+				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+			}
+			Version := "1.0.0"
+
+			projectSpec := models.ProjectSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "a-data-project",
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "game_jam",
+				ProjectSpec: projectSpec,
+			}
+
+			jobSpec := models.JobSpec{
+				Name: "transform-tables",
+			}
+
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
+			defer projectService.AssertExpectations(t)
+
+			adapter := v1.NewAdapter(nil, nil)
+
+			jobService := new(mock.JobService)
+			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
+			defer jobService.AssertExpectations(t)
+
+			jobRuns := []models.JobRun{
+				{
+					ScheduledAt: date,
+					Status:      "success",
+				},
+			}
+			query := &models.JobQuery{
+				Name:        jobSpec.Name,
+				OnlyLastRun: true,
+			}
+			instsvc := new(mock.RunService)
+			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return(jobRuns, nil)
+			defer instsvc.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, nil, nil,
+				projectService,
+				nil,
+				nil,
+				adapter,
+				nil,
+				instsvc,
+				nil,
+			)
+			req := &pb.JobRunRequest{
+				ProjectName: projectSpec.Name,
+				JobName:     jobSpec.Name,
+				StartDate:   timestamppb.New(time.Unix(0, 0)),
+				EndDate:     timestamppb.New(time.Unix(0, 0)),
+				Filter:      []string{"success"},
+			}
+			resp, err := runtimeServiceServer.JobRun(ctx, req)
+			assert.Nil(t, err)
+			assert.Equal(t, len(jobRuns), len(resp.JobRuns))
+			for _, expectedStatus := range jobRuns {
+				var found bool
+				for _, respVal := range resp.JobRuns {
+					if expectedStatus.ScheduledAt.Equal(respVal.ScheduledAt.AsTime()) &&
+						expectedStatus.Status.String() == respVal.State {
+						found = true
+						break
+					}
+				}
+				if !found {
+					assert.Fail(t, fmt.Sprintf("failed to find expected job Run status %v", expectedStatus))
+				}
+			}
 		})
 	})
 }

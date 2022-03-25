@@ -2,6 +2,9 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -74,36 +77,85 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResourceSpecificationRequest, respStream pb.RuntimeService_DeployResourceSpecificationServer) error {
+func (sv *RuntimeServiceServer) DeployResourceSpecification(stream pb.RuntimeService_DeployResourceSpecificationServer) error {
 	startTime := time.Now()
+	errNamespaces := []string{}
 
-	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
-	if err != nil {
-		return mapToGRPCErr(sv.l, err, "unable to get namespace")
-	}
-	var resourceSpecs []models.ResourceSpec
-	for _, resourceProto := range req.GetResources() {
-		adapted, err := sv.adapter.FromResourceProto(resourceProto, req.DatastoreName)
+	for {
+		request, err := stream.Recv()
 		if err != nil {
-			return status.Errorf(codes.Internal, "%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return err // immediate error returned (grpc error level)
 		}
-		resourceSpecs = append(resourceSpecs, adapted)
+		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), request.GetProjectName(), request.GetNamespaceName())
+		if err != nil {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+		var resourceSpecs []models.ResourceSpec
+		var errMsgs string
+		for _, resourceProto := range request.GetResources() {
+			adapted, err := sv.adapter.FromResourceProto(resourceProto, request.DatastoreName)
+			if err != nil {
+				currentMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+				sv.l.Error(currentMsg)
+				errMsgs += currentMsg + "\n"
+				continue
+			}
+			resourceSpecs = append(resourceSpecs, adapted)
+		}
+
+		if errMsgs != "" {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: errMsgs,
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+
+		observers := new(progress.ObserverChain)
+		observers.Join(sv.progressObserver)
+		observers.Join(&resourceObserver{
+			stream: stream,
+			log:    sv.l,
+			mu:     new(sync.Mutex),
+		})
+
+		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: fmt.Sprintf("failed to update resources: \n%s", err.Error()),
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+		runtimeDeployResourceSpecificationCounter.Add(float64(len(request.Resources)))
+		stream.Send(&pb.DeployResourceSpecificationResponse{
+			Success: true,
+			Ack:     true,
+			Message: "success",
+		})
 	}
-
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
-	observers.Join(&resourceObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
-
-	if err := sv.resourceSvc.UpdateResource(respStream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to update resources: \n%s", err.Error())
-	}
-
-	runtimeDeployResourceSpecificationCounter.Add(float64(len(req.Resources)))
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
+	if len(errNamespaces) > 0 {
+		sv.l.Warn("there's error while deploying namespaces: %v", errNamespaces)
+		return fmt.Errorf("error when deploying: %v", errNamespaces)
+	}
 	return nil
 }
 

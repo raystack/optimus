@@ -39,7 +39,7 @@ func NewError(entity string, errType ErrorType, msg string) *DomainError {
 	}
 }
 
-func FromError(err error, entity string, msg string) *DomainError {
+func FromError(err error, entity, msg string) *DomainError {
 	errType := ErrInternalError
 	msgStr := "internal error"
 	if errors.Is(err, store.ErrResourceNotFound) {
