@@ -251,12 +251,14 @@ func (s *OptimusServer) setupRuntimeServer() error {
 	jobrunRepoFac := &jobRunRepoFactory{
 		db: s.dbConn,
 	}
+	// job run service
 	jobRunService := run.NewService(
 		jobrunRepoFac,
 		secretService,
 		func() time.Time {
 			return time.Now().UTC()
 		},
+		models.BatchScheduler,
 		run.NewGoEngine(),
 	)
 
@@ -275,20 +277,58 @@ func (s *OptimusServer) setupRuntimeServer() error {
 		db: s.dbConn,
 	}
 	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
+	// adapter service
+	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
 
+	// secret service
+	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
+	// resource service
+	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
+		dataStoreService,
+		namespaceService,
+		adapterService,
+		progressObs))
+	// replay service
+	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
+		jobService,
+		namespaceService,
+		adapterService,
+		projectService))
+	// project service
+	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
+		adapterService,
+		projectService))
+	// namespace service
+	pb.RegisterNamespaceServiceServer(s.grpcServer, v1handler.NewNamespaceServiceServer(s.logger,
+		adapterService,
+		namespaceService))
+	// job Spec service
+	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
+		jobService,
+		adapterService,
+		namespaceService,
+		progressObs))
+	// job run service
+	pb.RegisterJobRunServiceServer(s.grpcServer, v1handler.NewJobRunServiceServer(s.logger,
+		jobService,
+		projectService,
+		namespaceService,
+		adapterService,
+		jobRunService,
+		models.BatchScheduler))
+	// backup service
+	pb.RegisterBackupServiceServer(s.grpcServer, v1handler.NewBackupServiceServer(s.logger,
+		jobService,
+		dataStoreService,
+		namespaceService,
+		projectService))
+	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,
 		config.Version,
 		jobService,
 		eventService,
-		dataStoreService,
-		projectService,
 		namespaceService,
-		secretService,
-		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
-		progressObs,
-		jobRunService,
-		scheduler,
 	))
 
 	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobrunRepoFac, s.dbConn)

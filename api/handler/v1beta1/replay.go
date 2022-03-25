@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,7 +19,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
+type ReplayServiceServer struct {
+	l                log.Logger
+	jobSvc           models.JobService
+	namespaceService service.NamespaceService
+	adapter          ProtoAdapter
+	projectService   service.ProjectService
+	pb.UnimplementedReplayServiceServer
+}
+
+func (sv *ReplayServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunRequest) (*pb.ReplayDryRunResponse, error) {
 	replayRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.NamespaceName, req.JobName, req.StartDate,
 		req.EndDate, false, req.AllowedDownstreamNamespaces)
 	if err != nil {
@@ -39,7 +51,7 @@ func (sv *RuntimeServiceServer) ReplayDryRun(ctx context.Context, req *pb.Replay
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
+func (sv *ReplayServiceServer) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.ReplayResponse, error) {
 	replayWorkerRequest, err := sv.parseReplayRequest(ctx, req.ProjectName, req.NamespaceName, req.JobName, req.StartDate,
 		req.EndDate, req.Force, req.AllowedDownstreamNamespaces)
 	if err != nil {
@@ -62,7 +74,7 @@ func (sv *RuntimeServiceServer) Replay(ctx context.Context, req *pb.ReplayReques
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.GetReplayStatusRequest) (*pb.GetReplayStatusResponse, error) {
+func (sv *ReplayServiceServer) GetReplayStatus(ctx context.Context, req *pb.GetReplayStatusRequest) (*pb.GetReplayStatusResponse, error) {
 	replayRequest, err := sv.parseReplayStatusRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -84,7 +96,7 @@ func (sv *RuntimeServiceServer) GetReplayStatus(ctx context.Context, req *pb.Get
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayStatusRequest(ctx context.Context, req *pb.GetReplayStatusRequest) (models.ReplayRequest, error) {
+func (sv *ReplayServiceServer) parseReplayStatusRequest(ctx context.Context, req *pb.GetReplayStatusRequest) (models.ReplayRequest, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
@@ -102,7 +114,7 @@ func (sv *RuntimeServiceServer) parseReplayStatusRequest(ctx context.Context, re
 	return replayRequest, nil
 }
 
-func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListReplaysRequest) (*pb.ListReplaysResponse, error) {
+func (sv *ReplayServiceServer) ListReplays(ctx context.Context, req *pb.ListReplaysRequest) (*pb.ListReplaysResponse, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
@@ -131,7 +143,7 @@ func (sv *RuntimeServiceServer) ListReplays(ctx context.Context, req *pb.ListRep
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectName, namespace string,
+func (sv *ReplayServiceServer) parseReplayRequest(ctx context.Context, projectName, namespace string,
 	jobName, startDate, endDate string, forceFlag bool, allowedDownstreams []string) (models.ReplayRequest, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, projectName, namespace)
 	if err != nil {
@@ -168,4 +180,14 @@ func (sv *RuntimeServiceServer) parseReplayRequest(ctx context.Context, projectN
 		AllowedDownstreamNamespaces: allowedDownstreams,
 	}
 	return replayRequest, nil
+}
+
+func NewReplayServiceServer(l log.Logger, jobService models.JobService, namespaceService service.NamespaceService, adapter ProtoAdapter, projectService service.ProjectService) *ReplayServiceServer {
+	return &ReplayServiceServer{
+		l:                l,
+		jobSvc:           jobService,
+		adapter:          adapter,
+		namespaceService: namespaceService,
+		projectService:   projectService,
+	}
 }

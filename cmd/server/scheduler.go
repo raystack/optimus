@@ -9,7 +9,6 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/ext/executor/noop"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/ext/scheduler/prime"
@@ -24,13 +23,7 @@ func initScheduler(l log.Logger, conf config.Optimus, projectRepoFac *projectRep
 	// init default scheduler
 	var scheduler models.SchedulerUnit
 	switch conf.Scheduler.Name {
-	case "airflow":
-		scheduler = airflow.NewScheduler(
-			&airflowBucketFactory{},
-			&http.Client{},
-			jobCompiler,
-		)
-	case "airflow2":
+	case "airflow", "airflow2":
 		scheduler = airflow2.NewScheduler(
 			&airflowBucketFactory{},
 			&http.Client{},

@@ -111,9 +111,36 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 		return nil, func() {}, fmt.Errorf("grpc.DialContext: %w", err)
 	}
 	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
-	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+	cleanup := func() {
 		runtimeCancel()
-		return nil, func() {}, fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
+	}
+
+	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
+	}
+	if err := pb.RegisterJobSpecificationServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterJobSpecificationServiceHandler: %w", err)
+	}
+	if err := pb.RegisterJobRunServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterJobRunServiceHandler: %w", err)
+	}
+	if err := pb.RegisterProjectServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterProjectServiceHandler: %w", err)
+	}
+	if err := pb.RegisterNamespaceServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterNamespaceServiceHandler: %w", err)
+	}
+	if err := pb.RegisterReplayServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterReplayServiceHandler: %w", err)
+	}
+	if err := pb.RegisterBackupServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterBackupServiceHandler: %w", err)
+	}
+	if err := pb.RegisterResourceServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterResourceServiceHandler: %w", err)
+	}
+	if err := pb.RegisterSecretServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return nil, cleanup, fmt.Errorf("RegisterSecretServiceHandler: %w", err)
 	}
 
 	// base router
@@ -130,10 +157,6 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
-	}
-
-	cleanup := func() {
-		runtimeCancel()
 	}
 
 	return srv, cleanup, nil

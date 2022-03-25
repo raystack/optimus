@@ -5,9 +5,18 @@ import (
 	"fmt"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
 )
 
-func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
+type ProjectServiceServer struct {
+	l              log.Logger
+	adapter        ProtoAdapter
+	projectService service.ProjectService
+	pb.UnimplementedProjectServiceServer
+}
+
+func (sv *ProjectServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	projectSpec := sv.adapter.FromProjectProto(req.GetProject())
 	if err := sv.projectService.Save(ctx, projectSpec); err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
@@ -23,7 +32,7 @@ func (sv *RuntimeServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
+func (sv *ProjectServiceServer) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
 	projects, err := sv.projectService.GetAll(ctx)
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "failed to retrieve saved projects")
@@ -37,4 +46,12 @@ func (sv *RuntimeServiceServer) ListProjects(ctx context.Context, _ *pb.ListProj
 	return &pb.ListProjectsResponse{
 		Projects: projSpecsProto,
 	}, nil
+}
+
+func NewProjectServiceServer(l log.Logger, adapter ProtoAdapter, projectService service.ProjectService) *ProjectServiceServer {
+	return &ProjectServiceServer{
+		l:              l,
+		adapter:        adapter,
+		projectService: projectService,
+	}
 }
