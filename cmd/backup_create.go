@@ -41,8 +41,10 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
-		namespace := askToSelectNamespace(l, conf)
-		var err error
+		namespace, err := askToSelectNamespace(l, conf)
+		if err != nil {
+			return err
+		}
 		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
 			return err
 		}
