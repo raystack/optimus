@@ -87,8 +87,8 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
 
-	runtime := pb.NewRuntimeServiceClient(conn)
-	respStream, err := runtime.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
+	job := pb.NewJobSpecificationServiceClient(conn)
+	respStream, err := job.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
 		ProjectName:   projectName,
 		Jobs:          adaptedJobSpecs,
 		NamespaceName: namespace,

@@ -124,6 +124,11 @@ func (s *JobRunService) Register(ctx context.Context, namespace models.Namespace
 	return args.Get(0).(models.InstanceSpec), args.Error(1)
 }
 
+func (s *JobRunService) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
+	args := s.Called(ctx, projectSpec, jobSpec, jobQuery)
+	return args.Get(0).([]models.JobRun), args.Error(1)
+}
+
 type JobInputCompiler struct {
 	mock.Mock
 }

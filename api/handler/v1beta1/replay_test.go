@@ -91,18 +91,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService, nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -113,7 +105,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.Background(), &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(context.Background(), &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
@@ -149,18 +141,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService, nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -171,7 +155,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
-			replayResponse, err := runtimeServiceServer.ReplayDryRun(ctx, &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
@@ -193,19 +177,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -215,7 +190,7 @@ func TestReplayOnServer(t *testing.T) {
 				StartDate:     startDate.Format(timeLayout),
 				EndDate:       endDate.Format(timeLayout),
 			}
-			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Nil(t, replayResponse)
 		})
@@ -240,19 +215,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -263,7 +229,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Nil(t, replayResponse)
 		})
@@ -329,19 +295,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -352,7 +309,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
@@ -376,19 +333,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -399,7 +347,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
@@ -410,19 +358,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				nil,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				nil, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -433,7 +372,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Nil(t, replayResponse)
 		})
@@ -457,19 +396,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -480,7 +410,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Equal(t, codes.Internal, status.Code(err))
@@ -494,19 +424,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				nil,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				nil, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -517,7 +438,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
@@ -533,19 +454,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -556,7 +468,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
@@ -580,19 +492,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -603,7 +506,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), job.ErrConflictedJobRun.Error())
 			assert.Equal(t, codes.FailedPrecondition, status.Code(err))
@@ -628,19 +531,10 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
-				jobService,
-				nil,
-				nil,
-				nil,
-				namespaceService,
-				nil,
+				jobService, namespaceService,
 				adapter,
-				nil,
-				nil,
-				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -651,7 +545,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := runtimeServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), job.ErrRequestQueueFull.Error())
 			assert.Equal(t, codes.Unavailable, status.Code(err))
@@ -723,21 +617,12 @@ func TestReplayOnServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
 				jobService, nil,
-				nil,
-				projectService,
-				nil,
-				nil,
 				adapter,
-				nil,
-				nil,
-				nil,
-				nil,
+				projectService,
 			)
-
 			expectedReplayStatusNodeResponse, err := adapter.ToReplayStatusTreeNode(replayState.Node)
 			assert.Nil(t, err)
 
@@ -745,7 +630,7 @@ func TestReplayOnServer(t *testing.T) {
 				Id:          reqUUID.String(),
 				ProjectName: projectName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(ctx, &replayRequestPb)
+			replayStatusResponse, err := replayServiceServer.GetReplayStatus(ctx, &replayRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, models.ReplayStatusReplayed, replayStatusResponse.State)
@@ -763,26 +648,18 @@ func TestReplayOnServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
 				jobService, nil,
-				nil,
-				projectService,
-				nil,
-				nil,
 				adapter,
-				nil,
-				nil,
-				nil,
-				nil,
+				projectService,
 			)
 
 			replayRequestPb := pb.GetReplayStatusRequest{
 				Id:          reqUUID.String(),
 				ProjectName: projectName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.GetReplayStatus(ctx, &replayRequestPb)
+			replayStatusResponse, err := replayServiceServer.GetReplayStatus(ctx, &replayRequestPb)
 
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
@@ -868,25 +745,17 @@ func TestReplayOnServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
 				jobService, nil,
-				nil,
-				projectService,
-				nil,
-				nil,
 				adapter,
-				nil,
-				nil,
-				nil,
-				nil,
+				projectService,
 			)
 
 			replayRequestPb := pb.ListReplaysRequest{
 				ProjectName: projectName,
 			}
-			replayStatusResponse, err := runtimeServiceServer.ListReplays(ctx, &replayRequestPb)
+			replayStatusResponse, err := replayServiceServer.ListReplays(ctx, &replayRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, expectedReplayList, replayStatusResponse)
@@ -903,25 +772,17 @@ func TestReplayOnServer(t *testing.T) {
 
 			adapter := v1.NewAdapter(nil, nil)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				"Version",
 				jobService, nil,
-				nil,
-				projectService,
-				nil,
-				nil,
 				adapter,
-				nil,
-				nil,
-				nil,
-				nil,
+				projectService,
 			)
 
 			replayRequestPb := pb.ListReplaysRequest{
 				ProjectName: projectName,
 			}
-			replayListResponse, err := runtimeServiceServer.ListReplays(ctx, &replayRequestPb)
+			replayListResponse, err := replayServiceServer.ListReplays(ctx, &replayRequestPb)
 
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayListResponse)

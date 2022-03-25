@@ -7,12 +7,20 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.RegisterSecretRequest) (*pb.RegisterSecretResponse, error) {
+type SecretServiceServer struct {
+	secretService service.SecretService
+	l             log.Logger
+	pb.UnimplementedSecretServiceServer
+}
+
+func (sv *SecretServiceServer) RegisterSecret(ctx context.Context, req *pb.RegisterSecretRequest) (*pb.RegisterSecretResponse, error) {
 	base64Decoded, err := getDecodedSecret(req.GetValue())
 	if err != nil {
 		return nil, err
@@ -28,7 +36,7 @@ func (sv *RuntimeServiceServer) RegisterSecret(ctx context.Context, req *pb.Regi
 	return &pb.RegisterSecretResponse{}, nil
 }
 
-func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.UpdateSecretRequest) (*pb.UpdateSecretResponse, error) {
+func (sv *SecretServiceServer) UpdateSecret(ctx context.Context, req *pb.UpdateSecretRequest) (*pb.UpdateSecretResponse, error) {
 	base64Decoded, err := getDecodedSecret(req.GetValue())
 	if err != nil {
 		return nil, err
@@ -44,7 +52,7 @@ func (sv *RuntimeServiceServer) UpdateSecret(ctx context.Context, req *pb.Update
 	return &pb.UpdateSecretResponse{}, nil
 }
 
-func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSecretsRequest) (*pb.ListSecretsResponse, error) {
+func (sv *SecretServiceServer) ListSecrets(ctx context.Context, req *pb.ListSecretsRequest) (*pb.ListSecretsResponse, error) {
 	secrets, err := sv.secretService.List(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "failed to list secrets")
@@ -64,7 +72,7 @@ func (sv *RuntimeServiceServer) ListSecrets(ctx context.Context, req *pb.ListSec
 	return &pb.ListSecretsResponse{Secrets: secretsResponse}, nil
 }
 
-func (sv *RuntimeServiceServer) DeleteSecret(ctx context.Context, req *pb.DeleteSecretRequest) (*pb.DeleteSecretResponse, error) {
+func (sv *SecretServiceServer) DeleteSecret(ctx context.Context, req *pb.DeleteSecretRequest) (*pb.DeleteSecretResponse, error) {
 	if err := sv.secretService.Delete(ctx, req.GetProjectName(), req.GetNamespaceName(), req.GetSecretName()); err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to delete secret %s", req.GetSecretName()))
 	}
@@ -82,4 +90,11 @@ func getDecodedSecret(encodedString string) (string, error) {
 		return "", status.Errorf(codes.InvalidArgument, "failed to decode base64 string: \n%s", err.Error())
 	}
 	return string(base64Decoded), nil
+}
+
+func NewSecretServiceServer(l log.Logger, secretService service.SecretService) *SecretServiceServer {
+	return &SecretServiceServer{
+		l:             l,
+		secretService: secretService,
+	}
 }
