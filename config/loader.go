@@ -104,7 +104,7 @@ func loadConfig(cfg interface{}, fs afero.Fs, dirPath string) error {
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
-		config.WithName(DefaultFilename),
+		config.WithName(".optimus"),
 		config.WithType(DefaultFileExtension),
 		config.WithEnvPrefix("OPTIMUS"),
 		config.WithEnvKeyReplacer(".", "_"),
