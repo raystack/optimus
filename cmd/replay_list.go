@@ -43,13 +43,13 @@ The list command is used to fetch the recent replay in one project.
 		replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
 		defer replayRequestCancel()
 
-		runtime := pb.NewRuntimeServiceClient(conn)
+		replay := pb.NewReplayServiceClient(conn)
 		replayStatusRequest := &pb.ListReplaysRequest{
 			ProjectName: projectName,
 		}
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		replayResponse, err := runtime.ListReplays(replayRequestTimeout, replayStatusRequest)
+		replayResponse, err := replay.ListReplays(replayRequestTimeout, replayStatusRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

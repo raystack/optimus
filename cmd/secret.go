@@ -230,9 +230,9 @@ func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) (e
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	runtime := pb.NewRuntimeServiceClient(conn)
+	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = runtime.RegisterSecret(secretRequestTimeout, req)
+	_, err = secret.RegisterSecret(secretRequestTimeout, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -264,9 +264,9 @@ func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err e
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	runtime := pb.NewRuntimeServiceClient(conn)
+	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = runtime.UpdateSecret(secretRequestTimeout, req)
+	_, err = secret.UpdateSecret(secretRequestTimeout, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -298,9 +298,9 @@ func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) (err e
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	runtime := pb.NewRuntimeServiceClient(conn)
+	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = runtime.DeleteSecret(secretRequestTimeout, req)
+	_, err = secret.DeleteSecret(secretRequestTimeout, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -332,9 +332,9 @@ func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) (err erro
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	runtime := pb.NewRuntimeServiceClient(conn)
+	secret := pb.NewSecretServiceClient(conn)
 
-	listSecretsResponse, err := runtime.ListSecrets(secretRequestTimeout, req)
+	listSecretsResponse, err := secret.ListSecrets(secretRequestTimeout, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
