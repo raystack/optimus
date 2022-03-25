@@ -2,9 +2,11 @@ package compiler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/utils"
 )
 
 type JobRunInputCompiler interface {
@@ -14,21 +16,89 @@ type JobRunInputCompiler interface {
 
 type compiler struct {
 	secretService  service.SecretService
-	templateEngine models.TemplateEngine
+	configCompiler *JobConfigCompiler
+	assetsCompiler *JobRunAssetsCompiler
 }
 
-func (c *compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
+func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
 	*models.JobRunInput, error) {
+	secretsMap, err := c.getSecretsMap(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+	instanceConfig := getInstanceEnv(instanceSpec)
+
+	// Prepare template context and compile task config
+	taskContext := PrepareContext(
+		From(namespace.ProjectSpec.Config, namespace.Config).WithName("proj").WithKeyPrefix(ProjectConfigPrefix),
+		From(secretsMap).WithName("secret"),
+		From(instanceConfig).WithName("inst").AddToContext(),
+	)
+
+	taskConfs, err := c.configCompiler.CompileConfigs(jobRun.Spec.Task.Config, taskContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compile the assets using context for task
+	fileMap, err := c.assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, taskContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// If task request return the compiled assets and config
+	if instanceSpec.Type == models.InstanceTypeTask {
+		return &models.JobRunInput{
+			ConfigMap:  utils.MergeMaps(taskConfs.Configs, instanceConfig),
+			SecretsMap: taskConfs.Secrets,
+			FileMap:    fileMap,
+		}, nil
+	}
+
+	// If request for hook, add task configs to templateContext
+	hookContext := PrepareContext(
+		From(taskConfs.Configs, taskConfs.Secrets).WithName("task").WithKeyPrefix(TaskConfigPrefix),
+	)
+	mergedContext := utils.MergeAnyMaps(taskContext, hookContext)
+	hookConfs, err := c.compileConfigForHook(instanceSpec.Name, jobRun, mergedContext)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.JobRunInput{
+		ConfigMap:  utils.MergeMaps(hookConfs.Configs, instanceConfig),
+		SecretsMap: hookConfs.Secrets,
+		FileMap:    fileMap,
+	}, nil
+}
+
+func (c compiler) compileConfigForHook(hookName string, jobRun models.JobRun, templateContext map[string]interface{}) (*CompiledConfigs, error) {
+	hook, err := jobRun.Spec.GetHookByName(hookName)
+	if err != nil {
+		return nil, fmt.Errorf("requested hook not found %s: %w", hookName, err)
+	}
+
+	hookConfs, err := c.configCompiler.CompileConfigs(hook.Config, templateContext)
+	if err != nil {
+		return nil, err
+	}
+
+	return hookConfs, err
+}
+
+func (c compiler) getSecretsMap(ctx context.Context, namespace models.NamespaceSpec) (map[string]string, error) {
 	secrets, err := c.secretService.GetSecrets(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
-	return NewContextManager(namespace, secrets, jobRun, c.templateEngine).Generate(instanceSpec)
+
+	return models.ProjectSecrets(secrets).ToMap(), nil
 }
 
-func NewAssetCompiler(secretService service.SecretService, te models.TemplateEngine) *compiler {
+func NewJobRunInputCompiler(secretService service.SecretService, confComp *JobConfigCompiler, assetCompiler *JobRunAssetsCompiler) *compiler {
 	return &compiler{
 		secretService:  secretService,
-		templateEngine: te,
+		configCompiler: confComp,
+		assetsCompiler: assetCompiler,
 	}
 }

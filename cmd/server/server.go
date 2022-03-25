@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	job_compiler "github.com/odpf/optimus/compiler"
+	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/core/progress"
@@ -237,9 +237,9 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 }
 
 func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-	engine := job_compiler.NewGoEngine()
+	engine := jobRunCompiler.NewGoEngine()
 	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := job_compiler.DumpAssets(jobSpec, scheduledAt, engine, false)
+		aMap, err := jobRunCompiler.DumpAssets(jobSpec, scheduledAt, engine, false)
 		if err != nil {
 			return models.JobAssets{}, err
 		}
@@ -448,6 +448,10 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		),
 	})
 
+	engine := jobRunCompiler.NewGoEngine()
+	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
+	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, models.PluginRegistry)
+	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		l,
@@ -472,7 +476,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		service.NewJobRunService(jobrunRepoFac, func() time.Time {
 			return time.Now().UTC()
 		}),
-		job_compiler.NewAssetCompiler(secretService, job_compiler.NewGoEngine()),
+		runInputCompiler,
 		models.BatchScheduler,
 	))
 	grpc_prometheus.Register(grpcServer)

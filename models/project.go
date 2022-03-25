@@ -70,7 +70,7 @@ func (s ProjectSecrets) String() string {
 }
 
 func (s ProjectSecrets) ToMap() map[string]string {
-	var mapping map[string]string
+	mapping := map[string]string{}
 	for _, item := range s {
 		mapping[item.Name] = item.Value
 	}
