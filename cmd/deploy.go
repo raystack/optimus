@@ -142,6 +142,9 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
 	}
+	if len(selectedNamespaceNames) == 0 {
+		return errors.New("no namespace is found to deploy")
+	}
 
 	stream, err := jobSpecificationServiceClient.DeployJobSpecification(deployTimeoutCtx)
 	if err != nil {
@@ -151,7 +154,8 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		return errors.New("deployement failed")
 	}
 	var specFound bool
-	for _, namespaceName := range selectedNamespaceNames {
+	var totalSpecsCount int
+	for i, namespaceName := range selectedNamespaceNames {
 		namespace, err := conf.GetNamespaceByName(namespaceName)
 		if err != nil {
 			return err
@@ -161,15 +165,20 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			jobSpecFs,
 			local.NewJobSpecAdapter(pluginRepo),
 		)
-		l.Info(fmt.Sprintf("\n> [%s] Deploying jobs", namespaceName))
+		if i == 0 {
+			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespaceName))
+		} else {
+			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespaceName))
+		}
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
 			return err
 		}
 		if len(jobSpecs) == 0 {
-			l.Warn("[%s] skipping as job spec is empty\n", namespaceName)
+			l.Warn("skipping deployment for namespace [%s] as job spec is empty", namespaceName)
 			continue
 		}
+		totalSpecsCount += len(jobSpecs)
 
 		var adaptedJobSpecs []*pb.JobSpecification
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
@@ -183,7 +192,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			ProjectName:   conf.Project.Name,
 			NamespaceName: namespaceName,
 		}); err != nil {
-			return fmt.Errorf("[%s] deployment failed: %w", namespaceName, err)
+			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespaceName, err)
 		}
 	}
 	if err := stream.CloseSend(); err != nil {
@@ -193,11 +202,12 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		return nil
 	}
 
+	l.Info("> Receiving responses:")
 	var counter int
 	var streamErrs []error
 	spinner := NewProgressBar()
 	if !verbose {
-		spinner.StartProgress(len(selectedNamespaceNames), "please wait")
+		spinner.StartProgress(totalSpecsCount, "please wait")
 	}
 	for {
 		resp, err := stream.Recv()
@@ -211,8 +221,17 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			if !resp.GetSuccess() {
 				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
 			}
-			counter++
-			spinner.SetProgress(counter)
+			if resp.GetJobName() != "" {
+				counter++
+				spinner.SetProgress(counter)
+				if verbose {
+					l.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetJobName()))
+				}
+			} else {
+				if verbose {
+					l.Info(resp.Message)
+				}
+			}
 		}
 	}
 	spinner.Stop()
@@ -220,7 +239,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		for _, e := range streamErrs {
 			l.Error(e.Error())
 		}
-		return errors.New("one or more errors are encountered during deploy")
+		return errors.New("one or more errors are encountered during job deployment")
 	}
 	return nil
 }
@@ -241,6 +260,9 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
 	}
+	if len(selectedNamespaceNames) == 0 {
+		return errors.New("no namespace is found to deploy")
+	}
 
 	// send call
 	stream, err := resourceServiceClient.DeployResourceSpecification(deployTimeoutCtx)
@@ -251,30 +273,32 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		return fmt.Errorf("deployement failed: %w", err)
 	}
 	var specFound bool
+	var totalSpecsCount int
 	for _, namespaceName := range selectedNamespaceNames {
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for storeName, repoFS := range datastoreSpecFs[namespaceName] {
-			l.Info(fmt.Sprintf("\n> [%s] Deploying resources for %s", namespaceName, storeName))
+			l.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespaceName))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				return fmt.Errorf("[%s] unsupported datastore: %s", namespaceName, storeName)
+				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
 			if errors.Is(err, models.ErrNoResources) {
-				l.Info(coloredNotice("[%s] no resource specifications found", namespaceName))
+				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespaceName))
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("[%s] resourceSpecRepo.GetAll(): %w", namespaceName, err)
+				return fmt.Errorf("error getting specs for namespace [%s]: %w", namespaceName, err)
 			}
+			totalSpecsCount += len(resourceSpecs)
 
 			// prepare specs
 			adaptedSpecs := []*pb.ResourceSpecification{}
 			for _, spec := range resourceSpecs {
 				adapted, err := adapt.ToResourceProto(spec)
 				if err != nil {
-					return fmt.Errorf("[%s] failed to serialize: %s - %w", namespaceName, spec.Name, err)
+					return fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
 				}
 				adaptedSpecs = append(adaptedSpecs, adapted)
 			}
@@ -285,7 +309,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				DatastoreName: storeName,
 				NamespaceName: namespaceName,
 			}); err != nil {
-				return fmt.Errorf("[%s] deployment failed: %w", namespaceName, err)
+				return fmt.Errorf("deployment for namespace [%s] failed: %w", namespaceName, err)
 			}
 		}
 	}
@@ -296,11 +320,12 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		return nil
 	}
 
+	l.Info("> Receiving responses:")
 	var counter int
 	var streamErrs []error
 	spinner := NewProgressBar()
 	if !verbose {
-		spinner.StartProgress(len(selectedNamespaceNames), "please wait")
+		spinner.StartProgress(totalSpecsCount, "please wait")
 	}
 	for {
 		resp, err := stream.Recv()
@@ -314,8 +339,17 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			if !resp.GetSuccess() {
 				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
 			}
-			counter++
-			spinner.SetProgress(counter)
+			if resp.GetResourceName() != "" {
+				counter++
+				spinner.SetProgress(counter)
+				if verbose {
+					l.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetResourceName()))
+				}
+			} else {
+				if verbose {
+					l.Info(resp.Message)
+				}
+			}
 		}
 	}
 	spinner.Stop()
@@ -323,7 +357,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		for _, e := range streamErrs {
 			l.Error(e.Error())
 		}
-		return errors.New("one or more errors are encountered during deploy")
+		return errors.New("one or more errors are encountered during resource deployment")
 	}
 	return nil
 }
