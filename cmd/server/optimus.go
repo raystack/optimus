@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -40,9 +39,7 @@ type OptimusServer struct {
 	grpcServer *grpc.Server
 	httpServer *http.Server
 
-	shutdown     bool
-	shutdownLock sync.Mutex
-	cleanupFn    []func()
+	cleanupFn []func()
 }
 
 func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
@@ -55,14 +52,13 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		conf:       conf,
 		logger:     l,
 		serverAddr: addr,
-		shutdown:   false,
 	}
 
 	fns := []setupFn{
 		server.setupAppKey,
 		server.setupDB,
 		server.setupGRPCServer,
-		server.setupRuntimeServer,
+		server.setupRuntimeServer, // rename to setupHandlers
 		server.setupMonitoring,
 		server.setupHTTPProxy,
 		server.startListening,
@@ -70,7 +66,7 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 
 	for _, fn := range fns {
 		if err := fn(); err != nil {
-			return nil, err
+			return server, err
 		}
 	}
 
@@ -134,21 +130,19 @@ func (s *OptimusServer) startListening() error {
 }
 
 func (s *OptimusServer) Shutdown() {
-	s.shutdownLock.Lock()
-	defer s.shutdownLock.Unlock()
-	if s.shutdown {
-		return // already shutting down
-	}
-	s.shutdown = true
+	if s.httpServer != nil {
+		// Create a deadline to wait for server
+		ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
+		defer cancelProxy()
 
-	// Create a deadline to wait for server
-	ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
-	defer cancelProxy()
-
-	if err := s.httpServer.Shutdown(ctxProxy); err != nil {
-		s.logger.Error("Error in proxy shutdown", err)
+		if err := s.httpServer.Shutdown(ctxProxy); err != nil {
+			s.logger.Error("Error in proxy shutdown", err)
+		}
 	}
-	s.grpcServer.GracefulStop()
+
+	if s.grpcServer != nil {
+		s.grpcServer.GracefulStop()
+	}
 
 	for _, fn := range s.cleanupFn {
 		fn() // Todo: log all the errors from cleanup before exit
