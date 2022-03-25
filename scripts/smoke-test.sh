@@ -1,6 +1,6 @@
 #!/bin/sh
 
-./optimus version -c ./optimus.sample.yaml &> /dev/null
+./optimus version &> /dev/null
 STATUS=$?
 if [ ! $STATUS -eq 0 ]; then
     echo "[smoke test] FAIL: optimus exited with code ${STATUS}";

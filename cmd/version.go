@@ -32,24 +32,26 @@ func versionCommand(pluginRepo models.PluginRepository) *cli.Command {
 	c.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	c.RunE = func(c *cli.Command, args []string) error {
-		// TODO: find a way to load the config in one place
-		conf, err := config.LoadClientConfig(configFilePath)
-		if err != nil {
-			return err
-		}
-
-		if err := config.Validate(conf); err != nil {
-			return err
-		}
-
 		// initiate logger
-		l := initLogger(plainLoggerType, conf.Log)
+		l := initLogger(plainLoggerType, config.LogConfig{})
 
 		// Print client version
 		l.Info(fmt.Sprintf("Client: %s-%s", coloredNotice(config.BuildVersion), coloredNotice(config.BuildCommit)))
 
 		// Print server version
 		if isWithServer {
+			// TODO: find a way to load the config in one place
+			conf, err := config.LoadClientConfig(configFilePath)
+			if err != nil {
+				return err
+			}
+
+			if err := config.Validate(conf); err != nil {
+				return err
+			}
+
+			l = initLogger(plainLoggerType, conf.Log)
+
 			srvVer, err := getVersionRequest(config.BuildVersion, conf.Host)
 			if err != nil {
 				return err
