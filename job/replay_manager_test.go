@@ -207,7 +207,6 @@ func TestReplayManager(t *testing.T) {
 			defer replayWorkerFact.AssertExpectations(t)
 
 			replayManager := job.NewManager(log, replayWorkerFact, replaySpecRepoFac, uuidProvider, job.ReplayManagerConfig{
-
 				NumWorkers:    1,
 				WorkerTimeout: time.Second * 5,
 			}, nil, replayValidator, nil)

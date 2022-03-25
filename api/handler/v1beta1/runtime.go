@@ -20,19 +20,14 @@ type JobEventService interface {
 
 type ProtoAdapter interface {
 	FromJobProto(*pb.JobSpecification) (models.JobSpec, error)
-	ToJobProto(models.JobSpec) (*pb.JobSpecification, error)
-
+	ToJobProto(models.JobSpec) *pb.JobSpecification
 	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
 	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
-
 	FromNamespaceProto(specification *pb.NamespaceSpecification) models.NamespaceSpec
 	ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification
-
-	ToInstanceProto(models.InstanceSpec) (*pb.InstanceSpec, error)
-
+	ToInstanceProto(models.InstanceSpec) *pb.InstanceSpec
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
-
 	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
 	ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error)
 }
@@ -46,7 +41,7 @@ type RuntimeServiceServer struct {
 	pb.UnimplementedRuntimeServiceServer
 }
 
-func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) {
+func (sv *RuntimeServiceServer) Version(_ context.Context, version *pb.VersionRequest) (*pb.VersionResponse, error) { // nolint: unparam
 	sv.l.Info("client requested for ping", "version", version.Client)
 	response := &pb.VersionResponse{
 		Server: sv.version,

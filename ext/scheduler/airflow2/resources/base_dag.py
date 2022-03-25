@@ -44,7 +44,12 @@ dag = DAG(
     schedule_interval={{ if eq .Job.Schedule.Interval "" }}None{{- else -}} {{ .Job.Schedule.Interval | quote}}{{end}},
     sla_miss_callback=optimus_sla_miss_notify,
     catchup={{ if .Job.Behavior.CatchUp -}}True{{- else -}}False{{- end }},
-    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS)
+    dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
+    tags = [ 
+            {{- range $key, $value := $.Job.Labels}}
+            "{{ $value }}",
+            {{- end}}
+           ]
 )
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
@@ -195,9 +200,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
-    window_size={{$baseWindow.Size.String | quote}},
-    window_offset={{$baseWindow.Offset.String | quote}},
-    window_truncate_to={{$baseWindow.TruncateTo | quote}},
+    window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",

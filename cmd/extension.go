@@ -85,6 +85,7 @@ func extensionInstallCommand(ctx context.Context, installer extension.Installer,
 func generateCommands(manifest *extension.Manifest, execFn func(string, []string) error) []*cli.Command {
 	output := make([]*cli.Command, len(manifest.Metadatas))
 	for i, metadata := range manifest.Metadatas {
+		firstAlias := metadata.Aliases[0]
 		c := &cli.Command{
 			Use:     metadata.Aliases[0],
 			Aliases: metadata.Aliases,
@@ -92,7 +93,7 @@ func generateCommands(manifest *extension.Manifest, execFn func(string, []string
 				metadata.Owner, metadata.Repo, metadata.Tag,
 			),
 			RunE: func(cmd *cli.Command, args []string) error {
-				return execFn(metadata.Aliases[0], args)
+				return execFn(firstAlias, args)
 			},
 		}
 		c.DisableFlagParsing = true

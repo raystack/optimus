@@ -10,7 +10,9 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -19,30 +21,33 @@ const (
 	runJobTimeout = time.Minute * 1
 )
 
-func jobRunCommand(l log.Logger, jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepository,
-	conf config.Optimus) *cli.Command {
-	var (
-		projectName = conf.Project.Name
-		namespace   = conf.Namespace.Name
-	)
+func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
+	var namespaceName string
 	cmd := &cli.Command{
 		Use:     "run",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
 		Args:    cli.MinimumNArgs(1),
-		Example: "optimus job run <job_name> [--project g-optimus]",
+		Example: "optimus job run <job_name>",
 		Hidden:  true,
+		RunE: func(c *cli.Command, args []string) error {
+			namespace, err := conf.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
+			}
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
+			jobSpec, err := jobSpecRepo.GetByName(args[0])
+			if err != nil {
+				return err
+			}
+			return runJobSpecificationRequest(l, projectName, namespace.Name, host, jobSpec, pluginRepo)
+		},
 	}
-	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of job that needs to run")
-
-	cmd.RunE = func(c *cli.Command, args []string) error {
-		jobSpec, err := jobSpecRepo.GetByName(args[0])
-		if err != nil {
-			return err
-		}
-
-		return runJobSpecificationRequest(l, projectName, namespace, conf.Host, jobSpec, pluginRepo)
-	}
+	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of the resource within project")
+	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
@@ -62,10 +67,7 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 	defer runCancel()
 
 	adapt := v1handler.NewAdapter(pluginRepo, nil)
-	adaptedSpec, err := adapt.ToJobProto(jobSpec)
-	if err != nil {
-		return err
-	}
+	adaptedSpec := adapt.ToJobProto(jobSpec)
 
 	l.Info("please wait...")
 	jobRun := pb.NewJobRunServiceClient(conn)

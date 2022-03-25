@@ -13,9 +13,7 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-var (
-	datasetMutex sync.Mutex
-)
+var datasetMutex sync.Mutex
 
 func createDataset(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
 	bqResource, ok := spec.Spec.(BQDataset)
@@ -40,7 +38,8 @@ func ensureDataset(ctx context.Context, datasetHandle bqiface.Dataset, bqResourc
 
 	meta, err := datasetHandle.Metadata(ctx)
 	if err != nil {
-		if metaErr, ok := err.(*googleapi.Error); !ok || metaErr.Code != http.StatusNotFound {
+		var metaErr *googleapi.Error
+		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
 			return err
 		}
 		meta := bqapi.DatasetMetadata{

@@ -2,9 +2,9 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
 
@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-//JobSpecServiceServer
+// BackupServiceServer
 type BackupServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
@@ -52,7 +52,7 @@ func (sv *BackupServiceServer) BackupDryRun(ctx context.Context, req *pb.BackupD
 	}
 	jobSpecs = append(jobSpecs, downstreamSpecs...)
 
-	//should add config
+	// should add config
 	backupRequest := models.BackupRequest{
 		ResourceName:                req.ResourceName,
 		Project:                     namespaceSpec.ProjectSpec,
@@ -157,7 +157,7 @@ func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupR
 
 	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
 	if err != nil {
-		if err == store.ErrResourceNotFound {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
 		}
 		return nil, status.Errorf(codes.Internal, "error while getting backup detail: %v", err)
@@ -195,8 +195,8 @@ func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupR
 	}, nil
 }
 
-//BackupServiceServer
-func NewBackupServiceServer(l log.Logger, jobService models.JobService, resourceSvc models.DatastoreService, namespaceService service.NamespaceService, progressObserver progress.Observer, projectService service.ProjectService) *BackupServiceServer {
+// BackupServiceServer
+func NewBackupServiceServer(l log.Logger, jobService models.JobService, resourceSvc models.DatastoreService, namespaceService service.NamespaceService, projectService service.ProjectService) *BackupServiceServer {
 	return &BackupServiceServer{
 		l:                l,
 		jobSvc:           jobService,

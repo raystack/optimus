@@ -159,7 +159,7 @@ func buildMessageBlocks(events []event) []api.Block {
 			if slas, ok := evt.meta.Value["slas"]; ok {
 				for slaIdx, sla := range slas.GetListValue().GetValues() {
 					slaFields := sla.GetStructValue().GetFields()
-					var slaStr = ""
+					slaStr := ""
 					if taskID, ok := slaFields["task_id"]; ok {
 						slaStr += "\nTask: " + taskID.GetStringValue()
 					}
@@ -221,7 +221,7 @@ func buildMessageBlocks(events []event) []api.Block {
 		var detailsElementsSlice []api.MixedElement
 		if exception, ok := evt.meta.Value["exception"]; ok && exception.GetStringValue() != "" {
 			optionText := api.NewTextBlockObject("plain_text", fmt.Sprintf("Exception:\n%s", exception.GetStringValue()), true, false)
-			detailsElementsSlice = append(detailsElementsSlice, optionText) //api.NewOptionBlockObject("", optionText, nil))
+			detailsElementsSlice = append(detailsElementsSlice, optionText) // api.NewOptionBlockObject("", optionText, nil))
 		}
 		if message, ok := evt.meta.Value["message"]; ok && message.GetStringValue() != "" {
 			optionText := api.NewTextBlockObject("plain_text", fmt.Sprintf("Message:\n%s", message.GetStringValue()), true, false)
@@ -281,7 +281,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 	}
 }
 
-func (s *Notifier) Close() error {
+func (s *Notifier) Close() error { // nolint: unparam
 	// drain batches
 	s.wg.Wait()
 	return nil
@@ -291,7 +291,7 @@ func NewNotifier(ctx context.Context, slackURL string, eventBatchInterval time.D
 	this := &Notifier{
 		slackURL:           slackURL,
 		routeMsgBatch:      map[route][]event{},
-		workerErrChan:      make(chan error, 0),
+		workerErrChan:      make(chan error),
 		eventBatchInterval: eventBatchInterval,
 	}
 

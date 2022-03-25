@@ -59,10 +59,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	// termChan listen for sigterm
-	termChan = make(chan os.Signal, 1)
-)
+// termChan listen for sigterm
+var termChan = make(chan os.Signal, 1)
 
 const (
 	shutdownWait       = 30 * time.Second
@@ -255,7 +253,7 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
 	if conf.ReplayNumWorkers < 1 {
-		return errors.New(fmt.Sprintf("%s should be greater than 0", config.KeyServeReplayNumWorkers))
+		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
 	}
 	if conf.DB.DSN == "" {
 		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
@@ -449,7 +447,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			},
 		),
 	})
-	//job service
+	// job service
 	jobService := job.NewService(
 		&jobSpecRepoFac,
 		models.BatchScheduler,
@@ -460,17 +458,18 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		projectJobSpecRepoFac,
 		replayManager,
 	)
-	//datastore service
+	// datastore service
 	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
-	//adapter service
+	// adapter service
 	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
-	//job run service
+	// job run service
 	jobRunService := run.NewService(
 		jobrunRepoFac,
 		secretService,
 		func() time.Time {
 			return time.Now().UTC()
 		},
+		models.BatchScheduler,
 		run.NewGoEngine(),
 	)
 
@@ -482,35 +481,35 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		eventService,
 		namespaceService,
 	))
-	//secret service
+	// secret service
 	pb.RegisterSecretServiceServer(grpcServer, v1handler.NewSecretServiceServer(l, secretService))
-	//resource service
+	// resource service
 	pb.RegisterResourceServiceServer(grpcServer, v1handler.NewResourceServiceServer(l,
 		dataStoreService,
 		namespaceService,
 		adapterService,
 		progressObs))
-	//replay service
+	// replay service
 	pb.RegisterReplayServiceServer(grpcServer, v1handler.NewReplayServiceServer(l,
 		jobService,
 		namespaceService,
 		adapterService,
 		projectService))
-	//project service
+	// project service
 	pb.RegisterProjectServiceServer(grpcServer, v1handler.NewProjectServiceServer(l,
 		adapterService,
 		projectService))
-	//namespace service
+	// namespace service
 	pb.RegisterNamespaceServiceServer(grpcServer, v1handler.NewNamespaceServiceServer(l,
 		adapterService,
 		namespaceService))
-	//job Spec service
+	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(grpcServer, v1handler.NewJobSpecServiceServer(l,
 		jobService,
 		adapterService,
 		namespaceService,
 		progressObs))
-	//job run service
+	// job run service
 	pb.RegisterJobRunServiceServer(grpcServer, v1handler.NewJobRunServiceServer(l,
 		jobService,
 		projectService,
@@ -518,12 +517,11 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		adapterService,
 		jobRunService,
 		models.BatchScheduler))
-	//backup service
+	// backup service
 	pb.RegisterBackupServiceServer(grpcServer, v1handler.NewBackupServiceServer(l,
 		jobService,
 		dataStoreService,
 		namespaceService,
-		progressObs,
 		projectService,
 	))
 	grpc_prometheus.Register(grpcServer)
@@ -549,7 +547,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
 	defer runtimeCancel()
-	//register http handlers
+	// register http handlers
 	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
 		return fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
 	}
@@ -622,10 +620,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			return err
 		}
 
-		if err := clusterPlanner.Init(clusterCtx); err != nil {
-			clusterCancel()
-			return err
-		}
+		clusterPlanner.Init(clusterCtx)
 	}
 
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)

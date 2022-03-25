@@ -137,8 +137,7 @@ func TestAdapter(t *testing.T) {
 			},
 		}
 
-		inProto, err := adapter.ToJobProto(jobSpec)
-		assert.Nil(t, err)
+		inProto := adapter.ToJobProto(jobSpec)
 		original, err := adapter.FromJobProto(inProto)
 		assert.Equal(t, jobSpec, original)
 		assert.Nil(t, err)
@@ -249,8 +248,7 @@ func TestAdapter_ToInstanceProto(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			adapt := &v1.Adapter{}
-			got, err := adapt.ToInstanceProto(tt.args.conf)
-			assert.Nil(t, err)
+			got := adapt.ToInstanceProto(tt.args.conf)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ToInstanceProto() = %v, want %v", got, tt.want)
 			}

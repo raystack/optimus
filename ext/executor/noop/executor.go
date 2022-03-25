@@ -23,14 +23,14 @@ func NewExecutor() *Executor {
 	}
 }
 
-func (e *Executor) Start(ctx context.Context, req models.ExecutorStartRequest) (*models.ExecutorStartResponse, error) {
+func (e *Executor) Start(_ context.Context, req models.ExecutorStartRequest) *models.ExecutorStartResponse {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.state[req.ID] = models.RunStateRunning
-	return &models.ExecutorStartResponse{}, nil
+	return &models.ExecutorStartResponse{}
 }
 
-func (e *Executor) Stop(ctx context.Context, req models.ExecutorStopRequest) error {
+func (e *Executor) Stop(_ context.Context, req models.ExecutorStopRequest) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if _, ok := e.state[req.ID]; !ok {
@@ -41,7 +41,7 @@ func (e *Executor) Stop(ctx context.Context, req models.ExecutorStopRequest) err
 	return nil
 }
 
-func (e *Executor) WaitForFinish(ctx context.Context, id string) (chan int, error) {
+func (e *Executor) WaitForFinish(_ context.Context, id string) (chan int, error) {
 	if _, ok := e.state[id]; !ok {
 		return nil, errors.New("invalid id, no such execution")
 	}
@@ -62,7 +62,7 @@ func (e *Executor) WaitForFinish(ctx context.Context, id string) (chan int, erro
 	return resultChan, nil
 }
 
-func (e *Executor) Stats(ctx context.Context, id string) (*models.ExecutorStats, error) {
+func (e *Executor) Stats(_ context.Context, id string) (*models.ExecutorStats, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if _, ok := e.state[id]; !ok {

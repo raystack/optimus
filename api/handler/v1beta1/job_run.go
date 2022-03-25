@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -118,14 +119,10 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
 
-	jobProto, err := sv.adapter.ToJobProto(jobRun.Spec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobRun.Spec.Name)
-	}
-	instanceProto, err := sv.adapter.ToInstanceProto(instance)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: cannot adapt instance for job %s", err.Error(), jobRun.Spec.Name)
-	}
+	jobProto := sv.adapter.ToJobProto(jobRun.Spec)
+
+	instanceProto := sv.adapter.ToInstanceProto(instance)
+
 	return &pb.RegisterInstanceResponse{
 		Project:   sv.adapter.ToProjectProto(projSpec),
 		Job:       jobProto,
@@ -153,7 +150,7 @@ func (sv *JobRunServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusR
 
 	jobStatuses, err := sv.scheduler.GetJobStatus(ctx, projSpec, req.GetJobName())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobStatus %s", err.Error(),
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch jobRun %s", err.Error(),
 			req.GetJobName())
 	}
 
@@ -170,7 +167,44 @@ func (sv *JobRunServiceServer) JobStatus(ctx context.Context, req *pb.JobStatusR
 	}, nil
 }
 
-func (sv *JobRunServiceServer) GetWindow(ctx context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+func (sv *JobRunServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.JobRunResponse, error) {
+	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
+	}
+	jobSpec, _, err := sv.jobSvc.GetByNameForProject(ctx, req.GetJobName(), projSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to find the job %s for project %s", err.Error(),
+			req.GetJobName(), req.GetProjectName())
+	}
+	query, err := buildJobQuery(req)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s\nfailed to build query %s", err.Error(),
+			req.GetJobName())
+	}
+	jobRuns, err := sv.runSvc.GetJobRunList(ctx, projSpec, jobSpec, query)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s\nfailed to fetch job run %s", err.Error(),
+			req.GetJobName())
+	}
+	if len(jobRuns) == 0 {
+		return nil, status.Errorf(codes.NotFound, "%s\n job runs not found ",
+			req.GetJobName())
+	}
+	var runs []*pb.JobRun
+	for _, run := range jobRuns {
+		ts := timestamppb.New(run.ScheduledAt)
+		runs = append(runs, &pb.JobRun{
+			State:       run.Status.String(),
+			ScheduledAt: ts,
+		})
+	}
+	return &pb.JobRunResponse{
+		JobRuns: runs,
+	}, nil
+}
+
+func (sv *JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	scheduledTime := req.ScheduledAt.AsTime()
 	err := req.ScheduledAt.CheckValid()
 	if err != nil {
@@ -227,4 +261,28 @@ func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectServi
 		namespaceService: namespaceService,
 		projectService:   projectService,
 	}
+}
+
+func buildJobQuery(req *pb.JobRunRequest) (*models.JobQuery, error) {
+	var query *models.JobQuery
+	if req.GetStartDate().AsTime().Unix() == 0 && req.GetEndDate().AsTime().Unix() == 0 {
+		query = &models.JobQuery{
+			Name:        req.GetJobName(),
+			OnlyLastRun: true,
+		}
+		return query, nil
+	}
+	if req.GetStartDate().AsTime().Unix() == 0 {
+		return nil, errors.New("empty start date is given")
+	}
+	if req.GetEndDate().AsTime().Unix() == 0 {
+		return nil, errors.New("empty end date is given")
+	}
+	query = &models.JobQuery{
+		Name:      req.GetJobName(),
+		StartDate: req.GetStartDate().AsTime(),
+		EndDate:   req.GetEndDate().AsTime(),
+		Filter:    req.GetFilter(),
+	}
+	return query, nil
 }

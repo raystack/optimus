@@ -33,7 +33,7 @@ func taskRunBlockComparator(a, b interface{}) int {
 	return strings.Compare(aAsserted.name, bAsserted.name)
 }
 
-//formatRunsPerJobInstance returns a hashmap with Job -> Runs[] mapping
+// formatRunsPerJobInstance returns a hashmap with Job -> Runs[] mapping
 func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns map[string]taskRunBlock, height int) {
 	if _, ok := taskReruns[instance.JobName]; !ok {
 		taskReruns[instance.JobName] = taskRunBlock{
@@ -60,7 +60,7 @@ func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(replayRunCommand(l, conf))
+	cmd.AddCommand(replayCreateCommand(l, conf))
 	cmd.AddCommand(replayStatusCommand(l, conf))
 	cmd.AddCommand(replayListCommand(l, conf))
 	return cmd

@@ -71,7 +71,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
 		projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
-		if err != nil && err != store.ErrResourceNotFound {
+		if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 			return jobSpec, fmt.Errorf("runtime dependency evaluation failed: %w", err)
 		}
 		if len(projectJobPairs) == 0 {

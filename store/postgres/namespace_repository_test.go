@@ -5,7 +5,6 @@ package postgres
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/odpf/optimus/store"
@@ -18,24 +17,8 @@ import (
 
 func TestIntegrationNamespaceRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		return dbConn
 	}
@@ -100,8 +83,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("Insert", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
@@ -133,14 +114,12 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 	t.Run("Upsert", func(t *testing.T) {
 		t.Run("insert different resource should insert two", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := namespaceSpecs[0]
 			testModelB := namespaceSpecs[2]
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -148,7 +127,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
-			//try for update
+			// try for update
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
@@ -159,13 +138,11 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		})
 		t.Run("insert same resource twice should overwrite existing", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := namespaceSpecs[2]
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
-			//try for create
+			// try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
@@ -174,7 +151,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
-			//try for update
+			// try for update
 			testModelA.Config["bucket"] = "gs://another_folder"
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
@@ -185,14 +162,12 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 			testModelA := namespaceSpecs[0]
 			testModelA.ID = uuid.Nil
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -203,8 +178,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		})
 		t.Run("should not update empty config", func(t *testing.T) {
 			db := DBSetup()
-			sqlDB, _ := db.DB()
-			defer sqlDB.Close()
 
 			repo := NewNamespaceRepository(db, projectSpec, hash)
 
@@ -223,8 +196,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("GetByName", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
@@ -240,8 +211,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("Get", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
@@ -262,8 +231,6 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	t.Run("GetAll", func(t *testing.T) {
 		db := DBSetup()
-		sqlDB, _ := db.DB()
-		defer sqlDB.Close()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 

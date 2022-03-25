@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayCreateCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false
@@ -27,7 +27,7 @@ func replayRunCommand(l log.Logger, conf config.Optimus) *cli.Command {
 		allDownstream    = false
 		skipConfirm      = false
 		projectName      = conf.Project.Name
-		namespaceName    = conf.Namespace.Name
+		namespaceName    string
 	)
 
 	reCmd := &cli.Command{
@@ -52,6 +52,8 @@ Date ranges are inclusive.
 	}
 	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
 	reCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of job that needs to be replayed")
+	reCmd.MarkFlagRequired("namespace")
+
 	reCmd.Flags().BoolVarP(&dryRun, "dry-run", "d", dryRun, "Only do a trial run with no permanent changes")
 	reCmd.Flags().BoolVarP(&forceRun, "force", "f", forceRun, "Run replay even if a previous run is in progress")
 	reCmd.Flags().BoolVar(&skipConfirm, "confirm", skipConfirm, "Skip asking for confirmation")
@@ -77,20 +79,20 @@ Date ranges are inclusive.
 			return err
 		}
 		if dryRun {
-			//if only dry run, exit now
+			// if only dry run, exit now
 			return nil
 		}
 
 		if !skipConfirm {
-			proceedWithReplay := "Yes"
+			proceedWithReplay := AnswerYes
 			if err := survey.AskOne(&survey.Select{
 				Message: "Proceed with replay?",
-				Options: []string{"Yes", "No"},
-				Default: "No",
+				Options: []string{AnswerYes, AnswerNo},
+				Default: AnswerNo,
 			}, &proceedWithReplay); err != nil {
 				return err
 			}
-			if proceedWithReplay == "No" {
+			if proceedWithReplay == AnswerNo {
 				l.Info("Aborting...")
 				return nil
 			}
@@ -162,7 +164,7 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 	taskRerunsMap := make(map[string]taskRunBlock)
 	formatRunsPerJobInstance(replayDryRunResponse.ExecutionTree, taskRerunsMap, 0)
 
-	//sort run block
+	// sort run block
 	taskRerunsSorted := set.NewTreeSetWith(taskRunBlockComparator)
 	for _, block := range taskRerunsMap {
 		taskRerunsSorted.Add(block)
@@ -178,11 +180,11 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 	}
 	table.Render()
 
-	//print tree
+	// print tree
 	l.Info(coloredNotice("\n> Dependency tree"))
-	l.Info(fmt.Sprintf("%s", printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New())))
+	l.Info(printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New()).String())
 
-	//ignored jobs
+	// ignored jobs
 	if len(replayDryRunResponse.IgnoredJobs) > 0 {
 		l.Info("> Ignored jobs")
 		ignoredJobsCount := 0
@@ -190,7 +192,7 @@ func printReplayDryRunResponse(l log.Logger, replayRequest *pb.ReplayDryRunReque
 			ignoredJobsCount++
 			l.Info(fmt.Sprintf("%d. %s", ignoredJobsCount, job))
 		}
-		//separator
+		// separator
 		l.Info("")
 	}
 }

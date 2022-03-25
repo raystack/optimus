@@ -24,10 +24,8 @@ linters:
     - promlinter
     - interfacer
     - gosec
-    - gofumpt
     - godox
     - godot
-    - gochecknoinits
     - gci
     - forbidigo
     - errcheck
@@ -39,40 +37,50 @@ linters:
     - cyclop
     - noctx
     - ireturn
-    - gosimple
     - goerr113
     - nilerr
-    - errorlint
     - bodyclose
-    - ifshort
     - prealloc
     - nestif
     - lll
     - maligned
-    - nakedret
     - golint
     - gocritic
-    - goconst
     - gocognit
     - funlen
     - gocyclo
     - dupl
 linters-settings:
+  gofumpt:
+    lang-version: "1.17"
+    extra-rules: true
   revive:
     ignore-generated-header: true
     severity: warning
+  goconst:
+    ignore-tests: true
+    numbers: true
   gomnd:
     ignored-numbers: # Why we have a big range of file permissions
-      - '0644'
-      - '0655'
-      - '0666'
-      - '0770'
-      - '0755'
-      - '0765'
-      - '0777'
+      - '0o644'
+      - '0o655'
+      - '0o666'
+      - '0o770'
+      - '0o755'
+      - '0o765'
+      - '0o777'
     ignored-functions:
       - 'survey.MinLength'
       - 'survey.MaxLength'
       - 'args.Error'
+  gosimple:
+    go: "1.17"
+    checks:
+      - "all"
+      - "-S1002"
+  unparam:
+    # Inspect exported functions.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    check-exported: true
 severity:
   default-severity: error

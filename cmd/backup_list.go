@@ -16,7 +16,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
+func backupListCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "list",

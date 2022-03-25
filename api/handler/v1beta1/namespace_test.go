@@ -96,7 +96,6 @@ func TestNamespaceOnServer(t *testing.T) {
 
 	t.Run("ListProjectNamespaces", func(t *testing.T) {
 		t.Run("should read namespaces of a project", func(t *testing.T) {
-
 			projectName := "a-data-project"
 
 			projectSpec := models.ProjectSpec{

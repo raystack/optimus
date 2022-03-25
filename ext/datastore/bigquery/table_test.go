@@ -435,7 +435,7 @@ func TestTable(t *testing.T) {
 			bQJob := new(BqJobMock)
 			defer bQJob.AssertExpectations(t)
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
@@ -445,11 +445,11 @@ func TestTable(t *testing.T) {
 			bQCopier.On("Run", testingContext).Return(bQJob, nil)
 			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
 
-			//update expiry
+			// update expiry
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
 			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
 
-			//verify
+			// verify
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)
@@ -489,7 +489,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to get dataset metadata"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&bqiface.DatasetMetadata{}, errors.New(errorMsg))
 			resp, err := backupTable(testingContext, request, bQClient)
@@ -506,7 +506,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to get dataset metadata"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
@@ -535,7 +535,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to copy table"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
@@ -568,7 +568,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to get status of copy table"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
@@ -602,7 +602,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to get metadata of backup table"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
@@ -613,7 +613,7 @@ func TestTable(t *testing.T) {
 			bQCopier.On("Run", testingContext).Return(bQJob, nil)
 			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
 
-			//update expiry
+			// update expiry
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, errors.New(errorMsg)).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)
@@ -639,7 +639,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to update expiration of backup table"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
@@ -650,7 +650,7 @@ func TestTable(t *testing.T) {
 			bQCopier.On("Run", testingContext).Return(bQJob, nil)
 			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
 
-			//update expiry
+			// update expiry
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
 			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, errors.New(errorMsg))
 
@@ -677,7 +677,7 @@ func TestTable(t *testing.T) {
 
 			errorMsg := "unable to ensure the backup table"
 
-			//duplicate table
+			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
 			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
@@ -688,11 +688,11 @@ func TestTable(t *testing.T) {
 			bQCopier.On("Run", testingContext).Return(bQJob, nil)
 			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
 
-			//update expiry
+			// update expiry
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
 			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
 
-			//verify
+			// verify
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, errors.New(errorMsg)).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)

@@ -78,7 +78,6 @@ func (rm *ReplayManager) Replay(ctx context.Context, reqInput models.ReplayReque
 
 func (rm *ReplayManager) Init() {
 	rm.Called()
-	return
 }
 
 func (rm *ReplayManager) GetReplay(ctx context.Context, uuid uuid.UUID) (models.ReplaySpec, error) {
@@ -126,18 +125,18 @@ type ReplayWorker struct {
 
 func NewReplayWorker() *ReplayWorker {
 	return &ReplayWorker{
-		finish: make(chan bool, 0),
+		finish: make(chan bool),
 	}
 }
 
 func (rm *ReplayWorker) Process(ctx context.Context, replayRequest models.ReplayRequest) error {
-	//mock processing time for concurrent replay call testing
+	// mock processing time for concurrent replay call testing
 	args := rm.Called(ctx, replayRequest)
 	<-rm.finish
 	return args.Error(0)
 }
 
-func (rm *ReplayWorker) Close() error {
+func (rm *ReplayWorker) Close() error { // nolint: unparam
 	close(rm.finish)
 	return nil
 }
