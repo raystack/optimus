@@ -402,3 +402,12 @@ type JobSpecResourceConfig struct {
 	Memory string
 	CPU    string
 }
+
+// JobQuery  represents the query to get run status from scheduler
+type JobQuery struct {
+	Name        string
+	StartDate   time.Time
+	EndDate     time.Time
+	Filter      []string
+	OnlyLastRun bool
+}
