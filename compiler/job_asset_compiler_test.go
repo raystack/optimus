@@ -18,8 +18,9 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 		engine := compiler.NewGoEngine()
 		execUnit := new(mock.BasePlugin)
 		cliMod := new(mock.CLIMod)
-		pluginRepo := new(mock.SupportedPluginRepo)
 		plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod}
+
+		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 
 		jobSpec := models.JobSpec{
 			Name:  "foo",
@@ -89,24 +90,20 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 		}
 
 		t.Run("returns error when error while getting plugin", func(t *testing.T) {
-			execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: "bq",
-			}, nil)
+			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo.On("GetByName", "bq").Return(plugin, errors.New("error"))
+			defer pluginRepo.AssertExpectations(t)
 
-			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, errors.New("error"))
-
-			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
+			assetsCompiler := compiler.NewJobAssetsCompiler(nil, pluginRepo)
 			_, err := assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, templateContext)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, "error", err.Error())
 		})
-		t.Run("compiles the assets when no plugin with name", func(t *testing.T) {
-			execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: "bq",
-			}, nil)
-
+		t.Run("compiles the assets when plugin has no cliMod", func(t *testing.T) {
+			pluginRepo := new(mock.SupportedPluginRepo)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, nil)
+			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
 			assets, err := assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, templateContext)
@@ -116,12 +113,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 				mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), secretContext["table_name"])
 			assert.Equal(t, expectedQuery, assets["query.sql"])
 		})
-		t.Run("compiles the assets when no plugin with name", func(t *testing.T) {
-			execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: "bq",
-			}, nil)
-
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+		t.Run("compiles the assets successfully", func(t *testing.T) {
+			cliMod.On("CompileAssets", context.Background(), models.CompileAssetsRequest{
 				Window:           jobSpec.Task.Window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
@@ -133,7 +126,9 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}' and name = '{{.secret.table_name}}'",
 				},
 			}}, nil)
+			pluginRepo := new(mock.SupportedPluginRepo)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
+			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
 			assets, err := assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, templateContext)

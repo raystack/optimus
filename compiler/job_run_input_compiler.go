@@ -9,6 +9,16 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
+const (
+	// TaskConfigPrefix will be used to prefix all the config variables of
+	// transformation instance, i.e. task
+	TaskConfigPrefix = "TASK__"
+
+	// ProjectConfigPrefix will be used to prefix all the config variables of
+	// a project, i.e. registered entities
+	ProjectConfigPrefix = "GLOBAL__"
+)
+
 type JobRunInputCompiler interface {
 	// Compile prepares instance execution context environment
 	Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error)
@@ -35,7 +45,7 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 		From(instanceConfig).WithName("inst").AddToContext(),
 	)
 
-	taskConfs, err := c.configCompiler.CompileConfigs(jobRun.Spec.Task.Config, taskContext)
+	taskCompiledConfs, err := c.configCompiler.CompileConfigs(jobRun.Spec.Task.Config, taskContext)
 	if err != nil {
 		return nil, err
 	}
@@ -49,15 +59,15 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 	// If task request return the compiled assets and config
 	if instanceSpec.Type == models.InstanceTypeTask {
 		return &models.JobRunInput{
-			ConfigMap:  utils.MergeMaps(taskConfs.Configs, instanceConfig),
-			SecretsMap: taskConfs.Secrets,
+			ConfigMap:  utils.MergeMaps(taskCompiledConfs.Configs, instanceConfig),
+			SecretsMap: taskCompiledConfs.Secrets,
 			FileMap:    fileMap,
 		}, nil
 	}
 
 	// If request for hook, add task configs to templateContext
 	hookContext := PrepareContext(
-		From(taskConfs.Configs, taskConfs.Secrets).WithName("task").WithKeyPrefix(TaskConfigPrefix),
+		From(taskCompiledConfs.Configs, taskCompiledConfs.Secrets).WithName("task").WithKeyPrefix(TaskConfigPrefix),
 	)
 	mergedContext := utils.MergeAnyMaps(taskContext, hookContext)
 	hookConfs, err := c.compileConfigForHook(instanceSpec.Name, jobRun, mergedContext)
@@ -93,6 +103,19 @@ func (c compiler) getSecretsMap(ctx context.Context, namespace models.NamespaceS
 	}
 
 	return models.ProjectSecrets(secrets).ToMap(), nil
+}
+
+func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {
+	if instanceSpec.Data == nil {
+		return nil
+	}
+	envMap := map[string]string{}
+	for _, jobRunData := range instanceSpec.Data {
+		if jobRunData.Type == models.InstanceDataTypeEnv {
+			envMap[jobRunData.Name] = jobRunData.Value
+		}
+	}
+	return envMap
 }
 
 func NewJobRunInputCompiler(secretService service.SecretService, confComp *JobConfigCompiler, assetCompiler *JobRunAssetsCompiler) *compiler {

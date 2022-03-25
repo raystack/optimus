@@ -1,9 +1,10 @@
 package compiler_test
 
 import (
+	"testing"
+
 	"github.com/odpf/optimus/compiler"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestContextBuilder(t *testing.T) {
