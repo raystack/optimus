@@ -38,7 +38,6 @@ linters:
     - ireturn
     - goerr113
     - nilerr
-    - bodyclose
     - prealloc
     - nestif
     - lll
