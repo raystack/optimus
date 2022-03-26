@@ -43,15 +43,15 @@ type OptimusServer struct {
 }
 
 func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
-	if err := checkRequiredConfigs(conf.Server); err != nil {
-		return nil, err
-	}
-
 	addr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	server := &OptimusServer{
 		conf:       conf,
 		logger:     l,
 		serverAddr: addr,
+	}
+
+	if err := checkRequiredConfigs(conf.Server); err != nil {
+		return server, err
 	}
 
 	fns := []setupFn{
@@ -148,11 +148,13 @@ func (s *OptimusServer) Shutdown() {
 		fn() // Todo: log all the errors from cleanup before exit
 	}
 
-	sqlConn, err := s.dbConn.DB()
-	if err != nil {
-		s.logger.Error("Error while getting sqlConn", err)
-	} else if err := sqlConn.Close(); err != nil {
-		s.logger.Error("Error in sqlConn.Close", err)
+	if s.dbConn != nil {
+		sqlConn, err := s.dbConn.DB()
+		if err != nil {
+			s.logger.Error("Error while getting sqlConn", err)
+		} else if err := sqlConn.Close(); err != nil {
+			s.logger.Error("Error in sqlConn.Close", err)
+		}
 	}
 
 	s.logger.Info("Server shutdown complete")
