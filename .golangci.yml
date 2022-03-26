@@ -35,7 +35,6 @@ linters:
     # Following linters should be enabled after fixing the code
     - testpackage
     - cyclop
-    - noctx
     - ireturn
     - goerr113
     - nilerr
