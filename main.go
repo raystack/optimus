@@ -37,6 +37,7 @@ func (p *PlainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return []byte(fmt.Sprintf("%s\n", entry.Message)), nil
 }
 
+//nolint:forbidigo
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 

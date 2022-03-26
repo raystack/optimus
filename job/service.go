@@ -246,7 +246,6 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		if errors.As(err, &merrs) {
 			var newErr error
 			for _, cerr := range merrs.Errors {
-				fmt.Printf("%v", cerr)
 				if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
 					if !strings.Contains(cerr.Error(), namespace.Name) {
 						continue

@@ -27,7 +27,6 @@ linters:
     - godox
     - godot
     - gci
-    - forbidigo
     - errcheck
     - maintidx
     - errchkjson
