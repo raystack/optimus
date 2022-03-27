@@ -533,13 +533,19 @@ func Initialize(l log.Logger, conf config.Provider) error {
 	}()
 
 	clusterCtx, clusterCancel := context.WithCancel(context.Background())
-	clusterServer := gossip.NewServer(l)
+	clusterServer := gossip.NewServer(l, func() time.Time {
+		return time.Now().UTC()
+	})
 	clusterPlanner := prime.NewPlanner(
 		l,
-		clusterServer, jobrunRepoFac, &instanceRepoFactory{
+		clusterServer,
+		jobrunRepoFac,
+		&instanceRepoFactory{
 			db: dbConn,
 		},
-		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
+		utils.NewUUIDProvider(),
+		noop.NewExecutor(),
+		func() time.Time {
 			return time.Now().UTC()
 		},
 	)
@@ -587,8 +593,12 @@ func Initialize(l log.Logger, conf config.Provider) error {
 
 	// shutdown cluster
 	clusterCancel()
-	clusterPlanner.Close()
-	clusterServer.Shutdown()
+	if err := clusterPlanner.Close(); err != nil {
+		terminalError = multierror.Append(terminalError, fmt.Errorf("clusterPlanner.Close: %w", err))
+	}
+	if err := clusterServer.Shutdown(); err != nil {
+		terminalError = multierror.Append(terminalError, fmt.Errorf("clusterServer.Shutdown: %w", err))
+	}
 
 	sqlConn, err := dbConn.DB()
 	if err != nil {

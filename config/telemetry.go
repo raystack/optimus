@@ -2,6 +2,8 @@ package config
 
 import (
 	"context"
+	"expvar"
+	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"time"
@@ -125,9 +127,24 @@ func MetricsServer(addr string) *http.Server {
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	mux.HandleFunc("/debug/vars", expvarHandler)
 
 	return &http.Server{
 		Addr:    addr,
 		Handler: mux,
 	}
+}
+
+func expvarHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintf(w, "{\n")
+	first := true
+	expvar.Do(func(kv expvar.KeyValue) {
+		if !first {
+			fmt.Fprintf(w, ",\n")
+		}
+		first = false
+		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
+	})
+	fmt.Fprintf(w, "\n}\n")
 }

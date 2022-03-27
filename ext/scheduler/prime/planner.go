@@ -2,6 +2,7 @@ package prime
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -17,12 +18,12 @@ import (
 )
 
 const (
-	// PeerPoolSize is fixed at the moment, should be configurable
-	// this dictates how many jobs can be executed by a single optimus peer
+	// NodePoolSize is fixed at the moment, should be configurable
+	// this dictates how many jobs can be executed by a single optimus node
 	// at a time
-	PeerPoolSize = 20
+	NodePoolSize = 20
 
-	SleepTime = time.Second * 10
+	NonLeaderSleepTime = time.Second * 3
 
 	// InstanceRunTimeout will mark an instance as failed if a instance is in
 	// running state more than provided time
@@ -33,16 +34,33 @@ const (
 	NodeJobRunTimeout = time.Hour * 1
 )
 
+// GossipCmdType are serf user defined query commands
+type GossipCmdType string
+
+const (
+	GossipCmdTypeInstanceStatus GossipCmdType = "INSTANCE_STATUS"
+)
+
+type GossipInstanceUpdateRequest struct {
+	InstanceID uuid.UUID
+	RunState models.JobRunState
+}
+
 type ClusterManager interface {
 	IsLeader() bool
 	ApplyCommand(*pb.CommandLog) error
 	GetState() gossip.State
 	GetClusterMembers() []serf.Member
 	GetLocalMember() serf.Member
+
+	// BroadcastQuery used by cluster nodes for custom events
+	BroadcastQuery(string, []byte) ([]byte, error)
+	// BroadcastListener used by leader to listen cluster node custom events
+	BroadcastListener() <-chan *serf.Query
 }
 
-// Planners creates an execution plan by monitoring
-// all the connected peers and assigning
+// Planner creates an execution plan by monitoring
+// all the connected peers and assigning what to execute to each node
 type Planner struct {
 	l log.Logger
 
@@ -65,7 +83,8 @@ func (p *Planner) Init(ctx context.Context) error {
 	}()
 	go p.leaderJobAllocation(ctx)
 	go p.leaderJobReconcile(ctx)
-	go p.peerJobExecution(ctx)
+	go p.nodeJobExecution(ctx)
+	go p.clusterEventHandler(ctx)
 	return nil
 }
 
@@ -74,13 +93,17 @@ func (p *Planner) Close() error {
 	return nil
 }
 
+// leaderJobAllocation allocates the user requested jobs to cluster
+// nodes for execution.
+// Requested jobs are pulled from database and once assigned whom
+// to execute what, this status is also persisted in database.
 func (p *Planner) leaderJobAllocation(ctx context.Context) {
 	p.wg.Add(1)
 	defer p.wg.Done()
 	loopIdx := 0
 	for {
 		if !p.clusterManager.IsLeader() {
-			time.Sleep(SleepTime)
+			time.Sleep(NonLeaderSleepTime)
 			continue
 		}
 
@@ -126,9 +149,9 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-time.After(1 * time.Second):
+			// repeats loop:
 			loopIdx++
-			time.Sleep(SleepTime)
 		}
 	}
 }
@@ -139,7 +162,7 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 // We assume if in case a node goes down, it will come back up for sure
 // and we will not scale down the cluster once its scaled up. This is a
 // temporary approach and ideally we should timeout jobs which are assigned
-// to jobs which went down and move them back to the pending state list.
+// to nodes which went down and move them back to the pending state list.
 func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, runIDs []uuid.UUID, err error) {
 	pendingJobRuns, err := p.jobRunRepoFac.New().GetByTrigger(ctx, models.TriggerManual, models.RunStatePending)
 	if err != nil {
@@ -163,7 +186,7 @@ func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, 
 			}
 		}
 	}
-	var mostCapSize = PeerPoolSize
+	var mostCapSize = NodePoolSize
 	for nodeID, utilization := range peerUtilization {
 		if utilization < mostCapSize {
 			mostCapNodeID = nodeID
@@ -177,7 +200,7 @@ func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, 
 
 	for idx, pendingRun := range pendingJobRuns {
 		runIDs = append(runIDs, pendingRun.ID)
-		if idx+mostCapSize > PeerPoolSize {
+		if idx+mostCapSize > NodePoolSize {
 			break
 		}
 	}
@@ -187,13 +210,23 @@ func (p *Planner) getJobAllocations(ctx context.Context) (mostCapNodeID string, 
 // leaderJobReconcile should update the job run state from running to
 // terminating state like success/failed once all of the child instances
 // are done executing and commit to cluster WAL
+// Reconciliation happens by reading states from database as db is currently
+// used to store shared state although raft WAL should be enough
+//
+// Ideally DB should be removed and non-leader messages to notify execution states
+// should be done in a different way. Two possible ways I can think of is:
+// - Use serf gossip protocol to broadcast job states to all the nodes
+// until leader listens to it and leader send a ack message to raft wal
+// - Find raft leader by pinging each node and cache it, then create a RPC
+// connection to directly send the message to leader, leader will ack message
+// to raft wal
 func (p *Planner) leaderJobReconcile(ctx context.Context) {
 	p.wg.Add(1)
 	defer p.wg.Done()
 	loopIdx := 0
 	for {
 		if !p.clusterManager.IsLeader() {
-			time.Sleep(SleepTime)
+			time.Sleep(NonLeaderSleepTime)
 			continue
 		}
 
@@ -279,15 +312,15 @@ func (p *Planner) leaderJobReconcile(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-time.After(1 * time.Second):
+			// repeats loop:
 			loopIdx++
-			time.Sleep(SleepTime)
 		}
 	}
 }
 
-// peerJobExecution looks for job assigned to this node and executes them
-func (p *Planner) peerJobExecution(ctx context.Context) {
+// nodeJobExecution looks for job assigned to this node and executes them
+func (p *Planner) nodeJobExecution(ctx context.Context) {
 	p.wg.Add(1)
 	defer p.wg.Done()
 	loopIdx := 0
@@ -324,17 +357,20 @@ func (p *Planner) peerJobExecution(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-time.After(1 * time.Second):
+			// repeats loop:
 			loopIdx++
-			time.Sleep(SleepTime)
 		}
 	}
 }
 
 // executeRun finds all tasks/hooks that belong to this run job spec and
-// execute them in order
+// execute them in order.
 // As each context gets executed, its state should be updated in job run
-// instance store
+// instance store.
+// TODO(kushsharma): Currently each node is executing in blocking state,
+// that is only one thing can execute at a time in a node, but this
+// should be made async
 func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun) error {
 	// for each exec instance in job
 	// - check if job run instances(tasks/hooks) are already in finished state
@@ -359,12 +395,20 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 				p.l.Warn("found a zombie instance", "job name", jobRun.Spec.Name, "task name", jobRun.Spec.Task.Unit.Info().Name)
 
 				// cancel task and move back state to accepted
+				//TODO(kush): remove this
 				if err := instanceRepo.UpdateStatus(ctx, instance.ID, models.RunStateAccepted); err != nil {
+					return err
+				}
+				if err := p.broadcastInstanceStatus(GossipInstanceUpdateRequest{
+					InstanceID: instance.ID,
+					RunState: models.RunStateAccepted,
+				}); err != nil {
 					return err
 				}
 
 				return p.executor.Stop(ctx, models.ExecutorStopRequest{
-					ID:     instance.ID.String(),
+					ID: instance.ID.String(),
+					// for now we are hardcore, this should be changed to SIGTERM
 					Signal: "SIGKILL",
 				})
 			}
@@ -410,17 +454,89 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 		p.l.Warn("job finished with non zero code", "code", finishCode, "job name", jobRun.Spec.Name)
 
 		// mark instance failed
+		//TODO(kush): remove this
 		if err := instanceRepo.UpdateStatus(ctx, newInstance.ID, models.RunStateFailed); err != nil {
+			return err
+		}
+		if err := p.broadcastInstanceStatus(GossipInstanceUpdateRequest{
+			InstanceID: newInstance.ID,
+			RunState: models.RunStateFailed,
+		}); err != nil {
 			return err
 		}
 	}
 
 	// mark instance success
+	//TODO(kush): remove this
 	if err := instanceRepo.UpdateStatus(ctx, newInstance.ID, models.RunStateSuccess); err != nil {
+		return err
+	}
+	if err := p.broadcastInstanceStatus(GossipInstanceUpdateRequest{
+		InstanceID: newInstance.ID,
+		RunState: models.RunStateSuccess,
+	}); err != nil {
 		return err
 	}
 	p.l.Info("finished executing job spec", "job name", jobRun.Spec.Name)
 	return nil
+}
+
+func (p *Planner) broadcastInstanceStatus(msg GossipInstanceUpdateRequest) error {
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	response, err := p.clusterManager.BroadcastQuery(string(GossipCmdTypeInstanceStatus), payload)
+	if err != nil {
+		return err
+	}
+	p.l.Info("serf query response", "payload", string(response))
+	return nil
+}
+
+func (p *Planner) clusterEventHandler(ctx context.Context) {
+	p.wg.Add(1)
+	defer p.wg.Done()
+	//instanceRepo := p.instanceRepoFac.New()
+
+	for {
+		if !p.clusterManager.IsLeader() {
+			time.Sleep(NonLeaderSleepTime)
+			continue
+		}
+
+		select {
+		case evt :=  <-p.clusterManager.BroadcastListener():
+			switch GossipCmdType(evt.Name) {
+			case GossipCmdTypeInstanceStatus:
+				err := evt.Respond([]byte("ok"))
+				if err != nil {
+					p.errChan <- err
+					break
+				}
+
+				var payload GossipInstanceUpdateRequest
+				if err := json.Unmarshal(evt.Payload, &payload); err != nil {
+					p.errChan <- err
+					break
+				}
+				p.l.Info("serf query request", "payload", payload)
+
+				//TODO(kush): update state in db
+				//if err := instanceRepo.UpdateStatus(ctx, payload.InstanceID, payload.RunState); err != nil {
+				//	p.errChan <- err
+				//	break
+				//}
+
+			default:
+				p.l.Warn("unknown broadcast event request", "type", evt.String())
+			}
+		case <-ctx.Done():
+			return
+		case <-time.After(1 * time.Second):
+			// default case: repeats loop
+		}
+	}
 }
 
 func NewPlanner(l log.Logger, sv ClusterManager, jobRunRepoFac RunRepoFactory,

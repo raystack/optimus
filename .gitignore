@@ -12,6 +12,7 @@ vendor
 TODO
 version
 temp
+tmp
 coverage.out
 jobs
 /resources/resource_fs.go

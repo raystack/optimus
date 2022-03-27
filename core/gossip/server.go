@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"context"
+	"expvar"
 	"fmt"
 	"net"
 	"os"
@@ -27,9 +28,15 @@ const (
 	connectionTimeout   = 10 * time.Second
 
 	applyTimeout = 10 * time.Second
+	devMode      = true
 	//leaderWaitDelay  = 100 * time.Millisecond
 	//appliedWaitDelay = 100 * time.Millisecond
 	//raftLogCacheSize = 512
+
+)
+
+var (
+	debugIsRaftLeader = expvar.NewString("IsRaftLeader")
 )
 
 type Server struct {
@@ -39,6 +46,7 @@ type Server struct {
 	raft             *raft.Raft
 	serf             *serf.Serf
 	serfEvents       chan serf.Event
+	serfQueryEventListener chan *serf.Query
 	raftBootstrapped bool
 }
 
@@ -58,8 +66,32 @@ func isFirstNode(l log.Logger, id string) bool {
 	return false
 }
 
+// Init initializes the node
+// Node first starts up a raft instance, it prepares a WAL and starts
+// listening on a port for raft log events, if any new event comes, it
+// gets deserialized and appended to its local WAL.
+// Internally this WAL is only committed if majority of the cluster members
+// have acked that they have received the event.
+// Raft events are only sent by raft leader.
+// Raft cluster runs with fixed number of nodes, and to change this membership
+// cluster will use a gossip protocol. Gossip will let this fixed raft
+// cluster know when to modify the membership of existing or new members.
+// Cluster will start with just one node for start, when another new node
+// is started and have a total of 2 nodes, gossip protocol will add
+// this new node to existing raft cluster.
+// Starting more nodes, again the gossip protocol  will modify
+// the cluster and increase the cluster size as needed.
+// Default when the cluster is started, first node will elect itself
+// as leader.
+// Once the consensus is reached, removing a member from cluster
+// membership won't start leader re-election(unless its a leader)
+// and won't modify the raft membership. Cluster will believe that
+// a member is down temporarily and wait for it to be revived.
+// To explicitly reduce the cluster size, that is removing node form raft
+// membership, we need to let it know using gossip protocol gracefully.
+// Recommended cluster size is 3 nodes which gives one node failover.
 func (s *Server) Init(ctx context.Context, schedulerConf config.SchedulerConfig) error {
-	if err := s.initRaft(ctx, true, isFirstNode(s.l, schedulerConf.NodeID), schedulerConf, s.fsm); err != nil {
+	if err := s.initRaft(ctx, devMode, isFirstNode(s.l, schedulerConf.NodeID), schedulerConf, s.fsm); err != nil {
 		return err
 	}
 	s.l.Info(fmt.Sprintf("%v", s.raft.Stats()))
@@ -83,6 +115,12 @@ func (s *Server) Shutdown() error {
 	}
 
 	if s.serf != nil {
+		// TODO(kushsharma): currently shutting down cluster
+		// actually gracefully removes the current node from raft cluster.
+		// We don't know if this leave was intentional so ideally we should
+		// only leave a raft cluster when this was explicitly stated
+		// maybe by using a CLI command sent to leader.
+		// For now we will do this to keep development easy.
 		if err := s.serf.Leave(); err != nil {
 			return err
 		}
@@ -108,17 +146,17 @@ func (s *Server) ApplyCommand(cmd *pb.CommandLog) error {
 	return future.Error()
 }
 
-// ApplyCommand writes a new log entry in write ahead log of raft cluster
-// this log is replicated to all the connected nodes
+// GetClusterMembers return cluster active members
 func (s *Server) GetClusterMembers() []serf.Member {
 	return s.serf.Members()
 }
 
-// GetState() returns current local wal state
+// GetState returns current local wal state
 func (s *Server) GetState() State {
 	return s.fsm.state
 }
 
+// GetLocalMember returns self details from the cluster
 func (s *Server) GetLocalMember() serf.Member {
 	return s.serf.LocalMember()
 }
@@ -131,11 +169,37 @@ func (s *Server) IsLeader() bool {
 	return s.raft.State() == raft.Leader
 }
 
+// BroadcastQuery broadcast a message to cluster expecting a reply from leader
+func (s *Server) BroadcastQuery(cmd string, payload []byte) ([]byte, error) {
+	qResp, err := s.serf.Query(cmd, payload, s.serf.DefaultQueryParams())
+	if err != nil {
+		return nil, err
+	}
+	var response []byte
+	for !qResp.Finished() {
+		select {
+		case resp := <-qResp.ResponseCh():
+			s.l.Info("serf query response from", "node", resp.From)
+			response = resp.Payload
+			qResp.Close()
+		}
+	}
+	if response == nil {
+		return nil, fmt.Errorf("time out")
+	}
+	return response, nil
+}
+
+func (s *Server) BroadcastListener() <- chan *serf.Query {
+	return s.serfQueryEventListener
+}
+
 // serf is used for managing membership of peers across cluster
 // if a node joins it gets added to cluster to take part as voter
 // if a node leaves membership gossip, it is removed from the raft cluster
 func (s *Server) initSerf(ctx context.Context, schedulerConf config.SchedulerConfig) error {
 	s.serfEvents = make(chan serf.Event)
+	s.serfQueryEventListener = make(chan *serf.Query)
 	serfConfig, err := newSerfConfig(schedulerConf.GossipAddr, schedulerConf.RaftAddr, schedulerConf.NodeID, s.serfEvents)
 	if err != nil {
 		return err
@@ -232,7 +296,7 @@ func (s *Server) initRaftStore(devMode bool, baseDir string) (raft.LogStore, raf
 	}
 
 	// prepare directory for data
-	if err := os.MkdirAll(baseDir, 0777); err != nil {
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -261,6 +325,9 @@ func (s *Server) handleSerfEvents() {
 		}
 		var err error
 		switch evt.EventType() {
+		case serf.EventQuery:
+			q := evt.(*serf.Query)
+			s.serfQueryEventListener <- q
 		case serf.EventMemberJoin:
 			memEvt := evt.(serf.MemberEvent)
 			for _, member := range memEvt.Members {
@@ -271,7 +338,10 @@ func (s *Server) handleSerfEvents() {
 			for _, member := range memEvt.Members {
 				err = s.HandleLeavePeer(member)
 			}
+		case serf.EventUser:
+			s.l.Info("received a user event in gossip", "evt", evt)
 		}
+
 		if err != nil {
 			s.l.Error("handleSerfEvents", "error", err)
 		}
@@ -280,11 +350,14 @@ func (s *Server) handleSerfEvents() {
 
 // syncLeader listens for changes in leadership, if we gain or we lose
 func (s *Server) syncLeader() {
+	debugIsRaftLeader.Set("false")
 	for isLeader := range s.raft.LeaderCh() {
 		if !isLeader {
+			debugIsRaftLeader.Set("false")
 			continue
 		}
 
+		debugIsRaftLeader.Set("true")
 		// although we are listening over serf events
 		// doing it here as well makes sure we are in sync
 		for _, member := range s.serf.Members() {
@@ -358,9 +431,9 @@ func (s *Server) HandleLeavePeer(member serf.Member) error {
 	return nil
 }
 
-func NewServer(l log.Logger) *Server {
+func NewServer(l log.Logger, nowFn func() time.Time) *Server {
 	return &Server{
 		l:   l,
-		fsm: NewFSM(l),
+		fsm: NewFSM(l, nowFn),
 	}
 }

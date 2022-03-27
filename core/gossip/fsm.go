@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/raft"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
@@ -20,8 +21,9 @@ type State struct {
 }
 
 type StateJob struct {
-	UUID   string
-	Status string
+	UUID      string
+	Status    string
+	UpdatedAt time.Time
 }
 
 type fsm struct {
@@ -29,6 +31,7 @@ type fsm struct {
 
 	state State
 	mu    *sync.Mutex
+	now   func() time.Time
 }
 
 // Apply applies a raft log entry to the local fsm store
@@ -75,6 +78,7 @@ func (f *fsm) Apply(rlog *raft.Log) interface{} {
 				if jobState.UUID == patch.RunId {
 					f.state.Allocation[cmdLog.PeerId].Remove(jobState)
 					jobState.Status = patch.Status
+					jobState.UpdatedAt = f.now()
 
 					// if run at terminating states, deallocate else update
 					if patch.Status != models.RunStateFailed.String() &&
@@ -91,7 +95,7 @@ func (f *fsm) Apply(rlog *raft.Log) interface{} {
 	return nil
 }
 
-// fsmSnapshot returns a snapshot of the local fsm store
+// Snapshot returns a snapshot of the local fsm store
 // Note(kushsharma): we use golang gob for encoding the struct to bytes, this
 // is slow compare to protobuf or msgpack but I think its good enough for
 // now, can be optimised further if needed
@@ -125,13 +129,14 @@ func (f *fsm) Restore(closer io.ReadCloser) error {
 	return nil
 }
 
-func NewFSM(l log.Logger) *fsm {
+func NewFSM(l log.Logger, nowFn func() time.Time) *fsm {
 	return &fsm{
 		l: l,
 		state: State{
 			Allocation: map[string]set.Set{},
 		},
-		mu: new(sync.Mutex),
+		mu:  new(sync.Mutex),
+		now: nowFn,
 	}
 }
 

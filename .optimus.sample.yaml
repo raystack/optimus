@@ -27,7 +27,7 @@ log:
 # for configuring optimus namespace
 #namespace:
 #  name: sample_namespace
-#  jobs:
+#  job:
 #    # folder where job specifications are stored
 #    path: "job"
 #  datastore:

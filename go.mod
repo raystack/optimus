@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-plugin v1.4.1
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
-	github.com/hashicorp/raft v1.3.1
+	github.com/hashicorp/raft v1.3.6
 	github.com/hashicorp/raft-boltdb v0.0.0-20210422161416-485fa74b0b01 // indirect
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210422161416-485fa74b0b01
 	github.com/hashicorp/serf v0.8.2
