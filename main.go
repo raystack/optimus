@@ -8,18 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
-	_ "net/http/pprof"
-
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
+	"github.com/odpf/salt/log"
+	"github.com/sirupsen/logrus"
+
 	"github.com/odpf/optimus/cmd"
 	"github.com/odpf/optimus/config"
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
-	"github.com/odpf/salt/log"
 )
 
 var errRequestFail = errors.New("🔥 unable to complete request successfully")
