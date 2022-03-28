@@ -15,14 +15,15 @@ import (
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
 
+	"github.com/odpf/salt/log"
+
+	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
-	"github.com/odpf/salt/log"
 )
 
 // projectJobSpecRepoFactory stores raw specifications
@@ -188,10 +189,9 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 	obs.log.Info("observing pipeline log", "progress event", evt.String(), "reporter", "pipeline")
 }
 
-func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-	engine := run.NewGoEngine()
+func jobSpecAssetDump(engine models.TemplateEngine) func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := run.DumpAssets(jobSpec, scheduledAt, engine, false)
+		aMap, err := compiler.DumpAssets(jobSpec, scheduledAt, engine, false)
 		if err != nil {
 			return models.JobAssets{}, err
 		}

@@ -15,12 +15,12 @@ import (
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
@@ -231,13 +231,14 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
+	engine := jobRunCompiler.NewGoEngine()
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
 	jobService := job.NewService(
 		&jobSpecRepoFac,
 		scheduler,
 		manualScheduler,
-		jobSpecAssetDump(),
+		jobSpecAssetDump(engine),
 		dependencyResolver,
 		priorityResolver,
 		projectJobSpecRepoFac,
@@ -247,15 +248,14 @@ func (s *OptimusServer) setupHandlers() error {
 	jobrunRepoFac := &jobRunRepoFactory{
 		db: s.dbConn,
 	}
+
 	// job run service
-	jobRunService := run.NewService(
+	jobRunService := service.NewJobRunService(
 		jobrunRepoFac,
-		secretService,
 		func() time.Time {
 			return time.Now().UTC()
 		},
 		models.BatchScheduler,
-		run.NewGoEngine(),
 	)
 
 	progressObs := &pipelineLogObserver{
@@ -275,6 +275,10 @@ func (s *OptimusServer) setupHandlers() error {
 	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
 	// adapter service
 	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
+
+	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
+	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, models.PluginRegistry)
+	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
 
 	// secret service
 	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
@@ -311,6 +315,7 @@ func (s *OptimusServer) setupHandlers() error {
 		namespaceService,
 		adapterService,
 		jobRunService,
+		runInputCompiler,
 		models.BatchScheduler))
 	// backup service
 	pb.RegisterBackupServiceServer(s.grpcServer, v1handler.NewBackupServiceServer(s.logger,

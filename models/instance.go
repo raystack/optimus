@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -135,23 +134,6 @@ type JobRunInput struct {
 	ConfigMap  map[string]string
 	FileMap    map[string]string
 	SecretsMap map[string]string
-}
-
-type RunService interface {
-	// GetScheduledRun find if already present or create a new scheduled run
-	GetScheduledRun(ctx context.Context, namespace NamespaceSpec, JobID JobSpec, scheduledAt time.Time) (JobRun, error)
-
-	// GetByID returns job run, normally gets requested for manual runs
-	GetByID(ctx context.Context, JobRunID uuid.UUID) (JobRun, NamespaceSpec, error)
-
-	// Register creates a new instance in provided job run
-	Register(ctx context.Context, namespace NamespaceSpec, jobRun JobRun, instanceType InstanceType, instanceName string) (InstanceSpec, error)
-
-	// Compile prepares instance execution context environment
-	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (jobRunInput *JobRunInput, err error)
-
-	// GetJobRuns returns all the job based given status and date range
-	GetJobRunList(ctx context.Context, projectSpec ProjectSpec, jobSpec JobSpec, jobQuery *JobQuery) ([]JobRun, error)
 }
 
 // TemplateEngine compiles raw text templates using provided values
