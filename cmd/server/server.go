@@ -235,8 +235,7 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 	obs.log.Info("observing pipeline log", "progress event", evt.String(), "reporter", "pipeline")
 }
 
-func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-	engine := jobRunCompiler.NewGoEngine()
+func jobSpecAssetDump(engine models.TemplateEngine) func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 		aMap, err := jobRunCompiler.DumpAssets(jobSpec, scheduledAt, engine, false)
 		if err != nil {
@@ -440,12 +439,14 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			},
 		),
 	})
+
+	engine := jobRunCompiler.NewGoEngine()
 	// job service
 	jobService := job.NewService(
 		&jobSpecRepoFac,
 		models.BatchScheduler,
 		models.ManualScheduler,
-		jobSpecAssetDump(),
+		jobSpecAssetDump(engine),
 		dependencyResolver,
 		priorityResolver,
 		projectJobSpecRepoFac,
@@ -464,7 +465,6 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		models.BatchScheduler,
 	)
 
-	engine := jobRunCompiler.NewGoEngine()
 	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
 	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, models.PluginRegistry)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
