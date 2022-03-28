@@ -43,9 +43,10 @@ serve:
   host: localhost
   ingress_host: optimus.example.io:80
   app_key: Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc
-  replay_num_workers: 1
-  replay_worker_timeout: "100s"
-  replay_run_timeout: "10s"
+  replay:
+    num_workers: 1
+    worker_timeout: "100s"
+    run_timeout: "10s"
   db:
     dsn: postgres://user:password@localhost:5432/database?sslmode=disable
     max_idle_connection: 5
@@ -81,9 +82,10 @@ serve:
   host: localhost
   ingress_host: optimus.example.io:80
   app_key: Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc
-  replay_num_workers: 1
-  replay_worker_timeout: "100s"
-  replay_run_timeout: "10s"
+  replay:
+    num_workers: 1
+    worker_timeout: "100s"
+    run_timeout: "10s"
   db:
     dsn: postgres://user:password@localhost:5432/database?sslmode=disable
     max_idle_connection: 5
@@ -157,13 +159,15 @@ func TestLoadOptimusConfig(t *testing.T) {
 				},
 			},
 			Server: config.Serve{
-				Port:                9100,
-				Host:                "localhost",
-				IngressHost:         "optimus.example.io:80",
-				AppKey:              "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc",
-				ReplayNumWorkers:    1,
-				ReplayWorkerTimeout: 100 * time.Second,
-				ReplayRunTimeout:    10 * time.Second,
+				Port:        9100,
+				Host:        "localhost",
+				IngressHost: "optimus.example.io:80",
+				AppKey:      "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc",
+				Replay: config.Replay{
+					NumWorkers:    1,
+					WorkerTimeout: 100 * time.Second,
+					RunTimeout:    10 * time.Second,
+				},
 				DB: config.DBConfig{
 					DSN:               "postgres://user:password@localhost:5432/database?sslmode=disable",
 					MaxIdleConnection: 5,
@@ -414,9 +418,9 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Serve.Host = "localhost"
 	s.expectedServerConfig.Serve.IngressHost = "optimus.example.io:80"
 	s.expectedServerConfig.Serve.AppKey = "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc"
-	s.expectedServerConfig.Serve.ReplayNumWorkers = 1
-	s.expectedServerConfig.Serve.ReplayWorkerTimeout = 100 * time.Second
-	s.expectedServerConfig.Serve.ReplayRunTimeout = 10 * time.Second
+	s.expectedServerConfig.Serve.Replay.NumWorkers = 1
+	s.expectedServerConfig.Serve.Replay.WorkerTimeout = 100 * time.Second
+	s.expectedServerConfig.Serve.Replay.RunTimeout = 10 * time.Second
 	s.expectedServerConfig.Serve.DB = config.DBConfig{}
 	s.expectedServerConfig.Serve.DB.DSN = "postgres://user:password@localhost:5432/database?sslmode=disable"
 	s.expectedServerConfig.Serve.DB.MaxIdleConnection = 5

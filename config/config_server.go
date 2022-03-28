@@ -13,14 +13,18 @@ type ServerConfig struct {
 }
 
 type Serve struct {
-	Port                int           `mapstructure:"port" default:"9100"`    // port to listen on
-	Host                string        `mapstructure:"host" default:"0.0.0.0"` // the network interface to listen on
-	IngressHost         string        `mapstructure:"ingress_host"`           // service ingress host for jobs to communicate back to optimus
-	AppKey              string        `mapstructure:"app_key"`                // random 32 character hash used for encrypting secrets
-	DB                  DBConfig      `mapstructure:"db"`
-	ReplayNumWorkers    int           `mapstructure:"replay_num_workers" default:"1"`
-	ReplayWorkerTimeout time.Duration `mapstructure:"replay_worker_timeout" default:"120s"`
-	ReplayRunTimeout    time.Duration `mapstructure:"replay_run_timeout"`
+	Port        int      `mapstructure:"port" default:"9100"`    // port to listen on
+	Host        string   `mapstructure:"host" default:"0.0.0.0"` // the network interface to listen on
+	IngressHost string   `mapstructure:"ingress_host"`           // service ingress host for jobs to communicate back to optimus
+	AppKey      string   `mapstructure:"app_key"`                // random 32 character hash used for encrypting secrets
+	DB          DBConfig `mapstructure:"db"`
+	Replay      Replay   `mapstructure:"replay"`
+}
+
+type Replay struct {
+	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
+	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"120s"`
+	RunTimeout    time.Duration `mapstructure:"run_timeout"`
 }
 
 type DBConfig struct {
