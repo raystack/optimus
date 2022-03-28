@@ -106,7 +106,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		stream.Send(&pb.DeployJobSpecificationResponse{
 			Success: true,
 			Ack:     true,
-			Message: "success",
+			Message: fmt.Sprintf("jobs with namespace [%s] are deployed successfully", req.NamespaceName),
 		})
 	}
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))
