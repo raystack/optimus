@@ -30,6 +30,7 @@ type JobSpecServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
 	adapter          ProtoAdapter
+	projectService   service.ProjectService
 	namespaceService service.NamespaceService
 	progressObserver progress.Observer
 	pb.UnimplementedJobSpecificationServiceServer
@@ -285,7 +286,7 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.RuntimeService_RefreshJobsServer) error {
+func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.JobSpecificationService_RefreshJobsServer) error {
 	startTime := time.Now()
 
 	observers := new(progress.ObserverChain)
@@ -301,7 +302,7 @@ func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 		return err
 	}
 
-	projectSpec, err := sv.projectService.GetByName(respStream.Context(), req.ProjectName)
+	projectSpec, err := sv.projectService.Get(respStream.Context(), req.ProjectName)
 	if err != nil {
 		return mapToGRPCErr(sv.l, err, "unable to get project")
 	}
@@ -314,7 +315,7 @@ func (sv *RuntimeServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 	return nil
 }
 
-func (sv *RuntimeServiceServer) prepareNamespaceJobNamePair(ctx context.Context, req *pb.RefreshJobsRequest) ([]models.NamespaceJobNamePair, error) {
+func (sv *JobSpecServiceServer) prepareNamespaceJobNamePair(ctx context.Context, req *pb.RefreshJobsRequest) ([]models.NamespaceJobNamePair, error) {
 	var namespaceJobNamePairs []models.NamespaceJobNamePair
 	for _, namespaceJobs := range req.NamespaceJobs {
 		namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), namespaceJobs.NamespaceName)
@@ -330,11 +331,13 @@ func (sv *RuntimeServiceServer) prepareNamespaceJobNamePair(ctx context.Context,
 	return namespaceJobNamePairs, nil
 }
 
-func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
+func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,
+	projectService service.ProjectService, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
 	return &JobSpecServiceServer{
 		l:                l,
 		jobSvc:           jobService,
 		adapter:          adapter,
+		projectService:   projectService,
 		namespaceService: namespaceService,
 		progressObserver: progressObserver,
 	}

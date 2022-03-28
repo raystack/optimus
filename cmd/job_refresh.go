@@ -90,8 +90,8 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 		})
 	}
 
-	runtime := pb.NewRuntimeServiceClient(conn)
-	respStream, err := runtime.RefreshJobs(refreshTimeoutCtx, &pb.RefreshJobsRequest{
+	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
+	respStream, err := jobSpecService.RefreshJobs(refreshTimeoutCtx, &pb.RefreshJobsRequest{
 		ProjectName:   projectName,
 		NamespaceJobs: namespaceJobs,
 	})

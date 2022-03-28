@@ -144,7 +144,7 @@ func TestSecretService(t *testing.T) {
 	t.Run("List", func(t *testing.T) {
 		t.Run("returns error when project service has error", func(t *testing.T) {
 			projService := new(mock.ProjectService)
-			projService.On("GetByName", ctx, project.Name).
+			projService.On("Get", ctx, project.Name).
 				Return(models.ProjectSpec{}, errors.New("error in getting project"))
 			defer projService.AssertExpectations(t)
 
@@ -156,7 +156,7 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns list of secrets", func(t *testing.T) {
 			projService := new(mock.ProjectService)
-			projService.On("GetByName", ctx, project.Name).Return(project, nil)
+			projService.On("Get", ctx, project.Name).Return(project, nil)
 			defer projService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)

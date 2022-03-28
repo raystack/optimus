@@ -116,7 +116,7 @@ func (obs *jobCheckObserver) Notify(e progress.Event) {
 }
 
 type jobRefreshObserver struct {
-	stream pb.RuntimeService_RefreshJobsServer
+	stream pb.JobSpecificationService_RefreshJobsServer
 	log    log.Logger
 	mu     *sync.Mutex
 }

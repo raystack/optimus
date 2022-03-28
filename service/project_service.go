@@ -12,7 +12,7 @@ type ProjectRepoFactory interface {
 }
 
 type ProjectService interface {
-	GetByName(context.Context, string) (models.ProjectSpec, error)
+	Get(context.Context, string) (models.ProjectSpec, error)
 	Save(context.Context, models.ProjectSpec) error
 	GetAll(context.Context) ([]models.ProjectSpec, error)
 }
@@ -27,7 +27,7 @@ func NewProjectService(factory ProjectRepoFactory) *projectService {
 	}
 }
 
-func (s projectService) GetByName(ctx context.Context, projectName string) (models.ProjectSpec, error) {
+func (s projectService) Get(ctx context.Context, projectName string) (models.ProjectSpec, error) {
 	if projectName == "" {
 		return models.ProjectSpec{},
 			NewError(models.ProjectEntity, ErrInvalidArgument, "project name cannot be empty")

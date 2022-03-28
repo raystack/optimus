@@ -55,7 +55,7 @@ type ProjectService struct {
 	mock.Mock
 }
 
-func (pr *ProjectService) GetByName(ctx context.Context, name string) (models.ProjectSpec, error) {
+func (pr *ProjectService) Get(ctx context.Context, name string) (models.ProjectSpec, error) {
 	args := pr.Called(ctx, name)
 	return args.Get(0).(models.ProjectSpec), args.Error(1)
 }

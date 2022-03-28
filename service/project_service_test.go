@@ -20,11 +20,11 @@ func TestProjectService(t *testing.T) {
 		Name: "optimus-project",
 	}
 
-	t.Run("GetByName", func(t *testing.T) {
+	t.Run("Get", func(t *testing.T) {
 		t.Run("return error when project name is empty", func(t *testing.T) {
 			svc := service.NewProjectService(nil)
 
-			_, err := svc.GetByName(ctx, "")
+			_, err := svc.Get(ctx, "")
 			assert.NotNil(t, err)
 			assert.Equal(t, "project name cannot be empty: invalid argument for entity project", err.Error())
 		})
@@ -40,7 +40,7 @@ func TestProjectService(t *testing.T) {
 
 			svc := service.NewProjectService(projectRepoFactory)
 
-			_, err := svc.GetByName(ctx, "nonexistent")
+			_, err := svc.Get(ctx, "nonexistent")
 			assert.NotNil(t, err)
 			assert.Equal(t, "resource not found: not found for entity project", err.Error())
 		})
@@ -54,7 +54,7 @@ func TestProjectService(t *testing.T) {
 
 			svc := service.NewProjectService(projectRepoFactory)
 
-			actualProject, err := svc.GetByName(ctx, project.Name)
+			actualProject, err := svc.Get(ctx, project.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "optimus-project", actualProject.Name)
 			assert.Equal(t, project.ID, actualProject.ID)

@@ -512,6 +512,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	pb.RegisterJobSpecificationServiceServer(grpcServer, v1handler.NewJobSpecServiceServer(l,
 		jobService,
 		adapterService,
+		projectService,
 		namespaceService,
 		progressObs))
 	// job run service

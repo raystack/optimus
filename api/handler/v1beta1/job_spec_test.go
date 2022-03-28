@@ -22,6 +22,7 @@ import (
 type JobSpecServiceServerTestSuite struct {
 	suite.Suite
 	ctx              context.Context //nolint:containedctx
+	projectService   *mock.ProjectService
 	namespaceService *mock.NamespaceService
 	jobService       *mock.JobService // TODO: refactor to service package
 	adapter          *mock.ProtoAdapter
@@ -64,6 +65,7 @@ func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecSer
 		s.log,
 		s.jobService,
 		s.adapter,
+		s.projectService,
 		s.namespaceService,
 		s.progressObserver,
 	)
@@ -371,7 +373,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
-				adapter, namespaceService,
+				adapter,
+				nil,
+				namespaceService,
 				nil,
 			)
 
@@ -460,7 +464,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				adapter, namespaceService,
+				adapter,
+				nil,
+				namespaceService,
 				nil,
 			)
 
@@ -473,7 +479,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 	t.Run("RefreshJobs", func(t *testing.T) {
 		t.Run("should refresh jobs successfully", func(t *testing.T) {
-			Version := "1.0.1"
 			projectName := "a-data-project"
 			projectSpec := models.ProjectSpec{
 				ID:   uuid.Must(uuid.NewRandom()),
@@ -524,30 +529,24 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer grpcRespStream.AssertExpectations(t)
 
 			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-			projectService.On("GetByName", ctx, projectSpec.Name).Return(projectSpec, nil)
+			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			jobService.On("Refresh", mock2.Anything, projectSpec, namespaceJobNamePairs, mock2.Anything).Return(nil)
 			grpcRespStream.On("Context").Return(context.Background())
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				Version,
 				jobService,
-				nil, nil,
+				adapter,
 				projectService,
 				nsService,
 				nil,
-				adapter,
-				nil,
-				nil,
-				nil,
 			)
-
 			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceJobs: []*pb.NamespaceJobs{
 				{
 					NamespaceName: namespaceSpec.Name,
 				},
 			}}
-			err := runtimeServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
+			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
 			assert.Nil(t, err)
 		})
 	})

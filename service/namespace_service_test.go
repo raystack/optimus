@@ -28,7 +28,7 @@ func TestNamespaceService(t *testing.T) {
 		ProjectSpec: project,
 	}
 	projService := new(mock.ProjectService)
-	projService.On("GetByName", ctx, project.Name).Return(project, nil)
+	projService.On("Get", ctx, project.Name).Return(project, nil)
 
 	t.Run("Get", func(t *testing.T) {
 		t.Run("return error when project name is empty", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestNamespaceService(t *testing.T) {
 	t.Run("GetNamespaceOptionally", func(t *testing.T) {
 		t.Run("return error when projectService returns error", func(t *testing.T) {
 			projService := new(mock.ProjectService)
-			projService.On("GetByName", ctx, "invalid").
+			projService.On("Get", ctx, "invalid").
 				Return(models.ProjectSpec{}, errors.New("project not found"))
 			defer projService.AssertExpectations(t)
 
@@ -196,7 +196,7 @@ func TestNamespaceService(t *testing.T) {
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("return error when getting project fails", func(t *testing.T) {
 			projService := new(mock.ProjectService)
-			projService.On("GetByName", ctx, "invalid").
+			projService.On("Get", ctx, "invalid").
 				Return(models.ProjectSpec{}, errors.New("project not found"))
 			defer projService.AssertExpectations(t)
 

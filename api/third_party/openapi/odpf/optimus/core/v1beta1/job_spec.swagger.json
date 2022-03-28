@@ -571,6 +571,38 @@
           }
         }
       }
+    },
+    "v1beta1NamespaceJobs": {
+      "type": "object",
+      "properties": {
+        "namespaceName": {
+          "type": "string"
+        },
+        "jobNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1RefreshJobsResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string",
+          "title": "response type differentiate events"
+        },
+        "message": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        }
+      }
     }
   },
   "externalDocs": {

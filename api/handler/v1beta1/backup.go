@@ -119,7 +119,7 @@ func (sv *BackupServiceServer) CreateBackup(ctx context.Context, req *pb.CreateB
 }
 
 func (sv *BackupServiceServer) ListBackups(ctx context.Context, req *pb.ListBackupsRequest) (*pb.ListBackupsResponse, error) {
-	projectSpec, err := sv.projectService.GetByName(ctx, req.GetProjectName())
+	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
@@ -145,7 +145,7 @@ func (sv *BackupServiceServer) ListBackups(ctx context.Context, req *pb.ListBack
 }
 
 func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
-	projectSpec, err := sv.projectService.GetByName(ctx, req.GetProjectName())
+	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}

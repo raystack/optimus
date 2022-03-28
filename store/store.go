@@ -43,7 +43,6 @@ type ProjectJobSpecRepository interface {
 type ProjectRepository interface {
 	Save(context.Context, models.ProjectSpec) error
 	GetByName(context.Context, string) (models.ProjectSpec, error)
-	GetByID(context.Context, uuid.UUID) (models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.ProjectSpec, error)
 }
 
