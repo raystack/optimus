@@ -1,1 +1,1 @@
-ALTER TABLE job DROP IF EXISTS external_dependencies;
+ALTER TABLE job DROP IF EXISTS job_dependency;
