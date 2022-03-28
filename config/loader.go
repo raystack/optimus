@@ -77,6 +77,7 @@ func LoadOptimusConfig(dirPaths ...string) (*Optimus, error) {
 	return &optimus, nil
 }
 
+// (LEGACY)
 func validateNamespaceDuplication(optimus *Optimus) error {
 	nameToAppearance := make(map[string]int)
 	for _, namespace := range optimus.Namespaces {
@@ -94,6 +95,7 @@ func validateNamespaceDuplication(optimus *Optimus) error {
 	return nil
 }
 
+// (LEGACY)
 func loadConfig(cfg interface{}, fs afero.Fs, dirPath string) error {
 	// getViperWithDefault + SetFs
 	v := viper.New()
