@@ -70,11 +70,11 @@ func (s ProjectSecrets) String() string {
 }
 
 func (s ProjectSecrets) ToMap() map[string]string {
-	mapping := map[string]string{}
+	secretMap := map[string]string{}
 	for _, item := range s {
-		mapping[item.Name] = item.Value
+		secretMap[item.Name] = item.Value
 	}
-	return mapping
+	return secretMap
 }
 
 func (s ProjectSecrets) GetByName(name string) (string, bool) {
