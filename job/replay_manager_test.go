@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+	mocklib "github.com/stretchr/testify/mock"
+
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
-	mocklib "github.com/stretchr/testify/mock"
 )
 
 func TestReplayManager(t *testing.T) {

@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type Project struct {

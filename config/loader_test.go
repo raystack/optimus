@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/config"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/config"
 )
 
 const (

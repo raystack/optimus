@@ -3,9 +3,10 @@ package mock
 import (
 	"context"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/stretchr/testify/mock"
 )
 
 type NamespaceRepository struct {

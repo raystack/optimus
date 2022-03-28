@@ -3,8 +3,9 @@ package bigquery //nolint: testpackage
 import (
 	"testing"
 
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/models"
 )
 
 func TestTableSpecHandler(t *testing.T) {

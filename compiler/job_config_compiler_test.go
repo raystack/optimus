@@ -3,9 +3,10 @@ package compiler_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCompileConfigs(t *testing.T) {

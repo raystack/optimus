@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSecretManagementOnRuntimeServer(t *testing.T) {

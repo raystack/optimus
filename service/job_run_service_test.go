@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/stretchr/testify/assert"
-	mock2 "github.com/stretchr/testify/mock"
+	"github.com/odpf/optimus/store"
 )
 
 func TestJobRunService(t *testing.T) {

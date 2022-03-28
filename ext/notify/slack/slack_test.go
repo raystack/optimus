@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/odpf/optimus/models"
 	api "github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/odpf/optimus/models"
 )
 
 func getTestUserProfile() api.UserProfile {

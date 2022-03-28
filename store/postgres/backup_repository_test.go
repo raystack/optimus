@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/store/postgres"
-	testMock "github.com/stretchr/testify/mock"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+	testMock "github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 func TestIntegrationBackupRepository(t *testing.T) {

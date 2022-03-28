@@ -3,16 +3,16 @@ package v1beta1
 import (
 	"context"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-
-	"github.com/odpf/optimus/core/tree"
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/utils"
 )
 
 type JobEventService interface {

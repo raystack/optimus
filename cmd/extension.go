@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/odpf/optimus/extension"
-
 	"github.com/google/go-github/github"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/extension"
 )
 
 func addExtensionCommand(cmd *cli.Command, l log.Logger) {

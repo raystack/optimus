@@ -5,11 +5,9 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/core/cron"
-
-	"github.com/odpf/optimus/store"
-
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 // RunRepoFactory manages execution instances of a job runs

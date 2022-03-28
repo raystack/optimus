@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (

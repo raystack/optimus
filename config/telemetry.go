@@ -8,12 +8,9 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
-
 	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"

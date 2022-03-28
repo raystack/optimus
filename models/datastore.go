@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/optimus/core/progress"
-
 	"github.com/google/uuid"
+
+	"github.com/odpf/optimus/core/progress"
 )
 
 const (
