@@ -11,7 +11,7 @@ import (
 	"github.com/odpf/optimus/store"
 
 	"github.com/google/uuid"
-
+	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
@@ -111,7 +111,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, nil, nil)
+			runService := run.NewService(jobRunSpecRep, nil, nil, nil, nil)
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
@@ -158,7 +158,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, nil, nil)
+			runService := run.NewService(jobRunSpecRep, nil, nil, nil, nil)
 
 			var existingRun models.JobRun
 			Copy(&existingRun, jobRun)
@@ -212,7 +212,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil)
+			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
 
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
@@ -267,7 +267,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil)
+			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingJobRun, models.InstanceTypeHook, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
@@ -310,7 +310,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil)
+			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
 
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Equal(t, "a random error", err.Error())
@@ -335,7 +335,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil)
+			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
 			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, jobRun, returnedSpec)
@@ -356,7 +356,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil)
+			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
 			_, _ = runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 		})
 		t.Run("should return empty RunSpec if GetByScheduledAt returns an error", func(t *testing.T) {
@@ -368,10 +368,316 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil)
+			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
 			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.JobRun{}, returnedSpec)
+		})
+	})
+
+	t.Run("GetJobRunList", func(t *testing.T) {
+		startDate, err := time.Parse(time.RFC3339, "2022-03-20T02:00:00+00:00")
+		if err != nil {
+			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		}
+		endDate, err := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+		if err != nil {
+			t.Errorf("unable to parse the time to test GetJobRuns %v", err)
+		}
+		jobCron, err := cron.ParseCronSchedule("0 12 * * *")
+		if err != nil {
+			t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
+		}
+		t.Run("should not able to get job runs when scheduler returns empty response", func(t *testing.T) {
+			sch := new(mock.Scheduler)
+			spec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+			jobQuery := &models.JobQuery{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, nil)
+			defer sch.AssertExpectations(t)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.Nil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should able to get job runs when scheduler returns valid response", func(t *testing.T) {
+			spec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+			runsFromScheduler, err := mockGetJobRuns(5, startDate, jobSpec.Schedule.Interval, models.RunStateSuccess.String())
+			if err != nil {
+				t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
+			}
+			runsFromSchFor3days, err := mockGetJobRuns(3, startDate, jobSpec.Schedule.Interval, models.RunStateSuccess.String())
+			if err != nil {
+				t.Errorf("unable to build mock job runs to test GetJobRunList for success state %v", err)
+			}
+			expPendingRuns, err := mockGetJobRuns(2, startDate.Add(time.Hour*24*3), jobSpec.Schedule.Interval, models.RunStatePending.String())
+			if err != nil {
+				t.Errorf("unable to build mock job runs to test GetJobRunList for pending state %v", err)
+			}
+			type cases struct {
+				description    string
+				input          *models.JobQuery
+				runs           []models.JobRun
+				job            models.JobSpec
+				expectedResult []models.JobRun
+			}
+			for _, scenario := range []cases{
+				{
+					description: "filtering based on success",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{models.RunStateSuccess.String()},
+					},
+					job:            jobSpec,
+					runs:           runsFromScheduler,
+					expectedResult: runsFromScheduler,
+				},
+				{
+					description: "filtering based on failed",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{models.RunStateFailed.String()},
+					},
+					job:            jobSpec,
+					expectedResult: nil,
+				},
+				{
+					description: "no filterRuns applied",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{},
+					},
+					job:            jobSpec,
+					runs:           runsFromScheduler,
+					expectedResult: runsFromScheduler,
+				},
+				{
+					description: "filtering based on pending",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{models.RunStatePending.String()},
+					},
+					job:            jobSpec,
+					runs:           runsFromScheduler,
+					expectedResult: nil,
+				},
+				{
+					description: "when some job instances are not started by scheduler and filtered based on pending status",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{models.RunStatePending.String()},
+					},
+					job:            jobSpec,
+					runs:           runsFromSchFor3days,
+					expectedResult: expPendingRuns,
+				},
+				{
+					description: "when some job instances are not started by scheduler and filtered based on success status",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{models.RunStateSuccess.String()},
+					},
+					job:            jobSpec,
+					runs:           runsFromSchFor3days,
+					expectedResult: runsFromSchFor3days,
+				},
+				{
+					description: "when some job instances are not started by scheduler and no filterRuns applied",
+					input: &models.JobQuery{
+						Name:      "sample_select",
+						StartDate: startDate,
+						EndDate:   endDate,
+						Filter:    []string{},
+					},
+					job:            jobSpec,
+					runs:           runsFromSchFor3days,
+					expectedResult: append(runsFromSchFor3days, expPendingRuns...),
+				},
+			} {
+				t.Run(scenario.description, func(t *testing.T) {
+					sch := new(mock.Scheduler)
+					sch.On("GetJobRuns", ctx, spec, scenario.input, jobCron).Return(scenario.runs, nil)
+					defer sch.AssertExpectations(t)
+					runService := run.NewService(nil, nil, nil, sch, nil)
+					returnedRuns, err := runService.GetJobRunList(ctx, projSpec, scenario.job, scenario.input)
+					assert.Nil(t, err)
+					assert.Equal(t, scenario.expectedResult, returnedRuns)
+				})
+			}
+		})
+		t.Run("should not able to get job runs when invalid date range is given", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+			jobQuery := &models.JobQuery{
+				Name:      "sample_select",
+				StartDate: startDate.Add(-time.Hour * 24 * 2),
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			sch := new(mock.Scheduler)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when invalid cron interval present at DB", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "invalid interval",
+				},
+			}
+			jobQuery := &models.JobQuery{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			sch := new(mock.Scheduler)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when no cron interval present at DB", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "",
+				},
+			}
+			jobQuery := &models.JobQuery{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			sch := new(mock.Scheduler)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when no start date present at DB", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					EndDate:  nil,
+					Interval: "0 12 * * *",
+				},
+			}
+			jobQuery := &models.JobQuery{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			sch := new(mock.Scheduler)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
+			sch := new(mock.Scheduler)
+			spec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+			jobQuery := &models.JobQuery{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
+			defer sch.AssertExpectations(t)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.NotNil(t, err, errors.New("failed: due to invalid URL"))
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
+			sch := new(mock.Scheduler)
+			spec := models.ProjectSpec{
+				Name: "proj",
+			}
+			jobSpec := models.JobSpec{
+				Schedule: models.JobSpecSchedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+
+			jobQuery := &models.JobQuery{
+				Name:        "sample_select",
+				OnlyLastRun: true,
+			}
+			runs := []models.JobRun{
+				{
+					Status:      models.JobRunState("success"),
+					ScheduledAt: endDate,
+				},
+			}
+			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return(runs, nil)
+			defer sch.AssertExpectations(t)
+			runService := run.NewService(nil, nil, nil, sch, nil)
+			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
+			assert.Nil(t, err)
+			assert.Equal(t, runs, returnedRuns)
 		})
 	})
 }
@@ -387,4 +693,21 @@ func Copy(dst, src interface{}) error {
 		return fmt.Errorf("failed to unmarshal into dst: %w", err)
 	}
 	return nil
+}
+
+func mockGetJobRuns(afterDays int, date time.Time, interval, status string) ([]models.JobRun, error) {
+	var expRuns []models.JobRun
+	schSpec, err := cron.ParseCronSchedule(interval)
+	if err != nil {
+		return expRuns, err
+	}
+	nextStart := schSpec.Next(date.Add(-time.Second * 1))
+	for i := 0; i < afterDays; i++ {
+		expRuns = append(expRuns, models.JobRun{
+			Status:      models.JobRunState(status),
+			ScheduledAt: nextStart,
+		})
+		nextStart = schSpec.Next(nextStart)
+	}
+	return expRuns, nil
 }

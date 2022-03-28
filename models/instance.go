@@ -51,6 +51,7 @@ const (
 	// non assignment, non terminating states
 	RunStateAccepted JobRunState = "accepted"
 	RunStateRunning  JobRunState = "running"
+	RunStateQueued   JobRunState = "queued"
 
 	// terminate states
 	RunStateSuccess JobRunState = "success"
@@ -148,6 +149,9 @@ type RunService interface {
 
 	// Compile prepares instance execution context environment
 	Compile(ctx context.Context, namespaceSpec NamespaceSpec, jobRun JobRun, instanceSpec InstanceSpec) (jobRunInput *JobRunInput, err error)
+
+	// GetJobRuns returns all the job based given status and date range
+	GetJobRunList(ctx context.Context, projectSpec ProjectSpec, jobSpec JobSpec, jobQuery *JobQuery) ([]JobRun, error)
 }
 
 // TemplateEngine compiles raw text templates using provided values
