@@ -134,7 +134,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	namespaceNames []string,
 	verbose bool,
 ) error {
-	//TODO fetch namespaces can be a seperate function
+	//TODO fetch namespaces can be a separate function
 	var selectedNamespaceNames []string
 	if len(namespaceNames) > 0 {
 		selectedNamespaceNames = namespaceNames
