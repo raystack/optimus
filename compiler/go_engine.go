@@ -59,7 +59,7 @@ func (e *GoEngine) CompileString(input string, context map[string]interface{}) (
 		return "", err
 	}
 	var buf bytes.Buffer
-	if err = tmpl.Execute(&buf, context); err != nil {
+	if err := tmpl.Execute(&buf, context); err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(buf.String()), nil

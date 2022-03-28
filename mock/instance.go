@@ -8,8 +8,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/odpf/optimus/models"
 )
 
 type JobRunRepoFactory struct {
@@ -109,13 +110,13 @@ type JobRunService struct {
 	mock.Mock
 }
 
-func (s *JobRunService) GetScheduledRun(ctx context.Context, namespaceSpec models.NamespaceSpec, JobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
-	args := s.Called(ctx, namespaceSpec, JobID, scheduledAt)
+func (s *JobRunService) GetScheduledRun(ctx context.Context, namespaceSpec models.NamespaceSpec, jobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
+	args := s.Called(ctx, namespaceSpec, jobID, scheduledAt)
 	return args.Get(0).(models.JobRun), args.Error(1)
 }
 
-func (s *JobRunService) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	args := s.Called(ctx, JobRunID)
+func (s *JobRunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+	args := s.Called(ctx, jobRunID)
 	return args.Get(0).(models.JobRun), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 

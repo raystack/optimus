@@ -14,7 +14,7 @@ func WriteStringToFileIndexed() func(filePath, data string, writer io.Writer) er
 			return fmt.Errorf("failed to write file at %s: %w", filePath, err)
 		}
 		index++
-		_, err := writer.Write([]byte(fmt.Sprintf("%d. writing file at %s\n", index, filePath)))
+		_, err := fmt.Fprintf(writer, "%d. writing file at %s\n", index, filePath)
 		return err
 	}
 }

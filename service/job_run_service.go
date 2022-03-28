@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -185,8 +186,8 @@ func (s *jobRunService) prepInstance(jobRun models.JobRun, instanceType models.I
 	}, nil
 }
 
-func (s *jobRunService) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	return s.repoFac.New().GetByID(ctx, JobRunID)
+func (s *jobRunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+	return s.repoFac.New().GetByID(ctx, jobRunID)
 }
 
 func NewJobRunService(repoFac SpecRepoFactory, timeFunc func() time.Time, scheduler models.SchedulerUnit) *jobRunService {

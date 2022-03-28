@@ -218,7 +218,7 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		// TODO fix this test
-		//t.Run("should throw an error if workers are busy", func(t *testing.T) {
+		// t.Run("should throw an error if workers are busy", func(t *testing.T) {
 		//	replayRepository := new(mock.ReplayRepository)
 		//	defer replayRepository.AssertExpectations(t)
 		//
@@ -295,7 +295,7 @@ func TestReplayManager(t *testing.T) {
 		//
 		//	err = replayManager.Close()
 		//	assert.Nil(t, err)
-		//})
+		// })
 	})
 	t.Run("GetReplay", func(t *testing.T) {
 		t.Run("should return replay given a valid UUID", func(t *testing.T) {

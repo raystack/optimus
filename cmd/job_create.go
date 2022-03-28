@@ -118,7 +118,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 		messageStr = fmt.Sprintf("%s [%s]", messageStr, root)
 	}
 	var selectedDir string
-	if err = survey.AskOne(&survey.Select{
+	if err := survey.AskOne(&survey.Select{
 		Message: messageStr,
 		Default: currentFolder,
 		Help:    "Optimus helps organize specifications in sub-directories.\nPlease select where you want this new specification to be stored",

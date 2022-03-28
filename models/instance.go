@@ -38,8 +38,8 @@ const (
 
 type JobRunTrigger string
 
-func (I JobRunTrigger) String() string {
-	return string(I)
+func (j JobRunTrigger) String() string {
+	return string(j)
 }
 
 const (
@@ -90,8 +90,8 @@ func (j JobRun) String() string {
 
 type InstanceType string
 
-func (I InstanceType) String() string {
-	return string(I)
+func (i InstanceType) String() string {
+	return string(i)
 }
 
 func ToInstanceType(val string) (InstanceType, error) {

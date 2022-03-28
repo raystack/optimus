@@ -44,7 +44,6 @@ linters:
     - lll
     - maligned
     - golint
-    - gocritic
     - gocognit
     - funlen
     - gocyclo
@@ -79,9 +78,24 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+      - singleCaseSwitch
+    enabled-tags:
+      - diagnostic
+#      - style
+#      - opinionated
+#      - performance
   unparam:
     # Inspect exported functions.
     # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
     check-exported: true
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocritic
 severity:
   default-severity: error

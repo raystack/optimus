@@ -49,10 +49,8 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 	}
 	if parsed, err := url.Parse(conf.DB.DSN); err != nil {
 		return fmt.Errorf("failed to parse serve.db.dsn: %w", err)
-	} else {
-		if parsed.Scheme != "postgres" {
-			return errors.New("unsupported database scheme, use 'postgres'")
-		}
+	} else if parsed.Scheme != "postgres" {
+		return errors.New("unsupported database scheme, use 'postgres'")
 	}
 	return nil
 }
