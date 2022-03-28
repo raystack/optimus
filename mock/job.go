@@ -274,15 +274,6 @@ func (n *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 	return n.Called(ctx, attr).Error(0)
 }
 
-// JobDependencyRepoFactory to create repo for storing job dependencies
-type JobDependencyRepoFactory struct {
-	mock.Mock
-}
-
-func (repo *JobDependencyRepoFactory) New() store.JobDependencyRepository {
-	return repo.Called().Get(0).(store.JobDependencyRepository)
-}
-
 // JobDependencyRepository to store job dependencies
 type JobDependencyRepository struct {
 	mock.Mock

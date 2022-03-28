@@ -25,7 +25,7 @@ const InterJobDependencyNameSections = 2
 
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
-	dependencyRepoFactory     DependencyRepoFactory
+	dependencyRepo            store.JobDependencyRepository
 }
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
@@ -78,18 +78,15 @@ func (r *dependencyResolver) ResolveAndPersist(ctx context.Context, projectSpec 
 	return r.persistDependencies(ctx, projectSpec, jobSpec)
 }
 
-func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpec models.JobSpec) error {
-	dependencyRepo := r.dependencyRepoFactory.New()
-
+func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
 	// delete from dependency table
-	if err := dependencyRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
+	if err := r.dependencyRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
 		return err
 	}
 
 	for _, dependency := range jobSpec.Dependencies {
 		// insert the new ones
-		err := dependencyRepo.Save(ctx, projectSpec.ID, jobSpec.ID, dependency)
+		err := r.dependencyRepo.Save(ctx, projectSpec.ID, jobSpec.ID, dependency)
 		if err != nil {
 			return err
 		}
@@ -99,8 +96,7 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 
 func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
 	observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
-	dependencyRepo := r.dependencyRepoFactory.New()
-	jobDependencies, err := dependencyRepo.GetAll(ctx, projectSpec.ID)
+	jobDependencies, err := r.dependencyRepo.GetAll(ctx, projectSpec.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -344,9 +340,9 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 
 // NewDependencyResolver creates a new instance of Resolver
 func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	dependencyRepoFactory DependencyRepoFactory) *dependencyResolver {
+	dependencyRepo store.JobDependencyRepository) *dependencyResolver {
 	return &dependencyResolver{
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
-		dependencyRepoFactory:     dependencyRepoFactory,
+		dependencyRepo:            dependencyRepo,
 	}
 }
