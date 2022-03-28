@@ -54,21 +54,22 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		return server, err
 	}
 
-	fns := []setupFn{
+	setupFns := []setupFn{
 		server.setupAppKey,
 		server.setupDB,
 		server.setupGRPCServer,
 		server.setupHandlers,
 		server.setupMonitoring,
 		server.setupHTTPProxy,
-		server.startListening,
 	}
 
-	for _, fn := range fns {
+	for _, fn := range setupFns {
 		if err := fn(); err != nil {
 			return server, err
 		}
 	}
+
+	server.startListening()
 
 	return server, nil
 }
@@ -116,7 +117,7 @@ func (s *OptimusServer) setupHTTPProxy() error {
 	return err
 }
 
-func (s *OptimusServer) startListening() error {
+func (s *OptimusServer) startListening() {
 	// run our server in a goroutine so that it doesn't block to wait for termination requests
 	go func() {
 		s.logger.Info("Listening at", "address", s.serverAddr)
@@ -126,7 +127,6 @@ func (s *OptimusServer) startListening() error {
 			}
 		}
 	}()
-	return nil
 }
 
 func (s *OptimusServer) Shutdown() {
