@@ -72,7 +72,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
-		checkModel, err := repo.getByID(ctx, testModels[0].ID)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
@@ -89,7 +89,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.getByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
@@ -97,7 +97,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.getByID(ctx, testModelB.ID)
+			checkModel, err = repo.GetByName(ctx, testModelB.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
@@ -114,7 +114,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.getByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
@@ -123,7 +123,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.getByID(ctx, testModelA.ID)
+			checkModel, err = repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://another_folder", checkModel.Config["bucket"])
 		})

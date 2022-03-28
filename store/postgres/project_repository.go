@@ -113,17 +113,6 @@ func (repo *ProjectRepository) GetByName(ctx context.Context, name string) (mode
 	return r.ToSpecWithSecrets(repo.hash)
 }
 
-func (repo *ProjectRepository) getByID(ctx context.Context, id models.ProjectID) (models.ProjectSpec, error) {
-	var r Project
-	if err := repo.db.WithContext(ctx).Preload("Secrets").Where("id = ?", id).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ProjectSpec{}, store.ErrResourceNotFound
-		}
-		return models.ProjectSpec{}, err
-	}
-	return r.ToSpecWithSecrets(repo.hash)
-}
-
 func (repo *ProjectRepository) GetAll(ctx context.Context) ([]models.ProjectSpec, error) {
 	var specs []models.ProjectSpec
 	var projs []Project
