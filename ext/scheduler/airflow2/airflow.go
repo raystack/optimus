@@ -223,7 +223,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 }
 
 func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
-	data := []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
+	data := []byte(fmt.Sprintf(`{"start_date": %q, "end_date": %q, "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
 	req := airflowRequest{

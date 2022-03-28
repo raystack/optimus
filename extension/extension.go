@@ -112,7 +112,7 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 }
 
 func (e *Extension) downloadAsset(ctx context.Context, url, destPath string) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}

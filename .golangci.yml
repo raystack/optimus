@@ -23,7 +23,6 @@ linters:
     - scopelint
     - promlinter
     - interfacer
-    - gosec
     - godox
     - godot
     - gci
@@ -42,11 +41,11 @@ linters:
     - lll
     - maligned
     - golint
-    - gocritic
     - gocognit
     - funlen
     - gocyclo
     - dupl
+    - gofumpt
 linters-settings:
   gofumpt:
     lang-version: "1.17"
@@ -59,6 +58,7 @@ linters-settings:
     numbers: true
   gomnd:
     ignored-numbers: # Why we have a big range of file permissions
+      - '0o600'
       - '0o644'
       - '0o655'
       - '0o666'
@@ -75,9 +75,24 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+      - singleCaseSwitch
+    enabled-tags:
+      - diagnostic
+#      - style
+#      - opinionated
+#      - performance
   unparam:
     # Inspect exported functions.
     # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
     check-exported: true
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocritic
 severity:
   default-severity: error

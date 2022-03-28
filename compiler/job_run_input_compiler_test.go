@@ -1,4 +1,4 @@
-package run_test
+package compiler_test
 
 import (
 	"context"
@@ -7,56 +7,108 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestContextManager(t *testing.T) {
-	t.Run("Generate", func(t *testing.T) {
-		t.Run("should return compiled instanceSpec config for task type transformation", func(t *testing.T) {
-			projectName := "humara-projectSpec"
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
+func TestJobRunInputCompiler(t *testing.T) {
+	ctx := context.Background()
+	projectName := "humara-projectSpec"
+	projectSpec := models.ProjectSpec{
+		ID:   uuid.New(),
+		Name: projectName,
+		Config: map[string]string{
+			"bucket":                 "gs://some_folder",
+			"transporterKafkaBroker": "0.0.0.0:9092",
+		},
+	}
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.New(),
+		Name:        "namespace-1",
+		Config:      map[string]string{},
+		ProjectSpec: projectSpec,
+	}
+	execUnit := new(mock.BasePlugin)
+	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+		Name: "bq",
+	}, nil)
+	cliMod := new(mock.CLIMod)
+	plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod}
 
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "namespace-1",
-				Config:      map[string]string{},
-				ProjectSpec: projectSpec,
-			}
+	behavior := models.JobSpecBehavior{
+		CatchUp:       true,
+		DependsOnPast: false,
+	}
 
-			execUnit := new(mock.BasePlugin)
-			execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: "bq",
-			}, nil)
-			cliMod := new(mock.CLIMod)
+	schedule := models.JobSpecSchedule{
+		StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
+		Interval:  "* * * * *",
+	}
+	window := models.JobSpecTaskWindow{
+		Size:       time.Hour,
+		Offset:     0,
+		TruncateTo: "d",
+	}
 
+	mockedTimeNow := time.Now()
+	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+	instanceSpecData := []models.InstanceSpecData{
+		{
+			Name:  models.ConfigKeyExecutionTime,
+			Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+			Type:  models.InstanceDataTypeEnv,
+		},
+		{
+			Name:  models.ConfigKeyDstart,
+			Value: window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Type:  models.InstanceDataTypeEnv,
+		},
+		{
+			Name:  models.ConfigKeyDend,
+			Value: window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Type:  models.InstanceDataTypeEnv,
+		},
+	}
+
+	secrets := []models.ProjectSecretItem{
+		{
+			ID:    uuid.New(),
+			Name:  "table_name",
+			Value: "secret_table",
+			Type:  models.SecretTypeUserDefined,
+		},
+		{
+			ID:    uuid.New(),
+			Name:  "bucket",
+			Value: "gs://some_secret_bucket",
+			Type:  models.SecretTypeUserDefined,
+		},
+	}
+	secretService := new(mock.SecretService)
+
+	pluginRepo := new(mock.SupportedPluginRepo)
+
+	createJobRunInputCompiler := func() compiler.JobRunInputCompiler {
+		engine := compiler.NewGoEngine()
+		jobConfigCompiler := compiler.NewJobConfigCompiler(engine)
+		assetCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
+		runInputCompiler := compiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
+		return runInputCompiler
+	}
+
+	t.Run("Compile", func(t *testing.T) {
+		t.Run("returns compiled task config for task", func(t *testing.T) {
 			jobSpec := models.JobSpec{
-				Name:  "foo",
-				Owner: "mee@mee",
-				Behavior: models.JobSpecBehavior{
-					CatchUp:       true,
-					DependsOnPast: false,
-				},
-				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
-					Interval:  "* * * * *",
-				},
+				Name:     "foo",
+				Owner:    "mee@mee",
+				Behavior: behavior,
+				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
+					Unit:     plugin,
 					Priority: 2000,
-					Window: models.JobSpecTaskWindow{
-						Size:       time.Hour,
-						Offset:     0,
-						TruncateTo: "d",
-					},
+					Window:   window,
 					Config: models.JobSpecConfigs{
 						{
 							Name:  "BQ_VAL",
@@ -90,55 +142,42 @@ func TestContextManager(t *testing.T) {
 					},
 				),
 			}
-			mockedTimeNow := time.Now()
 
 			jobRun := models.JobRun{
 				Spec:        jobSpec,
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStateAccepted,
-				Instances:   nil,
-				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+				ScheduledAt: scheduledAt,
 			}
 			instanceSpec := models.InstanceSpec{
 				Name:   "bq",
 				Type:   models.InstanceTypeTask,
 				Status: models.RunStateRunning,
-				Data: []models.InstanceSpecData{
-					{
-						Name:  run.ConfigKeyExecutionTime,
-						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-				},
-				ExecutedAt: time.Time{},
-				UpdatedAt:  time.Time{},
+				Data:   instanceSpecData,
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           jobSpec.Task.Window,
+				Window:           window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: jobRun.ScheduledAt,
-				InstanceData:     instanceSpec.Data,
+				InstanceSchedule: scheduledAt,
+				InstanceData:     instanceSpecData,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 				},
 			}}, nil)
+			defer cliMod.AssertExpectations(t)
 
-			jobRunInput, err := run.NewContextManager(namespaceSpec, nil, jobRun,
-				run.NewGoEngine()).Generate(instanceSpec)
+			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
+			defer pluginRepo.AssertExpectations(t)
+
+			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+			defer secretService.AssertExpectations(t)
+
+			jobRunInputCompiler := createJobRunInputCompiler()
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -156,29 +195,6 @@ func TestContextManager(t *testing.T) {
 			)
 		})
 		t.Run("should return valid compiled instanceSpec config for task type hook", func(t *testing.T) {
-			projectName := "humara-projectSpec"
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket":                 "gs://some_folder",
-					"transporterKafkaBroker": "0.0.0.0:9092",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "namespace-1",
-				Config:      map[string]string{},
-				ProjectSpec: projectSpec,
-			}
-
-			execUnit := new(mock.BasePlugin)
-			execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: "bq",
-			}, nil)
-			cliMod := new(mock.CLIMod)
-
 			transporterHook := "transporter"
 			hookUnit := new(mock.BasePlugin)
 			hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
@@ -187,24 +203,14 @@ func TestContextManager(t *testing.T) {
 			}, nil)
 
 			jobSpec := models.JobSpec{
-				Name:  "foo",
-				Owner: "mee@mee",
-				Behavior: models.JobSpecBehavior{
-					CatchUp:       true,
-					DependsOnPast: false,
-				},
-				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
-					Interval:  "* * * * *",
-				},
+				Name:     "foo",
+				Owner:    "mee@mee",
+				Behavior: behavior,
+				Schedule: schedule,
 				Task: models.JobSpecTask{
 					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
 					Priority: 2000,
-					Window: models.JobSpecTaskWindow{
-						Size:       time.Hour,
-						Offset:     0,
-						TruncateTo: "d",
-					},
+					Window:   window,
 					Config: models.JobSpecConfigs{
 						{
 							Name:  "BQ_VAL",
@@ -253,52 +259,40 @@ func TestContextManager(t *testing.T) {
 					},
 				},
 			}
-			mockedTimeNow := time.Now()
-
 			jobRun := models.JobRun{
 				Spec:        jobSpec,
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStateAccepted,
-				Instances:   nil,
-				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+				ScheduledAt: scheduledAt,
 			}
 			instanceSpec := models.InstanceSpec{
 				Name:   transporterHook,
 				Type:   models.InstanceTypeHook,
 				Status: models.RunStateRunning,
-				Data: []models.InstanceSpecData{
-					{
-						Name:  run.ConfigKeyExecutionTime,
-						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-				},
+				Data:   instanceSpecData,
 			}
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           jobSpec.Task.Window,
+				Window:           window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: jobRun.ScheduledAt,
-				InstanceData:     instanceSpec.Data,
+				InstanceSchedule: scheduledAt,
+				InstanceData:     instanceSpecData,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 				},
 			}}, nil)
+			defer cliMod.AssertExpectations(t)
 
-			jobRunInput, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
-				Generate(instanceSpec)
+			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
+			defer pluginRepo.AssertExpectations(t)
+
+			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+			defer secretService.AssertExpectations(t)
+
+			jobRunInputCompiler := createJobRunInputCompiler()
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -337,28 +331,15 @@ func TestContextManager(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit := new(mock.BasePlugin)
-			cliMod := new(mock.CLIMod)
-
 			jobSpec := models.JobSpec{
-				Name:  "foo",
-				Owner: "mee@mee",
-				Behavior: models.JobSpecBehavior{
-					CatchUp:       true,
-					DependsOnPast: false,
-				},
-				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
-					Interval:  "* * * * *",
-				},
+				Name:     "foo",
+				Owner:    "mee@mee",
+				Behavior: behavior,
+				Schedule: schedule,
 				Task: models.JobSpecTask{
 					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
 					Priority: 2000,
-					Window: models.JobSpecTaskWindow{
-						Size:       time.Hour,
-						Offset:     0,
-						TruncateTo: "d",
-					},
+					Window:   window,
 					Config: models.JobSpecConfigs{
 						{
 							Name:  "BQ_VAL",
@@ -392,125 +373,68 @@ func TestContextManager(t *testing.T) {
 					},
 				),
 			}
-			mockedTimeNow := time.Now()
 
 			jobRun := models.JobRun{
 				Spec:        jobSpec,
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStateAccepted,
-				Instances:   nil,
-				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+				ScheduledAt: scheduledAt,
 			}
 			instanceSpec := models.InstanceSpec{
 				Name:   "bq",
 				Type:   models.InstanceTypeTask,
 				Status: models.RunStateRunning,
-				Data: []models.InstanceSpecData{
-					{
-						Name:  run.ConfigKeyExecutionTime,
-						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-				},
+				Data:   instanceSpecData,
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           jobSpec.Task.Window,
+				Window:           window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: jobRun.ScheduledAt,
-				InstanceData:     instanceSpec.Data,
+				InstanceSchedule: scheduledAt,
+				InstanceData:     instanceSpecData,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 				},
 			}}, nil)
+			defer cliMod.AssertExpectations(t)
 
-			assets, err := run.NewContextManager(namespaceSpec, nil, jobRun, run.NewGoEngine()).
-				Generate(instanceSpec)
+			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
+			defer pluginRepo.AssertExpectations(t)
+
+			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+			defer secretService.AssertExpectations(t)
+
+			jobRunInputCompiler := createJobRunInputCompiler()
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, "2020-11-11T00:00:00Z", assets.ConfigMap["DEND"])
-			assert.Equal(t, "2020-11-10T23:00:00Z", assets.ConfigMap["DSTART"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.ConfigMap["EXECUTION_TIME"])
+			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
+			assert.Equal(t, "2020-11-10T23:00:00Z", jobRunInput.ConfigMap["DSTART"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), jobRunInput.ConfigMap["EXECUTION_TIME"])
 
-			assert.Equal(t, "22", assets.ConfigMap["BQ_VAL"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.ConfigMap["EXECT"])
-			assert.Equal(t, projectSpec.Config["bucket"], assets.ConfigMap["BUCKET"])
-			assert.Equal(t, namespaceSpec.Config["transporter_brokers"], assets.ConfigMap["TRANSPORTER_BROKERS"])
+			assert.Equal(t, "22", jobRunInput.ConfigMap["BQ_VAL"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), jobRunInput.ConfigMap["EXECT"])
+			assert.Equal(t, projectSpec.Config["bucket"], jobRunInput.ConfigMap["BUCKET"])
+			assert.Equal(t, namespaceSpec.Config["transporter_brokers"], jobRunInput.ConfigMap["TRANSPORTER_BROKERS"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s'", mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout)),
-				assets.FileMap["query.sql"],
+				jobRunInput.FileMap["query.sql"],
 			)
 		})
 		t.Run("returns compiled instance spec with secrets", func(t *testing.T) {
-			secrets := []models.ProjectSecretItem{
-				{
-					ID:    uuid.New(),
-					Name:  "table_name",
-					Value: "secret_table",
-					Type:  models.SecretTypeUserDefined,
-				},
-				{
-					ID:    uuid.New(),
-					Name:  "bucket",
-					Value: "gs://some_secret_bucket",
-					Type:  models.SecretTypeUserDefined,
-				},
-			}
-			projectName := "humara-projectSpec"
-			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
-				Name: projectName,
-				Config: map[string]string{
-					"bucket": "gs://some_folder",
-				},
-			}
-
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "namespace-1",
-				Config:      map[string]string{},
-				ProjectSpec: projectSpec,
-			}
-
-			execUnit := new(mock.BasePlugin)
-			execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-				Name: "bq",
-			}, nil)
-			cliMod := new(mock.CLIMod)
-
 			jobSpec := models.JobSpec{
-				Name:  "foo",
-				Owner: "mee@mee",
-				Behavior: models.JobSpecBehavior{
-					CatchUp:       true,
-					DependsOnPast: false,
-				},
-				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
-					Interval:  "* * * * *",
-				},
+				Name:     "foo",
+				Owner:    "mee@mee",
+				Behavior: behavior,
+				Schedule: schedule,
 				Task: models.JobSpecTask{
 					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
 					Priority: 2000,
-					Window: models.JobSpecTaskWindow{
-						Size:       time.Hour,
-						Offset:     0,
-						TruncateTo: "d",
-					},
+					Window:   window,
 					Config: models.JobSpecConfigs{
 						{
 							Name:  "BQ_VAL",
@@ -540,71 +464,60 @@ func TestContextManager(t *testing.T) {
 					},
 				),
 			}
-			mockedTimeNow := time.Now()
 
 			jobRun := models.JobRun{
 				Spec:        jobSpec,
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStateAccepted,
-				Instances:   nil,
-				ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
+				ScheduledAt: scheduledAt,
 			}
 			instanceSpec := models.InstanceSpec{
-				Name:   "bq",
-				Type:   models.InstanceTypeTask,
-				Status: models.RunStateRunning,
-				Data: []models.InstanceSpecData{
-					{
-						Name:  run.ConfigKeyExecutionTime,
-						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-					{
-						Name:  run.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						Type:  models.InstanceDataTypeEnv,
-					},
-				},
+				Name:       "bq",
+				Type:       models.InstanceTypeTask,
+				Status:     models.RunStateRunning,
+				Data:       instanceSpecData,
 				ExecutedAt: time.Time{},
 				UpdatedAt:  time.Time{},
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           jobSpec.Task.Window,
+				Window:           window,
 				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: jobRun.ScheduledAt,
-				InstanceData:     instanceSpec.Data,
+				InstanceSchedule: scheduledAt,
+				InstanceData:     instanceSpecData,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}' and name = '{{.secret.table_name}}'",
 				},
 			}}, nil)
+			defer cliMod.AssertExpectations(t)
 
-			assets, err := run.NewContextManager(namespaceSpec, secrets, jobRun,
-				run.NewGoEngine()).Generate(instanceSpec)
+			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
+			defer pluginRepo.AssertExpectations(t)
+
+			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+			defer secretService.AssertExpectations(t)
+
+			jobRunInputCompiler := createJobRunInputCompiler()
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, "2020-11-11T00:00:00Z", assets.ConfigMap["DEND"])
-			assert.Equal(t, "2020-11-10T23:00:00Z", assets.ConfigMap["DSTART"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.ConfigMap["EXECUTION_TIME"])
+			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
+			assert.Equal(t, "2020-11-10T23:00:00Z", jobRunInput.ConfigMap["DSTART"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), jobRunInput.ConfigMap["EXECUTION_TIME"])
 
-			assert.Equal(t, "22", assets.ConfigMap["BQ_VAL"])
-			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), assets.ConfigMap["EXECT"])
-			_, ok := assets.ConfigMap["BUCKET"]
+			assert.Equal(t, "22", jobRunInput.ConfigMap["BQ_VAL"])
+			assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), jobRunInput.ConfigMap["EXECT"])
+			_, ok := jobRunInput.ConfigMap["BUCKET"]
 			assert.Equal(t, false, ok)
-			assert.Equal(t, "gs://some_secret_bucket", assets.SecretsMap["BUCKET"])
+			assert.Equal(t, "gs://some_secret_bucket", jobRunInput.SecretsMap["BUCKET"])
 
 			assert.Equal(t,
 				fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",
 					mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), secrets[0].Value),
-				assets.FileMap["query.sql"],
+				jobRunInput.FileMap["query.sql"],
 			)
 		})
 	})

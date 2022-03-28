@@ -6,245 +6,35 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/go-multierror"
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/gossip"
-	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/datastore"
-	_ "github.com/odpf/optimus/ext/datastore"
-	"github.com/odpf/optimus/ext/executor/noop"
-	"github.com/odpf/optimus/ext/notify/slack"
-	"github.com/odpf/optimus/ext/scheduler/airflow2"
-	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
-	"github.com/odpf/optimus/ext/scheduler/prime"
-	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/models"
-	_ "github.com/odpf/optimus/plugin"
-	"github.com/odpf/optimus/run"
-	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
-	"github.com/odpf/optimus/store/postgres"
-	"github.com/odpf/optimus/utils"
 	"github.com/odpf/salt/log"
 	"github.com/sirupsen/logrus"
-	slackapi "github.com/slack-go/slack"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"gocloud.dev/blob"
-	"gocloud.dev/blob/fileblob"
-	"gocloud.dev/blob/gcsblob"
-	"gocloud.dev/blob/memblob"
-	"gocloud.dev/gcp"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"gorm.io/gorm"
-)
 
-// termChan listen for sigterm
-var termChan = make(chan os.Signal, 1)
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+)
 
 const (
 	shutdownWait       = 30 * time.Second
 	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
 	GRPCMaxSendMsgSize = 64 << 20 // 64MB
-)
 
-const (
 	DialTimeout      = time.Second * 5
 	BootstrapTimeout = time.Second * 10
 )
-
-// projectJobSpecRepoFactory stores raw specifications
-type projectJobSpecRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
-	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.PluginRegistry))
-}
-
-type replaySpecRepoRepository struct {
-	db             *gorm.DB
-	jobSpecRepoFac jobSpecRepoFactory
-}
-
-func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
-type replayWorkerFact struct {
-	replaySpecRepoFac job.ReplaySpecRepoFactory
-	scheduler         models.SchedulerUnit
-	logger            log.Logger
-}
-
-func (fac *replayWorkerFact) New() job.ReplayWorker {
-	return job.NewReplayWorker(fac.logger, fac.replaySpecRepoFac, fac.scheduler)
-}
-
-// jobSpecRepoFactory stores raw specifications
-type jobSpecRepoFactory struct {
-	db                    *gorm.DB
-	projectJobSpecRepoFac projectJobSpecRepoFactory
-}
-
-func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
-	return postgres.NewJobSpecRepository(
-		fac.db,
-		namespace,
-		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
-		postgres.NewAdapter(models.PluginRegistry),
-	)
-}
-
-type projectRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *projectRepoFactory) New() store.ProjectRepository {
-	return postgres.NewProjectRepository(fac.db, fac.hash)
-}
-
-type namespaceRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
-	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
-}
-
-type jobRunRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *jobRunRepoFactory) New() store.JobRunRepository {
-	return postgres.NewJobRunRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
-type instanceRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *instanceRepoFactory) New() store.InstanceRepository {
-	return postgres.NewInstanceRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
-// projectResourceSpecRepoFactory stores raw resource specifications at a project level
-type projectResourceSpecRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *projectResourceSpecRepoFactory) New(proj models.ProjectSpec, ds models.Datastorer) store.ProjectResourceSpecRepository {
-	return postgres.NewProjectResourceSpecRepository(fac.db, proj, ds)
-}
-
-// resourceSpecRepoFactory stores raw resource specifications
-type resourceSpecRepoFactory struct {
-	db                         *gorm.DB
-	projectResourceSpecRepoFac projectResourceSpecRepoFactory
-}
-
-func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds models.Datastorer) store.ResourceSpecRepository {
-	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
-}
-
-// backupRepoFactory stores backup specifications
-type backupRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *backupRepoFactory) New(projectSpec models.ProjectSpec, storer models.Datastorer) store.BackupRepository {
-	return postgres.NewBackupRepository(fac.db, projectSpec, storer)
-}
-
-type airflowBucketFactory struct{}
-
-func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
-	storagePath, ok := projectSpec.Config[models.ProjectStoragePathKey]
-	if !ok {
-		return nil, fmt.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
-	}
-	parsedURL, err := url.Parse(storagePath)
-	if err != nil {
-		return nil, err
-	}
-
-	switch parsedURL.Scheme {
-	case "gs":
-		storageSecret, ok := projectSpec.Secret.GetByName(models.ProjectSecretStorageKey)
-		if !ok {
-			return nil, fmt.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, projectSpec.Name)
-		}
-		creds, err := google.CredentialsFromJSON(ctx, []byte(storageSecret), "https://www.googleapis.com/auth/cloud-platform")
-		if err != nil {
-			return nil, err
-		}
-		client, err := gcp.NewHTTPClient(
-			gcp.DefaultTransport(),
-			gcp.CredentialsTokenSource(creds))
-		if err != nil {
-			return nil, err
-		}
-
-		gcsBucket, err := gcsblob.OpenBucket(ctx, client, parsedURL.Host, nil)
-		if err != nil {
-			return nil, err
-		}
-		// create a *blob.Bucket
-		if parsedURL.Path == "" {
-			return gcsBucket, nil
-		}
-		prefix := fmt.Sprintf("%s/", strings.Trim(parsedURL.Path, "/\\"))
-		return blob.PrefixedBucket(gcsBucket, prefix), nil
-	case "file":
-		return fileblob.OpenBucket(parsedURL.Path, &fileblob.Options{
-			CreateDir: true,
-			Metadata:  fileblob.MetadataDontWrite,
-		})
-	case "mem":
-		return memblob.OpenBucket(nil), nil
-	}
-	return nil, fmt.Errorf("unsupported storage config %s", storagePath)
-}
-
-type pipelineLogObserver struct {
-	log log.Logger
-}
-
-func (obs *pipelineLogObserver) Notify(evt progress.Event) {
-	obs.log.Info("observing pipeline log", "progress event", evt.String(), "reporter", "pipeline")
-}
-
-func jobSpecAssetDump() func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-	engine := run.NewGoEngine()
-	return func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := run.DumpAssets(jobSpec, scheduledAt, engine, false)
-		if err != nil {
-			return models.JobAssets{}, err
-		}
-		return models.JobAssets{}.FromMap(aMap), nil
-	}
-}
 
 func checkRequiredConfigs(conf config.ServerConfig) error {
 	errRequiredMissing := errors.New("required config missing")
@@ -259,112 +49,17 @@ func checkRequiredConfigs(conf config.ServerConfig) error {
 	}
 	if parsed, err := url.Parse(conf.DB.DSN); err != nil {
 		return fmt.Errorf("failed to parse serve.db.dsn: %w", err)
-	} else {
-		if parsed.Scheme != "postgres" {
-			return errors.New("unsupported database scheme, use 'postgres'")
-		}
+	} else if parsed.Scheme != "postgres" {
+		return errors.New("unsupported database scheme, use 'postgres'")
 	}
 	return nil
 }
 
-func Initialize(l log.Logger, conf config.Optimus) error {
-	if err := checkRequiredConfigs(conf.Server); err != nil {
-		return err
-	}
-	l.Info("starting optimus", "version", config.Version)
-	progressObs := &pipelineLogObserver{
-		log: l,
-	}
-
-	// setup db
-	if err := postgres.Migrate(conf.Server.DB.DSN); err != nil {
-		return fmt.Errorf("postgres.Migrate: %w", err)
-	}
-	dbConn, err := postgres.Connect(conf.Server.DB.DSN, conf.Server.DB.MaxIdleConnection,
-		conf.Server.DB.MaxOpenConnection, l.Writer())
-	if err != nil {
-		return fmt.Errorf("postgres.Connect: %w", err)
-	}
-
-	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
-	// init default scheduler
-	switch conf.Scheduler.Name {
-	case "airflow", "airflow2":
-		models.BatchScheduler = airflow2.NewScheduler(
-			&airflowBucketFactory{},
-			&http.Client{},
-			jobCompiler,
-		)
-	default:
-		return fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
-	}
-	jobrunRepoFac := &jobRunRepoFactory{
-		db: dbConn,
-	}
-	models.ManualScheduler = prime.NewScheduler(
-		jobrunRepoFac,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-
-	// used to encrypt secrets
-	appHash, err := models.NewApplicationSecret(conf.Server.AppKey)
-	if err != nil {
-		return fmt.Errorf("NewApplicationSecret: %w", err)
-	}
-
-	// registered project store repository factory, it's a wrapper over a storage
-	// interface
-	projectRepoFac := &projectRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
-	if !conf.Scheduler.SkipInit {
-		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
-		if err != nil {
-			return fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
-		}
-		// bootstrap scheduler for registered projects
-		for _, proj := range registeredProjects {
-			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
-			l.Info("bootstrapping project", "project name", proj.Name)
-			if err := models.BatchScheduler.Bootstrap(bootstrapCtx, proj); err != nil {
-				// Major ERROR, but we can't make this fatal
-				// other projects might be working fine
-				l.Error("no bootstrapping project", "error", err)
-			}
-			l.Info("bootstrapped project", "project name", proj.Name)
-			cancel()
-		}
-	}
-
-	projectSecretRepo := postgres.NewSecretRepository(dbConn, appHash)
-	namespaceSpecRepoFac := &namespaceRepoFactory{
-		db:   dbConn,
-		hash: appHash,
-	}
-	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
-		db: dbConn,
-	}
-
-	// services
-	projectService := service.NewProjectService(projectRepoFac)
-	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
-	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-
-	// registered job store repository factory
-	jobSpecRepoFac := jobSpecRepoFactory{
-		db:                    dbConn,
-		projectJobSpecRepoFac: *projectJobSpecRepoFac,
-	}
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
-	priorityResolver := job.NewPriorityResolver()
-
+func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 	// Logrus entry is used, allowing pre-definition of certain fields by the user.
 	grpcLogLevel, err := logrus.ParseLevel(l.Level())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	grpcLogrus := logrus.New()
 	grpcLogrus.SetLevel(grpcLogLevel)
@@ -376,7 +71,6 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
-	grpcAddr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
@@ -393,133 +87,10 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 	reflection.Register(grpcServer)
+	return grpcServer, nil
+}
 
-	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
-		db: dbConn,
-	}
-	resourceSpecRepoFac := resourceSpecRepoFactory{
-		db:                         dbConn,
-		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
-	}
-
-	replaySpecRepoFac := &replaySpecRepoRepository{
-		db:             dbConn,
-		jobSpecRepoFac: jobSpecRepoFac,
-	}
-	replayWorkerFactory := &replayWorkerFact{
-		replaySpecRepoFac: replaySpecRepoFac,
-		scheduler:         models.BatchScheduler,
-		logger:            l,
-	}
-	replayValidator := job.NewReplayValidator(models.BatchScheduler)
-	replaySyncer := job.NewReplaySyncer(
-		l,
-		replaySpecRepoFac,
-		projectRepoFac,
-		models.BatchScheduler,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-	replayManager := job.NewManager(l, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    conf.Server.ReplayNumWorkers,
-		WorkerTimeout: conf.Server.ReplayWorkerTimeout,
-		RunTimeout:    conf.Server.ReplayRunTimeout,
-	}, models.BatchScheduler, replayValidator, replaySyncer)
-	backupRepoFac := backupRepoFactory{
-		db: dbConn,
-	}
-
-	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
-	defer cancelNotifiers()
-	eventService := job.NewEventService(l, map[string]models.Notifier{
-		"slack": slack.NewNotifier(notificationContext, slackapi.APIURL,
-			slack.DefaultEventBatchInterval,
-			func(err error) {
-				l.Error("slack error accumulator", "error", err)
-			},
-		),
-	})
-	// job service
-	jobService := job.NewService(
-		&jobSpecRepoFac,
-		models.BatchScheduler,
-		models.ManualScheduler,
-		jobSpecAssetDump(),
-		dependencyResolver,
-		priorityResolver,
-		projectJobSpecRepoFac,
-		replayManager,
-	)
-	// datastore service
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
-	// adapter service
-	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
-	// job run service
-	jobRunService := run.NewService(
-		jobrunRepoFac,
-		secretService,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-		models.BatchScheduler,
-		run.NewGoEngine(),
-	)
-
-	// runtime service instance over grpc
-	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
-		l,
-		config.Version,
-		jobService,
-		eventService,
-		namespaceService,
-	))
-	// secret service
-	pb.RegisterSecretServiceServer(grpcServer, v1handler.NewSecretServiceServer(l, secretService))
-	// resource service
-	pb.RegisterResourceServiceServer(grpcServer, v1handler.NewResourceServiceServer(l,
-		dataStoreService,
-		namespaceService,
-		adapterService,
-		progressObs))
-	// replay service
-	pb.RegisterReplayServiceServer(grpcServer, v1handler.NewReplayServiceServer(l,
-		jobService,
-		namespaceService,
-		adapterService,
-		projectService))
-	// project service
-	pb.RegisterProjectServiceServer(grpcServer, v1handler.NewProjectServiceServer(l,
-		adapterService,
-		projectService))
-	// namespace service
-	pb.RegisterNamespaceServiceServer(grpcServer, v1handler.NewNamespaceServiceServer(l,
-		adapterService,
-		namespaceService))
-	// job Spec service
-	pb.RegisterJobSpecificationServiceServer(grpcServer, v1handler.NewJobSpecServiceServer(l,
-		jobService,
-		adapterService,
-		namespaceService,
-		progressObs))
-	// job run service
-	pb.RegisterJobRunServiceServer(grpcServer, v1handler.NewJobRunServiceServer(l,
-		jobService,
-		projectService,
-		namespaceService,
-		adapterService,
-		jobRunService,
-		models.BatchScheduler))
-	// backup service
-	pb.RegisterBackupServiceServer(grpcServer, v1handler.NewBackupServiceServer(l,
-		jobService,
-		dataStoreService,
-		namespaceService,
-		projectService,
-	))
-	grpc_prometheus.Register(grpcServer)
-	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
-
+func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, func(), error) {
 	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
 	defer grpcDialCancel()
 
@@ -536,37 +107,39 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		),
 	}...)
 	if err != nil {
-		return fmt.Errorf("grpc.DialContext: %w", err)
+		return nil, func() {}, fmt.Errorf("grpc.DialContext: %w", err)
 	}
 	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
-	defer runtimeCancel()
-	// register http handlers
+	cleanup := func() {
+		runtimeCancel()
+	}
+
 	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
 	}
 	if err := pb.RegisterJobSpecificationServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterJobSpecificationServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterJobSpecificationServiceHandler: %w", err)
 	}
 	if err := pb.RegisterJobRunServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterJobRunServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterJobRunServiceHandler: %w", err)
 	}
 	if err := pb.RegisterProjectServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterProjectServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterProjectServiceHandler: %w", err)
 	}
 	if err := pb.RegisterNamespaceServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterNamespaceServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterNamespaceServiceHandler: %w", err)
 	}
 	if err := pb.RegisterReplayServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterReplayServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterReplayServiceHandler: %w", err)
 	}
 	if err := pb.RegisterBackupServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterBackupServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterBackupServiceHandler: %w", err)
 	}
 	if err := pb.RegisterResourceServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterResourceServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterResourceServiceHandler: %w", err)
 	}
 	if err := pb.RegisterSecretServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
-		return fmt.Errorf("RegisterSecretServiceHandler: %w", err)
+		return nil, cleanup, fmt.Errorf("RegisterSecretServiceHandler: %w", err)
 	}
 
 	// base router
@@ -585,81 +158,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// run our server in a goroutine so that it doesn't block to wait for termination requests
-	go func() {
-		l.Info("starting listening at", "address", grpcAddr)
-		if err := srv.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
-				l.Fatal("server error", "error", err)
-			}
-		}
-	}()
-
-	clusterCtx, clusterCancel := context.WithCancel(context.Background())
-	clusterServer := gossip.NewServer(l)
-	clusterPlanner := prime.NewPlanner(
-		l,
-		clusterServer, jobrunRepoFac, &instanceRepoFactory{
-			db: dbConn,
-		},
-		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-	if conf.Scheduler.NodeID != "" {
-		// start optimus cluster
-		if err := clusterServer.Init(clusterCtx, conf.Scheduler); err != nil {
-			clusterCancel()
-			return err
-		}
-
-		clusterPlanner.Init(clusterCtx)
-	}
-
-	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-
-	// Block until we receive our signal.
-	<-termChan
-	l.Info("termination request received")
-	var terminalError error
-
-	if err = replayManager.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("replayManager.Close: %w", err))
-	}
-
-	// Create a deadline to wait for server
-	ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
-	defer cancelProxy()
-
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline.
-	if err := srv.Shutdown(ctxProxy); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("srv.Shutdown: %w", err))
-	}
-	grpcServer.GracefulStop()
-
-	// gracefully shutdown event service, e.g. slack notifiers flush in memory batches
-	cancelNotifiers()
-	if err := eventService.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("eventService.Close: %w", err))
-	}
-
-	// shutdown cluster
-	clusterCancel()
-	clusterPlanner.Close()
-	clusterServer.Shutdown()
-
-	sqlConn, err := dbConn.DB()
-	if err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("dbConn.DB: %w", err))
-	}
-	if err := sqlConn.Close(); err != nil {
-		terminalError = multierror.Append(terminalError, fmt.Errorf("sqlConn.Close: %w", err))
-	}
-
-	l.Info("bye")
-	return terminalError
+	return srv, cleanup, nil
 }
 
 // grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.

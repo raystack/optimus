@@ -38,7 +38,10 @@ func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plugi
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace := askToSelectNamespace(l, conf)
+			namespace, err := askToSelectNamespace(l, conf)
+			if err != nil {
+				return err
+			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -115,7 +118,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 		messageStr = fmt.Sprintf("%s [%s]", messageStr, root)
 	}
 	var selectedDir string
-	if err = survey.AskOne(&survey.Select{
+	if err := survey.AskOne(&survey.Select{
 		Message: messageStr,
 		Default: currentFolder,
 		Help:    "Optimus helps organize specifications in sub-directories.\nPlease select where you want this new specification to be stored",

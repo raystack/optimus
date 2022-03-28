@@ -72,5 +72,5 @@ brews:
     install: |-
       bin.install "optimus"
     commit_author:
-      name: Kush Sharma
-      email: 3647166+kushsharma@users.noreply.github.com
+      name: github-actions[bot]
+      email: 41898282+github-actions[bot]@users.noreply.github.com

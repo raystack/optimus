@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
