@@ -65,7 +65,7 @@ func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string
 
 func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uuid.UUID) ([]models.JobSpec, error) {
 	var jobs []Job
-	if err := repo.db.WithContext(ctx).Where("project_id = ? AND job.id in ?", jobIDs).First(&jobs).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("project_id = ? AND job.id in ?", repo.project.ID, jobIDs).Find(&jobs).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, store.ErrResourceNotFound
 		}

@@ -836,4 +836,38 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		assert.ElementsMatch(t, []string{testModels[0].Name, testModels[2].Name}, []string{checkModels[namespaceSpec.Name][0], checkModels[namespaceSpec.Name][1]})
 		assert.ElementsMatch(t, []string{testModels[3].Name}, []string{checkModels[namespaceSpec2.Name][0]})
 	})
+
+	t.Run("GetByIDs", func(t *testing.T) {
+		db := DBSetup()
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+
+		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: tTask,
+		}, nil)
+		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+
+		defer depMod.AssertExpectations(t)
+		defer depMod2.AssertExpectations(t)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
+		err := repo.Insert(ctx, testModels[0])
+		assert.Nil(t, err)
+		err = repo.Insert(ctx, testModels[2])
+		assert.Nil(t, err)
+		err = repo.Insert(ctx, testModels[3])
+		assert.Nil(t, err)
+
+		checkModels, err := projectJobSpecRepo.GetByIDs(ctx, []uuid.UUID{testModels[0].ID, testModels[2].ID})
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(checkModels))
+	})
 }
