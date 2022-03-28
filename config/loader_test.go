@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const projectConfig = `
+const clientConfig = `
 version: 1
 log:
   level: info
@@ -253,7 +253,7 @@ func TestConfig(t *testing.T) {
 
 func (s *ConfigTestSuite) TestLoadClientConfig() {
 	currFilePath := path.Join(s.currPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	s.a.WriteFile(currFilePath, []byte(projectConfig), fs.ModeTemporary)
+	s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		s.Run("WhenConfigInCurrentPathIsExist", func() {
@@ -266,7 +266,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 
 		s.Run("WhenConfigInCurrentPathNotExist", func() {
 			s.a.Remove(currFilePath)
-			defer s.a.WriteFile(currFilePath, []byte(projectConfig), fs.ModeTemporary)
+			defer s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
 			conf, err := config.LoadClientConfig(config.EmptyPath)
 			s.Assert().NoError(err)
@@ -278,7 +278,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 		s.Run("WhenFilePathIsvalid", func() {
 			samplePath := "./sample/path/config.yaml"
 			b := strings.Builder{}
-			b.WriteString(projectConfig)
+			b.WriteString(clientConfig)
 			b.WriteString(`- name: namespace-c
   job:
     path: ./jobs-c

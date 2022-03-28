@@ -92,7 +92,8 @@ func configInitCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension), confMarshaled, defaultFilePermissionMode); err != nil {
+			filePath := fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension)
+			if err := ioutil.WriteFile(filePath, confMarshaled, defaultFilePermissionMode); err != nil {
 				return err
 			}
 
