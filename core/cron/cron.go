@@ -35,3 +35,10 @@ func ParseCronSchedule(interval string) (*ScheduleSpec, error) {
 		schd: roboCronSchedule,
 	}, nil
 }
+
+// Interval accepts the time and returns
+func (s *ScheduleSpec) Interval(t time.Time) time.Duration {
+	start := s.Next(t)
+	next := s.Next(start)
+	return next.Sub(start)
+}
