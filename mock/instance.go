@@ -127,3 +127,8 @@ func (s *RunService) Compile(ctx context.Context, namespaceSpec models.Namespace
 	args := s.Called(ctx, namespaceSpec, jobRun, instanceSpec)
 	return args.Get(0).(*models.JobRunInput), args.Error(1)
 }
+
+func (s *RunService) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
+	args := s.Called(ctx, projectSpec, jobSpec, jobQuery)
+	return args.Get(0).([]models.JobRun), args.Error(1)
+}

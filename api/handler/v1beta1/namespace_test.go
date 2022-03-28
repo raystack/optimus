@@ -44,25 +44,17 @@ func TestNamespaceOnServer(t *testing.T) {
 			namespaceService.On("Save", ctx, projectSpec.Name, namespaceSpec).Return(nil)
 			defer namespaceService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				"someVersion1.0",
-				jobSvc,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
 				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
+				namespaceService,
 			)
 
 			namespaceRequest := pb.RegisterProjectNamespaceRequest{
 				ProjectName: projectName,
 				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
 			}
-			resp, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
+			resp, err := namespaceServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectNamespaceResponse{
 				Success: true,
@@ -86,25 +78,17 @@ func TestNamespaceOnServer(t *testing.T) {
 				Return(service.NewError("namespace", service.ErrNotFound, "project does not exist"))
 			defer namespaceService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				"someVersion1.0",
-				nil,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
 				adapter,
-				nil,
-				nil,
-				nil,
+				namespaceService,
 			)
 
 			namespaceRequest := pb.RegisterProjectNamespaceRequest{
 				ProjectName: projectName,
 				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
 			}
-			_, err := runtimeServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
+			_, err := namespaceServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: not found for entity namespace: unable to store namespace", err.Error())
 		})
@@ -112,8 +96,6 @@ func TestNamespaceOnServer(t *testing.T) {
 
 	t.Run("ListProjectNamespaces", func(t *testing.T) {
 		t.Run("should read namespaces of a project", func(t *testing.T) {
-			Version := "1.0.1"
-
 			projectName := "a-data-project"
 
 			projectSpec := models.ProjectSpec{
@@ -142,23 +124,15 @@ func TestNamespaceOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				Version,
-				jobService,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
 				adapter,
-				nil,
-				nil,
-				nil,
+				namespaceService,
 			)
 
 			namespaceAdapted := adapter.ToNamespaceProto(namespaceSpec)
 			request := pb.ListProjectNamespacesRequest{ProjectName: projectName}
-			resp, err := runtimeServiceServer.ListProjectNamespaces(ctx, &request)
+			resp, err := namespaceServiceServer.ListProjectNamespaces(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, []*pb.NamespaceSpecification{namespaceAdapted}, resp.GetNamespaces())
 		})

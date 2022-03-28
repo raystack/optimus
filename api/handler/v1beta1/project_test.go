@@ -37,21 +37,14 @@ func TestProjectOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			projectServiceServer := v1.NewProjectServiceServer(
 				log,
-				"someVersion1.0",
-				jobService, nil, nil,
-				projectService,
-				nil,
-				nil,
 				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
+				projectService,
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
+			resp, err := projectServiceServer.RegisterProject(context.Background(), &projectRequest)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: not able to register project a-data-project", err.Error())
 			assert.Nil(t, resp)
 		})
@@ -73,21 +66,14 @@ func TestProjectOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			projectServiceServer := v1.NewProjectServiceServer(
 				log,
-				"someVersion1.0",
-				jobService, nil, nil,
-				projectService,
-				nil,
-				nil,
 				v1.NewAdapter(nil, nil),
-				nil,
-				nil,
-				nil,
+				projectService,
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := runtimeServiceServer.RegisterProject(context.Background(), &projectRequest)
+			resp, err := projectServiceServer.RegisterProject(context.Background(), &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
 				Success: true,

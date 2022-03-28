@@ -13,7 +13,7 @@ import (
 )
 
 type jobSyncObserver struct {
-	stream pb.RuntimeService_DeployJobSpecificationServer
+	stream pb.JobSpecificationService_DeployJobSpecificationServer
 	log    log.Logger
 	mu     *sync.Mutex
 }
@@ -57,7 +57,7 @@ func (obs *jobSyncObserver) Notify(e progress.Event) {
 }
 
 type resourceObserver struct {
-	stream pb.RuntimeService_DeployResourceSpecificationServer
+	stream pb.ResourceService_DeployResourceSpecificationServer
 	log    log.Logger
 	mu     *sync.Mutex
 }
@@ -85,7 +85,7 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 }
 
 type jobCheckObserver struct {
-	stream pb.RuntimeService_CheckJobSpecificationsServer
+	stream pb.JobSpecificationService_CheckJobSpecificationsServer
 	log    log.Logger
 	mu     *sync.Mutex
 }

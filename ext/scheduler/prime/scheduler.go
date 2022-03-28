@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -72,6 +73,10 @@ func (s *Scheduler) Clear(context.Context, models.ProjectSpec, string, time.Time
 
 func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
 	panic("implement me")
+}
+
+func (s *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobCron *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
+	return []models.JobRun{}, nil
 }
 
 func NewScheduler(jobRunRepoFac RunRepoFactory, nowFn func() time.Time) *Scheduler {

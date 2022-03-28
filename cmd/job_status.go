@@ -57,10 +57,10 @@ func getJobStatusRequest(l log.Logger, jobName, host, projectName string) error 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), jobStatusTimeout)
 	defer cancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	jobRun := pb.NewJobRunServiceClient(conn)
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	jobStatusResponse, err := runtime.JobStatus(timeoutCtx, &pb.JobStatusRequest{
+	jobStatusResponse, err := jobRun.JobStatus(timeoutCtx, &pb.JobStatusRequest{
 		ProjectName: projectName,
 		JobName:     jobName,
 	})

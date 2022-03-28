@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
+	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 )
@@ -53,7 +54,13 @@ func (ms *Scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, job
 }
 
 func (ms *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time,
-	endDate time.Time, batchSize int) ([]models.JobStatus, error) {
+	endDate time.Time, batchSize int,
+) ([]models.JobStatus, error) {
 	args := ms.Called(ctx, projectSpec, jobName, startDate, endDate, batchSize)
 	return args.Get(0).([]models.JobStatus), args.Error(1)
+}
+
+func (ms *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) ([]models.JobRun, error) {
+	args := ms.Called(ctx, projectSpec, jobQuery, jobCron)
+	return args.Get(0).([]models.JobRun), args.Error(1)
 }

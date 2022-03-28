@@ -40,7 +40,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 
 	t.Run("RegisterSecret", func(t *testing.T) {
 		t.Run("should return error when secret is empty", func(t *testing.T) {
-			runtimeServiceServer := createTestRuntimeServiceServer(nil)
+			secretServiceServer := createTestSecretServiceServer(nil)
 
 			secretRequest := pb.RegisterSecretRequest{
 				ProjectName:   projectSpec.Name,
@@ -49,14 +49,14 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			_, err := runtimeServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			_, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = empty value for secret",
 				err.Error())
 		})
 
 		t.Run("should return error when secret not encoded", func(t *testing.T) {
-			runtimeServiceServer := createTestRuntimeServiceServer(nil)
+			secretServiceServer := createTestSecretServiceServer(nil)
 
 			secretRequest := pb.RegisterSecretRequest{
 				ProjectName:   projectSpec.Name,
@@ -65,7 +65,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			_, err := runtimeServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			_, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = failed to decode base64 string: \nillegal base64 data at input byte 4",
 				err.Error())
@@ -81,7 +81,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			secretService.On("Save", ctx, projectSpec.Name, namespaceSpec.Name, sec).Return(nil)
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.RegisterSecretRequest{
 				ProjectName:   projectSpec.Name,
@@ -90,7 +90,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			resp, err := runtimeServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterSecretResponse{}, resp)
 		})
@@ -106,7 +106,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Return(errors.New("error while saving secret"))
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.RegisterSecretRequest{
 				ProjectName:   projectSpec.Name,
@@ -114,7 +114,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				SecretName:    "hello",
 				Value:         base64.StdEncoding.EncodeToString([]byte("world")),
 			}
-			resp, err := runtimeServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = error while saving secret: failed to register secret hello", err.Error())
 		})
@@ -131,7 +131,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			secretService.On("Update", ctx, projectSpec.Name, namespaceSpec.Name, sec).Return(nil)
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.UpdateSecretRequest{
 				ProjectName:   projectSpec.Name,
@@ -139,7 +139,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Value:         base64.StdEncoding.EncodeToString([]byte("world")),
 				NamespaceName: namespaceSpec.Name,
 			}
-			resp, err := runtimeServiceServer.UpdateSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.UpdateSecret(context.Background(), &secretRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.UpdateSecretResponse{}, resp)
 		})
@@ -155,7 +155,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Return(errors.New("random error"))
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.UpdateSecretRequest{
 				ProjectName:   projectSpec.Name,
@@ -163,7 +163,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				SecretName:    "hello",
 				Value:         base64.StdEncoding.EncodeToString([]byte("world")),
 			}
-			resp, err := runtimeServiceServer.UpdateSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.UpdateSecret(context.Background(), &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to update secret hello", err.Error())
 		})
@@ -176,12 +176,12 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Return([]models.SecretItemInfo{{}}, errors.New("random error"))
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.ListSecretsRequest{
 				ProjectName: projectSpec.Name,
 			}
-			resp, err := runtimeServiceServer.ListSecrets(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.ListSecrets(context.Background(), &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to list secrets", err.Error())
 		})
@@ -199,12 +199,12 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			secretService.On("List", ctx, projectSpec.Name).Return(secretItems, nil)
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.ListSecretsRequest{
 				ProjectName: projectSpec.Name,
 			}
-			resp, err := runtimeServiceServer.ListSecrets(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.ListSecrets(context.Background(), &secretRequest)
 			assert.Nil(t, err)
 			assert.Len(t, resp.Secrets, 1)
 			assert.Equal(t, resp.Secrets[0].Name, secretItems[0].Name)
@@ -218,13 +218,13 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Return(errors.New("random error"))
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.DeleteSecretRequest{
 				ProjectName: projectSpec.Name,
 				SecretName:  "hello",
 			}
-			resp, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.DeleteSecret(context.Background(), &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to delete secret hello", err.Error())
 		})
@@ -234,32 +234,22 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Return(nil)
 			defer secretService.AssertExpectations(t)
 
-			runtimeServiceServer := createTestRuntimeServiceServer(secretService)
+			secretServiceServer := createTestSecretServiceServer(secretService)
 
 			secretRequest := pb.DeleteSecretRequest{
 				ProjectName:   projectSpec.Name,
 				NamespaceName: namespaceSpec.Name,
 				SecretName:    "hello",
 			}
-			_, err := runtimeServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			_, err := secretServiceServer.DeleteSecret(context.Background(), &secretRequest)
 			assert.Nil(t, err)
 		})
 	})
 }
 
-func createTestRuntimeServiceServer(secretService service.SecretService) *v1.RuntimeServiceServer {
-	return v1.NewRuntimeServiceServer(
+func createTestSecretServiceServer(secretService service.SecretService) *v1.SecretServiceServer {
+	return v1.NewSecretServiceServer(
 		log.NewNoop(),
-		"someVersion1.0",
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
 		secretService,
-		nil,
-		nil,
-		nil,
-		nil,
 	)
 }

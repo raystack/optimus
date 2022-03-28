@@ -42,8 +42,10 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
-		namespace := askToSelectNamespace(l, conf)
-		var err error
+		namespace, err := askToSelectNamespace(l, conf)
+		if err != nil {
+			return err
+		}
 		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
 			return err
 		}
@@ -180,11 +182,11 @@ func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupD
 	requestTimeoutCtx, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
 	defer requestCancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	backupDryRunResponse, err := runtime.BackupDryRun(requestTimeoutCtx, backupRequest)
+	backupDryRunResponse, err := backup.BackupDryRun(requestTimeoutCtx, backupRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -213,11 +215,11 @@ func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupR
 	requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
 	defer requestCancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	backupResponse, err := runtime.CreateBackup(requestTimeout, backupRequest)
+	backupResponse, err := backup.CreateBackup(requestTimeout, backupRequest)
 	spinner.Stop()
 
 	if err != nil {

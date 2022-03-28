@@ -41,7 +41,10 @@ func createResourceSubCommand(l log.Logger, conf config.Optimus, datastoreSpecFs
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace := askToSelectNamespace(l, conf)
+			namespace, err := askToSelectNamespace(l, conf)
+			if err != nil {
+				return err
+			}
 			availableStorer := []string{}
 			for _, s := range datastoreRepo.GetAll() {
 				availableStorer = append(availableStorer, s.Name())

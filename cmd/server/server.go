@@ -45,7 +45,6 @@ import (
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/ext/executor/noop"
 	"github.com/odpf/optimus/ext/notify/slack"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/ext/scheduler/prime"
@@ -290,13 +289,7 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
 	// init default scheduler
 	switch conf.Scheduler.Name {
-	case "airflow":
-		models.BatchScheduler = airflow.NewScheduler(
-			&airflowBucketFactory{},
-			&http.Client{},
-			jobCompiler,
-		)
-	case "airflow2":
+	case "airflow", "airflow2":
 		models.BatchScheduler = airflow2.NewScheduler(
 			&airflowBucketFactory{},
 			&http.Client{},
@@ -447,37 +440,82 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 			},
 		),
 	})
+	// job service
+	jobService := job.NewService(
+		&jobSpecRepoFac,
+		models.BatchScheduler,
+		models.ManualScheduler,
+		jobSpecAssetDump(),
+		dependencyResolver,
+		priorityResolver,
+		projectJobSpecRepoFac,
+		replayManager,
+	)
+	// datastore service
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
+	// adapter service
+	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
+	// job run service
+	jobRunService := run.NewService(
+		jobrunRepoFac,
+		secretService,
+		func() time.Time {
+			return time.Now().UTC()
+		},
+		models.BatchScheduler,
+		run.NewGoEngine(),
+	)
 
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(grpcServer, v1handler.NewRuntimeServiceServer(
 		l,
 		config.Version,
-		job.NewService(
-			&jobSpecRepoFac,
-			models.BatchScheduler,
-			models.ManualScheduler,
-			jobSpecAssetDump(),
-			dependencyResolver,
-			priorityResolver,
-			projectJobSpecRepoFac,
-			replayManager,
-		),
+		jobService,
 		eventService,
-		datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac),
+		namespaceService,
+	))
+	// secret service
+	pb.RegisterSecretServiceServer(grpcServer, v1handler.NewSecretServiceServer(l, secretService))
+	// resource service
+	pb.RegisterResourceServiceServer(grpcServer, v1handler.NewResourceServiceServer(l,
+		dataStoreService,
+		namespaceService,
+		adapterService,
+		progressObs))
+	// replay service
+	pb.RegisterReplayServiceServer(grpcServer, v1handler.NewReplayServiceServer(l,
+		jobService,
+		namespaceService,
+		adapterService,
+		projectService))
+	// project service
+	pb.RegisterProjectServiceServer(grpcServer, v1handler.NewProjectServiceServer(l,
+		adapterService,
+		projectService))
+	// namespace service
+	pb.RegisterNamespaceServiceServer(grpcServer, v1handler.NewNamespaceServiceServer(l,
+		adapterService,
+		namespaceService))
+	// job Spec service
+	pb.RegisterJobSpecificationServiceServer(grpcServer, v1handler.NewJobSpecServiceServer(l,
+		jobService,
+		adapterService,
+		namespaceService,
+		progressObs))
+	// job run service
+	pb.RegisterJobRunServiceServer(grpcServer, v1handler.NewJobRunServiceServer(l,
+		jobService,
 		projectService,
 		namespaceService,
-		secretService,
-		v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry),
-		progressObs,
-		run.NewService(
-			jobrunRepoFac,
-			secretService,
-			func() time.Time {
-				return time.Now().UTC()
-			},
-			run.NewGoEngine(),
-		),
-		models.BatchScheduler,
+		adapterService,
+		jobRunService,
+		models.BatchScheduler))
+	// backup service
+	pb.RegisterBackupServiceServer(grpcServer, v1handler.NewBackupServiceServer(l,
+		jobService,
+		dataStoreService,
+		namespaceService,
+		projectService,
 	))
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram(grpc_prometheus.WithHistogramBuckets(prometheus.DefBuckets))
@@ -502,8 +540,33 @@ func Initialize(l log.Logger, conf config.Optimus) error {
 	}
 	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
 	defer runtimeCancel()
+	// register http handlers
 	if err := pb.RegisterRuntimeServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
 		return fmt.Errorf("RegisterRuntimeServiceHandler: %w", err)
+	}
+	if err := pb.RegisterJobSpecificationServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterJobSpecificationServiceHandler: %w", err)
+	}
+	if err := pb.RegisterJobRunServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterJobRunServiceHandler: %w", err)
+	}
+	if err := pb.RegisterProjectServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterProjectServiceHandler: %w", err)
+	}
+	if err := pb.RegisterNamespaceServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterNamespaceServiceHandler: %w", err)
+	}
+	if err := pb.RegisterReplayServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterReplayServiceHandler: %w", err)
+	}
+	if err := pb.RegisterBackupServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterBackupServiceHandler: %w", err)
+	}
+	if err := pb.RegisterResourceServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterResourceServiceHandler: %w", err)
+	}
+	if err := pb.RegisterSecretServiceHandler(runtimeCtx, gwmux, grpcConn); err != nil {
+		return fmt.Errorf("RegisterSecretServiceHandler: %w", err)
 	}
 
 	// base router
