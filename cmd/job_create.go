@@ -38,7 +38,10 @@ func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plugi
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace := askToSelectNamespace(l, conf)
+			namespace, err := askToSelectNamespace(l, conf)
+			if err != nil {
+				return err
+			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -158,7 +161,7 @@ func createJobSurvey(jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepo
 		return local.Job{}, errors.New("no supported task plugin found")
 	}
 
-	var qs = []*survey.Question{
+	qs := []*survey.Question{
 		{
 			Name: "name",
 			Prompt: &survey.Input{
@@ -364,7 +367,7 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 		}
 	}
 
-	//default
+	// default
 	return local.JobTaskWindow{
 		Size:       "24h",
 		Offset:     "0",

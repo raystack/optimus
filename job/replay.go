@@ -126,7 +126,7 @@ func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 			// where parent task and current task has same scheduled interval
 			taskFirstEffectedRun := taskSchedule.Next(parentRunDate.Add(-1 * time.Second))
 
-			//make sure it is after current dag start date
+			// make sure it is after current dag start date
 			if taskFirstEffectedRun.Before(childDag.Schedule.StartDate) {
 				continue
 			}
@@ -150,7 +150,7 @@ func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 
 // getRunsBetweenDates provides execution runs from start to end following a schedule interval
 // start and end both are inclusive
-func getRunsBetweenDates(start time.Time, end time.Time, schedule string) ([]time.Time, error) {
+func getRunsBetweenDates(start, end time.Time, schedule string) ([]time.Time, error) {
 	var runs []time.Time
 
 	// standard cron parser without descriptors
@@ -218,7 +218,7 @@ func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest m
 	return srv.populateDownstreamRunsWithStatus(ctx, replayRequest.Project, replaySpec.StartDate, replaySpec.EndDate, replaySpec.ExecutionTree)
 }
 
-func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time, parentNode *tree.TreeNode) (*tree.TreeNode, error) {
+func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate, endDate time.Time, parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 	for _, dependent := range parentNode.Dependents {
 		runsWithStatus := set.NewTreeSetWith(TimeOfJobStatusComparator)
 		jobStatusList, err := srv.replayManager.GetRunStatus(ctx, projectSpec, startDate, endDate, dependent.Data.(models.JobSpec).Name)

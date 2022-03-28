@@ -27,28 +27,28 @@ type Project struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (p Project) FromSpec(spec models.ProjectSpec) (Project, error) {
+func (p Project) FromSpec(spec models.ProjectSpec) Project {
 	jsonBytes, err := json.Marshal(spec.Config)
 	if err != nil {
-		return Project{}, nil
+		return Project{}
 	}
 	return Project{
 		ID:     spec.ID,
 		Name:   spec.Name,
 		Config: jsonBytes,
-	}, nil
+	}
 }
 
-func (p Project) ToSpec() (models.ProjectSpec, error) {
+func (p Project) ToSpec() models.ProjectSpec {
 	var conf map[string]string
 	if err := json.Unmarshal(p.Config, &conf); err != nil {
-		return models.ProjectSpec{}, nil
+		return models.ProjectSpec{}
 	}
 	return models.ProjectSpec{
 		ID:     p.ID,
 		Name:   p.Name,
 		Config: conf,
-	}, nil
+	}
 }
 
 func (p Project) ToSpecWithSecrets(h models.ApplicationKey) (models.ProjectSpec, error) {
@@ -78,10 +78,8 @@ type ProjectRepository struct {
 }
 
 func (repo *ProjectRepository) Insert(ctx context.Context, resource models.ProjectSpec) error {
-	p, err := Project{}.FromSpec(resource)
-	if err != nil {
-		return err
-	}
+	p := Project{}.FromSpec(resource)
+
 	if len(p.Name) == 0 {
 		return errors.New("name cannot be empty")
 	}
@@ -98,10 +96,8 @@ func (repo *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec
 	if len(spec.Config) == 0 {
 		return store.ErrEmptyConfig
 	}
-	project, err := Project{}.FromSpec(spec)
-	if err != nil {
-		return err
-	}
+	project := Project{}.FromSpec(spec)
+
 	project.ID = existingResource.ID
 	return repo.db.WithContext(ctx).Omit("Secrets").Model(&project).Update("Config", project.Config).Error
 }

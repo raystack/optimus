@@ -37,14 +37,14 @@ type Job struct {
 
 	TaskName         string
 	TaskConfig       datatypes.JSON
-	WindowSize       *int64 //duration in nanos
+	WindowSize       *int64 // duration in nanos
 	WindowOffset     *int64
 	WindowTruncateTo *string
 
 	Assets               datatypes.JSON
 	Hooks                datatypes.JSON
 	Metadata             datatypes.JSON
-	ExternalDependencies datatypes.JSON //store external dependencies
+	ExternalDependencies datatypes.JSON // store external dependencies
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
@@ -166,7 +166,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
-	//prep external dependencies
+	// prep external dependencies
 	externalDependencies := models.ExternalDependency{}
 	if conf.ExternalDependencies != nil {
 		if err := json.Unmarshal(conf.ExternalDependencies, &externalDependencies); err != nil {
@@ -179,7 +179,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
-	//prep assets
+	// prep assets
 	jobAssets := []models.JobSpecAsset{}
 	assetsRaw := []JobAsset{}
 	if err := json.Unmarshal(conf.Assets, &assetsRaw); err != nil {
@@ -189,7 +189,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		jobAssets = append(jobAssets, asset.ToSpec())
 	}
 
-	//prep hooks
+	// prep hooks
 	jobHooks := []models.JobSpecHook{}
 	hooksRaw := []JobHook{}
 	if err := json.Unmarshal(conf.Hooks, &hooksRaw); err != nil {
@@ -396,18 +396,14 @@ func (adapt JobSpecAdapter) FromSpecWithNamespace(ctx context.Context, spec mode
 	}
 
 	// namespace
-	adaptNamespace, err := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
-	if err != nil {
-		return adaptJob, err
-	}
+	adaptNamespace := Namespace{}.FromSpecWithProject(namespace, namespace.ProjectSpec)
+
 	adaptJob.NamespaceID = adaptNamespace.ID
 	adaptJob.Namespace = adaptNamespace
 
 	// project
-	adaptProject, err := Project{}.FromSpec(namespace.ProjectSpec)
-	if err != nil {
-		return adaptJob, err
-	}
+	adaptProject := Project{}.FromSpec(namespace.ProjectSpec)
+
 	adaptJob.ProjectID = adaptProject.ID
 	adaptJob.Project = adaptProject
 
@@ -459,10 +455,7 @@ func (adapt JobSpecAdapter) FromJobRun(ctx context.Context, jr models.JobRun, ns
 	}
 
 	// namespace
-	adaptNamespace, err := Namespace{}.FromSpecWithProject(nsSpec, nsSpec.ProjectSpec)
-	if err != nil {
-		return JobRun{}, err
-	}
+	adaptNamespace := Namespace{}.FromSpecWithProject(nsSpec, nsSpec.ProjectSpec)
 
 	var instances []Instance
 	for _, instanceSpec := range jr.Instances {
@@ -526,10 +519,7 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 	var adaptNamespace models.NamespaceSpec
 
 	if jr.Namespace.Name != "" {
-		adaptProject, err = jr.Namespace.Project.ToSpec()
-		if err != nil {
-			return models.JobRun{}, models.NamespaceSpec{}, err
-		}
+		adaptProject = jr.Namespace.Project.ToSpec()
 
 		// namespace
 		adaptNamespace, err = jr.Namespace.ToSpec(adaptProject)

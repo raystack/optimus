@@ -28,7 +28,7 @@ var (
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
-func init() {
+func init() { //nolint:gochecknoinits
 	_ = validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
 }
 
@@ -104,11 +104,11 @@ func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook
 }
 
 // FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
-func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
+func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	return JobHook{
 		Name:   spec.Unit.Info().Name,
 		Config: JobSpecConfigToYamlSlice(spec.Config),
-	}, nil
+	}
 }
 
 // JobSpecMetadata is a metadata representation for a job spec
@@ -615,10 +615,7 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 
 	// prep hooks
 	for _, hook := range spec.Hooks {
-		h, err := JobHook{}.FromSpec(hook)
-		if err != nil {
-			return parsed, err
-		}
+		h := JobHook{}.FromSpec(hook)
 		parsed.Hooks = append(parsed.Hooks, h)
 	}
 
@@ -685,7 +682,7 @@ func tryParsingInMonths(str string) (time.Duration, error) {
 func prepHTTPDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
 	var httpDep models.HTTPDependency
 	if _, err := url.ParseRequestURI(dep.URL); err != nil {
-		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", index, err)
+		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %w", index, err)
 	}
 	if dep.Name == "" {
 		return httpDep, fmt.Errorf("empty name present on HTTPDependencies index %d of jobs.yaml", index)

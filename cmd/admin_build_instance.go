@@ -96,8 +96,8 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	defer cancel()
 
 	// fetch Instance by calling the optimus API
-	runtime := pb.NewRuntimeServiceClient(conn)
-	jobResponse, err := runtime.RegisterInstance(timeoutCtx, &pb.RegisterInstanceRequest{
+	jobRun := pb.NewJobRunServiceClient(conn)
+	jobResponse, err := jobRun.RegisterInstance(timeoutCtx, &pb.RegisterInstanceRequest{
 		ProjectName:  projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,
@@ -109,7 +109,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	}
 
 	// make sure output dir exists
-	if err := os.MkdirAll(inputDirectory, 0777); err != nil {
+	if err := os.MkdirAll(inputDirectory, 0o777); err != nil {
 		return fmt.Errorf("failed to create directory at %s: %w", inputDirectory, err)
 	}
 	writeToFileFn := utils.WriteStringToFileIndexed()

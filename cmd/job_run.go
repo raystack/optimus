@@ -67,14 +67,11 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 	defer runCancel()
 
 	adapt := v1handler.NewAdapter(pluginRepo, nil)
-	adaptedSpec, err := adapt.ToJobProto(jobSpec)
-	if err != nil {
-		return err
-	}
+	adaptedSpec := adapt.ToJobProto(jobSpec)
 
 	l.Info("please wait...")
-	runtime := pb.NewRuntimeServiceClient(conn)
-	jobResponse, err := runtime.RunJob(runTimeoutCtx, &pb.RunJobRequest{
+	jobRun := pb.NewJobRunServiceClient(conn)
+	jobResponse, err := jobRun.RunJob(runTimeoutCtx, &pb.RunJobRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespace,
 		Specifications: []*pb.JobSpecification{

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
+
 	"github.com/odpf/optimus/store"
 
 	"github.com/odpf/optimus/core/progress"
@@ -28,15 +30,15 @@ func (s *Scheduler) GetName() string {
 	return "sequential"
 }
 
-func (s *Scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
+func (s *Scheduler) VerifyJob(context.Context, models.NamespaceSpec, models.JobSpec) error {
 	return nil
 }
 
-func (s *Scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
+func (s *Scheduler) ListJobs(context.Context, models.NamespaceSpec, models.SchedulerListOptions) ([]models.Job, error) {
 	panic("implement me")
 }
 
-func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec, obs progress.Observer) error {
+func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec, _ progress.Observer) error {
 	var jobRuns []models.JobRun
 	for _, j := range jobs {
 		jobRuns = append(jobRuns, models.JobRun{
@@ -55,24 +57,28 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return nil
 }
 
-func (s *Scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, obs progress.Observer) error {
+func (s *Scheduler) DeleteJobs(context.Context, models.NamespaceSpec, []string, progress.Observer) error {
 	return nil
 }
 
-func (s *Scheduler) Bootstrap(ctx context.Context, spec models.ProjectSpec) error {
+func (s *Scheduler) Bootstrap(context.Context, models.ProjectSpec) error {
 	return nil
 }
 
-func (s *Scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus, error) {
+func (s *Scheduler) GetJobStatus(context.Context, models.ProjectSpec, string) ([]models.JobStatus, error) {
 	panic("implement me")
 }
 
-func (s *Scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+func (s *Scheduler) Clear(context.Context, models.ProjectSpec, string, time.Time, time.Time) error {
 	return nil
 }
 
-func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate time.Time, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
+func (s *Scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
 	panic("implement me")
+}
+
+func (s *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobCron *models.JobQuery, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
+	return []models.JobRun{}, nil
 }
 
 func NewScheduler(jobRunRepoFac RunRepoFactory, nowFn func() time.Time) *Scheduler {

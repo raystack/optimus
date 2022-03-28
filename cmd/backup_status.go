@@ -61,11 +61,11 @@ func backupStatusCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 		requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
 		defer requestCancel()
 
-		runtime := pb.NewRuntimeServiceClient(conn)
+		backup := pb.NewBackupServiceClient(conn)
 
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		backupDetailResponse, err := runtime.GetBackup(requestTimeout, listBackupsRequest)
+		backupDetailResponse, err := backup.GetBackup(requestTimeout, listBackupsRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
@@ -86,7 +86,7 @@ func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupR
 	table.SetBorder(false)
 
 	ttl := backupDetailResponse.Spec.Config[models.ConfigTTL]
-	var expiry = backupDetailResponse.Spec.CreatedAt.AsTime()
+	expiry := backupDetailResponse.Spec.CreatedAt.AsTime()
 	if ttl != "" {
 		ttlDuration, err := time.ParseDuration(ttl)
 		if err != nil {

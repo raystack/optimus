@@ -30,7 +30,7 @@ func (cli *BqClientMock) Dataset(dataset string) bqiface.Dataset {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) DatasetInProject(project string, dataset string) bqiface.Dataset {
+func (cli *BqClientMock) DatasetInProject(project, dataset string) bqiface.Dataset {
 	return cli.Called(project, dataset).Get(0).(bqiface.Dataset)
 }
 

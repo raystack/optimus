@@ -22,11 +22,9 @@ const (
 	SecretsStringToMatch = ".secret."
 )
 
-var (
-	// IgnoreTemplateRenderExtension used as extension on a file will skip template
-	// rendering of it
-	IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
-)
+// IgnoreTemplateRenderExtension used as extension on a file will skip template
+// rendering of it
+var IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
 
 // ContextManager fetches all config data for a given instanceSpec and compiles all
 // macros/templates.
@@ -100,7 +98,7 @@ func (fm *ContextManager) createContextForTask(instanceConfig map[string]string)
 	return contextForTask
 }
 
-func (fm *ContextManager) createContextForHook(initialContext map[string]interface{}, taskConfigs map[string]string, taskSecretConfigs map[string]string) map[string]interface{} {
+func (fm *ContextManager) createContextForHook(initialContext map[string]interface{}, taskConfigs, taskSecretConfigs map[string]string) map[string]interface{} {
 	// Merge taskConfig and secret config for the context
 	mergedTaskConfigs := utils.MergeMaps(taskConfigs, taskSecretConfigs)
 
@@ -162,7 +160,7 @@ func (fm *ContextManager) compileHookConfigs(hookName string, templateContext ma
 	map[string]string, map[string]string, error) {
 	hook, err := fm.jobRun.Spec.GetHookByName(hookName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: requested hook not found %s", err.Error(), hookName)
+		return nil, nil, fmt.Errorf("requested hook not found %s: %w", hookName, err)
 	}
 
 	hookConfigs, withSecrets, err := fm.compileConfigs(hook.Config, templateContext)
@@ -301,7 +299,7 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 		ConfigKeyDestination:   jobDestination,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to compile templates", err)
+		return nil, fmt.Errorf("failed to compile templates: %w", err)
 	}
 
 	return templates, nil

@@ -46,7 +46,7 @@ func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plu
 			start := time.Now()
 			jobSpecs, err := jobSpecRepo.GetAll()
 			if err != nil {
-				return fmt.Errorf("directory '%s': %v", namespace.Job.Path, err)
+				return fmt.Errorf("directory '%s': %w", namespace.Job.Path, err)
 			}
 
 			if err := validateJobSpecificationRequest(l, projectName, namespace.Name, pluginRepo, jobSpecs, host, verbose); err != nil {
@@ -62,7 +62,7 @@ func jobValidateCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plu
 	return cmd
 }
 
-func validateJobSpecificationRequest(l log.Logger, projectName string, namespace string,
+func validateJobSpecificationRequest(l log.Logger, projectName, namespace string,
 	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string, verbose bool) (err error) {
 	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
@@ -83,15 +83,12 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
-		adaptJob, err := adapt.ToJobProto(spec)
-		if err != nil {
-			return fmt.Errorf("failed to serialize: %s: %w", spec.Name, err)
-		}
+		adaptJob := adapt.ToJobProto(spec)
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
 
-	runtime := pb.NewRuntimeServiceClient(conn)
-	respStream, err := runtime.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
+	job := pb.NewJobSpecificationServiceClient(conn)
+	respStream, err := job.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
 		ProjectName:   projectName,
 		Jobs:          adaptedJobSpecs,
 		NamespaceName: namespace,
@@ -117,7 +114,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName string, namespace
 	for {
 		resp, err := respStream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			streamError = err

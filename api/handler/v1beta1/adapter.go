@@ -167,11 +167,8 @@ func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecT
 	return window, nil
 }
 
-func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, error) {
-	adaptedHook, err := adapt.ToHookProto(spec.Hooks)
-	if err != nil {
-		return nil, err
-	}
+func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
+	adaptedHook := adapt.ToHookProto(spec.Hooks)
 
 	var notifyProto []*pb.JobSpecification_Behavior_Notifiers
 	for _, notify := range spec.Behavior.Notify {
@@ -221,7 +218,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 		})
 	}
 
-	//prep external dependencies for proto
+	// prep external dependencies for proto
 	for _, httpDep := range spec.ExternalDependencies.HTTPDependencies {
 		conf.Dependencies = append(conf.Dependencies, &pb.JobDependency{
 			HttpDependency: &pb.HttpDependency{
@@ -242,7 +239,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) (*pb.JobSpecification, err
 	}
 	conf.Config = taskConfigs
 
-	return conf, nil
+	return conf
 }
 
 func (adapt *Adapter) ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
@@ -343,7 +340,7 @@ func (adapt *Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models
 	}
 }
 
-func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpec, error) {
+func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec {
 	var data []*pb.InstanceSpecData
 	for _, asset := range spec.Data {
 		data = append(data, &pb.InstanceSpecData{
@@ -358,7 +355,7 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) (*pb.InstanceSpe
 		ExecutedAt: timestamppb.New(spec.ExecutedAt),
 		Name:       spec.Name,
 		Type:       pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(spec.Type.String(), "type")]),
-	}, nil
+	}
 }
 
 func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
@@ -415,7 +412,7 @@ func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 	return hooks, nil
 }
 
-func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook, err error) {
+func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
 	for _, hook := range hooks {
 		hookConfigs := []*pb.JobConfigItem{}
 		for _, c := range hook.Config {

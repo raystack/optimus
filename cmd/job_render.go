@@ -23,14 +23,16 @@ func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo mode
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE: func(c *cli.Command, args []string) error {
-			namespace := askToSelectNamespace(l, conf)
+			namespace, err := askToSelectNamespace(l, conf)
+			if err != nil {
+				return err
+			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
 				local.NewJobSpecAdapter(pluginRepo),
 			)
 			var jobName string
-			var err error
 			if len(args) == 0 {
 				// doing it locally for now, ideally using optimus service will give
 				// more accurate results
@@ -48,7 +50,7 @@ func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo mode
 
 			// create temporary directory
 			renderedPath := filepath.Join(".", "render", jobSpec.Name)
-			_ = os.MkdirAll(renderedPath, 0770)
+			_ = os.MkdirAll(renderedPath, 0o770)
 			l.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
 
 			now := time.Now()

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
@@ -18,12 +19,62 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+type JobSpecServiceServerTestSuite struct {
+	suite.Suite
+	ctx              context.Context //nolint:containedctx
+	namespaceService *mock.NamespaceService
+	jobService       *mock.JobService // TODO: refactor to service package
+	adapter          *mock.ProtoAdapter
+	log              log.Logger
+	progressObserver progress.Observer
+
+	jobReq        *pb.DeployJobSpecificationRequest
+	resourceReq   *pb.DeployResourceSpecificationRequest
+	projectSpec   models.ProjectSpec
+	namespaceSpec models.NamespaceSpec
+}
+
+func (s *JobSpecServiceServerTestSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.namespaceService = new(mock.NamespaceService)
+	s.adapter = new(mock.ProtoAdapter)
+	s.jobService = new(mock.JobService)
+	s.log = log.NewNoop()
+
+	s.projectSpec = models.ProjectSpec{}
+	s.projectSpec.Name = "project-a"
+	s.projectSpec.ID = uuid.MustParse("26a0d6a0-13c6-4b30-ae6f-29233df70f31")
+
+	s.namespaceSpec = models.NamespaceSpec{}
+	s.namespaceSpec.Name = "ns1"
+	s.namespaceSpec.ID = uuid.MustParse("ceba7919-e07d-48b4-a4ce-141d79a3b59d")
+
+	s.jobReq = &pb.DeployJobSpecificationRequest{}
+	s.jobReq.ProjectName = s.projectSpec.Name
+	s.jobReq.NamespaceName = s.namespaceSpec.Name
+
+	s.resourceReq = &pb.DeployResourceSpecificationRequest{}
+	s.resourceReq.DatastoreName = "datastore-1"
+	s.resourceReq.ProjectName = s.projectSpec.Name
+	s.resourceReq.NamespaceName = s.namespaceSpec.Name
+}
+
+func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecServiceServer {
+	return v1.NewJobSpecServiceServer(
+		s.log,
+		s.jobService,
+		s.adapter,
+		s.namespaceService,
+		s.progressObserver,
+	)
+}
+
 func TestRuntimeServiceServerJobTestSuite(t *testing.T) {
-	s := new(RuntimeServiceServerTestSuite)
+	s := new(JobSpecServiceServerTestSuite)
 	suite.Run(t, s)
 }
 
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_NoJobSpec() {
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_NoJobSpec() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
@@ -34,7 +85,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().NoError(err)
@@ -42,7 +93,8 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJobSpecs() {
+
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJobSpecs() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-2"})
@@ -65,7 +117,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().NoError(err)
@@ -75,18 +127,19 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 	s.jobService.AssertExpectations(s.T())
 }
 
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRecvError() {
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRecvError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Recv").Return(nil, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
 }
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_NamespaceServiceGetError() {
+
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_NamespaceServiceGetError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
@@ -95,14 +148,15 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_Namespac
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 }
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterFromJobProtoError() {
+
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterFromJobProtoError() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 	s.jobReq.Jobs = jobSpecs
@@ -116,7 +170,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterF
 	s.adapter.On("FromJobProto", jobSpecs[0]).Return(models.JobSpec{}, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().Error(err)
@@ -125,7 +179,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterF
 	s.namespaceService.AssertExpectations(s.T())
 }
 
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceCreateError() {
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceCreateError() {
 	jobSpecs := []*pb.JobSpecification{}
 	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
 	s.jobReq.Jobs = jobSpecs
@@ -142,7 +196,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.jobService.On("Create", s.ctx, s.namespaceSpec, adaptedJobs[0]).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().Error(err)
@@ -151,7 +205,8 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceKeepOnlyError() {
+
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceKeepOnlyError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
@@ -161,7 +216,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().Error(err)
@@ -170,7 +225,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.jobService.AssertExpectations(s.T())
 }
 
-func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceSyncError() {
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceSyncError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
@@ -181,7 +236,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().Error(err)
@@ -190,7 +245,7 @@ func (s *RuntimeServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	s.jobService.AssertExpectations(s.T())
 }
 
-func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Success() {
+func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Success() {
 	req := &pb.GetJobSpecificationRequest{}
 	req.ProjectName = s.projectSpec.Name
 	req.NamespaceName = s.namespaceSpec.Name
@@ -202,14 +257,14 @@ func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Success() {
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
 	s.adapter.On("ToJobProto", jobSpec).Return(jobSpecProto, nil).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
 
 	s.Assert().NoError(err)
 	s.Assert().NotNil(resp)
 }
 
-func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_NamespaceServiceGetError() {
+func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_NamespaceServiceGetError() {
 	req := &pb.GetJobSpecificationRequest{}
 	req.ProjectName = s.projectSpec.Name
 	req.NamespaceName = s.namespaceSpec.Name
@@ -217,14 +272,14 @@ func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_NamespaceSe
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
 
 	s.Assert().Error(err)
 	s.Assert().Nil(resp)
 }
 
-func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceGetByNameError() {
+func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceGetByNameError() {
 	req := &pb.GetJobSpecificationRequest{}
 	req.ProjectName = s.projectSpec.Name
 	req.NamespaceName = s.namespaceSpec.Name
@@ -233,25 +288,7 @@ func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceG
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(models.JobSpec{}, errors.New("any error")).Once()
 
-	runtimeServiceServer := s.newRuntimeServiceServer()
-	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
-
-	s.Assert().Error(err)
-	s.Assert().Nil(resp)
-}
-
-func (s *RuntimeServiceServerTestSuite) TestGetJobSpecification_Fail_AdapterToJobProtoError() {
-	req := &pb.GetJobSpecificationRequest{}
-	req.ProjectName = s.projectSpec.Name
-	req.NamespaceName = s.namespaceSpec.Name
-	req.JobName = "job-1"
-	jobSpec := models.JobSpec{Name: req.JobName}
-
-	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
-	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
-	s.adapter.On("ToJobProto", jobSpec).Return(&pb.JobSpecification{}, errors.New("any error")).Once()
-
-	runtimeServiceServer := s.newRuntimeServiceServer()
+	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
 
 	s.Assert().Error(err)
@@ -331,27 +368,20 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				"someVersion1.0",
 				jobSvc,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
+				adapter, namespaceService,
 				nil,
 			)
 
-			jobProto, _ := adapter.ToJobProto(jobSpec)
+			jobProto := adapter.ToJobProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,
 				Spec:          jobProto,
 			}
-			resp, err := runtimeServiceServer.CreateJobSpecification(ctx, &request)
+			resp, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,
@@ -359,11 +389,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}, resp)
 		})
 	})
-
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
 		t.Run("should delete the job", func(t *testing.T) {
-			Version := "1.0.1"
-
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
 			taskName := "a-data-task"
@@ -430,22 +457,15 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobService.On("Delete", mock2.Anything, namespaceSpec, jobSpec).Return(nil)
 			defer jobService.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
-				Version,
 				jobService,
-				nil, nil,
-				nil,
-				namespaceService,
-				nil,
-				adapter,
-				nil,
-				nil,
+				adapter, namespaceService,
 				nil,
 			)
 
 			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, NamespaceName: namespaceSpec.Name}
-			resp, err := runtimeServiceServer.DeleteJobSpecification(ctx, &deployRequest)
+			resp, err := jobSpecServiceServer.DeleteJobSpecification(ctx, &deployRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, "job a-data-job has been deleted", resp.GetMessage())
 		})
