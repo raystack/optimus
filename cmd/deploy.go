@@ -134,6 +134,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	namespaceNames []string,
 	verbose bool,
 ) error {
+	//TODO fetch namespaces can be a seperate function
 	var selectedNamespaceNames []string
 	if len(namespaceNames) > 0 {
 		selectedNamespaceNames = namespaceNames
@@ -156,15 +157,19 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	var specFound bool
 	var totalSpecsCount int
 	for i, namespaceName := range selectedNamespaceNames {
+		//TODO add a function to fetch jobspecs given namespace in protoformat
+		//TODO this check i believe is not necessary
 		namespace, err := conf.GetNamespaceByName(namespaceName)
 		if err != nil {
 			return err
 		}
+		//TODO  initialize the filesystem inside
 		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 		jobSpecRepo := local.NewJobSpecRepository(
 			jobSpecFs,
 			local.NewJobSpecAdapter(pluginRepo),
 		)
+		//TODO Log once , new line can be logged outside
 		if i == 0 {
 			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespaceName))
 		} else {
@@ -180,6 +185,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		}
 		totalSpecsCount += len(jobSpecs)
 
+		//TODO rename to JobSpecsInProto
 		var adaptedJobSpecs []*pb.JobSpecification
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for _, spec := range jobSpecs {
@@ -203,6 +209,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	}
 
 	l.Info("> Receiving responses:")
+	//TODO spinner should be generic across all apis, we should avoid writing this logic for every api call
 	var counter int
 	var streamErrs []error
 	spinner := NewProgressBar()
