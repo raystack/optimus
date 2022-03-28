@@ -100,7 +100,7 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
 	observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
 	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
-	jobDependencies, err := dependencyRepo.GetAll(ctx)
+	jobDependencies, err := dependencyRepo.GetAll(ctx, projectSpec.ID)
 	if err != nil {
 		return nil, err
 	}

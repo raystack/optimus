@@ -24,8 +24,7 @@ type JobDependency struct {
 }
 
 type jobDependencyRepository struct {
-	db      *gorm.DB
-	project models.ProjectSpec
+	db *gorm.DB
 }
 
 type JobDependencies []JobDependency
@@ -59,9 +58,9 @@ func (repo *jobDependencyRepository) Save(ctx context.Context, projectID, jobID 
 	return repo.db.WithContext(ctx).Create(&jobDependency).Error
 }
 
-func (repo *jobDependencyRepository) GetAll(ctx context.Context) ([]models.JobIDDependenciesPair, error) {
+func (repo *jobDependencyRepository) GetAll(ctx context.Context, projectID uuid.UUID) ([]models.JobIDDependenciesPair, error) {
 	var jobDependencies []JobDependency
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("project_id = ?", repo.project.ID).Find(&jobDependencies).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("project_id = ?", projectID).Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
 
@@ -74,7 +73,6 @@ func (repo *jobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uu
 
 func NewJobDependencyRepository(db *gorm.DB, projectSpec models.ProjectSpec) *jobDependencyRepository {
 	return &jobDependencyRepository{
-		db:      db,
-		project: projectSpec,
+		db: db,
 	}
 }

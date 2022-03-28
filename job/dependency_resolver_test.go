@@ -1518,7 +1518,7 @@ func TestDependencyResolver(t *testing.T) {
 					Type:             models.JobSpecDependencyTypeIntra,
 				},
 			}
-			jobDependencyRepository.On("GetAll", ctx).Return(persistedDependencies, nil)
+			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return(persistedDependencies, nil)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			actual, err := resolver.FetchJobDependencies(ctx, projectSpec, nil)
@@ -1667,7 +1667,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 
 			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
-			jobDependencyRepository.On("GetAll", ctx).Return(persistedDependencies, nil)
+			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return(persistedDependencies, nil)
 
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(projectJobSpecRepository)
 			projectJobSpecRepository.On("GetAll", ctx).Return(jobSpecs, nil)
@@ -1763,7 +1763,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobDependencyRepoFactory.On("New", projectSpec).Return(jobDependencyRepository)
 
 			errorMsg := "internal error"
-			jobDependencyRepository.On("GetAll", ctx).Return([]models.JobIDDependenciesPair{}, errors.New(errorMsg))
+			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return([]models.JobIDDependenciesPair{}, errors.New(errorMsg))
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, jobDependencyRepoFactory)
 			actual, err := resolver.FetchJobDependencies(ctx, projectSpec, nil)
@@ -1906,7 +1906,7 @@ func TestDependencyResolver(t *testing.T) {
 					Type:             models.JobSpecDependencyTypeInter,
 				},
 			}
-			jobDependencyRepository.On("GetAll", ctx).Return(jobDependencies, nil)
+			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return(jobDependencies, nil)
 
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(projectJobSpecRepository)
 			projectJobSpecRepository.On("GetAll", ctx).Return(jobSpecs, nil)

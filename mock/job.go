@@ -293,8 +293,8 @@ func (repo *JobDependencyRepository) Save(ctx context.Context, projectID, jobID 
 	return args.Error(0)
 }
 
-func (repo *JobDependencyRepository) GetAll(ctx context.Context) ([]models.JobIDDependenciesPair, error) {
-	args := repo.Called(ctx)
+func (repo *JobDependencyRepository) GetAll(ctx context.Context, projectID uuid.UUID) ([]models.JobIDDependenciesPair, error) {
+	args := repo.Called(ctx, projectID)
 	return args.Get(0).([]models.JobIDDependenciesPair), args.Error(1)
 }
 
