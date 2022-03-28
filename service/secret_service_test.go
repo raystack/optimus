@@ -16,7 +16,7 @@ import (
 func TestSecretService(t *testing.T) {
 	ctx := context.Background()
 	project := models.ProjectSpec{
-		ID:   uuid.New(),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "optimus-project",
 	}
 	namespace := models.NamespaceSpec{

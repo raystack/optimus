@@ -26,7 +26,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 	ctx := context.Background()
 
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -70,7 +70,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
@@ -132,7 +132,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
@@ -146,13 +146,13 @@ func TestIntegrationJobRepository(t *testing.T) {
 	}
 
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
 
 	namespaceSpec2 := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}
@@ -565,7 +565,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 	ctx := context.Background()
 
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -609,7 +609,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod},
@@ -649,7 +649,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
@@ -662,7 +662,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "p-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
@@ -677,12 +677,12 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
 	namespaceSpec2 := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}

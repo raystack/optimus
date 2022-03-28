@@ -54,7 +54,7 @@ func (p Secret) FromSpec(spec models.ProjectSecretItem, proj models.ProjectSpec,
 		ID:          spec.ID,
 		Name:        spec.Name,
 		Value:       base64cipher,
-		ProjectID:   proj.ID,
+		ProjectID:   proj.ID.UUID(),
 		NamespaceID: namespace.ID,
 		Type:        secretType.String(),
 	}, nil

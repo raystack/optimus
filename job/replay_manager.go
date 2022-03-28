@@ -176,7 +176,7 @@ func (m *Manager) GetReplay(ctx context.Context, replayUUID uuid.UUID) (models.R
 }
 
 // GetReplayList using Project ID
-func (m *Manager) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (m *Manager) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
 	replays, err := m.replaySpecRepoFac.New().GetByProjectID(ctx, projectUUID)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {

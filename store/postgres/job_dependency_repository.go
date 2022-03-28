@@ -43,22 +43,22 @@ func (d JobDependencies) ToSpec() ([]models.JobIDDependenciesPair, error) {
 	return jobDependencies, nil
 }
 
-func (d JobDependency) FromSpec(projectID, jobID uuid.UUID, jobDependency models.JobSpecDependency) JobDependency {
+func (d JobDependency) FromSpec(projectID models.ProjectID, jobID uuid.UUID, jobDependency models.JobSpecDependency) JobDependency {
 	return JobDependency{
 		JobID:              jobID,
-		ProjectID:          projectID,
+		ProjectID:          projectID.UUID(),
 		DependentJobID:     jobDependency.Job.ID,
-		DependentProjectID: jobDependency.Project.ID,
+		DependentProjectID: jobDependency.Project.ID.UUID(),
 		Type:               jobDependency.Type.String(),
 	}
 }
 
-func (repo *jobDependencyRepository) Save(ctx context.Context, projectID, jobID uuid.UUID, jobDependencySpec models.JobSpecDependency) error {
+func (repo *jobDependencyRepository) Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, jobDependencySpec models.JobSpecDependency) error {
 	jobDependency := JobDependency{}.FromSpec(projectID, jobID, jobDependencySpec)
 	return repo.db.WithContext(ctx).Create(&jobDependency).Error
 }
 
-func (repo *jobDependencyRepository) GetAll(ctx context.Context, projectID uuid.UUID) ([]models.JobIDDependenciesPair, error) {
+func (repo *jobDependencyRepository) GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
 	var jobDependencies []JobDependency
 	if err := repo.db.WithContext(ctx).Preload("Project").Where("project_id = ?", projectID).Find(&jobDependencies).Error; err != nil {
 		return nil, err

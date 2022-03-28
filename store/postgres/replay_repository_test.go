@@ -39,21 +39,21 @@ func treeIsEqual(treeNode, treeNodeComparator *tree.TreeNode) bool {
 func TestIntegrationReplayRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
 		},
 		Secret: []models.ProjectSecretItem{
 			{
-				ID:    uuid.Must(uuid.NewRandom()),
+				ID:    uuid.New(),
 				Name:  "k1",
 				Value: "v1",
 			},
 		},
 	}
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
@@ -61,15 +61,15 @@ func TestIntegrationReplayRepository(t *testing.T) {
 	gTask := "g-task"
 	jobConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "job-1",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "job-2",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "job-3",
 		},
 	}
@@ -110,7 +110,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 
 	testConfigs := []*models.ReplaySpec{
 		{
-			ID:            uuid.Must(uuid.NewRandom()),
+			ID:            uuid.New(),
 			StartDate:     startTime,
 			EndDate:       endTime,
 			Status:        models.ReplayStatusAccepted,
@@ -118,13 +118,13 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			Config:        map[string]string{models.ConfigIgnoreDownstream: "true"},
 		},
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			StartDate: startTime,
 			EndDate:   endTime,
 			Status:    models.ReplayStatusFailed,
 		},
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			StartDate: startTime,
 			EndDate:   endTime,
 			Status:    models.ReplayStatusInProgress,
@@ -494,7 +494,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err = repo.Insert(ctx, testModels[2])
 			assert.Nil(t, err)
 
-			replays, err := repo.GetByProjectID(ctx, uuid.Must(uuid.NewRandom()))
+			replays, err := repo.GetByProjectID(ctx, models.ProjectID(uuid.New()))
 			assert.Equal(t, store.ErrResourceNotFound, err)
 			assert.Equal(t, []models.ReplaySpec{}, replays)
 		})

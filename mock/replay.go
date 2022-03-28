@@ -49,12 +49,12 @@ func (repo *ReplayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uui
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-func (repo *ReplayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+func (repo *ReplayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID models.ProjectID, status []string) ([]models.ReplaySpec, error) {
 	args := repo.Called(ctx, projectID, status)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-func (repo *ReplayRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error) {
+func (repo *ReplayRepository) GetByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error) {
 	args := repo.Called(ctx, projectID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
@@ -85,7 +85,7 @@ func (rm *ReplayManager) GetReplay(ctx context.Context, uuid uuid.UUID) (models.
 	return args.Get(0).(models.ReplaySpec), args.Error(1)
 }
 
-func (rm *ReplayManager) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (rm *ReplayManager) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
 	args := rm.Called(ctx, projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }

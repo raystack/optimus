@@ -91,7 +91,7 @@ type ReplayManager interface {
 	Init()
 	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
 	GetReplay(context.Context, uuid.UUID) (models.ReplaySpec, error)
-	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
+	GetReplayList(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error)
 	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate, endDate time.Time,
 		jobName string) ([]models.JobStatus, error)
 }

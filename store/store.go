@@ -108,8 +108,8 @@ type ReplaySpecRepository interface {
 	UpdateStatus(ctx context.Context, replayID uuid.UUID, status string, message models.ReplayMessage) error
 	GetByStatus(ctx context.Context, status []string) ([]models.ReplaySpec, error)
 	GetByJobIDAndStatus(ctx context.Context, jobID uuid.UUID, status []string) ([]models.ReplaySpec, error)
-	GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error)
-	GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
+	GetByProjectIDAndStatus(ctx context.Context, projectID models.ProjectID, status []string) ([]models.ReplaySpec, error)
+	GetByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error)
 }
 
 // BackupRepository represents a storage interface for backup objects
@@ -121,7 +121,7 @@ type BackupRepository interface {
 
 // JobDependencyRepository represents a storage interface for job dependencies
 type JobDependencyRepository interface {
-	Save(ctx context.Context, projectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
-	GetAll(ctx context.Context, projectID uuid.UUID) ([]models.JobIDDependenciesPair, error)
+	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
+	GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
 }

@@ -144,8 +144,8 @@ func (r *dependencyResolver) prepareJobSpecMap(ctx context.Context, projectSpec 
 	return jobSpecMap, nil
 }
 
-func getInterProjectDependencies(jobDependencies []models.JobIDDependenciesPair) map[uuid.UUID][]models.JobIDDependenciesPair {
-	interDependenciesMap := make(map[uuid.UUID][]models.JobIDDependenciesPair)
+func getInterProjectDependencies(jobDependencies []models.JobIDDependenciesPair) map[models.ProjectID][]models.JobIDDependenciesPair {
+	interDependenciesMap := make(map[models.ProjectID][]models.JobIDDependenciesPair)
 	for _, dep := range jobDependencies {
 		if dep.Type == models.JobSpecDependencyTypeInter {
 			interDependenciesMap[dep.DependentProject.ID] = append(interDependenciesMap[dep.DependentProject.ID], dep)

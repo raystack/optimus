@@ -343,7 +343,7 @@ type JobService interface {
 	// GetReplayStatus of a replay using its ID
 	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
 	// GetReplayList of a project
-	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]ReplaySpec, error)
+	GetReplayList(ctx context.Context, projectID ProjectID) ([]ReplaySpec, error)
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs

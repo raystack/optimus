@@ -1398,7 +1398,7 @@ func TestDependencyResolver(t *testing.T) {
 		ctx := context.Background()
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -1780,7 +1780,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 			}
 			otherProjectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "b-data-project",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",

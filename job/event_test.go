@@ -23,12 +23,12 @@ func TestEventService(t *testing.T) {
 	)
 	t.Run("should successfully notify registered notifiers on valid event", func(t *testing.T) {
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "a-data-project",
 		}
 
 		namespaceSpec := models.NamespaceSpec{
-			ID:          uuid.Must(uuid.NewRandom()),
+			ID:          uuid.New(),
 			Name:        "game_jam",
 			ProjectSpec: projectSpec,
 		}
@@ -67,12 +67,12 @@ func TestEventService(t *testing.T) {
 	})
 	t.Run("should ignore notify events for unknown schemes", func(t *testing.T) {
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "a-data-project",
 		}
 
 		namespaceSpec := models.NamespaceSpec{
-			ID:          uuid.Must(uuid.NewRandom()),
+			ID:          uuid.New(),
 			Name:        "game_jam",
 			ProjectSpec: projectSpec,
 		}
@@ -105,12 +105,12 @@ func TestEventService(t *testing.T) {
 	})
 	t.Run("should fail if failed to notify registered notifiers on valid event", func(t *testing.T) {
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "a-data-project",
 		}
 
 		namespaceSpec := models.NamespaceSpec{
-			ID:          uuid.Must(uuid.NewRandom()),
+			ID:          uuid.New(),
 			Name:        "game_jam",
 			ProjectSpec: projectSpec,
 		}

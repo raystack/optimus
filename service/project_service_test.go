@@ -16,7 +16,7 @@ import (
 func TestProjectService(t *testing.T) {
 	ctx := context.Background()
 	project := models.ProjectSpec{
-		ID:   uuid.New(),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "optimus-project",
 	}
 
@@ -64,7 +64,7 @@ func TestProjectService(t *testing.T) {
 		t.Run("return error when project name is invalid", func(t *testing.T) {
 			proj := models.ProjectSpec{
 				Name: "",
-				ID:   uuid.New(),
+				ID:   models.ProjectID(uuid.New()),
 			}
 			svc := service.NewProjectService(nil)
 
@@ -74,7 +74,7 @@ func TestProjectService(t *testing.T) {
 		})
 		t.Run("calls repo to store project successfully", func(t *testing.T) {
 			project2 := models.ProjectSpec{
-				ID:   uuid.New(),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "optimus-project",
 				Config: map[string]string{
 					"bucket":   "gs://some_folder",

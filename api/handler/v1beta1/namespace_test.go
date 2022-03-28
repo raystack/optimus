@@ -99,7 +99,7 @@ func TestNamespaceOnServer(t *testing.T) {
 			projectName := "a-data-project"
 
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -107,7 +107,7 @@ func TestNamespaceOnServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "dev-test-namespace-1",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",

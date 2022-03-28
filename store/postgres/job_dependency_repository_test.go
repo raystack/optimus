@@ -15,7 +15,7 @@ import (
 
 func TestIntegrationJobDependencyRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.New(),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-project",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",

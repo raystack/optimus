@@ -30,14 +30,14 @@ func TestIntegrationProjectRepository(t *testing.T) {
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
 	testConfigs := []models.ProjectSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "g-optimus",
 		},
 		{
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "t-optimus",
 			Config: map[string]string{
 				"bucket":                  "gs://some_folder",
@@ -45,7 +45,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "t-optimus-2",
 			Config: map[string]string{
 				"bucket":                  "gs://some_folder-2",
@@ -53,7 +53,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "t-optimus-3",
 		},
 	}
@@ -72,7 +72,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
-		checkModel, err := repo.GetByID(ctx, testModels[0].ID)
+		checkModel, err := repo.getByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
@@ -89,7 +89,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.getByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
@@ -97,7 +97,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelB.ID)
+			checkModel, err = repo.getByID(ctx, testModelB.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
@@ -114,7 +114,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.getByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
@@ -123,7 +123,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelA.ID)
+			checkModel, err = repo.getByID(ctx, testModelA.ID)
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://another_folder", checkModel.Config["bucket"])
 		})
@@ -131,7 +131,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			db := DBSetup()
 
 			testModelA := testConfigs[0]
-			testModelA.ID = uuid.Nil
+			testModelA.ID = models.ProjectID(uuid.Nil)
 
 			repo := NewProjectRepository(db, hash)
 

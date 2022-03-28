@@ -256,7 +256,7 @@ func (repo *replayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uui
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID models.ProjectID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
 	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
 		Where("job.project_id = ? and status in (?)", projectID, status).Find(&replays).Error; err != nil {
@@ -281,7 +281,7 @@ func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, proje
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error) {
 	var replays []Replay
 	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
 		Where("job.project_id = ?", projectID).Order("created_at DESC").Find(&replays).Error; err != nil {

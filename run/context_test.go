@@ -18,7 +18,7 @@ func TestContextManager(t *testing.T) {
 		t.Run("should return compiled instanceSpec config for task type transformation", func(t *testing.T) {
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -26,7 +26,7 @@ func TestContextManager(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "namespace-1",
 				Config:      map[string]string{},
 				ProjectSpec: projectSpec,
@@ -158,7 +158,7 @@ func TestContextManager(t *testing.T) {
 		t.Run("should return valid compiled instanceSpec config for task type hook", func(t *testing.T) {
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket":                 "gs://some_folder",
@@ -167,7 +167,7 @@ func TestContextManager(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "namespace-1",
 				Config:      map[string]string{},
 				ProjectSpec: projectSpec,
@@ -321,7 +321,7 @@ func TestContextManager(t *testing.T) {
 		t.Run("should return compiled instanceSpec config with overridden config provided in NamespaceSpec", func(t *testing.T) {
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket":              "gs://some_folder",
@@ -329,7 +329,7 @@ func TestContextManager(t *testing.T) {
 				},
 			}
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: projectName,
 				Config: map[string]string{
 					"transporter_brokers": "129.3.34.1:9092-overridden",
@@ -472,7 +472,7 @@ func TestContextManager(t *testing.T) {
 			}
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -480,7 +480,7 @@ func TestContextManager(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "namespace-1",
 				Config:      map[string]string{},
 				ProjectSpec: projectSpec,

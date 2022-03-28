@@ -193,7 +193,7 @@ func (srv *JobService) GetReplayStatus(ctx context.Context, replayRequest models
 	return args.Get(0).(models.ReplayState), args.Error(1)
 }
 
-func (srv *JobService) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (srv *JobService) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
 	args := srv.Called(ctx, projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
@@ -279,12 +279,12 @@ type JobDependencyRepository struct {
 	mock.Mock
 }
 
-func (repo *JobDependencyRepository) Save(ctx context.Context, projectID, jobID uuid.UUID, dependency models.JobSpecDependency) error {
+func (repo *JobDependencyRepository) Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error {
 	args := repo.Called(ctx, projectID, jobID, dependency)
 	return args.Error(0)
 }
 
-func (repo *JobDependencyRepository) GetAll(ctx context.Context, projectID uuid.UUID) ([]models.JobIDDependenciesPair, error) {
+func (repo *JobDependencyRepository) GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
 	args := repo.Called(ctx, projectID)
 	return args.Get(0).([]models.JobIDDependenciesPair), args.Error(1)
 }

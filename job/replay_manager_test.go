@@ -49,12 +49,12 @@ func TestReplayManager(t *testing.T) {
 			Interval:  "0 2 * * *",
 		}
 		jobSpec := models.JobSpec{
-			ID:       uuid.Must(uuid.NewRandom()),
+			ID:       uuid.New(),
 			Name:     "job-name",
 			Schedule: schedule,
 		}
 		jobSpec2 := models.JobSpec{
-			ID:       uuid.Must(uuid.NewRandom()),
+			ID:       uuid.New(),
 			Name:     "job-name-2",
 			Schedule: schedule,
 		}
@@ -85,7 +85,7 @@ func TestReplayManager(t *testing.T) {
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
-			objUUID := uuid.Must(uuid.NewRandom())
+			objUUID := uuid.New()
 			errMessage := "error while generating uuid"
 			uuidProvider.On("NewUUID").Return(objUUID, errors.New(errMessage))
 
@@ -117,7 +117,7 @@ func TestReplayManager(t *testing.T) {
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
-			objUUID := uuid.Must(uuid.NewRandom())
+			objUUID := uuid.New()
 			uuidProvider.On("NewUUID").Return(objUUID, nil)
 
 			errMessage := "error with replay repo"
@@ -184,7 +184,7 @@ func TestReplayManager(t *testing.T) {
 
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
-			objUUID := uuid.Must(uuid.NewRandom())
+			objUUID := uuid.New()
 			uuidProvider.On("NewUUID").Return(objUUID, nil)
 
 			toInsertReplaySpec := &models.ReplaySpec{
@@ -232,7 +232,7 @@ func TestReplayManager(t *testing.T) {
 		//
 		//	uuidProvider := new(mock.UUIDProvider)
 		//	defer uuidProvider.AssertExpectations(t)
-		//	objUUID := uuid.Must(uuid.NewRandom())
+		//	objUUID := uuid.New()
 		//	uuidProvider.On("NewUUID").Return(objUUID, nil).Times(4)
 		//
 		//	toInsertReplaySpec := &models.ReplaySpec{
@@ -299,7 +299,7 @@ func TestReplayManager(t *testing.T) {
 	})
 	t.Run("GetReplay", func(t *testing.T) {
 		t.Run("should return replay given a valid UUID", func(t *testing.T) {
-			replayUUID := uuid.Must(uuid.NewRandom())
+			replayUUID := uuid.New()
 			replayJob := models.JobSpec{
 				Name: "sample-job",
 			}
@@ -329,7 +329,7 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		t.Run("should return error when replay is not found", func(t *testing.T) {
-			replayUUID := uuid.Must(uuid.NewRandom())
+			replayUUID := uuid.New()
 
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
@@ -350,8 +350,8 @@ func TestReplayManager(t *testing.T) {
 		})
 	})
 	t.Run("GetReplayList", func(t *testing.T) {
+		projectUUID := models.ProjectID(uuid.New())
 		t.Run("should return replay list given a valid project UUID", func(t *testing.T) {
-			projectUUID := uuid.Must(uuid.NewRandom())
 			replayJob := models.JobSpec{
 				Name: "sample-job",
 			}
@@ -359,7 +359,7 @@ func TestReplayManager(t *testing.T) {
 			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
 			replaySpecs := []models.ReplaySpec{
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
+					ID:        uuid.New(),
 					Job:       replayJob,
 					StartDate: startDate,
 					EndDate:   endDate,
@@ -386,7 +386,6 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		t.Run("should only return recent replays given a valid project UUID", func(t *testing.T) {
-			projectUUID := uuid.Must(uuid.NewRandom())
 			replayJob := models.JobSpec{
 				Name: "sample-job",
 			}
@@ -394,7 +393,7 @@ func TestReplayManager(t *testing.T) {
 			endDate := time.Date(2020, time.Month(8), 7, 0, 0, 0, 0, time.UTC)
 			replaySpecs := []models.ReplaySpec{
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
+					ID:        uuid.New(),
 					Job:       replayJob,
 					StartDate: startDate,
 					EndDate:   endDate,
@@ -402,7 +401,7 @@ func TestReplayManager(t *testing.T) {
 					CreatedAt: time.Now().UTC().Add(time.Hour * -1),
 				},
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
+					ID:        uuid.New(),
 					Job:       replayJob,
 					StartDate: startDate,
 					EndDate:   endDate,
@@ -430,8 +429,6 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		t.Run("should not return error when replay is not found", func(t *testing.T) {
-			projectUUID := uuid.Must(uuid.NewRandom())
-
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			replayRepository.On("GetByProjectID", ctx, projectUUID).Return([]models.ReplaySpec{}, store.ErrResourceNotFound)
@@ -450,8 +447,6 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		t.Run("should return error when unable to get replay list", func(t *testing.T) {
-			projectUUID := uuid.Must(uuid.NewRandom())
-
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			errorMsg := "unable to get list of replays"
@@ -476,7 +471,7 @@ func TestReplayManager(t *testing.T) {
 			Name: "project-name",
 		}
 		t.Run("should return status of every runs in every jobs", func(t *testing.T) {
-			replayUUID := uuid.Must(uuid.NewRandom())
+			replayUUID := uuid.New()
 			jobName := "dag1-no-deps"
 			jobSpec := models.JobSpec{
 				Name:         jobName,
