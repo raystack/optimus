@@ -23,7 +23,6 @@ linters:
     - scopelint
     - promlinter
     - interfacer
-    - gosec
     - godox
     - godot
     - forbidigo
@@ -44,11 +43,11 @@ linters:
     - lll
     - maligned
     - golint
-    - gocritic
     - gocognit
     - funlen
     - gocyclo
     - dupl
+    - gofumpt
 linters-settings:
   gofumpt:
     lang-version: "1.17"
@@ -61,6 +60,7 @@ linters-settings:
     numbers: true
   gomnd:
     ignored-numbers: # Why we have a big range of file permissions
+      - '0o600'
       - '0o644'
       - '0o655'
       - '0o666'
@@ -84,9 +84,24 @@ linters-settings:
       - standard # Captures all standard packages if they do not match another section.
       - default # Contains all imports that could not be matched to another section type.
       - prefix(github.com/odpf/optimus) # Groups all imports with the specified Prefix.
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+      - singleCaseSwitch
+    enabled-tags:
+      - diagnostic
+#      - style
+#      - opinionated
+#      - performance
   unparam:
     # Inspect exported functions.
     # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
     check-exported: true
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocritic
 severity:
   default-severity: error

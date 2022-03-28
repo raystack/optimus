@@ -16,7 +16,6 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -87,17 +86,17 @@ func TestJobRunServiceServer(t *testing.T) {
 			Status: models.RunStateRunning,
 			Data: []models.InstanceSpecData{
 				{
-					Name:  run.ConfigKeyExecutionTime,
+					Name:  models.ConfigKeyExecutionTime,
 					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
-					Name:  run.ConfigKeyDstart,
+					Name:  models.ConfigKeyDstart,
 					Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
-					Name:  run.ConfigKeyDend,
+					Name:  models.ConfigKeyDend,
 					Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
@@ -121,28 +120,32 @@ func TestJobRunServiceServer(t *testing.T) {
 			jobService.On("GetByNameForProject", ctx, jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
-			instanceService := new(mock.RunService)
-			instanceService.On("GetScheduledRun", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
-			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
-			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
+			jobRunService := new(mock.JobRunService)
+			jobRunService.On("GetScheduledRun", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
+			jobRunService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
+			defer jobRunService.AssertExpectations(t)
+
+			jobRunInputCompiler := new(mock.JobInputCompiler)
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
 					},
 				}, nil)
-			defer instanceService.AssertExpectations(t)
+			defer jobRunInputCompiler.AssertExpectations(t)
 
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				jobService,
 				projectService, nil,
 				v1.NewAdapter(nil, nil),
-				instanceService,
+				jobRunService,
+				jobRunInputCompiler,
 				nil,
 			)
 
@@ -165,9 +168,9 @@ func TestJobRunServiceServer(t *testing.T) {
 				Project: projectSpecProto,
 				Context: &pb.InstanceContext{
 					Envs: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
@@ -183,21 +186,24 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			instanceService := new(mock.RunService)
+			instanceService := new(mock.JobRunService)
 			instanceService.On("GetByID", ctx, jobRun.ID).Return(jobRun, namespaceSpec, nil)
 			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
-			instanceService.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
+			defer instanceService.AssertExpectations(t)
+
+			jobRunInputCompiler := new(mock.JobInputCompiler)
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
 					},
 				}, nil)
-			defer instanceService.AssertExpectations(t)
+			defer jobRunInputCompiler.AssertExpectations(t)
 
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
@@ -206,6 +212,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				v1.NewAdapter(nil, nil),
 				instanceService,
+				jobRunInputCompiler,
 				nil,
 			)
 
@@ -227,9 +234,9 @@ func TestJobRunServiceServer(t *testing.T) {
 				Project: projectSpecProto,
 				Context: &pb.InstanceContext{
 					Envs: map[string]string{
-						run.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						run.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
@@ -321,6 +328,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService,
 				nil,
 				nsService, adapter,
+				nil,
 				nil,
 				nil,
 			)
@@ -417,6 +425,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				namespaceService, adapter,
 				nil,
 				nil,
+				nil,
 			)
 
 			taskSpecExpected := &pb.JobTask{
@@ -479,6 +488,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil,
 				adapter,
 				nil,
+				nil,
 				scheduler,
 			)
 
@@ -513,6 +523,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
@@ -535,6 +546,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				nil, nil,
 				nil, nil,
+				nil,
 				nil,
 				nil,
 			)
@@ -593,7 +605,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				EndDate:   date.Add(time.Hour * 24),
 				Filter:    []string{"success"},
 			}
-			instsvc := new(mock.RunService)
+			instsvc := new(mock.JobRunService)
 			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return(jobRuns, nil)
 			defer instsvc.AssertExpectations(t)
 
@@ -601,6 +613,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				jobService, projectService, nil, adapter,
 				instsvc,
+				nil,
 				nil,
 			)
 
@@ -643,6 +656,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil, projectService, nil, nil,
 				nil,
 				nil,
+				nil,
 			)
 			req := &pb.JobRunRequest{
 				ProjectName: projectSpec.Name,
@@ -676,6 +690,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
 				jobService, projectService, nil, nil,
+				nil,
 				nil,
 				nil,
 			)
@@ -722,6 +737,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, adapter,
 				nil,
 				nil,
+				nil,
 			)
 
 			req := &pb.JobRunRequest{
@@ -762,6 +778,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
 				jobService, projectService, nil, adapter,
+				nil,
 				nil,
 				nil,
 			)
@@ -809,7 +826,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				EndDate:   date.Add(time.Hour * 24),
 				Filter:    []string{"success"},
 			}
-			instsvc := new(mock.RunService)
+			instsvc := new(mock.JobRunService)
 			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return([]models.JobRun{}, errors.New("failed due to wrong URL"))
 			defer instsvc.AssertExpectations(t)
 
@@ -817,6 +834,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				jobService, projectService, nil, adapter,
 				instsvc,
+				nil,
 				nil,
 			)
 
@@ -863,7 +881,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				EndDate:   date.Add(time.Hour * 24),
 				Filter:    []string{"success"},
 			}
-			instsvc := new(mock.RunService)
+			instsvc := new(mock.JobRunService)
 			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return([]models.JobRun{}, nil)
 			defer instsvc.AssertExpectations(t)
 
@@ -871,6 +889,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				jobService, projectService, nil, adapter,
 				instsvc,
+				nil,
 				nil,
 			)
 
@@ -925,7 +944,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				Name:        jobSpec.Name,
 				OnlyLastRun: true,
 			}
-			instsvc := new(mock.RunService)
+			instsvc := new(mock.JobRunService)
 			instsvc.On("GetJobRunList", ctx, projectSpec, jobSpec, query).Return(jobRuns, nil)
 			defer instsvc.AssertExpectations(t)
 
@@ -933,6 +952,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				jobService, projectService, nil, adapter,
 				instsvc,
+				nil,
 				nil,
 			)
 			req := &pb.JobRunRequest{

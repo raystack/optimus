@@ -105,18 +105,18 @@ func (ac airflowClient) parseResponse(resp *http.Response) ([]byte, error) {
 	return body, nil
 }
 
-func (ac airflowClient) buildEndPoint(host, URL, pathParam string) string {
+func (ac airflowClient) buildEndPoint(host, reqURL, pathParam string) string {
 	host = strings.Trim(host, "/")
 	u := &url.URL{
 		Scheme: "http",
 		Host:   host,
 	}
 	if pathParam != "" {
-		u.Path = "/" + strings.ReplaceAll(URL, "%s", pathParam)
+		u.Path = "/" + strings.ReplaceAll(reqURL, "%s", pathParam)
 	} else {
-		u.Path = "/" + URL
+		u.Path = "/" + reqURL
 	}
-	if URL == dagStatusURL {
+	if reqURL == dagStatusURL {
 		params := url.Values{}
 		params.Add("limit", "99999")
 		u.RawQuery = params.Encode()

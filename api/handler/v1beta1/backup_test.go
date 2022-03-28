@@ -373,7 +373,8 @@ func TestBackupOnServer(t *testing.T) {
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil,
-				resourceSvc, namespaceService,
+				resourceSvc,
+				namespaceService,
 				nil,
 			)
 

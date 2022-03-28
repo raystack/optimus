@@ -104,31 +104,35 @@ func (repo *InstanceSpecRepository) Clear(ctx context.Context, st time.Time) err
 	return repo.Called(ctx, st).Error(0)
 }
 
-type RunService struct {
+type JobRunService struct {
 	mock.Mock
 }
 
-func (s *RunService) GetScheduledRun(ctx context.Context, namespaceSpec models.NamespaceSpec, JobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
-	args := s.Called(ctx, namespaceSpec, JobID, scheduledAt)
+func (s *JobRunService) GetScheduledRun(ctx context.Context, namespaceSpec models.NamespaceSpec, jobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error) {
+	args := s.Called(ctx, namespaceSpec, jobID, scheduledAt)
 	return args.Get(0).(models.JobRun), args.Error(1)
 }
 
-func (s *RunService) GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	args := s.Called(ctx, JobRunID)
+func (s *JobRunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+	args := s.Called(ctx, jobRunID)
 	return args.Get(0).(models.JobRun), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 
-func (s *RunService) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
+func (s *JobRunService) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
 	args := s.Called(ctx, namespace, jobRun, instanceType, instanceName)
 	return args.Get(0).(models.InstanceSpec), args.Error(1)
 }
 
-func (s *RunService) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (*models.JobRunInput, error) {
-	args := s.Called(ctx, namespaceSpec, jobRun, instanceSpec)
-	return args.Get(0).(*models.JobRunInput), args.Error(1)
-}
-
-func (s *RunService) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
+func (s *JobRunService) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
 	args := s.Called(ctx, projectSpec, jobSpec, jobQuery)
 	return args.Get(0).([]models.JobRun), args.Error(1)
+}
+
+type JobInputCompiler struct {
+	mock.Mock
+}
+
+func (s *JobInputCompiler) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error) {
+	args := s.Called(ctx, namespaceSpec, jobRun, instanceSpec)
+	return args.Get(0).(*models.JobRunInput), args.Error(1)
 }

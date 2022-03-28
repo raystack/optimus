@@ -23,8 +23,7 @@ func (s *GRPCServer) PluginInfo(ctx context.Context, req *pbp.PluginInfoRequest)
 	}
 
 	ptype := pbp.PluginType_PLUGIN_TYPE_HOOK
-	switch n.PluginType {
-	case models.PluginTypeTask:
+	if n.PluginType == models.PluginTypeTask {
 		ptype = pbp.PluginType_PLUGIN_TYPE_TASK
 	}
 

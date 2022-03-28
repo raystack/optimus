@@ -275,7 +275,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		return err
 	}
 
-	if err = srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
+	if err := srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
 		return err
 	}
 

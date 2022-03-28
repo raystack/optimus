@@ -60,7 +60,7 @@ func setup(content string) {
 		panic(err)
 	}
 	confPath := path.Join(optimusConfigDirName, configFileName)
-	if err := os.WriteFile(confPath, []byte(content), 0o660); err != nil {
+	if err := os.WriteFile(confPath, []byte(content), 0o600); err != nil {
 		panic(err)
 	}
 }

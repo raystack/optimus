@@ -132,11 +132,9 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 				l.Info(fmt.Sprintf("%d/%d. %s successfully checked", ackCounter, totalJobs, resp.GetJobName()))
 			}
 			spinner.SetProgress(ackCounter)
-		} else {
-			if verbose {
-				// ordinary progress event
-				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
-			}
+		} else if verbose {
+			// ordinary progress event
+			l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
 		}
 	}
 	spinner.Stop()

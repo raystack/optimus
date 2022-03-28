@@ -1,4 +1,4 @@
-package bigquery
+package bigquery //nolint: testpackage
 
 import (
 	"context"
@@ -78,12 +78,12 @@ func TestExternalTable(t *testing.T) {
 			}
 			for _, e := range otherErrors {
 				bQTable := new(BqTableMock)
-				defer bQTable.AssertExpectations(t)
 
 				bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), e)
 
 				err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 				assert.Equal(t, e, err)
+				bQTable.AssertExpectations(t)
 			}
 		})
 		t.Run("should update external table if it is already exist and an upsert call", func(t *testing.T) {

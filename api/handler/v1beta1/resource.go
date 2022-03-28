@@ -167,7 +167,7 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 		stream.Send(&pb.DeployResourceSpecificationResponse{
 			Success: true,
 			Ack:     true,
-			Message: "success",
+			Message: fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.NamespaceName),
 		})
 	}
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))

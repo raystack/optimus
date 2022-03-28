@@ -305,7 +305,7 @@ func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginTy
 	pluginSecretName := models.PluginSecretString(pluginType, pluginName)
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
-		if strings.ToUpper(s.Name) != pluginSecretName {
+		if !strings.EqualFold(s.Name, pluginSecretName) {
 			continue
 		}
 		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{

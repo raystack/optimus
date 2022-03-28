@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 
+	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
 )
@@ -57,8 +57,8 @@ func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo mode
 			now := time.Now()
 			l.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
 
-			templateEngine := run.NewGoEngine()
-			templates, err := run.DumpAssets(jobSpec, now, templateEngine, true)
+			templateEngine := compiler.NewGoEngine()
+			templates, err := compiler.DumpAssets(jobSpec, now, templateEngine, true)
 			if err != nil {
 				return err
 			}

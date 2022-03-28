@@ -11,19 +11,21 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 )
 
 type JobRunServiceServer struct {
-	jobSvc           models.JobService
-	adapter          ProtoAdapter
-	projectService   service.ProjectService
-	namespaceService service.NamespaceService
-	runSvc           models.RunService
-	scheduler        models.SchedulerUnit
-	l                log.Logger
+	jobSvc              models.JobService
+	adapter             ProtoAdapter
+	projectService      service.ProjectService
+	namespaceService    service.NamespaceService
+	runSvc              service.JobRunService
+	jobRunInputCompiler compiler.JobRunInputCompiler
+	scheduler           models.SchedulerUnit
+	l                   log.Logger
 	pb.UnimplementedJobRunServiceServer
 }
 
@@ -115,7 +117,7 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of jobrun %s", err.Error(), jobRun)
 	}
-	jobRunInput, err := sv.runSvc.Compile(ctx, namespaceSpec, jobRun, instance)
+	jobRunInput, err := sv.jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instance)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
@@ -252,15 +254,16 @@ func (sv *JobRunServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest
 	return &pb.RunJobResponse{}, nil
 }
 
-func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, adapter ProtoAdapter, instSvc models.RunService, scheduler models.SchedulerUnit) *JobRunServiceServer {
+func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, adapter ProtoAdapter, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, scheduler models.SchedulerUnit) *JobRunServiceServer {
 	return &JobRunServiceServer{
-		l:                l,
-		jobSvc:           jobSvc,
-		adapter:          adapter,
-		runSvc:           instSvc,
-		scheduler:        scheduler,
-		namespaceService: namespaceService,
-		projectService:   projectService,
+		l:                   l,
+		jobSvc:              jobSvc,
+		adapter:             adapter,
+		runSvc:              instSvc,
+		jobRunInputCompiler: jobRunInputCompiler,
+		scheduler:           scheduler,
+		namespaceService:    namespaceService,
+		projectService:      projectService,
 	}
 }
 

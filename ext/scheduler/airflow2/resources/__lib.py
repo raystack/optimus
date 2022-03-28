@@ -1,31 +1,34 @@
 import json
 import logging
 import os
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 import pendulum
-from typing import Any, Callable, Dict, List, Optional
 import requests
-from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
-from airflow.providers.cncf.kubernetes.utils import pod_launcher
-from airflow.providers.slack.operators.slack import SlackAPIPostOperator
+from airflow.configuration import conf
 from airflow.exceptions import AirflowException
 from airflow.hooks.base import BaseHook
 from airflow.kubernetes import kube_client
 from airflow.models import (XCOM_RETURN_KEY, DagModel,
                             DagRun, Variable, XCom)
+from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
+from airflow.providers.cncf.kubernetes.utils import pod_launcher
+from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.db import provide_session
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.state import State
 from croniter import croniter
-from airflow.configuration import conf
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 # UTC time zone as a tzinfo instance.
 utc = pendulum.timezone('UTC')
+
+TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 def lookup_non_standard_cron_expression(expr: str) -> str:
@@ -160,29 +163,25 @@ class SuperExternalTaskSensor(BaseSensorOperator):
     @provide_session
     def poke(self, context, session=None):
 
-        dag_to_wait = session.query(DagModel).filter(
-            DagModel.dag_id == self.upstream_dag
-        ).first()
-
-        # check if valid upstream dag
-        if not dag_to_wait:
-            raise AirflowException('The external DAG '
-                                   '{} does not exist.'.format(self.upstream_dag))
-        else:
-            if not os.path.exists(dag_to_wait.fileloc):
-                raise AirflowException('The external DAG '
-                                       '{} was deleted.'.format(self.upstream_dag))
+        schedule_time = context['next_execution_date']
+        upstream_schedule = self.get_upstream_schedule_interval(session)
 
         # calculate windows
-        execution_date = context['execution_date']
-        window_start, window_end = self.generate_window(execution_date, self.window_size)
+        _, last_upstream_execution_date = self.get_last_upstream_times(schedule_time, upstream_schedule)
+        task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
+        execution_date_window_start, execution_date_window_end = task_window.get(
+            last_upstream_execution_date.strftime(TIMESTAMP_FORMAT))
+
         self.log.info(
-            "consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
-        self.log.info("upstream interval: {}".format(dag_to_wait.schedule_interval))
+            "upstream interval: {}, window size: {}".format(upstream_schedule, self.window_size))
+        self.log.info(
+            "waiting for upstream runs between: {} - {} execution dates of airflow dag runs".format(
+                execution_date_window_start.isoformat(), execution_date_window_end.isoformat()))
 
         # find success iterations we need in window
-        expected_upstream_executions = self._get_expected_upstream_executions(dag_to_wait.schedule_interval,
-                                                                              window_start, window_end)
+        expected_upstream_executions = self.get_expected_upstream_executions(upstream_schedule,
+                                                                             execution_date_window_start,
+                                                                             execution_date_window_end)
         self.log.info("expected upstream executions ({}): {}".format(len(expected_upstream_executions),
                                                                      expected_upstream_executions))
 
@@ -190,8 +189,8 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         actual_upstream_executions = [r.execution_date for r in session.query(DagRun.execution_date)
             .filter(
             DagRun.dag_id == self.upstream_dag,
-            DagRun.execution_date > window_start.replace(tzinfo=utc),
-            DagRun.execution_date <= window_end.replace(tzinfo=utc),
+            DagRun.execution_date > execution_date_window_start.replace(tzinfo=utc),
+            DagRun.execution_date <= execution_date_window_end.replace(tzinfo=utc),
             DagRun.external_trigger == False,
             DagRun.state.in_(self.allowed_upstream_states)
         ).order_by(DagRun.execution_date).all()]
@@ -203,21 +202,38 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             self.log.info("missing upstream executions : {}".format(missing_upstream_executions))
             self.log.warning(
                 "unable to find enough DagRun instances for upstream '{}' dated between {} and {}(inclusive), rescheduling sensor"
-                    .format(self.upstream_dag, window_start.isoformat(), window_end.isoformat()))
+                    .format(self.upstream_dag, execution_date_window_start.isoformat(),
+                            execution_date_window_end.isoformat()))
             return False
 
         return True
 
-    def generate_window(self, execution_date, window_size):
-        format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
-        execution_date_str = execution_date.strftime(format_rfc3339)
-        # ignore offset & truncateto
-        task_window = JobSpecTaskWindow(window_size, 0, "m", self._optimus_client)
-        return task_window.get(execution_date_str)
+    def get_upstream_schedule_interval(self, session):
+        dag_to_wait = session.query(DagModel).filter(
+            DagModel.dag_id == self.upstream_dag
+        ).first()
+        # check if valid upstream dag
+        if not dag_to_wait:
+            raise AirflowException('The external DAG '
+                                   '{} does not exist.'.format(self.upstream_dag))
+        else:
+            if not os.path.exists(dag_to_wait.fileloc):
+                raise AirflowException('The external DAG '
+                                       '{} was deleted.'.format(self.upstream_dag))
+        upstream_schedule = lookup_non_standard_cron_expression(dag_to_wait.schedule_interval)
+        return upstream_schedule
 
-    def _get_expected_upstream_executions(self, schedule_interval, window_start, window_end):
+    @staticmethod
+    def get_last_upstream_times(schedule_time_of_current_job, upstream_schedule_interval):
+        second_ahead_of_schedule_time = schedule_time_of_current_job + timedelta(seconds=1)
+        c = croniter(upstream_schedule_interval, second_ahead_of_schedule_time)
+        last_upstream_schedule_time = c.get_prev(datetime)
+        last_upstream_execution_date = c.get_prev(datetime)
+        return last_upstream_schedule_time, last_upstream_execution_date
+
+    @staticmethod
+    def get_expected_upstream_executions(cron_schedule, window_start, window_end):
         expected_upstream_executions = []
-        cron_schedule = lookup_non_standard_cron_expression(schedule_interval)
         dag_cron = croniter(cron_schedule, window_start.replace(tzinfo=None))
         while True:
             next_run = dag_cron.get_next(datetime)
@@ -261,8 +277,8 @@ class OptimusAPIClient:
 
     def get_job_metadata(self, execution_date, project, job) -> dict:
         url = '{optimus_host}/api/v1beta1/project/{project_name}/job/{job_name}/instance'.format(optimus_host=self.host,
-                                                                                            project_name=project,
-                                                                                            job_name=job)
+                                                                                                 project_name=project,
+                                                                                                 job_name=job)
         request_data = {
             "scheduled_at": execution_date,
             "instance_type": "TYPE_TASK",
@@ -308,15 +324,13 @@ class JobSpecTaskWindow:
         )
 
     def _parse_datetime(self, timestamp):
-        return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        return datetime.strptime(timestamp, TIMESTAMP_FORMAT)
 
     def _fetch_task_window(self, scheduled_at: str) -> dict:
         return self._optimus_client.get_task_window(scheduled_at, self.size, self.offset, self.truncate_to)
 
 
 class CrossTenantDependencySensor(BaseSensorOperator):
-    TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-    TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
     @apply_defaults
     def __init__(
@@ -335,17 +349,31 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def poke(self, context):
-        execution_date = context['execution_date']
-        execution_date_str = execution_date.strftime(self.TIMESTAMP_FORMAT)
+        schedule_time = context['next_execution_date']
 
         # parse relevant metadata from the job metadata to build the task window
-        job_metadata = self._optimus_client.get_job_metadata(execution_date_str, self.optimus_project, self.optimus_job)
-        cron_schedule = lookup_non_standard_cron_expression(job_metadata['job']['interval'])
+        # TODO this needs to be updated to use optimus get job spec
+        upstream_schedule = self.get_schedule_interval(schedule_time)
 
-        window_start, window_end = self.generate_window(execution_date, self.window_size)
+        _, last_upstream_execution_date = SuperExternalTaskSensor.get_last_upstream_times(
+            schedule_time,
+            upstream_schedule)
+
+        # get schedule window
+        task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
+        execution_date_window_start, execution_date_window_end = task_window.get(
+            last_upstream_execution_date.strftime(TIMESTAMP_FORMAT))
+
         self.log.info(
-            "consuming upstream window between: {} - {}".format(window_start.isoformat(), window_end.isoformat()))
-        expected_upstream_executions = self._get_expected_upstream_executions(cron_schedule, window_start, window_end)
+            "upstream interval: {}, window size: {}".format(upstream_schedule, self.window_size))
+        self.log.info(
+            "waiting for upstream runs between: {} - {} execution dates of airflow dag run".format(
+                execution_date_window_start.isoformat(), execution_date_window_end.isoformat()))
+
+        # find success iterations we need in window
+        expected_upstream_executions = SuperExternalTaskSensor.get_expected_upstream_executions(upstream_schedule,
+                                                                                                execution_date_window_start,
+                                                                                                execution_date_window_end)
         self.log.info("expected upstream executions ({}): {}".format(len(expected_upstream_executions),
                                                                      expected_upstream_executions))
 
@@ -358,22 +386,21 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         if len(missing_upstream_executions) > 0:
             self.log.info("missing upstream executions : {}".format(missing_upstream_executions))
             self.log.warning("unable to find enough successful executions for upstream '{}' in "
-                             "'{}' dated between {} and {}(inclusive), rescheduling sensor".format(
-                self.optimus_job, self.optimus_project, window_start.isoformat(), window_end.isoformat()))
+                             "'{}' dated between {} and {}(inclusive), rescheduling sensor".
+                             format(self.optimus_job, self.optimus_project, execution_date_window_start.isoformat(),
+                                    execution_date_window_end.isoformat()))
             return False
 
         return True
 
-    def _get_expected_upstream_executions(self, cron_schedule, window_start, window_end):
-        expected_upstream_executions = []
-        dag_cron = croniter(cron_schedule, window_start.replace(tzinfo=None))
-        while True:
-            next_run = dag_cron.get_next(datetime)
-            if next_run > window_end.replace(tzinfo=None):
-                break
-            expected_upstream_executions.append(next_run)
-        return expected_upstream_executions
+    def get_schedule_interval(self, schedule_time):
+        schedule_time_str = schedule_time.strftime(TIMESTAMP_FORMAT)
+        job_metadata = self._optimus_client.get_job_metadata(schedule_time_str, self.optimus_project, self.optimus_job)
+        upstream_schedule = lookup_non_standard_cron_expression(job_metadata['job']['interval'])
+        return upstream_schedule
 
+    # TODO the api will be updated with getJobRuns even though the field here refers to scheduledAt
+    #  it points to execution_date
     def _get_successful_job_executions(self) -> List[datetime]:
         api_response = self._optimus_client.get_job_run_status(self.optimus_project, self.optimus_job)
         actual_upstream_success_executions = []
@@ -384,16 +411,9 @@ class CrossTenantDependencySensor(BaseSensorOperator):
 
     def _parse_datetime(self, timestamp) -> datetime:
         try:
-            return datetime.strptime(timestamp, self.TIMESTAMP_FORMAT)
+            return datetime.strptime(timestamp, TIMESTAMP_FORMAT)
         except ValueError:
-            return datetime.strptime(timestamp, self.TIMESTAMP_MS_FORMAT)
-
-    def generate_window(self, execution_date, window_size):
-        format_rfc3339 = "%Y-%m-%dT%H:%M:%SZ"
-        execution_date_str = execution_date.strftime(format_rfc3339)
-        # ignore offset & truncate to
-        task_window = JobSpecTaskWindow(window_size, 0, "m", self._optimus_client)
-        return task_window.get(execution_date_str)
+            return datetime.strptime(timestamp, TIMESTAMP_MS_FORMAT)
 
 
 def optimus_failure_notify(context):
@@ -435,7 +455,7 @@ def optimus_failure_notify(context):
         "duration": str(context.get('task_instance').duration),
         "message": failure_message,
         "exception": str(context.get('exception')),
-        "scheduled_at": current_execution_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        "scheduled_at": current_execution_date.strftime(TIMESTAMP_FORMAT)
     }
     event = {
         "type": "TYPE_FAILURE",
@@ -460,8 +480,8 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
         sla_list.append({
             'task_id': sla.task_id,
             'dag_id': sla.dag_id,
-            'scheduled_at': sla.execution_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            'timestamp': sla.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+            'scheduled_at': sla.execution_date.strftime(TIMESTAMP_FORMAT),
+            'timestamp': sla.timestamp.strftime(TIMESTAMP_FORMAT)
         })
 
     current_dag_id = dag.dag_id
@@ -590,6 +610,7 @@ def alert_failed_to_slack(context):
     )
     return failed_alert.execute(context=context)
 
+
 class ExternalHttpSensor(BaseSensorOperator):
     """
     Executes a HTTP GET statement and returns False on failure caused by
@@ -605,14 +626,14 @@ class ExternalHttpSensor(BaseSensorOperator):
     template_fields = ('endpoint', 'request_params', 'headers')
 
     def __init__(
-        self,
-        endpoint: str,
-        method: str = 'GET',
-        request_params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, Any]] = None,
-        *args,
-        **kwargs,
-        ) -> None:
+            self,
+            endpoint: str,
+            method: str = 'GET',
+            request_params: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, Any]] = None,
+            *args,
+            **kwargs,
+    ) -> None:
         kwargs['mode'] = kwargs.get('mode', 'reschedule')
         super().__init__(**kwargs)
         self.endpoint = endpoint
@@ -622,6 +643,6 @@ class ExternalHttpSensor(BaseSensorOperator):
     def poke(self, context: 'Context') -> bool:
         self.log.info('Poking: %s', self.endpoint)
         r = requests.get(url=self.endpoint, headers=self.headers, params=self.request_params)
-        if (r.status_code >= 200 and r.status_code <=300):
-           return True
+        if (r.status_code >= 200 and r.status_code <= 300):
+            return True
         return False

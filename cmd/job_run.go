@@ -85,6 +85,6 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 		}
 		return fmt.Errorf("request failed for job %s: %w", jobSpec.Name, err)
 	}
-	l.Info(fmt.Sprintf("%v", jobResponse))
+	l.Info(jobResponse.String())
 	return nil
 }

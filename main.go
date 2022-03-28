@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	_ "net/http/pprof"
 	"os"
 	"strings"
 	"time"
@@ -65,7 +64,6 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
-	defer teleShutdown()
 
 	// discover and load plugins
 	if err := plugin.Initialize(hclog.New(&hclog.LoggerOptions{
@@ -77,8 +75,6 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
-	// Make sure we clean up any managed plugins at the end of this
-	defer hPlugin.CleanupClients()
 
 	command := cmd.New(
 		plainLogger,
@@ -89,9 +85,11 @@ func main() {
 	)
 	if err := command.Execute(); err != nil {
 		hPlugin.CleanupClients()
+		teleShutdown()
 		// no need to print err here, `command` does that already
-		fmt.Println(err)
 		fmt.Println(errRequestFail)
 		os.Exit(1)
 	}
+	hPlugin.CleanupClients()
+	teleShutdown()
 }

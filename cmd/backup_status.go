@@ -102,6 +102,6 @@ func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupR
 	table.Append([]string{"Ignore downstream?", backupDetailResponse.Spec.Config[models.ConfigIgnoreDownstream]})
 	table.Append([]string{"Expire at", expiry.Format(time.RFC3339)})
 	table.Append([]string{"Description", backupDetailResponse.Spec.Description})
-	table.Append([]string{"Result", strings.Join(backupDetailResponse.Urn[:], "\n")})
+	table.Append([]string{"Result", strings.Join(backupDetailResponse.Urn, "\n")})
 	table.Render()
 }

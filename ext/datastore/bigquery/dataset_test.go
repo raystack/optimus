@@ -1,4 +1,4 @@
-package bigquery
+package bigquery //nolint: testpackage
 
 import (
 	"context"
@@ -74,12 +74,12 @@ func TestDataset(t *testing.T) {
 			}
 			for _, e := range otherErrors {
 				bQDatasetHandle := new(BqDatasetMock)
-				defer bQDatasetHandle.AssertExpectations(t)
 
 				bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), e)
 
 				err := ensureDataset(testingContext, bQDatasetHandle, bQResource, upsert)
 				assert.Equal(t, e, err)
+				bQDatasetHandle.AssertExpectations(t)
 			}
 		})
 		t.Run("should update dataset if it is an upsert", func(t *testing.T) {
