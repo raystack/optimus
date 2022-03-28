@@ -91,7 +91,7 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 		tag = *release.TagName
 	}
 	destFilePath := path.Join(destDirPath, tag)
-	if err := e.downloadAsset(downloadURL, destFilePath); err != nil {
+	if err := e.downloadAsset(ctx, downloadURL, destFilePath); err != nil {
 		return err
 	}
 	name := strings.TrimPrefix(repo, defaultRepoPrefix)
@@ -111,8 +111,8 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 	return FlushManifest(e.manifest, e.dirPath)
 }
 
-func (e *Extension) downloadAsset(url, destPath string) error {
-	req, err := http.NewRequest("GET", url, http.NoBody)
+func (e *Extension) downloadAsset(ctx context.Context, url, destPath string) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
