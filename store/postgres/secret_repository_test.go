@@ -143,7 +143,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db, hash)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
@@ -151,7 +151,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
-			//try for update
+			// try for update
 			err = repo.Save(ctx, projectSpec, namespaceSpec, testModelB)
 			assert.Nil(t, err)
 
@@ -166,7 +166,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db, hash)
 
-			//try for create
+			// try for create
 			testModelA.Value = "gs://some_folder"
 			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
@@ -175,7 +175,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
-			//try for create the same secret
+			// try for create the same secret
 			testModelA.Value = "gs://another_folder"
 			err = repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Equal(t, "resource already exists", err.Error())
@@ -188,7 +188,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db, hash)
 
-			//try for create
+			// try for create
 			testModelA.Value = "gs://some_folder"
 			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
@@ -197,7 +197,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
-			//try for update
+			// try for update
 			testModelA.Value = "gs://another_folder"
 			err = repo.Update(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
@@ -212,7 +212,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db, hash)
 
-			//try for update
+			// try for update
 			err := repo.Update(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Equal(t, "resource not found", err.Error())
 		})

@@ -23,7 +23,10 @@ func jobAddHookCommand(l log.Logger, conf config.Optimus, pluginRepo models.Plug
 		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
 		Example: "optimus addhook",
 		RunE: func(cmd *cli.Command, args []string) error {
-			namespace := askToSelectNamespace(l, conf)
+			namespace, err := askToSelectNamespace(l, conf)
+			if err != nil {
+				return err
+			}
 			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 			jobSpecRepo := local.NewJobSpecRepository(
 				jobSpecFs,
@@ -61,7 +64,7 @@ func createHookSurvey(jobSpec models.JobSpec, pluginRepo models.PluginRepository
 		return emptyJobSpec, errors.New("no supported hook plugin found")
 	}
 
-	var qs = []*survey.Question{
+	qs := []*survey.Question{
 		{
 			Name: "hook",
 			Prompt: &survey.Select{

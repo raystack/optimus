@@ -1445,7 +1445,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 
-			//root
+			// root
 			jobRoot := models.JobSpec{
 				ID:           uuid.Must(uuid.NewRandom()),
 				Name:         "job-1",
@@ -1488,7 +1488,7 @@ func TestService(t *testing.T) {
 				Spec: resultSpecRoot,
 			}
 
-			//downstream
+			// downstream
 			unitDownstream := models.GenerateDestinationRequest{
 				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),
@@ -1599,7 +1599,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 
-			//root
+			// root
 			jobRoot := models.JobSpec{
 				ID:           uuid.Must(uuid.NewRandom()),
 				Name:         "job-1",
@@ -1642,7 +1642,7 @@ func TestService(t *testing.T) {
 				Spec: resultSpecRoot,
 			}
 
-			//downstream
+			// downstream
 			unitDownstream := models.GenerateDestinationRequest{
 				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),
@@ -2321,7 +2321,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 
-			//root
+			// root
 			jobRoot := models.JobSpec{
 				ID:           uuid.Must(uuid.NewRandom()),
 				Name:         "job-1",
@@ -2363,7 +2363,7 @@ func TestService(t *testing.T) {
 				Spec: resultSpecRoot,
 			}
 
-			//downstream
+			// downstream
 			unitDownstream := models.GenerateDestinationRequest{
 				Config: models.PluginConfigs{}.FromJobSpec(jobDownstream.Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobDownstream.Assets),

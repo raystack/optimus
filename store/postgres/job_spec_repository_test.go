@@ -262,7 +262,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -272,7 +272,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			taskSchema := checkModel.Task.Unit.Info()
 			assert.Equal(t, gTask, taskSchema.Name)
 
-			//try for update
+			// try for update
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
@@ -302,7 +302,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			//try for create
+			// try for create
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit1, DependencyMod: depMod1}
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
@@ -316,7 +316,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			testModelA.Task.Window.Offset = time.Hour * 2
 			testModelA.Task.Window.Size = 0
 
-			//try for update
+			// try for update
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit2, DependencyMod: depMod2}
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
@@ -336,7 +336,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -479,7 +479,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			//try for create
+			// try for create
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
@@ -492,7 +492,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			assert.Equal(t, time.Duration(0), checkModel.Behavior.Retry.Delay)
 			assert.Equal(t, true, checkModel.Behavior.Retry.ExponentialBackoff)
 
-			//try for update
+			// try for update
 			testModelA.Behavior.CatchUp = false
 			testModelA.Behavior.DependsOnPast = true
 			err = repo.Save(ctx, testModelA)

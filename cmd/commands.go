@@ -40,8 +40,8 @@ var (
 )
 
 const (
-	GRPCMaxClientSendSize      = 45 << 20 // 45MB
-	GRPCMaxClientRecvSize      = 45 << 20 // 45MB
+	GRPCMaxClientSendSize      = 64 << 20 // 64MB
+	GRPCMaxClientRecvSize      = 64 << 20 // 64MB
 	GRPCMaxRetry          uint = 3
 
 	OptimusDialTimeout = time.Second * 2
@@ -60,10 +60,10 @@ type JobSpecRepository interface {
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
-func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func New(plainLog, jsonLog log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
 
-	var cmd = &cli.Command{
+	cmd := &cli.Command{
 		Use: "optimus <command> <subcommand> [flags]",
 		Long: heredoc.Doc(`
 			Optimus is an easy-to-use, reliable, and performant workflow orchestrator for 
@@ -110,7 +110,7 @@ func New(plainLog log.Logger, jsonLog log.Logger, conf config.Optimus, pluginRep
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	//init local specs
+	// init local specs
 	datastoreSpecFs := make(map[string]map[string]afero.Fs)
 	for _, namespace := range conf.Namespaces {
 		dtSpec := make(map[string]afero.Fs)

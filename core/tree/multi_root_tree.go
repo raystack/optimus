@@ -5,10 +5,8 @@ import (
 	"fmt"
 )
 
-var (
-	// ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
-	ErrCyclicDependencyEncountered = errors.New("a cycle dependency encountered in the tree")
-)
+// ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
+var ErrCyclicDependencyEncountered = errors.New("a cycle dependency encountered in the tree")
 
 // MultiRootTree - represents a data type which has multiple independent root nodes
 // all root nodes have their independent tree based on depdencies of TreeNode.

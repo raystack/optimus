@@ -64,7 +64,7 @@ func versionCommand(l log.Logger, host string, pluginRepo models.PluginRepositor
 }
 
 // getVersionRequest send a version request to service
-func getVersionRequest(clientVer string, host string) (ver string, err error) {
+func getVersionRequest(clientVer, host string) (ver string, err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -78,15 +78,14 @@ func getVersionRequest(clientVer string, host string) (ver string, err error) {
 	defer cancel()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
+	spinner := NewProgressBar()
+	spinner.Start("please wait...")
 	versionResponse, err := runtime.Version(ctx, &pb.VersionRequest{
 		Client: clientVer,
 	})
 	if err != nil {
 		return "", fmt.Errorf("request failed for version: %w", err)
 	}
-
-	spinner := NewProgressBar()
-	spinner.Start("please wait...")
 	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil

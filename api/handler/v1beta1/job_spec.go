@@ -8,6 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -15,14 +20,29 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_DeployJobSpecificationServer) error {
+var runtimeDeployJobSpecificationCounter = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "runtime_deploy_jobspec",
+	Help: "Number of jobs requested for deployment by runtime",
+})
+
+// JobSpecServiceServer
+type JobSpecServiceServer struct {
+	l                log.Logger
+	jobSvc           models.JobService
+	adapter          ProtoAdapter
+	namespaceService service.NamespaceService
+	progressObserver progress.Observer
+	pb.UnimplementedJobSpecificationServiceServer
+}
+
+func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
 	errNamespaces := []string{}
 
 	for {
 		req, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			stream.Send(&pb.DeployJobSpecificationResponse{
@@ -96,7 +116,7 @@ func (sv *RuntimeServiceServer) DeployJobSpecification(stream pb.RuntimeService_
 	return nil
 }
 
-func (sv *RuntimeServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec models.NamespaceSpec, req *pb.DeployJobSpecificationRequest) ([]models.JobSpec, error) {
+func (sv *JobSpecServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec models.NamespaceSpec, req *pb.DeployJobSpecificationRequest) ([]models.JobSpec, error) {
 	jobs := req.GetJobs()
 	if len(jobs) == 0 {
 		return []models.JobSpec{}, nil
@@ -125,7 +145,7 @@ func (sv *RuntimeServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec
 	return jobsToKeep, nil
 }
 
-func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
+func (sv *JobSpecServiceServer) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -138,10 +158,8 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 
 	jobProtos := []*pb.JobSpecification{}
 	for _, jobSpec := range jobSpecs {
-		jobProto, err := sv.adapter.ToJobProto(jobSpec)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: failed to parse job spec %s", err.Error(), jobSpec.Name)
-		}
+		jobProto := sv.adapter.ToJobProto(jobSpec)
+
 		jobProtos = append(jobProtos, jobProto)
 	}
 	return &pb.ListJobSpecificationResponse{
@@ -149,7 +167,7 @@ func (sv *RuntimeServiceServer) ListJobSpecification(ctx context.Context, req *p
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
+func (sv *JobSpecServiceServer) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -167,7 +185,7 @@ func (sv *RuntimeServiceServer) CheckJobSpecification(ctx context.Context, req *
 	return &pb.CheckJobSpecificationResponse{Success: true}, nil
 }
 
-func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, respStream pb.RuntimeService_CheckJobSpecificationsServer) error {
+func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, respStream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
 	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -196,7 +214,7 @@ func (sv *RuntimeServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
-func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
+func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -228,7 +246,7 @@ func (sv *RuntimeServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
+func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -239,17 +257,14 @@ func (sv *RuntimeServiceServer) GetJobSpecification(ctx context.Context, req *pb
 		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
 	}
 
-	jobSpecAdapt, err := sv.adapter.ToJobProto(jobSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot serialize job: \n%s", err.Error())
-	}
+	jobSpecAdapt := sv.adapter.ToJobProto(jobSpec)
 
 	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
+func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -268,4 +283,14 @@ func (sv *RuntimeServiceServer) DeleteJobSpecification(ctx context.Context, req 
 		Success: true,
 		Message: fmt.Sprintf("job %s has been deleted", jobSpecToDelete.Name),
 	}, nil
+}
+
+func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
+	return &JobSpecServiceServer{
+		l:                l,
+		jobSvc:           jobService,
+		adapter:          adapter,
+		namespaceService: namespaceService,
+		progressObserver: progressObserver,
+	}
 }

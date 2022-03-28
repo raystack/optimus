@@ -1,0 +1,579 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/core/v1beta1/job_spec.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "JobSpecificationService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1beta1/project/{projectName}/job/check": {
+      "post": {
+        "summary": "CheckJobSpecification checks if a job specification is valid",
+        "operationId": "JobSpecificationService_CheckJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1CheckJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job": {
+      "get": {
+        "summary": "ListJobSpecification returns list of jobs created in a project",
+        "operationId": "JobSpecificationService_ListJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ListJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      },
+      "post": {
+        "summary": "CreateJobSpecification registers a new job for a namespace which belongs to a project",
+        "operationId": "JobSpecificationService_CreateJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1CreateJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "spec": {
+                  "$ref": "#/definitions/v1beta1JobSpecification"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}": {
+      "get": {
+        "summary": "GetJobSpecification reads a provided job spec of a namespace",
+        "operationId": "JobSpecificationService_GetJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      },
+      "delete": {
+        "summary": "DeleteJobSpecification deletes a job spec of a namespace",
+        "operationId": "JobSpecificationService_DeleteJobSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1DeleteJobSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "BehaviorNotifiers": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "$ref": "#/definitions/v1beta1JobEventType"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Notifiers are used to set custom alerting in case of job failure/sla_miss"
+    },
+    "BehaviorRetry": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "delay": {
+          "type": "string"
+        },
+        "exponentialBackoff": {
+          "type": "boolean"
+        }
+      },
+      "title": "retry behaviour if job failed to execute for the first time"
+    },
+    "JobSpecificationBehavior": {
+      "type": "object",
+      "properties": {
+        "retry": {
+          "$ref": "#/definitions/BehaviorRetry"
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BehaviorNotifiers"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1CheckJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1beta1CheckJobSpecificationsResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "ack": {
+          "type": "boolean",
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+        },
+        "message": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1CreateJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1DeleteJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1DeployJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "ack": {
+          "type": "boolean",
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+        },
+        "message": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1GetJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
+        }
+      }
+    },
+    "v1beta1HttpDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1JobConfigItem": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1JobDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "httpDependency": {
+          "$ref": "#/definitions/v1beta1HttpDependency"
+        }
+      }
+    },
+    "v1beta1JobEventType": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "TYPE_SLA_MISS",
+        "TYPE_FAILURE",
+        "TYPE_SUCCESS"
+      ],
+      "default": "TYPE_UNSPECIFIED"
+    },
+    "v1beta1JobMetadata": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "$ref": "#/definitions/v1beta1JobSpecMetadataResource"
+        }
+      }
+    },
+    "v1beta1JobSpecHook": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobConfigItem"
+          }
+        }
+      }
+    },
+    "v1beta1JobSpecMetadataResource": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "$ref": "#/definitions/v1beta1JobSpecMetadataResourceConfig"
+        },
+        "limit": {
+          "$ref": "#/definitions/v1beta1JobSpecMetadataResourceConfig"
+        }
+      }
+    },
+    "v1beta1JobSpecMetadataResourceConfig": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1JobSpecification": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        },
+        "interval": {
+          "type": "string"
+        },
+        "dependsOnPast": {
+          "type": "boolean"
+        },
+        "catchUp": {
+          "type": "boolean"
+        },
+        "taskName": {
+          "type": "string"
+        },
+        "config": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobConfigItem"
+          }
+        },
+        "windowSize": {
+          "type": "string"
+        },
+        "windowOffset": {
+          "type": "string"
+        },
+        "windowTruncateTo": {
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobDependency"
+          }
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "hooks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobSpecHook"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "behavior": {
+          "$ref": "#/definitions/JobSpecificationBehavior"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1beta1JobMetadata"
+        }
+      }
+    },
+    "v1beta1ListJobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobSpecification"
+          }
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Job Specification Service"
+  }
+}

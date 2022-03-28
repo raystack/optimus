@@ -31,8 +31,10 @@ var (
 	PluginTypeHook = PluginType(InstanceTypeHook.String())
 )
 
-type PluginType string
-type PluginMod string
+type (
+	PluginType string
+	PluginMod  string
+)
 
 func (pm PluginMod) String() string {
 	return string(pm)

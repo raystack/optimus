@@ -164,7 +164,8 @@ func TestReplay(t *testing.T) {
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.NotNil(t, err)
-			merr := err.(*multierror.Error)
+			var merr *multierror.Error
+			errors.As(err, &merr)
 			assert.Equal(t, 3, merr.Len())
 		})
 

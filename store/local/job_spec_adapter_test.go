@@ -160,7 +160,7 @@ hooks: []`
 		modelJob, actualErr := adapter.ToSpec(localJobParsed)
 		_, urlErr := url.ParseRequestURI("")
 		errOnIndex := 0
-		expErr := fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %v", errOnIndex, urlErr)
+		expErr := fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %w", errOnIndex, urlErr)
 		assert.Equal(t, expErr, actualErr)
 		assert.Equal(t, models.JobSpec{}, modelJob)
 	})

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/core/cron"
+
 	"github.com/odpf/optimus/core/progress"
 )
 
@@ -23,7 +25,6 @@ var (
 // SchedulerUnit is implemented by supported schedulers
 type SchedulerUnit interface {
 	GetName() string
-
 	VerifyJob(ctx context.Context, namespace NamespaceSpec, job JobSpec) error
 	ListJobs(ctx context.Context, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
 	DeployJobs(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec, obs progress.Observer) error
@@ -42,6 +43,9 @@ type SchedulerUnit interface {
 	// GetJobRunStatus should return batch of runs of a job
 	GetJobRunStatus(ctx context.Context, projectSpec ProjectSpec, jobName string, startDate time.Time,
 		endDate time.Time, batchSize int) ([]JobStatus, error)
+
+	// GetJobRuns return all the job runs based on query
+	GetJobRuns(ctx context.Context, projectSpec ProjectSpec, jobQuery *JobQuery, jobCron *cron.ScheduleSpec) ([]JobRun, error)
 }
 
 type SchedulerListOptions struct {
@@ -89,7 +93,7 @@ func (e *EventJobRemoteDelete) String() string {
 // ExecutorUnit executes the actual job instance
 type ExecutorUnit interface {
 	// Start initiates the instance execution
-	Start(ctx context.Context, req ExecutorStartRequest) (*ExecutorStartResponse, error)
+	Start(ctx context.Context, req ExecutorStartRequest) *ExecutorStartResponse
 
 	// Stop aborts the execution
 	Stop(ctx context.Context, req ExecutorStopRequest) error
@@ -115,8 +119,7 @@ type ExecutorStopRequest struct {
 	Signal string
 }
 
-type ExecutorStartResponse struct {
-}
+type ExecutorStartResponse struct{}
 
 type ExecutorStats struct {
 	Logs   []byte

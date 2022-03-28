@@ -6,8 +6,7 @@ type UUIDProvider interface {
 	NewUUID() (uuid.UUID, error)
 }
 
-type uuidProvider struct {
-}
+type uuidProvider struct{}
 
 func (*uuidProvider) NewUUID() (uuid.UUID, error) {
 	return uuid.NewRandom()

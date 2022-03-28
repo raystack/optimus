@@ -12,9 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)
-)
+var datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)
 
 const (
 	ExpectedDatasetNameSegments = 3
@@ -47,8 +45,7 @@ type BQDatasetMetadata struct {
 }
 
 // datasetSpecHandler helps serializing/deserializing datastore resource for dataset
-type datasetSpecHandler struct {
-}
+type datasetSpecHandler struct{}
 
 func (s datasetSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
 	if optResource.Spec == nil {

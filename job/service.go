@@ -17,16 +17,14 @@ import (
 )
 
 const (
-	//PersistJobPrefix is used to keep the job during sync even if they are not in source repo
+	// PersistJobPrefix is used to keep the job during sync even if they are not in source repo
 	PersistJobPrefix string = "__"
 
 	ConcurrentTicketPerSec = 40
 	ConcurrentLimit        = 600
 )
 
-var (
-	errDependencyResolution = fmt.Errorf("dependency resolution")
-)
+var errDependencyResolution = fmt.Errorf("dependency resolution")
 
 type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
 
@@ -65,7 +63,7 @@ type ReplayManager interface {
 	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
 	GetReplay(context.Context, uuid.UUID) (models.ReplaySpec, error)
 	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
-	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time,
+	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate, endDate time.Time,
 		jobName string) ([]models.JobStatus, error)
 }
 
@@ -244,7 +242,8 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		// if err is caused during dependency resolution in a job spec that belong to
 		// different namespace then the current, on which this operation is being performed,
 		// then don't treat this as error
-		if merrs, ok := err.(*multierror.Error); ok {
+		var merrs *multierror.Error
+		if errors.As(err, &merrs) {
 			var newErr error
 			for _, cerr := range merrs.Errors {
 				fmt.Printf("%v", cerr)
@@ -387,7 +386,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 			return func() (interface{}, error) {
 				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
-					//wrappedErr := errors2.Wrap(, err.Error())
+					// wrappedErr := errors2.Wrap(, err.Error())
 					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
 				return resolvedSpec, nil
@@ -460,7 +459,7 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 
 	var jobSpecs []models.JobSpec
 	for _, node := range rootInstance.GetAllNodes() {
-		//ignore the root
+		// ignore the root
 		if node.GetName() != rootInstance.GetName() {
 			jobSpecs = append(jobSpecs, node.Data.(models.JobSpec))
 		}
@@ -504,7 +503,7 @@ func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec 
 
 func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedDownstream []string, jobNamespaceMap map[string]string) *tree.TreeNode {
 	for _, dep := range dependents {
-		//if dep is not within allowed namespace, skip this dependency
+		// if dep is not within allowed namespace, skip this dependency
 		isAuthorized := false
 		for _, namespace := range allowedDownstream {
 			if namespace == models.AllNamespace || namespace == jobNamespaceMap[dep.GetName()] {
@@ -516,19 +515,19 @@ func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedD
 			continue
 		}
 
-		//if dep is within allowed namespace, add the node to parent
+		// if dep is within allowed namespace, add the node to parent
 		depNode := tree.NewTreeNode(dep.Data)
 
-		//check for the dependent
+		// check for the dependent
 		depNode = filterNode(depNode, dep.Dependents, allowedDownstream, jobNamespaceMap)
 
-		//add the complete node
+		// add the complete node
 		parentNode.AddDependent(depNode)
 	}
 	return parentNode
 }
 
-func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNode) []string {
+func listIgnoredJobs(rootInstance, rootFilteredTree *tree.TreeNode) []string {
 	allowedNodesMap := make(map[string]*tree.TreeNode)
 	for _, allowedNode := range rootFilteredTree.GetAllNodes() {
 		allowedNodesMap[allowedNode.GetName()] = allowedNode
@@ -557,7 +556,7 @@ func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 }
 
 // remove items present in from
-func setSubtract(from []string, remove []string) []string {
+func setSubtract(from, remove []string) []string {
 	removeMap := make(map[string]bool)
 	for _, item := range remove {
 		removeMap[item] = true
@@ -702,7 +701,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 	for _, childSpec := range jobSpecMap {
 		childNode := findOrCreateDAGNode(dagTree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
-			var isExternal = false
+			isExternal := false
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
