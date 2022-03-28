@@ -227,10 +227,8 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 				if verbose {
 					l.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetJobName()))
 				}
-			} else {
-				if verbose {
-					l.Info(resp.Message)
-				}
+			} else if verbose {
+				l.Info(resp.Message)
 			}
 		}
 	}
@@ -345,10 +343,8 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				if verbose {
 					l.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetResourceName()))
 				}
-			} else {
-				if verbose {
-					l.Info(resp.Message)
-				}
+			} else if verbose {
+				l.Info(resp.Message)
 			}
 		}
 	}
