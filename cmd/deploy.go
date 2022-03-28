@@ -27,7 +27,7 @@ const (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func deployCommand() *cli.Command {
 	var (
 		namespaces      []string
 		ignoreJobs      bool
@@ -54,6 +54,8 @@ func deployCommand(pluginRepo models.PluginRepository, dsRepo models.DatastoreRe
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		pluginRepo := models.PluginRegistry
+		dsRepo := models.DatastoreRegistry
 		// TODO: find a way to load the config in one place
 		conf, err := config.LoadClientConfig(configFilePath)
 		if err != nil {

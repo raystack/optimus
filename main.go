@@ -10,7 +10,6 @@ import (
 
 	"github.com/odpf/optimus/cmd"
 	_ "github.com/odpf/optimus/ext/datastore"
-	"github.com/odpf/optimus/models"
 )
 
 var errRequestFail = errors.New("🔥 unable to complete request successfully")
@@ -19,10 +18,7 @@ var errRequestFail = errors.New("🔥 unable to complete request successfully")
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	command := cmd.New(
-		models.PluginRegistry,
-		models.DatastoreRegistry,
-	)
+	command := cmd.New()
 
 	if err := command.Execute(); err != nil {
 		fmt.Println(errRequestFail)

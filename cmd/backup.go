@@ -5,7 +5,6 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	cli "github.com/spf13/cobra"
 )
 
@@ -13,7 +12,7 @@ const (
 	backupTimeout = time.Minute * 15
 )
 
-func backupCommand(datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupCommand() *cli.Command {
 	var configFilePath string
 	conf := &config.ClientConfig{}
 	l := initLogger(plainLoggerType, conf.Log)
@@ -42,8 +41,8 @@ func backupCommand(datastoreRepo models.DatastoreRepo) *cli.Command {
 		return nil
 	}
 
-	cmd.AddCommand(backupCreateCommand(l, conf, datastoreRepo))
-	cmd.AddCommand(backupListCommand(l, conf, datastoreRepo))
-	cmd.AddCommand(backupStatusCommand(l, conf, datastoreRepo))
+	cmd.AddCommand(backupCreateCommand(l, conf))
+	cmd.AddCommand(backupListCommand(l, conf))
+	cmd.AddCommand(backupStatusCommand(l, conf))
 	return cmd
 }

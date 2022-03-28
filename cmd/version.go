@@ -18,7 +18,7 @@ const (
 	githubRepo     = "odpf/optimus"
 )
 
-func versionCommand(pluginRepo models.PluginRepository) *cli.Command {
+func versionCommand() *cli.Command {
 	var isWithServer bool
 	var configFilePath string
 
@@ -66,6 +66,7 @@ func versionCommand(pluginRepo models.PluginRepository) *cli.Command {
 		}
 
 		// Print all plugin infos
+		pluginRepo := models.PluginRegistry
 		plugins := pluginRepo.GetAll()
 		l.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(plugins)))
 		for taskIdx, tasks := range plugins {

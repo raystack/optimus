@@ -16,7 +16,7 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-func jobAddHookCommand(l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository) *cli.Command {
+func jobAddHookCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "addhook",
 		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},
@@ -24,6 +24,7 @@ func jobAddHookCommand(l log.Logger, conf *config.ClientConfig, pluginRepo model
 		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
 		Example: "optimus addhook",
 		RunE: func(cmd *cli.Command, args []string) error {
+			pluginRepo := models.PluginRegistry
 			namespace, err := askToSelectNamespace(l, conf)
 			if err != nil {
 				return err

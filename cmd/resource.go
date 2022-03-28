@@ -23,7 +23,7 @@ import (
 var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
 	`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
-func resourceCommand(datastoreRepo models.DatastoreRepo) *cli.Command {
+func resourceCommand() *cli.Command {
 	var configFilePath string
 	conf := &config.ClientConfig{}
 	l := initLogger(plainLoggerType, conf.Log)
@@ -48,11 +48,11 @@ func resourceCommand(datastoreRepo models.DatastoreRepo) *cli.Command {
 		return nil
 	}
 
-	cmd.AddCommand(createResourceSubCommand(l, conf, datastoreRepo))
+	cmd.AddCommand(createResourceSubCommand(l, conf))
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastoreRepo models.DatastoreRepo) *cli.Command {
+func createResourceSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",
@@ -60,6 +60,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastore
 	}
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		dsRepo := models.DatastoreRegistry
 		// init local specs
 		datastoreSpecFs := make(map[string]map[string]afero.Fs)
 		for _, namespace := range conf.Namespaces {
@@ -75,7 +76,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastore
 			return err
 		}
 		availableStorer := []string{}
-		for _, s := range datastoreRepo.GetAll() {
+		for _, s := range dsRepo.GetAll() {
 			availableStorer = append(availableStorer, s.Name())
 		}
 		var storerName string
@@ -92,7 +93,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig, datastore
 
 		// find requested datastore
 		availableTypes := []string{}
-		datastore, _ := datastoreRepo.GetByName(storerName)
+		datastore, _ := dsRepo.GetByName(storerName)
 		for dsType := range datastore.Types() {
 			availableTypes = append(availableTypes, dsType.String())
 		}

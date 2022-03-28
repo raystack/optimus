@@ -33,12 +33,13 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository) *cli.Command {
+func jobCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			pluginRepo := models.PluginRegistry
 			namespace, err := askToSelectNamespace(l, conf)
 			if err != nil {
 				return err

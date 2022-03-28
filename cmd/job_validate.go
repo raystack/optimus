@@ -23,7 +23,7 @@ const (
 	validateTimeout = time.Minute * 5
 )
 
-func jobValidateCommand(l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository) *cli.Command {
+func jobValidateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var (
 		verbose       bool
 		namespaceName string
@@ -36,6 +36,7 @@ func jobValidateCommand(l log.Logger, conf *config.ClientConfig, pluginRepo mode
 		Long:    "Check if specifications are valid for deployment",
 		Example: "optimus job validate",
 		RunE: func(c *cli.Command, args []string) error {
+			pluginRepo := models.PluginRegistry
 			namespace, err := conf.GetNamespaceByName(namespaceName)
 			if err != nil {
 				return err
