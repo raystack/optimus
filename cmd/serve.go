@@ -6,10 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/odpf/optimus/cmd/server"
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/cmd/server"
+	"github.com/odpf/optimus/config"
 )
 
 func serveCommand(l log.Logger, conf config.Optimus) *cli.Command {

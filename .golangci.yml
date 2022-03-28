@@ -25,7 +25,6 @@ linters:
     - interfacer
     - godox
     - godot
-    - gci
     - errcheck
     - maintidx
     - errchkjson
@@ -75,6 +74,13 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  goimports:
+    local-prefixes: github.com/odpf/optimus
+  gci:
+    sections:
+      - standard # Captures all standard packages if they do not match another section.
+      - default # Contains all imports that could not be matched to another section type.
+      - prefix(github.com/odpf/optimus) # Groups all imports with the specified Prefix.
   gocritic:
     disabled-checks:
       - ifElseChain

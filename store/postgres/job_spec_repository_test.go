@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/postgres"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 )
 
 func TestIntegrationJobRepository(t *testing.T) {

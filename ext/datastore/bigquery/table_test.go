@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"cloud.google.com/go/bigquery"
+	"github.com/google/uuid"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
+
+	"github.com/odpf/optimus/models"
 )
 
 func TestTable(t *testing.T) {

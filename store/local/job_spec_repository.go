@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/models"
 	"gopkg.in/validator.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (

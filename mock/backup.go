@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/stretchr/testify/mock"
 )
 
 type BackupRepo struct {

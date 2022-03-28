@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odpf/salt/log"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
@@ -14,8 +15,6 @@ import (
 	"gocloud.dev/gcp"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
-
-	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/progress"

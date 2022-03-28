@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+
 	"github.com/odpf/optimus/models"
 )
 

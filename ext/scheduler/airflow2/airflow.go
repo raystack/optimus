@@ -2,6 +2,7 @@ package airflow2
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,19 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/cron"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
-
-	"github.com/odpf/optimus/core/progress"
-
+	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
+	"github.com/odpf/optimus/core/cron"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
-	"gocloud.dev/blob"
-
-	_ "embed"
 )
 
 //go:embed resources/__lib.py

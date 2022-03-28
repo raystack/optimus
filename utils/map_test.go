@@ -4,8 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/odpf/optimus/utils"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/utils"
 )
 
 func TestMapHelper(t *testing.T) {

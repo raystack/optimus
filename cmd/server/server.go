@@ -25,6 +25,8 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
+	_ "github.com/odpf/optimus/ext/datastore"
+	_ "github.com/odpf/optimus/plugin"
 )
 
 const (

@@ -6,9 +6,9 @@ import (
 	"path"
 	"testing"
 
-	"github.com/odpf/optimus/extension"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/extension"
 )
 
 func TestLoadManifest(t *testing.T) {

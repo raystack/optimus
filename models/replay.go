@@ -3,9 +3,9 @@ package models
 import (
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
+
+	"github.com/odpf/optimus/core/tree"
 )
 
 const (

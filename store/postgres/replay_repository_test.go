@@ -8,16 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store/postgres"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 func treeIsEqual(treeNode, treeNodeComparator *tree.TreeNode) bool {

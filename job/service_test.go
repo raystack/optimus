@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
+	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {

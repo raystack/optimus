@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/models"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/models"
 )
 
 func TestJob(t *testing.T) {

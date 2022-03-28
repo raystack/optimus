@@ -7,12 +7,11 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store/local"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
 )
 
 const testResourceContents = `version: 1

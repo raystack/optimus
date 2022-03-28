@@ -13,8 +13,6 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/mattn/go-isatty"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
@@ -22,6 +20,9 @@ import (
 	cli "github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
+
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 var (

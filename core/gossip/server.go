@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/salt/log"
-
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb/v2"
 	"github.com/hashicorp/serf/serf"
+	"github.com/odpf/salt/log"
+	"google.golang.org/protobuf/proto"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/config"
-	"google.golang.org/protobuf/proto"
 )
 
 const (

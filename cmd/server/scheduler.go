@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/odpf/salt/log"
+	"gorm.io/gorm"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/ext/executor/noop"
@@ -14,8 +17,6 @@ import (
 	"github.com/odpf/optimus/ext/scheduler/prime"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
-	"gorm.io/gorm"
 )
 
 func initScheduler(l log.Logger, conf config.Optimus, projectRepoFac *projectRepoFactory) (models.SchedulerUnit, error) {

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/core/cron"
-
 	"github.com/odpf/optimus/core/progress"
 )
 

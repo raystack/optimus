@@ -3,10 +3,10 @@ package cmd
 import (
 	"errors"
 
-	"github.com/odpf/optimus/config"
-
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
+
+	"github.com/odpf/optimus/config"
 )
 
 func askToSelectNamespace(l log.Logger, conf config.Optimus) (*config.Namespace, error) {

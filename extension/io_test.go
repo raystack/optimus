@@ -3,9 +3,9 @@ package extension_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/extension"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/extension"
 )
 
 func TestGetDefaultDir(t *testing.T) {

@@ -6,13 +6,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/odpf/optimus/models"
-
-	"github.com/odpf/optimus/mock"
-
-	"github.com/odpf/optimus/store/local"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/local"
 )
 
 func TestSpecAdapter(t *testing.T) {

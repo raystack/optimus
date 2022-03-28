@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
 )
 
 func TestEventService(t *testing.T) {

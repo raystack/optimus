@@ -7,8 +7,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/odpf/optimus/store/postgres"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/store/postgres"
 )
 
 var (

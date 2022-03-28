@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/optimus/utils"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/utils"
 )
 
 func TestConvert(t *testing.T) {

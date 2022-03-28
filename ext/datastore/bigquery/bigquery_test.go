@@ -10,10 +10,10 @@ import (
 	bqapi "cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/ext/datastore/bigquery"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBigquery(t *testing.T) {

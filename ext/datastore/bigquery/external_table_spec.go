@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/odpf/optimus/models"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (
