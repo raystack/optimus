@@ -13,9 +13,11 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/mattn/go-isatty"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/term"
+	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -192,4 +194,16 @@ func (a *BasicAuthentication) RequireTransportSecurity() bool {
 
 func isTerminal(f *os.File) bool {
 	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+}
+
+func getDatastoreSpecFs(namespaces []*config.Namespace) map[string]map[string]afero.Fs {
+	output := make(map[string]map[string]afero.Fs)
+	for _, namespace := range namespaces {
+		dtSpec := make(map[string]afero.Fs)
+		for _, dsConfig := range namespace.Datastore {
+			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+		}
+		output[namespace.Name] = dtSpec
+	}
+	return output
 }

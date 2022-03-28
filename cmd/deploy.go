@@ -62,18 +62,9 @@ func deployCommand() *cli.Command {
 			return err
 		}
 
-		// init logger
 		l := initLogger(plainLoggerType, conf.Log)
+		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 
-		// init local specs
-		datastoreSpecFs := make(map[string]map[string]afero.Fs)
-		for _, namespace := range conf.Namespaces {
-			dtSpec := make(map[string]afero.Fs)
-			for _, dsConfig := range namespace.Datastore {
-				dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-			}
-			datastoreSpecFs[namespace.Name] = dtSpec
-		}
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 

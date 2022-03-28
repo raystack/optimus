@@ -9,15 +9,13 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
-	"github.com/spf13/afero"
-	cli "github.com/spf13/cobra"
-
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
+	"github.com/odpf/salt/log"
+	cli "github.com/spf13/cobra"
 )
 
 var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
@@ -61,15 +59,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Comm
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
 		dsRepo := models.DatastoreRegistry
-		// init local specs
-		datastoreSpecFs := make(map[string]map[string]afero.Fs)
-		for _, namespace := range conf.Namespaces {
-			dtSpec := make(map[string]afero.Fs)
-			for _, dsConfig := range namespace.Datastore {
-				dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-			}
-			datastoreSpecFs[namespace.Name] = dtSpec
-		}
+		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 
 		namespace, err := askToSelectNamespace(l, conf)
 		if err != nil {
