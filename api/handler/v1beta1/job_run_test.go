@@ -7,18 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/run"
 	"github.com/odpf/optimus/utils"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
