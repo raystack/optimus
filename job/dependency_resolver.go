@@ -80,7 +80,7 @@ func (r *dependencyResolver) ResolveAndPersist(ctx context.Context, projectSpec 
 
 func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpec models.JobSpec) error {
-	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
+	dependencyRepo := r.dependencyRepoFactory.New()
 
 	// delete from dependency table
 	if err := dependencyRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
@@ -99,7 +99,7 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 
 func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
 	observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
-	dependencyRepo := r.dependencyRepoFactory.New(projectSpec)
+	dependencyRepo := r.dependencyRepoFactory.New()
 	jobDependencies, err := dependencyRepo.GetAll(ctx, projectSpec.ID)
 	if err != nil {
 		return nil, err

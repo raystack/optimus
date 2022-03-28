@@ -51,7 +51,7 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 				Type:    models.JobSpecDependencyTypeIntra,
 			},
 		}
-		repo := NewJobDependencyRepository(db, projectSpec)
+		repo := NewJobDependencyRepository(db)
 
 		err := repo.Save(ctx, projectSpec.ID, jobID1, jobDependencies[0])
 		assert.Nil(t, err)
@@ -62,13 +62,15 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 		var storedJobDependencies []models.JobIDDependenciesPair
 		storedJobDependencies, err = repo.GetAll(ctx, projectSpec.ID)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobDependencies[0].Job.ID, jobDependencies[1].Job.ID}, []uuid.UUID{storedJobDependencies[0].JobID, storedJobDependencies[1].JobID})
+		assert.EqualValues(t, []uuid.UUID{jobID1, jobID2}, []uuid.UUID{storedJobDependencies[0].JobID, storedJobDependencies[1].JobID})
+		assert.EqualValues(t, []uuid.UUID{jobDependencies[0].Job.ID, jobDependencies[1].Job.ID}, []uuid.UUID{storedJobDependencies[0].DependentJobID, storedJobDependencies[1].DependentJobID})
 
 		err = repo.DeleteByJobID(ctx, jobID1)
 		assert.Nil(t, err)
 
 		storedJobDependencies, err = repo.GetAll(ctx, projectSpec.ID)
 		assert.Nil(t, err)
-		assert.Equal(t, jobDependencies[1].Job.ID, storedJobDependencies[0].JobID)
+		assert.Equal(t, jobID2, storedJobDependencies[0].JobID)
+		assert.Equal(t, jobDependencies[1].Job.ID, storedJobDependencies[0].DependentJobID)
 	})
 }

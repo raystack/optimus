@@ -279,8 +279,8 @@ type JobDependencyRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobDependencyRepoFactory) New(proj models.ProjectSpec) store.JobDependencyRepository {
-	return repo.Called(proj).Get(0).(store.JobDependencyRepository)
+func (repo *JobDependencyRepoFactory) New() store.JobDependencyRepository {
+	return repo.Called().Get(0).(store.JobDependencyRepository)
 }
 
 // JobDependencyRepository to store job dependencies

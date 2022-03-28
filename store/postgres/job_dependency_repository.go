@@ -71,7 +71,7 @@ func (repo *jobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uu
 	return repo.db.WithContext(ctx).Where("job_id = ?", jobID).Delete(&JobDependency{}).Error
 }
 
-func NewJobDependencyRepository(db *gorm.DB, projectSpec models.ProjectSpec) *jobDependencyRepository {
+func NewJobDependencyRepository(db *gorm.DB) *jobDependencyRepository {
 	return &jobDependencyRepository{
 		db: db,
 	}

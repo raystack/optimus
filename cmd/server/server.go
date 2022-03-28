@@ -181,8 +181,8 @@ type jobDependencyRepoFactory struct {
 	db *gorm.DB
 }
 
-func (fac *jobDependencyRepoFactory) New(project models.ProjectSpec) store.JobDependencyRepository {
-	return postgres.NewJobDependencyRepository(fac.db, project)
+func (fac *jobDependencyRepoFactory) New() store.JobDependencyRepository {
+	return postgres.NewJobDependencyRepository(fac.db)
 }
 
 type airflowBucketFactory struct{}
