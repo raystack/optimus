@@ -12,6 +12,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
@@ -31,13 +32,21 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepository,
-	pluginRepo models.PluginRepository) *cli.Command {
-	return &cli.Command{
+func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			namespace, err := askToSelectNamespace(l, conf)
+			if err != nil {
+				return err
+			}
+			jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+			jobSpecRepo := local.NewJobSpecRepository(
+				jobSpecFs,
+				local.NewJobSpecAdapter(pluginRepo),
+			)
 			jwd, err := getWorkingDirectory(jobSpecFs, "")
 			if err != nil {
 				return err
@@ -65,6 +74,7 @@ func jobCreateCommand(l log.Logger, jobSpecFs afero.Fs, jobSpecRepo JobSpecRepos
 			return nil
 		},
 	}
+	return cmd
 }
 
 // getWorkingDirectory returns the directory where the new spec folder should be created
@@ -151,7 +161,7 @@ func createJobSurvey(jobSpecRepo JobSpecRepository, pluginRepo models.PluginRepo
 		return local.Job{}, errors.New("no supported task plugin found")
 	}
 
-	var qs = []*survey.Question{
+	qs := []*survey.Question{
 		{
 			Name: "name",
 			Prompt: &survey.Input{
@@ -357,7 +367,7 @@ func getWindowParameters(winName string) local.JobTaskWindow {
 		}
 	}
 
-	//default
+	// default
 	return local.JobTaskWindow{
 		Size:       "24h",
 		Offset:     "0",

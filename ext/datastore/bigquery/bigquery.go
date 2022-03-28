@@ -178,7 +178,7 @@ func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupReso
 	return backupTable(ctx, request, client)
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	if err := models.DatastoreRegistry.Add(This); err != nil {
 		panic(err)
 	}

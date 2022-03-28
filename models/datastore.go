@@ -83,7 +83,6 @@ type DatastoreTypeController interface {
 type DatastoreSpecAdapter interface {
 	ToYaml(spec ResourceSpec) ([]byte, error)
 	FromYaml([]byte) (ResourceSpec, error)
-
 	ToProtobuf(ResourceSpec) ([]byte, error)
 	FromProtobuf([]byte) (ResourceSpec, error)
 }
@@ -179,7 +178,6 @@ func (s *supportedDatastore) Add(newUnit Datastorer) error {
 type DatastoreService interface {
 	// does not really fetch resource metadata, just the user provided spec
 	GetAll(ctx context.Context, namespace NamespaceSpec, datastoreName string) ([]ResourceSpec, error)
-
 	CreateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	ReadResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) (ResourceSpec, error)

@@ -15,15 +15,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
+func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "create",
 			Short:   "Create a backup",
 			Example: "optimus backup create --resource <sample_resource_name>",
 		}
-		project          = conf.Project.Name
-		namespace        = conf.Namespace.Name
 		dryRun           = false
 		ignoreDownstream = false
 		allDownstream    = false
@@ -32,8 +30,6 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 		description      string
 		storerName       string
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", project, "Project name of optimus managed repository")
-	backupCmd.Flags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of the resource within project")
 
 	backupCmd.Flags().StringVarP(&resourceName, "resource", "r", resourceName, "Resource name created inside the datastore")
 	backupCmd.Flags().StringVarP(&description, "description", "i", description, "Describe intention to help identify the backup")
@@ -45,7 +41,10 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
-		var err error
+		namespace, err := askToSelectNamespace(l, conf)
+		if err != nil {
+			return err
+		}
 		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
 			return err
 		}
@@ -61,13 +60,13 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			if allDownstream {
 				allowedDownstreamNamespaces = []string{"*"}
 			} else {
-				allowedDownstreamNamespaces = []string{namespace}
+				allowedDownstreamNamespaces = []string{namespace.Name}
 			}
 		}
 
 		backupDryRunRequest := &pb.BackupDryRunRequest{
-			ProjectName:                 project,
-			NamespaceName:               namespace,
+			ProjectName:                 conf.Project.Name,
+			NamespaceName:               namespace.Name,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
@@ -78,7 +77,7 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 			return err
 		}
 		if dryRun {
-			//if only dry run, exit now
+			// if only dry run, exit now
 			return nil
 		}
 
@@ -98,14 +97,14 @@ func backupCreateCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf 
 		}
 
 		backupRequest := &pb.CreateBackupRequest{
-			ProjectName:                 project,
-			NamespaceName:               namespace,
+			ProjectName:                 conf.Project.Name,
+			NamespaceName:               namespace.Name,
 			ResourceName:                resourceName,
 			DatastoreName:               storerName,
 			Description:                 description,
 			AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
 		}
-		for _, ds := range conf.Namespace.Datastore {
+		for _, ds := range namespace.Datastore {
 			if ds.Type == storerName {
 				backupRequest.Config = ds.Backup
 			}
@@ -182,11 +181,11 @@ func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupD
 	requestTimeoutCtx, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
 	defer requestCancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	backupDryRunResponse, err := runtime.BackupDryRun(requestTimeoutCtx, backupRequest)
+	backupDryRunResponse, err := backup.BackupDryRun(requestTimeoutCtx, backupRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -215,11 +214,11 @@ func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupR
 	requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
 	defer requestCancel()
 
-	runtime := pb.NewRuntimeServiceClient(conn)
+	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	backupResponse, err := runtime.CreateBackup(requestTimeout, backupRequest)
+	backupResponse, err := backup.CreateBackup(requestTimeout, backupRequest)
 	spinner.Stop()
 
 	if err != nil {

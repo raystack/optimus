@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func treeIsEqual(treeNode *tree.TreeNode, treeNodeComparator *tree.TreeNode) bool {
+func treeIsEqual(treeNode, treeNodeComparator *tree.TreeNode) bool {
 	if treeNode.Data.GetName() != treeNodeComparator.Data.GetName() {
 		return false
 	}

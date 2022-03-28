@@ -26,7 +26,7 @@ func TestReplaySyncer(t *testing.T) {
 	startDate := time.Date(2020, time.Month(8), 22, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2020, time.Month(8), 23, 0, 0, 0, 0, time.UTC)
 	batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
-	dagStartTime := time.Date(2020, time.Month(4), 05, 0, 0, 0, 0, time.UTC)
+	dagStartTime := time.Date(2020, time.Month(4), 5, 0, 0, 0, 0, time.UTC)
 
 	specs := make(map[string]models.JobSpec)
 	spec1 := "dag1"

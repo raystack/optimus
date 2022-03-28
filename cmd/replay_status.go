@@ -15,9 +15,7 @@ import (
 )
 
 func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
-	var (
-		projectName string
-	)
+	var projectName string
 
 	reCmd := &cli.Command{
 		Use:     "status",
@@ -51,14 +49,14 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 		replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
 		defer replayRequestCancel()
 
-		runtime := pb.NewRuntimeServiceClient(conn)
+		replay := pb.NewReplayServiceClient(conn)
 		replayStatusRequest := &pb.GetReplayStatusRequest{
 			Id:          args[0],
 			ProjectName: projectName,
 		}
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		replayResponse, err := runtime.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
+		replayResponse, err := replay.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

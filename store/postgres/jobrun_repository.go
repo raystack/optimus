@@ -76,7 +76,7 @@ func (repo *JobRunRepository) GetByScheduledAt(ctx context.Context, jobID uuid.U
 }
 
 // AddInstance associate instance details
-func (repo *JobRunRepository) AddInstance(ctx context.Context, namespaceSpec models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error {
+func (repo *JobRunRepository) AddInstance(ctx context.Context, _ models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error {
 	instance, err := repo.instanceRepo.GetByName(ctx, run.ID, spec.Name, spec.Type.String())
 	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 		return err
@@ -124,7 +124,7 @@ func (repo *JobRunRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (repo *JobRunRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error {
 	var jr JobRun
-	if err := repo.db.Where("id = ?", id).Find(&jr).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("id = ?", id).Find(&jr).Error; err != nil {
 		return err
 	}
 	jr.Status = status.String()

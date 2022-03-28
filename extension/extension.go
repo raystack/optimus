@@ -76,7 +76,7 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 	}
 	release, _, err := e.ghReleaseGetter.GetLatestRelease(ctx, owner, repo)
 	if err != nil {
-		return fmt.Errorf("error getting the latest release: %v", err)
+		return fmt.Errorf("error getting the latest release: %w", err)
 	}
 	downloadURL, err := e.getDownloadURL(release)
 	if err != nil {
@@ -84,7 +84,7 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 	}
 	destDirPath := path.Join(e.dirPath, owner, repo)
 	if err := os.MkdirAll(destDirPath, os.ModePerm); err != nil {
-		return fmt.Errorf("error creating dir: %v", err)
+		return fmt.Errorf("error creating dir: %w", err)
 	}
 	tag := repo
 	if release.TagName != nil {
@@ -114,13 +114,13 @@ func (e *Extension) Install(ctx context.Context, owner, repo, alias string) erro
 func (e *Extension) downloadAsset(url, destPath string) error {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return fmt.Errorf("error creating request: %v", err)
+		return fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Set("Accept", "application/octet-stream")
 
 	resp, err := e.httpDoer.Do(req)
 	if err != nil {
-		return fmt.Errorf("error executing request: %v", err)
+		return fmt.Errorf("error executing request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -128,15 +128,15 @@ func (e *Extension) downloadAsset(url, destPath string) error {
 		return e.getResponseError(resp)
 	}
 
-	f, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	f, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
-		return fmt.Errorf("error opening file: %v", err)
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
-		return fmt.Errorf("error copying file: %v", err)
+		return fmt.Errorf("error copying file: %w", err)
 	}
 	return nil
 }
@@ -144,11 +144,11 @@ func (e *Extension) downloadAsset(url, destPath string) error {
 func (e *Extension) getResponseError(resp *http.Response) error {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("error reading body: %v", err)
+		return fmt.Errorf("error reading body: %w", err)
 	}
 	var buff bytes.Buffer
 	if err := json.Indent(&buff, body, "", "  "); err != nil {
-		return fmt.Errorf("error indenting json: %v", err)
+		return fmt.Errorf("error indenting json: %w", err)
 	}
 	return errors.New(buff.String())
 }

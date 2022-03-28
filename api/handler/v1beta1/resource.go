@@ -2,17 +2,39 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/salt/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
+var runtimeDeployResourceSpecificationCounter = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "runtime_deploy_resourcespec",
+	Help: "Number of resources requested for deployment by runtime",
+})
+
+type ResourceServiceServer struct {
+	l                log.Logger
+	resourceSvc      models.DatastoreService
+	namespaceService service.NamespaceService
+	adapter          ProtoAdapter
+	progressObserver progress.Observer
+	pb.UnimplementedResourceServiceServer
+}
+
+func (sv *ResourceServiceServer) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -32,7 +54,7 @@ func (sv *RuntimeServiceServer) CreateResource(ctx context.Context, req *pb.Crea
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
+func (sv *ResourceServiceServer) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -52,7 +74,7 @@ func (sv *RuntimeServiceServer) UpdateResource(ctx context.Context, req *pb.Upda
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadResourceRequest) (*pb.ReadResourceResponse, error) {
+func (sv *ResourceServiceServer) ReadResource(ctx context.Context, req *pb.ReadResourceRequest) (*pb.ReadResourceResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -74,40 +96,89 @@ func (sv *RuntimeServiceServer) ReadResource(ctx context.Context, req *pb.ReadRe
 	}, nil
 }
 
-func (sv *RuntimeServiceServer) DeployResourceSpecification(req *pb.DeployResourceSpecificationRequest, respStream pb.RuntimeService_DeployResourceSpecificationServer) error {
+func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceService_DeployResourceSpecificationServer) error {
 	startTime := time.Now()
+	errNamespaces := []string{}
 
-	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
-	if err != nil {
-		return mapToGRPCErr(sv.l, err, "unable to get namespace")
-	}
-	var resourceSpecs []models.ResourceSpec
-	for _, resourceProto := range req.GetResources() {
-		adapted, err := sv.adapter.FromResourceProto(resourceProto, req.DatastoreName)
+	for {
+		request, err := stream.Recv()
 		if err != nil {
-			return status.Errorf(codes.Internal, "%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			return err // immediate error returned (grpc error level)
 		}
-		resourceSpecs = append(resourceSpecs, adapted)
+		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), request.GetProjectName(), request.GetNamespaceName())
+		if err != nil {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: err.Error(),
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+		var resourceSpecs []models.ResourceSpec
+		var errMsgs string
+		for _, resourceProto := range request.GetResources() {
+			adapted, err := sv.adapter.FromResourceProto(resourceProto, request.DatastoreName)
+			if err != nil {
+				currentMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+				sv.l.Error(currentMsg)
+				errMsgs += currentMsg + "\n"
+				continue
+			}
+			resourceSpecs = append(resourceSpecs, adapted)
+		}
+
+		if errMsgs != "" {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: errMsgs,
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+
+		observers := new(progress.ObserverChain)
+		observers.Join(sv.progressObserver)
+		observers.Join(&resourceObserver{
+			stream: stream,
+			log:    sv.l,
+			mu:     new(sync.Mutex),
+		})
+
+		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
+			stream.Send(&pb.DeployResourceSpecificationResponse{
+				Success: false,
+				Ack:     true,
+				Message: fmt.Sprintf("failed to update resources: \n%s", err.Error()),
+			})
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+		runtimeDeployResourceSpecificationCounter.Add(float64(len(request.Resources)))
+		stream.Send(&pb.DeployResourceSpecificationResponse{
+			Success: true,
+			Ack:     true,
+			Message: "success",
+		})
 	}
-
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
-	observers.Join(&resourceObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
-
-	if err := sv.resourceSvc.UpdateResource(respStream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
-		return status.Errorf(codes.Internal, "failed to update resources: \n%s", err.Error())
-	}
-
-	runtimeDeployResourceSpecificationCounter.Add(float64(len(req.Resources)))
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
+	if len(errNamespaces) > 0 {
+		sv.l.Warn("there's error while deploying namespaces: %v", errNamespaces)
+		return fmt.Errorf("error when deploying: %v", errNamespaces)
+	}
 	return nil
 }
 
-func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
+func (sv *ResourceServiceServer) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -129,4 +200,14 @@ func (sv *RuntimeServiceServer) ListResourceSpecification(ctx context.Context, r
 	return &pb.ListResourceSpecificationResponse{
 		Resources: resourceProtos,
 	}, nil
+}
+
+func NewResourceServiceServer(l log.Logger, datastoreSvc models.DatastoreService, namespaceService service.NamespaceService, adapter ProtoAdapter, progressObserver progress.Observer) *ResourceServiceServer {
+	return &ResourceServiceServer{
+		l:                l,
+		resourceSvc:      datastoreSvc,
+		adapter:          adapter,
+		namespaceService: namespaceService,
+		progressObserver: progressObserver,
+	}
 }

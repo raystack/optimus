@@ -16,7 +16,7 @@ import (
 	cli "github.com/spf13/cobra"
 )
 
-func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf config.Optimus) *cli.Command {
+func backupListCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "list",
@@ -59,11 +59,11 @@ func backupListCommand(l log.Logger, datastoreRepo models.DatastoreRepo, conf co
 		requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
 		defer requestCancel()
 
-		runtime := pb.NewRuntimeServiceClient(conn)
+		backup := pb.NewBackupServiceClient(conn)
 
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		listBackupsResponse, err := runtime.ListBackups(requestTimeout, listBackupsRequest)
+		listBackupsResponse, err := backup.ListBackups(requestTimeout, listBackupsRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
