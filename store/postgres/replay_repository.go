@@ -259,7 +259,7 @@ func (repo *replayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uui
 func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID models.ProjectID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
 	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
-		Where("job.project_id = ? and status in (?)", projectID, status).Find(&replays).Error; err != nil {
+		Where("job.project_id = ? and status in (?)", projectID.UUID(), status).Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -284,7 +284,7 @@ func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, proje
 func (repo *replayRepository) GetByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error) {
 	var replays []Replay
 	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
-		Where("job.project_id = ?", projectID).Order("created_at DESC").Find(&replays).Error; err != nil {
+		Where("job.project_id = ?", projectID.UUID()).Order("created_at DESC").Find(&replays).Error; err != nil {
 		return []models.ReplaySpec{}, err
 	}
 
