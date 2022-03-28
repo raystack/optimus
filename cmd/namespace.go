@@ -11,11 +11,11 @@ import (
 
 func askToSelectNamespace(l log.Logger, conf config.Optimus) (*config.Namespace, error) {
 	options := make([]string, len(conf.Namespaces))
+	if len(conf.Namespaces) == 0 {
+		return nil, errors.New("no namespace found in config file")
+	}
 	for i, namespace := range conf.Namespaces {
 		options[i] = namespace.Name
-	}
-	if len(options) == 0 {
-		return nil, errors.New("no namespace found in config file")
 	}
 	prompt := &survey.Select{
 		Message: "Please choose the namespace:",
