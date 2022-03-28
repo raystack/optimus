@@ -89,7 +89,6 @@ func main() {
 		hPlugin.CleanupClients()
 		teleShutdown()
 		// no need to print err here, `command` does that already
-		fmt.Println(err)
 		fmt.Println(errRequestFail)
 		os.Exit(1)
 	}

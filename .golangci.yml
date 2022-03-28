@@ -49,6 +49,7 @@ linters:
     - funlen
     - gocyclo
     - dupl
+    - gofumpt
 linters-settings:
   gofumpt:
     lang-version: "1.17"

@@ -1,4 +1,4 @@
-package run
+package compiler
 
 import (
 	"bytes"
@@ -9,6 +9,10 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/odpf/optimus/models"
 )
+
+// IgnoreTemplateRenderExtension used as extension on a file will skip template
+// rendering of it
+var IgnoreTemplateRenderExtension = []string{".gtpl", ".j2", ".tmpl", ".tpl"}
 
 // GoEngine compiles a set of defined macros using the provided context
 type GoEngine struct {
