@@ -22,6 +22,6 @@ func jobCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepos
 	cmd.AddCommand(jobRenderTemplateCommand(l, conf, pluginRepo))
 	cmd.AddCommand(jobValidateCommand(l, conf, pluginRepo, conf.Project.Name, conf.Host))
 	cmd.AddCommand(jobRunCommand(l, conf, pluginRepo, conf.Project.Name, conf.Host))
-	cmd.AddCommand(jobStatusCommand(l, conf.Project.Name, conf.Host))
+	cmd.AddCommand(jobRunListCommand(l, conf.Project.Name, conf.Host))
 	return cmd
 }
