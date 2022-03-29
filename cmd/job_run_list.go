@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -24,6 +23,11 @@ type jobRunCmdArg struct {
 	jobName     string
 	startDate   string
 	endDate     string
+}
+
+type dateRange struct {
+	start time.Time
+	end   time.Time
 }
 
 type getRequestFn func(jobRunCmdArg) (*pb.JobRunRequest, error)
@@ -117,36 +121,36 @@ func getJobRunRequest(arg jobRunCmdArg) (*pb.JobRunRequest, error) {
 
 func getJobRunRequestWithDate(arg jobRunCmdArg) (*pb.JobRunRequest, error) {
 	var req *pb.JobRunRequest
-	query, err := validateDateRange(arg.startDate, arg.endDate)
+	dateRange, err := validateDateRange(arg.startDate, arg.endDate)
 	if err != nil {
 		return req, fmt.Errorf("request failed for job %s: %w", arg.jobName, err)
 	}
 	req = &pb.JobRunRequest{
 		ProjectName: arg.projectName,
 		JobName:     arg.jobName,
-		StartDate:   timestamppb.New(query.StartDate),
-		EndDate:     timestamppb.New(query.EndDate),
+		StartDate:   timestamppb.New(dateRange.start),
+		EndDate:     timestamppb.New(dateRange.end),
 	}
 	return req, nil
 }
 
-func validateDateRange(startDate, endDate string) (models.JobQuery, error) {
-	var jobQuery models.JobQuery
+func validateDateRange(startDate, endDate string) (dateRange, error) {
+	var dateRange dateRange
 	if startDate == "" && endDate != "" {
-		return jobQuery, errors.New("please provide the start date")
+		return dateRange, errors.New("please provide the start date")
 	}
 	if startDate != "" && endDate == "" {
-		return jobQuery, errors.New("please provide the end date")
+		return dateRange, errors.New("please provide the end date")
 	}
-	sDate, err := time.Parse(time.RFC3339, startDate)
+	start, err := time.Parse(time.RFC3339, startDate)
 	if err != nil {
-		return jobQuery, fmt.Errorf("start_date %w", err)
+		return dateRange, fmt.Errorf("start_date %w", err)
 	}
-	jobQuery.StartDate = sDate
-	eDate, err := time.Parse(time.RFC3339, endDate)
+	dateRange.start = start
+	end, err := time.Parse(time.RFC3339, endDate)
 	if err != nil {
-		return jobQuery, fmt.Errorf("end_date %w", err)
+		return dateRange, fmt.Errorf("end_date %w", err)
 	}
-	jobQuery.EndDate = eDate
-	return jobQuery, nil
+	dateRange.end = end
+	return dateRange, nil
 }
