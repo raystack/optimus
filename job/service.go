@@ -7,17 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -744,7 +743,7 @@ func (srv *Service) Refresh(ctx context.Context, projectSpec models.ProjectSpec,
 			return err
 		}
 
-		if err = srv.batchScheduler.DeployJobs(ctx, namespaceSpec, namespaceJobSpecs, progressObserver); err != nil {
+		if err := srv.batchScheduler.DeployJobs(ctx, namespaceSpec, namespaceJobSpecs, progressObserver); err != nil {
 			return err
 		}
 	}

@@ -6,15 +6,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/odpf/optimus/models"
-
-	"github.com/odpf/optimus/config"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/salt/log"
 	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 const (

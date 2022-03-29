@@ -858,8 +858,8 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)

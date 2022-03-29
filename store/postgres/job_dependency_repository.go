@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
 )
 
 type JobDependency struct {

@@ -1,16 +1,18 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 func TestIntegrationJobDependencyRepository(t *testing.T) {
@@ -28,7 +30,7 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 		dbConn := setupDB()
 		truncateTables(dbConn)
 
-		projRepo := NewProjectRepository(dbConn, hash)
+		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 		return dbConn
 	}
@@ -51,7 +53,7 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 				Type:    models.JobSpecDependencyTypeIntra,
 			},
 		}
-		repo := NewJobDependencyRepository(db)
+		repo := postgres.NewJobDependencyRepository(db)
 
 		err := repo.Save(ctx, projectSpec.ID, jobID1, jobDependencies[0])
 		assert.Nil(t, err)
