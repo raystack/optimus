@@ -5,15 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/utils"
-
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"github.com/odpf/optimus/utils"
 )
 
 // Note: all config keys will be converted to upper case automatically
@@ -306,7 +305,7 @@ func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginTy
 	pluginSecretName := models.PluginSecretString(pluginType, pluginName)
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
-		if strings.ToUpper(s.Name) != pluginSecretName {
+		if !strings.EqualFold(s.Name, pluginSecretName) {
 			continue
 		}
 		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{

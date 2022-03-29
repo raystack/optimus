@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/models"
-
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
+	"github.com/odpf/optimus/models"
 )
 
 // GRPCServer will be used by plugins, this is working as proto adapter
@@ -24,8 +23,7 @@ func (s *GRPCServer) PluginInfo(ctx context.Context, req *pbp.PluginInfoRequest)
 	}
 
 	ptype := pbp.PluginType_PLUGIN_TYPE_HOOK
-	switch n.PluginType {
-	case models.PluginTypeTask:
+	if n.PluginType == models.PluginTypeTask {
 		ptype = pbp.PluginType_PLUGIN_TYPE_TASK
 	}
 

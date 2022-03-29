@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/mock"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 func TestIntegrationJobRunRepository(t *testing.T) {
@@ -44,7 +46,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 	pluginRepo := new(mock.SupportedPluginRepo)
 	pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1}, nil)
 	pluginRepo.On("GetByName", tTask).Return(&models.Plugin{Base: execUnit2}, nil)
-	adapter := NewAdapter(pluginRepo)
+	adapter := postgres.NewAdapter(pluginRepo)
 
 	jobConfigs := []models.JobSpec{
 		{
@@ -99,11 +101,11 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		truncateTables(dbConn)
 
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-		prepo := NewProjectRepository(dbConn, hash)
+		prepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, prepo.Save(ctx, projectSpec))
 
-		projectJobSpecRepo := NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
-		jrepo := NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
+		jrepo := postgres.NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
 		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0]))
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1]).Error())
 		return dbConn
@@ -151,7 +153,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewJobRunRepository(db, adapter)
+		repo := postgres.NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[1])
 		assert.Nil(t, err)
 
@@ -178,7 +180,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			testModels := []models.JobRun{}
 			testModels = append(testModels, testSpecs...)
 
-			repo := NewJobRunRepository(db, adapter)
+			repo := postgres.NewJobRunRepository(db, adapter)
 			err := repo.Save(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
@@ -204,7 +206,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			testModels := []models.JobRun{}
 			testModels = append(testModels, testSpecs...)
 
-			repo := NewJobRunRepository(db, adapter)
+			repo := postgres.NewJobRunRepository(db, adapter)
 			err := repo.Save(ctx, namespaceSpec, testModels[0])
 			assert.Nil(t, err)
 
@@ -231,7 +233,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewJobRunRepository(db, adapter)
+		repo := postgres.NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
 		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
@@ -250,7 +252,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewJobRunRepository(db, adapter)
+		repo := postgres.NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
 
@@ -264,7 +266,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewJobRunRepository(db, adapter)
+		repo := postgres.NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[1])
 		assert.Nil(t, err)
 
@@ -281,7 +283,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		var testModels []models.JobRun
 		testModels = append(testModels, testSpecs...)
 
-		repo := NewJobRunRepository(db, adapter)
+		repo := postgres.NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
 		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))

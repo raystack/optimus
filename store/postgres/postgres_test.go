@@ -1,13 +1,15 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"os"
 	"sync"
 
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/store/postgres"
 )
 
 var (
@@ -35,18 +37,18 @@ func mustReadDBConfig() string {
 func migrateDB() {
 	dbURL := mustReadDBConfig()
 
-	dbConn, err := Connect(dbURL, 1, 1, os.Stdout)
+	dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
 	if err != nil {
 		panic(err)
 	}
-	m, err := NewHTTPFSMigrator(dbURL)
+	m, err := postgres.NewHTTPFSMigrator(dbURL)
 	if err != nil {
 		panic(err)
 	}
 	if err := m.Drop(); err != nil {
 		panic(err)
 	}
-	if err := Migrate(dbURL); err != nil {
+	if err := postgres.Migrate(dbURL); err != nil {
 		panic(err)
 	}
 

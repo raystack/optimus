@@ -1,4 +1,4 @@
-package bigquery
+package bigquery //nolint: testpackage
 
 import (
 	"context"
@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"cloud.google.com/go/bigquery"
+	"github.com/google/uuid"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
+
+	"github.com/odpf/optimus/models"
 )
 
 func TestTable(t *testing.T) {
@@ -119,11 +119,11 @@ func TestTable(t *testing.T) {
 			upsert := false
 			for _, e := range otherErrors {
 				bQTable := new(BqTableMock)
-				defer bQTable.AssertExpectations(t)
 
 				bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), e)
 				err := ensureTable(testingContext, bQTable, bQResource, upsert)
 				assert.Equal(t, e, err)
+				bQTable.AssertExpectations(t)
 			}
 		})
 		t.Run("should update table if is already exist and an upsert call", func(t *testing.T) {

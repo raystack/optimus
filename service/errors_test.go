@@ -4,9 +4,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestErrors(t *testing.T) {

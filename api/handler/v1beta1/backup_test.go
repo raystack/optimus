@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/google/uuid"
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBackupOnServer(t *testing.T) {
@@ -373,7 +373,8 @@ func TestBackupOnServer(t *testing.T) {
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil,
-				resourceSvc, namespaceService,
+				resourceSvc,
+				namespaceService,
 				nil,
 			)
 

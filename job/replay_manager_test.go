@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+	mocklib "github.com/stretchr/testify/mock"
+
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
-	mocklib "github.com/stretchr/testify/mock"
 )
 
 func TestReplayManager(t *testing.T) {
@@ -218,7 +219,7 @@ func TestReplayManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 		// TODO fix this test
-		//t.Run("should throw an error if workers are busy", func(t *testing.T) {
+		// t.Run("should throw an error if workers are busy", func(t *testing.T) {
 		//	replayRepository := new(mock.ReplayRepository)
 		//	defer replayRepository.AssertExpectations(t)
 		//
@@ -295,7 +296,7 @@ func TestReplayManager(t *testing.T) {
 		//
 		//	err = replayManager.Close()
 		//	assert.Nil(t, err)
-		//})
+		// })
 	})
 	t.Run("GetReplay", func(t *testing.T) {
 		t.Run("should return replay given a valid UUID", func(t *testing.T) {

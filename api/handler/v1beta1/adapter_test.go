@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
@@ -14,7 +15,6 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAdapter(t *testing.T) {

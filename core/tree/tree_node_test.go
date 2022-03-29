@@ -3,10 +3,10 @@ package tree_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/core/tree"
-
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/models"
 )
 
 func TestDagNode(t *testing.T) {

@@ -7,14 +7,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/olekukonko/tablewriter"
-
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/salt/log"
+	"github.com/olekukonko/tablewriter"
+	cli "github.com/spf13/cobra"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/salt/log"
-	cli "github.com/spf13/cobra"
 )
 
 func backupStatusCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
@@ -102,6 +102,6 @@ func printBackupDetailResponse(l log.Logger, backupDetailResponse *pb.GetBackupR
 	table.Append([]string{"Ignore downstream?", backupDetailResponse.Spec.Config[models.ConfigIgnoreDownstream]})
 	table.Append([]string{"Expire at", expiry.Format(time.RFC3339)})
 	table.Append([]string{"Description", backupDetailResponse.Spec.Description})
-	table.Append([]string{"Result", strings.Join(backupDetailResponse.Urn[:], "\n")})
+	table.Append([]string{"Result", strings.Join(backupDetailResponse.Urn, "\n")})
 	table.Render()
 }

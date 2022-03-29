@@ -6,10 +6,11 @@ import (
 	"regexp"
 	"strings"
 
-	v1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/models"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
+
+	v1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/models"
 )
 
 var datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)

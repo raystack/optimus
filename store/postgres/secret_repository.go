@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
 	"github.com/gtank/cryptopasta"
-	"github.com/odpf/optimus/models"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type Secret struct {

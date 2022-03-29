@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+
 	"github.com/odpf/optimus/models"
 )
 
 const (
-	// Required secret
-	SecretName = "DATASTORE_BIGQUERY"
+	// SecretName for creation and manipulation of a project resources in bigquery
+	SecretName = "DATASTORE_BIGQUERY" //nolint:gosec
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 		ClientFac: &defaultBQClientFactory{},
 	}
 
-	errSecretNotFoundStr = "secret %s required to migrate datastore not found for %s"
+	errSecretNotFoundStr = "secret %s required to migrate datastore not found for %s" //nolint:gosec
 )
 
 type ClientFactory interface {

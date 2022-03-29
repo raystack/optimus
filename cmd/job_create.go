@@ -12,13 +12,14 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
+	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
+	cli "github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
-	"github.com/spf13/afero"
-	cli "github.com/spf13/cobra"
 )
 
 const NumberOfWordsToGenerate = 2
@@ -118,7 +119,7 @@ func getWorkingDirectory(jobSpecFs afero.Fs, root string) (string, error) {
 		messageStr = fmt.Sprintf("%s [%s]", messageStr, root)
 	}
 	var selectedDir string
-	if err = survey.AskOne(&survey.Select{
+	if err := survey.AskOne(&survey.Select{
 		Message: messageStr,
 		Default: currentFolder,
 		Help:    "Optimus helps organize specifications in sub-directories.\nPlease select where you want this new specification to be stored",

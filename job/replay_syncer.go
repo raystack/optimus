@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/odpf/salt/log"
 )
 
 const (

@@ -1,4 +1,4 @@
-package run_test
+package service_test
 
 import (
 	"context"
@@ -8,18 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/run"
-	"github.com/stretchr/testify/assert"
-	mock2 "github.com/stretchr/testify/mock"
+	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/store"
 )
 
-func TestService(t *testing.T) {
+func TestJobRunService(t *testing.T) {
 	ctx := context.Background()
 	execUnit := new(mock.BasePlugin)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
@@ -77,22 +77,22 @@ func TestService(t *testing.T) {
 				Status:     models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDestination,
+						Name:  models.ConfigKeyDestination,
 						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -100,7 +100,7 @@ func TestService(t *testing.T) {
 			}
 
 			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			localRun.Instances = append(localRun.Instances, instanceSpec)
 
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
@@ -111,8 +111,8 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, nil, nil, nil)
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
+			jobRunService := service.NewJobRunService(jobRunSpecRep, nil, nil)
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
@@ -124,22 +124,22 @@ func TestService(t *testing.T) {
 				Status:     models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDestination,
+						Name:  models.ConfigKeyDestination,
 						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -150,7 +150,7 @@ func TestService(t *testing.T) {
 			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
 
 			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			localRun.Instances = append(localRun.Instances, instanceSpec)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -158,7 +158,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, nil, nil, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, nil, nil)
 
 			var existingRun models.JobRun
 			Copy(&existingRun, jobRun)
@@ -167,7 +167,7 @@ func TestService(t *testing.T) {
 			existingRun.Instances[0].ExecutedAt = mockedTimeNow
 			runRepo.On("AddInstance", ctx, namespaceSpec, existingRun, instanceSpec).Return(nil)
 
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingRun, models.InstanceTypeTask, "bq")
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, existingRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
 		})
@@ -179,22 +179,22 @@ func TestService(t *testing.T) {
 				Status:     models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDestination,
+						Name:  models.ConfigKeyDestination,
 						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -204,7 +204,7 @@ func TestService(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
 			localRun := jobRun
-			localRun.Instances = append(jobRun.Instances, instanceSpec)
+			localRun.Instances = append(localRun.Instances, instanceSpec)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -212,9 +212,9 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
 
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, returnedInstanceSpec, instanceSpec)
 		})
@@ -226,22 +226,22 @@ func TestService(t *testing.T) {
 				Status:     models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDestination,
+						Name:  models.ConfigKeyDestination,
 						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -252,7 +252,7 @@ func TestService(t *testing.T) {
 
 			var existingJobRun models.JobRun
 			Copy(&existingJobRun, &jobRun)
-			existingJobRun.Instances = append(jobRun.Instances, instanceSpec)
+			existingJobRun.Instances = append(existingJobRun.Instances, instanceSpec)
 			existingJobRun.Spec.Task.Unit = jobRun.Spec.Task.Unit
 			runRepo.On("ClearInstance", ctx, jobRun.ID, instanceSpec.Type, instanceSpec.Name).Return(nil)
 
@@ -267,7 +267,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
+			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingJobRun, models.InstanceTypeHook, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
@@ -280,22 +280,22 @@ func TestService(t *testing.T) {
 				Status:     models.RunStateRunning,
 				Data: []models.InstanceSpecData{
 					{
-						Name:  run.ConfigKeyExecutionTime,
+						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDstart,
+						Name:  models.ConfigKeyDstart,
 						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDend,
+						Name:  models.ConfigKeyDend,
 						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
-						Name:  run.ConfigKeyDestination,
+						Name:  models.ConfigKeyDestination,
 						Value: "proj.data.tab",
 						Type:  models.InstanceDataTypeEnv,
 					},
@@ -310,9 +310,9 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
 
-			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
+			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.InstanceSpec{}, returnedInstanceSpec)
 		})
@@ -335,7 +335,7 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
+			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
 			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, jobRun, returnedSpec)
@@ -356,8 +356,8 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
-			_, _ = runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			_, _ = jobRunService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 		})
 		t.Run("should return empty RunSpec if GetByScheduledAt returns an error", func(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
@@ -368,8 +368,8 @@ func TestService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := run.NewService(jobRunSpecRep, nil, mockedTimeFunc, nil, nil)
-			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			returnedSpec, err := jobRunService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.JobRun{}, returnedSpec)
 		})
@@ -409,7 +409,7 @@ func TestService(t *testing.T) {
 
 			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, nil)
 			defer sch.AssertExpectations(t)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.Nil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -533,7 +533,7 @@ func TestService(t *testing.T) {
 					sch := new(mock.Scheduler)
 					sch.On("GetJobRuns", ctx, spec, scenario.input, jobCron).Return(scenario.runs, nil)
 					defer sch.AssertExpectations(t)
-					runService := run.NewService(nil, nil, nil, sch, nil)
+					runService := service.NewJobRunService(nil, nil, sch)
 					returnedRuns, err := runService.GetJobRunList(ctx, projSpec, scenario.job, scenario.input)
 					assert.Nil(t, err)
 					assert.Equal(t, scenario.expectedResult, returnedRuns)
@@ -556,7 +556,7 @@ func TestService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -577,7 +577,7 @@ func TestService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -598,7 +598,7 @@ func TestService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -618,7 +618,7 @@ func TestService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -644,7 +644,7 @@ func TestService(t *testing.T) {
 
 			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
 			defer sch.AssertExpectations(t)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err, errors.New("failed: due to invalid URL"))
 			assert.Nil(t, nil, returnedRuns)
@@ -674,7 +674,7 @@ func TestService(t *testing.T) {
 			}
 			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return(runs, nil)
 			defer sch.AssertExpectations(t)
-			runService := run.NewService(nil, nil, nil, sch, nil)
+			runService := service.NewJobRunService(nil, nil, sch)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.Nil(t, err)
 			assert.Equal(t, runs, returnedRuns)

@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/odpf/salt/log"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/salt/log"
 )
 
 type ProjectServiceServer struct {

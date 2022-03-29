@@ -4,14 +4,13 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
-	"github.com/odpf/optimus/job"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
-	"github.com/stretchr/testify/mock"
 )
 
 // ProjectJobSpecRepoFactory to manage job specs at project level

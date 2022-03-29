@@ -1,4 +1,4 @@
-package bigquery
+package bigquery_test
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/bigquery"
+	bqapi "cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/ext/datastore/bigquery"
+	"github.com/odpf/optimus/models"
 )
 
 func TestBigquery(t *testing.T) {
@@ -22,7 +23,7 @@ func TestBigquery(t *testing.T) {
 	secret := "some_secret"
 	projectSpec := models.ProjectSpec{
 		Secret: models.ProjectSecrets{{
-			Name:  SecretName,
+			Name:  bigquery.SecretName,
 			Value: secret,
 		}},
 	}
@@ -32,10 +33,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -50,13 +51,13 @@ func TestBigquery(t *testing.T) {
 				Project:  invalidProjectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bq := BigQuery{}
+			bq := bigquery.BigQuery{}
 			err := bq.CreateResource(testingContext, resourceRequest)
 
 			assert.NotNil(t, err)
@@ -65,10 +66,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -82,15 +83,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			err := bq.CreateResource(testingContext, resourceRequest)
@@ -101,10 +102,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -117,15 +118,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			err := bq.CreateResource(testingContext, resourceRequest)
@@ -138,10 +139,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -156,13 +157,13 @@ func TestBigquery(t *testing.T) {
 				Project:  invalidProjectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bq := BigQuery{}
+			bq := bigquery.BigQuery{}
 			err := bq.UpdateResource(testingContext, resourceRequest)
 
 			assert.NotNil(t, err)
@@ -171,10 +172,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -188,15 +189,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			err := bq.UpdateResource(testingContext, resourceRequest)
@@ -207,10 +208,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -223,15 +224,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			err := bq.UpdateResource(testingContext, resourceRequest)
@@ -244,10 +245,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -262,13 +263,13 @@ func TestBigquery(t *testing.T) {
 				Project:  invalidProjectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bq := BigQuery{}
+			bq := bigquery.BigQuery{}
 			resp, err := bq.ReadResource(testingContext, resourceRequest)
 
 			assert.Equal(t, models.ResourceSpec{}, resp.Resource)
@@ -278,10 +279,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -295,15 +296,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			resp, err := bq.ReadResource(testingContext, resourceRequest)
@@ -315,10 +316,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -331,15 +332,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			resp, err := bq.ReadResource(testingContext, resourceRequest)
@@ -353,10 +354,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -371,13 +372,13 @@ func TestBigquery(t *testing.T) {
 				Project:  invalidProjectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bq := BigQuery{}
+			bq := bigquery.BigQuery{}
 			err := bq.DeleteResource(testingContext, resourceRequest)
 
 			assert.NotNil(t, err)
@@ -386,10 +387,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -403,15 +404,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			err := bq.DeleteResource(testingContext, resourceRequest)
@@ -422,10 +423,10 @@ func TestBigquery(t *testing.T) {
 			datasetLabels := map[string]string{
 				"application": "optimus",
 			}
-			bQDatasetMetadata := BQDatasetMetadata{
+			bQDatasetMetadata := bigquery.BQDatasetMetadata{
 				Labels: datasetLabels,
 			}
-			bQDatasetResource := BQDataset{
+			bQDatasetResource := bigquery.BQDataset{
 				Project:  testingProject,
 				Dataset:  testingDataset,
 				Metadata: bQDatasetMetadata,
@@ -438,15 +439,15 @@ func TestBigquery(t *testing.T) {
 				Project:  projectSpec,
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			err := bq.DeleteResource(testingContext, resourceRequest)
@@ -456,15 +457,15 @@ func TestBigquery(t *testing.T) {
 	})
 	t.Run("BackupResource", func(t *testing.T) {
 		t.Run("should not return error when resource supported", func(t *testing.T) {
-			spec := BQTable{
+			spec := bigquery.BQTable{
 				Project: "project",
 				Dataset: "dataset",
 				Table:   "table",
 			}
 			eTag := "unique ID"
-			tableMetadata := &bigquery.TableMetadata{
+			tableMetadata := &bqapi.TableMetadata{
 				Name: spec.Table,
-				Schema: bigquery.Schema{
+				Schema: bqapi.Schema{
 					{
 						Name: "message",
 						Type: "STRING",
@@ -483,7 +484,7 @@ func TestBigquery(t *testing.T) {
 						Type: "TIME",
 					},
 				},
-				Clustering: &bigquery.Clustering{
+				Clustering: &bqapi.Clustering{
 					Fields: []string{"message_type"},
 				},
 				ETag: eTag,
@@ -499,48 +500,48 @@ func TestBigquery(t *testing.T) {
 				BackupSpec: models.BackupRequest{
 					Project: projectSpec,
 					Config: map[string]string{
-						models.ConfigTTL:    "720h",
-						BackupConfigDataset: "optimus_backup",
-						BackupConfigPrefix:  "backup",
+						models.ConfigTTL:             "720h",
+						bigquery.BackupConfigDataset: "optimus_backup",
+						bigquery.BackupConfigPrefix:  "backup",
 					},
 					ID: uuid.Must(uuid.NewRandom()),
 				},
 				BackupTime: backupTime,
 			}
 
-			destinationTable := BQTable{
+			destinationTable := bigquery.BQTable{
 				Project: spec.Project,
-				Dataset: resourceRequest.BackupSpec.Config[BackupConfigDataset],
-				Table:   fmt.Sprintf("backup_dataset_table_%s", backupTime.Format(backupTimePostfixFormat)),
+				Dataset: resourceRequest.BackupSpec.Config[bigquery.BackupConfigDataset],
+				Table:   fmt.Sprintf("backup_dataset_table_%s", backupTime.Format("2006_01_02_15_04_05")),
 			}
-			resultURN := fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), destinationTable.Project, destinationTable.Dataset, destinationTable.Table)
+			resultURN := fmt.Sprintf("%s://%s:%s.%s", bigquery.BigQuery{}.Name(), destinationTable.Project, destinationTable.Dataset, destinationTable.Table)
 
 			datasetMetadata := bqiface.DatasetMetadata{
-				DatasetMetadata: bigquery.DatasetMetadata{
+				DatasetMetadata: bqapi.DatasetMetadata{
 					ETag: eTag,
 				},
 			}
 
-			toUpdate := bigquery.TableMetadataToUpdate{
+			toUpdate := bqapi.TableMetadataToUpdate{
 				ExpirationTime: resourceRequest.BackupTime.Add(time.Hour * 24 * 30),
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQDatasetHandle := new(BqDatasetMock)
+			bQDatasetHandle := new(bigquery.BqDatasetMock)
 			defer bQDatasetHandle.AssertExpectations(t)
 
-			bQTable := new(BqTableMock)
+			bQTable := new(bigquery.BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQCopier := new(BqCopierMock)
+			bQCopier := new(bigquery.BqCopierMock)
 			defer bQCopier.AssertExpectations(t)
 
-			bQJob := new(BqJobMock)
+			bQJob := new(bigquery.BqJobMock)
 			defer bQJob.AssertExpectations(t)
 
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
@@ -553,7 +554,7 @@ func TestBigquery(t *testing.T) {
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
 			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+			bQJob.On("Wait", testingContext).Return(&bqapi.JobStatus{}, nil)
 
 			// update expiry
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
@@ -561,7 +562,7 @@ func TestBigquery(t *testing.T) {
 
 			// verify
 			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 
@@ -574,7 +575,7 @@ func TestBigquery(t *testing.T) {
 		t.Run("should return error when resource is not supported", func(t *testing.T) {
 			resourceSpec := models.ResourceSpec{
 				Name: "project:dataset.table",
-				Spec: BQTable{
+				Spec: bigquery.BQTable{
 					Project: "project",
 					Dataset: "dataset",
 					Table:   "table",
@@ -585,7 +586,7 @@ func TestBigquery(t *testing.T) {
 				Resource: resourceSpec,
 			}
 
-			bq := BigQuery{}
+			bq := bigquery.BigQuery{}
 			resp, err := bq.BackupResource(testingContext, resourceRequest)
 
 			assert.Equal(t, models.ErrUnsupportedResource, err)
@@ -594,7 +595,7 @@ func TestBigquery(t *testing.T) {
 		t.Run("should return error when datastore secret is not available", func(t *testing.T) {
 			resourceSpec := models.ResourceSpec{
 				Name: "project:dataset.table",
-				Spec: BQTable{
+				Spec: bigquery.BQTable{
 					Project: "project",
 					Dataset: "dataset",
 					Table:   "table",
@@ -613,16 +614,16 @@ func TestBigquery(t *testing.T) {
 				},
 			}
 
-			bq := BigQuery{}
+			bq := bigquery.BigQuery{}
 			resp, err := bq.BackupResource(testingContext, resourceRequest)
 
-			assert.Equal(t, fmt.Sprintf(errSecretNotFoundStr, SecretName, bq.Name()), err.Error())
+			assert.Equal(t, fmt.Sprintf("secret %s required to migrate datastore not found for %s", bigquery.SecretName, bq.Name()), err.Error())
 			assert.Equal(t, models.BackupResourceResponse{}, resp)
 		})
 		t.Run("should return error when unable to create bq client", func(t *testing.T) {
 			resourceSpec := models.ResourceSpec{
 				Name: "project:dataset.table",
-				Spec: BQTable{
+				Spec: bigquery.BQTable{
 					Project: "project",
 					Dataset: "dataset",
 					Table:   "table",
@@ -634,23 +635,23 @@ func TestBigquery(t *testing.T) {
 				BackupSpec: models.BackupRequest{
 					Project: models.ProjectSpec{
 						Secret: models.ProjectSecrets{{
-							Name:  SecretName,
+							Name:  bigquery.SecretName,
 							Value: secret,
 						}},
 					},
 				},
 			}
 
-			bQClient := new(BqClientMock)
+			bQClient := new(bigquery.BqClientMock)
 			defer bQClient.AssertExpectations(t)
 
-			bQClientFactory := new(BQClientFactoryMock)
+			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
 			errorMsg := "bq client failed"
 			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New(errorMsg))
 
-			bq := BigQuery{
+			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
 			resp, err := bq.BackupResource(testingContext, resourceRequest)

@@ -5,12 +5,11 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/odpf/optimus/plugin/v1beta1/base"
-
-	"github.com/odpf/optimus/models"
+	"google.golang.org/grpc"
 
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
-	"google.golang.org/grpc"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
 )
 
 var _ plugin.GRPCPlugin = &Connector{}

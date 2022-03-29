@@ -8,11 +8,12 @@ import (
 	"sync"
 
 	"github.com/hashicorp/raft"
+	"github.com/odpf/salt/log"
+	"google.golang.org/protobuf/proto"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/salt/log"
-	"google.golang.org/protobuf/proto"
 )
 
 type State struct {

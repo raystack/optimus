@@ -1,10 +1,11 @@
-package run_test
+package compiler_test
 
 import (
 	"testing"
 
-	"github.com/odpf/optimus/run"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/compiler"
 )
 
 func TestGoEngine(t *testing.T) {
@@ -47,7 +48,7 @@ func TestGoEngine(t *testing.T) {
 					"EXECUTION_TIME": "empty val",
 				}
 
-				comp := run.NewGoEngine()
+				comp := compiler.NewGoEngine()
 				compiledExpr, err := comp.CompileString(testCase.Input, values)
 
 				assert.Nil(t, err)
@@ -119,7 +120,7 @@ func TestGoEngine(t *testing.T) {
 					"EXECUTION_TIME": "empty val",
 				}
 
-				comp := run.NewGoEngine()
+				comp := compiler.NewGoEngine()
 				compiledExpr, err := comp.CompileFiles(testCase.Input, values)
 				if err != nil {
 					t.Error(err)

@@ -3,8 +3,9 @@ package mock
 import (
 	"context"
 
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/odpf/optimus/models"
 )
 
 type ProjectSecretRepository struct {

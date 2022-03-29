@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/progress"
 )
 

@@ -1,19 +1,20 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
 	"sort"
 	"testing"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 func TestIntegrationProjectRepository(t *testing.T) {
@@ -64,7 +65,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		testModels := []models.ProjectSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewProjectRepository(db, hash)
+		repo := postgres.NewProjectRepository(db, hash)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -83,7 +84,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelB := testConfigs[2]
 
-			repo := NewProjectRepository(db, hash)
+			repo := postgres.NewProjectRepository(db, hash)
 
 			// try for create
 			err := repo.Save(ctx, testModelA)
@@ -107,7 +108,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 
 			testModelA := testConfigs[2]
 
-			repo := NewProjectRepository(db, hash)
+			repo := postgres.NewProjectRepository(db, hash)
 
 			// try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
@@ -133,7 +134,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = models.ProjectID(uuid.Nil)
 
-			repo := NewProjectRepository(db, hash)
+			repo := postgres.NewProjectRepository(db, hash)
 
 			// try for create
 			err := repo.Save(ctx, testModelA)
@@ -146,7 +147,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		t.Run("should not update empty config", func(t *testing.T) {
 			db := DBSetup()
 
-			repo := NewProjectRepository(db, hash)
+			repo := postgres.NewProjectRepository(db, hash)
 
 			err := repo.Insert(ctx, testConfigs[4])
 			assert.Nil(t, err)
@@ -165,12 +166,12 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		testModels := []models.ProjectSpec{}
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewProjectRepository(db, hash)
+		repo := postgres.NewProjectRepository(db, hash)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		err = NewSecretRepository(db, hash).Save(ctx, testModels[0], models.NamespaceSpec{}, models.ProjectSecretItem{
+		err = postgres.NewSecretRepository(db, hash).Save(ctx, testModels[0], models.NamespaceSpec{}, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
@@ -189,17 +190,17 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		var testModels []models.ProjectSpec
 		testModels = append(testModels, testConfigs...)
 
-		repo := NewProjectRepository(db, hash)
+		repo := postgres.NewProjectRepository(db, hash)
 
 		assert.Nil(t, repo.Insert(ctx, testModels[2]))
 		assert.Nil(t, repo.Insert(ctx, testModels[3]))
 
-		err := NewSecretRepository(db, hash).Save(ctx, testModels[2], models.NamespaceSpec{}, models.ProjectSecretItem{
+		err := postgres.NewSecretRepository(db, hash).Save(ctx, testModels[2], models.NamespaceSpec{}, models.ProjectSecretItem{
 			Name:  "t1",
 			Value: "v1",
 		})
 		assert.Nil(t, err)
-		err = NewSecretRepository(db, hash).Save(ctx, testModels[3], models.NamespaceSpec{}, models.ProjectSecretItem{
+		err = postgres.NewSecretRepository(db, hash).Save(ctx, testModels[3], models.NamespaceSpec{}, models.ProjectSecretItem{
 			Name:  "t2",
 			Value: "v2",
 		})

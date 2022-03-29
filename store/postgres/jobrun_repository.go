@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"gorm.io/gorm"
 )
 
 type JobRunRepository struct {
@@ -47,7 +48,7 @@ func (repo *JobRunRepository) Save(ctx context.Context, namespace models.Namespa
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Model(&resource).Updates(&resource).Error
 }
 
-func (repo *JobRunRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
+func (repo *JobRunRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobRun, models.NamespaceSpec, error) { //nolint:unparam
 	var r JobRun
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
@@ -276,7 +277,6 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		if errors.As(err, &merrs) {
 			var newErr error
 			for _, cerr := range merrs.Errors {
-				fmt.Printf("%v", cerr)
 				if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
 					if !strings.Contains(cerr.Error(), namespace.Name) {
 						continue
@@ -304,7 +304,7 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		return err
 	}
 
-	if err = srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
+	if err := srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
 		return err
 	}
 

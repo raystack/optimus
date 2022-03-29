@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"github.com/odpf/optimus/config"
-
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 func jobCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {

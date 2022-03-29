@@ -4,14 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/odpf/optimus/job"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/tree"
-
-	"github.com/google/uuid"
+	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/stretchr/testify/mock"
 )
 
 type ReplayRepository struct {

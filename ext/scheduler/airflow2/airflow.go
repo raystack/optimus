@@ -2,6 +2,7 @@ package airflow2
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,19 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/cron"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
-
-	"github.com/odpf/optimus/core/progress"
-
+	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
+	"github.com/odpf/optimus/core/cron"
+	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
-	"gocloud.dev/blob"
-
-	_ "embed"
 )
 
 //go:embed resources/__lib.py
@@ -223,7 +219,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 }
 
 func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
-	data := []byte(fmt.Sprintf(`{"start_date":"%s", "end_date": "%s", "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
+	data := []byte(fmt.Sprintf(`{"start_date": %q, "end_date": %q, "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
 	req := airflowRequest{

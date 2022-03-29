@@ -1,4 +1,4 @@
-package bigquery
+package bigquery //nolint: testpackage
 
 import (
 	"context"
@@ -7,9 +7,10 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
+
+	"github.com/odpf/optimus/models"
 )
 
 func TestDataset(t *testing.T) {
@@ -73,12 +74,12 @@ func TestDataset(t *testing.T) {
 			}
 			for _, e := range otherErrors {
 				bQDatasetHandle := new(BqDatasetMock)
-				defer bQDatasetHandle.AssertExpectations(t)
 
 				bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), e)
 
 				err := ensureDataset(testingContext, bQDatasetHandle, bQResource, upsert)
 				assert.Equal(t, e, err)
+				bQDatasetHandle.AssertExpectations(t)
 			}
 		})
 		t.Run("should update dataset if it is an upsert", func(t *testing.T) {

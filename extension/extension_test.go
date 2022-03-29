@@ -9,13 +9,13 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/odpf/optimus/extension"
-	"github.com/odpf/optimus/mock"
-
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	tMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/mock"
 )
 
 type ExtensionSuite struct {

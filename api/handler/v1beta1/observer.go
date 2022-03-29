@@ -3,11 +3,12 @@ package v1beta1
 import (
 	"sync"
 
+	"github.com/odpf/salt/log"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/salt/log"
 )
 
 type jobSyncObserver struct {

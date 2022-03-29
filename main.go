@@ -8,18 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
-	_ "net/http/pprof"
-
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
+	"github.com/odpf/salt/log"
+	"github.com/sirupsen/logrus"
+
 	"github.com/odpf/optimus/cmd"
 	"github.com/odpf/optimus/config"
 	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
-	"github.com/odpf/salt/log"
 )
 
 var errRequestFail = errors.New("🔥 unable to complete request successfully")
@@ -37,6 +35,7 @@ func (p *PlainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return []byte(fmt.Sprintf("%s\n", entry.Message)), nil
 }
 
+//nolint:forbidigo
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -66,7 +65,6 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
-	defer teleShutdown()
 
 	// discover and load plugins
 	if err := plugin.Initialize(hclog.New(&hclog.LoggerOptions{
@@ -78,8 +76,6 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
-	// Make sure we clean up any managed plugins at the end of this
-	defer hPlugin.CleanupClients()
 
 	command := cmd.New(
 		plainLogger,
@@ -90,9 +86,11 @@ func main() {
 	)
 	if err := command.Execute(); err != nil {
 		hPlugin.CleanupClients()
+		teleShutdown()
 		// no need to print err here, `command` does that already
-		fmt.Println(err)
 		fmt.Println(errRequestFail)
 		os.Exit(1)
 	}
+	hPlugin.CleanupClients()
+	teleShutdown()
 }

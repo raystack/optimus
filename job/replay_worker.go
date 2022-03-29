@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (
@@ -53,7 +54,7 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) 
 		}
 	}
 
-	if err = replaySpecRepo.UpdateStatus(ctx, input.ID, models.ReplayStatusReplayed, models.ReplayMessage{}); err != nil {
+	if err := replaySpecRepo.UpdateStatus(ctx, input.ID, models.ReplayStatusReplayed, models.ReplayMessage{}); err != nil {
 		return err
 	}
 	w.log.Info("successfully cleared instances during replay", "replay id", input.ID.String())

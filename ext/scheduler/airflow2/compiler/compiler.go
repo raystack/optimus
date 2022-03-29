@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )

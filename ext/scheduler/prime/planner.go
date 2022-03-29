@@ -5,15 +5,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/odpf/salt/log"
-
 	"github.com/google/uuid"
 	"github.com/hashicorp/serf/serf"
+	"github.com/odpf/salt/log"
+	"google.golang.org/protobuf/proto"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 const (

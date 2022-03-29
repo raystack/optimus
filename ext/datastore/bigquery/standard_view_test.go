@@ -1,4 +1,4 @@
-package bigquery
+package bigquery //nolint: testpackage
 
 import (
 	"context"
@@ -7,9 +7,10 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
+
+	"github.com/odpf/optimus/models"
 )
 
 func TestStandardView(t *testing.T) {
@@ -66,12 +67,12 @@ func TestStandardView(t *testing.T) {
 			}
 			for _, e := range otherErrors {
 				bQTable := new(BqTableMock)
-				defer bQTable.AssertExpectations(t)
 
 				bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), e)
 
 				err := ensureStandardView(testingContext, bQTable, bQResource, upsert)
 				assert.Equal(t, e, err)
+				bQTable.AssertExpectations(t)
 			}
 		})
 		t.Run("should update view if it is already exist and an upsert call", func(t *testing.T) {

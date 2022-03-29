@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/core/tree"

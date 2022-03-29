@@ -10,9 +10,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	api "github.com/slack-go/slack"
 
 	"github.com/odpf/optimus/models"
-	api "github.com/slack-go/slack"
 )
 
 const (

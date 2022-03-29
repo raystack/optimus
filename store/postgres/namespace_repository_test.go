@@ -1,18 +1,19 @@
 //go:build !unit_test
 // +build !unit_test
 
-package postgres
+package postgres_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/store/postgres"
 )
 
 func TestIntegrationNamespaceRepository(t *testing.T) {
@@ -87,18 +88,18 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels = append(testModels, namespaceSpecs...)
 
 		// save project
-		projRepo := NewProjectRepository(db, hash)
+		projRepo := postgres.NewProjectRepository(db, hash)
 		err := projRepo.Save(ctx, projectSpec)
 		assert.Nil(t, err)
 
-		repo := NewNamespaceRepository(db, projectSpec, hash)
+		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 		err = repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
 		// Secrets depend on namespace
-		secretRepo := NewSecretRepository(db, hash)
+		secretRepo := postgres.NewSecretRepository(db, hash)
 		err = secretRepo.Insert(ctx, projectSpec, namespaceSpecs[0], secrets[0])
 		assert.Nil(t, err)
 		err = secretRepo.Insert(ctx, projectSpec, namespaceSpecs[0], secrets[1])
@@ -117,7 +118,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			testModelA := namespaceSpecs[0]
 			testModelB := namespaceSpecs[2]
 
-			repo := NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
 			// try for create
 			err := repo.Save(ctx, testModelA)
@@ -140,7 +141,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			db := DBSetup()
 			testModelA := namespaceSpecs[2]
 
-			repo := NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
 			// try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
@@ -165,7 +166,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			testModelA := namespaceSpecs[0]
 			testModelA.ID = uuid.Nil
 
-			repo := NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
 			// try for create
 			err := repo.Save(ctx, testModelA)
@@ -179,7 +180,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		t.Run("should not update empty config", func(t *testing.T) {
 			db := DBSetup()
 
-			repo := NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
 			err := repo.Insert(ctx, namespaceSpecs[4])
 			assert.Nil(t, err)
@@ -199,7 +200,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
-		repo := NewNamespaceRepository(db, projectSpec, hash)
+		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
@@ -214,11 +215,11 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
-		repo := NewNamespaceRepository(db, projectSpec, hash)
+		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
 
-		secretRepo := NewSecretRepository(db, hash)
+		secretRepo := postgres.NewSecretRepository(db, hash)
 		err = secretRepo.Insert(ctx, projectSpec, testModels[0], secrets[0])
 		assert.Nil(t, err)
 
@@ -234,7 +235,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
-		repo := NewNamespaceRepository(db, projectSpec, hash)
+		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 
 		err := repo.Insert(ctx, testModels[0])
 		assert.Nil(t, err)
