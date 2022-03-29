@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	ErrFailedToRead      = "unable to read optimus config file %v (%s)"
-	DefaultFilename      = "optimus"
-	DefaultFileExtension = "yaml"
-	DefaultEnvPrefix     = "OPTIMUS"
-	EmptyPath            = ""
+	ErrFailedToRead       = "unable to read optimus config file %v (%s)"
+	DefaultFilename       = "optimus"
+	DefaultConfigFilename = "config" // default file name for server config
+	DefaultFileExtension  = "yaml"
+	DefaultEnvPrefix      = "OPTIMUS"
+	EmptyPath             = ""
 )
 
 var (
@@ -89,7 +90,6 @@ func LoadClientConfig(filePath string) (*ClientConfig, error) {
 // 1. filepath. ./optimus <server_command> -c "path/to/config.yaml"
 // 2. env var. eg. OPTIMUS_SERVE_PORT, etc
 // 3. executable binary location
-// 4. home dir
 func LoadServerConfig(filePath string) (*ServerConfig, error) {
 	cfg := &ServerConfig{}
 
@@ -99,7 +99,7 @@ func LoadServerConfig(filePath string) (*ServerConfig, error) {
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
-		config.WithName(DefaultFilename),
+		config.WithName(DefaultConfigFilename),
 		config.WithType(DefaultFileExtension),
 	}
 
@@ -113,8 +113,8 @@ func LoadServerConfig(filePath string) (*ServerConfig, error) {
 		// load opt from env var
 		opts = append(opts, config.WithEnvPrefix(DefaultEnvPrefix), config.WithEnvKeyReplacer(".", "_"))
 
-		// load opt from exec & home directory
-		opts = append(opts, config.WithPath(execPath), config.WithPath(homePath))
+		// load opt from exec
+		opts = append(opts, config.WithPath(execPath))
 	}
 
 	// load the config

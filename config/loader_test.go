@@ -63,7 +63,6 @@ type ConfigTestSuite struct {
 	a        afero.Afero
 	currPath string
 	execPath string
-	homePath string
 
 	expectedClientConfig *config.ClientConfig
 	expectedServerConfig *config.ServerConfig
@@ -83,11 +82,6 @@ func (s *ConfigTestSuite) SetupTest() {
 	s.execPath = p
 	s.a.Fs.MkdirAll(s.execPath, fs.ModeTemporary)
 
-	p, err = os.UserHomeDir()
-	s.Require().NoError(err)
-	s.homePath = p
-	s.a.Fs.MkdirAll(s.homePath, fs.ModeTemporary)
-
 	config.FS = s.a.Fs
 
 	s.initExpectedClientConfig()
@@ -97,7 +91,6 @@ func (s *ConfigTestSuite) SetupTest() {
 func (s *ConfigTestSuite) TearDownTest() {
 	s.a.Fs.RemoveAll(s.currPath)
 	s.a.Fs.RemoveAll(s.execPath)
-	s.a.Fs.RemoveAll(s.homePath)
 }
 
 func TestConfig(t *testing.T) {
@@ -156,10 +149,8 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
-	execFilePath := path.Join(s.execPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	homeFilePath := path.Join(s.homePath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	execFilePath := path.Join(s.execPath, config.DefaultConfigFilename+"."+config.DefaultFileExtension)
 	s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
-	s.a.WriteFile(homeFilePath, []byte(`version: 3`), fs.ModeTemporary)
 	s.initServerConfigEnv()
 
 	s.Run("WhenFilepathIsEmpty", func() {
@@ -193,19 +184,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
-			s.Assert().Equal("3", conf.Version.String()) // should load from home dir
-			s.Assert().Equal("INFO", conf.Log.Level.String())
-		})
-
-		s.Run("WhenConfigNotFound", func() {
-			s.a.Remove(execFilePath)
-			s.a.Remove(homeFilePath)
-			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
-			defer s.a.WriteFile(homeFilePath, []byte(`version: 3`), fs.ModeTemporary)
-
-			conf, err := config.LoadServerConfig(config.EmptyPath)
-			s.Assert().NoError(err)
-			s.Assert().NotNil(conf)
+			s.Assert().Equal("0", conf.Version.String())
 		})
 	})
 
