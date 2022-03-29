@@ -215,9 +215,9 @@ func (s *OptimusServer) setupHandlers() error {
 	)
 
 	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    s.conf.Serve.ReplayNumWorkers,
-		WorkerTimeout: s.conf.Serve.ReplayWorkerTimeout,
-		RunTimeout:    s.conf.Serve.ReplayRunTimeout,
+		NumWorkers:    s.conf.Serve.Replay.NumWorkers,
+		WorkerTimeout: s.conf.Serve.Replay.WorkerTimeout,
+		RunTimeout:    s.conf.Serve.Replay.RunTimeout,
 	}, scheduler, replayValidator, replaySyncer)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
