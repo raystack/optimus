@@ -82,11 +82,6 @@ type ProjectRepoFactory interface {
 	New() store.ProjectRepository
 }
 
-// DependencyRepoFactory is used to manage job dependencies from store
-type DependencyRepoFactory interface {
-	New() store.JobDependencyRepository
-}
-
 type ReplayManager interface {
 	Init()
 	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
