@@ -7,7 +7,6 @@ import (
 
 	"github.com/odpf/salt/config"
 	"github.com/spf13/afero"
-
 	"github.com/spf13/viper"
 )
 
@@ -24,7 +23,6 @@ var (
 	FS       = afero.NewReadOnlyFs(afero.NewOsFs())
 	currPath string
 	execPath string
-	homePath string
 )
 
 //nolint:gochecknoinits
@@ -40,12 +38,6 @@ func init() {
 		panic(err)
 	}
 	execPath = p
-
-	p, err = os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	homePath = p
 }
 
 // LoadClientConfig load the project specific config from these locations:

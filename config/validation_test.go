@@ -3,8 +3,9 @@ package config_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/config"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/odpf/optimus/config"
 )
 
 type ValidationTestSuite struct {

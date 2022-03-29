@@ -8,10 +8,11 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
+	cli "github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/plugin"
-	cli "github.com/spf13/cobra"
 )
 
 func serveCommand() *cli.Command {
@@ -48,7 +49,7 @@ func serveCommand() *cli.Command {
 			Level:  pluginLogLevel,
 		})); err != nil {
 			hPlugin.CleanupClients()
-			fmt.Printf("ERROR: %s\n", err.Error())
+			l.Error(fmt.Sprintf("ERROR: %s\n", err.Error()))
 			os.Exit(1)
 		}
 		// Make sure we clean up any managed plugins at the end of this
@@ -57,7 +58,7 @@ func serveCommand() *cli.Command {
 		// init telemetry
 		teleShutdown, err := config.InitTelemetry(l, conf.Telemetry)
 		if err != nil {
-			fmt.Printf("ERROR: %s\n", err.Error())
+			l.Error(fmt.Sprintf("ERROR: %s\n", err.Error()))
 			os.Exit(1)
 		}
 		defer teleShutdown()

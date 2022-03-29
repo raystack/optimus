@@ -4,10 +4,11 @@ import (
 	"strings"
 	"time"
 
+	cli "github.com/spf13/cobra"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/set"
-	cli "github.com/spf13/cobra"
 )
 
 const (

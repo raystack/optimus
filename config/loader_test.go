@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/config"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/odpf/optimus/config"
 )
 
 const clientConfig = `

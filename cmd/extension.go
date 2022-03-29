@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"github.com/google/go-github/github"
+	cli "github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/extension"
-	cli "github.com/spf13/cobra"
 )
 
 func addExtensionCommand(cmd *cli.Command) {

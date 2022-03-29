@@ -9,13 +9,14 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/salt/log"
+	cli "github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
-	cli "github.com/spf13/cobra"
 )
 
 var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,

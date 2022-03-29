@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"github.com/odpf/optimus/config"
 	cli "github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/config"
 )
 
 func jobCommand() *cli.Command {

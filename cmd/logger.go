@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/salt/log"
 	"github.com/sirupsen/logrus"
+
+	"github.com/odpf/optimus/config"
 )
 
 type loggerType int

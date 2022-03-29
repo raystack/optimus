@@ -4,8 +4,9 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/odpf/optimus/config"
 	cli "github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/config"
 )
 
 const (

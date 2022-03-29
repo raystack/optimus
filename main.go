@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	_ "net/http/pprof"
 	"os"
 	"time"
 
