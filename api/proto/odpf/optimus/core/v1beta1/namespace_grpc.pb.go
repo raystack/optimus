@@ -22,6 +22,8 @@ type NamespaceServiceClient interface {
 	RegisterProjectNamespace(ctx context.Context, in *RegisterProjectNamespaceRequest, opts ...grpc.CallOption) (*RegisterProjectNamespaceResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
 	ListProjectNamespaces(ctx context.Context, in *ListProjectNamespacesRequest, opts ...grpc.CallOption) (*ListProjectNamespacesResponse, error)
+	// GetNamespace returns namespace details based on project_name and namespace_name
+	GetNamespace(ctx context.Context, in *GetNamespaceRequest, opts ...grpc.CallOption) (*GetNamespaceResponse, error)
 }
 
 type namespaceServiceClient struct {
@@ -50,6 +52,15 @@ func (c *namespaceServiceClient) ListProjectNamespaces(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *namespaceServiceClient) GetNamespace(ctx context.Context, in *GetNamespaceRequest, opts ...grpc.CallOption) (*GetNamespaceResponse, error) {
+	out := new(GetNamespaceResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.NamespaceService/GetNamespace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NamespaceServiceServer is the server API for NamespaceService service.
 // All implementations must embed UnimplementedNamespaceServiceServer
 // for forward compatibility
@@ -58,6 +69,8 @@ type NamespaceServiceServer interface {
 	RegisterProjectNamespace(context.Context, *RegisterProjectNamespaceRequest) (*RegisterProjectNamespaceResponse, error)
 	// ListProjectNamespaces returns list of namespaces of a project
 	ListProjectNamespaces(context.Context, *ListProjectNamespacesRequest) (*ListProjectNamespacesResponse, error)
+	// GetNamespace returns namespace details based on project_name and namespace_name
+	GetNamespace(context.Context, *GetNamespaceRequest) (*GetNamespaceResponse, error)
 	mustEmbedUnimplementedNamespaceServiceServer()
 }
 
@@ -70,6 +83,9 @@ func (UnimplementedNamespaceServiceServer) RegisterProjectNamespace(context.Cont
 }
 func (UnimplementedNamespaceServiceServer) ListProjectNamespaces(context.Context, *ListProjectNamespacesRequest) (*ListProjectNamespacesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListProjectNamespaces not implemented")
+}
+func (UnimplementedNamespaceServiceServer) GetNamespace(context.Context, *GetNamespaceRequest) (*GetNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNamespace not implemented")
 }
 func (UnimplementedNamespaceServiceServer) mustEmbedUnimplementedNamespaceServiceServer() {}
 
@@ -120,6 +136,24 @@ func _NamespaceService_ListProjectNamespaces_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NamespaceService_GetNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NamespaceServiceServer).GetNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.NamespaceService/GetNamespace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NamespaceServiceServer).GetNamespace(ctx, req.(*GetNamespaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NamespaceService_ServiceDesc is the grpc.ServiceDesc for NamespaceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +168,10 @@ var NamespaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListProjectNamespaces",
 			Handler:    _NamespaceService_ListProjectNamespaces_Handler,
+		},
+		{
+			MethodName: "GetNamespace",
+			Handler:    _NamespaceService_GetNamespace_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

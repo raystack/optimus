@@ -102,7 +102,7 @@ func registerOneNamespace(l log.Logger, clientConfig *config.ClientConfig, names
 
 	conn, err := createConnection(dialTimeoutCtx, clientConfig.Host)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed creating connection to [%s]: %w", clientConfig.Host, err)
 	}
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
 

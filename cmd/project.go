@@ -9,6 +9,7 @@ import (
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gopkg.in/yaml.v3"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -21,7 +22,76 @@ func projectCommand() *cli.Command {
 		Example: "optimus project [sub-command]",
 	}
 	cmd.AddCommand(projectRegisterCommand())
+	cmd.AddCommand(projectDescribeCommand())
 	return cmd
+}
+
+func projectDescribeCommand() *cli.Command {
+	var dirPath, serverHost, projectName string
+	cmd := &cli.Command{
+		Use:     "describe",
+		Short:   "Describes project configuration in the selected server",
+		Example: "optimus project describe [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+		if projectName == "" {
+			if err != nil {
+				return err
+			}
+			projectName = clientConfig.Project.Name
+		}
+		if serverHost == "" {
+			if err != nil {
+				return err
+			}
+			serverHost = clientConfig.Host
+		}
+		project, err := getProject(projectName, serverHost)
+		if err != nil {
+			return err
+		}
+		marshalledProject, err := yaml.Marshal(project)
+		if err != nil {
+			return err
+		}
+		l := initDefaultLogger()
+		l.Info("Succesfully getting project!")
+		l.Info(fmt.Sprintf("============================\n%s", string(marshalledProject)))
+		return nil
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targetted server host, by default taking from client config")
+	cmd.Flags().StringVar(&projectName, "name", projectName, "Targetted project name, by default taking from client config")
+	return cmd
+}
+
+func getProject(projectName, serverHost string) (config.Project, error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
+	defer registerCancel()
+
+	var project config.Project
+	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	if err != nil {
+		return project, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+	}
+
+	request := &pb.GetProjectRequest{
+		ProjectName: projectName,
+	}
+
+	projectServiceClient := pb.NewProjectServiceClient(conn)
+	response, err := projectServiceClient.GetProject(requestTimeoutCtx, request)
+	if err != nil {
+		return project, err
+	}
+	return config.Project{
+		Name:   response.GetProject().Name,
+		Config: response.GetProject().Config,
+	}, nil
 }
 
 func projectRegisterCommand() *cli.Command {
@@ -62,7 +132,7 @@ func registerProject(l log.Logger, clientConfig *config.ClientConfig) error {
 
 	conn, err := createConnection(dialTimeoutCtx, clientConfig.Host)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed creating connection to [%s]: %w", clientConfig.Host, err)
 	}
 	projectServiceClient := pb.NewProjectServiceClient(conn)
 
