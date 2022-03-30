@@ -34,6 +34,7 @@ func projectDescribeCommand() *cli.Command {
 		Example: "optimus project describe [--flag]",
 	}
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initDefaultLogger()
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 		if projectName == "" {
@@ -41,12 +42,14 @@ func projectDescribeCommand() *cli.Command {
 				return err
 			}
 			projectName = clientConfig.Project.Name
+			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
 		}
 		if serverHost == "" {
 			if err != nil {
 				return err
 			}
 			serverHost = clientConfig.Host
+			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
 		}
 		project, err := getProject(projectName, serverHost)
 		if err != nil {
@@ -56,14 +59,13 @@ func projectDescribeCommand() *cli.Command {
 		if err != nil {
 			return err
 		}
-		l := initDefaultLogger()
-		l.Info("Succesfully getting project!")
+		l.Info("Successfully getting project!")
 		l.Info(fmt.Sprintf("============================\n%s", string(marshalledProject)))
 		return nil
 	}
 	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targetted server host, by default taking from client config")
-	cmd.Flags().StringVar(&projectName, "name", projectName, "Targetted project name, by default taking from client config")
+	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&projectName, "name", projectName, "Targeted project name, by default taking from client config")
 	return cmd
 }
 

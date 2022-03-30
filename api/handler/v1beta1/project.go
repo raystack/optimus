@@ -52,7 +52,7 @@ func (sv *ProjectServiceServer) ListProjects(ctx context.Context, _ *pb.ListProj
 func (sv *ProjectServiceServer) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
 	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
-		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to retrive project [%s]", req.GetProjectName()))
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
 	return &pb.GetProjectResponse{
 		Project: sv.adapter.ToProjectProto(projectSpec),

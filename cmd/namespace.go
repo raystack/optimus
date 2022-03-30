@@ -25,7 +25,95 @@ func namespaceCommand() *cli.Command {
 		Example: "optimus namespace [sub-command]",
 	}
 	cmd.AddCommand(namespaceRegisterCommand())
+	cmd.AddCommand(namespaceDescribeCommand())
 	return cmd
+}
+
+func namespaceDescribeCommand() *cli.Command {
+	var dirPath, serverHost, projectName, namespaceName string
+	cmd := &cli.Command{
+		Use:     "describe",
+		Short:   "Describes namespace configuration in the selected server",
+		Example: "optimus namespace describe [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initDefaultLogger()
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+		if projectName == "" {
+			if err != nil {
+				return err
+			}
+			projectName = clientConfig.Project.Name
+			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
+		}
+		if namespaceName == "" {
+			if err != nil {
+				return err
+			}
+			return errors.New("Namespace name is required")
+		}
+		if serverHost == "" {
+			if err != nil {
+				return err
+			}
+			serverHost = clientConfig.Host
+			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
+		}
+		namespace, err := getNamespace(projectName, namespaceName, serverHost)
+		if err != nil {
+			return err
+		}
+		// TODO: need a refactor to make it cleaner
+		stringifyNamespace := func(n config.Namespace) string {
+			output := fmt.Sprintf("name: %s\n", n.Name)
+			if len(n.Config) == 0 {
+				output += "config: {}"
+			} else {
+				output += "config:\n"
+				for key, value := range n.Config {
+					output += fmt.Sprintf("\t%s: %s", key, value)
+				}
+			}
+			return output
+		}
+		l.Info("Successfully getting namespace!")
+		l.Info(fmt.Sprintf("==============================\n%s", stringifyNamespace(namespace)))
+		return nil
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&projectName, "project-name", projectName, "Targeted project name, by default taking from client config")
+	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "Targeted namespace name, by default taking from client config")
+	return cmd
+}
+
+func getNamespace(projectName, namespaceName, serverHost string) (config.Namespace, error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
+	defer registerCancel()
+
+	var namespace config.Namespace
+	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	if err != nil {
+		return namespace, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+	}
+
+	request := &pb.GetNamespaceRequest{
+		ProjectName:   projectName,
+		NamespaceName: namespaceName,
+	}
+
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
+	response, err := namespaceServiceClient.GetNamespace(requestTimeoutCtx, request)
+	if err != nil {
+		return namespace, fmt.Errorf("Unable to get namespace [%s]: %w", namespaceName, err)
+	}
+	return config.Namespace{
+		Name:   response.GetNamespace().Name,
+		Config: response.GetNamespace().Config,
+	}, nil
 }
 
 func namespaceRegisterCommand() *cli.Command {
@@ -37,11 +125,11 @@ func namespaceRegisterCommand() *cli.Command {
 	}
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-		clientConfig, err := config.LoadClientConfig(filePath)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l := initLogger(plainLoggerType, clientConfig.Log)
+		l := initDefaultLogger()
 		if namespaceName != "" {
 			l.Info(fmt.Sprintf("Registering namespace [%s]", namespaceName))
 			return registerOneNamespace(l, clientConfig, namespaceName)
