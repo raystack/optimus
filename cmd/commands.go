@@ -117,7 +117,6 @@ func New() *cli.Command {
 
 	cmd.AddCommand(initCommand())
 	cmd.AddCommand(versionCommand())
-	cmd.AddCommand(configCommand())
 	cmd.AddCommand(jobCommand())
 	cmd.AddCommand(deployCommand())
 	cmd.AddCommand(resourceCommand())
