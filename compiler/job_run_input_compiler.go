@@ -51,7 +51,7 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, j
 	}
 
 	// Compile the assets using context for task
-	fileMap, err := c.assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, taskContext)
+	fileMap, err := c.assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, taskContext)
 	if err != nil {
 		return nil, err
 	}
