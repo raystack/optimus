@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -26,14 +28,117 @@ func namespaceCommand() *cli.Command {
 	}
 	cmd.AddCommand(namespaceRegisterCommand())
 	cmd.AddCommand(namespaceDescribeCommand())
+	cmd.AddCommand(namespaceListCommand())
 	return cmd
+}
+
+func namespaceListCommand() *cli.Command {
+	var dirPath, serverHost, projectName string
+	cmd := &cli.Command{
+		Use:     "list",
+		Short:   "Lists namespaces from the selected server and project",
+		Example: "optimus namespace list [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initDefaultLogger()
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+		if projectName == "" {
+			if err != nil {
+				return err
+			}
+			projectName = clientConfig.Project.Name
+			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
+		}
+		if serverHost == "" {
+			if err != nil {
+				return err
+			}
+			serverHost = clientConfig.Host
+			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
+		}
+		namespacesFromServer, err := listNamespace(projectName, serverHost)
+		if err != nil {
+			return err
+		}
+		var namespacesFromLocal []*config.Namespace
+		if clientConfig != nil && clientConfig.Project.Name == projectName {
+			namespacesFromLocal = clientConfig.Namespaces
+		}
+		result := stringifyNamespacesForNamespaceList(namespacesFromLocal, namespacesFromServer)
+		l.Info("Successfully getting namespace!")
+		l.Info(fmt.Sprintf("==============================\n%s", result))
+		return nil
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&projectName, "project-name", projectName, "Targeted project name, by default taking from client config")
+	return cmd
+}
+
+func listNamespace(projectName, serverHost string) ([]*config.Namespace, error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
+	defer registerCancel()
+
+	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+	}
+
+	request := &pb.ListProjectNamespacesRequest{
+		ProjectName: projectName,
+	}
+
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
+	response, err := namespaceServiceClient.ListProjectNamespaces(requestTimeoutCtx, request)
+	if err != nil {
+		return nil, fmt.Errorf("unable to list namespace for project [%s]: %w", projectName, err)
+	}
+	output := make([]*config.Namespace, len(response.Namespaces))
+	for i, n := range response.Namespaces {
+		output[i] = &config.Namespace{
+			Name:   n.GetName(),
+			Config: n.GetConfig(),
+		}
+	}
+	return output, nil
+}
+
+func stringifyNamespacesForNamespaceList(namespacesFromLocal, namespacesFromServer []*config.Namespace) string {
+	namespaceNames := make(map[string]bool)
+	registeredInServer := make(map[string]bool)
+	for _, namespace := range namespacesFromServer {
+		registeredInServer[namespace.Name] = true
+		namespaceNames[namespace.Name] = true
+	}
+	registeredInLocal := make(map[string]bool)
+	for _, namespace := range namespacesFromLocal {
+		registeredInLocal[namespace.Name] = true
+		namespaceNames[namespace.Name] = true
+	}
+
+	buff := &bytes.Buffer{}
+	table := tablewriter.NewWriter(buff)
+	table.SetHeader([]string{"namespace name", "available in local", "registered in server"})
+	for key := range namespaceNames {
+		record := []string{
+			key,
+			fmt.Sprintf("%t", registeredInLocal[key]),
+			fmt.Sprintf("%t", registeredInServer[key]),
+		}
+		table.Append(record)
+	}
+	table.Render()
+	return buff.String()
 }
 
 func namespaceDescribeCommand() *cli.Command {
 	var dirPath, serverHost, projectName, namespaceName string
 	cmd := &cli.Command{
 		Use:     "describe",
-		Short:   "Describes namespace configuration in the selected server",
+		Short:   "Describes namespace configuration from the selected server and project",
 		Example: "optimus namespace describe [--flag]",
 	}
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
@@ -51,7 +156,7 @@ func namespaceDescribeCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			return errors.New("Namespace name is required")
+			return errors.New("namespace name is required")
 		}
 		if serverHost == "" {
 			if err != nil {
@@ -64,21 +169,9 @@ func namespaceDescribeCommand() *cli.Command {
 		if err != nil {
 			return err
 		}
-		// TODO: need a refactor to make it cleaner
-		stringifyNamespace := func(n config.Namespace) string {
-			output := fmt.Sprintf("name: %s\n", n.Name)
-			if len(n.Config) == 0 {
-				output += "config: {}"
-			} else {
-				output += "config:\n"
-				for key, value := range n.Config {
-					output += fmt.Sprintf("\t%s: %s", key, value)
-				}
-			}
-			return output
-		}
+		result := stringifyNamespaceForNamespaceDescribe(namespace)
 		l.Info("Successfully getting namespace!")
-		l.Info(fmt.Sprintf("==============================\n%s", stringifyNamespace(namespace)))
+		l.Info(fmt.Sprintf("==============================\n%s", result))
 		return nil
 	}
 	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
@@ -88,16 +181,28 @@ func namespaceDescribeCommand() *cli.Command {
 	return cmd
 }
 
-func getNamespace(projectName, namespaceName, serverHost string) (config.Namespace, error) {
+func stringifyNamespaceForNamespaceDescribe(namespace *config.Namespace) string {
+	output := fmt.Sprintf("name: %s\n", namespace.Name)
+	if len(namespace.Config) == 0 {
+		output += "config: {}"
+	} else {
+		output += "config:\n"
+		for key, value := range namespace.Config {
+			output += fmt.Sprintf("\t%s: %s", key, value)
+		}
+	}
+	return output
+}
+
+func getNamespace(projectName, namespaceName, serverHost string) (*config.Namespace, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
 	defer registerCancel()
 
-	var namespace config.Namespace
 	conn, err := createConnection(dialTimeoutCtx, serverHost)
 	if err != nil {
-		return namespace, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return nil, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
 
 	request := &pb.GetNamespaceRequest{
@@ -108,9 +213,9 @@ func getNamespace(projectName, namespaceName, serverHost string) (config.Namespa
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
 	response, err := namespaceServiceClient.GetNamespace(requestTimeoutCtx, request)
 	if err != nil {
-		return namespace, fmt.Errorf("Unable to get namespace [%s]: %w", namespaceName, err)
+		return nil, fmt.Errorf("unable to get namespace [%s]: %w", namespaceName, err)
 	}
-	return config.Namespace{
+	return &config.Namespace{
 		Name:   response.GetNamespace().Name,
 		Config: response.GetNamespace().Config,
 	}, nil
