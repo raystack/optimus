@@ -12,8 +12,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -79,7 +77,7 @@ func deployCommand() *cli.Command {
 			return err
 		}
 
-		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaceNames, ignoreJobs, ignoreResources, verbose)
+		err = postDeploymentRequest(l, conf, pluginRepo, dsRepo, datastoreSpecFs, namespaceNames, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}
@@ -92,7 +90,7 @@ func deployCommand() *cli.Command {
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository,
+func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaceNames []string,
 	ignoreJobDeployment, ignoreResources, verbose bool) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -110,16 +108,24 @@ func postDeploymentRequest(l log.Logger, conf config.ClientConfig, pluginRepo mo
 	deployTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), deploymentTimeout)
 	defer deployCancel()
 
-	project := pb.NewProjectServiceClient(conn)
-	namespace := pb.NewNamespaceServiceClient(conn)
 	resource := pb.NewResourceServiceClient(conn)
 	jobSpec := pb.NewJobSpecificationServiceClient(conn)
 
-	if err := registerProject(deployTimeoutCtx, project, l, conf); err != nil {
+	if err := registerProject(l, conf); err != nil {
 		return err
 	}
-	if err := registerAllNamespaces(deployTimeoutCtx, namespace, l, conf, namespaceNames); err != nil {
-		return err
+	validNamespaceNames, invalidNamespaceNames := getValidatedNamespaces(conf, namespaceNames)
+	if len(invalidNamespaceNames) > 0 {
+		return fmt.Errorf("namespaces [%s] are invalid", strings.Join(invalidNamespaceNames, ", "))
+	}
+	if len(validNamespaceNames) == 0 {
+		if err := registerAllNamespaces(l, conf); err != nil {
+			return err
+		}
+	} else {
+		if err := registerSelectedNamespaces(l, conf, validNamespaceNames); err != nil {
+			return err
+		}
 	}
 
 	if !ignoreResources {
@@ -152,7 +158,7 @@ func postDeploymentRequest(l log.Logger, conf config.ClientConfig, pluginRepo mo
 
 func deployAllJobs(deployTimeoutCtx context.Context,
 	jobSpecificationServiceClient pb.JobSpecificationServiceClient,
-	l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository,
+	l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
 	namespaceNames []string,
 	verbose bool,
@@ -268,7 +274,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 
 func deployAllResources(deployTimeoutCtx context.Context,
 	resourceServiceClient pb.ResourceServiceClient,
-	l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository,
+	l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
 	datastoreSpecFs map[string]map[string]afero.Fs,
 	namespaceNames []string,
@@ -373,101 +379,5 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		}
 	}
 	spinner.Stop()
-	return nil
-}
-
-func registerAllNamespaces(
-	deployTimeoutCtx context.Context, namespaceServiceClient pb.NamespaceServiceClient,
-	l log.Logger, conf config.ClientConfig, namespaceNames []string,
-) error {
-	var selectedNamespaceNames []string
-	if len(namespaceNames) > 0 {
-		selectedNamespaceNames = namespaceNames
-	} else {
-		for _, namespace := range conf.Namespaces {
-			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
-		}
-	}
-
-	ch := make(chan error, len(selectedNamespaceNames))
-	defer close(ch)
-	for _, namespaceName := range selectedNamespaceNames {
-		go func(name string) {
-			ch <- registerNamespace(deployTimeoutCtx, namespaceServiceClient, l, conf, name)
-		}(namespaceName)
-	}
-	var errMsg string
-	for i := 0; i < len(selectedNamespaceNames); i++ {
-		if err := <-ch; err != nil {
-			errMsg += err.Error() + "\n"
-		}
-	}
-	if len(errMsg) > 0 {
-		return errors.New(errMsg)
-	}
-	return nil
-}
-
-func registerNamespace(deployTimeoutCtx context.Context, namespaceServiceClient pb.NamespaceServiceClient,
-	l log.Logger, conf config.ClientConfig, namespaceName string,
-) error {
-	namespace, err := conf.GetNamespaceByName(namespaceName)
-	if err != nil {
-		return err
-	}
-	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(deployTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
-		ProjectName: conf.Project.Name,
-		Namespace: &pb.NamespaceSpecification{
-			Name:   namespaceName,
-			Config: namespace.Config,
-		},
-	})
-	if err != nil {
-		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(coloredNotice("[%s] Ignoring namespace config changes: %s", namespaceName, err.Error()))
-			return nil
-		}
-		return fmt.Errorf("failed to update namespace configurations: %w", err)
-	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to update namespace configurations, %s", registerResponse.Message)
-	}
-	l.Info("\n> Updated namespace configuration")
-	return nil
-}
-
-func registerProject(
-	deployTimeoutCtx context.Context, projectServiceClient pb.ProjectServiceClient,
-	l log.Logger, conf config.ClientConfig,
-) (err error) {
-	projectSpec := &pb.ProjectSpecification{
-		Name:   conf.Project.Name,
-		Config: conf.Project.Config,
-	}
-	registerResponse, err := projectServiceClient.RegisterProject(deployTimeoutCtx, &pb.RegisterProjectRequest{
-		Project: projectSpec,
-	})
-	if err != nil {
-		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(coloredNotice("> Ignoring project config changes: %s", err.Error()))
-			return nil
-		}
-		return fmt.Errorf("failed to update project configurations: %w", err)
-	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to update project configurations, %s", registerResponse.Message)
-	}
-	l.Info("\n> Updated project configuration")
-	return nil
-}
-
-func validateNamespaces(datastoreSpecFs map[string]map[string]afero.Fs, selectedNamespaceNames []string) error {
-	var unknownNamespaceNames []string
-	for _, namespaceName := range selectedNamespaceNames {
-		if datastoreSpecFs[namespaceName] == nil {
-			unknownNamespaceNames = append(unknownNamespaceNames, namespaceName)
-		}
-	}
-	if len(unknownNamespaceNames) > 0 {
-		return fmt.Errorf("namespaces [%s] are not found", strings.Join(unknownNamespaceNames, ", "))
-	}
 	return nil
 }

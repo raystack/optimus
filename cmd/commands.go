@@ -115,15 +115,16 @@ func New() *cli.Command {
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	cmd.AddCommand(initCommand())
-	cmd.AddCommand(versionCommand())
-	cmd.AddCommand(jobCommand())
-	cmd.AddCommand(deployCommand())
-	cmd.AddCommand(resourceCommand())
-	cmd.AddCommand(replayCommand())
-	cmd.AddCommand(backupCommand())
 	cmd.AddCommand(adminCommand())
+	cmd.AddCommand(backupCommand())
+	cmd.AddCommand(deployCommand())
+	cmd.AddCommand(initCommand())
+	cmd.AddCommand(jobCommand())
+	cmd.AddCommand(projectCommand())
+	cmd.AddCommand(replayCommand())
+	cmd.AddCommand(resourceCommand())
 	cmd.AddCommand(secretCommand())
+	cmd.AddCommand(versionCommand())
 
 	cmd.AddCommand(serveCommand())
 
