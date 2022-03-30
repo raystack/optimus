@@ -115,6 +115,7 @@ func New() *cli.Command {
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
+	cmd.AddCommand(initCommand())
 	cmd.AddCommand(versionCommand())
 	cmd.AddCommand(configCommand())
 	cmd.AddCommand(jobCommand())
