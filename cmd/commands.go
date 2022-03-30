@@ -121,6 +121,7 @@ func New() *cli.Command {
 	cmd.AddCommand(initCommand())
 	cmd.AddCommand(jobCommand())
 	cmd.AddCommand(projectCommand())
+	cmd.AddCommand(namespaceCommand())
 	cmd.AddCommand(replayCommand())
 	cmd.AddCommand(resourceCommand())
 	cmd.AddCommand(secretCommand())

@@ -4,17 +4,55 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
+	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 )
+
+func namespaceCommand() *cli.Command {
+	cmd := &cli.Command{
+		Use:     "namespace",
+		Short:   "Commands that will let the user to operate on namespace",
+		Example: "optimus namespace [sub-command]",
+	}
+	cmd.AddCommand(namespaceRegisterCommand())
+	return cmd
+}
+
+func namespaceRegisterCommand() *cli.Command {
+	var dirPath, namespaceName string
+	cmd := &cli.Command{
+		Use:     "register",
+		Short:   "Register namespace if it does not exist and update if it does",
+		Example: "optimus namespace register [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath)
+		if err != nil {
+			return err
+		}
+		l := initLogger(plainLoggerType, clientConfig.Log)
+		if namespaceName != "" {
+			l.Info(fmt.Sprintf("Registering namespace [%s]", namespaceName))
+			return registerOneNamespace(l, clientConfig, namespaceName)
+		}
+		l.Info("Registering all available namespaces")
+		return registerAllNamespaces(l, clientConfig)
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "If set, then only that namespace will be registered")
+	return cmd
+}
 
 func askToSelectNamespace(l log.Logger, conf *config.ClientConfig) (*config.Namespace, error) {
 	options := make([]string, len(conf.Namespaces))
