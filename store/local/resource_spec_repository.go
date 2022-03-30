@@ -9,9 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/odpf/optimus/models"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (

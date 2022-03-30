@@ -8,16 +8,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/odpf/optimus/service"
 )
 
 var runtimeDeployJobSpecificationCounter = promauto.NewCounter(prometheus.CounterOpts{
@@ -105,7 +105,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		stream.Send(&pb.DeployJobSpecificationResponse{
 			Success: true,
 			Ack:     true,
-			Message: "success",
+			Message: fmt.Sprintf("jobs with namespace [%s] are deployed successfully", req.NamespaceName),
 		})
 	}
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))

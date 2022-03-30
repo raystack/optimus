@@ -1,6 +1,10 @@
-package utils
+package utils_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/odpf/optimus/utils"
+)
 
 func TestContainsString(t *testing.T) {
 	type args struct {
@@ -31,7 +35,7 @@ func TestContainsString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ContainsString(tt.args.s, tt.args.v); got != tt.want {
+			if got := utils.ContainsString(tt.args.s, tt.args.v); got != tt.want {
 				t.Errorf("ContainsString() = %v, want %v", got, tt.want)
 			}
 		})

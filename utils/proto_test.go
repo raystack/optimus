@@ -1,9 +1,11 @@
-package utils
+package utils_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/utils"
 )
 
 func TestProtoHelper(t *testing.T) {
@@ -12,7 +14,7 @@ func TestProtoHelper(t *testing.T) {
 			modelType := "task"
 			expectedProtoType := "TYPE_TASK"
 			enumName := "TYPE"
-			actualType := ToEnumProto(modelType, enumName)
+			actualType := utils.ToEnumProto(modelType, enumName)
 			assert.Equal(t, expectedProtoType, actualType)
 		})
 	})
@@ -21,7 +23,7 @@ func TestProtoHelper(t *testing.T) {
 			expectedModelType := "task"
 			protoType := "TYPE_TASK"
 			enumName := "type"
-			actualType := FromEnumProto(protoType, enumName)
+			actualType := utils.FromEnumProto(protoType, enumName)
 			assert.Equal(t, expectedModelType, actualType)
 		})
 	})

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -38,9 +39,9 @@ func (f *VFactory) NewFromRegex(re, message string) survey.Validator {
 			return fmt.Errorf("was expecting a string, got %s", k.String())
 		}
 		val := v.(string)
-		matched := regex.Match([]byte(val))
+		matched := regex.MatchString(val)
 		if matched == false {
-			return fmt.Errorf(message)
+			return errors.New(message)
 		}
 		return nil
 	}

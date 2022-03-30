@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
-	"github.com/odpf/optimus/models"
 	"google.golang.org/api/googleapi"
+
+	"github.com/odpf/optimus/models"
 )
 
 var tableNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)\.([\w-]+)$`)

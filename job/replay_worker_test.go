@@ -6,15 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
-	"github.com/odpf/salt/log"
-
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestReplayWorker(t *testing.T) {

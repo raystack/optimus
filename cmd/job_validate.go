@@ -7,15 +7,16 @@ import (
 	"io"
 	"time"
 
+	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
+	cli "github.com/spf13/cobra"
+	"google.golang.org/grpc"
+
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
-	"github.com/odpf/salt/log"
-	"github.com/spf13/afero"
-	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -131,11 +132,9 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 				l.Info(fmt.Sprintf("%d/%d. %s successfully checked", ackCounter, totalJobs, resp.GetJobName()))
 			}
 			spinner.SetProgress(ackCounter)
-		} else {
-			if verbose {
-				// ordinary progress event
-				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
-			}
+		} else if verbose {
+			// ordinary progress event
+			l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
 		}
 	}
 	spinner.Stop()

@@ -8,15 +8,15 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
 	"google.golang.org/grpc"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/set"
 )
 
 func replayCreateCommand(l log.Logger, conf config.Optimus) *cli.Command {

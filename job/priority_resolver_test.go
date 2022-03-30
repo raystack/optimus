@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/stretchr/testify/assert"
 
+	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 // getDependencyObject - returns the dependency object by providing the specs and the dependency

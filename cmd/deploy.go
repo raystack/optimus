@@ -8,18 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MakeNowJust/heredoc"
+	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
+	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/MakeNowJust/heredoc"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
-	"github.com/odpf/salt/log"
-	"github.com/spf13/afero"
-	cli "github.com/spf13/cobra"
 )
 
 const (
@@ -134,6 +134,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	namespaceNames []string,
 	verbose bool,
 ) error {
+	// TODO fetch namespaces can be a separate function
 	var selectedNamespaceNames []string
 	if len(namespaceNames) > 0 {
 		selectedNamespaceNames = namespaceNames
@@ -141,6 +142,9 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		for _, namespace := range conf.Namespaces {
 			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
+	}
+	if len(selectedNamespaceNames) == 0 {
+		return errors.New("no namespace is found to deploy")
 	}
 
 	stream, err := jobSpecificationServiceClient.DeployJobSpecification(deployTimeoutCtx)
@@ -151,26 +155,37 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		return errors.New("deployement failed")
 	}
 	var specFound bool
-	for _, namespaceName := range selectedNamespaceNames {
+	var totalSpecsCount int
+	for i, namespaceName := range selectedNamespaceNames {
+		// TODO add a function to fetch jobspecs given namespace in protoformat
+		// TODO this check i believe is not necessary
 		namespace, err := conf.GetNamespaceByName(namespaceName)
 		if err != nil {
 			return err
 		}
+		// TODO  initialize the filesystem inside
 		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 		jobSpecRepo := local.NewJobSpecRepository(
 			jobSpecFs,
 			local.NewJobSpecAdapter(pluginRepo),
 		)
-		l.Info(fmt.Sprintf("\n> [%s] Deploying jobs", namespaceName))
+		// TODO Log once , new line can be logged outside
+		if i == 0 {
+			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespaceName))
+		} else {
+			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespaceName))
+		}
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if err != nil {
 			return err
 		}
 		if len(jobSpecs) == 0 {
-			l.Warn("[%s] skipping as job spec is empty\n", namespaceName)
+			l.Warn("skipping deployment for namespace [%s] as job spec is empty", namespaceName)
 			continue
 		}
+		totalSpecsCount += len(jobSpecs)
 
+		// TODO rename to JobSpecsInProto
 		var adaptedJobSpecs []*pb.JobSpecification
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for _, spec := range jobSpecs {
@@ -183,7 +198,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			ProjectName:   conf.Project.Name,
 			NamespaceName: namespaceName,
 		}); err != nil {
-			return fmt.Errorf("[%s] deployment failed: %w", namespaceName, err)
+			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespaceName, err)
 		}
 	}
 	if err := stream.CloseSend(); err != nil {
@@ -193,11 +208,13 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		return nil
 	}
 
+	l.Info("> Receiving responses:")
+	// TODO spinner should be generic across all apis, we should avoid writing this logic for every api call
 	var counter int
 	var streamErrs []error
 	spinner := NewProgressBar()
 	if !verbose {
-		spinner.StartProgress(len(selectedNamespaceNames), "please wait")
+		spinner.StartProgress(totalSpecsCount, "please wait")
 	}
 	for {
 		resp, err := stream.Recv()
@@ -211,8 +228,15 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			if !resp.GetSuccess() {
 				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
 			}
-			counter++
-			spinner.SetProgress(counter)
+			if resp.GetJobName() != "" {
+				counter++
+				spinner.SetProgress(counter)
+				if verbose {
+					l.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetJobName()))
+				}
+			} else if verbose {
+				l.Info(resp.Message)
+			}
 		}
 	}
 	spinner.Stop()
@@ -220,7 +244,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		for _, e := range streamErrs {
 			l.Error(e.Error())
 		}
-		return errors.New("one or more errors are encountered during deploy")
+		return errors.New("one or more errors are encountered during job deployment")
 	}
 	return nil
 }
@@ -241,6 +265,9 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
 		}
 	}
+	if len(selectedNamespaceNames) == 0 {
+		return errors.New("no namespace is found to deploy")
+	}
 
 	// send call
 	stream, err := resourceServiceClient.DeployResourceSpecification(deployTimeoutCtx)
@@ -251,30 +278,32 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		return fmt.Errorf("deployement failed: %w", err)
 	}
 	var specFound bool
+	var totalSpecsCount int
 	for _, namespaceName := range selectedNamespaceNames {
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for storeName, repoFS := range datastoreSpecFs[namespaceName] {
-			l.Info(fmt.Sprintf("\n> [%s] Deploying resources for %s", namespaceName, storeName))
+			l.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespaceName))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				return fmt.Errorf("[%s] unsupported datastore: %s", namespaceName, storeName)
+				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background()) //nolint:contextcheck
 			if errors.Is(err, models.ErrNoResources) {
-				l.Info(coloredNotice("[%s] no resource specifications found", namespaceName))
+				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespaceName))
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("[%s] resourceSpecRepo.GetAll(): %w", namespaceName, err)
+				return fmt.Errorf("error getting specs for namespace [%s]: %w", namespaceName, err)
 			}
+			totalSpecsCount += len(resourceSpecs)
 
 			// prepare specs
 			adaptedSpecs := []*pb.ResourceSpecification{}
 			for _, spec := range resourceSpecs {
 				adapted, err := adapt.ToResourceProto(spec)
 				if err != nil {
-					return fmt.Errorf("[%s] failed to serialize: %s - %w", namespaceName, spec.Name, err)
+					return fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
 				}
 				adaptedSpecs = append(adaptedSpecs, adapted)
 			}
@@ -285,7 +314,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				DatastoreName: storeName,
 				NamespaceName: namespaceName,
 			}); err != nil {
-				return fmt.Errorf("[%s] deployment failed: %w", namespaceName, err)
+				return fmt.Errorf("deployment for namespace [%s] failed: %w", namespaceName, err)
 			}
 		}
 	}
@@ -296,11 +325,12 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		return nil
 	}
 
+	l.Info("> Receiving responses:")
 	var counter int
 	var streamErrs []error
 	spinner := NewProgressBar()
 	if !verbose {
-		spinner.StartProgress(len(selectedNamespaceNames), "please wait")
+		spinner.StartProgress(totalSpecsCount, "please wait")
 	}
 	for {
 		resp, err := stream.Recv()
@@ -314,8 +344,15 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			if !resp.GetSuccess() {
 				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
 			}
-			counter++
-			spinner.SetProgress(counter)
+			if resp.GetResourceName() != "" {
+				counter++
+				spinner.SetProgress(counter)
+				if verbose {
+					l.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetResourceName()))
+				}
+			} else if verbose {
+				l.Info(resp.Message)
+			}
 		}
 	}
 	spinner.Stop()
@@ -323,7 +360,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		for _, e := range streamErrs {
 			l.Error(e.Error())
 		}
-		return errors.New("one or more errors are encountered during deploy")
+		return errors.New("one or more errors are encountered during resource deployment")
 	}
 	return nil
 }

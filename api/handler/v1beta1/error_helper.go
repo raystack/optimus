@@ -3,10 +3,11 @@ package v1beta1
 import (
 	"errors"
 
-	"github.com/odpf/optimus/service"
 	"github.com/odpf/salt/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/odpf/optimus/service"
 )
 
 func mapToGRPCErr(l log.Logger, err error, msg string) error {

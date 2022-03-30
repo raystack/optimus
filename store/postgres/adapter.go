@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
 )
 
 // Job are inputs from user to create a job

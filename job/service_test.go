@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
+	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {
@@ -562,7 +562,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
 				namespaceSpec.Name: {jobSpecsBase[1].Name},
 			}, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
@@ -943,7 +942,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
 				namespaceSpec.Name: {jobSpecsBase[1].Name},
 			}, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)

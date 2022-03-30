@@ -3,20 +3,16 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/odpf/optimus/plugin/v1beta1/cli"
-
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/odpf/optimus/plugin/v1beta1/base"
+	"google.golang.org/grpc"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-
-	"github.com/odpf/optimus/models"
-
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
-	"google.golang.org/grpc"
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin/v1beta1/base"
+	"github.com/odpf/optimus/plugin/v1beta1/cli"
 )
 
 var _ plugin.GRPCPlugin = &Connector{}

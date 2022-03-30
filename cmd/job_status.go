@@ -7,10 +7,11 @@ import (
 	"sort"
 	"time"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 )
 
 const (

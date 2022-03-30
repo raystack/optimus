@@ -9,13 +9,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/job"
-
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
 )
 
 func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]time.Time) {

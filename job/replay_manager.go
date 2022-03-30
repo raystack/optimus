@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/robfig/cron/v3"
+
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
-	"github.com/robfig/cron/v3"
 )
 
 var (
@@ -110,7 +111,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 	}
 
 	// could get cancelled later if queue is full
-	if err = replaySpecRepo.Insert(ctx, &replay); err != nil {
+	if err := replaySpecRepo.Insert(ctx, &replay); err != nil {
 		return models.ReplayResult{}, err
 	}
 

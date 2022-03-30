@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/datatypes"
-
-	"github.com/odpf/optimus/store"
-
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type Resource struct {
