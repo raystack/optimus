@@ -26,7 +26,7 @@ func (d DependencyPluginService) GenerateDestination(ctx context.Context, jobSpe
 	}
 
 	if plugin.DependencyMod == nil {
-		return nil, nil // TODO: decide based on caller to return error or nil
+		return nil, nil //nolint:nilnil // TODO: decide based on caller to return error or nil
 	}
 
 	compiledConfigs, err := d.compileConfig(ctx, jobSpec.Task.Config, ns)
@@ -53,7 +53,7 @@ func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSp
 	}
 
 	if plugin.DependencyMod == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // TODO: decide based on caller to return error or nil
 	}
 
 	compiledConfigs, err := d.compileConfig(ctx, jobSpec.Task.Config, ns)
