@@ -108,6 +108,7 @@ func askInitClientConfig(l log.Logger, dirPath string) (*config.ClientConfig, er
 	if err != nil {
 		return nil, err
 	}
+	output.Version = config.DefaultVersion
 	output.Host = host
 	output.Project = project
 	output.Namespaces = namespaces
@@ -133,12 +134,12 @@ func askInitNamespaces(l log.Logger, dirPath string) ([]*config.Namespace, error
 			Datastore: []config.Datastore{
 				{
 					Type:   datastoreType,
-					Path:   path.Join(dirPath, name, "resources"),
+					Path:   path.Join(name, "resources"),
 					Backup: make(map[string]string),
 				},
 			},
 			Job: config.Job{
-				Path: path.Join(dirPath, name, "jobs"),
+				Path: path.Join(name, "jobs"),
 			},
 		}
 		output = append(output, namespace)

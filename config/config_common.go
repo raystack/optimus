@@ -10,6 +10,8 @@ type Config interface{}
 // Version implement fmt.Stringer
 type Version int
 
+const DefaultVersion Version = 1
+
 type LogLevel string
 
 const (
