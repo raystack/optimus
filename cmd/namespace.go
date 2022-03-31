@@ -44,6 +44,9 @@ func namespaceListCommand() *cli.Command {
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 		if projectName == "" {
+			if dirPath == "" {
+				l.Info(fmt.Sprintf("Loading project name from client config in: %s", filePath))
+			}
 			if err != nil {
 				return err
 			}
@@ -51,13 +54,18 @@ func namespaceListCommand() *cli.Command {
 			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
 		}
 		if serverHost == "" {
+			if dirPath == "" {
+				l.Info(fmt.Sprintf("Loading service host from client config in: %s", filePath))
+			}
 			if err != nil {
 				return err
 			}
 			serverHost = clientConfig.Host
 			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
 		}
-		namespacesFromServer, err := listNamespace(projectName, serverHost)
+
+		l.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", projectName, serverHost))
+		namespacesFromServer, err := listNamespacesFromServer(projectName, serverHost)
 		if err != nil {
 			return err
 		}
@@ -76,7 +84,7 @@ func namespaceListCommand() *cli.Command {
 	return cmd
 }
 
-func listNamespace(projectName, serverHost string) ([]*config.Namespace, error) {
+func listNamespacesFromServer(projectName, serverHost string) ([]*config.Namespace, error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
@@ -146,6 +154,9 @@ func namespaceDescribeCommand() *cli.Command {
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 		if projectName == "" {
+			if dirPath == "" {
+				l.Info(fmt.Sprintf("Loading project name from client config in: %s", filePath))
+			}
 			if err != nil {
 				return err
 			}
@@ -153,18 +164,20 @@ func namespaceDescribeCommand() *cli.Command {
 			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
 		}
 		if namespaceName == "" {
-			if err != nil {
-				return err
-			}
 			return errors.New("namespace name is required")
 		}
 		if serverHost == "" {
+			if dirPath == "" {
+				l.Info(fmt.Sprintf("Loading service host from client config in: %s", filePath))
+			}
 			if err != nil {
 				return err
 			}
 			serverHost = clientConfig.Host
 			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
 		}
+
+		l.Info(fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]", namespaceName, projectName, serverHost))
 		namespace, err := getNamespace(projectName, namespaceName, serverHost)
 		if err != nil {
 			return err
@@ -239,7 +252,7 @@ func namespaceRegisterCommand() *cli.Command {
 			l.Info(fmt.Sprintf("Registering namespace [%s]", namespaceName))
 			return registerOneNamespace(l, clientConfig, namespaceName)
 		}
-		l.Info("Registering all available namespaces")
+		l.Info("Registering all available namespaces from client config")
 		return registerAllNamespaces(l, clientConfig)
 	}
 	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
@@ -346,14 +359,14 @@ func registerOneNamespace(l log.Logger, clientConfig *config.ClientConfig, names
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(fmt.Sprintf("ignoring namespace [%s] config changes: %v", namespaceName, err))
+			l.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespaceName, err))
 			return nil
 		}
 		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespaceName, err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update namespace [%s]: %s", namespaceName, registerResponse.Message)
 	}
-	l.Info(fmt.Sprintf("namespace [%s] registration finished successfully", namespaceName))
+	l.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespaceName))
 	return nil
 }
 

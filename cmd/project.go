@@ -38,6 +38,9 @@ func projectDescribeCommand() *cli.Command {
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 		if projectName == "" {
+			if dirPath == "" {
+				l.Info(fmt.Sprintf("Loading project name from client config in: %s", filePath))
+			}
 			if err != nil {
 				return err
 			}
@@ -45,6 +48,9 @@ func projectDescribeCommand() *cli.Command {
 			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
 		}
 		if serverHost == "" {
+			if dirPath == "" {
+				l.Info(fmt.Sprintf("Loading service host from client config in: %s", filePath))
+			}
 			if err != nil {
 				return err
 			}
@@ -115,6 +121,7 @@ func projectRegisterCommand() *cli.Command {
 			return err
 		}
 		if withNamespaces {
+			l.Info(fmt.Sprintf("Registering all namespaces from: %s", filePath))
 			if err := registerAllNamespaces(l, clientConfig); err != nil {
 				return err
 			}
@@ -147,13 +154,13 @@ func registerProject(l log.Logger, clientConfig *config.ClientConfig) error {
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(fmt.Sprintf("ignoring project config changes: %v", err))
+			l.Warn(fmt.Sprintf("Ignoring project config changes: %v", err))
 			return nil
 		}
 		return fmt.Errorf("failed to register or update project: %w", err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to register or update project, %s", registerResponse.Message)
 	}
-	l.Info("project registration finished successfully")
+	l.Info("Project registration finished successfully")
 	return nil
 }
