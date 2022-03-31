@@ -31,7 +31,7 @@ type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.J
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
-	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
+	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, namespaceName string, observer progress.Observer) (models.JobSpec, error)
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -384,9 +384,8 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
+				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, jobsToNamespace[currentSpec.Name], progressObserver)
 				if err != nil {
-					// wrappedErr := errors2.Wrap(, err.Error())
 					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
 				return resolvedSpec, nil

@@ -181,17 +181,20 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 	models.BatchScheduler = scheduler // TODO: remove global
 
+	engine := jobRunCompiler.NewGoEngine()
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
+	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine)
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{
 		db:                    s.dbConn,
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac)
+
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, namespaceService, pluginService)
 	priorityResolver := job.NewPriorityResolver()
 
 	replaySpecRepoFac := &replaySpecRepoRepository{
@@ -231,7 +234,6 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
-	engine := jobRunCompiler.NewGoEngine()
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
 	jobService := job.NewService(

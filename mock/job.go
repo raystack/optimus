@@ -212,8 +212,8 @@ type DependencyResolver struct {
 }
 
 func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpec models.JobSpec, obs progress.Observer) (models.JobSpec, error) {
-	args := srv.Called(ctx, projectSpec, jobSpec, obs)
+	jobSpec models.JobSpec, namespaceName string, obs progress.Observer) (models.JobSpec, error) {
+	args := srv.Called(ctx, projectSpec, jobSpec, namespaceName, obs)
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 

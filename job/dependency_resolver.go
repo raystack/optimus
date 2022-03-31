@@ -8,6 +8,7 @@ import (
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -24,18 +25,20 @@ const InterJobDependencyNameSections = 2
 
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+	pluginService             service.PluginService
+	namespaceService          service.NamespaceService
 }
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
 func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec,
-	observer progress.Observer) (models.JobSpec, error) {
+	namespaceName string, observer progress.Observer) (models.JobSpec, error) {
 	if ctx.Err() != nil {
 		return models.JobSpec{}, ctx.Err()
 	}
 
 	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
 	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
+	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, namespaceName, observer)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -52,19 +55,19 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	return jobSpec, nil
 }
 
-func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
-	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
+func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository, namespaceName string, observer progress.Observer) (models.JobSpec, error) {
+	namespace, err := r.namespaceService.GetByName(ctx, projectSpec, namespaceName)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+
 	// get destinations of dependencies, assets should be dependent on
 	var jobDependencies []string
-	if jobSpec.Task.Unit.DependencyMod != nil {
-		resp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
-			Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			Project: projectSpec,
-		})
-		if err != nil {
-			return models.JobSpec{}, err
-		}
+	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+	if resp != nil {
 		jobDependencies = resp.Dependencies
 	}
 
@@ -197,8 +200,10 @@ func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progre
 }
 
 // NewDependencyResolver creates a new instance of Resolver
-func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory) *dependencyResolver {
+func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory, namespaceService service.NamespaceService, pluginService service.PluginService) *dependencyResolver {
 	return &dependencyResolver{
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		namespaceService:          namespaceService,
+		pluginService:             pluginService,
 	}
 }

@@ -141,12 +141,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(models.JobSpec{}, errors.New("error while fetching dag1"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(models.JobSpec{}, errors.New("error while fetching dag3"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(models.JobSpec{}, errors.New("error while fetching dag4"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "ns", nil).Return(models.JobSpec{}, errors.New("error while fetching dag1"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "ns", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "ns", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "ns", nil).Return(models.JobSpec{}, errors.New("error while fetching dag3"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "ns", nil).Return(models.JobSpec{}, errors.New("error while fetching dag4"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "ns", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -191,6 +191,10 @@ func TestReplay(t *testing.T) {
 					jobSpecs[4].Name,
 					jobSpecs[5].Name,
 				},
+				"otherNS": {
+					cyclicDag1.Name,
+					cyclicDag2.Name,
+				},
 			}, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
@@ -200,8 +204,8 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[0], nil).Return(cyclicDagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[1], nil).Return(cyclicDagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[0], "otherNS", nil).Return(cyclicDagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[1], "otherNS", nil).Return(cyclicDagSpec[1], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -242,12 +246,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "ns", nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "ns", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "ns", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "ns", nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "ns", nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "ns", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
@@ -309,12 +313,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "ns", nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "ns", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "ns", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "ns", nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "ns", nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "ns", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
@@ -386,12 +390,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "ns", nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "ns", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "ns", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "ns", nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "ns", nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "ns", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
@@ -436,6 +440,11 @@ func TestReplay(t *testing.T) {
 				"namespace2": {
 					jobSpecs[4].Name,
 				},
+				"ns": {
+					jobSpecs[0].Name,
+					jobSpecs[1].Name,
+					jobSpecs[2].Name,
+				},
 			}, nil)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
@@ -445,12 +454,12 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "ns", nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "ns", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "ns", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "namespace1", nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "namespace2", nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "namespace1", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil)
@@ -531,12 +540,12 @@ func TestReplay(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "namespace1", nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "namespace1", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "namespace1", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "namespace1", nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "namespace1", nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "namespace1", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -587,12 +596,12 @@ func TestReplay(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], "namespace1", nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], "namespace1", nil).Return(jobSpecs[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], "namespace1", nil).Return(jobSpecs[2], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], "namespace1", nil).Return(jobSpecs[3], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], "namespace1", nil).Return(jobSpecs[4], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], "namespace1", nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
