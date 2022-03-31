@@ -18,24 +18,10 @@ const (
 	jobStatusTimeout = time.Second * 30
 )
 
-type jobRunCmdArg struct {
-	projectName string
-	jobName     string
-	startDate   string
-	endDate     string
-}
-
-type dateRange struct {
-	start time.Time
-	end   time.Time
-}
-
-type getRequestFn func(jobRunCmdArg) (*pb.JobRunRequest, error)
-
 func jobRunListCommand(l log.Logger, defaultProjectName, defaultHost string) *cli.Command {
 	cmd := &cli.Command{
-		Use:     "runs",
-		Short:   "Get current job runs",
+		Use:     "list-runs",
+		Short:   "Get Job run details",
 		Example: `optimus job runs <sample_job_goes_here> [--project \"project-id\"] [--start_date \"2006-01-02T15:04:05Z07:00\" --end_date \"2006-01-02T15:04:05Z07:00\"]`,
 		Args:    cli.MinimumNArgs(1),
 	}
@@ -51,29 +37,32 @@ func jobRunListCommand(l log.Logger, defaultProjectName, defaultHost string) *cl
 		jobName := args[0]
 		l.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
 			projectName, jobName, host))
-		arg := jobRunCmdArg{
-			projectName: projectName,
-			jobName:     jobName,
-			startDate:   startDate,
-			endDate:     endDate,
-		}
-		return getJobRunList(l, host, arg)
+		return getJobRunList(l, host, projectName, jobName, startDate, endDate)
 	}
 	return cmd
 }
 
-func getJobRunList(l log.Logger, host string, arg jobRunCmdArg) error {
-	// get the last schedule run
-	if arg.startDate == "" && arg.endDate == "" {
-		return callJobRun(l, host, arg, getJobRunRequest)
+func getJobRunList(l log.Logger, host, projectName, jobName, startDate, endDate string) error {
+	var err error
+	var req *pb.JobRunRequest
+	// validate date if it has given
+	err = validateDateArgs(startDate, endDate)
+	if err != nil {
+		return err
 	}
-	// get runs between start_date and end_date (both start_date and end_date are inclusive)
-	return callJobRun(l, host, arg, getJobRunRequestWithDate)
+	// create job run grpc request
+	req, err = createJobRunRequest(projectName, jobName, startDate, endDate)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	err = callJobRun(l, host, ctx, req)
+	return err
 }
 
-func callJobRun(l log.Logger, host string, arg jobRunCmdArg, fn getRequestFn) error {
+func callJobRun(l log.Logger, host string, ctx context.Context, jobRunRequest *pb.JobRunRequest) error {
 	var err error
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	dialTimeoutCtx, dialCancel := context.WithTimeout(ctx, OptimusDialTimeout)
 	defer dialCancel()
 
 	var conn *grpc.ClientConn
@@ -85,25 +74,19 @@ func callJobRun(l log.Logger, host string, arg jobRunCmdArg, fn getRequestFn) er
 	}
 	defer conn.Close()
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), jobStatusTimeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, jobStatusTimeout)
 	defer cancel()
 
 	run := pb.NewJobRunServiceClient(conn)
-	req, err := fn(arg)
-	if err != nil {
-		return err
-	}
-
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	jobRunResponse, err := run.JobRun(timeoutCtx, req)
+	jobRunResponse, err := run.JobRun(timeoutCtx, jobRunRequest)
 	spinner.Stop()
 	if err != nil {
-		return fmt.Errorf("request failed for job %s: %w", arg.jobName, err)
+		return fmt.Errorf("request failed for job %s: %w", jobRunRequest.JobName, err)
 	}
 
 	jobRuns := jobRunResponse.GetJobRuns()
-
 	for _, jobRun := range jobRuns {
 		l.Info(fmt.Sprintf("%s - %s", jobRun.GetScheduledAt().AsTime(), jobRun.GetState()))
 	}
@@ -111,46 +94,40 @@ func callJobRun(l log.Logger, host string, arg jobRunCmdArg, fn getRequestFn) er
 	return err
 }
 
-func getJobRunRequest(arg jobRunCmdArg) (*pb.JobRunRequest, error) {
-	req := &pb.JobRunRequest{
-		ProjectName: arg.projectName,
-		JobName:     arg.jobName,
-	}
-	return req, nil
-}
-
-func getJobRunRequestWithDate(arg jobRunCmdArg) (*pb.JobRunRequest, error) {
+func createJobRunRequest(projectName, jobName, startDate, endDate string) (*pb.JobRunRequest, error) {
 	var req *pb.JobRunRequest
-	dateRange, err := validateDateRange(arg.startDate, arg.endDate)
-	if err != nil {
-		return req, fmt.Errorf("request failed for job %s: %w", arg.jobName, err)
-	}
-	req = &pb.JobRunRequest{
-		ProjectName: arg.projectName,
-		JobName:     arg.jobName,
-		StartDate:   timestamppb.New(dateRange.start),
-		EndDate:     timestamppb.New(dateRange.end),
-	}
-	return req, nil
-}
-
-func validateDateRange(startDate, endDate string) (dateRange, error) {
-	var dateRange dateRange
-	if startDate == "" && endDate != "" {
-		return dateRange, errors.New("please provide the start date")
-	}
-	if startDate != "" && endDate == "" {
-		return dateRange, errors.New("please provide the end date")
+	if startDate == "" && endDate == "" {
+		req = &pb.JobRunRequest{
+			ProjectName: projectName,
+			JobName:     jobName,
+		}
+		return req, nil
 	}
 	start, err := time.Parse(time.RFC3339, startDate)
 	if err != nil {
-		return dateRange, fmt.Errorf("start_date %w", err)
+		return req, fmt.Errorf("start_date %w", err)
 	}
-	dateRange.start = start
+	sDate := timestamppb.New(start)
 	end, err := time.Parse(time.RFC3339, endDate)
 	if err != nil {
-		return dateRange, fmt.Errorf("end_date %w", err)
+		return req, fmt.Errorf("end_date %w", err)
 	}
-	dateRange.end = end
-	return dateRange, nil
+	eDate := timestamppb.New(end)
+	req = &pb.JobRunRequest{
+		ProjectName: projectName,
+		JobName:     jobName,
+		StartDate:   sDate,
+		EndDate:     eDate,
+	}
+	return req, nil
+}
+
+func validateDateArgs(startDate, endDate string) error {
+	if startDate == "" && endDate != "" {
+		return errors.New("please provide the start date")
+	}
+	if startDate != "" && endDate == "" {
+		return errors.New("please provide the end date")
+	}
+	return nil
 }
