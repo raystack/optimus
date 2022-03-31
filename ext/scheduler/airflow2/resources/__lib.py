@@ -252,13 +252,13 @@ class OptimusAPIClient:
             return host
         return "http://" + host
 
-    def get_job_run_status(self, optimus_project: str, optimus_job: str) -> dict:
-        url = '{optimus_host}/api/v1beta1/project/{optimus_project}/job/{optimus_job}/status'.format(
+    def get_job_run(self, optimus_project: str, optimus_job: str, startDate: str, endDate:str ) -> dict:
+        url = '{optimus_host}/api/v1beta1/project/{optimus_project}/job/{optimus_job}/run'.format(
             optimus_host=self.host,
             optimus_project=optimus_project,
             optimus_job=optimus_job,
         )
-        response = requests.get(url)
+        response = requests.get(url, params = { 'start_date': startDate,'end_date': endDate})
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -355,40 +355,30 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         # TODO this needs to be updated to use optimus get job spec
         upstream_schedule = self.get_schedule_interval(schedule_time)
 
-        _, last_upstream_execution_date = SuperExternalTaskSensor.get_last_upstream_times(
+        last_upstream_schedule_time, _ = SuperExternalTaskSensor.get_last_upstream_times(
             schedule_time,
             upstream_schedule)
 
         # get schedule window
         task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
-        execution_date_window_start, execution_date_window_end = task_window.get(
-            last_upstream_execution_date.strftime(TIMESTAMP_FORMAT))
+        schedule_time_window_start, schedule_time_window_end = task_window.get(
+            last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT))
+
+        job_cron_iter = croniter(upstream_schedule, schedule_time_window_start)
+        # schedule_time_window_start_next it is the inclusive schedule start time for the job_run API
+        schedule_time_window_start_next = job_cron_iter.get_next(datetime)
 
         self.log.info(
             "upstream interval: {}, window size: {}".format(upstream_schedule, self.window_size))
         self.log.info(
             "waiting for upstream runs between: {} - {} execution dates of airflow dag run".format(
-                execution_date_window_start.isoformat(), execution_date_window_end.isoformat()))
+                schedule_time_window_start_next.isoformat(), schedule_time_window_end.isoformat()))
 
-        # find success iterations we need in window
-        expected_upstream_executions = SuperExternalTaskSensor.get_expected_upstream_executions(upstream_schedule,
-                                                                                                execution_date_window_start,
-                                                                                                execution_date_window_end)
-        self.log.info("expected upstream executions ({}): {}".format(len(expected_upstream_executions),
-                                                                     expected_upstream_executions))
-
-        actual_upstream_success_executions = self._get_successful_job_executions()
-        self.log.info("actual upstream executions ({}): {}".format(len(actual_upstream_success_executions),
-                                                                   actual_upstream_success_executions))
-
-        # determine if all expected are present in actual
-        missing_upstream_executions = set(expected_upstream_executions) - set(actual_upstream_success_executions)
-        if len(missing_upstream_executions) > 0:
-            self.log.info("missing upstream executions : {}".format(missing_upstream_executions))
+        if self._are_all_job_runs_successful(schedule_time_window_start_next, schedule_time_window_end):
             self.log.warning("unable to find enough successful executions for upstream '{}' in "
                              "'{}' dated between {} and {}(inclusive), rescheduling sensor".
-                             format(self.optimus_job, self.optimus_project, execution_date_window_start.isoformat(),
-                                    execution_date_window_end.isoformat()))
+                             format(self.optimus_job, self.optimus_project, schedule_time_window_start_next.isoformat(),
+                                    schedule_time_window_end.isoformat()))
             return False
 
         return True
@@ -401,13 +391,12 @@ class CrossTenantDependencySensor(BaseSensorOperator):
 
     # TODO the api will be updated with getJobRuns even though the field here refers to scheduledAt
     #  it points to execution_date
-    def _get_successful_job_executions(self) -> List[datetime]:
-        api_response = self._optimus_client.get_job_run_status(self.optimus_project, self.optimus_job)
-        actual_upstream_success_executions = []
-        for job_run in api_response['statuses']:
-            if job_run['state'] == 'success':
-                actual_upstream_success_executions.append(self._parse_datetime(job_run['scheduledAt']))
-        return actual_upstream_success_executions
+    def _are_all_job_runs_successful(self, schedule_time_window_start, schedule_time_window_end) -> bool:
+        api_response = self._optimus_client.get_job_run(self.optimus_project, self.optimus_job, schedule_time_window_start, schedule_time_window_end)
+        for job_run in api_response['jobRuns']:
+            if job_run['state'] != 'success':
+                return False
+        return True
 
     def _parse_datetime(self, timestamp) -> datetime:
         try:
