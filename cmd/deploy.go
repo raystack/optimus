@@ -62,7 +62,7 @@ func deployCommand() *cli.Command {
 			return err
 		}
 
-		l := initLogger(plainLoggerType, conf.Log)
+		l := initClientLogger(conf.Log)
 		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))

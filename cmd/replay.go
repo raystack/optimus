@@ -54,7 +54,7 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 func replayCommand() *cli.Command {
 	var configFilePath string
 	conf := &config.ClientConfig{}
-	l := initLogger(plainLoggerType, conf.Log)
+	l := initDefaultLogger()
 
 	cmd := &cli.Command{
 		Use:   "replay",
@@ -72,7 +72,7 @@ func replayCommand() *cli.Command {
 		if err != nil {
 			return err
 		}
-		l = initLogger(plainLoggerType, conf.Log)
+		l = initClientLogger(conf.Log)
 
 		return nil
 	}

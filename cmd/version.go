@@ -34,7 +34,7 @@ func versionCommand() *cli.Command {
 
 	c.RunE = func(c *cli.Command, args []string) error {
 		// initiate logger
-		l := initLogger(plainLoggerType, config.LogConfig{})
+		l := initDefaultLogger()
 
 		// Print client version
 		l.Info(fmt.Sprintf("Client: %s-%s", coloredNotice(config.BuildVersion), coloredNotice(config.BuildCommit)))
@@ -51,7 +51,7 @@ func versionCommand() *cli.Command {
 				return err
 			}
 
-			l = initLogger(plainLoggerType, conf.Log)
+			l = initClientLogger(conf.Log)
 
 			srvVer, err := getVersionRequest(config.BuildVersion, conf.Host)
 			if err != nil {

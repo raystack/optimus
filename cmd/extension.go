@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-github/github"
 	cli "github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/extension"
 )
 
@@ -55,7 +54,7 @@ func extensionCommand(ctx context.Context, extension *extension.Extension) *cli.
 func extensionInstallCommand(ctx context.Context, installer extension.Installer) *cli.Command {
 	var (
 		alias string
-		l     = initLogger(plainLoggerType, config.LogConfig{})
+		l     = initDefaultLogger()
 	)
 
 	installCmd := &cli.Command{

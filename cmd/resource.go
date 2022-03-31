@@ -25,7 +25,7 @@ var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-z
 func resourceCommand() *cli.Command {
 	var configFilePath string
 	conf := &config.ClientConfig{}
-	l := initLogger(plainLoggerType, conf.Log)
+	l := initDefaultLogger()
 
 	cmd := &cli.Command{
 		Use:   "resource",
@@ -42,7 +42,7 @@ func resourceCommand() *cli.Command {
 		if err != nil {
 			return err
 		}
-		l = initLogger(plainLoggerType, conf.Log)
+		l = initClientLogger(conf.Log)
 
 		return nil
 	}

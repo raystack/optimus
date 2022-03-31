@@ -9,13 +9,13 @@ import (
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-hclog"
+	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	hPlugin "github.com/hashicorp/go-plugin"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"

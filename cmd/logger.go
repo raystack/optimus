@@ -2,19 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/odpf/salt/log"
 	"github.com/sirupsen/logrus"
 
 	"github.com/odpf/optimus/config"
-)
-
-type loggerType int
-
-const (
-	jsonLoggerType loggerType = iota
-	plainLoggerType
 )
 
 type plainFormatter int
@@ -30,23 +22,20 @@ func (p *plainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return []byte(fmt.Sprintf("%s\n", entry.Message)), nil
 }
 
-func initLogger(t loggerType, conf config.LogConfig) log.Logger {
+func initDefaultLogger() log.Logger {
+	return log.NewLogrus(
+		log.LogrusWithLevel(config.LogLevelInfo.String()),
+		log.LogrusWithFormatter(new(plainFormatter)),
+	)
+}
+
+func initClientLogger(conf config.LogConfig) log.Logger {
 	if conf.Level == "" {
-		conf.Level = config.LogLevelInfo
+		return initDefaultLogger()
 	}
 
-	switch t {
-	case jsonLoggerType:
-		return log.NewLogrus(
-			log.LogrusWithLevel(conf.Level.String()),
-			log.LogrusWithWriter(os.Stderr),
-		)
-	case plainLoggerType:
-		return log.NewLogrus(
-			log.LogrusWithLevel(conf.Level.String()),
-			log.LogrusWithFormatter(new(plainFormatter)),
-		)
-	}
-
-	return nil
+	return log.NewLogrus(
+		log.LogrusWithLevel(conf.Level.String()),
+		log.LogrusWithFormatter(new(plainFormatter)),
+	)
 }

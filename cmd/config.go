@@ -98,7 +98,7 @@ func configInitCommand() *cli.Command {
 				return err
 			}
 
-			l := initLogger(plainLoggerType, conf.Log)
+			l := initClientLogger(conf.Log)
 			l.Info(coloredSuccess("Configuration initialised successfully"))
 			return nil
 		},
