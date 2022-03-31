@@ -258,7 +258,7 @@ class OptimusAPIClient:
             optimus_project=optimus_project,
             optimus_job=optimus_job,
         )
-        response = requests.get(url, params = { 'start_date': startDate.strftime(TIMESTAMP_FORMAT),'end_date': endDate.strftime(TIMESTAMP_FORMAT)})
+        response = requests.get(url, params = { 'start_date': startDate,'end_date': endDate})
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -370,17 +370,18 @@ class CrossTenantDependencySensor(BaseSensorOperator):
 
         self.log.info(
             "upstream interval: {}, window size: {}".format(upstream_schedule, self.window_size))
-        self.log.info(
-            "waiting for upstream runs between: {} - {} execution dates of airflow dag run".format(
-                schedule_time_window_start_next.isoformat(), schedule_time_window_end.isoformat()))
+        
+        schedule_time_window_start_next = schedule_time_window_start_next.strftime(TIMESTAMP_FORMAT)
+        schedule_time_window_end        = schedule_time_window_end.strftime(TIMESTAMP_FORMAT)
+        self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
+            schedule_time_window_start_next, schedule_time_window_end))
 
         if self._are_all_job_runs_successful(schedule_time_window_start_next, schedule_time_window_end):
             self.log.warning("unable to find enough successful executions for upstream '{}' in "
                              "'{}' dated between {} and {}(inclusive), rescheduling sensor".
-                             format(self.optimus_job, self.optimus_project, schedule_time_window_start_next.isoformat(),
-                                    schedule_time_window_end.isoformat()))
+                             format(self.optimus_job, self.optimus_project, schedule_time_window_start_next,
+                                    schedule_time_window_end))
             return False
-
         return True
 
     def get_schedule_interval(self, schedule_time):
