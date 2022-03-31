@@ -278,7 +278,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
 	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, models.PluginRegistry)
-	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
+	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
 	// secret service
 	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
@@ -313,6 +313,7 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		projectService,
 		namespaceService,
+		secretService,
 		adapterService,
 		jobRunService,
 		runInputCompiler,

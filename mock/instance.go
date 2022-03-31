@@ -132,7 +132,7 @@ type JobInputCompiler struct {
 	mock.Mock
 }
 
-func (s *JobInputCompiler) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error) {
-	args := s.Called(ctx, namespaceSpec, jobRun, instanceSpec)
+func (s *JobInputCompiler) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error) {
+	args := s.Called(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 	return args.Get(0).(*models.JobRunInput), args.Error(1)
 }

@@ -87,15 +87,13 @@ func TestJobRunInputCompiler(t *testing.T) {
 			Type:  models.SecretTypeUserDefined,
 		},
 	}
-	secretService := new(mock.SecretService)
-
 	pluginRepo := new(mock.SupportedPluginRepo)
 
 	createJobRunInputCompiler := func() compiler.JobRunInputCompiler {
 		engine := compiler.NewGoEngine()
 		jobConfigCompiler := compiler.NewJobConfigCompiler(engine)
 		assetCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
-		runInputCompiler := compiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
+		runInputCompiler := compiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 		return runInputCompiler
 	}
 
@@ -174,11 +172,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -289,11 +284,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -405,11 +397,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -498,11 +487,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
