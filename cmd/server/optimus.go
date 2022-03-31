@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/hashicorp/go-hclog"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
+	hPlugin "github.com/hashicorp/go-plugin"
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
@@ -21,6 +24,7 @@ import (
 	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
@@ -42,11 +46,10 @@ type OptimusServer struct {
 	cleanupFn []func()
 }
 
-func New(l log.Logger, conf config.ServerConfig) (*OptimusServer, error) {
+func New(conf config.ServerConfig) (*OptimusServer, error) {
 	addr := fmt.Sprintf("%s:%d", conf.Serve.Host, conf.Serve.Port)
 	server := &OptimusServer{
 		conf:       conf,
-		logger:     l,
 		serverAddr: addr,
 	}
 
@@ -55,6 +58,9 @@ func New(l log.Logger, conf config.ServerConfig) (*OptimusServer, error) {
 	}
 
 	setupFns := []setupFn{
+		server.setupLogger,
+		server.setupPlugins,
+		server.setupTelemetry,
 		server.setupAppKey,
 		server.setupDB,
 		server.setupGRPCServer,
@@ -69,9 +75,46 @@ func New(l log.Logger, conf config.ServerConfig) (*OptimusServer, error) {
 		}
 	}
 
+	server.logger.Info("Starting Optimus", "version", config.BuildVersion)
 	server.startListening()
 
 	return server, nil
+}
+
+func (s *OptimusServer) setupLogger() error {
+	s.logger = log.NewLogrus(
+		log.LogrusWithLevel(s.conf.Log.Level.String()),
+		log.LogrusWithWriter(os.Stderr),
+	)
+	return nil
+}
+
+func (s *OptimusServer) setupPlugins() error {
+	pluginLogLevel := hclog.Info
+	if s.conf.Log.Level == config.LogLevelDebug {
+		pluginLogLevel = hclog.Debug
+	}
+
+	pluginLoggerOpt := &hclog.LoggerOptions{
+		Name:   "optimus",
+		Output: os.Stdout,
+		Level:  pluginLogLevel,
+	}
+	pluginLogger := hclog.New(pluginLoggerOpt)
+	s.cleanupFn = append(s.cleanupFn, hPlugin.CleanupClients)
+
+	// discover and load plugins.
+	return plugin.Initialize(pluginLogger)
+}
+
+func (s *OptimusServer) setupTelemetry() error {
+	teleShutdown, err := config.InitTelemetry(s.logger, s.conf.Telemetry)
+	if err != nil {
+		return err
+	}
+
+	s.cleanupFn = append(s.cleanupFn, teleShutdown)
+	return nil
 }
 
 func (s *OptimusServer) setupAppKey() error {
@@ -130,6 +173,7 @@ func (s *OptimusServer) startListening() {
 }
 
 func (s *OptimusServer) Shutdown() {
+	s.logger.Info("Shutting down server")
 	if s.httpServer != nil {
 		// Create a deadline to wait for server
 		ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
