@@ -258,7 +258,7 @@ class OptimusAPIClient:
             optimus_project=optimus_project,
             optimus_job=optimus_job,
         )
-        response = requests.get(url, params = { 'start_date': startDate,'end_date': endDate})
+        response = requests.get(url, params = { 'start_date': startDate.strftime(TIMESTAMP_FORMAT),'end_date': endDate.strftime(TIMESTAMP_FORMAT)})
         self._raise_error_if_request_failed(response)
         return response.json()
 
