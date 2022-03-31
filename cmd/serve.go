@@ -23,7 +23,7 @@ func serveCommand() *cli.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for server configuration")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
