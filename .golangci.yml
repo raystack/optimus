@@ -92,7 +92,6 @@ linters-settings:
       - singleCaseSwitch
       - unnamedResult
       - whyNoLint
-      - regexpSimplify
     enabled-tags:
       - diagnostic
       - style

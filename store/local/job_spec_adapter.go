@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)") //nolint:gosimple
+	monthExp             = regexp.MustCompile(`([+\-])?(\d+)(M)`)
 	ErrNotAMonthDuration = errors.New("invalid month string")
 )
 
