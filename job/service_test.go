@@ -12,6 +12,7 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -115,12 +116,17 @@ func TestService(t *testing.T) {
 				Dependencies: map[string]models.JobSpecDependency{},
 			}
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService.On("GenerateDependencies", ctx, currentSpec, namespaceSpec, true).
+				Return(&models.GenerateDependenciesResponse{}, service.ErrDependencyModNotFound)
+			defer pluginService.AssertExpectations(t)
+
 			batchScheduler := new(mock.Scheduler)
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
-			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			jobService := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, pluginService)
+			err := jobService.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should check for successful dependency resolution for task that does support this mod", func(t *testing.T) {
@@ -139,21 +145,18 @@ func TestService(t *testing.T) {
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 			}
-			depMode.On("GenerateDependencies", context.Background(), models.GenerateDependenciesRequest{
-				Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
-				Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
-				Project: namespaceSpec.ProjectSpec,
-				PluginOptions: models.PluginOptions{
-					DryRun: true,
-				},
-			}).Return(&models.GenerateDependenciesResponse{}, nil)
+
+			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService.On("GenerateDependencies", ctx, currentSpec, namespaceSpec, true).
+				Return(&models.GenerateDependenciesResponse{}, nil)
+			defer pluginService.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
-			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			jobService := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, pluginService)
+			err := jobService.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
 	})
@@ -785,7 +788,7 @@ func TestService(t *testing.T) {
 					Destination: "project.dataset.table",
 					Type:        "bq",
 				}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec).
+			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, false).
 				Return(&models.GenerateDependenciesResponse{
 					Dependencies: []string{"bq://project.dataset.table"},
 				}, nil)

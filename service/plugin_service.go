@@ -15,7 +15,7 @@ var (
 
 type PluginService interface {
 	GenerateDestination(context.Context, models.JobSpec, models.NamespaceSpec) (*models.GenerateDestinationResponse, error)
-	GenerateDependencies(context.Context, models.JobSpec, models.NamespaceSpec) (*models.GenerateDependenciesResponse, error)
+	GenerateDependencies(context.Context, models.JobSpec, models.NamespaceSpec, bool) (*models.GenerateDependenciesResponse, error)
 }
 
 type DependencyPluginService struct {
@@ -51,7 +51,7 @@ func (d DependencyPluginService) GenerateDestination(ctx context.Context, jobSpe
 	return destinationResp, nil
 }
 
-func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSpec models.JobSpec, ns models.NamespaceSpec) (*models.GenerateDependenciesResponse, error) {
+func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSpec models.JobSpec, ns models.NamespaceSpec, dryRun bool) (*models.GenerateDependenciesResponse, error) {
 	plugin, err := d.pluginRepo.GetByName(jobSpec.Task.Unit.Info().Name)
 	if err != nil {
 		return nil, err
@@ -70,6 +70,9 @@ func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSp
 		Config:  compiledConfigs,
 		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 		Project: ns.ProjectSpec,
+		PluginOptions: models.PluginOptions{
+			DryRun: dryRun,
+		},
 	})
 	if err != nil {
 		return nil, err

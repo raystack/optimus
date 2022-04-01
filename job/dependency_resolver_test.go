@@ -110,8 +110,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			// task dependencies
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
 
 			// hook dependency
@@ -221,13 +221,13 @@ func TestDependencyResolver(t *testing.T) {
 
 			// task dependencies
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{
 					"project.dataset.tablex_destination",
 					"project.dataset.table2_destination",
 				},
 			}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
 
 			// hook dependency
@@ -338,8 +338,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			// task dependencies
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
 
 			// hook dependency
@@ -443,10 +443,10 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table2_destination"},
 			}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, namespaceService, pluginService)
@@ -521,7 +521,7 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(
 				&models.GenerateDependenciesResponse{Dependencies: []string{"project.dataset.table2_destination"}}, nil)
 			defer pluginService.AssertExpectations(t)
 
@@ -570,7 +570,7 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
 			defer pluginService.AssertExpectations(t)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, namespaceService, pluginService)
@@ -618,7 +618,7 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table3_destination"},
 			}, nil)
 			defer pluginService.AssertExpectations(t)
@@ -689,7 +689,7 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table1_destination"},
 			}, nil)
 			defer pluginService.AssertExpectations(t)
@@ -757,7 +757,7 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table1_destination"},
 			}, nil)
 			defer pluginService.AssertExpectations(t)
@@ -847,10 +847,10 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table2_destination"},
 			}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, namespaceService, pluginService)
@@ -981,13 +981,13 @@ func TestDependencyResolver(t *testing.T) {
 			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
-			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec).Return(&models.GenerateDependenciesResponse{
+			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{
 					"project.dataset.table2_destination",
 					"project.dataset.table2_external_destination", // inter optimus dependency
 				},
 			}, nil)
-			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec).Return(&models.GenerateDependenciesResponse{}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
 
 			resolver := job.NewDependencyResolver(projectJobSpecRepoFactory, namespaceService, pluginService)

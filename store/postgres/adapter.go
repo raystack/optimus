@@ -349,7 +349,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
 	var jobDestination string
-	if spec.Task.Unit.DependencyMod != nil {
+	if spec.Task.Unit.DependencyMod != nil { // TODO: this should move to plugin service if required
 		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),

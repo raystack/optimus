@@ -113,7 +113,7 @@ func (d *DependencyResolverPluginService) GenerateDestination(ctx context.Contex
 	return args.Get(0).(*models.GenerateDestinationResponse), args.Error(1)
 }
 
-func (d *DependencyResolverPluginService) GenerateDependencies(ctx context.Context, spec models.JobSpec, namespace models.NamespaceSpec) (*models.GenerateDependenciesResponse, error) {
-	args := d.Called(ctx, spec, namespace)
+func (d *DependencyResolverPluginService) GenerateDependencies(ctx context.Context, spec models.JobSpec, namespace models.NamespaceSpec, dryRun bool) (*models.GenerateDependenciesResponse, error) {
+	args := d.Called(ctx, spec, namespace, dryRun)
 	return args.Get(0).(*models.GenerateDependenciesResponse), args.Error(1)
 }

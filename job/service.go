@@ -142,15 +142,9 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				// check dependencies
-				if currentSpec.Task.Unit.DependencyMod != nil {
-					if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(context.TODO(), models.GenerateDependenciesRequest{
-						Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
-						Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
-						Project: namespace.ProjectSpec,
-						PluginOptions: models.PluginOptions{
-							DryRun: true,
-						},
-					}); err != nil {
+				_, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, true)
+				if err != nil {
+					if !errors.Is(err, service.ErrDependencyModNotFound) {
 						if obs != nil {
 							obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
 						}
@@ -201,7 +195,7 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
 	}
 
-	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, namespace)
+	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		return destination, dependencies, fmt.Errorf("failed to generate dependencies: %w", err)
 	}

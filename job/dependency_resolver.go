@@ -63,7 +63,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get destinations of dependencies, assets should be dependent on
 	var jobDependencies []string
-	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace)
+	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
 			return models.JobSpec{}, err
