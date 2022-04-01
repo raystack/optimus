@@ -36,6 +36,13 @@ func versionCommand() *cli.Command {
 		// initiate logger
 		l := initDefaultLogger()
 
+		// TODO: refactor initialize client deps
+		pluginCleanFn, err := initializeClientPlugins(config.LogLevelInfo)
+		defer pluginCleanFn()
+		if err != nil {
+			return err
+		}
+
 		// Print client version
 		l.Info(fmt.Sprintf("Client: %s-%s", coloredNotice(config.BuildVersion), coloredNotice(config.BuildCommit)))
 

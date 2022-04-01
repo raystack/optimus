@@ -31,6 +31,13 @@ func jobCommand() *cli.Command {
 		}
 		l = initClientLogger(conf.Log)
 
+		// TODO: refactor initialize client deps
+		pluginCleanFn, err := initializeClientPlugins(conf.Log.Level)
+		defer pluginCleanFn()
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 

@@ -61,8 +61,15 @@ func deployCommand() *cli.Command {
 		if err != nil {
 			return err
 		}
-
 		l := initClientLogger(conf.Log)
+
+		// TODO: refactor initialize client deps
+		pluginCleanFn, err := initializeClientPlugins(conf.Log.Level)
+		defer pluginCleanFn()
+		if err != nil {
+			return err
+		}
+
 		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
