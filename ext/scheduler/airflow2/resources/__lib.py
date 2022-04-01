@@ -363,26 +363,34 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
         schedule_time_window_start, schedule_time_window_end = task_window.get(
             last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT))
-
-        job_cron_iter = croniter(upstream_schedule, schedule_time_window_start)
-        # schedule_time_window_start_next it is the inclusive schedule start time for the job_run API
-        schedule_time_window_start_next = job_cron_iter.get_next(datetime)
-
-        self.log.info(
-            "upstream interval: {}, window size: {}".format(upstream_schedule, self.window_size))
         
-        schedule_time_window_start_next = schedule_time_window_start_next.strftime(TIMESTAMP_FORMAT)
-        schedule_time_window_end        = schedule_time_window_end.strftime(TIMESTAMP_FORMAT)
+        schedule_time_window_start_next, schedule_time_window_end = self.get_inclusive_start_schedule_window(
+            schedule_time_window_start,
+            schedule_time_window_end,
+            upstream_schedule
+        )
+
         self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
             schedule_time_window_start_next, schedule_time_window_end))
 
-        if self._are_all_job_runs_successful(schedule_time_window_start_next, schedule_time_window_end):
+        if not self._are_all_job_runs_successful(schedule_time_window_start_next, schedule_time_window_end):
             self.log.warning("unable to find enough successful executions for upstream '{}' in "
                              "'{}' dated between {} and {}(inclusive), rescheduling sensor".
                              format(self.optimus_job, self.optimus_project, schedule_time_window_start_next,
                                     schedule_time_window_end))
             return False
         return True
+
+    def get_inclusive_start_schedule_window(self, schedule_time_window_non_inclusive_start, schedule_time_window_end, upstream_schedule) -> (str, str):
+        job_cron_iter = croniter(upstream_schedule, schedule_time_window_non_inclusive_start)
+        schedule_time_window_inclusive_start    = job_cron_iter.get_next(datetime)
+        return (
+            self._parse_datetime_utc(schedule_time_window_inclusive_start),
+            self._parse_datetime_utc(schedule_time_window_end),
+        )
+
+    def _parse_datetime_utc(self, timestamp):
+        return timestamp.strftime(TIMESTAMP_FORMAT)
 
     def get_schedule_interval(self, schedule_time):
         schedule_time_str = schedule_time.strftime(TIMESTAMP_FORMAT)
@@ -394,8 +402,10 @@ class CrossTenantDependencySensor(BaseSensorOperator):
     #  it points to execution_date
     def _are_all_job_runs_successful(self, schedule_time_window_start, schedule_time_window_end) -> bool:
         api_response = self._optimus_client.get_job_run(self.optimus_project, self.optimus_job, schedule_time_window_start, schedule_time_window_end)
+        self.log.info("job_run api response :: {}".format(api_response))
         for job_run in api_response['jobRuns']:
             if job_run['state'] != 'success':
+                self.log.info("failed for run :: {}".format(job_run))
                 return False
         return True
 
