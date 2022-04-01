@@ -26,7 +26,7 @@ var (
 )
 
 //nolint:gochecknoinits
-func init() {
+func init() { // TODO: move paths initialization outside init()
 	p, err := os.Getwd()
 	if err != nil {
 		panic(err)
