@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -348,18 +347,6 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 	wsize := spec.Task.Window.Size.Nanoseconds()
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
-	var jobDestination string
-	if spec.Task.Unit.DependencyMod != nil { // TODO: this should move to plugin service if required
-		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
-			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
-			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),
-		})
-		if err != nil {
-			return Job{}, err
-		}
-		jobDestination = jobDestinationResponse.URN()
-	}
-
 	metadata, err := json.Marshal(spec.Metadata)
 	if err != nil {
 		return Job{}, err
@@ -376,7 +363,6 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 		EndDate:              spec.Schedule.EndDate,
 		Interval:             &spec.Schedule.Interval,
 		Behavior:             behaviorJSON,
-		Destination:          jobDestination,
 		Dependencies:         dependenciesJSON,
 		TaskName:             spec.Task.Unit.Info().Name,
 		TaskConfig:           taskConfigJSON,

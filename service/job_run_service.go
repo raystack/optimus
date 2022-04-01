@@ -32,9 +32,10 @@ type JobRunService interface {
 }
 
 type jobRunService struct {
-	repoFac   SpecRepoFactory
-	scheduler models.SchedulerUnit
-	Now       func() time.Time
+	repoFac       SpecRepoFactory
+	scheduler     models.SchedulerUnit
+	Now           func() time.Time
+	pluginService PluginService
 }
 
 func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
@@ -125,7 +126,7 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 		}
 	}
 
-	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, jobRun.ExecutedAt)
+	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, jobRun.ExecutedAt, namespace)
 	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
 	}
@@ -141,18 +142,16 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *jobRunService) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
-	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
+func (s *jobRunService) prepInstance(jobRun models.JobRun, instanceType models.InstanceType, instanceName string, executedAt time.Time, namespace models.NamespaceSpec) (models.InstanceSpec, error) {
 	var jobDestination string
-	if jobRun.Spec.Task.Unit.DependencyMod != nil {
-		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
-			Config: models.PluginConfigs{}.FromJobSpec(jobRun.Spec.Task.Config),
-			Assets: models.PluginAssets{}.FromJobSpec(jobRun.Spec.Assets),
-		})
-		if err != nil {
+	dest, err := s.pluginService.GenerateDestination(context.TODO(), jobRun.Spec, namespace)
+	if err != nil {
+		if !errors.Is(err, ErrDependencyModNotFound) {
 			return models.InstanceSpec{}, fmt.Errorf("failed to generate destination for job %s: %w", jobRun.Spec.Name, err)
 		}
-		jobDestination = jobDestinationResponse.Destination
+	}
+	if dest != nil {
+		jobDestination = dest.Destination
 	}
 
 	return models.InstanceSpec{
@@ -190,11 +189,12 @@ func (s *jobRunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models
 	return s.repoFac.New().GetByID(ctx, jobRunID)
 }
 
-func NewJobRunService(repoFac SpecRepoFactory, timeFunc func() time.Time, scheduler models.SchedulerUnit) *jobRunService {
+func NewJobRunService(repoFac SpecRepoFactory, timeFunc func() time.Time, scheduler models.SchedulerUnit, pluginService PluginService) *jobRunService {
 	return &jobRunService{
-		repoFac:   repoFac,
-		Now:       timeFunc,
-		scheduler: scheduler,
+		repoFac:       repoFac,
+		Now:           timeFunc,
+		scheduler:     scheduler,
+		pluginService: pluginService,
 	}
 }
 

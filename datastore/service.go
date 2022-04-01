@@ -13,6 +13,7 @@ import (
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 )
@@ -47,6 +48,7 @@ type Service struct {
 	dsRepo                     models.DatastoreRepo
 	backupRepoFactory          BackupRepoFactory
 	uuidProvider               utils.UUIDProvider
+	pluginService              service.PluginService
 }
 
 func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
@@ -162,18 +164,11 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	return repo.Delete(ctx, name)
 }
 
-func generateResourceDestination(ctx context.Context, jobSpec models.JobSpec) (*models.GenerateDestinationResponse, error) {
-	return jobSpec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
-		Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-	})
-}
-
 func (srv Service) BackupResourceDryRun(ctx context.Context, backupRequest models.BackupRequest, jobSpecs []models.JobSpec) (models.BackupPlan, error) {
 	var resourcesToBackup []string
 	var resourcesToIgnore []string
 	for _, jobSpec := range jobSpecs {
-		destination, err := generateResourceDestination(ctx, jobSpec)
+		destination, err := srv.pluginService.GenerateDestination(ctx, jobSpec, backupRequest.Namespace)
 		if err != nil {
 			return models.BackupPlan{}, err
 		}
@@ -237,7 +232,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	var resources []string
 	var resourcesToIgnore []string
 	for _, jobSpec := range jobSpecs {
-		destination, err := generateResourceDestination(ctx, jobSpec)
+		destination, err := srv.pluginService.GenerateDestination(ctx, jobSpec, backupRequest.Namespace)
 		if err != nil {
 			return models.BackupResult{}, err
 		}
@@ -377,14 +372,14 @@ func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func NewService(resourceRepoFactory ResourceSpecRepoFactory, projectResourceRepoFactory ProjectResourceSpecRepoFactory,
-	dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepoFactory BackupRepoFactory) *Service {
+func NewService(resourceRepoFactory ResourceSpecRepoFactory, projectResourceRepoFactory ProjectResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepoFactory BackupRepoFactory, pluginService service.PluginService) *Service {
 	return &Service{
 		resourceRepoFactory:        resourceRepoFactory,
 		projectResourceRepoFactory: projectResourceRepoFactory,
 		dsRepo:                     dsRepo,
 		backupRepoFactory:          backupRepoFactory,
 		uuidProvider:               uuidProvider,
+		pluginService:              pluginService,
 	}
 }
 

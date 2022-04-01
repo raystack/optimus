@@ -259,6 +259,7 @@ func (s *OptimusServer) setupHandlers() error {
 			return time.Now().UTC()
 		},
 		models.BatchScheduler,
+		pluginService,
 	)
 
 	progressObs := &pipelineLogObserver{
@@ -275,7 +276,7 @@ func (s *OptimusServer) setupHandlers() error {
 	backupRepoFac := backupRepoFactory{
 		db: s.dbConn,
 	}
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac)
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac, pluginService)
 	// adapter service
 	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
 

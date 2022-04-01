@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	mock2 "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/mock"
@@ -23,9 +22,6 @@ func TestJobRunService(t *testing.T) {
 	ctx := context.Background()
 	execUnit := new(mock.BasePlugin)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
-	depMod := new(mock.DependencyResolverMod)
-	depMod.On("GenerateDestination", ctx, mock2.AnythingOfType("models.GenerateDestinationRequest")).Return(
-		&models.GenerateDestinationResponse{Destination: "proj.data.tab"}, nil)
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -38,7 +34,7 @@ func TestJobRunService(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     &models.Plugin{Base: execUnit, DependencyMod: depMod},
+			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
 			Window: models.JobSpecTaskWindow{
 				Size:       time.Hour,
@@ -67,6 +63,9 @@ func TestJobRunService(t *testing.T) {
 		ScheduledAt: scheduledAt,
 		ExecutedAt:  mockedTimeNow,
 	}
+	pluginService := new(mock.DependencyResolverPluginService)
+	pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
+		&models.GenerateDestinationResponse{Destination: "proj.data.tab"}, nil)
 
 	t.Run("Register", func(t *testing.T) {
 		t.Run("for transformation, save specs and return data", func(t *testing.T) {
@@ -111,7 +110,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			jobRunService := service.NewJobRunService(jobRunSpecRep, nil, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, nil, nil, pluginService)
 			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
@@ -158,7 +157,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			jobRunService := service.NewJobRunService(jobRunSpecRep, nil, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, nil, nil, pluginService)
 
 			var existingRun models.JobRun
 			Copy(&existingRun, jobRun)
@@ -212,7 +211,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, pluginService)
 
 			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
@@ -267,7 +266,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, pluginService)
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingJobRun, models.InstanceTypeHook, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, instanceSpec, returnedInstanceSpec)
@@ -310,7 +309,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, pluginService)
 
 			returnedInstanceSpec, err := jobRunService.Register(ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name)
 			assert.Equal(t, "a random error", err.Error())
@@ -335,7 +334,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, pluginService)
 			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, jobRun, returnedSpec)
@@ -356,7 +355,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, pluginService)
 			_, _ = jobRunService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 		})
 		t.Run("should return empty RunSpec if GetByScheduledAt returns an error", func(t *testing.T) {
@@ -368,7 +367,7 @@ func TestJobRunService(t *testing.T) {
 			jobRunSpecRep.On("New").Return(runRepo, nil)
 			defer jobRunSpecRep.AssertExpectations(t)
 
-			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil)
+			jobRunService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, pluginService)
 			returnedSpec, err := jobRunService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
 			assert.Equal(t, "a random error", err.Error())
 			assert.Equal(t, models.JobRun{}, returnedSpec)
@@ -409,7 +408,7 @@ func TestJobRunService(t *testing.T) {
 
 			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, nil)
 			defer sch.AssertExpectations(t)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.Nil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -533,7 +532,7 @@ func TestJobRunService(t *testing.T) {
 					sch := new(mock.Scheduler)
 					sch.On("GetJobRuns", ctx, spec, scenario.input, jobCron).Return(scenario.runs, nil)
 					defer sch.AssertExpectations(t)
-					runService := service.NewJobRunService(nil, nil, sch)
+					runService := service.NewJobRunService(nil, nil, sch, pluginService)
 					returnedRuns, err := runService.GetJobRunList(ctx, projSpec, scenario.job, scenario.input)
 					assert.Nil(t, err)
 					assert.Equal(t, scenario.expectedResult, returnedRuns)
@@ -556,7 +555,7 @@ func TestJobRunService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -577,7 +576,7 @@ func TestJobRunService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -598,7 +597,7 @@ func TestJobRunService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -618,7 +617,7 @@ func TestJobRunService(t *testing.T) {
 			}
 
 			sch := new(mock.Scheduler)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
@@ -644,7 +643,7 @@ func TestJobRunService(t *testing.T) {
 
 			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]models.JobRun{}, errors.New("failed: due to invalid URL"))
 			defer sch.AssertExpectations(t)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.NotNil(t, err, errors.New("failed: due to invalid URL"))
 			assert.Nil(t, nil, returnedRuns)
@@ -674,7 +673,7 @@ func TestJobRunService(t *testing.T) {
 			}
 			sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return(runs, nil)
 			defer sch.AssertExpectations(t)
-			runService := service.NewJobRunService(nil, nil, sch)
+			runService := service.NewJobRunService(nil, nil, sch, pluginService)
 			returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
 			assert.Nil(t, err)
 			assert.Equal(t, runs, returnedRuns)
