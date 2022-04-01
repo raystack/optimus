@@ -54,7 +54,7 @@ func versionCommand() *cli.Command {
 				return err
 			}
 
-			if err := config.Validate(conf); err != nil {
+			if err := config.Validate(conf); err != nil { // experiment for client validation
 				return err
 			}
 

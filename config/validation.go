@@ -10,7 +10,7 @@ import (
 )
 
 // Validate validate the config as an input. If not valid, it returns error
-func Validate(conf Config) error {
+func Validate(conf Config) error { // TODO: call Validate explicitly when it needed
 	switch c := conf.(type) {
 	case *ClientConfig:
 		return validateClientConfig(c)
