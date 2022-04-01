@@ -35,8 +35,7 @@ var (
 		return errors.New(heredoc.Docf(`Unable to reach optimus server at %s, this can happen due to following reasons:
 			1. Check if you are connected to internet
 			2. Is the host correctly configured in optimus config
-			3. Is OPTIMUS_HOST env incorrectly set
-			4. Is Optimus server currently unreachable`, host))
+			3. Is Optimus server currently unreachable`, host))
 	}
 )
 
