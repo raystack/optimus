@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/github"
+	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/extension"
@@ -42,20 +43,18 @@ func addExtensionCommand(cmd *cli.Command) {
 }
 
 func extensionCommand(ctx context.Context, extension *extension.Extension) *cli.Command {
+	l := initDefaultLogger()
 	c := &cli.Command{
 		Use:     "extension SUBCOMMAND",
 		Aliases: []string{"ext"},
 		Short:   "Operate with extension",
 	}
-	c.AddCommand(extensionInstallCommand(ctx, extension))
+	c.AddCommand(extensionInstallCommand(ctx, extension, l))
 	return c
 }
 
-func extensionInstallCommand(ctx context.Context, installer extension.Installer) *cli.Command {
-	var (
-		alias string
-		l     = initDefaultLogger()
-	)
+func extensionInstallCommand(ctx context.Context, installer extension.Installer, l log.Logger) *cli.Command {
+	var alias string
 
 	installCmd := &cli.Command{
 		Use:   "install OWNER/REPO",
