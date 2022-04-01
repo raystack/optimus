@@ -64,6 +64,9 @@ func replayCommand() *cli.Command {
 			"group:core": "true",
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
 		var err error
@@ -76,8 +79,6 @@ func replayCommand() *cli.Command {
 
 		return nil
 	}
-
-	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	cmd.AddCommand(replayCreateCommand(l, conf))
 	cmd.AddCommand(replayStatusCommand(l, conf))
