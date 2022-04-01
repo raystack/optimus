@@ -2,10 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/models"
+)
+
+var (
+	ErrDependencyModNotFound = errors.New("dependency mod not found for plugin")
 )
 
 type PluginService interface {
@@ -26,7 +31,7 @@ func (d DependencyPluginService) GenerateDestination(ctx context.Context, jobSpe
 	}
 
 	if plugin.DependencyMod == nil {
-		return nil, nil //nolint:nilnil // TODO: decide based on caller to return error or nil
+		return nil, ErrDependencyModNotFound
 	}
 
 	compiledConfigs, err := d.compileConfig(ctx, jobSpec.Task.Config, ns)
@@ -53,7 +58,7 @@ func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSp
 	}
 
 	if plugin.DependencyMod == nil {
-		return nil, nil //nolint:nilnil // TODO: decide based on caller to return error or nil
+		return nil, ErrDependencyModNotFound
 	}
 
 	compiledConfigs, err := d.compileConfig(ctx, jobSpec.Task.Config, ns)

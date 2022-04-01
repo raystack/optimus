@@ -65,7 +65,9 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	var jobDependencies []string
 	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace)
 	if err != nil {
-		return models.JobSpec{}, err
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
+			return models.JobSpec{}, err
+		}
 	}
 	if resp != nil {
 		jobDependencies = resp.Dependencies

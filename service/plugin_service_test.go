@@ -80,7 +80,7 @@ func TestPluginService(t *testing.T) {
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "plugin not found")
 		})
-		t.Run("return nil when not no dependency mod in plugin", func(t *testing.T) {
+		t.Run("return err when not no dependency mod in plugin", func(t *testing.T) {
 			pluginRepo := new(mock.SupportedPluginRepo)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{Base: baseUnit}, nil)
 			defer pluginRepo.AssertExpectations(t)
@@ -101,8 +101,8 @@ func TestPluginService(t *testing.T) {
 
 			pluginService := service.NewPluginService(nil, pluginRepo, nil)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
-			assert.Nil(t, err)
 			assert.Nil(t, resp)
+			assert.EqualError(t, err, "dependency mod not found for plugin")
 		})
 		t.Run("return error when not not able to compile configs", func(t *testing.T) {
 			pluginRepo := new(mock.SupportedPluginRepo)
@@ -204,7 +204,7 @@ func TestPluginService(t *testing.T) {
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "plugin not found")
 		})
-		t.Run("return nil when no dependency mod in plugin", func(t *testing.T) {
+		t.Run("return err when no dependency mod in plugin", func(t *testing.T) {
 			pluginRepo := new(mock.SupportedPluginRepo)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{Base: baseUnit}, nil)
 			defer pluginRepo.AssertExpectations(t)
@@ -225,8 +225,8 @@ func TestPluginService(t *testing.T) {
 
 			pluginService := service.NewPluginService(nil, pluginRepo, nil)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec)
-			assert.Nil(t, err)
 			assert.Nil(t, resp)
+			assert.EqualError(t, err, "dependency mod not found for plugin")
 		})
 		t.Run("return error when not not able to compile configs", func(t *testing.T) {
 			pluginRepo := new(mock.SupportedPluginRepo)
