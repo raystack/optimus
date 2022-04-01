@@ -190,8 +190,6 @@ func TestReplay(t *testing.T) {
 					jobSpecs[3].Name,
 					jobSpecs[4].Name,
 					jobSpecs[5].Name,
-				},
-				"otherNS": {
 					cyclicDag1.Name,
 					cyclicDag2.Name,
 				},
@@ -204,8 +202,8 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[0], "otherNS", nil).Return(cyclicDagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[1], "otherNS", nil).Return(cyclicDagSpec[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[0], "ns", nil).Return(cyclicDagSpec[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[1], "ns", nil).Return(cyclicDagSpec[1], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
