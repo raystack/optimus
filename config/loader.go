@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/odpf/salt/config"
@@ -37,7 +38,7 @@ func init() { // TODO: move paths initialization outside init()
 	if err != nil {
 		panic(err)
 	}
-	execPath = p
+	execPath = filepath.Dir(p)
 }
 
 // LoadClientConfig load the project specific config from these locations:

@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -80,7 +81,7 @@ func (s *ConfigTestSuite) SetupTest() {
 
 	p, err = os.Executable()
 	s.Require().NoError(err)
-	s.execPath = p
+	s.execPath = filepath.Dir(p)
 	s.a.Fs.MkdirAll(s.execPath, fs.ModeTemporary)
 
 	config.FS = s.a.Fs
