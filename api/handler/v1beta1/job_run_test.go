@@ -16,6 +16,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -441,6 +442,8 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			jobService.On("GetTaskDependencies", ctx, namespaceSpec, jobSpecs[0]).Return(models.JobSpecTaskDestination{},
+				models.JobSpecTaskDependencies([]string{}), service.ErrDependencyModNotFound)
 			defer jobService.AssertExpectations(t)
 
 			JobRunServiceServer := v1.NewJobRunServiceServer(

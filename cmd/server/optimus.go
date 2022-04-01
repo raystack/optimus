@@ -245,6 +245,7 @@ func (s *OptimusServer) setupHandlers() error {
 		priorityResolver,
 		projectJobSpecRepoFac,
 		replayManager,
+		pluginService,
 	)
 
 	jobrunRepoFac := &jobRunRepoFactory{

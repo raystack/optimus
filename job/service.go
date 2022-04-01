@@ -14,6 +14,7 @@ import (
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -86,6 +87,7 @@ type Service struct {
 
 	Now           func() time.Time
 	assetCompiler AssetCompiler
+	pluginService service.PluginService
 }
 
 // Create constructs a Job for a namespace and commits it to the store
@@ -183,34 +185,29 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 	models.JobSpecTaskDependencies, error) {
 	destination := models.JobSpecTaskDestination{}
 	dependencies := models.JobSpecTaskDependencies{}
-	if jobSpec.Task.Unit.DependencyMod == nil {
-		return destination, dependencies, errors.New("task doesn't support dependency mod")
+
+	dest, err := srv.pluginService.GenerateDestination(ctx, jobSpec, namespace)
+	if err != nil {
+		return destination, dependencies, err
 	}
 
-	destinationResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
-		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-		Project: namespace.ProjectSpec,
-	})
-	if err != nil {
-		return destination, dependencies, fmt.Errorf("failed to generate destination: %w", err)
+	if dest != nil {
+		destination.Destination = dest.Destination
+		destination.Type = dest.Type
 	}
-	destination.Destination = destinationResp.Destination
-	destination.Type = destinationResp.Type
 
 	// compile assets before generating dependencies
 	if jobSpec.Assets, err = srv.assetCompiler(jobSpec, srv.Now()); err != nil {
 		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
 	}
-	dependencyResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
-		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-		Project: namespace.ProjectSpec,
-	})
+
+	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, namespace)
 	if err != nil {
 		return destination, dependencies, fmt.Errorf("failed to generate dependencies: %w", err)
 	}
-	dependencies = dependencyResp.Dependencies
+	if deps != nil {
+		dependencies = deps.Dependencies
+	}
 
 	return destination, dependencies, nil
 }
@@ -609,7 +606,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	replayManager ReplayManager,
+	replayManager ReplayManager, pluginService service.PluginService,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
@@ -621,6 +618,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		replayManager:             replayManager,
 
 		assetCompiler: assetCompiler,
+		pluginService: pluginService,
 		Now:           time.Now,
 	}
 }

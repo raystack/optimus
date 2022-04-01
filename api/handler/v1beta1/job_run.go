@@ -49,20 +49,22 @@ func (sv *JobRunServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTas
 		Dependencies: nil,
 		Destination:  nil,
 	}
-	if jobSpec.Task.Unit.DependencyMod != nil {
-		taskDestination, taskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: GetTaskDependencies", err.Error())
+	taskDestination, taskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	if err != nil {
+		if errors.Is(err, service.ErrDependencyModNotFound) {
+			return &pb.GetJobTaskResponse{Task: jobTaskSpec}, nil
 		}
-		jobTaskSpec.Destination = &pb.JobTask_Destination{
-			Destination: taskDestination.Destination,
-			Type:        taskDestination.Type.String(),
-		}
-		for _, dep := range taskDependencies {
-			jobTaskSpec.Dependencies = append(jobTaskSpec.Dependencies, &pb.JobTask_Dependency{
-				Dependency: dep,
-			})
-		}
+		return nil, status.Errorf(codes.Internal, "%s: GetTaskDependencies", err.Error())
+	}
+
+	jobTaskSpec.Destination = &pb.JobTask_Destination{
+		Destination: taskDestination.Destination,
+		Type:        taskDestination.Type.String(),
+	}
+	for _, dep := range taskDependencies {
+		jobTaskSpec.Dependencies = append(jobTaskSpec.Dependencies, &pb.JobTask_Dependency{
+			Dependency: dep,
+		})
 	}
 
 	return &pb.GetJobTaskResponse{
