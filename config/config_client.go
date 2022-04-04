@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type ClientConfig struct {
 	Version    Version      `mapstructure:"version"`
@@ -50,4 +53,37 @@ func (c *ClientConfig) GetNamespaceByName(name string) (*Namespace, error) {
 	}
 
 	return c.namespaceNameToNamespace[name], nil
+}
+
+func (c *ClientConfig) ValidateNamespaceNames(namespaceNames ...string) error {
+	var invalidNames []string
+	for _, n := range namespaceNames {
+		if c.namespaceNameToNamespace == nil {
+			invalidNames = append(invalidNames, n)
+		}
+	}
+	var err error
+	if len(invalidNames) > 0 {
+		err = fmt.Errorf("namespace names [%s] are invalid", strings.Join(invalidNames, ", "))
+	}
+	return err
+}
+
+func (c *ClientConfig) GetSelectedNamespaces(namespaceNames ...string) ([]*Namespace, error) {
+	if err := c.ValidateNamespaceNames(namespaceNames...); err != nil {
+		return nil, err
+	}
+	output := make([]*Namespace, len(namespaceNames))
+	for i, n := range namespaceNames {
+		output[i] = c.namespaceNameToNamespace[n]
+	}
+	return output, nil
+}
+
+func (c *ClientConfig) GetAllNamespaceNames() []string {
+	output := make([]string, len(c.Namespaces))
+	for i, n := range c.Namespaces {
+		output[i] = n.Name
+	}
+	return output
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -73,11 +72,17 @@ func deployCommand() *cli.Command {
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 
-		if err := validateNamespaces(datastoreSpecFs, namespaceNames); err != nil {
-			return err
+		var selectedNamespaces []*config.Namespace
+		if len(namespaceNames) > 0 {
+			selectedNamespaces, err = conf.GetSelectedNamespaces(namespaceNames...)
+			if err != nil {
+				return err
+			}
+		} else {
+			selectedNamespaces = conf.Namespaces
 		}
 
-		err = postDeploymentRequest(l, conf, pluginRepo, dsRepo, datastoreSpecFs, namespaceNames, ignoreJobs, ignoreResources, verbose)
+		err = postDeploymentRequest(l, conf, pluginRepo, dsRepo, datastoreSpecFs, selectedNamespaces, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}
@@ -91,7 +96,7 @@ func deployCommand() *cli.Command {
 
 // postDeploymentRequest send a deployment request to service
 func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
-	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaceNames []string,
+	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaces []*config.Namespace,
 	ignoreJobDeployment, ignoreResources, verbose bool) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
@@ -111,21 +116,11 @@ func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo m
 	resource := pb.NewResourceServiceClient(conn)
 	jobSpec := pb.NewJobSpecificationServiceClient(conn)
 
-	if err := registerProject(l, conf); err != nil {
+	if err := registerProject(l, conf.Host, conf.Project); err != nil {
 		return err
 	}
-	validNamespaceNames, invalidNamespaceNames := getValidatedNamespaces(conf, namespaceNames)
-	if len(invalidNamespaceNames) > 0 {
-		return fmt.Errorf("namespaces [%s] are invalid", strings.Join(invalidNamespaceNames, ", "))
-	}
-	if len(validNamespaceNames) == 0 {
-		if err := registerAllNamespaces(l, conf); err != nil {
-			return err
-		}
-	} else {
-		if err := registerSelectedNamespaces(l, conf, validNamespaceNames); err != nil {
-			return err
-		}
+	if err := registerSelectedNamespaces(l, conf.Host, conf.Project.Name, namespaces...); err != nil {
+		return err
 	}
 
 	if !ignoreResources {
@@ -133,7 +128,7 @@ func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo m
 			resource, l, conf,
 			pluginRepo, datastoreRepo,
 			datastoreSpecFs,
-			namespaceNames,
+			namespaces,
 			verbose,
 		); err != nil {
 			return err
@@ -145,7 +140,8 @@ func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo m
 		if err := deployAllJobs(deployTimeoutCtx,
 			jobSpec, l,
 			conf, pluginRepo,
-			datastoreRepo, namespaceNames,
+			datastoreRepo,
+			namespaces,
 			verbose,
 		); err != nil {
 			return err
@@ -160,22 +156,10 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	jobSpecificationServiceClient pb.JobSpecificationServiceClient,
 	l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
-	namespaceNames []string,
+	selectedNamespaces []*config.Namespace,
 	verbose bool,
 ) error {
 	// TODO fetch namespaces can be a separate function
-	var selectedNamespaceNames []string
-	if len(namespaceNames) > 0 {
-		selectedNamespaceNames = namespaceNames
-	} else {
-		for _, namespace := range conf.Namespaces {
-			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
-		}
-	}
-	if len(selectedNamespaceNames) == 0 {
-		return errors.New("no namespace is found to deploy")
-	}
-
 	stream, err := jobSpecificationServiceClient.DeployJobSpecification(deployTimeoutCtx)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -185,13 +169,9 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	}
 	var specFound bool
 	var totalSpecsCount int
-	for i, namespaceName := range selectedNamespaceNames {
+	for i, namespace := range selectedNamespaces {
 		// TODO add a function to fetch jobspecs given namespace in protoformat
-		// TODO this check i believe is not necessary
-		namespace, err := conf.GetNamespaceByName(namespaceName)
-		if err != nil {
-			return err
-		}
+
 		// TODO  initialize the filesystem inside
 		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 		jobSpecRepo := local.NewJobSpecRepository(
@@ -200,17 +180,17 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		)
 		// TODO Log once , new line can be logged outside
 		if i == 0 {
-			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespaceName))
+			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespace))
 		} else {
-			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespaceName))
+			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespace))
 		}
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if errors.Is(err, models.ErrNoJobs) {
-			l.Info(coloredNotice("no job specifications are found for namespace [%s]", namespaceName))
+			l.Info(coloredNotice("no job specifications are found for namespace [%s]", namespace.Name))
 			continue
 		}
 		if err != nil {
-			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespaceName, err)
+			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespace.Name, err)
 		}
 		totalSpecsCount += len(jobSpecs)
 
@@ -225,9 +205,9 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		if err := stream.Send(&pb.DeployJobSpecificationRequest{
 			Jobs:          adaptedJobSpecs,
 			ProjectName:   conf.Project.Name,
-			NamespaceName: namespaceName,
+			NamespaceName: namespace.Name,
 		}); err != nil {
-			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespaceName, err)
+			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace, err)
 		}
 	}
 	if err := stream.CloseSend(); err != nil {
@@ -277,21 +257,9 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
 	datastoreSpecFs map[string]map[string]afero.Fs,
-	namespaceNames []string,
+	selectedNamespaces []*config.Namespace,
 	verbose bool,
 ) error {
-	var selectedNamespaceNames []string
-	if len(namespaceNames) > 0 {
-		selectedNamespaceNames = namespaceNames
-	} else {
-		for _, namespace := range conf.Namespaces {
-			selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
-		}
-	}
-	if len(selectedNamespaceNames) == 0 {
-		return errors.New("no namespace is found to deploy")
-	}
-
 	// send call
 	stream, err := resourceServiceClient.DeployResourceSpecification(deployTimeoutCtx)
 	if err != nil {
@@ -302,22 +270,22 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	}
 	var specFound bool
 	var totalSpecsCount int
-	for _, namespaceName := range selectedNamespaceNames {
+	for _, namespace := range selectedNamespaces {
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
-		for storeName, repoFS := range datastoreSpecFs[namespaceName] {
-			l.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespaceName))
+		for storeName, repoFS := range datastoreSpecFs[namespace.Name] {
+			l.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespace))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
+				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespace)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(deployTimeoutCtx)
 			if errors.Is(err, models.ErrNoResources) {
-				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespaceName))
+				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespace))
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespaceName, err)
+				return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
 			}
 			totalSpecsCount += len(resourceSpecs)
 
@@ -326,7 +294,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			for _, spec := range resourceSpecs {
 				adapted, err := adapt.ToResourceProto(spec)
 				if err != nil {
-					return fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
+					return fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespace, err)
 				}
 				adaptedSpecs = append(adaptedSpecs, adapted)
 			}
@@ -335,9 +303,9 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				Resources:     adaptedSpecs,
 				ProjectName:   conf.Project.Name,
 				DatastoreName: storeName,
-				NamespaceName: namespaceName,
+				NamespaceName: namespace.Name,
 			}); err != nil {
-				return fmt.Errorf("deployment for namespace [%s] failed: %w", namespaceName, err)
+				return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace, err)
 			}
 		}
 	}

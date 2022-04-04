@@ -117,12 +117,13 @@ func projectRegisterCommand() *cli.Command {
 			return err
 		}
 		l := initDefaultLogger()
-		if err := registerProject(l, clientConfig); err != nil {
+		l.Info(fmt.Sprintf("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host))
+		if err := registerProject(l, clientConfig.Host, clientConfig.Project); err != nil {
 			return err
 		}
 		if withNamespaces {
 			l.Info(fmt.Sprintf("Registering all namespaces from: %s", filePath))
-			if err := registerAllNamespaces(l, clientConfig); err != nil {
+			if err := registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
 				return err
 			}
 		}
@@ -133,21 +134,21 @@ func projectRegisterCommand() *cli.Command {
 	return cmd
 }
 
-func registerProject(l log.Logger, clientConfig *config.ClientConfig) error {
+func registerProject(l log.Logger, serverHost string, project config.Project) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 	registerTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
 	defer registerCancel()
 
-	conn, err := createConnection(dialTimeoutCtx, clientConfig.Host)
+	conn, err := createConnection(dialTimeoutCtx, serverHost)
 	if err != nil {
-		return fmt.Errorf("failed creating connection to [%s]: %w", clientConfig.Host, err)
+		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
 	projectServiceClient := pb.NewProjectServiceClient(conn)
 
 	projectSpec := &pb.ProjectSpecification{
-		Name:   clientConfig.Project.Name,
-		Config: clientConfig.Project.Config,
+		Name:   project.Name,
+		Config: project.Config,
 	}
 	registerResponse, err := projectServiceClient.RegisterProject(registerTimeoutCtx, &pb.RegisterProjectRequest{
 		Project: projectSpec,

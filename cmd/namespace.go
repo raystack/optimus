@@ -6,12 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -94,6 +92,7 @@ func listNamespacesFromServer(projectName, serverHost string) ([]*config.Namespa
 	if err != nil {
 		return nil, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
+	defer conn.Close()
 
 	request := &pb.ListProjectNamespacesRequest{
 		ProjectName: projectName,
@@ -217,6 +216,7 @@ func getNamespace(projectName, namespaceName, serverHost string) (*config.Namesp
 	if err != nil {
 		return nil, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
+	defer conn.Close()
 
 	request := &pb.GetNamespaceRequest{
 		ProjectName:   projectName,
@@ -250,10 +250,14 @@ func namespaceRegisterCommand() *cli.Command {
 		l := initDefaultLogger()
 		if namespaceName != "" {
 			l.Info(fmt.Sprintf("Registering namespace [%s]", namespaceName))
-			return registerOneNamespace(l, clientConfig, namespaceName)
+			namespace, err := clientConfig.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
+			}
+			return registerNamespace(l, clientConfig.Host, clientConfig.Project.Name, namespace)
 		}
 		l.Info("Registering all available namespaces from client config")
-		return registerAllNamespaces(l, clientConfig)
+		return registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
 	}
 	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
 	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "If set, then only that namespace will be registered")
@@ -290,39 +294,17 @@ func askToSelectNamespace(l log.Logger, conf *config.ClientConfig) (*config.Name
 	}
 }
 
-func getValidatedNamespaces(clientConfig *config.ClientConfig, selectedNamespaceNames []string) (validNames []string, invalidNames []string) {
-	if len(selectedNamespaceNames) == 0 {
-		return
-	}
-	for _, name := range selectedNamespaceNames {
-		if _, err := clientConfig.GetNamespaceByName(name); err != nil {
-			invalidNames = append(invalidNames, name)
-		} else {
-			validNames = append(validNames, name)
-		}
-	}
-	return
-}
-
-func registerAllNamespaces(l log.Logger, clientConfig *config.ClientConfig) error {
-	var selectedNamespaceNames []string
-	for _, namespace := range clientConfig.Namespaces {
-		selectedNamespaceNames = append(selectedNamespaceNames, namespace.Name)
-	}
-	return registerSelectedNamespaces(l, clientConfig, selectedNamespaceNames)
-}
-
-func registerSelectedNamespaces(l log.Logger, clientConfig *config.ClientConfig, selectedNamespaceNames []string) error {
-	ch := make(chan error, len(selectedNamespaceNames))
+func registerSelectedNamespaces(l log.Logger, serverHost, projectName string, selectedNamespaces ...*config.Namespace) error {
+	ch := make(chan error, len(selectedNamespaces))
 	defer close(ch)
 
-	for _, namespaceName := range selectedNamespaceNames {
-		go func(name string) {
-			ch <- registerOneNamespace(l, clientConfig, name)
-		}(namespaceName)
+	for _, namespace := range selectedNamespaces {
+		go func(namespace *config.Namespace) {
+			ch <- registerNamespace(l, serverHost, projectName, namespace)
+		}(namespace)
 	}
 	var errMsg string
-	for i := 0; i < len(selectedNamespaceNames); i++ {
+	for i := 0; i < len(selectedNamespaces); i++ {
 		if err := <-ch; err != nil {
 			errMsg += err.Error() + "\n"
 		}
@@ -333,52 +315,35 @@ func registerSelectedNamespaces(l log.Logger, clientConfig *config.ClientConfig,
 	return nil
 }
 
-func registerOneNamespace(l log.Logger, clientConfig *config.ClientConfig, namespaceName string) error {
-	namespace, err := clientConfig.GetNamespaceByName(namespaceName)
-	if err != nil {
-		return err
-	}
-
+func registerNamespace(l log.Logger, serverHost, projectName string, namespace *config.Namespace) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 	registerTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
 	defer registerCancel()
 
-	conn, err := createConnection(dialTimeoutCtx, clientConfig.Host)
+	conn, err := createConnection(dialTimeoutCtx, serverHost)
 	if err != nil {
-		return fmt.Errorf("failed creating connection to [%s]: %w", clientConfig.Host, err)
+		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
+	defer conn.Close()
 
 	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(registerTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
-		ProjectName: clientConfig.Project.Name,
+		ProjectName: projectName,
 		Namespace: &pb.NamespaceSpecification{
-			Name:   namespaceName,
+			Name:   namespace.Name,
 			Config: namespace.Config,
 		},
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespaceName, err))
+			l.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespace.Name, err))
 			return nil
 		}
-		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespaceName, err)
+		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespace.Name, err)
 	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to update namespace [%s]: %s", namespaceName, registerResponse.Message)
+		return fmt.Errorf("failed to update namespace [%s]: %s", namespace.Name, registerResponse.Message)
 	}
-	l.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespaceName))
-	return nil
-}
-
-func validateNamespaces(datastoreSpecFs map[string]map[string]afero.Fs, selectedNamespaceNames []string) error {
-	var unknownNamespaceNames []string
-	for _, namespaceName := range selectedNamespaceNames {
-		if datastoreSpecFs[namespaceName] == nil {
-			unknownNamespaceNames = append(unknownNamespaceNames, namespaceName)
-		}
-	}
-	if len(unknownNamespaceNames) > 0 {
-		return fmt.Errorf("namespaces [%s] are not found", strings.Join(unknownNamespaceNames, ", "))
-	}
+	l.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespace.Name))
 	return nil
 }
