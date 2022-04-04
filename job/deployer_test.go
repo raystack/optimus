@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/job"
@@ -1141,12 +1142,13 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterHookDependencyEnrich, nil).Return(jobSpecsAfterPriorityResolution, nil)
 
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsAfterPriorityResolution[0]}, nil).Return(nil)
-			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsAfterPriorityResolution[1]}, nil).Return(errors.New(errorMsg))
+			deployError := errors.New(errorMsg)
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsAfterPriorityResolution[1]}, nil).Return(deployError)
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, projJobSpecRepoFac, batchScheduler)
 			err := deployer.Deploy(ctx, projectSpec, nil)
 
-			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, &multierror.Error{Errors: []error{deployError}}, err)
 		})
 	})
 }

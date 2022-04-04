@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
@@ -22,7 +23,7 @@ func NewDeployer(dependencyResolver DependencyResolver, priorityResolver Priorit
 	return &deployer{dependencyResolver: dependencyResolver, priorityResolver: priorityResolver, projectJobSpecRepoFactory: projectJobSpecRepoFactory, batchScheduler: batchScheduler}
 }
 
-func (d *deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) error {
+func (d *deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) (deployError error) {
 	// Get all jobs
 	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(projectSpec)
 	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
@@ -62,11 +63,11 @@ func (d *deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, p
 			continue
 		}
 		if err := d.batchScheduler.DeployJobs(ctx, jobs[0].NamespaceSpec, jobs, progressObserver); err != nil {
-			return err
+			deployError = multierror.Append(deployError, err)
 		}
 	}
 
-	return nil
+	return deployError
 }
 
 func (d *deployer) enrichJobSpecWithJobDependencies(ctx context.Context, jobSpecs []models.JobSpec, jobDependencies []models.JobIDDependenciesPair) ([]models.JobSpec, error) {
