@@ -23,7 +23,7 @@ func initCommand() *cli.Command {
 		Example: "optimus init [--dir]",
 	}
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
-		l := initLogger(plainLoggerType, config.LogConfig{})
+		l := initDefaultLogger()
 
 		filePath := getClientConfigPath(dirPath)
 		pathOccupied, err := isPathOccupied(filePath)
