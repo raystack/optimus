@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -13,25 +12,26 @@ import (
 )
 
 const (
-	defaultHost = "localhost"
+	defaultHost               = "localhost"
+	defaultFilePermissionMode = 0o655
 )
 
-func configCommand(l log.Logger) *cli.Command {
+func configCommand() *cli.Command {
 	c := &cli.Command{
 		Use:   "config",
 		Short: "Manage optimus configuration required to deploy specifications",
 	}
-	c.AddCommand(configInitCommand(l))
+	c.AddCommand(configInitCommand())
 	return c
 }
 
-func configInitCommand(l log.Logger) *cli.Command {
+func configInitCommand() *cli.Command {
 	c := &cli.Command{
 		Use:   "init",
 		Short: "Initialize optimus configuration file",
 		RunE: func(c *cli.Command, args []string) (err error) {
-			conf := config.Optimus{
-				Version: 1,
+			conf := config.ClientConfig{
+				Version: config.Version(1),
 				Host:    defaultHost,
 			}
 			questions := []*survey.Question{
@@ -93,9 +93,12 @@ func configInitCommand(l log.Logger) *cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := ioutil.WriteFile(fmt.Sprintf("%s.%s", config.FileName, config.FileExtension), confMarshaled, 0o600); err != nil {
+			filePath := fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension)
+			if err := ioutil.WriteFile(filePath, confMarshaled, defaultFilePermissionMode); err != nil {
 				return err
 			}
+
+			l := initClientLogger(conf.Log)
 			l.Info(coloredSuccess("Configuration initialised successfully"))
 			return nil
 		},
@@ -103,7 +106,7 @@ func configInitCommand(l log.Logger) *cli.Command {
 	return c
 }
 
-func projectConfigQuestions(conf config.Optimus) (config.Optimus, error) {
+func projectConfigQuestions(conf config.ClientConfig) (config.ClientConfig, error) {
 	conf.Project.Config = map[string]string{}
 	registerMore := AnswerYes
 	for registerMore == AnswerNo {

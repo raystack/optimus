@@ -19,7 +19,8 @@ jobs
 /development.env
 /resources/resource_fs.go
 __pycache__
-.optimus.yaml
+optimus.yaml
+config.yaml
 coverage.txt
 
 /api/proto/odpf/**/*

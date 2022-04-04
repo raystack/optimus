@@ -26,18 +26,38 @@ const (
 	secretTimeout = time.Minute * 2
 )
 
-func secretCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func secretCommand() *cli.Command {
+	var configFilePath string
+	conf := &config.ClientConfig{}
+	l := initDefaultLogger()
+
 	cmd := &cli.Command{
 		Use:   "secret",
 		Short: "Manage secrets to be used in jobs",
 	}
+
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		var err error
+
+		conf, err = config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l = initClientLogger(conf.Log)
+
+		return nil
+	}
+
 	cmd.AddCommand(secretSetSubCommand(l, conf))
 	cmd.AddCommand(secretListSubCommand(l, conf))
 	cmd.AddCommand(secretDeleteSubCommand(l, conf))
 	return cmd
 }
 
-func secretSetSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func secretSetSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var (
 		projectName   string
 		namespaceName string
@@ -122,7 +142,7 @@ Use base64 flag if the value has been encoded.
 	return secretCmd
 }
 
-func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func secretListSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var projectName string
 
 	secretListCmd := &cli.Command{
@@ -142,7 +162,7 @@ func secretListSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	return secretListCmd
 }
 
-func secretDeleteSubCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func secretDeleteSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var projectName, namespaceName string
 
 	cmd := &cli.Command{
