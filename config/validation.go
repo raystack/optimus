@@ -9,18 +9,7 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
-// Validate validate the config as an input. If not valid, it returns error
-func Validate(conf Config) error { // TODO: call Validate explicitly when it needed
-	switch c := conf.(type) {
-	case *ClientConfig:
-		return validateClientConfig(c)
-	case *ServerConfig:
-		return validateServerConfig(c)
-	}
-	return errors.New("config type is not valid, use ClientConfig or ServerConfig instead")
-}
-
-func validateClientConfig(conf *ClientConfig) error {
+func ValidateClientConfig(conf *ClientConfig) error {
 	// implement this
 	return validation.ValidateStruct(conf,
 		validation.Field(&conf.Version, validation.Required),
@@ -39,7 +28,7 @@ func validateClientConfig(conf *ClientConfig) error {
 	)
 }
 
-func validateServerConfig(conf *ServerConfig) error {
+func ValidateServerConfig(conf *ServerConfig) error {
 	// implement this
 	return nil
 }

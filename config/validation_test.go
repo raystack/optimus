@@ -21,35 +21,28 @@ func TestValidation(t *testing.T) {
 	suite.Run(t, new(ValidationTestSuite))
 }
 
-func (s *ValidationTestSuite) TestValidate() {
-	s.Run("WhenValidateClientConfig", func() {
-		s.Run("WhenConfigIsValid", func() {
-			err := config.Validate(s.defaultClientConfig)
-			s.Assert().NoError(err)
-		})
-
-		s.Run("WhenNamespacesIsDuplicated", func() {
-			clientConfig := s.defaultClientConfig
-			namespaces := clientConfig.Namespaces
-			namespaces = append(namespaces, &config.Namespace{Name: "ns-dup"})
-			namespaces = append(namespaces, &config.Namespace{Name: "ns-dup"})
-			clientConfig.Namespaces = namespaces
-
-			err := config.Validate(clientConfig)
-
-			s.Assert().Error(err)
-		})
+func (s *ValidationTestSuite) TestValidateClientConfig() {
+	s.Run("WhenConfigIsValid", func() {
+		err := config.ValidateClientConfig(s.defaultClientConfig)
+		s.Assert().NoError(err)
 	})
 
-	s.Run("WhenValidateServerConfig", func() {
-		// TODO: implement this
-		s.T().Skip()
-	})
+	s.Run("WhenNamespacesIsDuplicated", func() {
+		clientConfig := s.defaultClientConfig
+		namespaces := clientConfig.Namespaces
+		namespaces = append(namespaces, &config.Namespace{Name: "ns-dup"})
+		namespaces = append(namespaces, &config.Namespace{Name: "ns-dup"})
+		clientConfig.Namespaces = namespaces
 
-	s.Run("WhenValidateTypeIsInvalid", func() {
-		err := config.Validate("invalid-type")
+		err := config.ValidateClientConfig(clientConfig)
+
 		s.Assert().Error(err)
 	})
+}
+
+func (s *ValidationTestSuite) TestValidateServerConfig() {
+	// TODO: implement this
+	s.T().Skip()
 }
 
 func (s *ValidationTestSuite) initDefaultClientConfig() {
