@@ -20,7 +20,7 @@ const (
 	refreshTimeout = time.Minute * 15
 )
 
-func jobRefreshCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func jobRefreshCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var (
 		projectName string
 		verbose     bool
