@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/models"
@@ -144,6 +145,108 @@ func TestJob(t *testing.T) {
 				assert.Equal(t, tcase.ExpectedStart, windowStart)
 				assert.Equal(t, tcase.ExpectedEnd, windowEnd)
 			}
+		})
+	})
+	t.Run("GetJobDependencyMap", func(t *testing.T) {
+		t.Run("should able to create a map of job ID and its dependencies", func(t *testing.T) {
+			jobID1 := uuid.New()
+			jobID2 := uuid.New()
+			jobID3 := uuid.New()
+			projectSpec := models.ProjectSpec{
+				Name: "sample-project",
+				Config: map[string]string{
+					"bucket": "gs://sample_directory",
+				},
+			}
+			pairs := []models.JobIDDependenciesPair{
+				{
+					JobID:            jobID1,
+					DependentProject: projectSpec,
+					DependentJobID:   jobID2,
+					Type:             models.JobSpecDependencyTypeIntra,
+				},
+				{
+					JobID:            jobID1,
+					DependentProject: projectSpec,
+					DependentJobID:   jobID3,
+					Type:             models.JobSpecDependencyTypeIntra,
+				},
+				{
+					JobID:            jobID2,
+					DependentProject: projectSpec,
+					DependentJobID:   jobID3,
+					Type:             models.JobSpecDependencyTypeIntra,
+				},
+			}
+			expectedMap := map[uuid.UUID][]models.JobIDDependenciesPair{
+				jobID1: {pairs[0], pairs[1]},
+				jobID2: {pairs[2]},
+			}
+			actual := models.JobIDDependenciesPairs(pairs).GetJobDependencyMap()
+
+			assert.Equal(t, expectedMap, actual)
+		})
+	})
+	t.Run("GetInterProjectDependencies", func(t *testing.T) {
+		t.Run("should able to get inter project dependencies", func(t *testing.T) {
+			jobID1 := uuid.New()
+			jobID2 := uuid.New()
+			jobID3 := uuid.New()
+			jobID4 := uuid.New()
+			projectSpec := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: "sample-project",
+				Config: map[string]string{
+					"bucket": "gs://sample_directory",
+				},
+			}
+			projectSpec1 := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: "sample-project-1",
+				Config: map[string]string{
+					"bucket": "gs://sample_directory_1",
+				},
+			}
+			projectSpec2 := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: "sample-project-2",
+				Config: map[string]string{
+					"bucket": "gs://sample_directory_2",
+				},
+			}
+			pairs := []models.JobIDDependenciesPair{
+				{
+					JobID:            jobID1,
+					DependentProject: projectSpec,
+					DependentJobID:   jobID2,
+					Type:             models.JobSpecDependencyTypeIntra,
+				},
+				{
+					JobID:            jobID1,
+					DependentProject: projectSpec1,
+					DependentJobID:   jobID3,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+				{
+					JobID:            jobID1,
+					DependentProject: projectSpec2,
+					DependentJobID:   jobID4,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+				{
+					JobID:            jobID2,
+					DependentProject: projectSpec2,
+					DependentJobID:   jobID4,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+			}
+			expectedMap := map[models.ProjectID][]models.JobIDDependenciesPair{
+				projectSpec1.ID: {pairs[1]},
+				projectSpec2.ID: {pairs[2], pairs[3]},
+			}
+			actual := models.JobIDDependenciesPairs(pairs).GetInterProjectDependencies()
+
+			assert.Equal(t, expectedMap, actual)
 		})
 	})
 }

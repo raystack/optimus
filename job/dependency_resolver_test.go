@@ -1226,4 +1226,58 @@ func TestDependencyResolver(t *testing.T) {
 			assert.Equal(t, errorMsg, err.Error())
 		})
 	})
+
+	t.Run("FetchHookWithDependencies", func(t *testing.T) {
+		t.Run("should able to return hooks with resolved dependency", func(t *testing.T) {
+			hookUnit1 := new(mock.BasePlugin)
+			defer hookUnit1.AssertExpectations(t)
+			hookUnit2 := new(mock.BasePlugin)
+			defer hookUnit2.AssertExpectations(t)
+
+			jobSpec := models.JobSpec{
+				Version:      1,
+				Name:         "test1",
+				Owner:        "optimus",
+				Dependencies: make(map[string]models.JobSpecDependency),
+				Hooks: []models.JobSpecHook{
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit1},
+						DependsOn: nil,
+					},
+					{
+						Config:    nil,
+						Unit:      &models.Plugin{Base: hookUnit2},
+						DependsOn: nil,
+					},
+				},
+			}
+			expectedHooks := []models.JobSpecHook{
+				{
+					Config:    nil,
+					Unit:      &models.Plugin{Base: hookUnit1},
+					DependsOn: nil,
+				},
+				{
+					Config: nil,
+					Unit:   &models.Plugin{Base: hookUnit2},
+					DependsOn: []*models.JobSpecHook{
+						{
+							Config:    nil,
+							Unit:      &models.Plugin{Base: hookUnit1},
+							DependsOn: nil,
+						},
+					},
+				},
+			}
+
+			hookUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "hook1"}, nil)
+			hookUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "hook2", DependsOn: []string{"hook1"}}, nil)
+
+			resolver := job.NewDependencyResolver(nil, nil)
+			actual := resolver.FetchHookWithDependencies(jobSpec)
+
+			assert.Equal(t, expectedHooks, actual)
+		})
+	})
 }

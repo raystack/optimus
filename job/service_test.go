@@ -1321,6 +1321,33 @@ func TestService(t *testing.T) {
 
 			assert.Nil(t, err)
 		})
+		t.Run("should failed when unable to get project spec", func(t *testing.T) {
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			projectService.On("Get", ctx, projSpec.Name).Return(models.ProjectSpec{}, errors.New(errorMsg))
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
+
+			assert.Equal(t, errorMsg, err.Error())
+		})
 		t.Run("should failed when unable to fetch job specs when refreshing whole project", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
@@ -1350,6 +1377,41 @@ func TestService(t *testing.T) {
 			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
+		})
+		t.Run("should failed when unable to get namespaceSpec when refreshing a namespace", func(t *testing.T) {
+			jobSpecRepo := new(mock.JobSpecRepository)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			namespaceJobNamePairs := []models.NamespaceJobNamePair{
+				{
+					NamespaceName: namespaceSpec.Name,
+				},
+			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
+
+			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
+
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
+				nil, nil, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
+
+			assert.Equal(t, errorMsg, err.Error())
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing a namespace", func(t *testing.T) {
 			jobSpecRepo := new(mock.JobSpecRepository)

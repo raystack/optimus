@@ -548,5 +548,75 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
 			assert.Nil(t, err)
 		})
+		t.Run("should failed when unable to do refresh jobs", func(t *testing.T) {
+			projectName := "a-data-project"
+			projectSpec := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: projectName,
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:   uuid.Must(uuid.NewRandom()),
+				Name: "dev-test-namespace-1",
+				Config: map[string]string{
+					"bucket": "gs://some_folder",
+				},
+				ProjectSpec: projectSpec,
+			}
+			namespaceJobNamePairs := []models.NamespaceJobNamePair{
+				{
+					NamespaceName: namespaceSpec.Name,
+				},
+			}
+
+			jobSpecRepository := new(mock.JobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
+
+			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
+			defer jobSpecRepoFactory.AssertExpectations(t)
+
+			pluginRepo := new(mock.SupportedPluginRepo)
+			adapter := v1.NewAdapter(pluginRepo, nil)
+
+			nsService := new(mock.NamespaceService)
+			defer nsService.AssertExpectations(t)
+
+			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepository.AssertExpectations(t)
+
+			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFactory.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			grpcRespStream := new(mock.RefreshJobsServer)
+			defer grpcRespStream.AssertExpectations(t)
+
+			errorMsg := "internal error"
+			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceJobNamePairs, mock2.Anything).Return(errors.New(errorMsg))
+			grpcRespStream.On("Context").Return(context.Background())
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				adapter,
+				projectService,
+				nsService,
+				nil,
+			)
+			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceJobs: []*pb.NamespaceJobs{
+				{
+					NamespaceName: namespaceSpec.Name,
+				},
+			}}
+			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
+			assert.Contains(t, err.Error(), errorMsg)
+		})
 	})
 }

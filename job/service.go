@@ -751,7 +751,7 @@ func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.Projec
 		for _, pair := range namespaceJobNamePairs {
 			namespaceSpec, err := srv.namespaceService.Get(ctx, projectSpec.Name, pair.NamespaceName)
 			if err != nil {
-				return nil, fmt.Errorf("unable to get namespace")
+				return nil, err
 			}
 
 			if len(pair.JobNames) == 0 {
