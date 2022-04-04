@@ -28,7 +28,7 @@ type compiler struct {
 	assetsCompiler *JobRunAssetsCompiler
 }
 
-func (c compiler) Compile(_ context.Context, namespace models.NamespaceSpec, projSecrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
+func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, projSecrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
 	*models.JobRunInput, error) {
 	secrets := projSecrets.ToMap()
 	instanceConfig := getInstanceEnv(instanceSpec)
