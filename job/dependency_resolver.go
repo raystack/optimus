@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -55,31 +53,12 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	return jobSpec, nil
 }
 
-// ResolveAndPersist resolve inter/intra dependencies inferred by optimus and persist
-func (r *dependencyResolver) ResolveAndPersist(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec,
-	observer progress.Observer) error {
+// Persist resolve inter/intra dependencies inferred by optimus and persist
+func (r *dependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 
-	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
-
-	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
-	if err != nil {
-		return err
-	}
-
-	// resolve statically defined dependencies
-	jobSpec, err = r.resolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
-	if err != nil {
-		return err
-	}
-
-	return r.persistDependencies(ctx, projectSpec, jobSpec)
-}
-
-func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
 	// delete from dependency table
 	if err := r.dependencyRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
 		return err
@@ -87,7 +66,7 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 
 	for _, dependency := range jobSpec.Dependencies {
 		// insert the new ones
-		err := r.dependencyRepo.Save(ctx, projectSpec.ID, jobSpec.ID, dependency)
+		err := r.dependencyRepo.Save(ctx, jobSpec.GetProjectSpec().ID, jobSpec.ID, dependency)
 		if err != nil {
 			return err
 		}
@@ -95,89 +74,8 @@ func (r *dependencyResolver) persistDependencies(ctx context.Context, projectSpe
 	return nil
 }
 
-func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
-	observer progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
-	jobDependencies, err := r.dependencyRepo.GetAll(ctx, projectSpec.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	jobSpecMap, err := r.prepareJobSpecMap(ctx, projectSpec, jobDependencies)
-	if err != nil {
-		return nil, err
-	}
-
-	jobDependenciesMap := make(map[uuid.UUID][]models.JobSpecDependency)
-	for _, dep := range jobDependencies {
-		dependentJob := jobSpecMap[dep.DependentJobID]
-		dependentProject := dep.DependentProject
-		jobDependenciesMap[dep.JobID] = append(jobDependenciesMap[dep.JobID], models.JobSpecDependency{
-			Project: &dependentProject,
-			Job:     &dependentJob,
-			Type:    dep.Type,
-		})
-	}
-	r.notifyProgress(observer, &models.ProgressJobSpecDependencyFetch{})
-	return jobDependenciesMap, nil
-}
-
-func (r *dependencyResolver) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec,
-	jobDependencies []models.JobIDDependenciesPair) (map[uuid.UUID]models.JobSpec, error) {
-	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
-	intraProjectJobSpecs, err := projectJobSpecRepo.GetAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	interProjectJobSpecs, err := r.prepareExternalJobSpecMap(ctx, jobDependencies)
-	if err != nil {
-		return nil, err
-	}
-
-	jobSpecMap := make(map[uuid.UUID]models.JobSpec)
-	for _, jobSpec := range intraProjectJobSpecs {
-		jobSpecMap[jobSpec.ID] = jobSpec
-	}
-	for _, jobSpec := range interProjectJobSpecs {
-		jobSpecMap[jobSpec.ID] = jobSpec
-	}
-
-	return jobSpecMap, nil
-}
-
-func getInterProjectDependencies(jobDependencies []models.JobIDDependenciesPair) map[models.ProjectID][]models.JobIDDependenciesPair {
-	interDependenciesMap := make(map[models.ProjectID][]models.JobIDDependenciesPair)
-	for _, dep := range jobDependencies {
-		if dep.Type == models.JobSpecDependencyTypeInter {
-			interDependenciesMap[dep.DependentProject.ID] = append(interDependenciesMap[dep.DependentProject.ID], dep)
-		}
-	}
-	return interDependenciesMap
-}
-
-func (r *dependencyResolver) prepareExternalJobSpecMap(ctx context.Context,
-	jobDependencies []models.JobIDDependenciesPair) (map[uuid.UUID]models.JobSpec, error) {
-	externalJobMap := make(map[uuid.UUID]models.JobSpec)
-
-	interProjectDependencies := getInterProjectDependencies(jobDependencies)
-	for _, dependencies := range interProjectDependencies {
-		projectJobSpecRepo := r.projectJobSpecRepoFactory.New(dependencies[0].DependentProject)
-
-		var dependencyJobIDs []uuid.UUID
-		for _, dependency := range dependencies {
-			dependencyJobIDs = append(dependencyJobIDs, dependency.DependentJobID)
-		}
-
-		externalJobSpecs, err := projectJobSpecRepo.GetByIDs(ctx, dependencyJobIDs)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, externalJob := range externalJobSpecs {
-			externalJobMap[externalJob.ID] = externalJob
-		}
-	}
-	return externalJobMap, nil
+func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
+	return r.dependencyRepo.GetAll(ctx, projectID)
 }
 
 func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,

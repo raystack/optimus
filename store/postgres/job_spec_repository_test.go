@@ -70,6 +70,16 @@ func TestIntegrationJobRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tHook).Return(&models.Plugin{Base: hookUnit2}, nil)
 	adapter := postgres.NewAdapter(pluginRepo)
 
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.New(),
+		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
+	}
+	namespaceSpec2 := models.NamespaceSpec{
+		ID:          uuid.New(),
+		Name:        "dev-team-2",
+		ProjectSpec: projectSpec,
+	}
 	testConfigs := []models.JobSpec{
 		{
 			ID:   uuid.New(),
@@ -129,9 +139,11 @@ func TestIntegrationJobRepository(t *testing.T) {
 					},
 				},
 			},
+			NamespaceSpec: namespaceSpec,
 		},
 		{
-			Name: "",
+			Name:          "",
+			NamespaceSpec: namespaceSpec,
 		},
 		{
 			ID:   uuid.New(),
@@ -144,22 +156,12 @@ func TestIntegrationJobRepository(t *testing.T) {
 					},
 				},
 			},
+			NamespaceSpec: namespaceSpec,
 		},
 	}
 
-	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.New(),
-		Name:        "dev-team-1",
-		ProjectSpec: projectSpec,
-	}
-
-	namespaceSpec2 := models.NamespaceSpec{
-		ID:          uuid.New(),
-		Name:        "dev-team-2",
-		ProjectSpec: projectSpec,
-	}
-
 	t.Run("Insert", func(t *testing.T) {
+		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
 			db := DBSetup()
 
@@ -175,9 +177,13 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
+			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+			err := namespaceRepo.Insert(ctx, namespaceSpec)
+			assert.Nil(t, err)
+
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err := repo.Insert(ctx, testModels[0])
+			err = repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
 			err = repo.Insert(ctx, testModels[1])

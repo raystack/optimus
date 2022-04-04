@@ -75,6 +75,12 @@ type (
 	// ProgressJobRemoteDelete signifies that a
 	// compiled job from a remote repository is being deleted
 	ProgressJobRemoteDelete struct{ Name string }
+
+	// ProgressJobSpecJobDependencyEnrich represents job specs have been enriched with the job dependencies
+	ProgressJobSpecJobDependencyEnrich struct{}
+
+	// ProgressJobSpecHookDependencyEnrich represents job specs have been enriched with the hook dependencies
+	ProgressJobSpecHookDependencyEnrich struct{}
 )
 
 func (e *ProgressJobSpecFetch) String() string {
@@ -106,7 +112,10 @@ func (e *ProgressJobSpecUnknownDependencyUsed) Type() string {
 }
 
 func (e *ProgressJobDependencyResolution) String() string {
-	return fmt.Sprintf("failed to resolve job dependencies of '%s', job will be deployed using the last working state", e.Job)
+	if e.Err != nil {
+		return fmt.Sprintf("failed to resolve job dependencies of '%s': %s", e.Job, e.Err)
+	}
+	return fmt.Sprintf("resolved job dependencies of '%s'", e.Job)
 }
 
 func (e *ProgressJobDependencyResolution) Type() string {
@@ -142,4 +151,12 @@ func (e *ProgressJobUpload) Type() string {
 
 func (e *ProgressJobRemoteDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
+}
+
+func (e *ProgressJobSpecJobDependencyEnrich) String() string {
+	return "jobs enriched with job dependencies"
+}
+
+func (e *ProgressJobSpecHookDependencyEnrich) String() string {
+	return "jobs enriched with hook dependencies"
 }

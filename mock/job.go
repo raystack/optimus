@@ -212,8 +212,8 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Refresh(ctx context.Context, projectSpec models.ProjectSpec, namespaceJobNamePairs []models.NamespaceJobNamePair, progressObserver progress.Observer) (err error) {
-	args := srv.Called(ctx, projectSpec, namespaceJobNamePairs, progressObserver)
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceJobNamePairs []models.NamespaceJobNamePair, progressObserver progress.Observer) (err error) {
+	args := srv.Called(ctx, projectName, namespaceJobNamePairs, progressObserver)
 	return args.Error(0)
 }
 
@@ -227,16 +227,14 @@ func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.P
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (srv *DependencyResolver) ResolveAndPersist(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpec models.JobSpec, obs progress.Observer) error {
-	args := srv.Called(ctx, projectSpec, jobSpec, obs)
+func (srv *DependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec) error {
+	args := srv.Called(ctx, jobSpec)
 	return args.Error(0)
 }
 
-func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
-	obs progress.Observer) (map[uuid.UUID][]models.JobSpecDependency, error) {
-	args := srv.Called(ctx, projectSpec, obs)
-	return args.Get(0).(map[uuid.UUID][]models.JobSpecDependency), args.Error(1)
+func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
+	args := srv.Called(ctx, projectID)
+	return args.Get(0).([]models.JobIDDependenciesPair), args.Error(1)
 }
 
 func (srv *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {
@@ -290,5 +288,14 @@ func (repo *JobDependencyRepository) GetAll(ctx context.Context, projectID model
 
 func (repo *JobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
 	args := repo.Called(ctx, jobID)
+	return args.Error(0)
+}
+
+type Deployer struct {
+	mock.Mock
+}
+
+func (d *Deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) error {
+	args := d.Called(ctx, projectSpec, progressObserver)
 	return args.Error(0)
 }

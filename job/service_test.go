@@ -54,7 +54,7 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
@@ -86,7 +86,7 @@ func TestService(t *testing.T) {
 			repoFac.On("New", namespaceSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil)
 			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})
@@ -120,7 +120,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
+			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil)
 			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
@@ -153,7 +153,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil)
+			service := job.NewService(nil, batchScheduler, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil)
 			err := service.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
 			assert.Nil(t, err)
 		})
@@ -183,7 +183,7 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
+			jobSpecsAfterDependencyResolved := []models.JobSpec{
 				{
 					Version: 1,
 					Name:    "test",
@@ -234,13 +234,13 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
-			defer depenResolver.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
+			defer dependencyResolver.AssertExpectations(t)
 
 			// resolve priority
 			priorityResolver := new(mock.PriorityResolver)
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterDependencyResolved, nil).Return(jobSpecsAfterPriorityResolve, nil)
 			defer priorityResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -248,7 +248,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, dependencyResolver, priorityResolver, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -336,7 +336,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -389,7 +389,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
 		})
@@ -437,7 +437,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
 		})
@@ -527,7 +527,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[1].Name}, nil).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -578,7 +578,7 @@ func TestService(t *testing.T) {
 				errors.New("error test-2"))
 			defer depenResolver.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), "error test")
@@ -663,7 +663,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true}).Return(jobs, nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, priorityResolver, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Sync(ctx, namespaceSpec, nil)
 			assert.Nil(t, err)
 		})
@@ -737,7 +737,7 @@ func TestService(t *testing.T) {
 			// delete unwanted
 			jobSpecRepo.On("Delete", ctx, jobSpecsBase[0].Name).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.KeepOnly(ctx, namespaceSpec, toKeep, nil)
 			assert.Nil(t, err)
 		})
@@ -796,7 +796,7 @@ func TestService(t *testing.T) {
 				Dependencies: []string{"bq://project.dataset.table"},
 			}, nil)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil)
 			dest, depen, err := svc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 			assert.Equal(t, models.JobSpecTaskDestination{
@@ -879,7 +879,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[0].Name}, nil).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 		})
@@ -960,7 +960,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.NotNil(t, err)
 			assert.Equal(t, "cannot delete job test since it's dependency of job downstream-test", err.Error())
@@ -988,12 +988,12 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpec1, jobSpecsResult)
 		})
-		t.Run("should return error when unable to fetch jobspec using destination", func(t *testing.T) {
+		t.Run("should return error when unable to fetch job spec using destination", func(t *testing.T) {
 			projSpec := models.ProjectSpec{
 				Name: "proj",
 			}
@@ -1008,7 +1008,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Equal(t, models.JobSpec{}, jobSpecsResult)
@@ -1042,7 +1042,7 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(jobSpec1, nil)
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, []models.JobSpec{jobSpec2}, jobSpecsResult)
@@ -1067,7 +1067,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, jobSpecsResult)
@@ -1101,11 +1101,11 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)
-			assert := assert.New(t)
-			assert.Contains(err.Error(), errorMsg)
-			assert.Nil(jobSpecsResult)
+
+			assert.Contains(t, err.Error(), errorMsg)
+			assert.Nil(t, jobSpecsResult)
 		})
 	})
 
@@ -1127,17 +1127,17 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1151,7 +1151,7 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
+			jobSpecsAfterDependencyResolved := []models.JobSpec{
 				{
 					Version: 1,
 					Name:    "test",
@@ -1163,72 +1163,41 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
+			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
+			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
 
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-
-			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
-
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
-			}, nil)
-
-			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
-
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
 
 			assert.Nil(t, err)
 		})
 		t.Run("should successfully refresh job specs for a namespace", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobSpecRepo := new(mock.JobSpecRepository)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
 			defer jobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1242,7 +1211,7 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
+			jobSpecsAfterDependencyResolved := []models.JobSpec{
 				{
 					Version: 1,
 					Name:    "test",
@@ -1254,68 +1223,39 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
 			namespaceJobNamePairs := []models.NamespaceJobNamePair{
 				{
-					Namespace: namespaceSpec,
+					NamespaceName: namespaceSpec.Name,
 				},
 			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
+
+			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
+			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
+			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
 
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsBase[0]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
-
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
-			}, nil)
-
-			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
-
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, namespaceJobNamePairs, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
+				nil, nil, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
 
 			assert.Nil(t, err)
 		})
 		t.Run("should successfully refresh job specs for the selected jobs", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobSpecRepo := new(mock.JobSpecRepository)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
 			defer jobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
@@ -1325,6 +1265,12 @@ func TestService(t *testing.T) {
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1338,7 +1284,7 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
+			jobSpecsAfterDependencyResolved := []models.JobSpec{
 				{
 					Version: 1,
 					Name:    "test",
@@ -1350,52 +1296,28 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
 			namespaceJobNamePairs := []models.NamespaceJobNamePair{
 				{
-					Namespace: namespaceSpec,
-					JobNames:  []string{jobSpecsBase[0].Name},
+					NamespaceName: namespaceSpec.Name,
+					JobNames:      []string{jobSpecsBase[0].Name},
 				},
 			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			jobSpecRepo.On("GetByName", ctx, jobSpecsBase[0].Name).Return(jobSpecsBase[0], nil)
 
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
+			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
-
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
-			}, nil)
-
-			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
-
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, namespaceJobNamePairs, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, dependencyResolver,
+				priorityResolver, nil, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1406,91 +1328,85 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing a namespace", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobSpecRepo := new(mock.JobSpecRepository)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
 			defer jobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
 
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
 			namespaceJobNamePairs := []models.NamespaceJobNamePair{
 				{
-					Namespace: namespaceSpec,
+					NamespaceName: namespaceSpec.Name,
 				},
 			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
+
+			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			jobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, namespaceJobNamePairs, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
+				nil, nil, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing selected jobs", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobSpecRepo := new(mock.JobSpecRepository)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
 			defer jobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1506,17 +1422,21 @@ func TestService(t *testing.T) {
 			}
 			namespaceJobNamePairs := []models.NamespaceJobNamePair{
 				{
-					Namespace: namespaceSpec,
-					JobNames:  []string{jobSpecsBase[0].Name},
+					NamespaceName: namespaceSpec.Name,
+					JobNames:      []string{jobSpecsBase[0].Name},
 				},
 			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
+
+			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			jobSpecRepo.On("GetByName", ctx, jobSpecsBase[0].Name).Return(models.JobSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, namespaceJobNamePairs, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
+				nil, nil, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
 		})
@@ -1527,17 +1447,17 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1561,7 +1481,7 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
+			jobSpecsAfterDependencyResolved := []models.JobSpec{
 				{
 					Version: 1,
 					Name:    "test",
@@ -1583,82 +1503,43 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-				{
-					Version: 1,
-					Name:    "test-2",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
+			dependencyResolver.On("Persist", ctx, jobSpecsAfterDependencyResolved[0]).Return(nil)
 
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[1], nil).Return(errors.New(errorMsg))
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[1]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
-
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {
-					jobSpecsBase[0].Name,
-					jobSpecsBase[1].Name,
-				},
-			}, nil)
-
-			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(nil)
-
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
 
 			assert.Nil(t, err)
 		})
-		t.Run("should failed when unable to get job specs when preparing refreshed dependencies", func(t *testing.T) {
+		t.Run("should not failed refresh when one of persisting dependency process failed", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1671,42 +1552,18 @@ func TestService(t *testing.T) {
 					},
 					Task: models.JobSpecTask{},
 				},
+				{
+					Version: 1,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
 			}
-
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil).Once()
-
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-
-			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
-
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
-
-			assert.Equal(t, errorMsg, err.Error())
-		})
-		t.Run("should failed when unable to fetch dependencies", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			defer namespaceService.AssertExpectations(t)
-
-			jobSpecsBase := []models.JobSpec{
+			jobSpecsAfterDependencyResolved := []models.JobSpec{
 				{
 					Version: 1,
 					Name:    "test",
@@ -1717,246 +1574,36 @@ func TestService(t *testing.T) {
 					},
 					Task: models.JobSpecTask{},
 				},
+				{
+					Version: 1,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
 			}
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
+			dependencyResolver.On("Persist", ctx, jobSpecsAfterDependencyResolved[0]).Return(nil)
 
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(jobSpecsAfterDependencyResolved[1], nil)
+			dependencyResolver.On("Persist", ctx, jobSpecsAfterDependencyResolved[1]).Return(errors.New(errorMsg))
 
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, errors.New(errorMsg))
+			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
 
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
 
-			assert.Equal(t, fmt.Sprintf("failed to fetch job dependencies: %s", errorMsg), err.Error())
-		})
-		t.Run("should failed when unable to resolve priority", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			defer namespaceService.AssertExpectations(t)
-
-			jobSpecsBase := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
-
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return([]models.JobSpec{}, errors.New(errorMsg))
-
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
-
-			assert.Equal(t, errorMsg, err.Error())
-		})
-		t.Run("should failed when unable to get namespace spec for deployment", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			defer namespaceService.AssertExpectations(t)
-
-			jobSpecsBase := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
-
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
-
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
-
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{}, errors.New(errorMsg))
-
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
-
-			assert.Equal(t, fmt.Sprintf("failed to retrieve namespace to job mapping: %s", errorMsg), err.Error())
-		})
-		t.Run("should failed when unable to deploy jobs", func(t *testing.T) {
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			depenResolver := new(mock.DependencyResolver)
-			defer depenResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			defer namespaceService.AssertExpectations(t)
-
-			jobSpecsBase := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterDepenResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-			jobSpecsAfterPriorityResolve := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{
-						Priority: 10000,
-					},
-				},
-			}
-
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-
-			depenResolver.On("ResolveAndPersist", ctx, projSpec, jobSpecsBase[0], nil).Return(nil)
-
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-
-			depenResolver.On("FetchJobDependencies", ctx, projSpec, nil).Return(map[uuid.UUID][]models.JobSpecDependency{}, nil)
-			depenResolver.On("FetchHookWithDependencies", jobSpecsAfterDepenResolve[0]).Return([]models.JobSpecHook{})
-
-			priorityResolver.On("Resolve", ctx, jobSpecsAfterDepenResolve, nil).Return(jobSpecsAfterPriorityResolve, nil)
-
-			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
-				namespaceSpec.Name: {jobSpecsBase[0].Name},
-			}, nil)
-
-			batchScheduler.On("DeployJobs", ctx, namespaceSpec, jobSpecsAfterPriorityResolve, nil).Return(errors.New(errorMsg))
-
-			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, depenResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService)
-			err := svc.Refresh(ctx, projSpec, []models.NamespaceJobNamePair{}, nil)
-
-			assert.Equal(t, errorMsg, err.Error())
+			assert.Nil(t, err)
 		})
 	})
 }

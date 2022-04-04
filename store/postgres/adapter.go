@@ -225,6 +225,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		}
 	}
 
+	namespaceSpec, err := conf.Namespace.ToSpec(conf.Project.ToSpec())
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
+	}
+
 	job := models.JobSpec{
 		ID:          conf.ID,
 		Version:     conf.Version,
@@ -261,6 +266,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Hooks:                jobHooks,
 		Metadata:             metadata,
 		ExternalDependencies: externalDependencies,
+		NamespaceSpec:        namespaceSpec,
 	}
 	return job, nil
 }

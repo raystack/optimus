@@ -297,17 +297,9 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 		mu:     new(sync.Mutex),
 	})
 
-	namespaceJobNamePairs, err := sv.prepareNamespaceJobNamePair(respStream.Context(), req)
-	if err != nil {
-		return err
-	}
+	namespaceJobNamePairs := sv.prepareNamespaceJobNamePairs(req.NamespaceJobs)
 
-	projectSpec, err := sv.projectService.Get(respStream.Context(), req.ProjectName)
-	if err != nil {
-		return mapToGRPCErr(sv.l, err, "unable to get project")
-	}
-
-	if err = sv.jobSvc.Refresh(respStream.Context(), projectSpec, namespaceJobNamePairs, observers); err != nil {
+	if err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, namespaceJobNamePairs, observers); err != nil {
 		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
 	}
 
@@ -315,20 +307,15 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 	return nil
 }
 
-func (sv *JobSpecServiceServer) prepareNamespaceJobNamePair(ctx context.Context, req *pb.RefreshJobsRequest) ([]models.NamespaceJobNamePair, error) {
+func (sv *JobSpecServiceServer) prepareNamespaceJobNamePairs(req []*pb.NamespaceJobs) []models.NamespaceJobNamePair {
 	var namespaceJobNamePairs []models.NamespaceJobNamePair
-	for _, namespaceJobs := range req.NamespaceJobs {
-		namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), namespaceJobs.NamespaceName)
-		if err != nil {
-			return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
-		}
-
+	for _, pair := range req {
 		namespaceJobNamePairs = append(namespaceJobNamePairs, models.NamespaceJobNamePair{
-			Namespace: namespaceSpec,
-			JobNames:  namespaceJobs.JobNames,
+			NamespaceName: pair.NamespaceName,
+			JobNames:      pair.JobNames,
 		})
 	}
-	return namespaceJobNamePairs, nil
+	return namespaceJobNamePairs
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,

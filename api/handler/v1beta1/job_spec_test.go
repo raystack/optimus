@@ -498,7 +498,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			namespaceJobNamePairs := []models.NamespaceJobNamePair{
 				{
-					Namespace: namespaceSpec,
+					NamespaceName: namespaceSpec.Name,
 				},
 			}
 
@@ -529,9 +529,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			grpcRespStream := new(mock.RefreshJobsServer)
 			defer grpcRespStream.AssertExpectations(t)
 
-			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
-			jobService.On("Refresh", mock2.Anything, projectSpec, namespaceJobNamePairs, mock2.Anything).Return(nil)
+			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceJobNamePairs, mock2.Anything).Return(nil)
 			grpcRespStream.On("Context").Return(context.Background())
 
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(

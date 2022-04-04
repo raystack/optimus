@@ -232,6 +232,8 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
+	deployer := job.NewDeployer(dependencyResolver, priorityResolver, projectJobSpecRepoFac, scheduler)
+
 	engine := jobRunCompiler.NewGoEngine()
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
@@ -245,6 +247,8 @@ func (s *OptimusServer) setupHandlers() error {
 		projectJobSpecRepoFac,
 		replayManager,
 		namespaceService,
+		projectService,
+		deployer,
 	)
 
 	jobrunRepoFac := &jobRunRepoFactory{

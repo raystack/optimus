@@ -31,11 +31,11 @@ const (
 	HoursInMonth = time.Duration(30) * 24 * time.Hour
 	HoursInDay   = 24 * time.Hour
 
-	// within a project
+	// JobSpecDependencyTypeIntra represents dependency within a project
 	JobSpecDependencyTypeIntra JobSpecDependencyType = "intra"
-	// within optimus but cross project
+	// JobSpecDependencyTypeInter represents dependency within optimus but cross project
 	JobSpecDependencyTypeInter JobSpecDependencyType = "inter"
-	// outside optimus
+	// JobSpecDependencyTypeExtra represents dependency outside optimus
 	JobSpecDependencyTypeExtra JobSpecDependencyType = "extra"
 
 	JobEventTypeSLAMiss JobEventType = "sla_miss"
@@ -59,6 +59,7 @@ type JobSpec struct {
 	Hooks                []JobSpecHook
 	Metadata             JobSpecMetadata
 	ExternalDependencies ExternalDependency // external dependencies for http
+	NamespaceSpec        NamespaceSpec
 }
 
 func (js JobSpec) GetName() string {
@@ -80,6 +81,20 @@ func (js JobSpec) GetLabelsAsString() string {
 		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(k), strings.TrimSpace(v))
 	}
 	return strings.TrimRight(labels, ",")
+}
+
+func (js JobSpec) GetProjectSpec() ProjectSpec {
+	return js.NamespaceSpec.ProjectSpec
+}
+
+type JobSpecs []JobSpec
+
+func (js JobSpecs) GroupJobsPerNamespace() map[uuid.UUID][]JobSpec {
+	jobsGroup := make(map[uuid.UUID][]JobSpec)
+	for _, jobSpec := range js {
+		jobsGroup[jobSpec.NamespaceSpec.ID] = append(jobsGroup[jobSpec.NamespaceSpec.ID], jobSpec)
+	}
+	return jobsGroup
 }
 
 type JobSpecSchedule struct {
@@ -349,7 +364,7 @@ type JobService interface {
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
-	Refresh(context.Context, ProjectSpec, []NamespaceJobNamePair, progress.Observer) error
+	Refresh(ctx context.Context, projectName string, namespaceJobPairs []NamespaceJobNamePair, observer progress.Observer) error
 }
 
 // JobCompiler takes template file of a scheduler and after applying
@@ -419,4 +434,24 @@ type JobIDDependenciesPair struct {
 	DependentProject ProjectSpec
 	DependentJobID   uuid.UUID
 	Type             JobSpecDependencyType
+}
+
+type JobIDDependenciesPairs []JobIDDependenciesPair
+
+func (j JobIDDependenciesPairs) GetJobDependencyMap() map[uuid.UUID][]JobIDDependenciesPair {
+	jobDependencyMap := make(map[uuid.UUID][]JobIDDependenciesPair)
+	for _, pair := range j {
+		jobDependencyMap[pair.JobID] = append(jobDependencyMap[pair.JobID], pair)
+	}
+	return jobDependencyMap
+}
+
+func (j JobIDDependenciesPairs) GetInterProjectDependencies() map[ProjectID][]JobIDDependenciesPair {
+	interDependenciesMap := make(map[ProjectID][]JobIDDependenciesPair)
+	for _, dep := range j {
+		if dep.Type == JobSpecDependencyTypeInter {
+			interDependenciesMap[dep.DependentProject.ID] = append(interDependenciesMap[dep.DependentProject.ID], dep)
+		}
+	}
+	return interDependenciesMap
 }
