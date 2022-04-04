@@ -3,18 +3,47 @@ id: configuration
 title: Configurations
 ---
 
-# Project Configuration (Client)
-See client configuration example on `optimus.sample.yaml`
+## Client Configuration
 
-Optimus project configuration (later on client configuration) can be loaded from file (use `--config` flag), or `optimus.yaml` file in current working directory where the optimus command is executed.
+### Initialization
+
+Client configuration can be initialized using Optimus.
+To do so, use Optimus `init` command.
+An interactive questionaire will be presented, such as below:
+
+```zsh
+$ optimus init
+
+? What is the Optimus service host? [? for help] localhost:9100
+? What is the Optimus project name? local-project
+? What is the namespace name? namespace1
+? What is the type of data store for this namespace? bigquery
+? Do you want to add another namespace? No
+Client config is initialized successfully
+If you want to modify, go to [optimus.yaml]
+```
+
+After running the `init` command, Optimus client config will be configured.
+Along with it is the directories for the chosen namespaces.
+For example, since the above example only specifies _namespace1_, then directory _namespace1_ will be created along with `optimus.yaml` client config.
+
+The user can optionally update the `optimus.yaml` file if necessary.
+For clearer example, see client configuration example on `optimus.sample.yaml`
+
+### Usage
+
+Optimus client configuration can be loaded from file (use `--config` flag), or `optimus.yaml` file in current working directory where the Optimus command is executed.
 
 ---
 **1. Using --config flag**
+
 ```sh
 $ optimus deploy --config /path/to/config/file.yaml
 ```
+
 ---
 **2. Using default optimus.yaml file**
+
 ```sh
 $ tree
 . # current project structure
@@ -30,10 +59,10 @@ $ optimus deploy
 
 ---
 
-If both are exist, then use the file config defined in `--config` flag.
+If both `--config` flag and `optimus.yaml` do exist, then the one will be used is the file defined in `--config` flag.
 
-This configuration file should not be checked in version control. 
-# Server Configuration
+## Server Configuration
+
 See server configuration example on `config.sample.yaml`
 
 Optimus server configuration can be loaded from file (use `--config` flag), environment variable `OPTIMUS_<CONFIGNAME>`, or `config.yaml` file in executable directory.
