@@ -175,7 +175,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				ScheduledAt:  scheduledAtTimestamp,
 				InstanceName: instanceSpec.Name,
 			}
-			resp, err := JobRunServiceServer.RegisterInstance(context.Background(), &registerInstanceRequest)
+			resp, err := JobRunServiceServer.RegisterInstance(ctx, &registerInstanceRequest)
 			assert.Nil(t, err)
 
 			adapter := v1.NewAdapter(nil, nil)
@@ -246,7 +246,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
 				InstanceName: instanceSpec.Name,
 			}
-			resp, err := JobRunServiceServer.RegisterInstance(context.Background(), &versionRequest)
+			resp, err := JobRunServiceServer.RegisterInstance(ctx, &versionRequest)
 			assert.Nil(t, err)
 
 			adapter := v1.NewAdapter(nil, nil)

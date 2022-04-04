@@ -18,7 +18,6 @@ linters:
     - exhaustivestruct
     - forcetypeassert
     - exhaustive
-    - contextcheck
     - wsl
     - scopelint
     - promlinter
