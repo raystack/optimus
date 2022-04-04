@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -81,24 +78,15 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	}
 	jobScheduledTimeProto := timestamppb.New(jobScheduledTime)
 
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+	ctx, conn, closeConn, err := initClientConnection(l, host, adminBuildInstanceTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), adminBuildInstanceTimeout)
-	defer cancel()
+	defer closeConn()
 
 	// fetch Instance by calling the optimus API
 	jobRun := pb.NewJobRunServiceClient(conn)
-	jobResponse, err := jobRun.RegisterInstance(timeoutCtx, &pb.RegisterInstanceRequest{
+	jobResponse, err := jobRun.RegisterInstance(ctx, &pb.RegisterInstanceRequest{
 		ProjectName:  projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,

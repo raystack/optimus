@@ -9,7 +9,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -62,26 +61,18 @@ func jobRunCommand(conf *config.ClientConfig) *cli.Command {
 }
 
 func runJobSpecificationRequest(l log.Logger, projectName, namespace, host string, jobSpec models.JobSpec, pluginRepo models.PluginRepository) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info(coloredError("can't reach optimus service"))
-		}
+	ctx, conn, closeConn, err := initClientConnection(l, host, runJobTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	runTimeoutCtx, runCancel := context.WithTimeout(context.Background(), runJobTimeout)
-	defer runCancel()
+	defer closeConn()
 
 	adapt := v1handler.NewAdapter(pluginRepo, nil)
 	adaptedSpec := adapt.ToJobProto(jobSpec)
 
 	l.Info("please wait...")
 	jobRun := pb.NewJobRunServiceClient(conn)
-	jobResponse, err := jobRun.RunJob(runTimeoutCtx, &pb.RunJobRequest{
+	jobResponse, err := jobRun.RunJob(ctx, &pb.RunJobRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespace,
 		Specifications: []*pb.JobSpecification{

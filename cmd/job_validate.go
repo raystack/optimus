@@ -10,7 +10,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -73,20 +72,11 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string, verbose bool) (err error) {
 	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+	ctx, conn, closeConn, err := initClientConnection(l, host, validateTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	dumpTimeoutCtx, dumpCancel := context.WithTimeout(context.Background(), validateTimeout)
-	defer dumpCancel()
+	defer closeConn()
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
@@ -95,7 +85,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 	}
 
 	job := pb.NewJobSpecificationServiceClient(conn)
-	respStream, err := job.CheckJobSpecifications(dumpTimeoutCtx, &pb.CheckJobSpecificationsRequest{
+	respStream, err := job.CheckJobSpecifications(ctx, &pb.CheckJobSpecificationsRequest{
 		ProjectName:   projectName,
 		Jobs:          adaptedJobSpecs,
 		NamespaceName: namespace,

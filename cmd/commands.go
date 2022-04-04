@@ -14,6 +14,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/mattn/go-isatty"
 	"github.com/odpf/salt/cmdx"
+	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
@@ -133,6 +134,63 @@ func New() *cli.Command {
 	return cmd
 }
 
+type BearerAuthentication struct {
+	Token string
+}
+
+func (a *BearerAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", a.Token),
+	}, nil
+}
+
+func (a *BearerAuthentication) RequireTransportSecurity() bool {
+	return false
+}
+
+type BasicAuthentication struct {
+	Token string
+}
+
+func (a *BasicAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{
+		"Authorization": fmt.Sprintf("Basic %s", a.Token),
+	}, nil
+}
+
+func (a *BasicAuthentication) RequireTransportSecurity() bool {
+	return false
+}
+
+func initClientConnection(l log.Logger, serverHost string, requestTimeout time.Duration) (
+	requestCtx context.Context,
+	connection *grpc.ClientConn,
+	closeConnection func(),
+	err error,
+) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+
+	connection, err = createConnection(dialTimeoutCtx, serverHost)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(ErrServerNotReachable(serverHost).Error())
+		}
+		dialCancel()
+		return
+	}
+	reqCtx, reqCancel := context.WithTimeout(context.Background(), requestTimeout)
+
+	requestCtx = reqCtx
+	closeConnection = func() {
+		l.Info("Closing client connection")
+
+		connection.Close()
+		reqCancel()
+		dialCancel()
+	}
+	return
+}
+
 func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
@@ -169,34 +227,6 @@ func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error
 		}))
 	}
 	return grpc.DialContext(ctx, host, opts...)
-}
-
-type BearerAuthentication struct {
-	Token string
-}
-
-func (a *BearerAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	return map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", a.Token),
-	}, nil
-}
-
-func (a *BearerAuthentication) RequireTransportSecurity() bool {
-	return false
-}
-
-type BasicAuthentication struct {
-	Token string
-}
-
-func (a *BasicAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	return map[string]string{
-		"Authorization": fmt.Sprintf("Basic %s", a.Token),
-	}, nil
-}
-
-func (a *BasicAuthentication) RequireTransportSecurity() bool {
-	return false
 }
 
 func isTerminal(f *os.File) bool {

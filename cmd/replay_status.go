@@ -33,31 +33,21 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	}
 	reCmd.Flags().StringP("project-name", "p", defaultProjectName, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
-		projectName := conf.Project.Name
 		l := initClientLogger(conf.Log)
-		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-		defer dialCancel()
-
-		conn, err := createConnection(dialTimeoutCtx, conf.Host)
+		ctx, conn, closeConn, err := initClientConnection(l, conf.Host, replayTimeout)
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.Host).Error())
-			}
 			return err
 		}
-		defer conn.Close()
-
-		replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
-		defer replayRequestCancel()
+		defer closeConn()
 
 		replay := pb.NewReplayServiceClient(conn)
 		replayStatusRequest := &pb.GetReplayStatusRequest{
 			Id:          args[0],
-			ProjectName: projectName,
+			ProjectName: conf.Project.Name,
 		}
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		replayResponse, err := replay.GetReplayStatus(replayRequestTimeout, replayStatusRequest)
+		replayResponse, err := replay.GetReplayStatus(ctx, replayStatusRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

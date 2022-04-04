@@ -121,23 +121,18 @@ func getProject(projectName, serverHost string) (config.Project, error) {
 }
 
 func registerProject(l log.Logger, serverHost string, project config.Project) error {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	registerTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	ctx, conn, closeConn, err := initClientConnection(l, serverHost, deploymentTimeout)
 	if err != nil {
-		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	projectServiceClient := pb.NewProjectServiceClient(conn)
 	projectSpec := &pb.ProjectSpecification{
 		Name:   project.Name,
 		Config: project.Config,
 	}
-	registerResponse, err := projectServiceClient.RegisterProject(registerTimeoutCtx, &pb.RegisterProjectRequest{
+	registerResponse, err := projectServiceClient.RegisterProject(ctx, &pb.RegisterProjectRequest{
 		Project: projectSpec,
 	})
 	if err != nil {

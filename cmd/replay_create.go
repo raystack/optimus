@@ -12,7 +12,6 @@ import (
 	"github.com/olekukonko/tablewriter"
 	cli "github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
-	"google.golang.org/grpc"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -111,21 +110,12 @@ Date ranges are inclusive.
 }
 
 func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
-	allowedDownstreamNamespaces []string, host string) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+	allowedDownstreamNamespaces []string, host string) error {
+	ctx, conn, closeConn, err := initClientConnection(l, host, replayTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
-	defer replayRequestCancel()
+	defer closeConn()
 
 	replay := pb.NewReplayServiceClient(conn)
 	replayRequest := &pb.ReplayDryRunRequest{
@@ -139,7 +129,7 @@ func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, sta
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	replayDryRunResponse, err := replay.ReplayDryRun(replayRequestTimeout, replayRequest)
+	replayDryRunResponse, err := replay.ReplayDryRun(ctx, replayRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -217,20 +207,11 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 
 func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
 	allowedDownstreamNamespaces []string, host string) (string, error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	conn, err := createConnection(dialTimeoutCtx, host)
+	ctx, conn, closeConn, err := initClientConnection(l, host, replayTimeout)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
 		return "", err
 	}
-	defer conn.Close()
-
-	replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
-	defer replayRequestCancel()
+	defer closeConn()
 
 	l.Info("\n> Initiating replay")
 	if forceRun {
@@ -249,7 +230,7 @@ func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, 
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	replayResponse, err := replay.Replay(replayRequestTimeout, replayRequest)
+	replayResponse, err := replay.Replay(ctx, replayRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
