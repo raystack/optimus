@@ -43,12 +43,11 @@ func backupCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
 		var err error
-		dsRepo := models.DatastoreRegistry
 		namespace, err := askToSelectNamespace(l, conf)
 		if err != nil {
 			return err
 		}
-		if storerName, err = extractDatastoreName(dsRepo, storerName); err != nil {
+		if storerName, err = extractDatastoreName(storerName); err != nil {
 			return err
 		}
 		if resourceName, err = extractResourceName(resourceName); err != nil {
@@ -117,7 +116,8 @@ func backupCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	return backupCmd
 }
 
-func extractDatastoreName(dsRepo models.DatastoreRepo, storerName string) (string, error) {
+func extractDatastoreName(storerName string) (string, error) {
+	dsRepo := models.DatastoreRegistry
 	availableStorer := []string{}
 	for _, s := range dsRepo.GetAll() {
 		availableStorer = append(availableStorer, s.Name())
