@@ -185,15 +185,14 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
 
 # create upstream sensors
 
-wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
-    external_dag_id="foo-intra-dep-job",
-    window_size="1h0m0s",
-    window_offset="0s",
-    window_truncate_to="d",
+wait_foo__dash__intra__dash__dep__dash__job = CrossTenantDependencySensor(
     optimus_hostname="http://airflow.example.io",
-    task_id="wait_foo-intra-dep-job-bq",
+    upstream_optimus_project="foo-project",
+    upstream_optimus_job="foo-intra-dep-job",
+    window_size="1h0m0s",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_foo-intra-dep-job-bq",
     dag=dag
 )
 wait_foo__dash__inter__dash__dep__dash__job = CrossTenantDependencySensor(

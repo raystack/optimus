@@ -184,7 +184,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = CrossTenantDependencySensor(
     optimus_hostname="{{$.Hostname}}",
-    upstream_optimus_project="{{.Namespace.ProjectSpec.Name}}",
+    upstream_optimus_project="{{$.Namespace.ProjectSpec.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
     window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
