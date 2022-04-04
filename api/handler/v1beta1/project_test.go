@@ -44,7 +44,7 @@ func TestProjectOnServer(t *testing.T) {
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := projectServiceServer.RegisterProject(context.Background(), &projectRequest)
+			resp, err := projectServiceServer.RegisterProject(ctx, &projectRequest)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: not able to register project a-data-project", err.Error())
 			assert.Nil(t, resp)
 		})
@@ -73,7 +73,7 @@ func TestProjectOnServer(t *testing.T) {
 			)
 
 			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
-			resp, err := projectServiceServer.RegisterProject(context.Background(), &projectRequest)
+			resp, err := projectServiceServer.RegisterProject(ctx, &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
 				Success: true,
