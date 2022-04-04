@@ -14,7 +14,7 @@ import (
 	"github.com/odpf/optimus/extension"
 )
 
-func addExtensionCommand(cmd *cli.Command, l log.Logger) {
+func addExtensionCommand(cmd *cli.Command) {
 	ctx := context.Background()
 	httpClient := &http.Client{}
 	githubClient := github.NewClient(nil)
@@ -35,14 +35,15 @@ func addExtensionCommand(cmd *cli.Command, l log.Logger) {
 		reservedCommands...,
 	)
 
-	cmd.AddCommand(extensionCommand(ctx, extension, l))
+	cmd.AddCommand(extensionCommand(ctx, extension))
 	commands := generateCommands(manifest, extension.Run)
 	for _, c := range commands {
 		cmd.AddCommand(c)
 	}
 }
 
-func extensionCommand(ctx context.Context, extension *extension.Extension, l log.Logger) *cli.Command {
+func extensionCommand(ctx context.Context, extension *extension.Extension) *cli.Command {
+	l := initDefaultLogger()
 	c := &cli.Command{
 		Use:     "extension SUBCOMMAND",
 		Aliases: []string{"ext"},
@@ -54,6 +55,7 @@ func extensionCommand(ctx context.Context, extension *extension.Extension, l log
 
 func extensionInstallCommand(ctx context.Context, installer extension.Installer, l log.Logger) *cli.Command {
 	var alias string
+
 	installCmd := &cli.Command{
 		Use:   "install OWNER/REPO",
 		Short: "Install an extension",

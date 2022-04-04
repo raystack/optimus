@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -52,7 +51,11 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 	}
 }
 
-func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayCommand() *cli.Command {
+	var configFilePath string
+	conf := &config.ClientConfig{}
+	l := initDefaultLogger()
+
 	cmd := &cli.Command{
 		Use:   "replay",
 		Short: "Re-running jobs in order to update data for older dates/partitions",
@@ -61,6 +64,22 @@ func replayCommand(l log.Logger, conf config.Optimus) *cli.Command {
 			"group:core": "true",
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		var err error
+
+		conf, err = config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l = initClientLogger(conf.Log)
+
+		return nil
+	}
+
 	cmd.AddCommand(replayCreateCommand(l, conf))
 	cmd.AddCommand(replayStatusCommand(l, conf))
 	cmd.AddCommand(replayListCommand(l, conf))

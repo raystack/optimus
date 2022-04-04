@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/hashicorp/go-hclog"
+	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
@@ -21,6 +24,7 @@ import (
 	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
@@ -29,7 +33,7 @@ import (
 type setupFn func() error
 
 type OptimusServer struct {
-	conf   config.Optimus
+	conf   config.ServerConfig
 	logger log.Logger
 
 	appKey models.ApplicationKey
@@ -42,19 +46,21 @@ type OptimusServer struct {
 	cleanupFn []func()
 }
 
-func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
-	addr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
+func New(conf config.ServerConfig) (*OptimusServer, error) {
+	addr := fmt.Sprintf("%s:%d", conf.Serve.Host, conf.Serve.Port)
 	server := &OptimusServer{
 		conf:       conf,
-		logger:     l,
 		serverAddr: addr,
 	}
 
-	if err := checkRequiredConfigs(conf.Server); err != nil {
+	if err := checkRequiredConfigs(conf.Serve); err != nil {
 		return server, err
 	}
 
 	setupFns := []setupFn{
+		server.setupLogger,
+		server.setupPlugins,
+		server.setupTelemetry,
 		server.setupAppKey,
 		server.setupDB,
 		server.setupGRPCServer,
@@ -69,14 +75,51 @@ func New(l log.Logger, conf config.Optimus) (*OptimusServer, error) {
 		}
 	}
 
+	server.logger.Info("Starting Optimus", "version", config.BuildVersion)
 	server.startListening()
 
 	return server, nil
 }
 
+func (s *OptimusServer) setupLogger() error {
+	s.logger = log.NewLogrus(
+		log.LogrusWithLevel(s.conf.Log.Level.String()),
+		log.LogrusWithWriter(os.Stderr),
+	)
+	return nil
+}
+
+func (s *OptimusServer) setupPlugins() error {
+	pluginLogLevel := hclog.Info
+	if s.conf.Log.Level == config.LogLevelDebug {
+		pluginLogLevel = hclog.Debug
+	}
+
+	pluginLoggerOpt := &hclog.LoggerOptions{
+		Name:   "optimus",
+		Output: os.Stdout,
+		Level:  pluginLogLevel,
+	}
+	pluginLogger := hclog.New(pluginLoggerOpt)
+	s.cleanupFn = append(s.cleanupFn, hPlugin.CleanupClients)
+
+	// discover and load plugins.
+	return plugin.Initialize(pluginLogger)
+}
+
+func (s *OptimusServer) setupTelemetry() error {
+	teleShutdown, err := config.InitTelemetry(s.logger, s.conf.Telemetry)
+	if err != nil {
+		return err
+	}
+
+	s.cleanupFn = append(s.cleanupFn, teleShutdown)
+	return nil
+}
+
 func (s *OptimusServer) setupAppKey() error {
 	var err error
-	s.appKey, err = models.NewApplicationSecret(s.conf.Server.AppKey)
+	s.appKey, err = models.NewApplicationSecret(s.conf.Serve.AppKey)
 	if err != nil {
 		return fmt.Errorf("NewApplicationSecret: %w", err)
 	}
@@ -85,12 +128,12 @@ func (s *OptimusServer) setupAppKey() error {
 
 func (s *OptimusServer) setupDB() error {
 	var err error
-	if err := postgres.Migrate(s.conf.Server.DB.DSN); err != nil {
+	if err := postgres.Migrate(s.conf.Serve.DB.DSN); err != nil {
 		return fmt.Errorf("postgres.Migrate: %w", err)
 	}
 	// TODO: Connect should accept DBConfig
-	s.dbConn, err = postgres.Connect(s.conf.Server.DB.DSN, s.conf.Server.DB.MaxIdleConnection,
-		s.conf.Server.DB.MaxOpenConnection, s.logger.Writer())
+	s.dbConn, err = postgres.Connect(s.conf.Serve.DB.DSN, s.conf.Serve.DB.MaxIdleConnection,
+		s.conf.Serve.DB.MaxOpenConnection, s.logger.Writer())
 	if err != nil {
 		return fmt.Errorf("postgres.Connect: %w", err)
 	}
@@ -130,6 +173,7 @@ func (s *OptimusServer) startListening() {
 }
 
 func (s *OptimusServer) Shutdown() {
+	s.logger.Info("Shutting down server")
 	if s.httpServer != nil {
 		// Create a deadline to wait for server
 		ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
@@ -218,9 +262,9 @@ func (s *OptimusServer) setupHandlers() error {
 	)
 
 	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    s.conf.Server.ReplayNumWorkers,
-		WorkerTimeout: s.conf.Server.ReplayWorkerTimeout,
-		RunTimeout:    s.conf.Server.ReplayRunTimeout,
+		NumWorkers:    s.conf.Serve.Replay.NumWorkers,
+		WorkerTimeout: s.conf.Serve.Replay.WorkerTimeout,
+		RunTimeout:    s.conf.Serve.Replay.RunTimeout,
 	}, scheduler, replayValidator, replaySyncer)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
@@ -331,7 +375,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,
-		config.Version,
+		config.BuildVersion,
 		jobService,
 		eventService,
 		namespaceService,
