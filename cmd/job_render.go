@@ -17,13 +17,14 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-func jobRenderTemplateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+func jobRenderTemplateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE: func(c *cli.Command, args []string) error {
+			pluginRepo := models.PluginRegistry
 			namespace, err := askToSelectNamespace(l, conf)
 			if err != nil {
 				return err

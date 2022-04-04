@@ -12,7 +12,6 @@ require (
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/glog v1.0.0 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
@@ -64,6 +63,8 @@ require (
 	gorm.io/gorm v1.21.16
 )
 
+require github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+
 require (
 	cloud.google.com/go v0.94.0 // indirect
 	cloud.google.com/go/storage v1.16.1 // indirect
@@ -80,6 +81,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect

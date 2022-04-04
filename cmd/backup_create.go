@@ -16,7 +16,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "create",
@@ -42,11 +42,12 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
+		var err error
 		namespace, err := askToSelectNamespace(l, conf)
 		if err != nil {
 			return err
 		}
-		if storerName, err = extractDatastoreName(datastoreRepo, storerName); err != nil {
+		if storerName, err = extractDatastoreName(storerName); err != nil {
 			return err
 		}
 		if resourceName, err = extractResourceName(resourceName); err != nil {
@@ -115,9 +116,10 @@ func backupCreateCommand(l log.Logger, conf config.Optimus, datastoreRepo models
 	return backupCmd
 }
 
-func extractDatastoreName(datastoreRepo models.DatastoreRepo, storerName string) (string, error) {
+func extractDatastoreName(storerName string) (string, error) {
+	dsRepo := models.DatastoreRegistry
 	availableStorer := []string{}
-	for _, s := range datastoreRepo.GetAll() {
+	for _, s := range dsRepo.GetAll() {
 		availableStorer = append(availableStorer, s.Name())
 	}
 	if storerName == "" {

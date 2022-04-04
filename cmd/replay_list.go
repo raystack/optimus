@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func replayListCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayListCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var (
 		projectName string
 		reCmd       = &cli.Command{

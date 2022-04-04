@@ -4,18 +4,20 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
 const (
 	backupTimeout = time.Minute * 15
 )
 
-func backupCommand(l log.Logger, conf config.Optimus, datastoreRepo models.DatastoreRepo) *cli.Command {
+func backupCommand() *cli.Command {
+	var configFilePath string
+	conf := &config.ClientConfig{}
+	l := initDefaultLogger()
+
 	cmd := &cli.Command{
 		Use:   "backup",
 		Short: "Backup a resource and its downstream",
@@ -27,8 +29,24 @@ func backupCommand(l log.Logger, conf config.Optimus, datastoreRepo models.Datas
 			"group:core": "true",
 		},
 	}
-	cmd.AddCommand(backupCreateCommand(l, conf, datastoreRepo))
-	cmd.AddCommand(backupListCommand(l, conf, datastoreRepo))
-	cmd.AddCommand(backupStatusCommand(l, conf, datastoreRepo))
+
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		var err error
+
+		conf, err = config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l = initClientLogger(conf.Log)
+
+		return nil
+	}
+
+	cmd.AddCommand(backupCreateCommand(l, conf))
+	cmd.AddCommand(backupListCommand(l, conf))
+	cmd.AddCommand(backupStatusCommand(l, conf))
 	return cmd
 }

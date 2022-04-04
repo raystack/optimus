@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayStatusCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	var projectName string
 
 	reCmd := &cli.Command{

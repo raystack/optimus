@@ -14,7 +14,7 @@ PROTON_COMMIT := "c7c68882daea1d1d233955e56c08488f328b0d82"
 build: # build optimus binary
 	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
 	@echo " > building optimus version ${OPMS_VERSION}"
-	@go build -ldflags "-X ${NAME}/config.Version=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
+	@go build -ldflags "-X ${NAME}/config.BuildVersion=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 
 test-ci: smoke-test unit-test-ci vet ## run tests
