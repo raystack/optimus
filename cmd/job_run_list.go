@@ -56,11 +56,11 @@ func getJobRunList(l log.Logger, host, projectName, jobName, startDate, endDate 
 		return err
 	}
 	ctx := context.Background()
-	err = callJobRun(l, host, ctx, req)
+	err = callJobRun(ctx, l, host, req)
 	return err
 }
 
-func callJobRun(l log.Logger, host string, ctx context.Context, jobRunRequest *pb.JobRunRequest) error {
+func callJobRun(ctx context.Context, l log.Logger, host string, jobRunRequest *pb.JobRunRequest) error {
 	var err error
 	dialTimeoutCtx, dialCancel := context.WithTimeout(ctx, OptimusDialTimeout)
 	defer dialCancel()
