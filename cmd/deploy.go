@@ -27,40 +27,63 @@ const (
 )
 
 // deployCommand pushes current repo to optimus service
-func deployCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo,
-	datastoreSpecFs map[string]map[string]afero.Fs) *cli.Command {
+func deployCommand() *cli.Command {
 	var (
 		namespaces      []string
 		ignoreJobs      bool
 		ignoreResources bool
 		verbose         bool
-		cmd             = &cli.Command{
-			Use:   "deploy",
-			Short: "Deploy current optimus project to server",
-			Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
-				jobs and creating/updating datastore resources`),
-			Example: "optimus deploy [--ignore-resources|--ignore-jobs]",
-			Annotations: map[string]string{
-				"group:core": "true",
-			},
-		}
+		configFilePath  string
 	)
+
+	cmd := &cli.Command{
+		Use:   "deploy",
+		Short: "Deploy current optimus project to server",
+		Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
+				jobs and creating/updating datastore resources`),
+		Example: "optimus deploy [--ignore-resources|--ignore-jobs]",
+		Annotations: map[string]string{
+			"group:core": "true",
+		},
+	}
+
+	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		pluginRepo := models.PluginRegistry
+		dsRepo := models.DatastoreRegistry
+		// TODO: find a way to load the config in one place
+		conf, err := config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+		l := initClientLogger(conf.Log)
+
+		// TODO: refactor initialize client deps
+		pluginCleanFn, err := initializeClientPlugins(conf.Log.Level)
+		defer pluginCleanFn()
+		if err != nil {
+			return err
+		}
+
+		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
+
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 
 		if err := validateNamespaces(datastoreSpecFs, namespaces); err != nil {
 			return err
 		}
-		err := postDeploymentRequest(l, conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
+
+		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}
+
 		l.Info(coloredSuccess("\nDeployment completed, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
@@ -69,7 +92,7 @@ func deployCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
+func postDeploymentRequest(l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaceNames []string,
 	ignoreJobDeployment, ignoreResources, verbose bool) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
@@ -129,7 +152,7 @@ func postDeploymentRequest(l log.Logger, conf config.Optimus, pluginRepo models.
 
 func deployAllJobs(deployTimeoutCtx context.Context,
 	jobSpecificationServiceClient pb.JobSpecificationServiceClient,
-	l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
+	l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
 	namespaceNames []string,
 	verbose bool,
@@ -251,7 +274,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 
 func deployAllResources(deployTimeoutCtx context.Context,
 	resourceServiceClient pb.ResourceServiceClient,
-	l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository,
+	l log.Logger, conf config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
 	datastoreSpecFs map[string]map[string]afero.Fs,
 	namespaceNames []string,
@@ -288,7 +311,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
-			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
+			resourceSpecs, err := resourceSpecRepo.GetAll(deployTimeoutCtx)
 			if errors.Is(err, models.ErrNoResources) {
 				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespaceName))
 				continue
@@ -367,7 +390,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 
 func registerAllNamespaces(
 	deployTimeoutCtx context.Context, namespaceServiceClient pb.NamespaceServiceClient,
-	l log.Logger, conf config.Optimus, namespaceNames []string,
+	l log.Logger, conf config.ClientConfig, namespaceNames []string,
 ) error {
 	var selectedNamespaceNames []string
 	if len(namespaceNames) > 0 {
@@ -398,7 +421,7 @@ func registerAllNamespaces(
 }
 
 func registerNamespace(deployTimeoutCtx context.Context, namespaceServiceClient pb.NamespaceServiceClient,
-	l log.Logger, conf config.Optimus, namespaceName string,
+	l log.Logger, conf config.ClientConfig, namespaceName string,
 ) error {
 	namespace, err := conf.GetNamespaceByName(namespaceName)
 	if err != nil {
@@ -426,7 +449,7 @@ func registerNamespace(deployTimeoutCtx context.Context, namespaceServiceClient 
 
 func registerProject(
 	deployTimeoutCtx context.Context, projectServiceClient pb.ProjectServiceClient,
-	l log.Logger, conf config.Optimus,
+	l log.Logger, conf config.ClientConfig,
 ) (err error) {
 	projectSpec := &pb.ProjectSpecification{
 		Name:   conf.Project.Name,

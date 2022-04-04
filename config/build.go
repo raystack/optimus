@@ -9,9 +9,9 @@ const (
 
 var (
 	// overridden by the build system
-	Version     = "dev"
-	BuildCommit = ""
-	BuildDate   = ""
+	BuildVersion = "dev"
+	BuildCommit  = ""
+	BuildDate    = ""
 )
 
 // AppName returns the name used as identifier in telemetry

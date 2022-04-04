@@ -22,8 +22,13 @@ const (
 	runJobTimeout = time.Minute * 1
 )
 
-func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, projectName, host string) *cli.Command {
-	var namespaceName string
+func jobRunCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+	var (
+		namespaceName string
+		projectName   = conf.Project.Name
+		host          = conf.Host
+	)
+
 	cmd := &cli.Command{
 		Use:     "run",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
@@ -31,6 +36,7 @@ func jobRunCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRe
 		Example: "optimus job run <job_name>",
 		Hidden:  true,
 		RunE: func(c *cli.Command, args []string) error {
+			pluginRepo := models.PluginRegistry
 			namespace, err := conf.GetNamespaceByName(namespaceName)
 			if err != nil {
 				return err

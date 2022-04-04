@@ -14,7 +14,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/mattn/go-isatty"
 	"github.com/odpf/salt/cmdx"
-	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/term"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
@@ -36,8 +35,7 @@ var (
 		return errors.New(heredoc.Docf(`Unable to reach optimus server at %s, this can happen due to following reasons:
 			1. Check if you are connected to internet
 			2. Is the host correctly configured in optimus config
-			3. Is OPTIMUS_HOST env incorrectly set
-			4. Is Optimus server currently unreachable`, host))
+			3. Is Optimus server currently unreachable`, host))
 	}
 )
 
@@ -62,7 +60,7 @@ type JobSpecRepository interface {
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
-func New(plainLog, jsonLog log.Logger, conf config.Optimus, pluginRepo models.PluginRepository, dsRepo models.DatastoreRepo) *cli.Command {
+func New() *cli.Command {
 	disableColoredOut = !isTerminal(os.Stdout)
 
 	cmd := &cli.Command{
@@ -112,28 +110,19 @@ func New(plainLog, jsonLog log.Logger, conf config.Optimus, pluginRepo models.Pl
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	// init local specs
-	datastoreSpecFs := make(map[string]map[string]afero.Fs)
-	for _, namespace := range conf.Namespaces {
-		dtSpec := make(map[string]afero.Fs)
-		for _, dsConfig := range namespace.Datastore {
-			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-		}
-		datastoreSpecFs[namespace.Name] = dtSpec
-	}
+	cmd.AddCommand(versionCommand())
+	cmd.AddCommand(configCommand())
+	cmd.AddCommand(jobCommand())
+	cmd.AddCommand(deployCommand())
+	cmd.AddCommand(resourceCommand())
+	cmd.AddCommand(replayCommand())
+	cmd.AddCommand(backupCommand())
+	cmd.AddCommand(adminCommand())
+	cmd.AddCommand(secretCommand())
 
-	cmd.AddCommand(versionCommand(plainLog, conf.Host, pluginRepo))
-	cmd.AddCommand(configCommand(plainLog))
-	cmd.AddCommand(jobCommand(plainLog, conf, pluginRepo))
-	cmd.AddCommand(deployCommand(plainLog, conf, pluginRepo, dsRepo, datastoreSpecFs))
-	cmd.AddCommand(resourceCommand(plainLog, conf, dsRepo, datastoreSpecFs))
-	cmd.AddCommand(serveCommand(jsonLog, conf))
-	cmd.AddCommand(replayCommand(plainLog, conf))
-	cmd.AddCommand(backupCommand(plainLog, conf, dsRepo))
-	cmd.AddCommand(adminCommand(plainLog, conf))
-	cmd.AddCommand(secretCommand(plainLog, conf))
+	cmd.AddCommand(serveCommand())
 
-	addExtensionCommand(cmd, plainLog)
+	addExtensionCommand(cmd)
 	return cmd
 }
 
@@ -205,4 +194,16 @@ func (a *BasicAuthentication) RequireTransportSecurity() bool {
 
 func isTerminal(f *os.File) bool {
 	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+}
+
+func getDatastoreSpecFs(namespaces []*config.Namespace) map[string]map[string]afero.Fs {
+	output := make(map[string]map[string]afero.Fs)
+	for _, namespace := range namespaces {
+		dtSpec := make(map[string]afero.Fs)
+		for _, dsConfig := range namespace.Datastore {
+			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+		}
+		output[namespace.Name] = dtSpec
+	}
+	return output
 }

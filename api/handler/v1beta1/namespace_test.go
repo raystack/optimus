@@ -54,7 +54,7 @@ func TestNamespaceOnServer(t *testing.T) {
 				ProjectName: projectName,
 				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
 			}
-			resp, err := namespaceServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
+			resp, err := namespaceServiceServer.RegisterProjectNamespace(ctx, &namespaceRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectNamespaceResponse{
 				Success: true,
@@ -88,7 +88,7 @@ func TestNamespaceOnServer(t *testing.T) {
 				ProjectName: projectName,
 				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
 			}
-			_, err := namespaceServiceServer.RegisterProjectNamespace(context.Background(), &namespaceRequest)
+			_, err := namespaceServiceServer.RegisterProjectNamespace(ctx, &namespaceRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: not found for entity namespace: unable to store namespace", err.Error())
 		})

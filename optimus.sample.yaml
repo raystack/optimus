@@ -1,0 +1,48 @@
+########################################
+# CLIENT CONFIG
+########################################
+
+version: 1
+
+# logging configuration
+log:
+  # debug, info, warning, error, fatal - default 'info'
+  level: info
+
+# used to connect optimus service
+host: localhost:9100
+
+# for configuring optimus project
+#project:
+#  name: sample_project
+#  # project variables usable in specifications
+#  config:
+#    environment: integration
+#    scheduler_host: http://example.io/
+#    # storage_path is used for storing compiled job specifications that can be
+#    # consumed by schedulers like Airflow
+#    # it supports multiple schemes like: file://, gcs://
+#    storage_path: file://absolute_path_to_a_directory
+
+# for configuring optimus namespaces
+#namespaces:
+#- name: sample_namespace
+#  job:
+#    # relative path pointing to folder where job specifications are stored
+#    path: "ns1/job"
+#  datastore:
+#    # optimus is capable of supporting multiple datastores
+#    type: bigquery
+#    # relative path where resource spec for BQ are stored
+#    path: "bq"
+#  # namespace variables usable in specifications
+#  config: {}
+#- name: sample_namespace_2
+#  job:
+#    path: "ns2/job"
+#  datastore:
+#    type: bigquery
+#    path: "bq"
+#  config: {}
+
+

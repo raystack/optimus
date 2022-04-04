@@ -38,12 +38,12 @@ const (
 	BootstrapTimeout = time.Second * 10
 )
 
-func checkRequiredConfigs(conf config.ServerConfig) error {
+func checkRequiredConfigs(conf config.Serve) error {
 	errRequiredMissing := errors.New("required config missing")
 	if conf.IngressHost == "" {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
-	if conf.ReplayNumWorkers < 1 {
+	if conf.Replay.NumWorkers < 1 {
 		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
 	}
 	if conf.DB.DSN == "" {

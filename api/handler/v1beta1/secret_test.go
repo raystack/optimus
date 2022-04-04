@@ -49,7 +49,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			_, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			_, err := secretServiceServer.RegisterSecret(ctx, &secretRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = empty value for secret",
 				err.Error())
@@ -65,7 +65,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			_, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			_, err := secretServiceServer.RegisterSecret(ctx, &secretRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, "rpc error: code = InvalidArgument desc = failed to decode base64 string: \nillegal base64 data at input byte 4",
 				err.Error())
@@ -90,7 +90,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 			}
 
-			resp, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.RegisterSecret(ctx, &secretRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterSecretResponse{}, resp)
 		})
@@ -114,7 +114,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				SecretName:    "hello",
 				Value:         base64.StdEncoding.EncodeToString([]byte("world")),
 			}
-			resp, err := secretServiceServer.RegisterSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.RegisterSecret(ctx, &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = error while saving secret: failed to register secret hello", err.Error())
 		})
@@ -139,7 +139,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				Value:         base64.StdEncoding.EncodeToString([]byte("world")),
 				NamespaceName: namespaceSpec.Name,
 			}
-			resp, err := secretServiceServer.UpdateSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.UpdateSecret(ctx, &secretRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.UpdateSecretResponse{}, resp)
 		})
@@ -163,7 +163,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				SecretName:    "hello",
 				Value:         base64.StdEncoding.EncodeToString([]byte("world")),
 			}
-			resp, err := secretServiceServer.UpdateSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.UpdateSecret(ctx, &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to update secret hello", err.Error())
 		})
@@ -181,7 +181,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			secretRequest := pb.ListSecretsRequest{
 				ProjectName: projectSpec.Name,
 			}
-			resp, err := secretServiceServer.ListSecrets(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.ListSecrets(ctx, &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to list secrets", err.Error())
 		})
@@ -204,7 +204,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 			secretRequest := pb.ListSecretsRequest{
 				ProjectName: projectSpec.Name,
 			}
-			resp, err := secretServiceServer.ListSecrets(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.ListSecrets(ctx, &secretRequest)
 			assert.Nil(t, err)
 			assert.Len(t, resp.Secrets, 1)
 			assert.Equal(t, resp.Secrets[0].Name, secretItems[0].Name)
@@ -224,7 +224,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				ProjectName: projectSpec.Name,
 				SecretName:  "hello",
 			}
-			resp, err := secretServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			resp, err := secretServiceServer.DeleteSecret(ctx, &secretRequest)
 			assert.Nil(t, resp)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: failed to delete secret hello", err.Error())
 		})
@@ -241,7 +241,7 @@ func TestSecretManagementOnRuntimeServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 				SecretName:    "hello",
 			}
-			_, err := secretServiceServer.DeleteSecret(context.Background(), &secretRequest)
+			_, err := secretServiceServer.DeleteSecret(ctx, &secretRequest)
 			assert.Nil(t, err)
 		})
 	})

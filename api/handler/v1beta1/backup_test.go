@@ -92,7 +92,7 @@ func TestBackupOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName: resourceName,
@@ -169,12 +169,12 @@ func TestBackupOnServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName:                resourceName,
@@ -190,7 +190,7 @@ func TestBackupOnServer(t *testing.T) {
 					resourceDownstream2Urn,
 				},
 			}
-			resourceSvc.On("BackupResourceDryRun", context.Background(), backupRequest,
+			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest,
 				[]models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupPlan, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
@@ -208,7 +208,7 @@ func TestBackupOnServer(t *testing.T) {
 				NamespaceName:               namespaceSpec.Name,
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			backupResponse, err := backupServiceServer.BackupDryRun(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.BackupDryRun(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []string{resourceUrn, resourceDownstream1Urn, resourceDownstream2Urn}, backupResponse.ResourceName)
@@ -527,7 +527,7 @@ func TestBackupOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 
 			backupRequest := models.BackupRequest{
 				ResourceName:                resourceName,
@@ -732,12 +732,12 @@ func TestBackupOnServer(t *testing.T) {
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
+			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -746,7 +746,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResult.Resources, backupResponse.Urn)
@@ -828,9 +828,9 @@ func TestBackupOnServer(t *testing.T) {
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
+			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -839,7 +839,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResult.Resources, backupResponse.Urn)
@@ -871,7 +871,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), "failed to get project")
 			assert.Nil(t, backupResponse)
@@ -897,7 +897,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -922,7 +922,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			errorMsg := "unable to read resource"
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec,
+			resourceSvc.On("ReadResource", ctx, namespaceSpec,
 				models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
@@ -931,7 +931,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -958,7 +958,7 @@ func TestBackupOnServer(t *testing.T) {
 			}
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			errorMsg := "unable to get jobspec"
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
 
@@ -969,7 +969,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1018,10 +1018,10 @@ func TestBackupOnServer(t *testing.T) {
 			}
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			errorMsg := "unable to get jobspec downstream"
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -1030,7 +1030,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1092,11 +1092,11 @@ func TestBackupOnServer(t *testing.T) {
 			}
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
-			resourceSvc.On("ReadResource", context.Background(), namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
+			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			jobService.On("GetDownstream", context.Background(), projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
+			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 			errorMsg := "unable to get jobspec"
-			resourceSvc.On("BackupResource", context.Background(), backupReq, []models.JobSpec{jobSpec}).Return(models.BackupResult{}, errors.New(errorMsg))
+			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(models.BackupResult{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -1105,7 +1105,7 @@ func TestBackupOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-			backupResponse, err := backupServiceServer.CreateBackup(context.Background(), &backupRequestPb)
+			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1183,7 +1183,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.ListBackups(context.Background(), &listBackupsReq)
+			backupResponse, err := backupServiceServer.ListBackups(ctx, &listBackupsReq)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResultPb, backupResponse)
@@ -1204,7 +1204,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.ListBackups(context.Background(), &listBackupsReq)
+			backupResponse, err := backupServiceServer.ListBackups(ctx, &listBackupsReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1226,7 +1226,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.ListBackups(context.Background(), &listBackupsReq)
+			backupResponse, err := backupServiceServer.ListBackups(ctx, &listBackupsReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1288,7 +1288,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
+			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
 			assert.Nil(t, err)
 			assert.Equal(t, backupResultPb, backupResponse)
@@ -1308,7 +1308,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
+			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1330,7 +1330,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
+			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1351,7 +1351,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
+			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Nil(t, backupResponse)
@@ -1386,7 +1386,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
+			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
 			assert.Nil(t, backupResponse)
 			assert.Contains(t, err.Error(), "URN is not found in backup result")
@@ -1420,7 +1420,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				projectService,
 			)
-			backupResponse, err := backupServiceServer.GetBackup(context.Background(), &getBackupDetailReq)
+			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
 			assert.Nil(t, backupResponse)
 			assert.Contains(t, err.Error(), "invalid backup URN")
