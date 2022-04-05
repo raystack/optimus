@@ -117,8 +117,8 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			defer s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
 			conf, err := config.LoadClientConfig(config.EmptyPath)
-			s.Assert().NoError(err)
-			s.Assert().NotNil(conf)
+			s.Assert().Error(err)
+			s.Assert().Nil(conf)
 		})
 	})
 
@@ -184,9 +184,8 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 			conf, err := config.LoadServerConfig(config.EmptyPath)
 
-			s.Assert().NoError(err)
-			s.Assert().NotNil(conf)
-			s.Assert().Equal("0", conf.Version.String())
+			s.Assert().Error(err)
+			s.Assert().Nil(conf)
 		})
 	})
 
