@@ -234,7 +234,6 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 	l.Info("> Receiving responses:")
 	// TODO spinner should be generic across all apis, we should avoid writing this logic for every api call
 	var counter int
-	var streamErrs []error
 	spinner := NewProgressBar()
 	if !verbose {
 		spinner.StartProgress(totalSpecsCount, "please wait")
@@ -249,7 +248,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		}
 		if resp.GetAck() {
 			if !resp.GetSuccess() {
-				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
+				l.Error(resp.GetMessage())
 			}
 			if resp.GetJobName() != "" {
 				counter++
@@ -263,12 +262,6 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		}
 	}
 	spinner.Stop()
-	if len(streamErrs) > 0 {
-		for _, e := range streamErrs {
-			l.Error(e.Error())
-		}
-		return errors.New("one or more errors are encountered during job deployment")
-	}
 	return nil
 }
 
