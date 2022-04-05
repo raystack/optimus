@@ -17,7 +17,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func backupStatusCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func backupStatusCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		project   string
 		backupCmd = &cli.Command{
@@ -28,6 +28,7 @@ func backupStatusCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	)
 	backupCmd.Flags().StringVarP(&project, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		dsRepo := models.DatastoreRegistry
 		availableStorer := []string{}
 		for _, s := range dsRepo.GetAll() {
