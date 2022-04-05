@@ -325,9 +325,9 @@ func registerNamespace(l log.Logger, serverHost, projectName string, namespace *
 	if err != nil {
 		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
-	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
 	defer conn.Close()
 
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
 	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(registerTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
 		ProjectName: projectName,
 		Namespace: &pb.NamespaceSpecification{

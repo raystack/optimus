@@ -51,8 +51,6 @@ func deployCommand() *cli.Command {
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		pluginRepo := models.PluginRegistry
-		dsRepo := models.DatastoreRegistry
 		// TODO: find a way to load the config in one place
 		conf, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {
@@ -67,8 +65,6 @@ func deployCommand() *cli.Command {
 			return err
 		}
 
-		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
-
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 
@@ -82,7 +78,7 @@ func deployCommand() *cli.Command {
 			selectedNamespaces = conf.Namespaces
 		}
 
-		err = postDeploymentRequest(l, conf, pluginRepo, dsRepo, datastoreSpecFs, selectedNamespaces, ignoreJobs, ignoreResources, verbose)
+		err = postDeploymentRequest(l, conf, selectedNamespaces, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}
@@ -95,9 +91,10 @@ func deployCommand() *cli.Command {
 }
 
 // postDeploymentRequest send a deployment request to service
-func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
-	datastoreRepo models.DatastoreRepo, datastoreSpecFs map[string]map[string]afero.Fs, namespaces []*config.Namespace,
-	ignoreJobDeployment, ignoreResources, verbose bool) error {
+func postDeploymentRequest(l log.Logger, conf *config.ClientConfig,
+	namespaces []*config.Namespace,
+	ignoreJobDeployment, ignoreResources, verbose bool,
+) error {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -113,9 +110,6 @@ func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo m
 	deployTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), deploymentTimeout)
 	defer deployCancel()
 
-	resource := pb.NewResourceServiceClient(conn)
-	jobSpec := pb.NewJobSpecificationServiceClient(conn)
-
 	if err := registerProject(l, conf.Host, conf.Project); err != nil {
 		return err
 	}
@@ -123,11 +117,13 @@ func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo m
 		return err
 	}
 
+	pluginRepo := models.PluginRegistry
+	datastoreRepo := models.DatastoreRegistry
 	if !ignoreResources {
+		resource := pb.NewResourceServiceClient(conn)
 		if err := deployAllResources(deployTimeoutCtx,
 			resource, l, conf,
 			pluginRepo, datastoreRepo,
-			datastoreSpecFs,
 			namespaces,
 			verbose,
 		); err != nil {
@@ -137,6 +133,7 @@ func postDeploymentRequest(l log.Logger, conf *config.ClientConfig, pluginRepo m
 		l.Info("> Skipping resource deployment")
 	}
 	if !ignoreJobDeployment {
+		jobSpec := pb.NewJobSpecificationServiceClient(conn)
 		if err := deployAllJobs(deployTimeoutCtx,
 			jobSpec, l,
 			conf, pluginRepo,
@@ -256,10 +253,10 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	resourceServiceClient pb.ResourceServiceClient,
 	l log.Logger, conf *config.ClientConfig, pluginRepo models.PluginRepository,
 	datastoreRepo models.DatastoreRepo,
-	datastoreSpecFs map[string]map[string]afero.Fs,
 	selectedNamespaces []*config.Namespace,
 	verbose bool,
 ) error {
+	datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 	// send call
 	stream, err := resourceServiceClient.DeployResourceSpecification(deployTimeoutCtx)
 	if err != nil {

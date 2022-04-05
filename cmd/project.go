@@ -86,6 +86,7 @@ func getProject(projectName, serverHost string) (config.Project, error) {
 	if err != nil {
 		return project, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
+	defer conn.Close()
 
 	request := &pb.GetProjectRequest{
 		ProjectName: projectName,
@@ -144,8 +145,9 @@ func registerProject(l log.Logger, serverHost string, project config.Project) er
 	if err != nil {
 		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
 	}
-	projectServiceClient := pb.NewProjectServiceClient(conn)
+	defer conn.Close()
 
+	projectServiceClient := pb.NewProjectServiceClient(conn)
 	projectSpec := &pb.ProjectSpecification{
 		Name:   project.Name,
 		Config: project.Config,
