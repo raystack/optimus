@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func replayStatusCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func replayStatusCommand(conf *config.ClientConfig) *cli.Command {
 	var projectName string
 
 	reCmd := &cli.Command{
@@ -35,6 +35,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	}
 	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 

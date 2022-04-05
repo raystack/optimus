@@ -19,7 +19,7 @@ import (
 	"github.com/odpf/optimus/core/set"
 )
 
-func replayCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func replayCreateCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		dryRun           = false
 		forceRun         = false
@@ -61,6 +61,7 @@ Date ranges are inclusive.
 	reCmd.Flags().BoolVar(&allDownstream, "all-downstream", allDownstream, "Run replay for all downstream across namespaces")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		endDate := args[1]
 		if len(args) >= 3 { //nolint: gomnd
 			endDate = args[2]
