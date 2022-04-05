@@ -27,9 +27,10 @@ const (
 )
 
 func secretCommand() *cli.Command {
-	var configFilePath string
-	conf := &config.ClientConfig{}
-	l := initDefaultLogger()
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+	)
 
 	cmd := &cli.Command{
 		Use:   "secret",
@@ -40,24 +41,22 @@ func secretCommand() *cli.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
-		var err error
-
-		conf, err = config.LoadClientConfig(configFilePath)
+		c, err := config.LoadClientConfig(configFilePath)
 		if err != nil {
 			return err
 		}
-		l = initClientLogger(conf.Log)
+		conf = *c
 
 		return nil
 	}
 
-	cmd.AddCommand(secretSetSubCommand(l, conf))
-	cmd.AddCommand(secretListSubCommand(l, conf))
-	cmd.AddCommand(secretDeleteSubCommand(l, conf))
+	cmd.AddCommand(secretSetSubCommand(&conf))
+	cmd.AddCommand(secretListSubCommand(&conf))
+	cmd.AddCommand(secretDeleteSubCommand(&conf))
 	return cmd
 }
 
-func secretSetSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func secretSetSubCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		projectName   string
 		namespaceName string
@@ -85,6 +84,7 @@ Use base64 flag if the value has been encoded.
 	secretCmd.Flags().BoolVar(&skipConfirm, "confirm", false, "Skip asking for confirmation")
 
 	secretCmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		secretName, err := getSecretName(args)
 		if err != nil {
 			return err
@@ -142,7 +142,7 @@ Use base64 flag if the value has been encoded.
 	return secretCmd
 }
 
-func secretListSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func secretListSubCommand(conf *config.ClientConfig) *cli.Command {
 	var projectName string
 
 	secretListCmd := &cli.Command{
@@ -154,6 +154,7 @@ func secretListSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command 
 	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
 
 	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		updateSecretRequest := &pb.ListSecretsRequest{
 			ProjectName: projectName,
 		}
@@ -162,7 +163,7 @@ func secretListSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command 
 	return secretListCmd
 }
 
-func secretDeleteSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func secretDeleteSubCommand(conf *config.ClientConfig) *cli.Command {
 	var projectName, namespaceName string
 
 	cmd := &cli.Command{
@@ -175,6 +176,7 @@ func secretDeleteSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Comman
 	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace name of optimus managed repository")
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		secretName, err := getSecretName(args)
 		if err != nil {
 			return err
