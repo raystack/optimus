@@ -188,7 +188,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     window_offset={{$baseWindow.Offset.String | quote}},
     window_truncate_to={{$baseWindow.TruncateTo | quote}},
     optimus_hostname="{{$.Hostname}}",
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
+    task_id="wait_{{$dependency.Project.Name}}-{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
@@ -203,7 +203,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
+    task_id="wait_{{$dependency.Project.Name}}-{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
     dag=dag
 )
 {{- end -}}

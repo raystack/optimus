@@ -191,7 +191,7 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     window_offset="0s",
     window_truncate_to="d",
     optimus_hostname="http://airflow.example.io",
-    task_id="wait_foo-intra-dep-job-bq",
+    task_id="wait_foo-project-foo-intra-dep-job-bq",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     dag=dag
@@ -203,7 +203,7 @@ wait_foo__dash__inter__dash__dep__dash__job = CrossTenantDependencySensor(
     window_size="1h0m0s",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_foo-inter-dep-job-bq",
+    task_id="wait_foo-external-project-foo-inter-dep-job-bq",
     dag=dag
 )
 
