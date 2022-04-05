@@ -51,7 +51,6 @@ lint:
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
-	go mod tidy
 	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
 	go get github.com/golang/protobuf/proto@v1.5.2
 	go get github.com/golang/protobuf/protoc-gen-go@v1.5.2
@@ -61,3 +60,4 @@ install: ## install required dependencies
 	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
 	go get github.com/bufbuild/buf/cmd/buf@v0.54.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.1
+	go mod tidy
