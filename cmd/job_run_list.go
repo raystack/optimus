@@ -26,15 +26,17 @@ func jobRunListCommand(conf *config.ClientConfig) *cli.Command {
 		Example: `optimus job runs <sample_job_goes_here> [--project \"project-id\"] [--start_date \"2006-01-02T15:04:05Z07:00\" --end_date \"2006-01-02T15:04:05Z07:00\"]`,
 		Args:    cli.MinimumNArgs(1),
 	}
-	projectName := conf.Project.Name
-	host := conf.Host
+	var projectName string
+	var host string
 	var startDate string
 	var endDate string
-	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVar(&host, "host", host, "Optimus service endpoint url")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
+	cmd.Flags().StringVar(&host, "host", host, "Optimus service endpoint url")                                      // TODO: fix overriding conf via args
 	cmd.Flags().StringVar(&startDate, "start_date", "", "start date of job run")
 	cmd.Flags().StringVar(&endDate, "end_date", "", "end date of job run")
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		projectName = conf.Project.Name
+		host = conf.Host
 		l := initClientLogger(conf.Log)
 		jobName := args[0]
 		l.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",

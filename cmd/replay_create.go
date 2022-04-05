@@ -26,7 +26,7 @@ func replayCreateCommand(conf *config.ClientConfig) *cli.Command {
 		ignoreDownstream = false
 		allDownstream    = false
 		skipConfirm      = false
-		projectName      = conf.Project.Name
+		projectName      string
 		namespaceName    string
 	)
 
@@ -50,7 +50,7 @@ Date ranges are inclusive.
 			return nil
 		},
 	}
-	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
 	reCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of job that needs to be replayed")
 	reCmd.MarkFlagRequired("namespace")
 
@@ -61,6 +61,7 @@ Date ranges are inclusive.
 	reCmd.Flags().BoolVar(&allDownstream, "all-downstream", allDownstream, "Run replay for all downstream across namespaces")
 
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		projectName = conf.Project.Name
 		l := initClientLogger(conf.Log)
 		endDate := args[1]
 		if len(args) >= 3 { //nolint: gomnd

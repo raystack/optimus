@@ -76,7 +76,7 @@ Secret value can be either provided in second argument or through file flag.
 Use base64 flag if the value has been encoded.
 		`,
 	}
-	secretCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+	secretCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
 	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of deployee")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
@@ -84,6 +84,7 @@ Use base64 flag if the value has been encoded.
 	secretCmd.Flags().BoolVar(&skipConfirm, "confirm", false, "Skip asking for confirmation")
 
 	secretCmd.RunE = func(cmd *cli.Command, args []string) error {
+		projectName = conf.Project.Name
 		l := initClientLogger(conf.Log)
 		secretName, err := getSecretName(args)
 		if err != nil {
@@ -151,9 +152,10 @@ func secretListSubCommand(conf *config.ClientConfig) *cli.Command {
 		Example: "optimus secret list",
 		Long:    `This operation shows the secrets for project.`,
 	}
-	secretListCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+	secretListCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
 
 	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
+		projectName = conf.Project.Name
 		l := initClientLogger(conf.Log)
 		updateSecretRequest := &pb.ListSecretsRequest{
 			ProjectName: projectName,
@@ -172,10 +174,11 @@ func secretDeleteSubCommand(conf *config.ClientConfig) *cli.Command {
 		Example: "optimus secret delete <secret_name>",
 		Long:    `This operation deletes a secret registered with optimus.`,
 	}
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
 	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace name of optimus managed repository")
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		projectName = conf.Project.Name
 		l := initClientLogger(conf.Log)
 		secretName, err := getSecretName(args)
 		if err != nil {
