@@ -12,28 +12,30 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/config"
 )
 
 const (
 	jobStatusTimeout = time.Second * 30
 )
 
-func jobRunListCommand(l log.Logger, defaultProjectName, defaultHost string) *cli.Command {
+func jobRunListCommand(conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "list-runs",
 		Short:   "Get Job run details",
 		Example: `optimus job runs <sample_job_goes_here> [--project \"project-id\"] [--start_date \"2006-01-02T15:04:05Z07:00\" --end_date \"2006-01-02T15:04:05Z07:00\"]`,
 		Args:    cli.MinimumNArgs(1),
 	}
-	projectName := defaultProjectName
-	host := defaultHost
+	projectName := conf.Project.Name
+	host := conf.Host
 	var startDate string
 	var endDate string
 	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVar(&host, "host", defaultHost, "Optimus service endpoint url")
+	cmd.Flags().StringVar(&host, "host", host, "Optimus service endpoint url")
 	cmd.Flags().StringVar(&startDate, "start_date", "", "start date of job run")
 	cmd.Flags().StringVar(&endDate, "end_date", "", "end date of job run")
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		jobName := args[0]
 		l.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
 			projectName, jobName, host))
