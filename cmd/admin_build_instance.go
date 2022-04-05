@@ -27,7 +27,7 @@ const (
 
 const unsubstitutedValue = "<no value>"
 
-func adminBuildInstanceCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func adminBuildInstanceCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		optimusHost    = conf.Host
 		projectName    = conf.Project.Name
@@ -58,6 +58,7 @@ func adminBuildInstanceCommand(l log.Logger, conf *config.ClientConfig) *cli.Com
 	cmd.Flags().StringVar(&optimusHost, "host", optimusHost, "Optimus service endpoint url")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		jobName := args[0]
 		l.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", projectName, jobName, optimusHost))
 		l.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", runName, runType, scheduledAt))
