@@ -14,9 +14,10 @@ const (
 )
 
 func backupCommand() *cli.Command {
-	var configFilePath string
-	conf := &config.ClientConfig{}
-	l := initDefaultLogger()
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+	)
 
 	cmd := &cli.Command{
 		Use:   "backup",
@@ -34,19 +35,17 @@ func backupCommand() *cli.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
-		var err error
-
-		conf, err = config.LoadClientConfig(configFilePath)
+		c, err := config.LoadClientConfig(configFilePath)
 		if err != nil {
 			return err
 		}
-		l = initClientLogger(conf.Log)
+		conf = *c
 
 		return nil
 	}
 
-	cmd.AddCommand(backupCreateCommand(l, conf))
-	cmd.AddCommand(backupListCommand(l, conf))
-	cmd.AddCommand(backupStatusCommand(l, conf))
+	cmd.AddCommand(backupCreateCommand(&conf))
+	cmd.AddCommand(backupListCommand(&conf))
+	cmd.AddCommand(backupStatusCommand(&conf))
 	return cmd
 }

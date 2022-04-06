@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/config"
@@ -23,9 +22,10 @@ var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-z
 	`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
 func resourceCommand() *cli.Command {
-	var configFilePath string
-	conf := &config.ClientConfig{}
-	l := initDefaultLogger()
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+	)
 
 	cmd := &cli.Command{
 		Use:   "resource",
@@ -39,22 +39,20 @@ func resourceCommand() *cli.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
-		var err error
-
-		conf, err = config.LoadClientConfig(configFilePath)
+		c, err := config.LoadClientConfig(configFilePath)
 		if err != nil {
 			return err
 		}
-		l = initClientLogger(conf.Log)
+		conf = *c
 
 		return nil
 	}
 
-	cmd.AddCommand(createResourceSubCommand(l, conf))
+	cmd.AddCommand(createResourceSubCommand(&conf))
 	return cmd
 }
 
-func createResourceSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func createResourceSubCommand(conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new resource",
@@ -62,6 +60,7 @@ func createResourceSubCommand(l log.Logger, conf *config.ClientConfig) *cli.Comm
 	}
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		dsRepo := models.DatastoreRegistry
 		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 

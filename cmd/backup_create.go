@@ -16,7 +16,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func backupCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func backupCreateCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "create",
@@ -42,6 +42,7 @@ func backupCreateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 	backupCmd.Flags().BoolVar(&ignoreDownstream, "ignore-downstream", ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
 		var err error
 		namespace, err := askToSelectNamespace(l, conf)
 		if err != nil {
