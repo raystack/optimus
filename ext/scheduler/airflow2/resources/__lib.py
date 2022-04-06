@@ -322,9 +322,25 @@ class JobSpecTaskWindow:
             self._parse_datetime(api_response['start']),
             self._parse_datetime(api_response['end']),
         )
+    
+    # window start is inclusive 
+    def get_schedule_window(self, scheduled_at: str , upstream_schedule: str) -> (str, str):
+        api_response = self._fetch_task_window(scheduled_at)
+
+        job_cron_iter = croniter(upstream_schedule, api_response['start'])
+        schedule_time_window_inclusive_start    = job_cron_iter.get_next(datetime)
+
+        schedule_time_window_end = api_response['end']
+        return (
+            self._parse_datetime_utc(schedule_time_window_inclusive_start),
+            self._parse_datetime_utc(schedule_time_window_end),
+        )
 
     def _parse_datetime(self, timestamp):
         return datetime.strptime(timestamp, TIMESTAMP_FORMAT)
+
+    def _parse_datetime_utc(self, timestamp):
+        return timestamp.strftime(TIMESTAMP_FORMAT)
 
     def _fetch_task_window(self, scheduled_at: str) -> dict:
         return self._optimus_client.get_task_window(scheduled_at, self.size, self.offset, self.truncate_to)
@@ -355,42 +371,32 @@ class CrossTenantDependencySensor(BaseSensorOperator):
         # TODO this needs to be updated to use optimus get job spec
         upstream_schedule = self.get_schedule_interval(schedule_time)
 
-        last_upstream_schedule_time, _ = SuperExternalTaskSensor.get_last_upstream_times(
-            schedule_time,
-            upstream_schedule)
+        last_upstream_schedule_time, _ = self.get_last_upstream_times(
+            schedule_time, upstream_schedule)
 
         # get schedule window
         task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
-        schedule_time_window_start, schedule_time_window_end = task_window.get(
-            last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT))
+        schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
+            last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
         
-        schedule_time_window_start_next, schedule_time_window_end = self.get_inclusive_start_schedule_window(
-            schedule_time_window_start,
-            schedule_time_window_end,
-            upstream_schedule
-        )
 
         self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
-            schedule_time_window_start_next, schedule_time_window_end))
+            schedule_time_window_start, schedule_time_window_end))
 
-        if not self._are_all_job_runs_successful(schedule_time_window_start_next, schedule_time_window_end):
+        if not self._are_all_job_runs_successful(schedule_time_window_start, schedule_time_window_end):
             self.log.warning("unable to find enough successful executions for upstream '{}' in "
                              "'{}' dated between {} and {}(inclusive), rescheduling sensor".
-                             format(self.optimus_job, self.optimus_project, schedule_time_window_start_next,
+                             format(self.optimus_job, self.optimus_project, schedule_time_window_start,
                                     schedule_time_window_end))
             return False
         return True
 
-    def get_inclusive_start_schedule_window(self, schedule_time_window_non_inclusive_start, schedule_time_window_end, upstream_schedule) -> (str, str):
-        job_cron_iter = croniter(upstream_schedule, schedule_time_window_non_inclusive_start)
-        schedule_time_window_inclusive_start    = job_cron_iter.get_next(datetime)
-        return (
-            self._parse_datetime_utc(schedule_time_window_inclusive_start),
-            self._parse_datetime_utc(schedule_time_window_end),
-        )
-
-    def _parse_datetime_utc(self, timestamp):
-        return timestamp.strftime(TIMESTAMP_FORMAT)
+    def get_last_upstream_times(self, schedule_time_of_current_job, upstream_schedule_interval):
+        second_ahead_of_schedule_time = schedule_time_of_current_job + timedelta(seconds=1)
+        c = croniter(upstream_schedule_interval, second_ahead_of_schedule_time)
+        last_upstream_schedule_time = c.get_prev(datetime)
+        last_upstream_execution_date = c.get_prev(datetime)
+        return last_upstream_schedule_time, last_upstream_execution_date
 
     def get_schedule_interval(self, schedule_time):
         schedule_time_str = schedule_time.strftime(TIMESTAMP_FORMAT)
