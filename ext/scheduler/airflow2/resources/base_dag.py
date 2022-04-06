@@ -11,7 +11,7 @@ from kubernetes.client import models as k8s
 
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor, CrossTenantDependencySensor, ExternalHttpSensor
+    SuperExternalTaskSensor, ExternalHttpSensor
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -182,7 +182,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{- $dependencySchema := $dependency.Job.Task.Unit.Info }}
 
 {{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
-wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = CrossTenantDependencySensor(
+wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$.Namespace.ProjectSpec.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
@@ -195,7 +195,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 {{- end -}}
 
 {{- if eq $dependency.Type $.JobSpecDependencyTypeInter }}
-wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = CrossTenantDependencySensor(
+wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
