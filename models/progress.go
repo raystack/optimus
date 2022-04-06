@@ -31,9 +31,11 @@ type (
 		Err error
 	}
 
-	// ProgressJobSpecDependencyFetch represents dependencies are being
-	// read from the storage
-	ProgressJobSpecDependencyFetch struct{}
+	// ProgressJobDependencyFetch represents dependencies are being read from the storage
+	ProgressJobDependencyFetch struct{}
+
+	// ProgressJobSpecWithDependencyFetch represents job specs with dependencies have been fetched
+	ProgressJobSpecWithDependencyFetch struct{}
 
 	// ProgressSavedJobDelete signifies that a raw
 	// job from a repository is being deleted
@@ -75,9 +77,6 @@ type (
 	// ProgressJobRemoteDelete signifies that a
 	// compiled job from a remote repository is being deleted
 	ProgressJobRemoteDelete struct{ Name string }
-
-	// ProgressJobSpecJobDependencyEnrich represents job specs have been enriched with the job dependencies
-	ProgressJobSpecJobDependencyEnrich struct{}
 
 	// ProgressJobSpecHookDependencyEnrich represents job specs have been enriched with the hook dependencies
 	ProgressJobSpecHookDependencyEnrich struct{}
@@ -122,8 +121,12 @@ func (e *ProgressJobDependencyResolution) Type() string {
 	return ProgressTypeJobDependencyResolution
 }
 
-func (e *ProgressJobSpecDependencyFetch) String() string {
-	return "fetching job dependencies"
+func (e *ProgressJobDependencyFetch) String() string {
+	return "job dependencies has been fetched"
+}
+
+func (e *ProgressJobSpecWithDependencyFetch) String() string {
+	return "job specs with job dependencies has been fetched"
 }
 
 func (e *ProgressJobCheckFailed) String() string {
@@ -151,10 +154,6 @@ func (e *ProgressJobUpload) Type() string {
 
 func (e *ProgressJobRemoteDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
-}
-
-func (e *ProgressJobSpecJobDependencyEnrich) String() string {
-	return "jobs enriched with job dependencies"
 }
 
 func (e *ProgressJobSpecHookDependencyEnrich) String() string {

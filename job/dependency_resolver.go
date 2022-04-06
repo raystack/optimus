@@ -89,6 +89,7 @@ func (r *dependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
+	r.notifyProgress(observer, &models.ProgressJobDependencyFetch{})
 
 	// fetch inter project dependencies job specs
 	externalJobSpecs, err := r.getExternalProjectJobSpecs(ctx, dependencies)
@@ -100,12 +101,11 @@ func (r *dependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Contex
 	jobSpecMap := createJobSpecMap(jobSpecs, externalJobSpecs)
 
 	// enrich
-	return r.enrichJobSpecWithJobDependencies(jobSpecs, dependencies, jobSpecMap, observer)
+	return r.enrichJobSpecsWithJobDependencies(jobSpecs, dependencies, jobSpecMap)
 }
 
-func (r *dependencyResolver) enrichJobSpecWithJobDependencies(jobSpecs []models.JobSpec, jobDependencies []models.JobIDDependenciesPair,
-	jobSpecMap map[uuid.UUID]models.JobSpec, observer progress.Observer) ([]models.JobSpec, error) {
-	defer r.notifyProgress(observer, &models.ProgressJobSpecJobDependencyEnrich{})
+func (r *dependencyResolver) enrichJobSpecsWithJobDependencies(jobSpecs []models.JobSpec, jobDependencies []models.JobIDDependenciesPair,
+	jobSpecMap map[uuid.UUID]models.JobSpec) ([]models.JobSpec, error) {
 	var enrichedJobSpecs []models.JobSpec
 	jobSpecAndDependenciesMap := models.JobIDDependenciesPairs(jobDependencies).GetJobDependencyMap()
 	for _, jobSpec := range jobSpecs {
@@ -147,20 +147,27 @@ func (r *dependencyResolver) getExternalProjectJobSpecs(ctx context.Context, job
 
 	externalProjectAndDependenciesMap := models.JobIDDependenciesPairs(jobDependencies).GetExternalProjectAndDependenciesMap()
 	for _, dependencies := range externalProjectAndDependenciesMap {
-		var dependencyJobIDs []uuid.UUID
-		for _, dependency := range dependencies {
-			dependencyJobIDs = append(dependencyJobIDs, dependency.DependentJobID)
-		}
-
-		projectJobSpecRepo := r.projectJobSpecRepoFactory.New(dependencies[0].DependentProject)
-		specs, err := projectJobSpecRepo.GetByIDs(ctx, dependencyJobIDs)
+		specs, err := r.getJobSpecsPerExternalProject(ctx, dependencies)
 		if err != nil {
 			return nil, err
 		}
-
 		externalJobSpecs = append(externalJobSpecs, specs...)
 	}
 	return externalJobSpecs, nil
+}
+
+func (r *dependencyResolver) getJobSpecsPerExternalProject(ctx context.Context, dependencies []models.JobIDDependenciesPair) ([]models.JobSpec, error) {
+	var dependencyJobIDs []uuid.UUID
+	for _, dependency := range dependencies {
+		dependencyJobIDs = append(dependencyJobIDs, dependency.DependentJobID)
+	}
+
+	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(dependencies[0].DependentProject)
+	specs, err := projectJobSpecRepo.GetByIDs(ctx, dependencyJobIDs)
+	if err != nil {
+		return nil, err
+	}
+	return specs, nil
 }
 
 func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,

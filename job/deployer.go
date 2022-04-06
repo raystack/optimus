@@ -27,7 +27,7 @@ func (d *deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, p
 	if err != nil {
 		return err
 	}
-	d.notifyProgress(progressObserver, &models.ProgressJobSpecDependencyFetch{})
+	d.notifyProgress(progressObserver, &models.ProgressJobSpecWithDependencyFetch{})
 
 	// Get all job specs and enrich with hook dependencies
 	jobSpecs = d.enrichJobSpecWithHookDependencies(jobSpecs)
