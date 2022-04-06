@@ -1176,7 +1176,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
+			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1223,11 +1223,7 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}
+			namespaceNames := []string{namespaceSpec.Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
@@ -1243,16 +1239,16 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Nil(t, err)
 		})
 		t.Run("should successfully refresh job specs for the selected jobs", func(t *testing.T) {
-			jobSpecRepo := new(mock.JobSpecRepository)
-			defer jobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
 
-			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFac.AssertExpectations(t)
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			dependencyResolver := new(mock.DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
@@ -1296,28 +1292,21 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-					JobNames:      []string{jobSpecsBase[0].Name},
-				},
-			}
+			jobNames := []string{jobSpecsBase[0].Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
-			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
-			jobSpecRepo.On("GetByName", ctx, jobSpecsBase[0].Name).Return(jobSpecsBase[0], nil)
-
-			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetByName", ctx, jobNames[0]).Return(jobSpecsBase[0], namespaceSpec, nil)
 
 			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
 			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
 			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, dependencyResolver,
-				priorityResolver, nil, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
+			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, dependencyResolver,
+				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1344,7 +1333,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
+			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -1374,7 +1363,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
+			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 		})
@@ -1397,11 +1386,7 @@ func TestService(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}
+			namespaceNames := []string{namespaceSpec.Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
@@ -1409,7 +1394,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -1432,11 +1417,7 @@ func TestService(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}
+			namespaceNames := []string{namespaceSpec.Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
@@ -1447,16 +1428,16 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
+			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing selected jobs", func(t *testing.T) {
-			jobSpecRepo := new(mock.JobSpecRepository)
-			defer jobSpecRepo.AssertExpectations(t)
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
 
-			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFac.AssertExpectations(t)
+			projectJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projectJobSpecRepoFac.AssertExpectations(t)
 
 			dependencyResolver := new(mock.DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
@@ -1482,23 +1463,16 @@ func TestService(t *testing.T) {
 					Task: models.JobSpecTask{},
 				},
 			}
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-					JobNames:      []string{jobSpecsBase[0].Name},
-				},
-			}
+			jobNames := []string{jobSpecsBase[0].Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
-			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			projectJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetByName", ctx, jobSpecsBase[0].Name).Return(models.JobSpec{}, models.NamespaceSpec{}, errors.New(errorMsg))
 
-			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
-			jobSpecRepo.On("GetByName", ctx, jobSpecsBase[0].Name).Return(models.JobSpec{}, errors.New(errorMsg))
-
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
-				nil, nil, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceJobNamePairs, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
+				nil, projectJobSpecRepoFac, nil, namespaceService, projectService, deployer)
+			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
 		})
@@ -1580,7 +1554,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
+			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1663,7 +1637,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer)
-			err := svc.Refresh(ctx, projSpec.Name, []models.NamespaceJobNamePair{}, nil)
+			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
 		})

@@ -708,7 +708,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 
 // Refresh fetches all the requested jobs, resolves its dependencies, assign proper priority weights,
 // compile all jobs in the project and upload them to the destination store.
-func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceJobNamePairs []models.NamespaceJobNamePair,
+func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string,
 	progressObserver progress.Observer) (err error) {
 	projectSpec, err := srv.projectService.Get(ctx, projectName)
 	if err != nil {
@@ -716,7 +716,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceJo
 	}
 
 	// get job specs as requested
-	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceJobNamePairs, progressObserver)
+	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceNames, jobNames, progressObserver)
 	if err != nil {
 		return err
 	}
@@ -735,45 +735,53 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceJo
 }
 
 func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.ProjectSpec,
-	namespaceJobNamePairs []models.NamespaceJobNamePair, progressObserver progress.Observer) ([]models.JobSpec, error) {
+	namespaceNames []string, jobNames []string, progressObserver progress.Observer) (jobSpecs []models.JobSpec, err error) {
 	defer srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
 
-	if len(namespaceJobNamePairs) == 0 {
-		// do for all jobs in a project regardless the namespace
-		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
-		}
-		return jobSpecs, nil
-	} else {
-		var jobSpecs []models.JobSpec
-		for _, pair := range namespaceJobNamePairs {
-			namespaceSpec, err := srv.namespaceService.Get(ctx, projectSpec.Name, pair.NamespaceName)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(pair.JobNames) == 0 {
-				// do for all jobs in a namespace
-				specs, err := srv.GetAll(ctx, namespaceSpec)
-				if err != nil {
-					return nil, err
-				}
-				jobSpecs = append(jobSpecs, specs...)
-			} else {
-				// do for particular jobs in a namespace
-				for _, name := range pair.JobNames {
-					spec, err := srv.GetByName(ctx, name, namespaceSpec)
-					if err != nil {
-						return nil, err
-					}
-					jobSpecs = append(jobSpecs, spec)
-				}
-			}
-		}
-		return jobSpecs, nil
+	if len(jobNames) > 0 {
+		return srv.fetchSpecsForGivenJobNames(ctx, projectSpec, jobNames)
+	} else if len(namespaceNames) > 0 {
+		return srv.fetchAllJobSpecsForGivenNamespaces(ctx, projectSpec, namespaceNames)
 	}
+	return srv.fetchAllJobSpecsForAProject(ctx, projectSpec)
+}
+
+func (srv *Service) fetchAllJobSpecsForAProject(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error) {
+	var jobSpecs []models.JobSpec
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
+	}
+	return jobSpecs, nil
+}
+
+func (srv *Service) fetchAllJobSpecsForGivenNamespaces(ctx context.Context, projectSpec models.ProjectSpec, namespaceNames []string) ([]models.JobSpec, error) {
+	var jobSpecs []models.JobSpec
+	for _, namespaceName := range namespaceNames {
+		namespaceSpec, err := srv.namespaceService.Get(ctx, projectSpec.Name, namespaceName)
+		if err != nil {
+			return nil, err
+		}
+		specs, err := srv.GetAll(ctx, namespaceSpec)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs = append(jobSpecs, specs...)
+	}
+	return jobSpecs, nil
+}
+
+func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec models.ProjectSpec, jobNames []string) ([]models.JobSpec, error) {
+	var jobSpecs []models.JobSpec
+	for _, name := range jobNames {
+		jobSpec, _, err := srv.GetByNameForProject(ctx, name, projectSpec)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+	return jobSpecs, nil
 }
 
 func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.ProjectSpec,
@@ -781,26 +789,12 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
 
-	// compile assets before resolving in parallel
-	for i, jSpec := range jobSpecs {
-		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
-		}
-	}
-
 	// resolve specs in parallel
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, projectSpec, currentSpec, progressObserver)
-				if err != nil {
-					return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
-				}
-				if err := srv.dependencyResolver.Persist(ctx, resolvedSpec); err != nil {
-					return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
-				}
-				return currentSpec.Name, nil
+				return srv.resolveAndPersist(ctx, currentSpec, projectSpec, progressObserver)
 			}
 		}(jobSpec))
 	}
@@ -821,4 +815,19 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionFailed}).Set(float64(failure))
 	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 	return err
+}
+
+func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec, progressObserver progress.Observer) (interface{}, error) {
+	var err error
+	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
+		return currentSpec.Name, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
+	}
+	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, projectSpec, currentSpec, progressObserver)
+	if err != nil {
+		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+	}
+	if err := srv.dependencyResolver.Persist(ctx, resolvedSpec); err != nil {
+		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+	}
+	return currentSpec.Name, nil
 }

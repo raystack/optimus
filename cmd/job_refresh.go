@@ -84,18 +84,11 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 	refreshTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), refreshTimeout)
 	defer deployCancel()
 
-	var namespaceJobs []*pb.NamespaceJobs
-	for _, namespace := range namespaces {
-		namespaceJobs = append(namespaceJobs, &pb.NamespaceJobs{
-			NamespaceName: namespace,
-			JobNames:      jobs,
-		})
-	}
-
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
 	respStream, err := jobSpecService.RefreshJobs(refreshTimeoutCtx, &pb.RefreshJobsRequest{
-		ProjectName:   projectName,
-		NamespaceJobs: namespaceJobs,
+		ProjectName:    projectName,
+		NamespaceNames: namespaces,
+		JobNames:       jobs,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

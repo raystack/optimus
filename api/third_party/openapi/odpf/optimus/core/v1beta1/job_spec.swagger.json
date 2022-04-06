@@ -572,20 +572,6 @@
         }
       }
     },
-    "v1beta1NamespaceJobs": {
-      "type": "object",
-      "properties": {
-        "namespaceName": {
-          "type": "string"
-        },
-        "jobNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {

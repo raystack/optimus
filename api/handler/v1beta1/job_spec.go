@@ -297,25 +297,12 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 		mu:     new(sync.Mutex),
 	})
 
-	namespaceJobNamePairs := sv.prepareNamespaceJobNamePairs(req.NamespaceJobs)
-
-	if err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, namespaceJobNamePairs, observers); err != nil {
+	if err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers); err != nil {
 		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
 	}
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
 	return nil
-}
-
-func (sv *JobSpecServiceServer) prepareNamespaceJobNamePairs(req []*pb.NamespaceJobs) []models.NamespaceJobNamePair {
-	var namespaceJobNamePairs []models.NamespaceJobNamePair
-	for _, pair := range req {
-		namespaceJobNamePairs = append(namespaceJobNamePairs, models.NamespaceJobNamePair{
-			NamespaceName: pair.NamespaceName,
-			JobNames:      pair.JobNames,
-		})
-	}
-	return namespaceJobNamePairs
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,

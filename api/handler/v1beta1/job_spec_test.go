@@ -496,11 +496,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				},
 				ProjectSpec: projectSpec,
 			}
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}
+			namespaceNames := []string{namespaceSpec.Name}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
 			defer jobSpecRepository.AssertExpectations(t)
@@ -529,7 +525,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			grpcRespStream := new(mock.RefreshJobsServer)
 			defer grpcRespStream.AssertExpectations(t)
 
-			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceJobNamePairs, mock2.Anything).Return(nil)
+			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(nil)
 			grpcRespStream.On("Context").Return(context.Background())
 
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
@@ -540,11 +536,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nsService,
 				nil,
 			)
-			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceJobs: []*pb.NamespaceJobs{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}}
+			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceNames: namespaceNames}
 			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
 			assert.Nil(t, err)
 		})
@@ -565,11 +557,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				},
 				ProjectSpec: projectSpec,
 			}
-			namespaceJobNamePairs := []models.NamespaceJobNamePair{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}
+			namespaceNames := []string{namespaceSpec.Name}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
 			defer jobSpecRepository.AssertExpectations(t)
@@ -599,7 +587,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer grpcRespStream.AssertExpectations(t)
 
 			errorMsg := "internal error"
-			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceJobNamePairs, mock2.Anything).Return(errors.New(errorMsg))
+			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(errors.New(errorMsg))
 			grpcRespStream.On("Context").Return(context.Background())
 
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
@@ -610,11 +598,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nsService,
 				nil,
 			)
-			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceJobs: []*pb.NamespaceJobs{
-				{
-					NamespaceName: namespaceSpec.Name,
-				},
-			}}
+			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceNames: namespaceNames}
 			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
 			assert.Contains(t, err.Error(), errorMsg)
 		})
