@@ -1144,57 +1144,69 @@ func TestDependencyResolver(t *testing.T) {
 		})
 	})
 
-	t.Run("FetchJobDependencies", func(t *testing.T) {
+	t.Run("FetchJobSpecsWithJobDependencies", func(t *testing.T) {
 		ctx := context.Background()
-		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
 			ID:   models.ProjectID(uuid.New()),
-			Name: projectName,
+			Name: "a-data-project",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
 			},
 		}
+		externalProjectSpec1 := models.ProjectSpec{
+			ID:   models.ProjectID(uuid.New()),
+			Name: "b-data-project",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		externalProjectSpec2 := models.ProjectSpec{
+			ID:   models.ProjectID(uuid.New()),
+			Name: "b-data-project",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		errorMsg := "internal error"
 
-		t.Run("should able to fetch dependencies", func(t *testing.T) {
+		t.Run("should able to fetch job specs with job dependencies", func(t *testing.T) {
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
 			jobSpec1 := models.JobSpec{
-				Version: 1,
-				Name:    "test1",
-				Owner:   "optimus",
-				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-					Interval:  "@daily",
-				},
-				Task: models.JobSpecTask{
-					Config: models.JobSpecConfigs{
-						{
-							Name:  "foo",
-							Value: "bar",
-						},
-					},
-				},
+				Version:      1,
+				Name:         "test1",
+				ID:           uuid.New(),
 				Dependencies: make(map[string]models.JobSpecDependency),
 			}
 			jobSpec2 := models.JobSpec{
-				Version: 1,
-				Name:    "test2",
-				Owner:   "optimus",
-				Schedule: models.JobSpecSchedule{
-					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-					Interval:  "@daily",
-				},
-				Task: models.JobSpecTask{
-					Config: models.JobSpecConfigs{
-						{
-							Name:  "foo",
-							Value: "baz",
-						},
-					},
-				},
+				Version:      1,
+				Name:         "test2",
+				ID:           uuid.New(),
 				Dependencies: make(map[string]models.JobSpecDependency),
 			}
-
-			jobDependencyRepository := new(mock.JobDependencyRepository)
-			defer jobDependencyRepository.AssertExpectations(t)
+			jobSpec3 := models.JobSpec{
+				Version: 1,
+				Name:    "test3",
+				ID:      uuid.New(),
+			}
+			jobSpec4 := models.JobSpec{
+				Version: 1,
+				Name:    "test4",
+				ID:      uuid.New(),
+			}
+			jobSpec5 := models.JobSpec{
+				Version: 1,
+				Name:    "test5",
+				ID:      uuid.New(),
+			}
+			jobSpecsBase := []models.JobSpec{jobSpec1, jobSpec2}
 
 			persistedDependencies := []models.JobIDDependenciesPair{
 				{
@@ -1203,26 +1215,222 @@ func TestDependencyResolver(t *testing.T) {
 					DependentProject: projectSpec,
 					Type:             models.JobSpecDependencyTypeIntra,
 				},
+				{
+					JobID:            jobSpec1.ID,
+					DependentJobID:   jobSpec3.ID,
+					DependentProject: externalProjectSpec1,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+				{
+					JobID:            jobSpec2.ID,
+					DependentJobID:   jobSpec4.ID,
+					DependentProject: externalProjectSpec2,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+				{
+					JobID:            jobSpec2.ID,
+					DependentJobID:   jobSpec5.ID,
+					DependentProject: externalProjectSpec2,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
 			}
+			expectedEnrichedSpecs := []models.JobSpec{
+				{
+					Version: 1,
+					Name:    jobSpec1.Name,
+					ID:      jobSpec1.ID,
+					Dependencies: map[string]models.JobSpecDependency{
+						jobSpec2.Name: {
+							Project: &projectSpec,
+							Job:     &jobSpec2,
+							Type:    models.JobSpecDependencyTypeIntra,
+						},
+						jobSpec3.Name: {
+							Project: &externalProjectSpec1,
+							Job:     &jobSpec3,
+							Type:    models.JobSpecDependencyTypeInter,
+						},
+					},
+				},
+				{
+					Version: 1,
+					Name:    jobSpec2.Name,
+					ID:      jobSpec2.ID,
+					Dependencies: map[string]models.JobSpecDependency{
+						jobSpec4.Name: {
+							Project: &externalProjectSpec1,
+							Job:     &jobSpec4,
+							Type:    models.JobSpecDependencyTypeInter,
+						},
+						jobSpec5.Name: {
+							Project: &externalProjectSpec2,
+							Job:     &jobSpec5,
+							Type:    models.JobSpecDependencyTypeInter,
+						},
+					},
+				},
+			}
+
+			// fetch all jobs in a project
+			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+
+			// fetch dependencies of a project
 			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return(persistedDependencies, nil)
 
-			resolver := job.NewDependencyResolver(nil, jobDependencyRepository)
-			actual, err := resolver.FetchJobDependencies(ctx, projectSpec.ID)
+			// fetch job specs of external project dependency
+			projJobSpecRepoFac.On("New", externalProjectSpec1).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec3.ID}).Return([]models.JobSpec{jobSpec3}, nil)
+			projJobSpecRepoFac.On("New", externalProjectSpec2).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec4.ID, jobSpec5.ID}).Return([]models.JobSpec{jobSpec4, jobSpec5}, nil)
+
+			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
 
 			assert.Nil(t, err)
-			assert.EqualValues(t, persistedDependencies, actual)
+			assert.Equal(t, []uuid.UUID{expectedEnrichedSpecs[0].ID, expectedEnrichedSpecs[1].ID}, []uuid.UUID{actual[0].ID, actual[1].ID})
+			assert.Equal(t, len(expectedEnrichedSpecs[0].Dependencies), len(actual[0].Dependencies))
+			assert.Equal(t, len(expectedEnrichedSpecs[1].Dependencies), len(actual[1].Dependencies))
 		})
-		t.Run("should failed when unable to get persisted dependencies", func(t *testing.T) {
+		t.Run("should failed when unable to get job specs", func(t *testing.T) {
 			jobDependencyRepository := new(mock.JobDependencyRepository)
 			defer jobDependencyRepository.AssertExpectations(t)
 
-			errorMsg := "internal error"
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// fetch all jobs in a project
+			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
+
+			assert.Nil(t, actual)
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should failed when unable to get persisted dependencies", func(t *testing.T) {
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version:      1,
+				Name:         "test1",
+				ID:           uuid.New(),
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpec2 := models.JobSpec{
+				Version:      1,
+				Name:         "test2",
+				ID:           uuid.New(),
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpecsBase := []models.JobSpec{jobSpec1, jobSpec2}
+
+			// fetch all jobs in a project
+			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+
 			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return([]models.JobIDDependenciesPair{}, errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(nil, jobDependencyRepository)
-			actual, err := resolver.FetchJobDependencies(ctx, projectSpec.ID)
+			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
 
-			assert.Equal(t, []models.JobIDDependenciesPair{}, actual)
+			assert.Nil(t, actual)
+			assert.Equal(t, errorMsg, err.Error())
+		})
+		t.Run("should failed if unable to get external job specs by IDs", func(t *testing.T) {
+			jobDependencyRepository := new(mock.JobDependencyRepository)
+			defer jobDependencyRepository.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			jobSpec1 := models.JobSpec{
+				Version:      1,
+				Name:         "test1",
+				ID:           uuid.New(),
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpec2 := models.JobSpec{
+				Version:      1,
+				Name:         "test2",
+				ID:           uuid.New(),
+				Dependencies: make(map[string]models.JobSpecDependency),
+			}
+			jobSpec3 := models.JobSpec{
+				Version: 1,
+				Name:    "test3",
+				ID:      uuid.New(),
+			}
+			jobSpec4 := models.JobSpec{
+				Version: 1,
+				Name:    "test4",
+				ID:      uuid.New(),
+			}
+			jobSpec5 := models.JobSpec{
+				Version: 1,
+				Name:    "test5",
+				ID:      uuid.New(),
+			}
+			jobSpecsBase := []models.JobSpec{jobSpec1, jobSpec2}
+
+			persistedDependencies := []models.JobIDDependenciesPair{
+				{
+					JobID:            jobSpec1.ID,
+					DependentJobID:   jobSpec2.ID,
+					DependentProject: projectSpec,
+					Type:             models.JobSpecDependencyTypeIntra,
+				},
+				{
+					JobID:            jobSpec1.ID,
+					DependentJobID:   jobSpec3.ID,
+					DependentProject: externalProjectSpec1,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+				{
+					JobID:            jobSpec2.ID,
+					DependentJobID:   jobSpec4.ID,
+					DependentProject: externalProjectSpec2,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+				{
+					JobID:            jobSpec2.ID,
+					DependentJobID:   jobSpec5.ID,
+					DependentProject: externalProjectSpec2,
+					Type:             models.JobSpecDependencyTypeInter,
+				},
+			}
+
+			// fetch all jobs in a project
+			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+
+			// fetch dependencies of a project
+			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return(persistedDependencies, nil)
+
+			// fetch job specs of external project dependency
+			projJobSpecRepoFac.On("New", externalProjectSpec1).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec3.ID}).Return([]models.JobSpec{jobSpec3}, nil)
+			projJobSpecRepoFac.On("New", externalProjectSpec2).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec4.ID, jobSpec5.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
+
+			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
+
+			assert.Nil(t, actual)
 			assert.Equal(t, errorMsg, err.Error())
 		})
 	})

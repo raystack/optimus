@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -74,8 +76,91 @@ func (r *dependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec
 	return nil
 }
 
-func (r *dependencyResolver) FetchJobDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
-	return r.dependencyRepo.GetAll(ctx, projectID)
+func (r *dependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) ([]models.JobSpec, error) {
+	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r.notifyProgress(observer, &models.ProgressJobSpecFetch{})
+
+	// fetch all dependencies
+	dependencies, err := r.dependencyRepo.GetAll(ctx, projectSpec.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch inter project dependencies job specs
+	externalJobSpecs, err := r.getExternalProjectJobSpecs(ctx, dependencies)
+	if err != nil {
+		return nil, err
+	}
+
+	// create job spec map
+	jobSpecMap := createJobSpecMap(jobSpecs, externalJobSpecs)
+
+	// enrich
+	return r.enrichJobSpecWithJobDependencies(jobSpecs, dependencies, jobSpecMap, observer)
+}
+
+func (r *dependencyResolver) enrichJobSpecWithJobDependencies(jobSpecs []models.JobSpec, jobDependencies []models.JobIDDependenciesPair,
+	jobSpecMap map[uuid.UUID]models.JobSpec, observer progress.Observer) ([]models.JobSpec, error) {
+	defer r.notifyProgress(observer, &models.ProgressJobSpecJobDependencyEnrich{})
+	var enrichedJobSpecs []models.JobSpec
+	jobSpecAndDependenciesMap := models.JobIDDependenciesPairs(jobDependencies).GetJobDependencyMap()
+	for _, jobSpec := range jobSpecs {
+		dependencies := jobSpecAndDependenciesMap[jobSpec.ID]
+		enrichedJobSpec := enrichSingleJobSpecWithDependencies(dependencies, jobSpec, jobSpecMap)
+		enrichedJobSpecs = append(enrichedJobSpecs, enrichedJobSpec)
+	}
+	return enrichedJobSpecs, nil
+}
+
+func enrichSingleJobSpecWithDependencies(dependencies []models.JobIDDependenciesPair,
+	jobSpec models.JobSpec, jobSpecMap map[uuid.UUID]models.JobSpec) models.JobSpec {
+	if len(dependencies) > 0 {
+		jobSpec.Dependencies = make(map[string]models.JobSpecDependency)
+	}
+
+	for _, dep := range dependencies {
+		dependentJob := jobSpecMap[dep.DependentJobID]
+		dependentProject := dep.DependentProject
+		jobSpec.Dependencies[dependentJob.Name] = models.JobSpecDependency{
+			Project: &dependentProject,
+			Job:     &dependentJob,
+			Type:    dep.Type,
+		}
+	}
+	return jobSpec
+}
+
+func createJobSpecMap(jobSpecs []models.JobSpec, externalProjectJobSpecs []models.JobSpec) map[uuid.UUID]models.JobSpec {
+	jobSpecMap := make(map[uuid.UUID]models.JobSpec)
+	for _, jobSpec := range append(externalProjectJobSpecs, jobSpecs...) {
+		jobSpecMap[jobSpec.ID] = jobSpec
+	}
+	return jobSpecMap
+}
+
+func (r *dependencyResolver) getExternalProjectJobSpecs(ctx context.Context, jobDependencies []models.JobIDDependenciesPair) ([]models.JobSpec, error) {
+	var externalJobSpecs []models.JobSpec
+
+	externalProjectAndDependenciesMap := models.JobIDDependenciesPairs(jobDependencies).GetExternalProjectAndDependenciesMap()
+	for _, dependencies := range externalProjectAndDependenciesMap {
+		var dependencyJobIDs []uuid.UUID
+		for _, dependency := range dependencies {
+			dependencyJobIDs = append(dependencyJobIDs, dependency.DependentJobID)
+		}
+
+		projectJobSpecRepo := r.projectJobSpecRepoFactory.New(dependencies[0].DependentProject)
+		specs, err := projectJobSpecRepo.GetByIDs(ctx, dependencyJobIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		externalJobSpecs = append(externalJobSpecs, specs...)
+	}
+	return externalJobSpecs, nil
 }
 
 func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,

@@ -446,7 +446,7 @@ func (j JobIDDependenciesPairs) GetJobDependencyMap() map[uuid.UUID][]JobIDDepen
 	return jobDependencyMap
 }
 
-func (j JobIDDependenciesPairs) GetInterProjectDependencies() map[ProjectID][]JobIDDependenciesPair {
+func (j JobIDDependenciesPairs) GetExternalProjectAndDependenciesMap() map[ProjectID][]JobIDDependenciesPair {
 	interDependenciesMap := make(map[ProjectID][]JobIDDependenciesPair)
 	for _, dep := range j {
 		if dep.Type == JobSpecDependencyTypeInter {

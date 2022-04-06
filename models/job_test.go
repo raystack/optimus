@@ -187,7 +187,7 @@ func TestJob(t *testing.T) {
 			assert.Equal(t, expectedMap, actual)
 		})
 	})
-	t.Run("GetInterProjectDependencies", func(t *testing.T) {
+	t.Run("GetExternalProjectAndDependenciesMap", func(t *testing.T) {
 		t.Run("should able to get inter project dependencies", func(t *testing.T) {
 			jobID1 := uuid.New()
 			jobID2 := uuid.New()
@@ -244,7 +244,7 @@ func TestJob(t *testing.T) {
 				projectSpec1.ID: {pairs[1]},
 				projectSpec2.ID: {pairs[2], pairs[3]},
 			}
-			actual := models.JobIDDependenciesPairs(pairs).GetInterProjectDependencies()
+			actual := models.JobIDDependenciesPairs(pairs).GetExternalProjectAndDependenciesMap()
 
 			assert.Equal(t, expectedMap, actual)
 		})

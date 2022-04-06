@@ -232,9 +232,10 @@ func (srv *DependencyResolver) Persist(ctx context.Context, jobSpec models.JobSp
 	return args.Error(0)
 }
 
-func (srv *DependencyResolver) FetchJobDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
-	args := srv.Called(ctx, projectID)
-	return args.Get(0).([]models.JobIDDependenciesPair), args.Error(1)
+func (srv *DependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
+	observer progress.Observer) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, projectSpec, observer)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
 func (srv *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {

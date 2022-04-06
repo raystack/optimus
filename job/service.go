@@ -56,8 +56,7 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	Persist(ctx context.Context, jobSpec models.JobSpec) error
 
-	// FetchJobDependencies from dependency persistence
-	FetchJobDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
+	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) ([]models.JobSpec, error)
 	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
 }
 

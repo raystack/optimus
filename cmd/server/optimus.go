@@ -276,7 +276,7 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
-	deployer := job.NewDeployer(dependencyResolver, priorityResolver, projectJobSpecRepoFac, scheduler)
+	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler)
 
 	engine := jobRunCompiler.NewGoEngine()
 	// runtime service instance over grpc
