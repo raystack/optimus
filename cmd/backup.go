@@ -35,7 +35,7 @@ func backupCommand() *cli.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
-		c, err := config.LoadClientConfig(configFilePath)
+		c, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {
 			return err
 		}

@@ -57,7 +57,7 @@ func deployCommand() *cli.Command {
 		pluginRepo := models.PluginRegistry
 		dsRepo := models.DatastoreRegistry
 		// TODO: find a way to load the config in one place
-		conf, err := config.LoadClientConfig(configFilePath)
+		conf, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {
 			return err
 		}

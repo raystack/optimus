@@ -8,6 +8,7 @@ import (
 
 	"github.com/odpf/salt/config"
 	"github.com/spf13/afero"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -21,9 +22,10 @@ const (
 )
 
 var (
-	FS       = afero.NewReadOnlyFs(afero.NewOsFs())
-	currPath string
-	execPath string
+	FS         = afero.NewReadOnlyFs(afero.NewOsFs())
+	EmptyFlags = &pflag.FlagSet{}
+	currPath   string
+	execPath   string
 )
 
 //nolint:gochecknoinits
@@ -42,14 +44,20 @@ func init() { // TODO: move paths initialization outside init()
 }
 
 // LoadClientConfig load the project specific config from these locations:
-// 1. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
-// 2. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
-func LoadClientConfig(filePath string) (*ClientConfig, error) {
+// 1. flags. eg ./optimus <client_command> --project.name project1
+// 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
+// 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
+func LoadClientConfig(filePath string, flags *pflag.FlagSet) (*ClientConfig, error) {
 	cfg := &ClientConfig{}
 
 	// getViperWithDefault + SetFs
 	v := viper.New()
 	v.SetFs(FS)
+
+	// bind with flags
+	if err := v.BindPFlags(flags); err != nil {
+		return nil, err
+	}
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
@@ -80,15 +88,21 @@ func LoadClientConfig(filePath string) (*ClientConfig, error) {
 }
 
 // LoadServerConfig load the server specific config from these locations:
-// 1. filepath. ./optimus <server_command> -c "path/to/config.yaml"
-// 2. env var. eg. OPTIMUS_SERVE_PORT, etc
-// 3. executable binary location
-func LoadServerConfig(filePath string) (*ServerConfig, error) {
+// 1. flags. eg ./optimus <server_command> --serve.port 8000
+// 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
+// 3. env var. eg. OPTIMUS_SERVE_PORT, etc
+// 4. executable binary location
+func LoadServerConfig(filePath string, flags *pflag.FlagSet) (*ServerConfig, error) {
 	cfg := &ServerConfig{}
 
 	// getViperWithDefault + SetFs
 	v := viper.New()
 	v.SetFs(FS)
+
+	// bind with flags
+	if err := v.BindPFlags(flags); err != nil {
+		return nil, err
+	}
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
