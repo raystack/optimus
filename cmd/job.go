@@ -7,9 +7,11 @@ import (
 )
 
 func jobCommand() *cli.Command {
-	var configFilePath string
-	conf := &config.ClientConfig{}
-	l := initDefaultLogger()
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+		pluginCleanFn  func()
+	)
 
 	cmd := &cli.Command{
 		Use:   "job",
@@ -23,30 +25,29 @@ func jobCommand() *cli.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
-		var err error
-
-		conf, err = config.LoadClientConfig(configFilePath)
+		c, err := config.LoadClientConfig(configFilePath)
 		if err != nil {
 			return err
 		}
-		l = initClientLogger(conf.Log)
+
+		conf = *c
 
 		// TODO: refactor initialize client deps
-		pluginCleanFn, err := initializeClientPlugins(conf.Log.Level)
-		defer pluginCleanFn()
-		if err != nil {
-			return err
-		}
+		pluginCleanFn, err = initializeClientPlugins(conf.Log.Level)
+		return err
+	}
 
+	cmd.PersistentPostRunE = func(cmd *cli.Command, args []string) error {
+		pluginCleanFn()
 		return nil
 	}
 
-	cmd.AddCommand(jobCreateCommand(l, conf))
-	cmd.AddCommand(jobAddHookCommand(l, conf))
-	cmd.AddCommand(jobRenderTemplateCommand(l, conf))
-	cmd.AddCommand(jobValidateCommand(l, conf))
-	cmd.AddCommand(jobRunCommand(l, conf))
-	cmd.AddCommand(jobRunListCommand(l, conf.Project.Name, conf.Host))
-	cmd.AddCommand(jobRefreshCommand(l, conf))
+	cmd.AddCommand(jobCreateCommand(&conf))
+	cmd.AddCommand(jobAddHookCommand(&conf))
+	cmd.AddCommand(jobRenderTemplateCommand(&conf))
+	cmd.AddCommand(jobValidateCommand(&conf))
+	cmd.AddCommand(jobRunCommand(&conf))
+	cmd.AddCommand(jobRunListCommand(&conf))
+	cmd.AddCommand(jobRefreshCommand(&conf))
 	return cmd
 }

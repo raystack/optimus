@@ -311,7 +311,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
-			resourceSpecs, err := resourceSpecRepo.GetAll(context.Background())
+			resourceSpecs, err := resourceSpecRepo.GetAll(deployTimeoutCtx)
 			if errors.Is(err, models.ErrNoResources) {
 				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespaceName))
 				continue

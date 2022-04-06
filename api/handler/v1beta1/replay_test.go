@@ -105,7 +105,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.ReplayDryRun(context.Background(), &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
 			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
@@ -190,7 +190,7 @@ func TestReplayOnServer(t *testing.T) {
 				StartDate:     startDate.Format(timeLayout),
 				EndDate:       endDate.Format(timeLayout),
 			}
-			replayResponse, err := replayServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Nil(t, replayResponse)
 		})
@@ -229,7 +229,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.ReplayDryRun(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Nil(t, replayResponse)
 		})
@@ -309,7 +309,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
@@ -347,7 +347,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, randomUUID.String(), replayResponse.Id)
 		})
@@ -372,7 +372,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Nil(t, replayResponse)
 		})
@@ -410,7 +410,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Equal(t, codes.Internal, status.Code(err))
@@ -438,7 +438,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
@@ -468,7 +468,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errMessage)
 			assert.Nil(t, replayResponse)
@@ -506,7 +506,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), job.ErrConflictedJobRun.Error())
 			assert.Equal(t, codes.FailedPrecondition, status.Code(err))
@@ -545,7 +545,7 @@ func TestReplayOnServer(t *testing.T) {
 				EndDate:                     endDate.Format(timeLayout),
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			replayResponse, err := replayServiceServer.Replay(context.TODO(), &replayRequest)
+			replayResponse, err := replayServiceServer.Replay(ctx, &replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), job.ErrRequestQueueFull.Error())
 			assert.Equal(t, codes.Unavailable, status.Code(err))
@@ -613,7 +613,7 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetReplayStatus", context.TODO(), replayRequest).Return(replayState, nil)
+			jobService.On("GetReplayStatus", ctx, replayRequest).Return(replayState, nil)
 
 			adapter := v1.NewAdapter(nil, nil)
 
@@ -644,7 +644,7 @@ func TestReplayOnServer(t *testing.T) {
 			errMessage := "internal error"
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetReplayStatus", context.TODO(), replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
+			jobService.On("GetReplayStatus", ctx, replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
 
 			adapter := v1.NewAdapter(nil, nil)
 

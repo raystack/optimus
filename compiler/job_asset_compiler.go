@@ -19,7 +19,7 @@ func NewJobAssetsCompiler(engine models.TemplateEngine, pluginRepo models.Plugin
 	}
 }
 
-func (c *JobRunAssetsCompiler) CompileJobRunAssets(jobRun models.JobRun, instanceSpec models.InstanceSpec, contextForTask map[string]interface{}) (map[string]string, error) {
+func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, jobRun models.JobRun, instanceSpec models.InstanceSpec, contextForTask map[string]interface{}) (map[string]string, error) {
 	plugin, err := c.pluginRepo.GetByName(jobRun.Spec.Task.Unit.Info().Name) // Do not access plugin from spec
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(jobRun models.JobRun, instanc
 
 	if plugin.CLIMod != nil {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(context.Background(), models.CompileAssetsRequest{
+		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			Window:           jobRun.Spec.Task.Window,
 			Config:           models.PluginConfigs{}.FromJobSpec(jobRun.Spec.Task.Config),
 			Assets:           models.PluginAssets{}.FromJobSpec(jobRun.Spec.Assets),

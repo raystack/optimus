@@ -29,7 +29,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				nil, nil, nil,
 			)
 			versionRequest := pb.VersionRequest{Client: Version}
-			resp, err := runtimeServiceServer.Version(context.Background(), &versionRequest)
+			resp, err := runtimeServiceServer.Version(ctx, &versionRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, Version, resp.Server)
 			assert.Equal(t, &pb.VersionResponse{Server: Version}, resp)

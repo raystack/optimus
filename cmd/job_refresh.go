@@ -20,7 +20,7 @@ const (
 	refreshTimeout = time.Minute * 15
 )
 
-func jobRefreshCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		projectName string
 		verbose     bool
@@ -32,13 +32,16 @@ func jobRefreshCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 		}
 	)
 
-	cmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Optimus project name")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Optimus project name")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
 
 	namespaces := cmd.Flags().StringArrayP("namespaces", "N", []string{}, "Namespaces of Optimus project")
 	jobs := cmd.Flags().StringArrayP("jobs", "J", []string{}, "Job names")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		l := initClientLogger(conf.Log)
+
+		projectName = conf.Project.Name
 		if projectName == "" {
 			return fmt.Errorf("project configuration is required")
 		}

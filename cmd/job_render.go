@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 
@@ -17,13 +16,14 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-func jobRenderTemplateCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func jobRenderTemplateCommand(conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE: func(c *cli.Command, args []string) error {
+			l := initClientLogger(conf.Log)
 			pluginRepo := models.PluginRegistry
 			namespace, err := askToSelectNamespace(l, conf)
 			if err != nil {

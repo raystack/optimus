@@ -272,7 +272,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromJobSpec converts the optimus representation of JobSpec to postgres' Job
-func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
+func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
@@ -356,7 +356,7 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 
 	var jobDestination string
 	if spec.Task.Unit.DependencyMod != nil {
-		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),
 		})
@@ -396,8 +396,8 @@ func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec) (Job, error) {
 	}, nil
 }
 
-func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace models.NamespaceSpec) (Job, error) {
-	adaptJob, err := adapt.FromJobSpec(spec)
+func (adapt JobSpecAdapter) FromSpecWithNamespace(ctx context.Context, spec models.JobSpec, namespace models.NamespaceSpec) (Job, error) {
+	adaptJob, err := adapt.FromJobSpec(ctx, spec)
 	if err != nil {
 		return adaptJob, err
 	}
@@ -444,8 +444,8 @@ type JobRunData struct {
 	ExecutedAt time.Time
 }
 
-func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.NamespaceSpec) (JobRun, error) {
-	adaptedJobSpec, err := adapt.FromJobSpec(jr.Spec)
+func (adapt JobSpecAdapter) FromJobRun(ctx context.Context, jr models.JobRun, nsSpec models.NamespaceSpec) (JobRun, error) {
+	adaptedJobSpec, err := adapt.FromJobSpec(ctx, jr.Spec)
 	if err != nil {
 		return JobRun{}, err
 	}
