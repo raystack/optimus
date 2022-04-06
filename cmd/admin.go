@@ -1,29 +1,48 @@
 package cmd
 
 import (
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/config"
 )
 
 // adminCommand registers internal administration commands
-func adminCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func adminCommand() *cli.Command {
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+	)
+
 	cmd := &cli.Command{
 		Use:    "admin",
 		Short:  "Internal administration commands",
 		Hidden: true,
 	}
-	cmd.AddCommand(adminBuildCommand(l, conf))
+
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		c, err := config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+
+		conf = *c
+
+		return nil
+	}
+
+	cmd.AddCommand(adminBuildCommand(&conf))
 	return cmd
 }
 
 // adminBuildCommand builds a run instance
-func adminBuildCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func adminBuildCommand(conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:   "build",
 		Short: "Register a job run and get required assets",
 	}
-	cmd.AddCommand(adminBuildInstanceCommand(l, conf))
+	cmd.AddCommand(adminBuildInstanceCommand(conf))
 	return cmd
 }

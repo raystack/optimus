@@ -27,10 +27,10 @@ const (
 
 const unsubstitutedValue = "<no value>"
 
-func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func adminBuildInstanceCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		optimusHost    = conf.Host
-		projectName    = conf.Project.Name
+		optimusHost    string
+		projectName    string
 		assetOutputDir = "/tmp/"
 		runType        = "task"
 		runName        string
@@ -54,10 +54,13 @@ func adminBuildInstanceCommand(l log.Logger, conf config.Optimus) *cli.Command {
 	cmd.Flags().StringVar(&runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
 	cmd.MarkFlagRequired("name")
 
-	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Name of the optimus project")
-	cmd.Flags().StringVar(&optimusHost, "host", optimusHost, "Optimus service endpoint url")
+	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Name of the optimus project") // TODO: fix overriding conf via args
+	cmd.Flags().StringVar(&optimusHost, "host", optimusHost, "Optimus service endpoint url")         // TODO: fix overriding conf via args
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
+		projectName = conf.Project.Name
+		optimusHost = conf.Host
+		l := initClientLogger(conf.Log)
 		jobName := args[0]
 		l.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", projectName, jobName, optimusHost))
 		l.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", runName, runType, scheduledAt))

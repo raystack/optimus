@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func replayStatusCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayStatusCommand(conf *config.ClientConfig) *cli.Command {
 	var projectName string
 
 	reCmd := &cli.Command{
@@ -33,8 +33,10 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			return nil
 		},
 	}
-	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "project name of optimus managed repository") // TODO: fix overriding conf via args
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		projectName = conf.Project.Name
+		l := initClientLogger(conf.Log)
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 

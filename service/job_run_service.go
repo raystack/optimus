@@ -125,7 +125,7 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 		}
 	}
 
-	instanceToSave, err := s.prepInstance(jobRun, instanceType, instanceName, jobRun.ExecutedAt)
+	instanceToSave, err := s.prepInstance(ctx, jobRun, instanceType, instanceName, jobRun.ExecutedAt)
 	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
 	}
@@ -141,11 +141,11 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *jobRunService) prepInstance(jobRun models.JobRun, instanceType models.InstanceType,
+func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType,
 	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {
-		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+		jobDestinationResponse, err := jobRun.Spec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(jobRun.Spec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(jobRun.Spec.Assets),
 		})

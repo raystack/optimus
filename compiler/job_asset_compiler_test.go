@@ -16,6 +16,7 @@ import (
 
 func TestJobRunAssetsCompiler(t *testing.T) {
 	t.Run("CompileJobRunAssets", func(t *testing.T) {
+		ctx := context.Background()
 		engine := compiler.NewGoEngine()
 		execUnit := new(mock.BasePlugin)
 		cliMod := new(mock.CLIMod)
@@ -96,7 +97,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(nil, pluginRepo)
-			_, err := assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, templateContext)
+			_, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, templateContext)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, "error", err.Error())
@@ -107,7 +108,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
-			assets, err := assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, templateContext)
+			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, templateContext)
 
 			assert.Nil(t, err)
 			expectedQuery := fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",
@@ -132,7 +133,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
-			assets, err := assetsCompiler.CompileJobRunAssets(jobRun, instanceSpec, templateContext)
+			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, templateContext)
 
 			assert.Nil(t, err)
 			expectedQuery := fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",

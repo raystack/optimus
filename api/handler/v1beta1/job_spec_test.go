@@ -382,7 +382,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 				Spec:          jobProto,
 			}
-			resp, err := jobSpecServiceServer.CreateJobSpecification(context.Background(), &request)
+			resp, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,

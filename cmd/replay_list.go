@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func replayListCommand(l log.Logger, conf config.Optimus) *cli.Command {
+func replayListCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		projectName string
 		reCmd       = &cli.Command{
@@ -27,8 +27,10 @@ The list command is used to fetch the recent replay in one project.
 		`,
 		}
 	)
-	reCmd.Flags().StringVarP(&projectName, "project", "p", conf.Project.Name, "Project name of optimus managed repository")
+	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
+		projectName = conf.Project.Name
+		l := initClientLogger(conf.Log)
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()
 

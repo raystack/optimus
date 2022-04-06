@@ -19,8 +19,8 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-func initScheduler(l log.Logger, conf config.Optimus, projectRepoFac *projectRepoFactory) (models.SchedulerUnit, error) {
-	jobCompiler := compiler.NewCompiler(conf.Server.IngressHost)
+func initScheduler(l log.Logger, conf config.ServerConfig, projectRepoFac *projectRepoFactory) (models.SchedulerUnit, error) {
+	jobCompiler := compiler.NewCompiler(conf.Serve.IngressHost)
 	// init default scheduler
 	var scheduler models.SchedulerUnit
 	switch conf.Scheduler.Name {
@@ -55,7 +55,7 @@ func initScheduler(l log.Logger, conf config.Optimus, projectRepoFac *projectRep
 	return scheduler, nil
 }
 
-func initPrimeCluster(l log.Logger, conf config.Optimus, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
+func initPrimeCluster(l log.Logger, conf config.ServerConfig, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
 	models.ManualScheduler = prime.NewScheduler( // careful global variable
 		jobrunRepoFac,
 		func() time.Time {

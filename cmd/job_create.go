@@ -12,7 +12,6 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
-	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
 
@@ -33,12 +32,14 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
-func jobCreateCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+func jobCreateCommand(conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
 		RunE: func(cmd *cli.Command, args []string) error {
+			l := initClientLogger(conf.Log)
+			pluginRepo := models.PluginRegistry
 			namespace, err := askToSelectNamespace(l, conf)
 			if err != nil {
 				return err

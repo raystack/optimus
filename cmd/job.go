@@ -1,14 +1,18 @@
 package cmd
 
 import (
-	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
-func jobCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepository) *cli.Command {
+func jobCommand() *cli.Command {
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+		pluginCleanFn  func()
+	)
+
 	cmd := &cli.Command{
 		Use:   "job",
 		Short: "Interact with schedulable Job",
@@ -17,11 +21,32 @@ func jobCommand(l log.Logger, conf config.Optimus, pluginRepo models.PluginRepos
 		},
 	}
 
-	cmd.AddCommand(jobCreateCommand(l, conf, pluginRepo))
-	cmd.AddCommand(jobAddHookCommand(l, conf, pluginRepo))
-	cmd.AddCommand(jobRenderTemplateCommand(l, conf, pluginRepo))
-	cmd.AddCommand(jobValidateCommand(l, conf, pluginRepo, conf.Project.Name, conf.Host))
-	cmd.AddCommand(jobRunCommand(l, conf, pluginRepo, conf.Project.Name, conf.Host))
-	cmd.AddCommand(jobStatusCommand(l, conf.Project.Name, conf.Host))
+	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
+
+	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		// TODO: find a way to load the config in one place
+		c, err := config.LoadClientConfig(configFilePath)
+		if err != nil {
+			return err
+		}
+
+		conf = *c
+
+		// TODO: refactor initialize client deps
+		pluginCleanFn, err = initializeClientPlugins(conf.Log.Level)
+		return err
+	}
+
+	cmd.PersistentPostRunE = func(cmd *cli.Command, args []string) error {
+		pluginCleanFn()
+		return nil
+	}
+
+	cmd.AddCommand(jobCreateCommand(&conf))
+	cmd.AddCommand(jobAddHookCommand(&conf))
+	cmd.AddCommand(jobRenderTemplateCommand(&conf))
+	cmd.AddCommand(jobValidateCommand(&conf))
+	cmd.AddCommand(jobRunCommand(&conf))
+	cmd.AddCommand(jobRunListCommand(&conf))
 	return cmd
 }
