@@ -16,7 +16,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func backupListCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
+func backupListCommand(conf *config.ClientConfig) *cli.Command {
 	var (
 		backupCmd = &cli.Command{
 			Use:     "list",
@@ -25,8 +25,10 @@ func backupListCommand(l log.Logger, conf *config.ClientConfig) *cli.Command {
 		}
 		project string
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", conf.Project.Name, "project name of optimus managed repository")
+	backupCmd.Flags().StringVarP(&project, "project", "p", project, "project name of optimus managed repository") // TODO: fix overriding conf via args
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
+		project = conf.Project.Name
+		l := initClientLogger(conf.Log)
 		dsRepo := models.DatastoreRegistry
 		availableStorer := []string{}
 		for _, s := range dsRepo.GetAll() {

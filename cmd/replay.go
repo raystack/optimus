@@ -52,9 +52,10 @@ func formatRunsPerJobInstance(instance *pb.ReplayExecutionTreeNode, taskReruns m
 }
 
 func replayCommand() *cli.Command {
-	var configFilePath string
-	conf := &config.ClientConfig{}
-	l := initDefaultLogger()
+	var (
+		configFilePath string
+		conf           config.ClientConfig
+	)
 
 	cmd := &cli.Command{
 		Use:   "replay",
@@ -69,19 +70,17 @@ func replayCommand() *cli.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
 		// TODO: find a way to load the config in one place
-		var err error
-
-		conf, err = config.LoadClientConfig(configFilePath)
+		c, err := config.LoadClientConfig(configFilePath)
 		if err != nil {
 			return err
 		}
-		l = initClientLogger(conf.Log)
+		conf = *c
 
 		return nil
 	}
 
-	cmd.AddCommand(replayCreateCommand(l, conf))
-	cmd.AddCommand(replayStatusCommand(l, conf))
-	cmd.AddCommand(replayListCommand(l, conf))
+	cmd.AddCommand(replayCreateCommand(&conf))
+	cmd.AddCommand(replayStatusCommand(&conf))
+	cmd.AddCommand(replayListCommand(&conf))
 	return cmd
 }
