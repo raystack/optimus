@@ -182,15 +182,14 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{- $dependencySchema := $dependency.Job.Task.Unit.Info }}
 
 {{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
-wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    external_dag_id="{{$dependency.Job.Name}}",
-    window_size={{$baseWindow.Size.String | quote}},
-    window_offset={{$baseWindow.Offset.String | quote}},
-    window_truncate_to={{$baseWindow.TruncateTo | quote}},
+wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = CrossTenantDependencySensor(
     optimus_hostname="{{$.Hostname}}",
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
+    upstream_optimus_project="{{$.Namespace.ProjectSpec.Name}}",
+    upstream_optimus_job="{{$dependency.Job.Name}}",
+    window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
     dag=dag
 )
 {{- end -}}
