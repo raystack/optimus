@@ -29,7 +29,7 @@ const (
 // deployCommand pushes current repo to optimus service
 func deployCommand() *cli.Command {
 	var (
-		namespaces      []string
+		namespaceNames  []string
 		ignoreJobs      bool
 		ignoreResources bool
 		verbose         bool
@@ -48,7 +48,7 @@ func deployCommand() *cli.Command {
 	}
 
 	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
-	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Selected namespaces of optimus project")
+	cmd.Flags().StringSliceVarP(&namespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
@@ -75,11 +75,11 @@ func deployCommand() *cli.Command {
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 
-		if err := validateNamespaces(datastoreSpecFs, namespaces); err != nil {
+		if err := validateNamespaces(datastoreSpecFs, namespaceNames); err != nil {
 			return err
 		}
 
-		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
+		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaceNames, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}

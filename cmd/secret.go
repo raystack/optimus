@@ -58,7 +58,6 @@ func secretCommand() *cli.Command {
 
 func secretSetSubCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		projectName   string
 		namespaceName string
 		filePath      string
 		encoded       bool
@@ -76,7 +75,7 @@ Secret value can be either provided in second argument or through file flag.
 Use base64 flag if the value has been encoded.
 		`,
 	}
-	secretCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
+	secretCmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	secretCmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of deployee")
 	secretCmd.Flags().BoolVar(&encoded, "base64", false, "Create secret with value that has been encoded")
 	secretCmd.Flags().BoolVar(&updateOnly, "update-only", false, "Only update existing secret, do not create new")
@@ -84,7 +83,7 @@ Use base64 flag if the value has been encoded.
 	secretCmd.Flags().BoolVar(&skipConfirm, "confirm", false, "Skip asking for confirmation")
 
 	secretCmd.RunE = func(cmd *cli.Command, args []string) error {
-		projectName = conf.Project.Name
+		projectName := conf.Project.Name
 		l := initClientLogger(conf.Log)
 		secretName, err := getSecretName(args)
 		if err != nil {
@@ -144,18 +143,16 @@ Use base64 flag if the value has been encoded.
 }
 
 func secretListSubCommand(conf *config.ClientConfig) *cli.Command {
-	var projectName string
-
 	secretListCmd := &cli.Command{
 		Use:     "list",
 		Short:   "Show all the secrets registered with optimus",
 		Example: "optimus secret list",
 		Long:    `This operation shows the secrets for project.`,
 	}
-	secretListCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
+	secretListCmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 
 	secretListCmd.RunE = func(cmd *cli.Command, args []string) error {
-		projectName = conf.Project.Name
+		projectName := conf.Project.Name
 		l := initClientLogger(conf.Log)
 		updateSecretRequest := &pb.ListSecretsRequest{
 			ProjectName: projectName,
@@ -166,7 +163,7 @@ func secretListSubCommand(conf *config.ClientConfig) *cli.Command {
 }
 
 func secretDeleteSubCommand(conf *config.ClientConfig) *cli.Command {
-	var projectName, namespaceName string
+	var namespaceName string
 
 	cmd := &cli.Command{
 		Use:     "delete",
@@ -174,11 +171,11 @@ func secretDeleteSubCommand(conf *config.ClientConfig) *cli.Command {
 		Example: "optimus secret delete <secret_name>",
 		Long:    `This operation deletes a secret registered with optimus.`,
 	}
-	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
+	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace name of optimus managed repository")
 
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
-		projectName = conf.Project.Name
+		projectName := conf.Project.Name
 		l := initClientLogger(conf.Log)
 		secretName, err := getSecretName(args)
 		if err != nil {
