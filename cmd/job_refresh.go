@@ -120,7 +120,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			if !resp.GetSuccess() {
 				deployFailedCounter++
 				if verbose {
-					l.Info(coloredError(fmt.Sprintf("%d. %s failed to be deployed: %s", deployCounter, resp.GetJobName(), resp.GetMessage())))
+					l.Warn(coloredError(fmt.Sprintf("%d. %s failed to be deployed: %s", deployCounter, resp.GetJobName(), resp.GetMessage())))
 				}
 				deployErrors = append(deployErrors, fmt.Sprintf("failed to deploy: %s, %s", resp.GetJobName(), resp.GetMessage()))
 			} else {
@@ -134,7 +134,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			if !resp.GetSuccess() {
 				refreshFailedCounter++
 				if verbose {
-					l.Info(coloredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", resp.GetJobName(), resp.GetMessage())))
+					l.Warn(coloredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", resp.GetJobName(), resp.GetMessage())))
 				}
 				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to refresh: %s, %s", resp.GetJobName(), resp.GetMessage()))
 			} else {
