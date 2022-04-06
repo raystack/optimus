@@ -23,7 +23,6 @@ func serveCommand() *cli.Command {
 		},
 	}
 
-	cmd.Flags().Int("serve.port", 0, "serve port override") // Example
 	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for server configuration")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {

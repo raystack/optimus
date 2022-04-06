@@ -100,6 +100,7 @@ func LoadServerConfig(filePath string, flags *pflag.FlagSet) (*ServerConfig, err
 	v.SetFs(FS)
 
 	// bind with flags
+	setPFlagsNormalizer(flags)
 	if err := v.BindPFlags(flags); err != nil {
 		return nil, err
 	}
@@ -144,4 +145,14 @@ func validateFilepath(fs afero.Fs, fpath string) error {
 		return fmt.Errorf("%s not a file", fpath)
 	}
 	return nil
+}
+
+func setPFlagsNormalizer(flags *pflag.FlagSet) {
+	// normalize with the pflag names with replacer
+	normalizeFunc := flags.GetNormalizeFunc()
+	flags.SetNormalizeFunc(func(fs *pflag.FlagSet, name string) pflag.NormalizedName {
+		result := normalizeFunc(fs, name)
+		name = strings.ReplaceAll(string(result), "-", ".")
+		return pflag.NormalizedName(name)
+	})
 }
