@@ -16,7 +16,6 @@ import (
 
 var (
 	ErrNoSuchSpec  = errors.New("spec not found")
-	ErrNoDAGSpecs  = errors.New("no job specifications found")
 	ErrNoSuchJob   = errors.New("job not found")
 	ErrNoJobs      = errors.New("no job found")
 	ErrNoResources = errors.New("no resources found")
