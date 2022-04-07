@@ -45,12 +45,6 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 		if projectName == "" {
 			return fmt.Errorf("project configuration is required")
 		}
-		if len(*jobs) > 0 && len(*namespaces) > 1 {
-			return fmt.Errorf("limit namespace to one or remove jobs to refresh the whole namespaces")
-		}
-		if len(*jobs) > 0 && len(*namespaces) == 0 {
-			return fmt.Errorf("namespace is required to refresh selected jobs")
-		}
 
 		if len(*namespaces) > 0 || len(*jobs) > 0 {
 			l.Info("Refreshing job dependencies of selected jobs/namespaces")
