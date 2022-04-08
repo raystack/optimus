@@ -325,8 +325,8 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], namespaceSpec.Name, nil).Return(jobSpecsAfterDepenResolve[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], "not-our-namespace", nil).Return(models.JobSpec{}, errors.New("failed to resolve"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(models.JobSpec{}, errors.New("failed to resolve"))
 			defer depenResolver.AssertExpectations(t)
 
 			// resolve priority
@@ -381,8 +381,8 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], namespaceSpec.Name, nil).Return(models.JobSpec{}, errors.New("failed to resolve 1"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], "not-our-namespace", nil).Return(models.JobSpec{}, errors.New("failed to resolve 2"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(models.JobSpec{}, errors.New("failed to resolve 1"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(models.JobSpec{}, errors.New("failed to resolve 2"))
 			defer depenResolver.AssertExpectations(t)
 
 			// resolve priority
@@ -513,7 +513,7 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], namespaceSpec.Name, nil).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			// resolve priority
@@ -576,8 +576,8 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], "", nil).Return(models.JobSpec{}, errors.New("error test"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], namespaceSpec.Name, nil).Return(models.JobSpec{},
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(models.JobSpec{}, errors.New("error test"))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(models.JobSpec{},
 				errors.New("error test-2"))
 			defer depenResolver.AssertExpectations(t)
 
@@ -653,7 +653,7 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], namespaceSpec.Name, nil).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			// resolve priority
@@ -871,7 +871,7 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], namespaceSpec.Name, nil).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -952,8 +952,8 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], "", nil).Return(jobSpecsAfterDepenResolve[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], namespaceSpec.Name, nil).Return(jobSpecsAfterDepenResolve[1], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(jobSpecsAfterDepenResolve[1], nil)
 			defer depenResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
@@ -1038,8 +1038,8 @@ func TestService(t *testing.T) {
 
 			depenResolver := new(mock.DependencyResolver)
 			defer depenResolver.AssertExpectations(t)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, "a", nil).Return(jobSpec1, nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, "b", nil).Return(jobSpec2, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(jobSpec1, nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(jobSpec2, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, jobSpec1.Name)
@@ -1097,8 +1097,8 @@ func TestService(t *testing.T) {
 			depenResolver := new(mock.DependencyResolver)
 			defer depenResolver.AssertExpectations(t)
 			errorMsg := "unable to resolve dependency"
-			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, "ns", nil).Return(models.JobSpec{}, errors.New(errorMsg))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, "ns", nil).Return(models.JobSpec{}, errors.New(errorMsg))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec1, nil).Return(models.JobSpec{}, errors.New(errorMsg))
+			depenResolver.On("Resolve", ctx, projSpec, jobSpec2, nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
 			jobSpecsResult, err := svc.GetDownstream(ctx, projSpec, destination)

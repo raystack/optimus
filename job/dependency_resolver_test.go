@@ -73,6 +73,7 @@ func TestDependencyResolver(t *testing.T) {
 						DependsOn: nil,
 					},
 				},
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -91,7 +92,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -103,11 +105,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			// task dependencies
 			pluginService := new(mock.DependencyResolverPluginService)
@@ -175,6 +172,7 @@ func TestDependencyResolver(t *testing.T) {
 						DependsOn: nil,
 					},
 				},
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -193,7 +191,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -214,11 +213,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			// task dependencies
 			pluginService := new(mock.DependencyResolverPluginService)
@@ -291,6 +285,7 @@ func TestDependencyResolver(t *testing.T) {
 						DependsOn: nil,
 					},
 				},
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -309,7 +304,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -331,11 +327,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			// task dependencies
 			pluginService := new(mock.DependencyResolverPluginService)
@@ -406,7 +397,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: &jobSpec3, Type: models.JobSpecDependencyTypeIntra}},
+				Dependencies:  map[string]models.JobSpecDependency{"test3": {Job: &jobSpec3, Type: models.JobSpecDependencyTypeIntra}},
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -425,7 +417,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -437,11 +430,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
@@ -484,7 +472,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -503,7 +492,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -515,11 +505,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(
@@ -556,7 +541,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -564,11 +550,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
@@ -602,7 +583,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -612,11 +594,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
@@ -652,7 +629,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -671,7 +649,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: map[string]models.JobSpecDependency{"static_dep": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
+				Dependencies:  map[string]models.JobSpecDependency{"static_dep": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -683,11 +662,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
@@ -721,7 +695,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -740,7 +715,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: map[string]models.JobSpecDependency{"static_dep": {Job: nil, Type: "bad"}},
+				Dependencies:  map[string]models.JobSpecDependency{"static_dep": {Job: nil, Type: "bad"}},
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -751,11 +727,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
@@ -789,7 +760,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec1 := models.JobSpec{
 				Version: 1,
@@ -810,6 +782,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				Dependencies: map[string]models.JobSpecDependency{"test3": {Job: nil, Type: models.JobSpecDependencyTypeIntra}},
 				// explicitly setting this to nil. which should get resolved
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec2 := models.JobSpec{
 				Version: 1,
@@ -828,7 +801,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			jobSpecRepository := new(mock.ProjectJobSpecRepository)
@@ -841,11 +815,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
@@ -897,7 +866,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 			jobSpec1 := models.JobSpec{
 				Version: 1,
@@ -917,7 +887,8 @@ func TestDependencyResolver(t *testing.T) {
 					},
 				},
 				// explicitly setting a dirty intra dependency
-				Dependencies: map[string]models.JobSpecDependency{externalProjectName + "/" + jobSpec3.Name: {Job: nil, Type: models.JobSpecDependencyTypeInter}},
+				Dependencies:  map[string]models.JobSpecDependency{externalProjectName + "/" + jobSpec3.Name: {Job: nil, Type: models.JobSpecDependencyTypeInter}},
+				NamespaceSpec: namespaceSpec,
 			}
 
 			// destination: project.dataset.table2_destination
@@ -938,7 +909,8 @@ func TestDependencyResolver(t *testing.T) {
 						},
 					},
 				},
-				Dependencies: make(map[string]models.JobSpecDependency),
+				Dependencies:  make(map[string]models.JobSpecDependency),
+				NamespaceSpec: namespaceSpec,
 			}
 
 			// destination: project.dataset.table2_external_destination
@@ -975,11 +947,6 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
 			projectJobSpecRepoFactory.On("New", projectSpec).Return(jobSpecRepository)
 			defer projectJobSpecRepoFactory.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			namespaceService.On("GetByName", ctx, projectSpec, namespaceSpec.Name).
-				Return(namespaceSpec, nil)
-			defer namespaceService.AssertExpectations(t)
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
@@ -1441,7 +1408,7 @@ func TestDependencyResolver(t *testing.T) {
 
 			// fetch job specs of external project dependency
 			projJobSpecRepoFac.On("New", externalProjectSpec1).Return(projectJobSpecRepo)
-			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec3.ID}).Return([]models.JobSpec{jobSpec3}, nil)
+			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec3.ID}).Return([]models.JobSpec{jobSpec3}, nil).Maybe()
 			projJobSpecRepoFac.On("New", externalProjectSpec2).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec4.ID, jobSpec5.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
 
