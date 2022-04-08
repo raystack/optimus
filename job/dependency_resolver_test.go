@@ -1407,8 +1407,9 @@ func TestDependencyResolver(t *testing.T) {
 			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return(persistedDependencies, nil)
 
 			// fetch job specs of external project dependency
-			projJobSpecRepoFac.On("New", externalProjectSpec1).Return(projectJobSpecRepo)
+			projJobSpecRepoFac.On("New", externalProjectSpec1).Return(projectJobSpecRepo).Maybe()
 			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec3.ID}).Return([]models.JobSpec{jobSpec3}, nil).Maybe()
+
 			projJobSpecRepoFac.On("New", externalProjectSpec2).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec4.ID, jobSpec5.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
 
