@@ -518,7 +518,7 @@ hooks: []`,
 		t.Run("should return ErrNoSpecsFound if the root directory does not exist", func(t *testing.T) {
 			repo := local.NewJobSpecRepository(afero.NewMemMapFs(), adapter)
 			_, err := repo.GetAll()
-			assert.Equal(t, models.ErrNoDAGSpecs, err)
+			assert.Equal(t, models.ErrNoJobs, err)
 		})
 		t.Run("should return ErrNoSpecsFound if the root directory has no files", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
@@ -526,7 +526,7 @@ hooks: []`,
 
 			repo := local.NewJobSpecRepository(appFS, adapter)
 			_, err := repo.GetAll()
-			assert.Equal(t, models.ErrNoDAGSpecs, err)
+			assert.Equal(t, models.ErrNoJobs, err)
 		})
 		t.Run("should use cache to return specs if called more than once", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
