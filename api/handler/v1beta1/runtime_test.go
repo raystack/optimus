@@ -41,12 +41,12 @@ func TestRuntimeServiceServer(t *testing.T) {
 			Version := "1.0.0"
 
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}

@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/odpf/optimus/core/cron"
@@ -54,39 +53,6 @@ type SchedulerListOptions struct {
 type JobStatus struct {
 	ScheduledAt time.Time
 	State       JobRunState
-}
-
-// progress events
-type (
-	// EventJobSpecCompile represents a specification
-	// being compiled to a Job
-	EventJobSpecCompiled struct{ Name string }
-
-	// EventJobUpload represents the compiled Job
-	// being uploaded
-	EventJobUpload struct {
-		Name string
-		Err  error
-	}
-
-	// EventJobRemoteDelete signifies that a
-	// compiled job from a remote repository is being deleted
-	EventJobRemoteDelete struct{ Name string }
-)
-
-func (e *EventJobSpecCompiled) String() string {
-	return fmt.Sprintf("compiling: %s", e.Name)
-}
-
-func (e *EventJobUpload) String() string {
-	if e.Err != nil {
-		return fmt.Sprintf("uploading: %s, failed with error): %s", e.Name, e.Err.Error())
-	}
-	return fmt.Sprintf("uploaded: %s", e.Name)
-}
-
-func (e *EventJobRemoteDelete) String() string {
-	return fmt.Sprintf("deleting: %s", e.Name)
 }
 
 // ExecutorUnit executes the actual job instance

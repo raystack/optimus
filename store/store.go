@@ -32,6 +32,9 @@ type ProjectJobSpecRepository interface {
 	// note: be warned to handle this carefully in multi tenant situations
 	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
 
+	// GetByIDs returns all the jobs as requested by its ID
+	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)
+
 	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
@@ -105,8 +108,8 @@ type ReplaySpecRepository interface {
 	UpdateStatus(ctx context.Context, replayID uuid.UUID, status string, message models.ReplayMessage) error
 	GetByStatus(ctx context.Context, status []string) ([]models.ReplaySpec, error)
 	GetByJobIDAndStatus(ctx context.Context, jobID uuid.UUID, status []string) ([]models.ReplaySpec, error)
-	GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error)
-	GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
+	GetByProjectIDAndStatus(ctx context.Context, projectID models.ProjectID, status []string) ([]models.ReplaySpec, error)
+	GetByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error)
 }
 
 // BackupRepository represents a storage interface for backup objects
@@ -114,4 +117,11 @@ type BackupRepository interface {
 	Save(ctx context.Context, spec models.BackupSpec) error
 	GetAll(context.Context) ([]models.BackupSpec, error)
 	GetByID(context.Context, uuid.UUID) (models.BackupSpec, error)
+}
+
+// JobDependencyRepository represents a storage interface for job dependencies
+type JobDependencyRepository interface {
+	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
+	GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
+	DeleteByJobID(context.Context, uuid.UUID) error
 }

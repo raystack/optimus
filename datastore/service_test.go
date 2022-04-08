@@ -18,7 +18,7 @@ import (
 func TestService(t *testing.T) {
 	projectName := "a-data-project"
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: projectName,
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -27,7 +27,7 @@ func TestService(t *testing.T) {
 	ctx := context.Background()
 
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
@@ -430,7 +430,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -496,7 +496,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -507,7 +507,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -589,7 +589,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -628,7 +628,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -681,7 +681,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -749,7 +749,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -805,7 +805,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -815,7 +815,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -895,7 +895,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -905,7 +905,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -989,7 +989,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -999,7 +999,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -1094,7 +1094,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1105,7 +1105,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -1161,7 +1161,7 @@ func TestService(t *testing.T) {
 			datastorer.On("BackupResource", ctx, backupResourceReqRoot).Return(models.BackupResourceResponse{}, nil).Once()
 
 			otherNamespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "dev-team-2",
 				ProjectSpec: projectSpec,
 			}
@@ -1202,7 +1202,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1213,7 +1213,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -1304,7 +1304,7 @@ func TestService(t *testing.T) {
 			Destination: "project.dataset.table",
 			Type:        models.DestinationTypeBigquery,
 		}
-		backupUUID := uuid.Must(uuid.NewRandom())
+		backupUUID := uuid.New()
 
 		t.Run("should able to do backup without downstream", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
@@ -1342,7 +1342,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1435,7 +1435,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1447,7 +1447,7 @@ func TestService(t *testing.T) {
 
 			// root
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -1589,7 +1589,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1601,7 +1601,7 @@ func TestService(t *testing.T) {
 
 			// root
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -1678,7 +1678,7 @@ func TestService(t *testing.T) {
 				Return(models.BackupResourceResponse{ResultURN: resultURNRoot, ResultSpec: resultSpecRoot}, nil).Once()
 
 			otherNamespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "dev-team-2",
 				ProjectSpec: projectSpec,
 			}
@@ -1711,7 +1711,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1755,7 +1755,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1812,7 +1812,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1871,7 +1871,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobSpec := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-1",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1944,7 +1944,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -1954,7 +1954,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -2043,7 +2043,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -2053,7 +2053,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -2172,7 +2172,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -2182,7 +2182,7 @@ func TestService(t *testing.T) {
 				Job: &jobDownstream,
 			}
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -2311,7 +2311,7 @@ func TestService(t *testing.T) {
 
 			jobTask.Unit = &models.Plugin{Base: execUnit, DependencyMod: depMod}
 			jobDownstream := models.JobSpec{
-				ID:     uuid.Must(uuid.NewRandom()),
+				ID:     uuid.New(),
 				Name:   "job-2",
 				Task:   jobTask,
 				Assets: jobAssets,
@@ -2323,7 +2323,7 @@ func TestService(t *testing.T) {
 
 			// root
 			jobRoot := models.JobSpec{
-				ID:           uuid.Must(uuid.NewRandom()),
+				ID:           uuid.New(),
 				Name:         "job-1",
 				Task:         jobTask,
 				Assets:       jobAssets,
@@ -2418,15 +2418,15 @@ func TestService(t *testing.T) {
 		datastoreName := models.DestinationTypeBigquery.String()
 		backupSpecs := []models.BackupSpec{
 			{
-				ID:        uuid.Must(uuid.NewRandom()),
+				ID:        uuid.New(),
 				CreatedAt: time.Now().Add(time.Hour * 24 * -30),
 			},
 			{
-				ID:        uuid.Must(uuid.NewRandom()),
+				ID:        uuid.New(),
 				CreatedAt: time.Now().Add(time.Hour * 24 * -50),
 			},
 			{
-				ID:        uuid.Must(uuid.NewRandom()),
+				ID:        uuid.New(),
 				CreatedAt: time.Now().Add(time.Hour * 24 * -100),
 			},
 		}
@@ -2544,7 +2544,7 @@ func TestService(t *testing.T) {
 
 	t.Run("GetResourceBackup", func(t *testing.T) {
 		datastoreName := models.DestinationTypeBigquery.String()
-		backupID := uuid.Must(uuid.NewRandom())
+		backupID := uuid.New()
 		backupSpec := models.BackupSpec{
 			ID:        backupID,
 			CreatedAt: time.Now().Add(time.Hour * 24 * -30),

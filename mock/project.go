@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
@@ -20,6 +21,11 @@ func (pr *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec) 
 
 func (pr *ProjectRepository) GetByName(ctx context.Context, name string) (models.ProjectSpec, error) {
 	args := pr.Called(ctx, name)
+	return args.Get(0).(models.ProjectSpec), args.Error(1)
+}
+
+func (pr *ProjectRepository) GetByID(ctx context.Context, projectID uuid.UUID) (models.ProjectSpec, error) {
+	args := pr.Called(ctx, projectID)
 	return args.Get(0).(models.ProjectSpec), args.Error(1)
 }
 

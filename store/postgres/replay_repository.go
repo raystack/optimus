@@ -179,7 +179,7 @@ func (repo *replayRepository) Insert(ctx context.Context, replay *models.ReplayS
 
 func (repo *replayRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ReplaySpec, error) {
 	var r Replay
-	if err := repo.DB.WithContext(ctx).Where("id = ?", id).Preload("Job").First(&r).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("id = ?", id).Preload("Job").Preload("Job.Namespace").First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -208,7 +208,7 @@ func (repo *replayRepository) UpdateStatus(ctx context.Context, replayID uuid.UU
 
 func (repo *replayRepository) GetByStatus(ctx context.Context, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.WithContext(ctx).Where("status in (?)", status).Preload("Job").Find(&replays).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("status in (?)", status).Preload("Job").Preload("Job.Namespace").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -233,7 +233,7 @@ func (repo *replayRepository) GetByStatus(ctx context.Context, status []string) 
 
 func (repo *replayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.WithContext(ctx).Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Find(&replays).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Where("job_id = ? and status in (?)", jobID, status).Preload("Job").Preload("Job.Namespace").Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -255,10 +255,10 @@ func (repo *replayRepository) GetByJobIDAndStatus(ctx context.Context, jobID uui
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID uuid.UUID, status []string) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, projectID models.ProjectID, status []string) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
-		Where("job.project_id = ? and status in (?)", projectID, status).Find(&replays).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Preload("Job").Preload("Job.Namespace").Joins("JOIN job ON replay.job_id = job.id").
+		Where("job.project_id = ? and status in (?)", projectID.UUID(), status).Find(&replays).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []models.ReplaySpec{}, store.ErrResourceNotFound
 		}
@@ -280,10 +280,10 @@ func (repo *replayRepository) GetByProjectIDAndStatus(ctx context.Context, proje
 	return replaySpecs, nil
 }
 
-func (repo *replayRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error) {
+func (repo *replayRepository) GetByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error) {
 	var replays []Replay
-	if err := repo.DB.WithContext(ctx).Preload("Job").Joins("JOIN job ON replay.job_id = job.id").
-		Where("job.project_id = ?", projectID).Order("created_at DESC").Find(&replays).Error; err != nil {
+	if err := repo.DB.WithContext(ctx).Preload("Job").Preload("Job.Namespace").Joins("JOIN job ON replay.job_id = job.id").
+		Where("job.project_id = ?", projectID.UUID()).Order("created_at DESC").Find(&replays).Error; err != nil {
 		return []models.ReplaySpec{}, err
 	}
 

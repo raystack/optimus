@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/set"
 	"github.com/odpf/optimus/core/tree"
@@ -238,6 +236,6 @@ func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projec
 	return parentNode, nil
 }
 
-func (srv *Service) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (srv *Service) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
 	return srv.replayManager.GetReplayList(ctx, projectUUID)
 }

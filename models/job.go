@@ -16,7 +16,6 @@ import (
 
 var (
 	ErrNoSuchSpec  = errors.New("spec not found")
-	ErrNoDAGSpecs  = errors.New("no job specifications found")
 	ErrNoSuchJob   = errors.New("job not found")
 	ErrNoJobs      = errors.New("no job found")
 	ErrNoResources = errors.New("no resources found")
@@ -31,11 +30,11 @@ const (
 	HoursInMonth = time.Duration(30) * 24 * time.Hour
 	HoursInDay   = 24 * time.Hour
 
-	// within a project
+	// JobSpecDependencyTypeIntra represents dependency within a project
 	JobSpecDependencyTypeIntra JobSpecDependencyType = "intra"
-	// within optimus but cross project
+	// JobSpecDependencyTypeInter represents dependency within optimus but cross project
 	JobSpecDependencyTypeInter JobSpecDependencyType = "inter"
-	// outside optimus
+	// JobSpecDependencyTypeExtra represents dependency outside optimus
 	JobSpecDependencyTypeExtra JobSpecDependencyType = "extra"
 
 	JobEventTypeSLAMiss JobEventType = "sla_miss"
@@ -59,6 +58,7 @@ type JobSpec struct {
 	Hooks                []JobSpecHook
 	Metadata             JobSpecMetadata
 	ExternalDependencies ExternalDependency // external dependencies for http
+	NamespaceSpec        NamespaceSpec
 }
 
 func (js JobSpec) GetName() string {
@@ -80,6 +80,20 @@ func (js JobSpec) GetLabelsAsString() string {
 		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(k), strings.TrimSpace(v))
 	}
 	return strings.TrimRight(labels, ",")
+}
+
+func (js JobSpec) GetProjectSpec() ProjectSpec {
+	return js.NamespaceSpec.ProjectSpec
+}
+
+type JobSpecs []JobSpec
+
+func (js JobSpecs) GroupJobsPerNamespace() map[uuid.UUID][]JobSpec {
+	jobsGroup := make(map[uuid.UUID][]JobSpec)
+	for _, jobSpec := range js {
+		jobsGroup[jobSpec.NamespaceSpec.ID] = append(jobsGroup[jobSpec.NamespaceSpec.ID], jobSpec)
+	}
+	return jobsGroup
 }
 
 type JobSpecSchedule struct {
@@ -343,11 +357,13 @@ type JobService interface {
 	// GetReplayStatus of a replay using its ID
 	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
 	// GetReplayList of a project
-	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]ReplaySpec, error)
+	GetReplayList(ctx context.Context, projectID ProjectID) ([]ReplaySpec, error)
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
+	// Refresh Redeploy current persisted state of jobs
+	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
 }
 
 // JobCompiler takes template file of a scheduler and after applying
@@ -410,4 +426,31 @@ type JobQuery struct {
 	EndDate     time.Time
 	Filter      []string
 	OnlyLastRun bool
+}
+
+type JobIDDependenciesPair struct {
+	JobID            uuid.UUID
+	DependentProject ProjectSpec
+	DependentJobID   uuid.UUID
+	Type             JobSpecDependencyType
+}
+
+type JobIDDependenciesPairs []JobIDDependenciesPair
+
+func (j JobIDDependenciesPairs) GetJobDependencyMap() map[uuid.UUID][]JobIDDependenciesPair {
+	jobDependencyMap := make(map[uuid.UUID][]JobIDDependenciesPair)
+	for _, pair := range j {
+		jobDependencyMap[pair.JobID] = append(jobDependencyMap[pair.JobID], pair)
+	}
+	return jobDependencyMap
+}
+
+func (j JobIDDependenciesPairs) GetExternalProjectAndDependenciesMap() map[ProjectID][]JobIDDependenciesPair {
+	interDependenciesMap := make(map[ProjectID][]JobIDDependenciesPair)
+	for _, dep := range j {
+		if dep.Type == JobSpecDependencyTypeInter {
+			interDependenciesMap[dep.DependentProject.ID] = append(interDependenciesMap[dep.DependentProject.ID], dep)
+		}
+	}
+	return interDependenciesMap
 }

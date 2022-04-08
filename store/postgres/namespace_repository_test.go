@@ -30,18 +30,18 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 
 	secrets := []models.ProjectSecretItem{
 		{
-			ID:    uuid.Must(uuid.NewRandom()),
+			ID:    uuid.New(),
 			Name:  "g-optimus",
 			Value: "secret",
 		},
 		{
-			ID:    uuid.Must(uuid.NewRandom()),
+			ID:    uuid.New(),
 			Name:  "t-optimus",
 			Value: "super-secret",
 		},
 	}
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus",
 		Config: map[string]string{
 			"bucket":                  "gs://some_folder",
@@ -50,7 +50,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 	}
 	namespaceSpecs := []models.NamespaceSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus",
 			Config: map[string]string{
 				"bucket":                  "gs://some_folder",
@@ -61,7 +61,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus",
 			Config: map[string]string{
 				"bucket":                  "gs://some_folder",
@@ -69,7 +69,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-2",
 			Config: map[string]string{
 				"bucket":                  "gs://some_folder-2",
@@ -77,7 +77,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-3",
 		},
 	}

@@ -34,7 +34,7 @@ func (p Project) FromSpec(spec models.ProjectSpec) Project {
 		return Project{}
 	}
 	return Project{
-		ID:     spec.ID,
+		ID:     spec.ID.UUID(),
 		Name:   spec.Name,
 		Config: jsonBytes,
 	}
@@ -46,7 +46,7 @@ func (p Project) ToSpec() models.ProjectSpec {
 		return models.ProjectSpec{}
 	}
 	return models.ProjectSpec{
-		ID:     p.ID,
+		ID:     models.ProjectID(p.ID),
 		Name:   p.Name,
 		Config: conf,
 	}
@@ -66,7 +66,7 @@ func (p Project) ToSpecWithSecrets(h models.ApplicationKey) (models.ProjectSpec,
 		specSecrets = append(specSecrets, specSecret)
 	}
 	return models.ProjectSpec{
-		ID:     p.ID,
+		ID:     models.ProjectID(p.ID),
 		Name:   p.Name,
 		Config: conf,
 		Secret: specSecrets,
@@ -99,24 +99,13 @@ func (repo *ProjectRepository) Save(ctx context.Context, spec models.ProjectSpec
 	}
 	project := Project{}.FromSpec(spec)
 
-	project.ID = existingResource.ID
+	project.ID = existingResource.ID.UUID()
 	return repo.db.WithContext(ctx).Omit("Secrets").Model(&project).Update("Config", project.Config).Error
 }
 
 func (repo *ProjectRepository) GetByName(ctx context.Context, name string) (models.ProjectSpec, error) {
 	var r Project
 	if err := repo.db.WithContext(ctx).Preload("Secrets").Where("name = ?", name).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ProjectSpec{}, store.ErrResourceNotFound
-		}
-		return models.ProjectSpec{}, err
-	}
-	return r.ToSpecWithSecrets(repo.hash)
-}
-
-func (repo *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ProjectSpec, error) {
-	var r Project
-	if err := repo.db.WithContext(ctx).Preload("Secrets").Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ProjectSpec{}, store.ErrResourceNotFound
 		}
