@@ -721,14 +721,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// resolve dependency and persist
-	if err := srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver); err != nil {
-		// if err is caused by other than asset compilation, ignore the error.
-		if err != nil {
-			if errors.Is(err, errAssetCompilation) {
-				return err
-			}
-		}
-	}
+	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
 
 	return srv.deployer.Deploy(ctx, projectSpec, progressObserver)
 }
@@ -784,7 +777,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 }
 
 func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpecs []models.JobSpec, progressObserver progress.Observer) (err error) {
+	jobSpecs []models.JobSpec, progressObserver progress.Observer) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
 
@@ -801,7 +794,6 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	failure, success := 0, 0
 	for _, state := range runner.Run() {
 		if state.Err != nil {
-			err = multierror.Append(err, state.Err)
 			failure++
 			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val), Err: state.Err})
 		} else {
@@ -813,7 +805,6 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionSucceed}).Set(float64(success))
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionFailed}).Set(float64(failure))
 	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
-	return err
 }
 
 func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec, progressObserver progress.Observer) (interface{}, error) {
