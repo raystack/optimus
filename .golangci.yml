@@ -52,6 +52,11 @@ linters-settings:
   revive:
     ignore-generated-header: true
     severity: warning
+    confidence: 0.8
+    rules:
+      - name: early-return
+      - name: if-return
+      - name: indent-error-flow
   goconst:
     ignore-tests: true
     numbers: true

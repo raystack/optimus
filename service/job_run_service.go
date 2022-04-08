@@ -50,23 +50,22 @@ func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.Na
 
 	repo := s.repoFac.New()
 	jobRun, _, err := repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
-	if err == nil || errors.Is(err, store.ErrResourceNotFound) {
-		// create a new instance if it does not already exists
-		if err == nil {
-			// if already exists, use the same id for in place update
-			// because job spec might have changed by now, status needs to be reset
-			newJobRun.ID = jobRun.ID
+	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+		// When err exists and is not "NotFound"
+		return models.JobRun{}, err
+	}
+	if err == nil {
+		// if already exists, use the same id for in place update
+		// because job spec might have changed by now, status needs to be reset
+		newJobRun.ID = jobRun.ID
 
-			// If existing job run found, use its time.
-			// This might be a retry of existing instances and whole pipeline(of instances)
-			// would like to inherit same run level variable even though it might be triggered
-			// more than once.
-			newJobRun.ExecutedAt = jobRun.ExecutedAt
-		}
-		if err := repo.Save(ctx, namespace, newJobRun); err != nil {
-			return models.JobRun{}, err
-		}
-	} else {
+		// If existing job run found, use its time.
+		// This might be a retry of existing instances and whole pipeline(of instances)
+		// would like to inherit same run level variable even though it might be triggered
+		// more than once.
+		newJobRun.ExecutedAt = jobRun.ExecutedAt
+	}
+	if err := repo.Save(ctx, namespace, newJobRun); err != nil {
 		return models.JobRun{}, err
 	}
 

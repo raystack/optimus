@@ -267,21 +267,20 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		// different namespace then the current, on which this operation is being performed,
 		// then don't treat this as error
 		var merrs *multierror.Error
-		if errors.As(err, &merrs) {
-			var newErr error
-			for _, cerr := range merrs.Errors {
-				if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
-					if !strings.Contains(cerr.Error(), namespace.Name) {
-						continue
-					}
-				}
-				newErr = multierror.Append(newErr, cerr)
-			}
-			if newErr != nil {
-				return newErr
-			}
-		} else {
+		if !errors.As(err, &merrs) {
 			return err
+		}
+		var newErr error
+		for _, cerr := range merrs.Errors {
+			if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
+				if !strings.Contains(cerr.Error(), namespace.Name) {
+					continue
+				}
+			}
+			newErr = multierror.Append(newErr, cerr)
+		}
+		if newErr != nil {
+			return newErr
 		}
 	}
 	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
