@@ -44,7 +44,7 @@ func init() { // TODO: move paths initialization outside init()
 }
 
 // LoadClientConfig load the project specific config from these locations:
-// 1. flags. eg ./optimus <client_command> --project.name project1
+// 1. flags. eg ./optimus <client_command> --project-name project1
 // 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
 // 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
 func LoadClientConfig(filePath string, flags *pflag.FlagSet) (*ClientConfig, error) {
@@ -89,7 +89,7 @@ func LoadClientConfig(filePath string, flags *pflag.FlagSet) (*ClientConfig, err
 }
 
 // LoadServerConfig load the server specific config from these locations:
-// 1. flags. eg ./optimus <server_command> --serve.port 8000
+// 1. flags. eg ./optimus <server_command> --serve-port 8000
 // 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
 // 3. env var. eg. OPTIMUS_SERVE_PORT, etc
 // 4. executable binary location
