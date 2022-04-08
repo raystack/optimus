@@ -54,7 +54,6 @@ linters-settings:
     confidence: 0.8
     rules:
       - name: atomic
-      - name: blank-imports
       - name: context-as-argument
       - name: context-keys-type
       - name: defer
@@ -63,13 +62,13 @@ linters-settings:
       - name: error-naming
       - name: error-return
       - name: error-strings
-      - name: early-return
+#      - name: early-return
       - name: errorf
-      - name: exported
-      - name: if-return
+#      - name: exported
+#      - name: if-return
       - name: increment-decrement
-      - name: indent-error-flow
-      - name: flag-parameter
+#      - name: indent-error-flow
+#      - name: flag-parameter
       - name: modifies-parameter
       - name: modifies-value-receiver
       - name: package-comments
@@ -78,8 +77,8 @@ linters-settings:
       - name: redefines-builtin-id
       - name: superfluous-else
       - name: time-naming
-      - name: unexported-naming
-      - name: unexported-return
+#      - name: unexported-naming
+#      - name: unexported-return
       - name: unreachable-code
       - name: unused-parameter
       - name: unused-receiver

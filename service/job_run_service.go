@@ -141,7 +141,7 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType,
+func (*jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType,
 	instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
 	if jobRun.Spec.Task.Unit.DependencyMod != nil {

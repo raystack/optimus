@@ -370,7 +370,7 @@ func addIgnoreDownstreamConfig(config map[string]string, allowedDownstreamNamesp
 	return config
 }
 
-func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
+func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
 	}

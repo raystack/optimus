@@ -48,7 +48,7 @@ type BQDatasetMetadata struct {
 // datasetSpecHandler helps serializing/deserializing datastore resource for dataset
 type datasetSpecHandler struct{}
 
-func (s datasetSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
+func (datasetSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
 	if optResource.Spec == nil {
 		// usually happens when resource is requested to be created for the first time via optimus cli
 		optResource.Spec = BQDataset{}
@@ -68,7 +68,7 @@ func (s datasetSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, err
 	return yaml.Marshal(yamlResource)
 }
 
-func (s datasetSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
+func (datasetSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	var yamlResource DatasetResourceSpec
 	if err := yaml.Unmarshal(b, &yamlResource); err != nil {
 		return models.ResourceSpec{}, err
@@ -94,7 +94,7 @@ func (s datasetSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	return optResource, nil
 }
 
-func (s datasetSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, error) {
+func (datasetSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, error) {
 	bqResource, ok := optResource.Spec.(BQDataset)
 	if !ok {
 		return nil, errors.New("failed to convert resource, malformed spec")
@@ -119,7 +119,7 @@ func (s datasetSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte,
 	return proto.Marshal(resSpec)
 }
 
-func (s datasetSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
+func (datasetSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 	baseSpec := &v1.ResourceSpecification{}
 	if err := proto.Unmarshal(b, baseSpec); err != nil {
 		return models.ResourceSpec{}, err
@@ -163,11 +163,11 @@ func (s datasetSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) 
 
 type datasetSpec struct{}
 
-func (s datasetSpec) Adapter() models.DatastoreSpecAdapter {
+func (datasetSpec) Adapter() models.DatastoreSpecAdapter {
 	return &datasetSpecHandler{}
 }
 
-func (s datasetSpec) Validator() models.DatastoreSpecValidator {
+func (datasetSpec) Validator() models.DatastoreSpecValidator {
 	return func(spec models.ResourceSpec) error {
 		if !datasetNameParseRegex.MatchString(spec.Name) {
 			return fmt.Errorf("for example 'project_name.dataset_name'")
@@ -180,7 +180,7 @@ func (s datasetSpec) Validator() models.DatastoreSpecValidator {
 	}
 }
 
-func (s datasetSpec) GenerateURN(tableConfig interface{}) (string, error) {
+func (datasetSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	bqDataset, ok := tableConfig.(BQDataset)
 	if !ok {
 		return "", errors.New("failed to read dataset spec for bigquery")
@@ -188,6 +188,6 @@ func (s datasetSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	return fmt.Sprintf(datasetURNFormat, BigQuery{}.Name(), bqDataset.Project, bqDataset.Dataset), nil
 }
 
-func (s datasetSpec) DefaultAssets() map[string]string {
+func (datasetSpec) DefaultAssets() map[string]string {
 	return map[string]string{}
 }

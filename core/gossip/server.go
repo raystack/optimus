@@ -224,7 +224,7 @@ func (s *Server) initRaft(_ context.Context, devMode, bootstrapCluster bool, sch
 	return nil
 }
 
-func (s *Server) initRaftStore(devMode bool, baseDir string) (raft.LogStore, raft.StableStore, raft.SnapshotStore, error) {
+func (*Server) initRaftStore(devMode bool, baseDir string) (raft.LogStore, raft.StableStore, raft.SnapshotStore, error) {
 	if devMode {
 		inMemStore := raft.NewInmemStore()
 		discardStore := raft.NewDiscardSnapshotStore()

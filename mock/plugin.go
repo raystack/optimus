@@ -26,19 +26,19 @@ func (repo *SupportedPluginRepo) GetAll() []*models.Plugin {
 	return args.Get(0).([]*models.Plugin)
 }
 
-func (repo *SupportedPluginRepo) GetTasks() []*models.Plugin {
+func (*SupportedPluginRepo) GetTasks() []*models.Plugin {
 	panic("implement me")
 }
 
-func (repo *SupportedPluginRepo) GetHooks() []*models.Plugin {
+func (*SupportedPluginRepo) GetHooks() []*models.Plugin {
 	panic("implement me")
 }
 
-func (repo *SupportedPluginRepo) GetCommandLines() []models.CommandLineMod {
+func (*SupportedPluginRepo) GetCommandLines() []models.CommandLineMod {
 	panic("implement me")
 }
 
-func (repo *SupportedPluginRepo) GetDependencyResolvers() []models.DependencyResolverMod {
+func (*SupportedPluginRepo) GetDependencyResolvers() []models.DependencyResolverMod {
 	panic("implement me")
 }
 

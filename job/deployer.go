@@ -65,7 +65,7 @@ func (d *deployer) enrichJobSpecWithHookDependencies(jobSpecs []models.JobSpec) 
 	return enrichedJobSpecs
 }
 
-func (d *deployer) notifyProgress(observer progress.Observer, e progress.Event) {
+func (*deployer) notifyProgress(observer progress.Observer, e progress.Event) {
 	if observer == nil {
 		return
 	}

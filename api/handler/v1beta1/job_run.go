@@ -207,7 +207,7 @@ func (sv *JobRunServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest
 	}, nil
 }
 
-func (sv *JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	scheduledTime := req.ScheduledAt.AsTime()
 	err := req.ScheduledAt.CheckValid()
 	if err != nil {

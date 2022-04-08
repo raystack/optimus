@@ -97,7 +97,7 @@ func (repo *resourceRepository) Save(_ context.Context, resourceSpec models.Reso
 }
 
 // GetAll finds all the resources recursively in current and sub directory
-func (repo *resourceRepository) GetAll(_ context.Context) ([]models.ResourceSpec, error) {
+func (repo *resourceRepository) GetAll(context.Context) ([]models.ResourceSpec, error) {
 	var resourceSpecs []models.ResourceSpec
 	if repo.cache.dirty {
 		if err := repo.refreshCache(); err != nil {
@@ -157,7 +157,7 @@ func (repo *resourceRepository) GetByURN(_ context.Context, urn string) (models.
 }
 
 // Delete deletes a requested job by name
-func (repo *resourceRepository) Delete(_ context.Context, _ string) error {
+func (*resourceRepository) Delete(context.Context, string) error {
 	panic("unimplemented")
 }
 
@@ -320,13 +320,13 @@ func (repo *resourceRepository) getDirs(dirPath string) ([]string, error) {
 }
 
 // resourceFilePath generates the filename for a given job
-func (repo *resourceRepository) resourceFilePath(name string) string {
+func (*resourceRepository) resourceFilePath(name string) string {
 	return filepath.Join(name, ResourceSpecFileName)
 }
 
 // assetFolderPath generates the path to asset directory folder
 // for now we are keeping all assets in the same folder as resource yaml file
-func (repo *resourceRepository) assetFolderPath(name string) string {
+func (*resourceRepository) assetFolderPath(name string) string {
 	return name
 }
 
