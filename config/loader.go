@@ -55,6 +55,7 @@ func LoadClientConfig(filePath string, flags *pflag.FlagSet) (*ClientConfig, err
 	v.SetFs(FS)
 
 	// bind with flags
+	setPFlagsNormalizer(flags)
 	if err := v.BindPFlags(flags); err != nil {
 		return nil, err
 	}
