@@ -19,14 +19,14 @@ import (
 
 func TestIntegrationInstanceRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
 		},
 	}
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
@@ -50,7 +50,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 
 	jobConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit1},
@@ -72,7 +72,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2},
@@ -87,7 +87,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 
 	jobRuns := []models.JobRun{
 		{
-			ID:          uuid.Must(uuid.NewRandom()),
+			ID:          uuid.New(),
 			Spec:        jobConfigs[0],
 			Trigger:     models.TriggerSchedule,
 			Status:      models.RunStateRunning,
@@ -127,7 +127,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 
 	testSpecs := []models.InstanceSpec{
 		{
-			ID:         uuid.Must(uuid.NewRandom()),
+			ID:         uuid.New(),
 			Name:       gTask,
 			Type:       models.InstanceTypeTask,
 			Status:     models.RunStateSuccess,
@@ -137,7 +137,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 			},
 		},
 		{
-			ID: uuid.Must(uuid.NewRandom()),
+			ID: uuid.New(),
 		},
 	}
 

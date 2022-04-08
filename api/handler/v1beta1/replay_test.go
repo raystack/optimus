@@ -31,14 +31,14 @@ func TestReplayOnServer(t *testing.T) {
 		jobName := "a-data-job"
 		timeLayout := "2006-01-02"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
 			},
 		}
 		namespaceSpec := models.NamespaceSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "dev-test-namespace-1",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -46,7 +46,7 @@ func TestReplayOnServer(t *testing.T) {
 			ProjectSpec: projectSpec,
 		}
 		jobSpec := models.JobSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: jobName,
 			Task: models.JobSpecTask{
 				Config: models.JobSpecConfigs{
@@ -242,14 +242,14 @@ func TestReplayOnServer(t *testing.T) {
 		startDate := time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC)
 		endDate := time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC)
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
 			},
 		}
 		namespaceSpec := models.NamespaceSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "dev-test-namespace-1",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -257,7 +257,7 @@ func TestReplayOnServer(t *testing.T) {
 			ProjectSpec: projectSpec,
 		}
 		jobSpec := models.JobSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: jobName,
 			Task: models.JobSpecTask{
 				Config: models.JobSpecConfigs{
@@ -283,7 +283,7 @@ func TestReplayOnServer(t *testing.T) {
 				Project:                     projectSpec,
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			randomUUID := uuid.Must(uuid.NewRandom())
+			randomUUID := uuid.New()
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -321,7 +321,7 @@ func TestReplayOnServer(t *testing.T) {
 				Project:                     projectSpec,
 				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
-			randomUUID := uuid.Must(uuid.NewRandom())
+			randomUUID := uuid.New()
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -556,10 +556,10 @@ func TestReplayOnServer(t *testing.T) {
 	t.Run("GetReplayStatus", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 		}
-		reqUUID := uuid.Must(uuid.NewRandom())
+		reqUUID := uuid.New()
 		replayRequest := models.ReplayRequest{
 			ID:      reqUUID,
 			Project: projectSpec,
@@ -568,7 +568,7 @@ func TestReplayOnServer(t *testing.T) {
 		t.Run("should get status of each jobs and runs of a replay", func(t *testing.T) {
 			jobName := "a-data-job"
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Config: models.JobSpecConfigs{
@@ -670,14 +670,14 @@ func TestReplayOnServer(t *testing.T) {
 	t.Run("ListReplays", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 		}
 
 		t.Run("should get list of replay for a project", func(t *testing.T) {
 			jobName := "a-data-job"
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Config: models.JobSpecConfigs{
@@ -698,7 +698,7 @@ func TestReplayOnServer(t *testing.T) {
 
 			replaySpecs := []models.ReplaySpec{
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
+					ID:        uuid.New(),
 					Job:       jobSpec,
 					StartDate: time.Date(2020, 11, 25, 0, 0, 0, 0, time.UTC),
 					EndDate:   time.Date(2020, 11, 28, 0, 0, 0, 0, time.UTC),
@@ -706,7 +706,7 @@ func TestReplayOnServer(t *testing.T) {
 					CreatedAt: time.Date(2021, 8, 1, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					ID:        uuid.Must(uuid.NewRandom()),
+					ID:        uuid.New(),
 					Job:       jobSpec,
 					StartDate: time.Date(2020, 12, 25, 0, 0, 0, 0, time.UTC),
 					EndDate:   time.Date(2020, 12, 28, 0, 0, 0, 0, time.UTC),

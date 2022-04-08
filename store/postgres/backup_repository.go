@@ -98,7 +98,7 @@ func (repo *backupRepository) GetAll(ctx context.Context) ([]models.BackupSpec, 
 	var specs []models.BackupSpec
 	var backups []Backup
 	if err := repo.db.WithContext(ctx).Preload("Resource").Joins("JOIN resource ON backup.resource_id = resource.id").
-		Where("resource.project_id = ?", repo.project.ID).Find(&backups).Error; err != nil {
+		Where("resource.project_id = ?", repo.project.ID.UUID()).Find(&backups).Error; err != nil {
 		return specs, err
 	}
 	for _, b := range backups {

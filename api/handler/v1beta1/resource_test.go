@@ -43,7 +43,7 @@ func (s *ResourceServiceServerTestSuite) SetupTest() {
 
 	s.projectSpec = models.ProjectSpec{}
 	s.projectSpec.Name = "project-a"
-	s.projectSpec.ID = uuid.MustParse("26a0d6a0-13c6-4b30-ae6f-29233df70f31")
+	s.projectSpec.ID = models.ProjectID(uuid.MustParse("26a0d6a0-13c6-4b30-ae6f-29233df70f31"))
 
 	s.namespaceSpec = models.NamespaceSpec{}
 	s.namespaceSpec.Name = "ns1"
@@ -204,7 +204,7 @@ func TestResourcesOnServer(t *testing.T) {
 		t.Run("should create datastore resource successfully", func(t *testing.T) {
 			projectName := "a-data-project"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -212,7 +212,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "dev-test-namespace-1",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -284,7 +284,7 @@ func TestResourcesOnServer(t *testing.T) {
 		t.Run("should update datastore resource successfully", func(t *testing.T) {
 			projectName := "a-data-project"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -292,7 +292,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "dev-test-namespace-1",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",

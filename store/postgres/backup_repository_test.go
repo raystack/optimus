@@ -20,7 +20,7 @@ import (
 
 func TestIntegrationBackupRepository(t *testing.T) {
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-project",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -50,7 +50,7 @@ func TestIntegrationBackupRepository(t *testing.T) {
 	}
 
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
@@ -59,7 +59,7 @@ func TestIntegrationBackupRepository(t *testing.T) {
 		db := DBSetup()
 
 		resourceSpec := models.ResourceSpec{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			Version:   1,
 			Name:      "proj.datas.test",
 			Datastore: datastorer,
@@ -72,7 +72,7 @@ func TestIntegrationBackupRepository(t *testing.T) {
 
 		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(resourceSpec.URN, nil).Twice()
 
-		backupUUID := uuid.Must(uuid.NewRandom())
+		backupUUID := uuid.New()
 		projectName := "project"
 		destinationDataset := "optimus_backup"
 		destinationTable := fmt.Sprintf("backup_playground_table_%s", backupUUID)

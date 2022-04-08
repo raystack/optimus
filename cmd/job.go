@@ -48,5 +48,6 @@ func jobCommand() *cli.Command {
 	cmd.AddCommand(jobValidateCommand(&conf))
 	cmd.AddCommand(jobRunCommand(&conf))
 	cmd.AddCommand(jobRunListCommand(&conf))
+	cmd.AddCommand(jobRefreshCommand(&conf))
 	return cmd
 }

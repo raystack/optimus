@@ -117,7 +117,7 @@ func (repo *namespaceRepository) Save(ctx context.Context, spec models.Namespace
 
 func (repo *namespaceRepository) GetByName(ctx context.Context, name string) (models.NamespaceSpec, error) {
 	var r Namespace
-	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").Where("name = ? AND project_id = ?", name, repo.project.ID).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").Where("name = ? AND project_id = ?", name, repo.project.ID.UUID()).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
@@ -145,7 +145,7 @@ func (repo *namespaceRepository) Get(ctx context.Context, projectName, namespace
 func (repo *namespaceRepository) GetAll(ctx context.Context) ([]models.NamespaceSpec, error) {
 	var specs []models.NamespaceSpec
 	var namespaces []Namespace
-	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").Where("project_id = ?", repo.project.ID).Find(&namespaces).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").Where("project_id = ?", repo.project.ID.UUID()).Find(&namespaces).Error; err != nil {
 		return specs, err
 	}
 

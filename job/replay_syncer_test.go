@@ -23,7 +23,7 @@ func TestReplaySyncer(t *testing.T) {
 	ctx := context.Background()
 	reqBatchSize := 100
 	runTimeout := time.Hour * 5
-	activeReplayUUID := uuid.Must(uuid.NewRandom())
+	activeReplayUUID := uuid.New()
 	startDate := time.Date(2020, time.Month(8), 22, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2020, time.Month(8), 23, 0, 0, 0, 0, time.UTC)
 	batchEndDate := endDate.AddDate(0, 0, 1).Add(time.Second * -1)
@@ -47,8 +47,8 @@ func TestReplaySyncer(t *testing.T) {
 			Size: time.Hour * 24 * 3,
 		},
 	}
-	specs[spec1] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow}
-	specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow}
+	specs[spec1] = models.JobSpec{ID: uuid.New(), Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow}
+	specs[spec2] = models.JobSpec{ID: uuid.New(), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow}
 
 	executionTreeDependent := tree.NewTreeNode(specs[spec2])
 	executionTreeDependent.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
@@ -72,7 +72,7 @@ func TestReplaySyncer(t *testing.T) {
 
 	projectSpecs := []models.ProjectSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: "project-sample",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",

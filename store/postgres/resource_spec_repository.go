@@ -146,7 +146,7 @@ type projectResourceSpecRepository struct {
 func (repo *projectResourceSpecRepository) GetByName(ctx context.Context, name string) (models.ResourceSpec, models.NamespaceSpec, error) {
 	var r Resource
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND datastore = ? AND name = ?",
-		repo.project.ID, repo.datastore.Name(), name).First(&r).Error; err != nil {
+		repo.project.ID.UUID(), repo.datastore.Name(), name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
@@ -169,7 +169,7 @@ func (repo *projectResourceSpecRepository) GetByName(ctx context.Context, name s
 func (repo *projectResourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
 	specs := []models.ResourceSpec{}
 	resources := []Resource{}
-	if err := repo.db.WithContext(ctx).Where("project_id = ? AND datastore = ?", repo.project.ID, repo.datastore.Name()).Find(&resources).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("project_id = ? AND datastore = ?", repo.project.ID.UUID(), repo.datastore.Name()).Find(&resources).Error; err != nil {
 		return specs, err
 	}
 	for _, r := range resources {
@@ -185,7 +185,7 @@ func (repo *projectResourceSpecRepository) GetAll(ctx context.Context) ([]models
 func (repo *projectResourceSpecRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, models.NamespaceSpec, error) {
 	var r Resource
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND datastore = ? AND urn = ?",
-		repo.project.ID, repo.datastore.Name(), urn).First(&r).Error; err != nil {
+		repo.project.ID.UUID(), repo.datastore.Name(), urn).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound
 		}

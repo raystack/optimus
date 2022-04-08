@@ -59,7 +59,7 @@ func (a *priorityResolver) Resolve(_ context.Context, jobSpecs []models.JobSpec,
 	if err := a.resolvePriorities(jobSpecs, progressObserver); err != nil {
 		return nil, fmt.Errorf("error occurred while resolving priority: %w", err)
 	}
-
+	notify(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 	return jobSpecs, nil
 }
 
@@ -122,7 +122,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 					// if its intra dependency, ideally this should not happen but instead of failing
 					// its better to simply soft fail by notifying about this action
 					// this will cause us to treat it as a dummy job with a unique root
-					notify(progressObserver, &EventJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)})
+					notify(progressObserver, &models.ProgressJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)})
 				}
 
 				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
