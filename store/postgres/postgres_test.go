@@ -68,4 +68,6 @@ func truncateTables(db *gorm.DB) {
 	db.Exec("TRUNCATE TABLE secret CASCADE")
 	db.Exec("TRUNCATE TABLE namespace CASCADE")
 	db.Exec("TRUNCATE TABLE project CASCADE")
+
+	db.Exec("TRUNCATE TABLE job_dependency CASCADE")
 }

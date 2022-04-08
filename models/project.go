@@ -37,8 +37,14 @@ var PluginSecretString = func(pluginType InstanceType, pluginName string) string
 	return strings.ToUpper(fmt.Sprintf("%s_%s", pluginType, pluginName))
 }
 
+type ProjectID uuid.UUID
+
+func (p ProjectID) UUID() uuid.UUID {
+	return uuid.UUID(p)
+}
+
 type ProjectSpec struct {
-	ID uuid.UUID
+	ID ProjectID
 
 	Name string
 

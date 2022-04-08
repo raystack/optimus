@@ -28,7 +28,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 	ctx := context.Background()
 
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -70,9 +70,19 @@ func TestIntegrationJobRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tHook).Return(&models.Plugin{Base: hookUnit2}, nil)
 	adapter := postgres.NewAdapter(pluginRepo)
 
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.New(),
+		Name:        "dev-team-1",
+		ProjectSpec: projectSpec,
+	}
+	namespaceSpec2 := models.NamespaceSpec{
+		ID:          uuid.New(),
+		Name:        "dev-team-2",
+		ProjectSpec: projectSpec,
+	}
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
@@ -129,12 +139,14 @@ func TestIntegrationJobRepository(t *testing.T) {
 					},
 				},
 			},
+			NamespaceSpec: namespaceSpec,
 		},
 		{
-			Name: "",
+			Name:          "",
+			NamespaceSpec: namespaceSpec,
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
@@ -144,22 +156,12 @@ func TestIntegrationJobRepository(t *testing.T) {
 					},
 				},
 			},
+			NamespaceSpec: namespaceSpec,
 		},
 	}
 
-	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
-		Name:        "dev-team-1",
-		ProjectSpec: projectSpec,
-	}
-
-	namespaceSpec2 := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
-		Name:        "dev-team-2",
-		ProjectSpec: projectSpec,
-	}
-
 	t.Run("Insert", func(t *testing.T) {
+		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 		t.Run("insert with hooks and assets should return adapted hooks and assets", func(t *testing.T) {
 			db := DBSetup()
 
@@ -175,9 +177,13 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
+			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+			err := namespaceRepo.Insert(ctx, namespaceSpec)
+			assert.Nil(t, err)
+
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err := repo.Insert(ctx, testModels[0])
+			err = repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
 			err = repo.Insert(ctx, testModels[1])
@@ -567,7 +573,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 	ctx := context.Background()
 
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -611,7 +617,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod},
@@ -651,7 +657,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
@@ -664,7 +670,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "p-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
@@ -679,12 +685,12 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
 	namespaceSpec2 := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}
@@ -837,5 +843,39 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.ElementsMatch(t, []string{testModels[0].Name, testModels[2].Name}, []string{checkModels[namespaceSpec.Name][0], checkModels[namespaceSpec.Name][1]})
 		assert.ElementsMatch(t, []string{testModels[3].Name}, []string{checkModels[namespaceSpec2.Name][0]})
+	})
+
+	t.Run("GetByIDs", func(t *testing.T) {
+		db := DBSetup()
+		testModels := []models.JobSpec{}
+		testModels = append(testModels, testConfigs...)
+
+		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+
+		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: tTask,
+		}, nil)
+		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+
+		defer depMod.AssertExpectations(t)
+		defer depMod2.AssertExpectations(t)
+		defer execUnit1.AssertExpectations(t)
+		defer execUnit2.AssertExpectations(t)
+
+		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
+		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+
+		err := repo.Insert(ctx, testModels[0])
+		assert.Nil(t, err)
+		err = repo.Insert(ctx, testModels[2])
+		assert.Nil(t, err)
+		err = repo.Insert(ctx, testModels[3])
+		assert.Nil(t, err)
+
+		checkModels, err := projectJobSpecRepo.GetByIDs(ctx, []uuid.UUID{testModels[0].ID, testModels[2].ID})
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(checkModels))
 	})
 }

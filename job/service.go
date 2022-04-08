@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
@@ -24,15 +26,42 @@ const (
 
 	ConcurrentTicketPerSec = 40
 	ConcurrentLimit        = 600
+
+	MetricDependencyResolutionStatus  = "status"
+	MetricDependencyResolutionSucceed = "succeed"
+	MetricDependencyResolutionFailed  = "failed"
 )
 
-var errDependencyResolution = fmt.Errorf("dependency resolution")
+var (
+	errDependencyResolution = fmt.Errorf("dependency resolution")
+	errAssetCompilation     = fmt.Errorf("asset compilation")
+
+	resolveDependencyGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "runtime_job_dependency",
+		Help: "Number of job dependency resolution succeed/failed",
+	},
+		[]string{MetricDependencyResolutionStatus},
+	)
+
+	resolveDependencyHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "runtime_job_dependency_histogram",
+		Help: "Duration of resolving job dependency",
+	})
+)
 
 type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
-	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, namespaceName string, observer progress.Observer) (models.JobSpec, error)
+	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
+	Persist(ctx context.Context, jobSpec models.JobSpec) error
+
+	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) ([]models.JobSpec, error)
+	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
+}
+
+type Deployer interface {
+	Deploy(context.Context, models.ProjectSpec, progress.Observer) error
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -64,7 +93,7 @@ type ReplayManager interface {
 	Init()
 	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
 	GetReplay(context.Context, uuid.UUID) (models.ReplaySpec, error)
-	GetReplayList(ctx context.Context, projectID uuid.UUID) ([]models.ReplaySpec, error)
+	GetReplayList(ctx context.Context, projectID models.ProjectID) ([]models.ReplaySpec, error)
 	GetRunStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate, endDate time.Time,
 		jobName string) ([]models.JobStatus, error)
 }
@@ -78,6 +107,9 @@ type Service struct {
 	priorityResolver          PriorityResolver
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	replayManager             ReplayManager
+	projectService            service.ProjectService
+	namespaceService          service.NamespaceService
+	deployer                  Deployer
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -146,7 +178,7 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 				if err != nil {
 					if !errors.Is(err, service.ErrDependencyModNotFound) {
 						if obs != nil {
-							obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
+							obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
 						}
 						return nil, fmt.Errorf("%s %s: %w", errDependencyResolution.Error(), currentSpec.Name, err)
 					}
@@ -155,13 +187,13 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 				// check compilation
 				if err := srv.batchScheduler.VerifyJob(ctx, namespace, currentSpec); err != nil {
 					if obs != nil {
-						obs.Notify(&EventJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
+						obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
 					}
 					return nil, fmt.Errorf("failed to compile %s: %w", currentSpec.Name, err)
 				}
 
 				if obs != nil {
-					obs.Notify(&EventJobCheckSuccess{Name: currentSpec.Name})
+					obs.Notify(&models.ProgressJobCheckSuccess{Name: currentSpec.Name})
 				}
 				return nil, nil
 			}
@@ -252,13 +284,13 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 			return err
 		}
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecDependencyResolve{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 
 	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
 		return err
 	}
-	srv.notifyProgress(progressObserver, &EventJobPriorityWeightAssign{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 
 	jobSpecs, err = srv.filterJobSpecForNamespace(ctx, projectJobSpecRepo, jobSpecs, namespace)
 	if err != nil {
@@ -320,7 +352,7 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
 			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
 		}
-		srv.notifyProgress(progressObserver, &EventSavedJobDelete{jobName})
+		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobName})
 	}
 	return nil
 }
@@ -349,7 +381,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
-	srv.notifyProgress(progressObserver, &EventJobSpecFetch{})
+	srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
 
 	// compile assets first
 	for i, jSpec := range jobSpecs {
@@ -375,7 +407,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, jobsToNamespace[currentSpec.Name], progressObserver)
+				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
 					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
@@ -600,7 +632,8 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	replayManager ReplayManager, pluginService service.PluginService,
+	replayManager ReplayManager, namespaceService service.NamespaceService,
+	projectService service.ProjectService, deployer Deployer, pluginService service.PluginService,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
@@ -610,82 +643,14 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		priorityResolver:          priorityResolver,
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
 		replayManager:             replayManager,
+		namespaceService:          namespaceService,
+		projectService:            projectService,
+		deployer:                  deployer,
 
 		assetCompiler: assetCompiler,
 		pluginService: pluginService,
 		Now:           time.Now,
 	}
-}
-
-type (
-	// EventJobSpecFetch represents a specification being
-	// read from the storage
-	EventJobSpecFetch struct{}
-
-	// EventJobSpecDependencyResolve represents dependencies are being
-	// successfully resolved
-	EventJobSpecDependencyResolve struct{}
-
-	// EventJobSpecUnknownDependencyUsed represents a job spec has used
-	// dependencies which are unknown/unresolved
-	EventJobSpecUnknownDependencyUsed struct {
-		Job        string
-		Dependency string
-	}
-
-	// EventSavedJobDelete signifies that a raw
-	// job from a repository is being deleted
-	EventSavedJobDelete struct{ Name string }
-
-	// EventJobPriorityWeightAssign signifies that a
-	// job is being assigned a priority weight
-	EventJobPriorityWeightAssign struct{}
-	// EventJobPriorityWeightAssignmentFailed signifies that a
-	// job is failed during priority weight assignment
-	EventJobPriorityWeightAssignmentFailed struct {
-		Err error
-	}
-
-	// job check events
-	EventJobCheckFailed struct {
-		Name   string
-		Reason string
-	}
-	EventJobCheckSuccess struct {
-		Name string
-	}
-)
-
-func (e *EventJobSpecFetch) String() string {
-	return "fetching job specs"
-}
-
-func (e *EventSavedJobDelete) String() string {
-	return fmt.Sprintf("deleting: %s", e.Name)
-}
-
-func (e *EventJobPriorityWeightAssign) String() string {
-	return "assigned priority weights"
-}
-
-func (e *EventJobPriorityWeightAssignmentFailed) String() string {
-	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
-}
-
-func (e *EventJobSpecDependencyResolve) String() string {
-	return "dependencies resolved"
-}
-
-func (e *EventJobSpecUnknownDependencyUsed) String() string {
-	return fmt.Sprintf("could not find registered destination '%s' during compiling dependencies for the provided job %s", e.Dependency, e.Job)
-}
-
-func (e *EventJobCheckFailed) String() string {
-	return fmt.Sprintf("check for job failed: %s, reason: %s", e.Name, e.Reason)
-}
-
-func (e *EventJobCheckSuccess) String() string {
-	return fmt.Sprintf("check for job passed: %s", e.Name)
 }
 
 func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, jobSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
@@ -728,4 +693,121 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 	rootNode, _ := dagTree.GetNodeByName(jobSpec.Name)
 
 	return rootNode, nil
+}
+
+// Refresh fetches all the requested jobs, resolves its dependencies, assign proper priority weights,
+// compile all jobs in the project and upload them to the destination store.
+func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string,
+	progressObserver progress.Observer) (err error) {
+	projectSpec, err := srv.projectService.Get(ctx, projectName)
+	if err != nil {
+		return err
+	}
+
+	// get job specs as requested
+	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceNames, jobNames, progressObserver)
+	if err != nil {
+		return err
+	}
+
+	// resolve dependency and persist
+	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
+
+	return srv.deployer.Deploy(ctx, projectSpec, progressObserver)
+}
+
+func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.ProjectSpec,
+	namespaceNames []string, jobNames []string, progressObserver progress.Observer) (jobSpecs []models.JobSpec, err error) {
+	defer srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
+
+	if len(jobNames) > 0 {
+		return srv.fetchSpecsForGivenJobNames(ctx, projectSpec, jobNames)
+	} else if len(namespaceNames) > 0 {
+		return srv.fetchAllJobSpecsForGivenNamespaces(ctx, projectSpec, namespaceNames)
+	}
+	return srv.fetchAllJobSpecsForAProject(ctx, projectSpec)
+}
+
+func (srv *Service) fetchAllJobSpecsForAProject(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error) {
+	var jobSpecs []models.JobSpec
+	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
+	}
+	return jobSpecs, nil
+}
+
+func (srv *Service) fetchAllJobSpecsForGivenNamespaces(ctx context.Context, projectSpec models.ProjectSpec, namespaceNames []string) ([]models.JobSpec, error) {
+	var jobSpecs []models.JobSpec
+	for _, namespaceName := range namespaceNames {
+		namespaceSpec, err := srv.namespaceService.Get(ctx, projectSpec.Name, namespaceName)
+		if err != nil {
+			return nil, err
+		}
+		specs, err := srv.GetAll(ctx, namespaceSpec)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs = append(jobSpecs, specs...)
+	}
+	return jobSpecs, nil
+}
+
+func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec models.ProjectSpec, jobNames []string) ([]models.JobSpec, error) {
+	var jobSpecs []models.JobSpec
+	for _, name := range jobNames {
+		jobSpec, _, err := srv.GetByNameForProject(ctx, name, projectSpec)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+	return jobSpecs, nil
+}
+
+func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.ProjectSpec,
+	jobSpecs []models.JobSpec, progressObserver progress.Observer) {
+	start := time.Now()
+	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
+
+	// resolve specs in parallel
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, jobSpec := range jobSpecs {
+		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				return srv.resolveAndPersist(ctx, currentSpec, projectSpec, progressObserver)
+			}
+		}(jobSpec))
+	}
+
+	failure, success := 0, 0
+	for _, state := range runner.Run() {
+		if state.Err != nil {
+			failure++
+			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val), Err: state.Err})
+		} else {
+			success++
+			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val)})
+		}
+	}
+
+	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionSucceed}).Set(float64(success))
+	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionFailed}).Set(float64(failure))
+	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
+}
+
+func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec, progressObserver progress.Observer) (interface{}, error) {
+	var err error
+	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
+		return currentSpec.Name, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
+	}
+	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, projectSpec, currentSpec, progressObserver)
+	if err != nil {
+		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+	}
+	if err := srv.dependencyResolver.Persist(ctx, resolvedSpec); err != nil {
+		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+	}
+	return currentSpec.Name, nil
 }

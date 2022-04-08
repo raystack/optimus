@@ -19,20 +19,20 @@ import (
 func TestIntegrationSecretRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-project",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
 		},
 	}
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "sample-namespace",
 		ProjectSpec: projectSpec,
 	}
 
 	otherNamespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "other-namespace",
 		ProjectSpec: projectSpec,
 	}
@@ -53,7 +53,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 
 	testConfigs := []models.ProjectSecretItem{
 		{
-			ID:    uuid.Must(uuid.NewRandom()),
+			ID:    uuid.New(),
 			Name:  "g-optimus",
 			Value: "secret",
 			Type:  models.SecretTypeUserDefined,
@@ -62,19 +62,19 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:    uuid.Must(uuid.NewRandom()),
+			ID:    uuid.New(),
 			Name:  "t-optimus",
 			Value: "super-secret",
 			Type:  models.SecretTypeUserDefined,
 		},
 		{
-			ID:    uuid.Must(uuid.NewRandom()),
+			ID:    uuid.New(),
 			Name:  "_OPTIMUS_sample_secret",
 			Value: "super-secret",
 			Type:  models.SecretTypeSystemDefined,
 		},
 		{
-			ID:    uuid.Must(uuid.NewRandom()),
+			ID:    uuid.New(),
 			Name:  "t-optimus-delete",
 			Value: "super-secret",
 			Type:  models.SecretTypeUserDefined,
@@ -303,7 +303,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			db := DBSetup()
 
 			secret := models.ProjectSecretItem{
-				ID:    uuid.Must(uuid.NewRandom()),
+				ID:    uuid.New(),
 				Name:  "t-optimus-delete",
 				Value: "super-secret",
 				Type:  models.SecretTypeUserDefined,
@@ -325,7 +325,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			db := DBSetup()
 
 			secret := models.ProjectSecretItem{
-				ID:    uuid.Must(uuid.NewRandom()),
+				ID:    uuid.New(),
 				Name:  "t-optimus-delete",
 				Value: "super-secret",
 				Type:  models.SecretTypeUserDefined,

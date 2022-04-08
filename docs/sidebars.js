@@ -39,7 +39,8 @@ module.exports = {
         "guides/task-bq2bq",
         "guides/backup",
         "guides/replay",
-        "guides/secret"
+        "guides/secret",
+        "guides/refresh-jobs"
       ],
     },
     {

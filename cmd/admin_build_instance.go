@@ -29,8 +29,6 @@ const unsubstitutedValue = "<no value>"
 
 func adminBuildInstanceCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		optimusHost    string
-		projectName    string
 		assetOutputDir = "/tmp/"
 		runType        = "task"
 		runName        string
@@ -54,12 +52,12 @@ func adminBuildInstanceCommand(conf *config.ClientConfig) *cli.Command {
 	cmd.Flags().StringVar(&runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
 	cmd.MarkFlagRequired("name")
 
-	cmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Name of the optimus project") // TODO: fix overriding conf via args
-	cmd.Flags().StringVar(&optimusHost, "host", optimusHost, "Optimus service endpoint url")         // TODO: fix overriding conf via args
+	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Name of the optimus project")
+	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
-		projectName = conf.Project.Name
-		optimusHost = conf.Host
+		projectName := conf.Project.Name
+		optimusHost := conf.Host
 		l := initClientLogger(conf.Log)
 		jobName := args[0]
 		l.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", projectName, jobName, optimusHost))

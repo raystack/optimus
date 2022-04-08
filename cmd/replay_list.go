@@ -17,8 +17,7 @@ import (
 
 func replayListCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		projectName string
-		reCmd       = &cli.Command{
+		reCmd = &cli.Command{
 			Use:     "list",
 			Short:   "Get list of a replay mapping to a project",
 			Example: "optimus replay list",
@@ -27,9 +26,9 @@ The list command is used to fetch the recent replay in one project.
 		`,
 		}
 	)
-	reCmd.Flags().StringVarP(&projectName, "project", "p", projectName, "Project name of optimus managed repository") // TODO: fix overriding conf via args
+	reCmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
-		projectName = conf.Project.Name
+		projectName := conf.Project.Name
 		l := initClientLogger(conf.Log)
 		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 		defer dialCancel()

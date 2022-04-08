@@ -37,7 +37,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		scheduledAtTimestamp := timestamppb.New(scheduledAt)
 
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -280,7 +280,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			taskName := "a-data-task"
 
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -384,7 +384,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			taskName := "a-data-task"
 
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -475,7 +475,7 @@ func TestJobRunServiceServer(t *testing.T) {
 	t.Run("JobStatus", func(t *testing.T) {
 		t.Run("should return all job status via scheduler if valid inputs", func(t *testing.T) {
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 
@@ -599,7 +599,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		}
 		t.Run("should return all job run via scheduler if valid inputs are given", func(t *testing.T) {
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 
@@ -673,7 +673,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		})
 		t.Run("should not return job runs if project is not found at DB", func(t *testing.T) {
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 
@@ -701,7 +701,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		})
 		t.Run("should not return job runs if job spec is not found at DB", func(t *testing.T) {
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 
@@ -738,7 +738,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		})
 		t.Run("should not return job runs if start date is empty", func(t *testing.T) {
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 
@@ -783,7 +783,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		})
 		t.Run("should not return job runs if end date is empty", func(t *testing.T) {
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 			namespaceSpec := models.NamespaceSpec{
@@ -831,7 +831,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 			namespaceSpec := models.NamespaceSpec{
@@ -886,7 +886,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 			namespaceSpec := models.NamespaceSpec{
@@ -940,7 +940,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				t.Errorf("unable to parse the time to test GetJobRuns %v", err)
 			}
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: "a-data-project",
 			}
 

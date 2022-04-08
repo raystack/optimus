@@ -44,7 +44,7 @@ func NewProjectJobSpecRepository(db *gorm.DB, project models.ProjectSpec, adapte
 
 func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, models.NamespaceSpec, error) {
 	var r Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND name = ?", repo.project.ID, name).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("project_id = ? AND name = ?", repo.project.ID.UUID(), name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
@@ -64,10 +64,31 @@ func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string
 	return jobSpec, namespaceSpec, nil
 }
 
+func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uuid.UUID) ([]models.JobSpec, error) {
+	var jobs []Job
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("project_id = ? AND job.id in ?", repo.project.ID.UUID(), jobIDs).Find(&jobs).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, store.ErrResourceNotFound
+		}
+		return nil, err
+	}
+
+	var jobSpecs []models.JobSpec
+	for _, job := range jobs {
+		jobSpec, err := repo.adapter.ToSpec(job)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+
+	return jobSpecs, nil
+}
+
 func (repo *ProjectJobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
 	var specs []models.JobSpec
 	var jobs []Job
-	if err := repo.db.WithContext(ctx).Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("project_id = ?", repo.project.ID.UUID()).Find(&jobs).Error; err != nil {
 		return specs, err
 	}
 
@@ -90,7 +111,7 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 		}
 		return models.JobSpec{}, models.ProjectSpec{}, err
 	}
-	if err := repo.db.WithContext(ctx).Where("project_id = ? AND name = ?", p.ID, jobName).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("project_id = ? AND name = ?", p.ID, jobName).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, models.ProjectSpec{}, fmt.Errorf("job spec not found: %w", store.ErrResourceNotFound)
 		}
@@ -109,7 +130,7 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 
 func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, destination string) ([]store.ProjectJobPair, error) {
 	var res []Job
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("destination = ?", destination).Find(&res).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Namespace").Where("destination = ?", destination).Find(&res).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, store.ErrResourceNotFound
 		}
@@ -143,7 +164,7 @@ func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map
 	}
 
 	var jobs []Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ?", repo.project.ID).Find(&jobs).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("project_id = ?", repo.project.ID.UUID()).Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 
@@ -200,7 +221,7 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) er
 
 func (repo *JobSpecRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobSpec, error) {
 	var r Job
-	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, store.ErrResourceNotFound
 		}
@@ -212,7 +233,7 @@ func (repo *JobSpecRepository) GetByID(ctx context.Context, id uuid.UUID) (model
 
 func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {
 	var r Job
-	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, store.ErrResourceNotFound
 		}
@@ -229,7 +250,7 @@ func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
 func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) error {
 	// find the base job
 	var r Job
-	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID, name).
+	if err := repo.db.WithContext(ctx).Unscoped().Where("project_id = ? AND name = ?", repo.namespace.ProjectSpec.ID.UUID(), name).
 		Find(&r).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		// no job exists, inserting for the first time
 		return nil
@@ -242,7 +263,7 @@ func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) erro
 func (repo *JobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
 	var specs []models.JobSpec
 	var jobs []Job
-	if err := repo.db.WithContext(ctx).Where("namespace_id = ?", repo.namespace.ID).Find(&jobs).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("namespace_id = ?", repo.namespace.ID).Find(&jobs).Error; err != nil {
 		return specs, err
 	}
 

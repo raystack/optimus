@@ -238,7 +238,8 @@ func (s *OptimusServer) setupHandlers() error {
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
 
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, namespaceService, pluginService)
+	jobDependencyRepo := postgres.NewJobDependencyRepository(s.dbConn)
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
 	priorityResolver := job.NewPriorityResolver()
 
 	replaySpecRepoFac := &replaySpecRepoRepository{
@@ -278,6 +279,8 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
+	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler)
+
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
 	jobService := job.NewService(
@@ -289,6 +292,9 @@ func (s *OptimusServer) setupHandlers() error {
 		priorityResolver,
 		projectJobSpecRepoFac,
 		replayManager,
+		namespaceService,
+		projectService,
+		deployer,
 		pluginService,
 	)
 
@@ -354,6 +360,7 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
 		adapterService,
+		projectService,
 		namespaceService,
 		progressObs))
 	// job run service

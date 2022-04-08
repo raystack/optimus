@@ -48,6 +48,11 @@ const (
 	BackoffDuration    = 100 * time.Millisecond
 )
 
+const (
+	defaultProjectName = "sample_project"
+	defaultHost        = "localhost:9100"
+)
+
 // JobSpecRepository represents a storage interface for Job specifications locally
 type JobSpecRepository interface {
 	SaveAt(models.JobSpec, string) error

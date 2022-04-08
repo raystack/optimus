@@ -19,16 +19,15 @@ import (
 
 func backupStatusCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		project   string
 		backupCmd = &cli.Command{
 			Use:     "status",
 			Short:   "Get backup info using uuid and datastore",
 			Example: "optimus backup status <uuid>",
 		}
 	)
-	backupCmd.Flags().StringVarP(&project, "project", "p", project, "Project name of optimus managed repository") // TODO: fix overriding conf via args
+	backupCmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	backupCmd.RunE = func(cmd *cli.Command, args []string) error {
-		project = conf.Project.Name
+		project := conf.Project.Name
 		l := initClientLogger(conf.Log)
 		dsRepo := models.DatastoreRegistry
 		availableStorer := []string{}

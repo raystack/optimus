@@ -29,7 +29,7 @@ const (
 // deployCommand pushes current repo to optimus service
 func deployCommand() *cli.Command {
 	var (
-		namespaces      []string
+		namespaceNames  []string
 		ignoreJobs      bool
 		ignoreResources bool
 		verbose         bool
@@ -48,7 +48,7 @@ func deployCommand() *cli.Command {
 	}
 
 	cmd.Flags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
-	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Selected namespaces of optimus project")
+	cmd.Flags().StringSliceVarP(&namespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to deployment stages")
 	cmd.Flags().BoolVar(&ignoreJobs, "ignore-jobs", false, "Ignore deployment of jobs")
 	cmd.Flags().BoolVar(&ignoreResources, "ignore-resources", false, "Ignore deployment of resources")
@@ -57,7 +57,7 @@ func deployCommand() *cli.Command {
 		pluginRepo := models.PluginRegistry
 		dsRepo := models.DatastoreRegistry
 		// TODO: find a way to load the config in one place
-		conf, err := config.LoadClientConfig(configFilePath)
+		conf, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {
 			return err
 		}
@@ -75,11 +75,11 @@ func deployCommand() *cli.Command {
 		l.Info(fmt.Sprintf("Deploying project: %s to %s", conf.Project.Name, conf.Host))
 		start := time.Now()
 
-		if err := validateNamespaces(datastoreSpecFs, namespaces); err != nil {
+		if err := validateNamespaces(datastoreSpecFs, namespaceNames); err != nil {
 			return err
 		}
 
-		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaces, ignoreJobs, ignoreResources, verbose)
+		err = postDeploymentRequest(l, *conf, pluginRepo, dsRepo, datastoreSpecFs, namespaceNames, ignoreJobs, ignoreResources, verbose)
 		if err != nil {
 			return err
 		}
@@ -199,12 +199,12 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespaceName))
 		}
 		jobSpecs, err := jobSpecRepo.GetAll()
-		if err != nil {
-			return err
-		}
-		if len(jobSpecs) == 0 {
-			l.Warn("skipping deployment for namespace [%s] as job spec is empty", namespaceName)
+		if errors.Is(err, models.ErrNoJobs) {
+			l.Info(coloredNotice("no job specifications are found for namespace [%s]", namespaceName))
 			continue
+		}
+		if err != nil {
+			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespaceName, err)
 		}
 		totalSpecsCount += len(jobSpecs)
 
@@ -228,6 +228,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		return err
 	}
 	if !specFound {
+		l.Warn("no job specs are found from all the namespaces")
 		return nil
 	}
 
@@ -310,7 +311,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("error getting specs for namespace [%s]: %w", namespaceName, err)
+				return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespaceName, err)
 			}
 			totalSpecsCount += len(resourceSpecs)
 
@@ -338,12 +339,12 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		return err
 	}
 	if !specFound {
+		l.Warn("no resource specs are found from all the namespaces")
 		return nil
 	}
 
 	l.Info("> Receiving responses:")
 	var counter int
-	var streamErrs []error
 	spinner := NewProgressBar()
 	if !verbose {
 		spinner.StartProgress(totalSpecsCount, "please wait")
@@ -358,7 +359,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		}
 		if resp.GetAck() {
 			if !resp.GetSuccess() {
-				streamErrs = append(streamErrs, errors.New(resp.GetMessage()))
+				l.Error(resp.GetMessage())
 			}
 			if resp.GetResourceName() != "" {
 				counter++
@@ -372,12 +373,6 @@ func deployAllResources(deployTimeoutCtx context.Context,
 		}
 	}
 	spinner.Stop()
-	if len(streamErrs) > 0 {
-		for _, e := range streamErrs {
-			l.Error(e.Error())
-		}
-		return errors.New("one or more errors are encountered during resource deployment")
-	}
 	return nil
 }
 

@@ -49,6 +49,7 @@ require (
 	gocloud.dev v0.24.0
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
+	golang.org/x/tools v0.1.10 // indirect
 	google.golang.org/api v0.56.0
 	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83
 	google.golang.org/grpc v1.40.0
@@ -61,7 +62,10 @@ require (
 	gorm.io/gorm v1.21.16
 )
 
-require github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+require (
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/pkg/errors v0.9.1
+)
 
 require (
 	cloud.google.com/go v0.94.0 // indirect
@@ -138,7 +142,6 @@ require (
 	github.com/muesli/termenv v0.9.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
@@ -151,7 +154,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
-	github.com/yuin/goldmark v1.3.5 // indirect
+	github.com/yuin/goldmark v1.4.1 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.23.0 // indirect

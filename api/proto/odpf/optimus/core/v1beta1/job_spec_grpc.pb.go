@@ -36,6 +36,10 @@ type JobSpecificationServiceClient interface {
 	CheckJobSpecification(ctx context.Context, in *CheckJobSpecificationRequest, opts ...grpc.CallOption) (*CheckJobSpecificationResponse, error)
 	// CheckJobSpecifications checks if the job specifications are valid
 	CheckJobSpecifications(ctx context.Context, in *CheckJobSpecificationsRequest, opts ...grpc.CallOption) (JobSpecificationService_CheckJobSpecificationsClient, error)
+	// RefreshJobs do redeployment using the current persisted state.
+	// It will returns a stream of messages which can be used to track the progress.
+	// Message containing ack are status events other are progress events
+	RefreshJobs(ctx context.Context, in *RefreshJobsRequest, opts ...grpc.CallOption) (JobSpecificationService_RefreshJobsClient, error)
 }
 
 type jobSpecificationServiceClient struct {
@@ -154,6 +158,38 @@ func (x *jobSpecificationServiceCheckJobSpecificationsClient) Recv() (*CheckJobS
 	return m, nil
 }
 
+func (c *jobSpecificationServiceClient) RefreshJobs(ctx context.Context, in *RefreshJobsRequest, opts ...grpc.CallOption) (JobSpecificationService_RefreshJobsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &JobSpecificationService_ServiceDesc.Streams[2], "/odpf.optimus.core.v1beta1.JobSpecificationService/RefreshJobs", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &jobSpecificationServiceRefreshJobsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type JobSpecificationService_RefreshJobsClient interface {
+	Recv() (*RefreshJobsResponse, error)
+	grpc.ClientStream
+}
+
+type jobSpecificationServiceRefreshJobsClient struct {
+	grpc.ClientStream
+}
+
+func (x *jobSpecificationServiceRefreshJobsClient) Recv() (*RefreshJobsResponse, error) {
+	m := new(RefreshJobsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // JobSpecificationServiceServer is the server API for JobSpecificationService service.
 // All implementations must embed UnimplementedJobSpecificationServiceServer
 // for forward compatibility
@@ -176,6 +212,10 @@ type JobSpecificationServiceServer interface {
 	CheckJobSpecification(context.Context, *CheckJobSpecificationRequest) (*CheckJobSpecificationResponse, error)
 	// CheckJobSpecifications checks if the job specifications are valid
 	CheckJobSpecifications(*CheckJobSpecificationsRequest, JobSpecificationService_CheckJobSpecificationsServer) error
+	// RefreshJobs do redeployment using the current persisted state.
+	// It will returns a stream of messages which can be used to track the progress.
+	// Message containing ack are status events other are progress events
+	RefreshJobs(*RefreshJobsRequest, JobSpecificationService_RefreshJobsServer) error
 	mustEmbedUnimplementedJobSpecificationServiceServer()
 }
 
@@ -203,6 +243,9 @@ func (UnimplementedJobSpecificationServiceServer) CheckJobSpecification(context.
 }
 func (UnimplementedJobSpecificationServiceServer) CheckJobSpecifications(*CheckJobSpecificationsRequest, JobSpecificationService_CheckJobSpecificationsServer) error {
 	return status.Errorf(codes.Unimplemented, "method CheckJobSpecifications not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) RefreshJobs(*RefreshJobsRequest, JobSpecificationService_RefreshJobsServer) error {
+	return status.Errorf(codes.Unimplemented, "method RefreshJobs not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) mustEmbedUnimplementedJobSpecificationServiceServer() {
 }
@@ -355,6 +398,27 @@ func (x *jobSpecificationServiceCheckJobSpecificationsServer) Send(m *CheckJobSp
 	return x.ServerStream.SendMsg(m)
 }
 
+func _JobSpecificationService_RefreshJobs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RefreshJobsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(JobSpecificationServiceServer).RefreshJobs(m, &jobSpecificationServiceRefreshJobsServer{stream})
+}
+
+type JobSpecificationService_RefreshJobsServer interface {
+	Send(*RefreshJobsResponse) error
+	grpc.ServerStream
+}
+
+type jobSpecificationServiceRefreshJobsServer struct {
+	grpc.ServerStream
+}
+
+func (x *jobSpecificationServiceRefreshJobsServer) Send(m *RefreshJobsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // JobSpecificationService_ServiceDesc is the grpc.ServiceDesc for JobSpecificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -393,6 +457,11 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "CheckJobSpecifications",
 			Handler:       _JobSpecificationService_CheckJobSpecifications_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "RefreshJobs",
+			Handler:       _JobSpecificationService_RefreshJobs_Handler,
 			ServerStreams: true,
 		},
 	},

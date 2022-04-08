@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	defaultHost               = "localhost"
 	defaultFilePermissionMode = 0o655
 )
 

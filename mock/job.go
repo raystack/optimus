@@ -22,7 +22,7 @@ func (repo *ProjectJobSpecRepoFactory) New(proj models.ProjectSpec) store.Projec
 	return repo.Called(proj).Get(0).(store.ProjectJobSpecRepository)
 }
 
-// JobSpecRepoFactory to store raw specs
+// ProjectJobSpecRepository to store raw specs
 type ProjectJobSpecRepository struct {
 	mock.Mock
 }
@@ -33,6 +33,11 @@ func (repo *ProjectJobSpecRepository) GetByName(ctx context.Context, name string
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 	}
 	return models.JobSpec{}, models.NamespaceSpec{}, args.Error(1)
+}
+
+func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uuid.UUID) ([]models.JobSpec, error) {
+	args := repo.Called(ctx, jobIDs)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
 func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, job, project string) (models.JobSpec, models.ProjectSpec, error) {
@@ -187,7 +192,7 @@ func (srv *JobService) GetReplayStatus(ctx context.Context, replayRequest models
 	return args.Get(0).(models.ReplayState), args.Error(1)
 }
 
-func (srv *JobService) GetReplayList(ctx context.Context, projectUUID uuid.UUID) ([]models.ReplaySpec, error) {
+func (srv *JobService) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
 	args := srv.Called(ctx, projectUUID)
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
@@ -207,14 +212,35 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, progressObserver progress.Observer) (err error) {
+	args := srv.Called(ctx, projectName, namespaceNames, jobNames, progressObserver)
+	return args.Error(0)
+}
+
 type DependencyResolver struct {
 	mock.Mock
 }
 
 func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpec models.JobSpec, namespaceName string, obs progress.Observer) (models.JobSpec, error) {
-	args := srv.Called(ctx, projectSpec, jobSpec, namespaceName, obs)
+	jobSpec models.JobSpec, obs progress.Observer) (models.JobSpec, error) {
+	args := srv.Called(ctx, projectSpec, jobSpec, obs)
 	return args.Get(0).(models.JobSpec), args.Error(1)
+}
+
+func (srv *DependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec) error {
+	args := srv.Called(ctx, jobSpec)
+	return args.Error(0)
+}
+
+func (srv *DependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
+	observer progress.Observer) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, projectSpec, observer)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
+}
+
+func (srv *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {
+	args := srv.Called(jobSpec)
+	return args.Get(0).([]models.JobSpecHook)
 }
 
 type PriorityResolver struct {
@@ -244,4 +270,33 @@ func (n *Notifier) Close() error {
 
 func (n *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 	return n.Called(ctx, attr).Error(0)
+}
+
+// JobDependencyRepository to store job dependencies
+type JobDependencyRepository struct {
+	mock.Mock
+}
+
+func (repo *JobDependencyRepository) Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error {
+	args := repo.Called(ctx, projectID, jobID, dependency)
+	return args.Error(0)
+}
+
+func (repo *JobDependencyRepository) GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
+	args := repo.Called(ctx, projectID)
+	return args.Get(0).([]models.JobIDDependenciesPair), args.Error(1)
+}
+
+func (repo *JobDependencyRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
+	args := repo.Called(ctx, jobID)
+	return args.Error(0)
+}
+
+type Deployer struct {
+	mock.Mock
+}
+
+func (d *Deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) error {
+	args := d.Called(ctx, projectSpec, progressObserver)
+	return args.Error(0)
 }
