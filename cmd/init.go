@@ -163,8 +163,6 @@ func askInitNamespaceDatastoreType() (string, error) {
 		Message: "What is the type of data store for this namespace?",
 		Options: []string{
 			"bigquery",
-			"postgres",
-			"gcs",
 		},
 		Default: "bigquery",
 	}
