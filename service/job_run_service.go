@@ -126,7 +126,7 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 		}
 	}
 
-	instanceToSave, err := s.prepInstance(ctx, jobRun, instanceType, instanceName, jobRun.ExecutedAt, namespace)
+	instanceToSave, err := s.prepInstance(ctx, jobRun, instanceType, instanceName, jobRun.ExecutedAt)
 	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
 	}
@@ -142,9 +142,9 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	return jobRun.GetInstance(instanceName, instanceType)
 }
 
-func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType, instanceName string, executedAt time.Time, namespace models.NamespaceSpec) (models.InstanceSpec, error) {
+func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType, instanceName string, executedAt time.Time) (models.InstanceSpec, error) {
 	var jobDestination string
-	dest, err := s.pluginService.GenerateDestination(ctx, jobRun.Spec, namespace)
+	dest, err := s.pluginService.GenerateDestination(ctx, jobRun.Spec, jobRun.Spec.NamespaceSpec)
 	if err != nil {
 		if !errors.Is(err, ErrDependencyModNotFound) {
 			return models.InstanceSpec{}, fmt.Errorf("failed to generate destination for job %s: %w", jobRun.Spec.Name, err)
