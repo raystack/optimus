@@ -22,6 +22,14 @@ func TestJobRunService(t *testing.T) {
 	ctx := context.Background()
 	execUnit := new(mock.BasePlugin)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
+	projSpec := models.ProjectSpec{
+		Name: "proj",
+	}
+	namespaceSpec := models.NamespaceSpec{
+		ID:          uuid.Must(uuid.NewRandom()),
+		Name:        "dev-team-1",
+		ProjectSpec: projSpec,
+	}
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -42,18 +50,11 @@ func TestJobRunService(t *testing.T) {
 				TruncateTo: "d",
 			},
 		},
-		Dependencies: map[string]models.JobSpecDependency{},
+		Dependencies:  map[string]models.JobSpecDependency{},
+		NamespaceSpec: namespaceSpec,
 	}
 	mockedTimeNow := time.Date(2021, 11, 21, 0, 0, 0, 0, time.UTC)
 	mockedTimeFunc := func() time.Time { return mockedTimeNow }
-	projSpec := models.ProjectSpec{
-		Name: "proj",
-	}
-	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
-		Name:        "dev-team-1",
-		ProjectSpec: projSpec,
-	}
 	scheduledAt := time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)
 	jobRun := models.JobRun{
 		ID:          uuid.Must(uuid.NewRandom()),
