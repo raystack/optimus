@@ -177,9 +177,9 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 		)
 		// TODO Log once , new line can be logged outside
 		if i == 0 {
-			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespace))
+			l.Info(fmt.Sprintf("\n> Deploying jobs for namespace [%s]", namespace.Name))
 		} else {
-			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespace))
+			l.Info(fmt.Sprintf("> Deploying jobs for namespace [%s]", namespace.Name))
 		}
 		jobSpecs, err := jobSpecRepo.GetAll()
 		if errors.Is(err, models.ErrNoJobs) {
@@ -204,7 +204,7 @@ func deployAllJobs(deployTimeoutCtx context.Context,
 			ProjectName:   conf.Project.Name,
 			NamespaceName: namespace.Name,
 		}); err != nil {
-			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace, err)
+			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace.Name, err)
 		}
 	}
 	if err := stream.CloseSend(); err != nil {
@@ -270,15 +270,15 @@ func deployAllResources(deployTimeoutCtx context.Context,
 	for _, namespace := range selectedNamespaces {
 		adapt := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 		for storeName, repoFS := range datastoreSpecFs[namespace.Name] {
-			l.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespace))
+			l.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespace.Name))
 			ds, err := datastoreRepo.GetByName(storeName)
 			if err != nil {
-				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespace)
+				return fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespace.Name)
 			}
 			resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
 			resourceSpecs, err := resourceSpecRepo.GetAll(deployTimeoutCtx)
 			if errors.Is(err, models.ErrNoResources) {
-				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespace))
+				l.Info(coloredNotice("no resource specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			if err != nil {
@@ -291,7 +291,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 			for _, spec := range resourceSpecs {
 				adapted, err := adapt.ToResourceProto(spec)
 				if err != nil {
-					return fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespace, err)
+					return fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespace.Name, err)
 				}
 				adaptedSpecs = append(adaptedSpecs, adapted)
 			}
@@ -302,7 +302,7 @@ func deployAllResources(deployTimeoutCtx context.Context,
 				DatastoreName: storeName,
 				NamespaceName: namespace.Name,
 			}); err != nil {
-				return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace, err)
+				return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace.Name, err)
 			}
 		}
 	}
