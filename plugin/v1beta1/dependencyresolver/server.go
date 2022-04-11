@@ -21,7 +21,7 @@ func (s *GRPCServer) GenerateDestination(ctx context.Context, req *pbp.GenerateD
 	resp, err := s.Impl.GenerateDestination(ctx, models.GenerateDestinationRequest{
 		Config:        cli.AdaptConfigsFromProto(req.Config),
 		Assets:        cli.AdaptAssetsFromProto(req.Assets),
-		Project:       s.projectSpecAdapter.FromProjectProtoWithSecrets(req.Project),
+		Project:       s.projectSpecAdapter.FromProjectProtoWithSecrets(req.Project), // nolint:staticcheck
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {
@@ -34,7 +34,7 @@ func (s *GRPCServer) GenerateDependencies(ctx context.Context, req *pbp.Generate
 	resp, err := s.Impl.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
 		Config:        cli.AdaptConfigsFromProto(req.Config),
 		Assets:        cli.AdaptAssetsFromProto(req.Assets),
-		Project:       s.projectSpecAdapter.FromProjectProtoWithSecrets(req.Project),
+		Project:       s.projectSpecAdapter.FromProjectProtoWithSecrets(req.Project), // nolint:staticcheck
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {
