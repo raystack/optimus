@@ -119,6 +119,7 @@ type Service struct {
 
 	Now           func() time.Time
 	assetCompiler AssetCompiler
+	pluginService service.PluginService
 }
 
 // Create constructs a Job for a namespace and commits it to the store
@@ -173,15 +174,9 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				// check dependencies
-				if currentSpec.Task.Unit.DependencyMod != nil {
-					if _, err := currentSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
-						Config:  models.PluginConfigs{}.FromJobSpec(currentSpec.Task.Config),
-						Assets:  models.PluginAssets{}.FromJobSpec(currentSpec.Assets),
-						Project: namespace.ProjectSpec,
-						PluginOptions: models.PluginOptions{
-							DryRun: true,
-						},
-					}); err != nil {
+				_, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, true)
+				if err != nil {
+					if !errors.Is(err, service.ErrDependencyModNotFound) {
 						if obs != nil {
 							obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
 						}
@@ -216,34 +211,29 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 	models.JobSpecTaskDependencies, error) {
 	destination := models.JobSpecTaskDestination{}
 	dependencies := models.JobSpecTaskDependencies{}
-	if jobSpec.Task.Unit.DependencyMod == nil {
-		return destination, dependencies, errors.New("task doesn't support dependency mod")
+
+	dest, err := srv.pluginService.GenerateDestination(ctx, jobSpec, namespace)
+	if err != nil {
+		return destination, dependencies, err
 	}
 
-	destinationResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
-		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-		Project: namespace.ProjectSpec,
-	})
-	if err != nil {
-		return destination, dependencies, fmt.Errorf("failed to generate destination: %w", err)
+	if dest != nil {
+		destination.Destination = dest.Destination
+		destination.Type = dest.Type
 	}
-	destination.Destination = destinationResp.Destination
-	destination.Type = destinationResp.Type
 
 	// compile assets before generating dependencies
 	if jobSpec.Assets, err = srv.assetCompiler(jobSpec, srv.Now()); err != nil {
 		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
 	}
-	dependencyResp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
-		Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-		Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-		Project: namespace.ProjectSpec,
-	})
+
+	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		return destination, dependencies, fmt.Errorf("failed to generate dependencies: %w", err)
 	}
-	dependencies = dependencyResp.Dependencies
+	if deps != nil {
+		dependencies = deps.Dependencies
+	}
 
 	return destination, dependencies, nil
 }
@@ -419,7 +409,6 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 			return func() (interface{}, error) {
 				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
-					// wrappedErr := errors2.Wrap(, err.Error())
 					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
 				return resolvedSpec, nil
@@ -644,7 +633,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
-	projectService service.ProjectService, deployer Deployer,
+	projectService service.ProjectService, deployer Deployer, pluginService service.PluginService,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
@@ -659,6 +648,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		deployer:                  deployer,
 
 		assetCompiler: assetCompiler,
+		pluginService: pluginService,
 		Now:           time.Now,
 	}
 }

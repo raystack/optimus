@@ -10,6 +10,7 @@ import (
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -26,6 +27,7 @@ const InterJobDependencyNameSections = 2
 
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+	pluginService             service.PluginService
 	dependencyRepo            store.JobDependencyRepository
 }
 
@@ -174,15 +176,13 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies, assets should be dependent on
 	var jobDependencies []string
-	if jobSpec.Task.Unit.DependencyMod != nil {
-		resp, err := jobSpec.Task.Unit.DependencyMod.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
-			Config:  models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:  models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			Project: projectSpec,
-		})
-		if err != nil {
+	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
+	if err != nil {
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
 			return models.JobSpec{}, err
 		}
+	}
+	if resp != nil {
 		jobDependencies = resp.Dependencies
 	}
 
@@ -331,9 +331,11 @@ func (*dependencyResolver) notifyProgress(observer progress.Observer, e progress
 
 // NewDependencyResolver creates a new instance of Resolver
 func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	dependencyRepo store.JobDependencyRepository) *dependencyResolver {
+	dependencyRepo store.JobDependencyRepository,
+	pluginService service.PluginService) *dependencyResolver {
 	return &dependencyResolver{
 		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
 		dependencyRepo:            dependencyRepo,
+		pluginService:             pluginService,
 	}
 }

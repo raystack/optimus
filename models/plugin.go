@@ -107,11 +107,10 @@ type CommandLineMod interface {
 type DependencyResolverMod interface {
 	BasePlugin
 
-	// GenerateTaskDestination derive destination from config and assets
+	// GenerateDestination derive destination from config and assets
 	GenerateDestination(context.Context, GenerateDestinationRequest) (*GenerateDestinationResponse, error)
 
-	// GetDependencies returns names of job destination on which this unit
-	// is dependent on
+	// GenerateDependencies returns names of job destination on which this unit is dependent on
 	GenerateDependencies(context.Context, GenerateDependenciesRequest) (*GenerateDependenciesResponse, error)
 }
 
@@ -293,7 +292,7 @@ type GenerateDestinationRequest struct {
 	// Job assets
 	Assets PluginAssets
 
-	// Job project
+	// Deprecated: Do not use.
 	Project ProjectSpec
 
 	PluginOptions
@@ -321,7 +320,7 @@ type GenerateDependenciesRequest struct {
 	// Job assets
 	Assets PluginAssets
 
-	// Job project
+	// Deprecated: Do not use.
 	Project ProjectSpec
 
 	PluginOptions

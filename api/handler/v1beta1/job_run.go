@@ -22,6 +22,7 @@ type JobRunServiceServer struct {
 	adapter             ProtoAdapter
 	projectService      service.ProjectService
 	namespaceService    service.NamespaceService
+	secretService       service.SecretService
 	runSvc              service.JobRunService
 	jobRunInputCompiler compiler.JobRunInputCompiler
 	scheduler           models.SchedulerUnit
@@ -48,20 +49,22 @@ func (sv *JobRunServiceServer) GetJobTask(ctx context.Context, req *pb.GetJobTas
 		Dependencies: nil,
 		Destination:  nil,
 	}
-	if jobSpec.Task.Unit.DependencyMod != nil {
-		taskDestination, taskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "%s: GetTaskDependencies", err.Error())
+	taskDestination, taskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	if err != nil {
+		if errors.Is(err, service.ErrDependencyModNotFound) {
+			return &pb.GetJobTaskResponse{Task: jobTaskSpec}, nil
 		}
-		jobTaskSpec.Destination = &pb.JobTask_Destination{
-			Destination: taskDestination.Destination,
-			Type:        taskDestination.Type.String(),
-		}
-		for _, dep := range taskDependencies {
-			jobTaskSpec.Dependencies = append(jobTaskSpec.Dependencies, &pb.JobTask_Dependency{
-				Dependency: dep,
-			})
-		}
+		return nil, status.Errorf(codes.Internal, "%s: GetTaskDependencies", err.Error())
+	}
+
+	jobTaskSpec.Destination = &pb.JobTask_Destination{
+		Destination: taskDestination.Destination,
+		Type:        taskDestination.Type.String(),
+	}
+	for _, dep := range taskDependencies {
+		jobTaskSpec.Dependencies = append(jobTaskSpec.Dependencies, &pb.JobTask_Dependency{
+			Dependency: dep,
+		})
 	}
 
 	return &pb.GetJobTaskResponse{
@@ -117,7 +120,13 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to register instance of jobrun %s", err.Error(), jobRun)
 	}
-	jobRunInput, err := sv.jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instance)
+
+	secrets, err := sv.secretService.GetSecrets(ctx, namespaceSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to get secrets %s", err.Error(), jobRun)
+	}
+
+	jobRunInput, err := sv.jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instance)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
@@ -254,7 +263,7 @@ func (sv *JobRunServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest
 	return &pb.RunJobResponse{}, nil
 }
 
-func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, adapter ProtoAdapter, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, scheduler models.SchedulerUnit) *JobRunServiceServer {
+func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, secretService service.SecretService, adapter ProtoAdapter, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, scheduler models.SchedulerUnit) *JobRunServiceServer {
 	return &JobRunServiceServer{
 		l:                   l,
 		jobSvc:              jobSvc,
@@ -264,6 +273,7 @@ func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectServi
 		scheduler:           scheduler,
 		namespaceService:    namespaceService,
 		projectService:      projectService,
+		secretService:       secretService,
 	}
 }
 
