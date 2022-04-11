@@ -13,6 +13,7 @@ type NamespaceRepoFactory interface {
 
 type NamespaceService interface {
 	Get(context.Context, string, string) (models.NamespaceSpec, error)
+	GetByName(context.Context, models.ProjectSpec, string) (models.NamespaceSpec, error)
 	GetNamespaceOptionally(context.Context, string, string) (models.ProjectSpec, models.NamespaceSpec, error)
 	Save(context.Context, string, models.NamespaceSpec) error
 	GetAll(context.Context, string) ([]models.NamespaceSpec, error)
@@ -42,6 +43,21 @@ func (s namespaceService) Get(ctx context.Context, projectName, namespaceName st
 
 	nsRepo := s.namespaceRepoFac.New(models.ProjectSpec{}) // Intentional empty object
 	nsSpec, err := nsRepo.Get(ctx, projectName, namespaceName)
+	if err != nil {
+		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
+	}
+
+	return nsSpec, nil
+}
+
+func (s namespaceService) GetByName(ctx context.Context, project models.ProjectSpec, namespaceName string) (models.NamespaceSpec, error) {
+	if namespaceName == "" {
+		return models.NamespaceSpec{},
+			NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
+	}
+
+	nsRepo := s.namespaceRepoFac.New(project)
+	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
 	if err != nil {
 		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
