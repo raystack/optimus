@@ -31,7 +31,7 @@ func namespaceCommand() *cli.Command {
 }
 
 func namespaceListCommand() *cli.Command {
-	var dirPath, serverHost, projectName string
+	var dirPath, host, projectName string
 	cmd := &cli.Command{
 		Use:     "list",
 		Short:   "Lists namespaces from the selected server and project",
@@ -41,29 +41,12 @@ func namespaceListCommand() *cli.Command {
 		l := initDefaultLogger()
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
-		if projectName == "" {
-			if dirPath == "" {
-				l.Info(fmt.Sprintf("Loading project name from client config in: %s", filePath))
-			}
-			if err != nil {
-				return err
-			}
-			projectName = clientConfig.Project.Name
-			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
-		}
-		if serverHost == "" {
-			if dirPath == "" {
-				l.Info(fmt.Sprintf("Loading service host from client config in: %s", filePath))
-			}
-			if err != nil {
-				return err
-			}
-			serverHost = clientConfig.Host
-			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
+		if err != nil {
+			return err
 		}
 
-		l.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", projectName, serverHost))
-		namespacesFromServer, err := listNamespacesFromServer(projectName, serverHost)
+		l.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", clientConfig.Project.Name, clientConfig.Host))
+		namespacesFromServer, err := listNamespacesFromServer(clientConfig.Project.Name, clientConfig.Host)
 		if err != nil {
 			return err
 		}
@@ -77,8 +60,71 @@ func namespaceListCommand() *cli.Command {
 		return nil
 	}
 	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&host, "host", host, "Targeted server host, by default taking from client config")
 	cmd.Flags().StringVar(&projectName, "project-name", projectName, "Targeted project name, by default taking from client config")
+	return cmd
+}
+
+func namespaceDescribeCommand() *cli.Command {
+	var dirPath, host, projectName, namespaceName string
+	cmd := &cli.Command{
+		Use:     "describe",
+		Short:   "Describes namespace configuration from the selected server and project",
+		Example: "optimus namespace describe [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		l := initDefaultLogger()
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+		if err != nil {
+			return err
+		}
+
+		l.Info(fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]", namespaceName, clientConfig.Project.Name, clientConfig.Host))
+		namespace, err := getNamespace(clientConfig.Project.Name, namespaceName, clientConfig.Host)
+		if err != nil {
+			return err
+		}
+		result := stringifyNamespaceForNamespaceDescribe(namespace)
+		l.Info("Successfully getting namespace!")
+		l.Info(fmt.Sprintf("==============================\n%s", result))
+		return nil
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&host, "host", host, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&projectName, "project-name", projectName, "Targeted project name, by default taking from client config")
+	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "Targeted namespace name, by default taking from client config")
+	cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func namespaceRegisterCommand() *cli.Command {
+	var dirPath, namespaceName string
+	cmd := &cli.Command{
+		Use:     "register",
+		Short:   "Register namespace if it does not exist and update if it does",
+		Example: "optimus namespace register [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+		if err != nil {
+			return err
+		}
+		l := initDefaultLogger()
+		if namespaceName != "" {
+			l.Info(fmt.Sprintf("Registering namespace [%s] to [%s]", namespaceName, clientConfig.Host))
+			namespace, err := clientConfig.GetNamespaceByName(namespaceName)
+			if err != nil {
+				return err
+			}
+			return registerNamespace(l, clientConfig.Host, clientConfig.Project.Name, namespace)
+		}
+		l.Info(fmt.Sprintf("Registering all available namespaces from client config to [%s]", clientConfig.Host))
+		return registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "If set, then only that namespace will be registered")
 	return cmd
 }
 
@@ -141,58 +187,6 @@ func stringifyNamespacesForNamespaceList(namespacesFromLocal, namespacesFromServ
 	return buff.String()
 }
 
-func namespaceDescribeCommand() *cli.Command {
-	var dirPath, serverHost, projectName, namespaceName string
-	cmd := &cli.Command{
-		Use:     "describe",
-		Short:   "Describes namespace configuration from the selected server and project",
-		Example: "optimus namespace describe [--flag]",
-	}
-	cmd.RunE = func(cmd *cli.Command, args []string) error {
-		l := initDefaultLogger()
-		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
-		if projectName == "" {
-			if dirPath == "" {
-				l.Info(fmt.Sprintf("Loading project name from client config in: %s", filePath))
-			}
-			if err != nil {
-				return err
-			}
-			projectName = clientConfig.Project.Name
-			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
-		}
-		if namespaceName == "" {
-			return errors.New("namespace name is required")
-		}
-		if serverHost == "" {
-			if dirPath == "" {
-				l.Info(fmt.Sprintf("Loading service host from client config in: %s", filePath))
-			}
-			if err != nil {
-				return err
-			}
-			serverHost = clientConfig.Host
-			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
-		}
-
-		l.Info(fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]", namespaceName, projectName, serverHost))
-		namespace, err := getNamespace(projectName, namespaceName, serverHost)
-		if err != nil {
-			return err
-		}
-		result := stringifyNamespaceForNamespaceDescribe(namespace)
-		l.Info("Successfully getting namespace!")
-		l.Info(fmt.Sprintf("==============================\n%s", result))
-		return nil
-	}
-	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targeted server host, by default taking from client config")
-	cmd.Flags().StringVar(&projectName, "project-name", projectName, "Targeted project name, by default taking from client config")
-	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "Targeted namespace name, by default taking from client config")
-	return cmd
-}
-
 func stringifyNamespaceForNamespaceDescribe(namespace *config.Namespace) string {
 	output := fmt.Sprintf("name: %s\n", namespace.Name)
 	if len(namespace.Config) == 0 {
@@ -232,36 +226,6 @@ func getNamespace(projectName, namespaceName, serverHost string) (*config.Namesp
 		Name:   response.GetNamespace().Name,
 		Config: response.GetNamespace().Config,
 	}, nil
-}
-
-func namespaceRegisterCommand() *cli.Command {
-	var dirPath, namespaceName string
-	cmd := &cli.Command{
-		Use:     "register",
-		Short:   "Register namespace if it does not exist and update if it does",
-		Example: "optimus namespace register [--flag]",
-	}
-	cmd.RunE = func(cmd *cli.Command, args []string) error {
-		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
-		if err != nil {
-			return err
-		}
-		l := initDefaultLogger()
-		if namespaceName != "" {
-			l.Info(fmt.Sprintf("Registering namespace [%s]", namespaceName))
-			namespace, err := clientConfig.GetNamespaceByName(namespaceName)
-			if err != nil {
-				return err
-			}
-			return registerNamespace(l, clientConfig.Host, clientConfig.Project.Name, namespace)
-		}
-		l.Info("Registering all available namespaces from client config")
-		return registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
-	}
-	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().StringVar(&namespaceName, "name", namespaceName, "If set, then only that namespace will be registered")
-	return cmd
 }
 
 func askToSelectNamespace(l log.Logger, conf *config.ClientConfig) (*config.Namespace, error) {

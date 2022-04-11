@@ -26,8 +26,40 @@ func projectCommand() *cli.Command {
 	return cmd
 }
 
+func projectRegisterCommand() *cli.Command {
+	var dirPath string
+	var withNamespaces bool
+	cmd := &cli.Command{
+		Use:     "register",
+		Short:   "Register project if it does not exist and update if it does",
+		Example: "optimus project register [--flag]",
+	}
+	cmd.RunE = func(cmd *cli.Command, args []string) error {
+		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+		if err != nil {
+			return err
+		}
+		l := initDefaultLogger()
+		l.Info(fmt.Sprintf("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host))
+		if err := registerProject(l, clientConfig.Host, clientConfig.Project); err != nil {
+			return err
+		}
+		if withNamespaces {
+			l.Info(fmt.Sprintf("Registering all namespaces from: %s", filePath))
+			if err := registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().BoolVar(&withNamespaces, "with-namespaces", withNamespaces, "If yes, then namespace will be registered or updated as well")
+	return cmd
+}
+
 func projectDescribeCommand() *cli.Command {
-	var dirPath, serverHost, projectName string
+	var dirPath, host, projectName string
 	cmd := &cli.Command{
 		Use:     "describe",
 		Short:   "Describes project configuration in the selected server",
@@ -37,27 +69,12 @@ func projectDescribeCommand() *cli.Command {
 		l := initDefaultLogger()
 		filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
-		if projectName == "" {
-			if dirPath == "" {
-				l.Info(fmt.Sprintf("Loading project name from client config in: %s", filePath))
-			}
-			if err != nil {
-				return err
-			}
-			projectName = clientConfig.Project.Name
-			l.Info(fmt.Sprintf("Using project name from client config: %s", projectName))
+		if err != nil {
+			return err
 		}
-		if serverHost == "" {
-			if dirPath == "" {
-				l.Info(fmt.Sprintf("Loading service host from client config in: %s", filePath))
-			}
-			if err != nil {
-				return err
-			}
-			serverHost = clientConfig.Host
-			l.Info(fmt.Sprintf("Using server host from client config: %s", serverHost))
-		}
-		project, err := getProject(projectName, serverHost)
+
+		l.Info(fmt.Sprintf("Getting project [%s] from host [%s]", clientConfig.Project.Name, clientConfig.Host))
+		project, err := getProject(clientConfig.Project.Name, clientConfig.Host)
 		if err != nil {
 			return err
 		}
@@ -70,8 +87,8 @@ func projectDescribeCommand() *cli.Command {
 		return nil
 	}
 	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().StringVar(&serverHost, "server", serverHost, "Targeted server host, by default taking from client config")
-	cmd.Flags().StringVar(&projectName, "name", projectName, "Targeted project name, by default taking from client config")
+	cmd.Flags().StringVar(&host, "host", host, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&projectName, "project-name", projectName, "Targeted project name, by default taking from client config")
 	return cmd
 }
 
@@ -101,38 +118,6 @@ func getProject(projectName, serverHost string) (config.Project, error) {
 		Name:   response.GetProject().Name,
 		Config: response.GetProject().Config,
 	}, nil
-}
-
-func projectRegisterCommand() *cli.Command {
-	var dirPath string
-	var withNamespaces bool
-	cmd := &cli.Command{
-		Use:     "register",
-		Short:   "Register project if it does not exist and update if it does",
-		Example: "optimus project register [--flag]",
-	}
-	cmd.RunE = func(cmd *cli.Command, args []string) error {
-		filePath := path.Join(dirPath, config.DefaultConfigFilename+"."+config.DefaultFileExtension)
-		clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
-		if err != nil {
-			return err
-		}
-		l := initDefaultLogger()
-		l.Info(fmt.Sprintf("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host))
-		if err := registerProject(l, clientConfig.Host, clientConfig.Project); err != nil {
-			return err
-		}
-		if withNamespaces {
-			l.Info(fmt.Sprintf("Registering all namespaces from: %s", filePath))
-			if err := registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	cmd.Flags().StringVar(&dirPath, "dir", dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().BoolVar(&withNamespaces, "with-namespaces", withNamespaces, "If yes, then namespace will be registered or updated as well")
-	return cmd
 }
 
 func registerProject(l log.Logger, serverHost string, project config.Project) error {
