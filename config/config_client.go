@@ -39,13 +39,7 @@ type Namespace struct {
 
 func (c *ClientConfig) GetNamespaceByName(name string) (*Namespace, error) {
 	if c.namespaceNameToNamespace == nil {
-		c.namespaceNameToNamespace = map[string]*Namespace{}
-		for _, namespace := range c.Namespaces {
-			if namespace == nil {
-				continue
-			}
-			c.namespaceNameToNamespace[namespace.Name] = namespace
-		}
+		c.buildDictionary()
 	}
 
 	if c.namespaceNameToNamespace[name] == nil {
@@ -56,9 +50,13 @@ func (c *ClientConfig) GetNamespaceByName(name string) (*Namespace, error) {
 }
 
 func (c *ClientConfig) ValidateNamespaceNames(namespaceNames ...string) error {
+	if c.namespaceNameToNamespace == nil {
+		c.buildDictionary()
+	}
+
 	var invalidNames []string
 	for _, n := range namespaceNames {
-		if c.namespaceNameToNamespace == nil {
+		if c.namespaceNameToNamespace[n] == nil {
 			invalidNames = append(invalidNames, n)
 		}
 	}
@@ -86,4 +84,14 @@ func (c *ClientConfig) GetAllNamespaceNames() []string {
 		output[i] = n.Name
 	}
 	return output
+}
+
+func (c *ClientConfig) buildDictionary() {
+	c.namespaceNameToNamespace = map[string]*Namespace{}
+	for _, namespace := range c.Namespaces {
+		if namespace == nil {
+			continue
+		}
+		c.namespaceNameToNamespace[namespace.Name] = namespace
+	}
 }
