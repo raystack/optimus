@@ -7,7 +7,7 @@ Once the optimus binary is installed, it can be started in serve mode using
 ```shell
 optimus serve
 ```
-It needs few [configurations](../getting-started/configuration.md) as prerequisites, create a `.optimus.yaml` file with
+It needs few [configurations](../getting-started/configuration.md) as prerequisites, for example, create a `config.yaml` file with
 ```yaml
 version: 1
 host: localhost:9100
@@ -19,7 +19,7 @@ serve:
   db:
     dsn: postgres://user:password@localhost:5432/optimus?sslmode=disable
 ```
-You will need to change `dsn` and `app_key` according to your installation.
+You will need to change `dsn` and `app_key` according to your installation. And then run `optimus serve -c config.yaml`
 
 Once the server is up and running, before it is ready to deploy `jobs` we need to
 - Register an optimus project

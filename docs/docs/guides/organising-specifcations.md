@@ -12,55 +12,54 @@ When using Optimus cli to deploy, either manually or from a CI pipeline, it is a
 
 ```
 .
-├── .optimus.yaml
+├── optimus.yaml
 ├── README.md
-├── datastore
-│   ├── bigquery
-│   │   ├── project1
-│   │   │   ├── dataset1
-│   │   │   │   ├── table1
-│   │   │   │   └── table2
-│   │   │   └── this.yaml
-│   │   └── project2
-│   │       └── dataset1
-│   │           └── table1
-│   └── postgres
-│       └── table1
-└── jobs
-    ├── project1
-    │   ├── job1
-    │   ├── job2
-    │   └── this.yaml
-    ├── project2
-    │   ├── job1
-    │   └── job2
-    └── this.yaml
+├── namespace-1
+│   ├── jobs
+|   │   ├── job1
+|   │   ├── job2
+|   │   └── this.yaml
+│   └── resources
+|       ├── bigquery
+│       │   ├── table1
+│       │   ├── table2
+|       |   └── this.yaml
+│       └── postgres
+│           └── table1
+└── namespace-2
+    └── jobs
+    └── resources
 ```
 
-
-
-A sample `.optimus.yaml` would look like
+A sample `optimus.yaml` would look like
 
 ```yaml
 version: 1
 host: localhost:9100
-job:
-  path: jobs
-datastore:
-- type: bigquery
-  path: datastore/bigquery
-- type: postgres
-  path: datastore/postgres
-config:
-  global:
-    environment: integration
-    storage_path: gs://example-bucket/test    
-  local: {}
+project:
+  name: project-1
+namespaces:
+- name: namespace-1
+  config: {}
+  job:
+    path: namespace-1/jobs
+  datastore:
+  - type: bigquery
+    path: namespace-1/resources/bigquery
+  - type: postgres
+    path: namespace-1/resources/postgres
+- name: namespace-2
+  config: {}
+  job:
+    path: namespaces-2/jobs
+  datastore:
+  - type: bigquery
+    path: namespace-2/resources/bigquery
 ```
 
 
 
-You might have also noticed there are `this.yaml` files being used in some directories. This file is used to share a single set of configuration across multiple sub directories. For example if I create a file at `/jobs/project1/this.yaml`, then all sub directories inside `/jobs/project1` will inherit this config as defaults. If same config is specified in sub directory, then sub directory will override the parent defaults. For example a `this.yaml` in `/jobs/project/`
+You might have also noticed there are `this.yaml` files being used in some directories. This file is used to share a single set of configuration across multiple sub directories. For example if I create a file at `/namespace-1/jobs/this.yaml`, then all sub directories inside `/namespaces-1/jobs` will inherit this config as defaults. If same config is specified in sub directory, then sub directory will override the parent defaults. For example a `this.yaml` in `/namespace-1/jobs`
 
 ```yaml
 version: 1
@@ -77,9 +76,7 @@ labels:
   transform: sql
 ```
 
-
-
-and a `job.yaml` in `/jobs/project/job1/`
+and a `job.yaml` in `/namespace-1/jobs/job1`
 
 ```yaml
 name: sample_replace

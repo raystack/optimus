@@ -21,7 +21,7 @@ import (
 func TestIntegrationResourceSpecRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-project",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -52,7 +52,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 	}
 	testConfigs := []models.ResourceSpec{
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			Version:   1,
 			Name:      "proj.datas.test",
 			Type:      models.ResourceTypeTable,
@@ -67,7 +67,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			Version:   1,
 			Name:      "proj.ttt.test2",
 			Type:      models.ResourceTypeTable,
@@ -89,13 +89,13 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 	}
 
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
 
 	namespaceSpec2 := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}
@@ -271,7 +271,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-project",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
@@ -318,7 +318,7 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 	}
 	testConfigs := []models.ResourceSpec{
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			Version:   1,
 			Name:      "proj.datas.test",
 			Type:      models.ResourceTypeTable,
@@ -333,7 +333,7 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:        uuid.Must(uuid.NewRandom()),
+			ID:        uuid.New(),
 			Version:   1,
 			Name:      "proj.ttt.test2",
 			Type:      models.ResourceTypeTable,
@@ -355,7 +355,7 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 	}
 
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}

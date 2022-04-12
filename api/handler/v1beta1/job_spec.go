@@ -30,6 +30,7 @@ type JobSpecServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
 	adapter          ProtoAdapter
+	projectService   service.ProjectService
 	namespaceService service.NamespaceService
 	progressObserver progress.Observer
 	pb.UnimplementedJobSpecificationServiceServer
@@ -285,11 +286,32 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
+func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.JobSpecificationService_RefreshJobsServer) error {
+	startTime := time.Now()
+
+	observers := new(progress.ObserverChain)
+	observers.Join(sv.progressObserver)
+	observers.Join(&jobRefreshObserver{
+		stream: respStream,
+		log:    sv.l,
+		mu:     new(sync.Mutex),
+	})
+
+	if err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers); err != nil {
+		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
+	}
+
+	sv.l.Info("finished job refresh", "time", time.Since(startTime))
+	return nil
+}
+
+func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,
+	projectService service.ProjectService, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
 	return &JobSpecServiceServer{
 		l:                l,
 		jobSvc:           jobService,
 		adapter:          adapter,
+		projectService:   projectService,
 		namespaceService: namespaceService,
 		progressObserver: progressObserver,
 	}

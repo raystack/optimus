@@ -18,7 +18,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 	ctx := context.Background()
 	projectName := "humara-projectSpec"
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.New(),
+		ID:   models.ProjectID(uuid.New()),
 		Name: projectName,
 		Config: map[string]string{
 			"bucket":                 "gs://some_folder",
@@ -87,15 +87,13 @@ func TestJobRunInputCompiler(t *testing.T) {
 			Type:  models.SecretTypeUserDefined,
 		},
 	}
-	secretService := new(mock.SecretService)
-
 	pluginRepo := new(mock.SupportedPluginRepo)
 
 	createJobRunInputCompiler := func() compiler.JobRunInputCompiler {
 		engine := compiler.NewGoEngine()
 		jobConfigCompiler := compiler.NewJobConfigCompiler(engine)
 		assetCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
-		runInputCompiler := compiler.NewJobRunInputCompiler(secretService, jobConfigCompiler, assetCompiler)
+		runInputCompiler := compiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 		return runInputCompiler
 	}
 
@@ -174,11 +172,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -289,11 +284,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -316,7 +308,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 		t.Run("should return compiled instanceSpec config with overridden config provided in NamespaceSpec", func(t *testing.T) {
 			projectName := "humara-projectSpec"
 			projectSpec := models.ProjectSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   models.ProjectID(uuid.New()),
 				Name: projectName,
 				Config: map[string]string{
 					"bucket":              "gs://some_folder",
@@ -324,7 +316,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				},
 			}
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: projectName,
 				Config: map[string]string{
 					"transporter_brokers": "129.3.34.1:9092-overridden",
@@ -405,11 +397,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -498,11 +487,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 			defer pluginRepo.AssertExpectations(t)
 
-			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
-			defer secretService.AssertExpectations(t)
-
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])

@@ -17,7 +17,7 @@ import (
 func TestNamespaceService(t *testing.T) {
 	ctx := context.Background()
 	project := models.ProjectSpec{
-		ID:   uuid.New(),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "optimus-project",
 	}
 	namespace := models.NamespaceSpec{
@@ -74,6 +74,50 @@ func TestNamespaceService(t *testing.T) {
 			svc := service.NewNamespaceService(projService, nsRepoFactory)
 
 			ns, err := svc.Get(ctx, project.Name, namespace.Name)
+			assert.Nil(t, err)
+			assert.Equal(t, "optimus-project", ns.ProjectSpec.Name)
+			assert.Equal(t, project.ID, ns.ProjectSpec.ID)
+
+			assert.Equal(t, "sample-namespace", ns.Name)
+			assert.Equal(t, namespace.ID, ns.ID)
+		})
+	})
+	t.Run("GetByName", func(t *testing.T) {
+		t.Run("returns error when namespace name is empty", func(t *testing.T) {
+			svc := service.NewNamespaceService(nil, nil)
+
+			_, err := svc.GetByName(ctx, project, "")
+			assert.NotNil(t, err)
+			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
+		})
+		t.Run("returns error when repo returns error", func(t *testing.T) {
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", ctx, "nonexistent").
+				Return(models.NamespaceSpec{}, store.ErrResourceNotFound)
+			defer namespaceRepository.AssertExpectations(t)
+
+			nsRepoFactory := new(mock.NamespaceRepoFactory)
+			nsRepoFactory.On("New", project).Return(namespaceRepository)
+			defer nsRepoFactory.AssertExpectations(t)
+
+			svc := service.NewNamespaceService(projService, nsRepoFactory)
+
+			_, err := svc.GetByName(ctx, project, "nonexistent")
+			assert.NotNil(t, err)
+			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
+		})
+		t.Run("returns namespace successfully", func(t *testing.T) {
+			namespaceRepository := new(mock.NamespaceRepository)
+			namespaceRepository.On("GetByName", ctx, namespace.Name).Return(namespace, nil)
+			defer namespaceRepository.AssertExpectations(t)
+
+			nsRepoFactory := new(mock.NamespaceRepoFactory)
+			nsRepoFactory.On("New", project).Return(namespaceRepository)
+			defer nsRepoFactory.AssertExpectations(t)
+
+			svc := service.NewNamespaceService(projService, nsRepoFactory)
+
+			ns, err := svc.GetByName(ctx, project, namespace.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "optimus-project", ns.ProjectSpec.Name)
 			assert.Equal(t, project.ID, ns.ProjectSpec.ID)

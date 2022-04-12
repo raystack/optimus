@@ -48,6 +48,11 @@ const (
 	BackoffDuration    = 100 * time.Millisecond
 )
 
+const (
+	defaultProjectName = "sample_project"
+	defaultHost        = "localhost:9100"
+)
+
 // JobSpecRepository represents a storage interface for Job specifications locally
 type JobSpecRepository interface {
 	SaveAt(models.JobSpec, string) error
@@ -110,8 +115,8 @@ func New() *cli.Command {
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
+	cmd.AddCommand(initCommand())
 	cmd.AddCommand(versionCommand())
-	cmd.AddCommand(configCommand())
 	cmd.AddCommand(jobCommand())
 	cmd.AddCommand(deployCommand())
 	cmd.AddCommand(resourceCommand())

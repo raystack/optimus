@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -21,21 +20,17 @@ const (
 
 type JobRunInputCompiler interface {
 	// Compile prepares instance execution context environment
-	Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error)
+	Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error)
 }
 
 type compiler struct {
-	secretService  service.SecretService
 	configCompiler *JobConfigCompiler
 	assetsCompiler *JobRunAssetsCompiler
 }
 
-func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
+func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, projSecrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
 	*models.JobRunInput, error) {
-	secrets, err := c.getSecretsMap(ctx, namespace)
-	if err != nil {
-		return nil, err
-	}
+	secrets := projSecrets.ToMap()
 	instanceConfig := getInstanceEnv(instanceSpec)
 
 	// Prepare template context and compile task config
@@ -96,15 +91,6 @@ func (c compiler) compileConfigForHook(hookName string, jobRun models.JobRun, te
 	return hookConfs, err
 }
 
-func (c compiler) getSecretsMap(ctx context.Context, namespace models.NamespaceSpec) (map[string]string, error) {
-	secrets, err := c.secretService.GetSecrets(ctx, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	return models.ProjectSecrets(secrets).ToMap(), nil
-}
-
 func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {
 	if instanceSpec.Data == nil {
 		return nil
@@ -118,9 +104,8 @@ func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {
 	return envMap
 }
 
-func NewJobRunInputCompiler(secretService service.SecretService, confComp *JobConfigCompiler, assetCompiler *JobRunAssetsCompiler) *compiler {
+func NewJobRunInputCompiler(confComp *JobConfigCompiler, assetCompiler *JobRunAssetsCompiler) *compiler {
 	return &compiler{
-		secretService:  secretService,
 		configCompiler: confComp,
 		assetsCompiler: assetCompiler,
 	}

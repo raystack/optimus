@@ -116,7 +116,7 @@ func (repo *jobRepository) GetAll() ([]models.JobSpec, error) {
 		jobSpecs = append(jobSpecs, j.item.(models.JobSpec))
 	}
 	if len(jobSpecs) < 1 {
-		return nil, models.ErrNoDAGSpecs
+		return nil, models.ErrNoJobs
 	}
 	return jobSpecs, nil
 }

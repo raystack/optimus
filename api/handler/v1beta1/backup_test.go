@@ -26,11 +26,11 @@ func TestBackupOnServer(t *testing.T) {
 	t.Run("BackupDryRun", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 		}
 		namespaceSpec := models.NamespaceSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "dev-test-namespace-1",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -43,7 +43,7 @@ func TestBackupOnServer(t *testing.T) {
 		t.Run("should return list of resources for backup ignoring downstream", func(t *testing.T) {
 			jobName := "a-data-job"
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Config: models.JobSpecConfigs{
@@ -63,7 +63,7 @@ func TestBackupOnServer(t *testing.T) {
 			}
 			jobSpecDownstreams := []models.JobSpec{
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "b-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -124,12 +124,12 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return list of resources for backup with downstream", func(t *testing.T) {
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "a-data-job",
 			}
 			jobSpecDownstreams := []models.JobSpec{
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "b-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -141,7 +141,7 @@ func TestBackupOnServer(t *testing.T) {
 					},
 				},
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "c-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -215,12 +215,12 @@ func TestBackupOnServer(t *testing.T) {
 		})
 		t.Run("should return list of resources for backup with same namespace downstream", func(t *testing.T) {
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "a-data-job",
 			}
 			jobSpecDownstreams := []models.JobSpec{
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "b-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -232,7 +232,7 @@ func TestBackupOnServer(t *testing.T) {
 					},
 				},
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "c-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -430,7 +430,7 @@ func TestBackupOnServer(t *testing.T) {
 		t.Run("should return error when unable to get jobSpec downstream", func(t *testing.T) {
 			jobName := "a-data-job"
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Config: models.JobSpecConfigs{
@@ -491,7 +491,7 @@ func TestBackupOnServer(t *testing.T) {
 		t.Run("should return error when unable to do backup dry run", func(t *testing.T) {
 			jobName := "a-data-job"
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Config: models.JobSpecConfigs{
@@ -566,11 +566,11 @@ func TestBackupOnServer(t *testing.T) {
 	t.Run("Backup", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 		}
 		namespaceSpec := models.NamespaceSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "dev-test-namespace-1",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -593,7 +593,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			jobName := "a-data-job"
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: jobName,
 				Task: models.JobSpecTask{
 					Config: models.JobSpecConfigs{
@@ -669,12 +669,12 @@ func TestBackupOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "a-data-job",
 			}
 			jobSpecDownstreams := []models.JobSpec{
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "b-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -686,7 +686,7 @@ func TestBackupOnServer(t *testing.T) {
 					},
 				},
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "c-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -763,12 +763,12 @@ func TestBackupOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "a-data-job",
 			}
 			jobSpecDownstreams := []models.JobSpec{
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "b-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -780,7 +780,7 @@ func TestBackupOnServer(t *testing.T) {
 					},
 				},
 				{
-					ID:   uuid.Must(uuid.NewRandom()),
+					ID:   uuid.New(),
 					Name: "c-data-job",
 					Task: models.JobSpecTask{
 						Config: models.JobSpecConfigs{
@@ -1115,7 +1115,7 @@ func TestBackupOnServer(t *testing.T) {
 	t.Run("ListBackups", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 		}
 		datastoreName := models.DestinationTypeBigquery.String()
@@ -1236,7 +1236,7 @@ func TestBackupOnServer(t *testing.T) {
 	t.Run("GetBackup", func(t *testing.T) {
 		projectName := "a-data-project"
 		projectSpec := models.ProjectSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   models.ProjectID(uuid.New()),
 			Name: projectName,
 		}
 		datastoreName := models.DestinationTypeBigquery.String()

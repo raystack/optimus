@@ -225,6 +225,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		}
 	}
 
+	namespaceSpec, err := conf.Namespace.ToSpec(conf.Project.ToSpec())
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
+	}
+
 	job := models.JobSpec{
 		ID:          conf.ID,
 		Version:     conf.Version,
@@ -261,6 +266,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Hooks:                jobHooks,
 		Metadata:             metadata,
 		ExternalDependencies: externalDependencies,
+		NamespaceSpec:        namespaceSpec,
 	}
 	return job, nil
 }
@@ -349,7 +355,7 @@ func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
 	var jobDestination string
-	if spec.Task.Unit.DependencyMod != nil {
+	if spec.Task.Unit.DependencyMod != nil { // TODO: this should move to plugin service if required
 		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),

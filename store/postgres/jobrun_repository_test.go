@@ -20,14 +20,14 @@ import (
 func TestIntegrationJobRunRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
-		ID:   uuid.Must(uuid.NewRandom()),
+		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-id",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
 		},
 	}
 	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.Must(uuid.NewRandom()),
+		ID:          uuid.New(),
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
@@ -50,7 +50,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 
 	jobConfigs := []models.JobSpec{
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit1},
@@ -72,7 +72,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2},
@@ -113,7 +113,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 
 	testInstanceSpecs := []models.InstanceSpec{
 		{
-			ID:         uuid.Must(uuid.NewRandom()),
+			ID:         uuid.New(),
 			Name:       "do-this",
 			Type:       models.InstanceTypeTask,
 			ExecutedAt: time.Date(2020, 11, 11, 1, 0, 0, 0, time.UTC),
@@ -123,7 +123,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			},
 		},
 		{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "do-that",
 			Type: models.InstanceTypeTask,
 		},
@@ -131,7 +131,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 
 	testSpecs := []models.JobRun{
 		{
-			ID:          uuid.Must(uuid.NewRandom()),
+			ID:          uuid.New(),
 			Spec:        jobConfigs[0],
 			Trigger:     models.TriggerManual,
 			Status:      models.RunStateRunning,
@@ -139,7 +139,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			ID:          uuid.Must(uuid.NewRandom()),
+			ID:          uuid.New(),
 			Spec:        jobConfigs[0],
 			Trigger:     models.TriggerManual,
 			Status:      models.RunStateRunning,

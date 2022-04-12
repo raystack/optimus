@@ -49,7 +49,7 @@ func versionCommand() *cli.Command {
 		// Print server version
 		if isWithServer {
 			// TODO: find a way to load the config in one place
-			conf, err := config.LoadClientConfig(configFilePath)
+			conf, err := config.LoadClientConfig(configFilePath, c.Flags())
 			if err != nil {
 				return err
 			}
