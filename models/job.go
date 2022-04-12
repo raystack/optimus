@@ -88,10 +88,10 @@ func (js JobSpec) GetProjectSpec() ProjectSpec {
 
 type JobSpecs []JobSpec
 
-func (js JobSpecs) GroupJobsPerNamespace() map[uuid.UUID][]JobSpec {
-	jobsGroup := make(map[uuid.UUID][]JobSpec)
+func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
+	jobsGroup := make(map[string][]JobSpec)
 	for _, jobSpec := range js {
-		jobsGroup[jobSpec.NamespaceSpec.ID] = append(jobsGroup[jobSpec.NamespaceSpec.ID], jobSpec)
+		jobsGroup[jobSpec.NamespaceSpec.Name] = append(jobsGroup[jobSpec.NamespaceSpec.Name], jobSpec)
 	}
 	return jobsGroup
 }

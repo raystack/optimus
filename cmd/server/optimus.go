@@ -279,7 +279,7 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
-	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler)
+	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler, namespaceService)
 
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler

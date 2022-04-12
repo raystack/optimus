@@ -249,4 +249,46 @@ func TestJob(t *testing.T) {
 			assert.Equal(t, expectedMap, actual)
 		})
 	})
+	t.Run("GroupJobsPerNamespace", func(t *testing.T) {
+		t.Run("should able to get map of namespace name and the jobs", func(t *testing.T) {
+			projectSpec := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: "sample-project",
+				Config: map[string]string{
+					"bucket": "gs://sample_directory",
+				},
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.New(),
+				Name:        "sample-namespace",
+				ProjectSpec: projectSpec,
+			}
+			namespaceSpec1 := models.NamespaceSpec{
+				ID:          uuid.New(),
+				Name:        "sample-namespace-2",
+				ProjectSpec: projectSpec,
+			}
+			jobSpec1 := models.JobSpec{
+				ID:            uuid.New(),
+				NamespaceSpec: namespaceSpec,
+			}
+			jobSpec2 := models.JobSpec{
+				ID:            uuid.New(),
+				NamespaceSpec: namespaceSpec1,
+			}
+			jobSpec3 := models.JobSpec{
+				ID:            uuid.New(),
+				NamespaceSpec: namespaceSpec1,
+			}
+			jobSpecs := models.JobSpecs{jobSpec1, jobSpec2, jobSpec3}
+			expected := map[string][]models.JobSpec{
+				namespaceSpec.Name:  {jobSpec1},
+				namespaceSpec1.Name: {jobSpec2, jobSpec3},
+			}
+
+			actual := jobSpecs.GroupJobsPerNamespace()
+
+			assert.Equal(t, expected, actual)
+		})
+	})
 }
