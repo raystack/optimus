@@ -67,9 +67,6 @@ import os
 import requests
 import json
 
-# path where secret will be mounted in docker container, contains api_key
-SECRET_PATH = "/tmp/key.json"
-
 def start():
     """
     Sends a http call to nasa api, parses response and prints potential hazardous
@@ -82,9 +79,12 @@ def start():
     range_start = opt_config["envs"]["RANGE_START"]
     range_end = opt_config["envs"]["RANGE_END"]
 
+    # path where secret will be mounted in docker container, contains api_key
+    secret_path = os.environ["SECRET_PATH"]
+
     # secret token required for NASA API being fetched from a file mounted as
     # volume by optimus executor
-    with open(SECRET_PATH, "r") as f:
+    with open(secret_path, "r") as f:
         api_key = json.load(f)['key']
     if api_key is None:
         raise Exception("invalid api token")
@@ -656,6 +656,9 @@ Task configurations are key value pair provided as part of job specification in 
 - DEND
 - EXECUTION_TIME
 
+Secrets can be used in the task configuration by using macros like ` SECRET_PATH: "{{.secret.api_key_path}}" `.
+Where `api_key_path` is a value stored inside secrets. This configuration in macros will be replaced by optimus serer while sending a request to the plugin with actual value and can be used by the plugin. In the executor of the plugin, this configuration will be made available as environment variable.
+
 ##### File Assets
 
 Sometimes a task may need more than just key value configuration, this is where assets can be used. Assets are packed along with the job specification and should have unique names. A task can have more than one asset file but if any file name conflicts with any already existing plugin in the optimus, it will throw an error, so it is advised to either prefix them or name them very specific to the task. These assets should ideally be small and not more than ~5 MB and any heavy lifting if required should be done directly inside the task container.
@@ -688,7 +691,7 @@ Plugin can choose to make a GRPC call using `RegisterInstance` [function](https:
 
 ##### Optimus cli
 
-There could be scenarios where it is not possible or maybe not convenient to modify the base execution image and still task need context configuration values. One easy way to do this is by wrapping the base docker image into another docker image and using optimus binary to request task context. Optimus command will internally send a GRPC call and store the output in `${JOB_DIR}/in/` directory. It will create one `.env` file containing all the configuration files and all the asset files belong to the provided task. Optimus command can be invoked as
+There could be scenarios where it is not possible or maybe not convenient to modify the base execution image and still task need context configuration values. One easy way to do this is by wrapping the base docker image into another docker image and using optimus binary to request task context. Optimus command will internally send a GRPC call and store the output in `${JOB_DIR}/in/` directory. It will create one `.env` file containing all the configurations, one `.secret` file with environment variables with potentially sensitive values, and all the asset files belong to the provided task. Optimus command can be invoked as
 
 ```shell
 OPTIMUS_ADMIN_ENABLED=1 /opt/optimus admin build instance $JOB_NAME --project $PROJECT --output-dir $JOB_DIR --type $INSTANCE_TYPE --name $INSTANCE_NAME --scheduled-at $SCHEDULED_AT --host $OPTIMUS_HOSTNAME
@@ -735,6 +738,11 @@ set +o allexport
 
 echo "-- current envs"
 printenv
+
+echo "-- exporting secret envs"
+set -o allexport
+source $JOB_DIR/in/.secret
+set +o allexport
 
 echo "-- running unit"
 exec $(eval echo "$@")
@@ -784,7 +792,7 @@ README.md
 
 ### Secret management
 
-You must be wondering from where that api token came from when we said it will be mounted inside the container. Optimus need to somehow know what the secret is, for this current implementation of optimus relies on Kubernetes [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). Optimus is built to be deployed on kubernetes although it can work just fine without it as well but might need some tweaking here and there. An example of creating this secret 
+You must be wondering from where that api token came from when we said it will be mounted inside the container. Optimus need to somehow know what the secret is, for this current implementation of optimus relies on Kubernetes [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). Optimus is built to be deployed on kubernetes, although it can work just fine without it as well but might need some tweaking here and there. An example of creating this secret 
 
 ```yaml
 apiVersion: v1
@@ -797,3 +805,16 @@ data:
 ```
 
 Notice the name of the secret `optimus-task-neo` which is actually based on a convention. That is if secret is defined, Optimus will look in kubernetes using `optimus-task-<taskname>` as the secret name and mount it to the path provided in `SecretPath` field of `PluginInfo`.
+
+There is also a new way to using secrets in the job for a plugin or otherwise, we can store a user defined secret in the optimus server with the following command
+```shell
+optimus secret set secret_name <secret_value>
+```
+Verify if the secret is registered properly with optimus server using following command
+```shell
+optimus secret list
+```
+It should list the secret registered above.
+
+Then we can mention the secret in the job spec configuration like mentioned in the Task Configuration section. The configuration with secrets will be made available to the calls to plugins on dependency mod, and set as environment variable in the executor used by the scheduler.
+

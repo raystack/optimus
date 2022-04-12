@@ -37,6 +37,7 @@ module.exports = {
         "guides/organising-specifications",
         "guides/optimus-serve",
         "guides/task-bq2bq",
+        "guides/extension",
         "guides/backup",
         "guides/replay",
         "guides/secret",
