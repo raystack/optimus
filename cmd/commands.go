@@ -233,14 +233,10 @@ func isTerminal(f *os.File) bool {
 	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
 }
 
-func getDatastoreSpecFs(namespaces []*config.Namespace) map[string]map[string]afero.Fs {
-	output := make(map[string]map[string]afero.Fs)
-	for _, namespace := range namespaces {
-		dtSpec := make(map[string]afero.Fs)
-		for _, dsConfig := range namespace.Datastore {
-			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-		}
-		output[namespace.Name] = dtSpec
+func createDataStoreSpecFs(namespace *config.Namespace) map[string]afero.Fs {
+	dtSpec := make(map[string]afero.Fs)
+	for _, dsConfig := range namespace.Datastore {
+		dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
 	}
-	return output
+	return dtSpec
 }
