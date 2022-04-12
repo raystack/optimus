@@ -3,7 +3,7 @@ import sys
 sys.path.insert(1, '../resources')
 
 from datetime import datetime
-from __lib import CrossTenantDependencySensor, OptimusAPIClient
+from __lib import OptimusAPIClient
 
 from unittest.mock import Mock
 
