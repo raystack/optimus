@@ -460,10 +460,16 @@ type DeployRequest struct {
 	Project ProjectSpec
 }
 
+type JobDeploymentStatus string
+
+const (
+	JobDeploymentStatusInQueue JobDeploymentStatus = "In Queue"
+)
+
 type JobDeployment struct {
 	ID      uuid.UUID
 	Project ProjectSpec
-	Status  string
+	Status  JobDeploymentStatus
 	Details JobDeploymentDetail
 }
 
