@@ -32,6 +32,7 @@ func TestDependencyResolver(t *testing.T) {
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
 			},
+			ProjectSpec: projectSpec,
 		}
 
 		t.Run("it should resolve runtime dependencies", func(t *testing.T) {
