@@ -2,6 +2,8 @@ package job
 
 import (
 	"context"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/salt/log"
 	"sync"
@@ -14,7 +16,7 @@ type DeployManager struct {
 	wg sync.WaitGroup
 
 	// request queue, used by workers
-	requestQ chan models.ProjectSpec
+	requestQ chan models.DeployRequest
 
 	l log.Logger
 
@@ -34,8 +36,25 @@ type DeployerFactory interface {
 	New() Deployer
 }
 
-func (m *DeployManager) Deploy() {
-	//
+func (m *DeployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) {
+	// Check deployment status for the requested Project
+
+	// Will return with Deploy ID if it is already there in the queue
+
+	// Insert into job_deployment table
+
+	// Push to deployer using Deploy ID, let it run asynchronously
+	deployRequest := models.DeployRequest{
+		ID:      uuid.New(),
+		Project: projectSpec,
+	}
+
+	select {
+	case m.requestQ <- deployRequest:
+		fmt.Println("pushed to deployer")
+	}
+
+	// Return with the new Deploy ID
 }
 
 func (m *DeployManager) Init() {
@@ -43,7 +62,7 @@ func (m *DeployManager) Init() {
 	for i := 0; i < m.config.NumWorkers; i++ {
 		m.wg.Add(1)
 		worker := m.deployerFactory.New()
-		go m.spawnServiceWorker(worker)
+		go m.spawnDeployer(worker)
 	}
 
 	// wait until all workers are ready
@@ -55,14 +74,14 @@ func (m *DeployManager) Init() {
 	}
 }
 
-// start a worker goroutine that runs the deployment in background
-func (m *DeployManager) spawnServiceWorker(deployer Deployer) {
+// start a deployer goroutine that runs the deployment in background
+func (m *DeployManager) spawnDeployer(deployer Deployer) {
 	defer m.wg.Done()
 	atomic.AddInt32(&m.deployerCapacity, 1)
 	for reqInput := range m.requestQ {
 		atomic.AddInt32(&m.deployerCapacity, -1)
 
-		m.l.Info("deployment worker picked up the request", "request id", reqInput.ID)
+		m.l.Info("deployer picked up the request", "request id", reqInput)
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := deployer.Deploy(ctx, reqInput); err != nil {
 			m.l.Error("deployment worker failed to process", "error", err)

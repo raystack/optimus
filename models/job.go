@@ -454,3 +454,24 @@ func (j JobIDDependenciesPairs) GetExternalProjectAndDependenciesMap() map[Proje
 	}
 	return interDependenciesMap
 }
+
+type DeployRequest struct {
+	ID      uuid.UUID
+	Project ProjectSpec
+}
+
+type JobDeployment struct {
+	ID      uuid.UUID
+	Project ProjectSpec
+	Status  string
+	Details JobDeploymentDetail
+}
+
+type JobDeploymentDetail struct {
+	Failures []JobDeploymentFailure
+}
+
+type JobDeploymentFailure struct {
+	JobNames string
+	Message  string
+}

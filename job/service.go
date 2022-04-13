@@ -61,7 +61,7 @@ type DependencyResolver interface {
 }
 
 type Deployer interface {
-	Deploy(context.Context, models.ProjectSpec, progress.Observer) error
+	Deploy(context.Context, models.DeployRequest) error
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -109,7 +109,7 @@ type Service struct {
 	replayManager             ReplayManager
 	projectService            service.ProjectService
 	namespaceService          service.NamespaceService
-	deployer                  Deployer
+	deployManager             DeployManager
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -644,7 +644,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
-	projectService service.ProjectService, deployer Deployer,
+	projectService service.ProjectService, deployManager DeployManager,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
@@ -656,7 +656,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		replayManager:             replayManager,
 		namespaceService:          namespaceService,
 		projectService:            projectService,
-		deployer:                  deployer,
+		deployManager:             deployManager,
 
 		assetCompiler: assetCompiler,
 		Now:           time.Now,
@@ -723,7 +723,9 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	// resolve dependency and persist
 	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
 
-	return srv.deployer.Deploy(ctx, projectSpec, progressObserver)
+	srv.deployManager.Deploy(ctx, projectSpec)
+
+	return nil
 }
 
 func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.ProjectSpec,

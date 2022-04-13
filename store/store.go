@@ -125,3 +125,9 @@ type JobDependencyRepository interface {
 	GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
 }
+
+type JobDeploymentRepository interface {
+	Save(ctx context.Context, deployment models.JobDeployment) error
+	GetByID(ctx context.Context, deployID uuid.UUID) (models.JobDeployment, error)
+	GetByStatusAndProjectID(ctx context.Context, status string, projectID models.ProjectID) (models.JobDeployment, error)
+}
