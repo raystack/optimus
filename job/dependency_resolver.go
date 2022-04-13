@@ -176,7 +176,9 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies, assets should be dependent on
 	var jobDependencies []string
-	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
+	namespace := jobSpec.NamespaceSpec
+	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
+	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
 			return models.JobSpec{}, err
