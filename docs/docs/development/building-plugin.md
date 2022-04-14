@@ -82,7 +82,7 @@ def start():
     secret_key = os.environ["SECRET_KEY"]
 
     # secret token required for NASA API being passed using job spec
-    api_key = json.dumps(secret_key)
+    api_key = json.loads(secret_key)
     if api_key is None:
         raise Exception("invalid api token")
 
