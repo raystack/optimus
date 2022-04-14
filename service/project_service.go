@@ -21,7 +21,7 @@ type projectService struct {
 	projectRepoFac ProjectRepoFactory
 }
 
-func NewProjectService(factory ProjectRepoFactory) *projectService {
+func NewProjectService(factory ProjectRepoFactory) ProjectService {
 	return &projectService{
 		projectRepoFac: factory,
 	}

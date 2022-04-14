@@ -82,7 +82,7 @@ func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
 		PluginVersion: resp.PluginVersion,
 		APIVersion:    resp.ApiVersion,
 		Image:         resp.Image,
-		SecretPath:    resp.SecretPath,
+		SecretPath:    resp.SecretPath, // nolint:staticcheck
 		DependsOn:     resp.DependsOn,
 		HookType:      htype,
 	}, nil

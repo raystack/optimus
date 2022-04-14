@@ -93,6 +93,43 @@
           "NamespaceService"
         ]
       }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}": {
+      "get": {
+        "summary": "GetNamespace returns namespace details based on project_name and namespace_name",
+        "operationId": "NamespaceService_GetNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NamespaceService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -123,6 +160,14 @@
           "items": {
             "$ref": "#/definitions/protobufAny"
           }
+        }
+      }
+    },
+    "v1beta1GetNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/v1beta1NamespaceSpecification"
         }
       }
     },

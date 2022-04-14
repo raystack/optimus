@@ -22,6 +22,8 @@ type ProjectServiceClient interface {
 	RegisterProject(ctx context.Context, in *RegisterProjectRequest, opts ...grpc.CallOption) (*RegisterProjectResponse, error)
 	// ListProjects returns list of registered projects and configurations
 	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
+	// GetProject returns project details based on project_name
+	GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectResponse, error)
 }
 
 type projectServiceClient struct {
@@ -50,6 +52,15 @@ func (c *projectServiceClient) ListProjects(ctx context.Context, in *ListProject
 	return out, nil
 }
 
+func (c *projectServiceClient) GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectResponse, error) {
+	out := new(GetProjectResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.ProjectService/GetProject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProjectServiceServer is the server API for ProjectService service.
 // All implementations must embed UnimplementedProjectServiceServer
 // for forward compatibility
@@ -58,6 +69,8 @@ type ProjectServiceServer interface {
 	RegisterProject(context.Context, *RegisterProjectRequest) (*RegisterProjectResponse, error)
 	// ListProjects returns list of registered projects and configurations
 	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
+	// GetProject returns project details based on project_name
+	GetProject(context.Context, *GetProjectRequest) (*GetProjectResponse, error)
 	mustEmbedUnimplementedProjectServiceServer()
 }
 
@@ -70,6 +83,9 @@ func (UnimplementedProjectServiceServer) RegisterProject(context.Context, *Regis
 }
 func (UnimplementedProjectServiceServer) ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListProjects not implemented")
+}
+func (UnimplementedProjectServiceServer) GetProject(context.Context, *GetProjectRequest) (*GetProjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProject not implemented")
 }
 func (UnimplementedProjectServiceServer) mustEmbedUnimplementedProjectServiceServer() {}
 
@@ -120,6 +136,24 @@ func _ProjectService_ListProjects_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProjectService_GetProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProjectServiceServer).GetProject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.ProjectService/GetProject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProjectServiceServer).GetProject(ctx, req.(*GetProjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProjectService_ServiceDesc is the grpc.ServiceDesc for ProjectService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +168,10 @@ var ProjectService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListProjects",
 			Handler:    _ProjectService_ListProjects_Handler,
+		},
+		{
+			MethodName: "GetProject",
+			Handler:    _ProjectService_GetProject_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
