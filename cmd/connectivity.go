@@ -86,6 +86,7 @@ func initClientConnection(l log.Logger, serverHost string, requestTimeout time.D
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(ErrServerNotReachable(serverHost).Error())
+			err = ErrServerNotReachable(serverHost)
 		}
 		dialCancel()
 		return
