@@ -79,13 +79,9 @@ def start():
     range_start = opt_config["envs"]["RANGE_START"]
     range_end = opt_config["envs"]["RANGE_END"]
 
-    # path where secret will be mounted in docker container, contains api_key
-    secret_path = os.environ["SECRET_PATH"]
+    api_key = os.environ["SECRET_KEY"]
 
-    # secret token required for NASA API being fetched from a file mounted as
-    # volume by optimus executor
-    with open(secret_path, "r") as f:
-        api_key = json.load(f)['key']
+    # secret token required for NASA API being passed using job spec
     if api_key is None:
         raise Exception("invalid api token")
 
@@ -375,8 +371,6 @@ func (n *Neo) PluginInfo() (*models.PluginInfoResponse, error) {
 
 		// docker image that will be executed as the actual transformation task
 		Image: fmt.Sprintf("%s:%s", Image, Version),
-		// this is where the secret required by docker container will be mounted
-		SecretPath: "/tmp/key.json",
 	}, nil
 }
 ```
