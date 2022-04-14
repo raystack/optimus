@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"path"
 
@@ -74,7 +73,7 @@ func projectDescribeCommand() *cli.Command {
 		}
 
 		l.Info(fmt.Sprintf("Getting project [%s] from host [%s]", clientConfig.Project.Name, clientConfig.Host))
-		project, err := getProject(clientConfig.Project.Name, clientConfig.Host)
+		project, err := getProject(l, clientConfig.Project.Name, clientConfig.Host)
 		if err != nil {
 			return err
 		}
@@ -92,25 +91,20 @@ func projectDescribeCommand() *cli.Command {
 	return cmd
 }
 
-func getProject(projectName, serverHost string) (config.Project, error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
+func getProject(l log.Logger, projectName, host string) (config.Project, error) {
 	var project config.Project
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	ctx, conn, closeConn, err := initClientConnection(l, host, deploymentTimeout)
 	if err != nil {
-		return project, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return project, err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	request := &pb.GetProjectRequest{
 		ProjectName: projectName,
 	}
 
 	projectServiceClient := pb.NewProjectServiceClient(conn)
-	response, err := projectServiceClient.GetProject(requestTimeoutCtx, request)
+	response, err := projectServiceClient.GetProject(ctx, request)
 	if err != nil {
 		return project, err
 	}
