@@ -114,6 +114,7 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 // JobSpecMetadata is a metadata representation for a job spec
 type JobSpecMetadata struct {
 	Resource JobSpecResource `yaml:"resource,omitempty"`
+	Airflow  JobSpecAirflow  `yaml:"airflow"`
 }
 
 // JobSpecResource represents the resource management configuration
@@ -126,6 +127,12 @@ type JobSpecResource struct {
 type JobSpecResourceConfig struct {
 	Memory string `yaml:"memory,omitempty"`
 	CPU    string `yaml:"cpu,omitempty"`
+}
+
+// JobSpecAirflow represents additional configuration for airflow specific
+type JobSpecAirflow struct {
+	Pool  string `yaml:"pool"`
+	Queue string `yaml:"queue"`
 }
 
 // MergeFrom merges parent job into this
@@ -318,6 +325,12 @@ func (conf *Job) MergeFrom(parent Job) {
 	}
 	if parent.Metadata.Resource.Limit.Memory != "" {
 		conf.Metadata.Resource.Limit.Memory = parent.Metadata.Resource.Limit.Memory
+	}
+	if parent.Metadata.Airflow.Pool != "" {
+		conf.Metadata.Airflow.Pool = parent.Metadata.Airflow.Pool
+	}
+	if parent.Metadata.Airflow.Queue != "" {
+		conf.Metadata.Airflow.Queue = parent.Metadata.Airflow.Queue
 	}
 }
 
@@ -513,6 +526,10 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 					CPU:    conf.Metadata.Resource.Limit.CPU,
 				},
 			},
+			Airflow: models.JobSpecAirflow{
+				Pool:  conf.Metadata.Airflow.Pool,
+				Queue: conf.Metadata.Airflow.Queue,
+			},
 		},
 		ExternalDependencies: externalDependency,
 	}
@@ -593,6 +610,10 @@ func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 					Memory: spec.Metadata.Resource.Limit.Memory,
 					CPU:    spec.Metadata.Resource.Limit.CPU,
 				},
+			},
+			Airflow: JobSpecAirflow{
+				Pool:  spec.Metadata.Airflow.Pool,
+				Queue: spec.Metadata.Airflow.Queue,
 			},
 		},
 	}
