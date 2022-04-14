@@ -16,9 +16,16 @@ import (
 )
 
 func TestIntegrationJobDeploymentRepository(t *testing.T) {
-	projectSpec := models.ProjectSpec{
+	projectSpec1 := models.ProjectSpec{
 		ID:   models.ProjectID(uuid.New()),
 		Name: "t-optimus-project",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
+	projectSpec2 := models.ProjectSpec{
+		ID:   models.ProjectID(uuid.New()),
+		Name: "t-optimus-project-2",
 		Config: map[string]string{
 			"bucket": "gs://some_folder",
 		},
@@ -31,50 +38,130 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		truncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
-		assert.Nil(t, projRepo.Save(ctx, projectSpec))
+		assert.Nil(t, projRepo.Save(ctx, projectSpec1))
+		assert.Nil(t, projRepo.Save(ctx, projectSpec2))
 		return dbConn
 	}
 
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
 
-		jobID1 := uuid.New()
-		jobID2 := uuid.New()
-		jobID3 := uuid.New()
-		jobDependencies := []models.JobDeployment{
+		jobDeployments := []models.JobDeployment{
 			{
-				ID: jobID1,
-				Project: projectSpec,
-				Status:
-				Details JobDeploymentDetail
-			}
+				ID:      uuid.New(),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInProgress,
+				Details: models.JobDeploymentDetail{},
 			},
 			{
-				Job:     &models.JobSpec{ID: jobID3},
-				Project: &projectSpec,
-				Type:    models.JobSpecDependencyTypeIntra,
+				ID:      uuid.New(),
+				Project: projectSpec2,
+				Status:  models.JobDeploymentStatusFailed,
+				Details: models.JobDeploymentDetail{
+					Failures: []models.JobDeploymentFailure{
+						{
+							JobName: "job-1",
+							Message: "internal error",
+						},
+					},
+				},
 			},
 		}
-		repo := postgres.NewJobDependencyRepository(db)
+		repo := postgres.NewJobDeploymentRepository(db)
 
-		err := repo.Save(ctx, projectSpec.ID, jobID1, jobDependencies[0])
+		err := repo.Save(ctx, jobDeployments[0])
 		assert.Nil(t, err)
 
-		err = repo.Save(ctx, projectSpec.ID, jobID2, jobDependencies[1])
+		err = repo.Save(ctx, jobDeployments[1])
 		assert.Nil(t, err)
 
-		var storedJobDependencies []models.JobIDDependenciesPair
-		storedJobDependencies, err = repo.GetAll(ctx, projectSpec.ID)
+		storedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)
+		storedDeployment2, err := repo.GetByID(ctx, jobDeployments[1].ID)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobID1, jobID2}, []uuid.UUID{storedJobDependencies[0].JobID, storedJobDependencies[1].JobID})
-		assert.EqualValues(t, []uuid.UUID{jobDependencies[0].Job.ID, jobDependencies[1].Job.ID}, []uuid.UUID{storedJobDependencies[0].DependentJobID, storedJobDependencies[1].DependentJobID})
+		assert.EqualValues(t, []uuid.UUID{jobDeployments[0].ID, jobDeployments[1].ID}, []uuid.UUID{storedDeployment1.ID, storedDeployment2.ID})
+	})
+	t.Run("UpdateByID", func(t *testing.T) {
+		db := DBSetup()
 
-		err = repo.DeleteByJobID(ctx, jobID1)
+		jobDeployments := []models.JobDeployment{
+			{
+				ID:      uuid.New(),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInProgress,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      uuid.New(),
+				Project: projectSpec2,
+				Status:  models.JobDeploymentStatusFailed,
+				Details: models.JobDeploymentDetail{
+					Failures: []models.JobDeploymentFailure{
+						{
+							JobName: "job-1",
+							Message: "internal error",
+						},
+					},
+				},
+			},
+		}
+		repo := postgres.NewJobDeploymentRepository(db)
+
+		err := repo.Save(ctx, jobDeployments[0])
 		assert.Nil(t, err)
 
-		storedJobDependencies, err = repo.GetAll(ctx, projectSpec.ID)
+		err = repo.Save(ctx, jobDeployments[1])
 		assert.Nil(t, err)
-		assert.Equal(t, jobID2, storedJobDependencies[0].JobID)
-		assert.Equal(t, jobDependencies[1].Job.ID, storedJobDependencies[0].DependentJobID)
+
+		storedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)
+		storedDeployment2, err := repo.GetByID(ctx, jobDeployments[1].ID)
+		assert.Nil(t, err)
+		assert.EqualValues(t, []uuid.UUID{jobDeployments[0].ID, jobDeployments[1].ID}, []uuid.UUID{storedDeployment1.ID, storedDeployment2.ID})
+
+		jobDeployments[0].Status = models.JobDeploymentStatusSucceed
+
+		err = repo.UpdateByID(ctx, jobDeployments[0])
+		assert.Nil(t, err)
+
+		modifiedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)
+		unmodifiedDeployment2, err := repo.GetByID(ctx, jobDeployments[1].ID)
+		assert.Nil(t, err)
+		assert.Equal(t, []models.JobDeploymentStatus{jobDeployments[0].Status, jobDeployments[1].Status}, []models.JobDeploymentStatus{modifiedDeployment1.Status, unmodifiedDeployment2.Status})
+	})
+	t.Run("GetByStatusAndProjectID", func(t *testing.T) {
+		db := DBSetup()
+
+		jobDeployments := []models.JobDeployment{
+			{
+				ID:      uuid.New(),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInProgress,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      uuid.New(),
+				Project: projectSpec2,
+				Status:  models.JobDeploymentStatusFailed,
+				Details: models.JobDeploymentDetail{
+					Failures: []models.JobDeploymentFailure{
+						{
+							JobName: "job-1",
+							Message: "internal error",
+						},
+					},
+				},
+			},
+		}
+		repo := postgres.NewJobDeploymentRepository(db)
+
+		err := repo.Save(ctx, jobDeployments[0])
+		assert.Nil(t, err)
+
+		err = repo.Save(ctx, jobDeployments[1])
+		assert.Nil(t, err)
+
+		storedDeployment1, err := repo.GetByStatusAndProjectID(ctx, jobDeployments[0].Status, jobDeployments[0].Project.ID)
+		storedDeployment2, err := repo.GetByStatusAndProjectID(ctx, jobDeployments[1].Status, jobDeployments[1].Project.ID)
+		assert.Nil(t, err)
+		assert.EqualValues(t, []uuid.UUID{jobDeployments[0].ID, jobDeployments[1].ID}, []uuid.UUID{storedDeployment1.ID, storedDeployment2.ID})
 	})
 }

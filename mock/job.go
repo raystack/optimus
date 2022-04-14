@@ -296,7 +296,20 @@ type Deployer struct {
 	mock.Mock
 }
 
-func (d *Deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) error {
-	args := d.Called(ctx, projectSpec, progressObserver)
+func (d *Deployer) Deploy(ctx context.Context, deployRequest models.DeployRequest) error {
+	args := d.Called(ctx, deployRequest)
 	return args.Error(0)
+}
+
+type DeployManager struct {
+	mock.Mock
+}
+
+func (d *DeployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
+	args := d.Called(ctx, projectSpec)
+	return args.Get(0).(models.DeploymentID), args.Error(1)
+}
+
+func (d *DeployManager) Init() {
+	d.Called()
 }

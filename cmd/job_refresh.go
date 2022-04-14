@@ -114,9 +114,9 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			if !resp.GetSuccess() {
 				deployFailedCounter++
 				if verbose {
-					l.Warn(coloredError(fmt.Sprintf("%d. %s failed to be deployed: %s", deployCounter, resp.GetJobName(), resp.GetMessage())))
+					l.Warn(coloredError(fmt.Sprintf("%d. %s failed to be deployed: %s", deployCounter, resp.GetJobName(), resp.GetValue())))
 				}
-				deployErrors = append(deployErrors, fmt.Sprintf("failed to deploy: %s, %s", resp.GetJobName(), resp.GetMessage()))
+				deployErrors = append(deployErrors, fmt.Sprintf("failed to deploy: %s, %s", resp.GetJobName(), resp.GetValue()))
 			} else {
 				deploySuccessCounter++
 				if verbose {
@@ -128,19 +128,26 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			if !resp.GetSuccess() {
 				refreshFailedCounter++
 				if verbose {
-					l.Warn(coloredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", resp.GetJobName(), resp.GetMessage())))
+					l.Warn(coloredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", resp.GetJobName(), resp.GetValue())))
 				}
-				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to refresh: %s, %s", resp.GetJobName(), resp.GetMessage()))
+				refreshErrors = append(refreshErrors, fmt.Sprintf("failed to refresh: %s, %s", resp.GetJobName(), resp.GetValue()))
 			} else {
 				refreshSuccessCounter++
 				if verbose {
 					l.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", resp.GetJobName()))
 				}
 			}
+		case models.ProgressTypeJobDeploymentRequestCreated:
+			if !resp.GetSuccess() {
+				l.Warn(coloredError(fmt.Sprintf("unable to request job deployment")))
+			} else {
+				l.Info(fmt.Sprintf("Deployment request created with ID: %s", resp.GetValue()))
+			}
+			return nil
 		default:
 			if verbose {
 				// ordinary progress event
-				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
+				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetValue()))
 			}
 		}
 	}

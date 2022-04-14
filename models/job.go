@@ -364,6 +364,8 @@ type JobService interface {
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
 	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
+	// GetDeployment getting status and result of job deployment
+	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
@@ -462,12 +464,26 @@ type DeployRequest struct {
 
 type JobDeploymentStatus string
 
+func (j JobDeploymentStatus) String() string {
+	return string(j)
+}
+
 const (
-	JobDeploymentStatusInQueue JobDeploymentStatus = "In Queue"
+	JobDeploymentStatusCreated    JobDeploymentStatus = "Created"
+	JobDeploymentStatusInQueue    JobDeploymentStatus = "In Queue"
+	JobDeploymentStatusInProgress JobDeploymentStatus = "In Progress"
+	JobDeploymentStatusSucceed    JobDeploymentStatus = "Succeed"
+	JobDeploymentStatusFailed     JobDeploymentStatus = "Failed"
 )
 
+type DeploymentID uuid.UUID
+
+func (d DeploymentID) UUID() uuid.UUID {
+	return uuid.UUID(d)
+}
+
 type JobDeployment struct {
-	ID      uuid.UUID
+	ID      DeploymentID
 	Project ProjectSpec
 	Status  JobDeploymentStatus
 	Details JobDeploymentDetail
@@ -478,6 +494,6 @@ type JobDeploymentDetail struct {
 }
 
 type JobDeploymentFailure struct {
-	JobNames string
-	Message  string
+	JobName string
+	Message string
 }

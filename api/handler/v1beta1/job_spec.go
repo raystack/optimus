@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"io"
 	"sync"
 	"time"
@@ -297,12 +298,38 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 		mu:     new(sync.Mutex),
 	})
 
-	if err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers); err != nil {
+	err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers)
+	if err != nil {
 		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
 	}
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
 	return nil
+}
+
+func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb.GetDeployJobsStatusRequest) (*pb.GetDeployJobsStatusResponse, error) {
+	deployID, err := uuid.FromString(req.DeployId)
+	if err != nil {
+		return nil, err
+	}
+
+	jobDeployment, err := sv.jobSvc.GetDeployment(ctx, deployID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get job deployment: \n%s", err.Error())
+	}
+
+	switch jobDeployment.Status {
+	case models.JobDeploymentStatusSucceed:
+		return &pb.GetDeployJobsStatusResponse{
+			Success: true,
+		}, nil
+	case models.JobDeploymentStatusInProgress, models.JobDeploymentStatusInQueue, models.JobDeploymentStatusCreated:
+		return &pb.GetDeployJobsStatusResponse{
+			Success: false,
+		}, nil
+	}
+
+	return models.JobDeployment{}, nil
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,

@@ -19,12 +19,18 @@ type Serve struct {
 	AppKey      string   `mapstructure:"app_key"`                // random 32 character hash used for encrypting secrets
 	DB          DBConfig `mapstructure:"db"`
 	Replay      Replay   `mapstructure:"replay"`
+	Deployer    Deployer `mapstructure:"deployer"`
 }
 
 type Replay struct {
 	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
 	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"120s"`
 	RunTimeout    time.Duration `mapstructure:"run_timeout"`
+}
+
+type Deployer struct {
+	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
+	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"300m"`
 }
 
 type DBConfig struct {

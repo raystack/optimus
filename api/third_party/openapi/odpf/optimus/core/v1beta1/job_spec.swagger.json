@@ -352,6 +352,17 @@
         }
       }
     },
+    "v1beta1DeployJobFailure": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "v1beta1DeployJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -367,6 +378,28 @@
         },
         "jobName": {
           "type": "string"
+        }
+      }
+    },
+    "v1beta1GetDeployJobsStatusResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1DeployJobFailure"
+          }
+        },
+        "totalSucceed": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalFailed": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },
@@ -582,7 +615,7 @@
           "type": "string",
           "title": "response type differentiate events"
         },
-        "message": {
+        "value": {
           "type": "string"
         },
         "jobName": {

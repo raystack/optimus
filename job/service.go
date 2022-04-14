@@ -708,7 +708,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 // Refresh fetches all the requested jobs, resolves its dependencies, assign proper priority weights,
 // compile all jobs in the project and upload them to the destination store.
 func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string,
-	progressObserver progress.Observer) (err error) {
+	progressObserver progress.Observer) error {
 	projectSpec, err := srv.projectService.Get(ctx, projectName)
 	if err != nil {
 		return err
@@ -723,8 +723,12 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	// resolve dependency and persist
 	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
 
-	srv.deployManager.Deploy(ctx, projectSpec)
+	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
+	if err != nil {
+		return err
+	}
 
+	srv.notifyProgress(progressObserver, &models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
 	return nil
 }
 
@@ -822,4 +826,8 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 	}
 	return currentSpec.Name, nil
+}
+
+func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
+	return srv.deployManager.GetStatus(ctx, deployID)
 }

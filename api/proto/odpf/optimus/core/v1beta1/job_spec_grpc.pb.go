@@ -38,8 +38,10 @@ type JobSpecificationServiceClient interface {
 	CheckJobSpecifications(ctx context.Context, in *CheckJobSpecificationsRequest, opts ...grpc.CallOption) (JobSpecificationService_CheckJobSpecificationsClient, error)
 	// RefreshJobs do redeployment using the current persisted state.
 	// It will returns a stream of messages which can be used to track the progress.
-	// Message containing ack are status events other are progress events
 	RefreshJobs(ctx context.Context, in *RefreshJobsRequest, opts ...grpc.CallOption) (JobSpecificationService_RefreshJobsClient, error)
+	// GetDeployJobsStatus check status of job deployment.
+	// It will returns status of the job deployment and the failure details.
+	GetDeployJobsStatus(ctx context.Context, in *GetDeployJobsStatusRequest, opts ...grpc.CallOption) (*GetDeployJobsStatusResponse, error)
 }
 
 type jobSpecificationServiceClient struct {
@@ -190,6 +192,15 @@ func (x *jobSpecificationServiceRefreshJobsClient) Recv() (*RefreshJobsResponse,
 	return m, nil
 }
 
+func (c *jobSpecificationServiceClient) GetDeployJobsStatus(ctx context.Context, in *GetDeployJobsStatusRequest, opts ...grpc.CallOption) (*GetDeployJobsStatusResponse, error) {
+	out := new(GetDeployJobsStatusResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetDeployJobsStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // JobSpecificationServiceServer is the server API for JobSpecificationService service.
 // All implementations must embed UnimplementedJobSpecificationServiceServer
 // for forward compatibility
@@ -214,8 +225,10 @@ type JobSpecificationServiceServer interface {
 	CheckJobSpecifications(*CheckJobSpecificationsRequest, JobSpecificationService_CheckJobSpecificationsServer) error
 	// RefreshJobs do redeployment using the current persisted state.
 	// It will returns a stream of messages which can be used to track the progress.
-	// Message containing ack are status events other are progress events
 	RefreshJobs(*RefreshJobsRequest, JobSpecificationService_RefreshJobsServer) error
+	// GetDeployJobsStatus check status of job deployment.
+	// It will returns status of the job deployment and the failure details.
+	GetDeployJobsStatus(context.Context, *GetDeployJobsStatusRequest) (*GetDeployJobsStatusResponse, error)
 	mustEmbedUnimplementedJobSpecificationServiceServer()
 }
 
@@ -246,6 +259,9 @@ func (UnimplementedJobSpecificationServiceServer) CheckJobSpecifications(*CheckJ
 }
 func (UnimplementedJobSpecificationServiceServer) RefreshJobs(*RefreshJobsRequest, JobSpecificationService_RefreshJobsServer) error {
 	return status.Errorf(codes.Unimplemented, "method RefreshJobs not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) GetDeployJobsStatus(context.Context, *GetDeployJobsStatusRequest) (*GetDeployJobsStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDeployJobsStatus not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) mustEmbedUnimplementedJobSpecificationServiceServer() {
 }
@@ -419,6 +435,24 @@ func (x *jobSpecificationServiceRefreshJobsServer) Send(m *RefreshJobsResponse) 
 	return x.ServerStream.SendMsg(m)
 }
 
+func _JobSpecificationService_GetDeployJobsStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDeployJobsStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).GetDeployJobsStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/GetDeployJobsStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).GetDeployJobsStatus(ctx, req.(*GetDeployJobsStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // JobSpecificationService_ServiceDesc is the grpc.ServiceDesc for JobSpecificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -445,6 +479,10 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckJobSpecification",
 			Handler:    _JobSpecificationService_CheckJobSpecification_Handler,
+		},
+		{
+			MethodName: "GetDeployJobsStatus",
+			Handler:    _JobSpecificationService_GetDeployJobsStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

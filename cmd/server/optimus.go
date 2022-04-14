@@ -277,6 +277,12 @@ func (s *OptimusServer) setupHandlers() error {
 	})
 
 	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler)
+	deployManagerConfig := job.DeployManagerConfig{
+		NumWorkers:    s.conf.Serve.Deployer.NumWorkers,
+		WorkerTimeout: s.conf.Serve.Deployer.WorkerTimeout,
+	}
+	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
+	deployManager := job.NewDeployManager(s.logger, deployManagerConfig, deployer, utils.NewUUIDProvider(), jobDeploymentRepository)
 
 	engine := jobRunCompiler.NewGoEngine()
 	// runtime service instance over grpc
@@ -292,7 +298,7 @@ func (s *OptimusServer) setupHandlers() error {
 		replayManager,
 		namespaceService,
 		projectService,
-		deployer,
+		deployManager,
 	)
 
 	jobrunRepoFac := &jobRunRepoFactory{

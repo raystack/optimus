@@ -216,7 +216,11 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsAfterPriorityResolution[1]}, nil).Return(nil).Once()
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler)
-			err := deployer.Deploy(ctx, projectSpec, nil)
+			deployRequest := models.DeployRequest{
+				ID:      uuid.New(),
+				Project: projectSpec,
+			}
+			err := deployer.Deploy(ctx, deployRequest)
 
 			assert.Nil(t, err)
 		})
@@ -415,7 +419,11 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsAfterPriorityResolution[1]}, nil).Return(nil).Once()
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler)
-			err := deployer.Deploy(ctx, projectSpec, nil)
+			deployRequest := models.DeployRequest{
+				ID:      uuid.New(),
+				Project: projectSpec,
+			}
+			err := deployer.Deploy(ctx, deployRequest)
 
 			assert.Nil(t, err)
 		})
@@ -616,7 +624,11 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsAfterPriorityResolution[1]}, nil).Return(nil).Once()
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler)
-			err := deployer.Deploy(ctx, projectSpec, nil)
+			deployRequest := models.DeployRequest{
+				ID:      uuid.New(),
+				Project: projectSpec,
+			}
+			err := deployer.Deploy(ctx, deployRequest)
 
 			assert.Nil(t, err)
 		})
@@ -633,7 +645,11 @@ func TestDeployer(t *testing.T) {
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec, nil).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler)
-			err := deployer.Deploy(ctx, projectSpec, nil)
+			deployRequest := models.DeployRequest{
+				ID:      uuid.New(),
+				Project: projectSpec,
+			}
+			err := deployer.Deploy(ctx, deployRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -751,7 +767,11 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterHookDependencyEnrich, nil).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler)
-			err := deployer.Deploy(ctx, projectSpec, nil)
+			deployRequest := models.DeployRequest{
+				ID:      uuid.New(),
+				Project: projectSpec,
+			}
+			err := deployer.Deploy(ctx, deployRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -909,7 +929,11 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsAfterPriorityResolution[1]}, nil).Return(deployError)
 
 			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler)
-			err := deployer.Deploy(ctx, projectSpec, nil)
+			deployRequest := models.DeployRequest{
+				ID:      uuid.New(),
+				Project: projectSpec,
+			}
+			err := deployer.Deploy(ctx, deployRequest)
 
 			assert.Equal(t, &multierror.Error{Errors: []error{deployError}}, err)
 		})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/odpf/optimus/store"
 	"gorm.io/datatypes"
 	"time"
 
@@ -38,9 +39,9 @@ func (d JobDeployment) ToSpec() (models.JobDeployment, error) {
 	}
 
 	return models.JobDeployment{
-		ID:      d.ID,
+		ID:      models.DeploymentID(d.ID),
 		Project: projectSpec,
-		Status:  d.Status,
+		Status:  models.JobDeploymentStatus(d.Status),
 		Details: jobDeploymentDetail,
 	}, nil
 }
@@ -52,8 +53,9 @@ func (d JobDeployment) FromSpec(deployment models.JobDeployment) (JobDeployment,
 	}
 
 	return JobDeployment{
+		ID:        deployment.ID.UUID(),
 		ProjectID: deployment.Project.ID.UUID(),
-		Status:    deployment.Status,
+		Status:    deployment.Status.String(),
 		Details:   details,
 	}, nil
 }
@@ -73,7 +75,7 @@ func (repo *jobDeploymentRepository) UpdateByID(ctx context.Context, deploymentS
 	}
 
 	var d JobDeployment
-	if err := repo.db.WithContext(ctx).Where("id = ?", deploymentSpec.ID).Find(&d).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("id = ?", deploymentSpec.ID.UUID()).Find(&d).Error; err != nil {
 		return errors.New("could not update non-existing job deployment")
 	}
 	d.Status = deploymentToUpdate.Status
@@ -81,7 +83,7 @@ func (repo *jobDeploymentRepository) UpdateByID(ctx context.Context, deploymentS
 	return repo.db.WithContext(ctx).Save(&d).Error
 }
 
-func (repo *jobDeploymentRepository) GetByID(ctx context.Context, deployID uuid.UUID) (models.JobDeployment, error) {
+func (repo *jobDeploymentRepository) GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
 	var jobDeployment JobDeployment
 	if err := repo.db.WithContext(ctx).Preload("Project").Where("job_deployment.id = ?", deployID).First(&jobDeployment).Error; err != nil {
 		return models.JobDeployment{}, err
@@ -89,9 +91,12 @@ func (repo *jobDeploymentRepository) GetByID(ctx context.Context, deployID uuid.
 	return jobDeployment.ToSpec()
 }
 
-func (repo *jobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context, status string, projectID models.ProjectID) (models.JobDeployment, error) {
+func (repo *jobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context, status models.JobDeploymentStatus, projectID models.ProjectID) (models.JobDeployment, error) {
 	var jobDeployment JobDeployment
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("status = ? and project_id = ?", status, projectID).First(&jobDeployment).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("status = ? and project_id = ?", status.String(), projectID.UUID()).First(&jobDeployment).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobDeployment{}, store.ErrResourceNotFound
+		}
 		return models.JobDeployment{}, err
 	}
 	return jobDeployment.ToSpec()
