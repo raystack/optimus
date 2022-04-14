@@ -79,9 +79,10 @@ def start():
     range_start = opt_config["envs"]["RANGE_START"]
     range_end = opt_config["envs"]["RANGE_END"]
 
-    api_key = os.environ["SECRET_KEY"]
+    secret_key = os.environ["SECRET_KEY"]
 
     # secret token required for NASA API being passed using job spec
+    api_key = json.dumps(secret_key)
     if api_key is None:
         raise Exception("invalid api token")
 
