@@ -233,11 +233,20 @@ metadata:
       memory: 256Mi
       # defines the limit cpu for a job's resource
       cpu: 500m
+  # contains airflow specific configuration
+  airflow:
+    # defines the pool to be assigned for this job
+    pool: poolA
+    # defines the queue to be assigend for this job
+    queue: queueA
 ```
 
 `resource` under metadata follows most of the convention specified [here](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container).
 Though it's similar, the difference is only on how to write it in the specification YAML file.
-Configuring `metadata`, including but not limited to `resource`, is **NOT** mandatory.
+
+`airflow` pool and queue are to be sent to the BaseOperator. See the specification [here](https://airflow.apache.org/docs/apache-airflow/stable/concepts/pools.html).
+
+Configuring `metadata`, including but not limited to `resource` and `airflow`, is **NOT** mandatory.
 
 ## Macros & Templates
 

@@ -26,6 +26,12 @@ default_args = {
         "job_name": {{.Job.Name | quote}},
         "optimus_hostname": {{.Hostname | quote}}
     },
+    {{- if ne .Metadata.Airflow.Pool "" }}
+    "pool": "{{ .Metadata.Airflow.Pool }}",
+    {{- end }}
+    {{- if ne .Metadata.Airflow.Queue "" }}
+    "queue": "{{ .Metadata.Airflow.Queue }}",
+    {{- end }}
     "owner": {{.Job.Owner | quote}},
     "depends_on_past": {{ if .Job.Behavior.DependsOnPast }} True {{- else -}} False {{- end -}},
     "retries": {{ if gt .Job.Behavior.Retry.Count 0 -}} {{.Job.Behavior.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
