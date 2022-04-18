@@ -320,7 +320,7 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 	}
 
 	switch jobDeployment.Status {
-	case models.JobDeploymentStatusSucceed:
+	case models.JobDeploymentStatusSucceed, models.JobDeploymentStatusFailed:
 		var deployJobFailures []*pb.DeployJobFailure
 		for _, failure := range jobDeployment.Details.Failures {
 			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})

@@ -603,4 +603,149 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			assert.Contains(t, err.Error(), errorMsg)
 		})
 	})
+
+	t.Run("GetDeployJobsStatus", func(t *testing.T) {
+		projectName := "a-data-project"
+		projectSpec := models.ProjectSpec{
+			ID:   models.ProjectID(uuid.New()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		t.Run("should get on progress job deployment successfully", func(t *testing.T) {
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			deployID := uuid.New()
+			jobDeployment := models.JobDeployment{
+				ID:      models.DeploymentID(deployID),
+				Project: projectSpec,
+				Status:  models.JobDeploymentStatusInProgress,
+			}
+			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
+				Status:       jobDeployment.Status.String(),
+				TotalSucceed: 0,
+			}
+
+			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)
+
+			getDeployJobsStatusRequest := &pb.GetDeployJobsStatusRequest{DeployId: deployID.String()}
+			actual, err := jobSpecServiceServer.GetDeployJobsStatus(ctx, getDeployJobsStatusRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, getDeployJobsStatusResponse, actual)
+		})
+		t.Run("should get succeeded job deployment successfully", func(t *testing.T) {
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			deployID := uuid.New()
+			jobDeployment := models.JobDeployment{
+				ID:      models.DeploymentID(deployID),
+				Project: projectSpec,
+				Status:  models.JobDeploymentStatusSucceed,
+				Details: models.JobDeploymentDetail{
+					TotalSuccess: 5,
+				},
+			}
+			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
+				Status:       jobDeployment.Status.String(),
+				TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
+			}
+
+			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)
+
+			getDeployJobsStatusRequest := &pb.GetDeployJobsStatusRequest{DeployId: deployID.String()}
+			actual, err := jobSpecServiceServer.GetDeployJobsStatus(ctx, getDeployJobsStatusRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, getDeployJobsStatusResponse, actual)
+		})
+		t.Run("should get failed job deployment successfully", func(t *testing.T) {
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			deployID := uuid.New()
+			jobDeployment := models.JobDeployment{
+				ID:      models.DeploymentID(deployID),
+				Project: projectSpec,
+				Status:  models.JobDeploymentStatusFailed,
+				Details: models.JobDeploymentDetail{
+					TotalSuccess: 4,
+					Failures: []models.JobDeploymentFailure{
+						{
+							JobName: "job-a",
+							Message: "internal error",
+						},
+					},
+				},
+			}
+			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
+				Status:       jobDeployment.Status.String(),
+				TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
+				Failures: []*pb.DeployJobFailure{
+					{
+						JobName: jobDeployment.Details.Failures[0].JobName,
+						Message: jobDeployment.Details.Failures[0].Message,
+					},
+				},
+			}
+
+			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)
+
+			getDeployJobsStatusRequest := &pb.GetDeployJobsStatusRequest{DeployId: deployID.String()}
+			actual, err := jobSpecServiceServer.GetDeployJobsStatus(ctx, getDeployJobsStatusRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, getDeployJobsStatusResponse, actual)
+		})
+		t.Run("should failed when unable to get job deployment", func(t *testing.T) {
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			deployID := uuid.New()
+
+			errorMsg := "internal error"
+			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(models.JobDeployment{}, errors.New(errorMsg))
+
+			getDeployJobsStatusRequest := &pb.GetDeployJobsStatusRequest{DeployId: deployID.String()}
+			actual, err := jobSpecServiceServer.GetDeployJobsStatus(ctx, getDeployJobsStatusRequest)
+
+			assert.Nil(t, actual)
+			assert.Contains(t, err.Error(), errorMsg)
+		})
+	})
 }
