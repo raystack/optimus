@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -61,8 +60,6 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 		}
 		jobDeployment.Details.TotalSuccess += deployNamespaceDetail.TotalSuccess
 	}
-
-	time.Sleep(time.Second * 15)
 
 	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
 		return err

@@ -3,7 +3,6 @@ package job_test
 import (
 	"context"
 	"errors"
-	"github.com/odpf/optimus/store"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,6 +12,7 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 func TestDeployManager(t *testing.T) {

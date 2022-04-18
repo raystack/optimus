@@ -19,7 +19,7 @@ import (
 const (
 	refreshTimeout = time.Minute * 15
 	deployTimeout  = time.Hour * 3
-	pollInterval   = time.Second * 10
+	pollInterval   = time.Second * 15
 )
 
 func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {

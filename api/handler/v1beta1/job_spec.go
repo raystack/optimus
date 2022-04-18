@@ -329,7 +329,6 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 		return &pb.GetDeployJobsStatusResponse{
 			Status:       jobDeployment.Status.String(),
 			TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
-			TotalFailed:  int32(len(deployJobFailures)),
 			Failures:     deployJobFailures,
 		}, nil
 	default:
