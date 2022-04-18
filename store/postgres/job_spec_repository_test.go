@@ -37,7 +37,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 	gTask := "g-task"
 	tTask := "t-task"
-	destination := "p.d.t"
+	jobDestination := "p.d.t"
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       gTask,
@@ -166,7 +166,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			db := DBSetup()
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 			defer depMod1.AssertExpectations(t)
 			defer execUnit1.AssertExpectations(t)
 			defer execUnit2.AssertExpectations(t)
@@ -183,10 +183,10 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err = repo.Insert(ctx, testModels[0])
+			err = repo.Insert(ctx, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
-			err = repo.Insert(ctx, testModels[1])
+			err = repo.Insert(ctx, testModels[1], jobDestination)
 			assert.NotNil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
@@ -213,7 +213,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 				Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
 			}
 			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(
-				&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+				&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			defer depMod1.AssertExpectations(t)
 			defer execUnit1.AssertExpectations(t)
 			defer execUnit2.AssertExpectations(t)
@@ -227,7 +227,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// first insert
-			err := repo.Insert(ctx, testModels[0])
+			err := repo.Insert(ctx, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
@@ -239,7 +239,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			// insert back again
-			err = repo.Insert(ctx, testModels[0])
+			err = repo.Insert(ctx, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(ctx, testModels[0].ID)
@@ -254,7 +254,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			testModelB := testConfigs[2]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			defer depMod1.AssertExpectations(t)
 			defer execUnit1.AssertExpectations(t)
 
@@ -262,7 +262,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: tTask,
 			}, nil)
-			depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit2.AssertExpectations(t)
 			defer depMod2.AssertExpectations(t)
 
@@ -270,7 +270,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// try for create
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModelA.ID)
@@ -280,7 +280,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			assert.Equal(t, gTask, taskSchema.Name)
 
 			// try for update
-			err = repo.Save(ctx, testModelB)
+			err = repo.Save(ctx, testModelB, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(ctx, testModelB.ID)
@@ -294,11 +294,11 @@ func TestIntegrationJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
-			depMod2.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			depMod2.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:       tTask,
 				PluginType: models.PluginTypeTask,
@@ -311,7 +311,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 			// try for create
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit1, DependencyMod: depMod1}
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModelA.ID)
@@ -325,7 +325,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 			// try for update
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit2, DependencyMod: depMod2}
-			err = repo.Save(ctx, testModelA)
+			err = repo.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(ctx, testModelA.ID)
@@ -344,7 +344,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// try for create
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByName(ctx, testModelA.Name)
@@ -363,7 +363,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err := repo.Insert(ctx, testModel)
+			err := repo.Insert(ctx, testModel, jobDestination)
 			assert.Nil(t, err)
 			checkModel, err := repo.GetByID(ctx, testModel.ID)
 			assert.Nil(t, err)
@@ -385,7 +385,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 					Unit: &models.Plugin{Base: hookUnit1},
 				},
 			}
-			err = repo.Save(ctx, testModel)
+			err = repo.Save(ctx, testModel, jobDestination)
 			assert.Nil(t, err)
 			checkModel, err = repo.GetByID(ctx, testModel.ID)
 			assert.Nil(t, err)
@@ -417,7 +417,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 				},
 				Unit: &models.Plugin{Base: hookUnit2},
 			})
-			err = repo.Save(ctx, testModel)
+			err = repo.Save(ctx, testModel, jobDestination)
 			assert.Nil(t, err)
 			checkModel, err = repo.GetByID(ctx, testModel.ID)
 			assert.Nil(t, err)
@@ -449,7 +449,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
@@ -458,7 +458,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			jobRepoNamespace2 := postgres.NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
 
 			// try to create with first namespace
-			err := jobRepoNamespace1.Save(ctx, testModelA)
+			err := jobRepoNamespace1.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(ctx, testModelA.Name)
@@ -470,7 +470,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			assert.Equal(t, namespaceSpec.ProjectSpec.ID, checkNamespace.ProjectSpec.ID)
 
 			// try to create same job with second namespace and it should fail.
-			err = jobRepoNamespace2.Save(ctx, testModelA)
+			err = jobRepoNamespace2.Save(ctx, testModelA, jobDestination)
 			assert.NotNil(t, err)
 			assert.Equal(t, "job g-optimus-id already exists for the project t-optimus-id", err.Error())
 		})
@@ -479,7 +479,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 
 			unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 			defer execUnit1.AssertExpectations(t)
 			defer depMod1.AssertExpectations(t)
 
@@ -487,7 +487,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			// try for create
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err := repo.GetByID(ctx, testModelA.ID)
@@ -502,7 +502,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			// try for update
 			testModelA.Behavior.CatchUp = false
 			testModelA.Behavior.DependsOnPast = true
-			err = repo.Save(ctx, testModelA)
+			err = repo.Save(ctx, testModelA, jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, err = repo.GetByID(ctx, testModelA.ID)
@@ -520,7 +520,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
@@ -537,9 +537,9 @@ func TestIntegrationJobRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
-		err = repo.Insert(ctx, testModels[2])
+		err = repo.Insert(ctx, testModels[2], jobDestination)
 		assert.Nil(t, err)
 
 		checkModels, err := repo.GetAll(ctx)
@@ -582,7 +582,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 	gTask := "g-task"
 	tTask := "t-task"
-	destination := "p.d.t"
+	jobDestination := "p.d.t"
 	destinationUrn := "bigquery://p.d.t"
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
@@ -701,7 +701,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		testModels = append(testModels, testConfigs...)
 
 		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		defer depMod.AssertExpectations(t)
 		defer execUnit1.AssertExpectations(t)
@@ -710,7 +710,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
 		checkJob, checkNamespace, err := projectJobSpecRepo.GetByName(ctx, testModels[0].Name)
@@ -726,13 +726,13 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		testModels = append(testModels, testConfigs...)
 
 		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: tTask,
 		}, nil)
 		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
-		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		defer depMod.AssertExpectations(t)
 		defer depMod2.AssertExpectations(t)
@@ -742,9 +742,9 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
-		err = repo.Insert(ctx, testModels[2])
+		err = repo.Insert(ctx, testModels[2], jobDestination)
 		assert.Nil(t, err)
 
 		checkModels, err := projectJobSpecRepo.GetAll(ctx)
@@ -760,7 +760,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 			Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
 		}
 		depMod.On("GenerateDestination", ctx, unitData1).Return(
-			&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 		defer depMod.AssertExpectations(t)
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
@@ -770,7 +770,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err := jobRepo.Insert(ctx, testModels[0])
+		err := jobRepo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
 		pairs, err := projectJobSpecRepo.GetByDestination(ctx, destinationUrn)
@@ -787,7 +787,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 			Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets),
 		}
 		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(
-			&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+			&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 		defer depMod.AssertExpectations(t)
 		defer execUnit1.AssertExpectations(t)
 		defer execUnit2.AssertExpectations(t)
@@ -799,7 +799,7 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err := jobRepo.Insert(ctx, testModels[0])
+		err := jobRepo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
 		j, p, err := projectJobSpecRepo.GetByNameForProject(ctx, projectSpec.Name, testModels[0].Name)
@@ -814,13 +814,13 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		testModels = append(testModels, testConfigs...)
 
 		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: tTask,
 		}, nil)
 		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
-		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		defer depMod.AssertExpectations(t)
 		defer depMod2.AssertExpectations(t)
@@ -830,13 +830,13 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repoNamespace1 := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repoNamespace1.Insert(ctx, testModels[0])
+		err := repoNamespace1.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
-		err = repoNamespace1.Insert(ctx, testModels[2])
+		err = repoNamespace1.Insert(ctx, testModels[2], jobDestination)
 		assert.Nil(t, err)
 
 		repoNamespace2 := postgres.NewJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
-		err = repoNamespace2.Insert(ctx, testModels[3])
+		err = repoNamespace2.Insert(ctx, testModels[3], jobDestination)
 		assert.Nil(t, err)
 
 		checkModels, err := projectJobSpecRepo.GetJobNamespaces(ctx)
@@ -851,13 +851,13 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		testModels = append(testModels, testConfigs...)
 
 		unitData1 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[0].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[0].Assets)}
-		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod.On("GenerateDestination", context.TODO(), unitData1).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: tTask,
 		}, nil)
 		unitData2 := models.GenerateDestinationRequest{Config: models.PluginConfigs{}.FromJobSpec(testConfigs[2].Task.Config), Assets: models.PluginAssets{}.FromJobSpec(testConfigs[2].Assets)}
-		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: destination, Type: models.DestinationTypeBigquery}, nil)
+		depMod2.On("GenerateDestination", context.TODO(), unitData2).Return(&models.GenerateDestinationResponse{Destination: jobDestination, Type: models.DestinationTypeBigquery}, nil)
 
 		defer depMod.AssertExpectations(t)
 		defer depMod2.AssertExpectations(t)
@@ -867,11 +867,11 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
-		err = repo.Insert(ctx, testModels[2])
+		err = repo.Insert(ctx, testModels[2], jobDestination)
 		assert.Nil(t, err)
-		err = repo.Insert(ctx, testModels[3])
+		err = repo.Insert(ctx, testModels[3], jobDestination)
 		assert.Nil(t, err)
 
 		checkModels, err := projectJobSpecRepo.GetByIDs(ctx, []uuid.UUID{testModels[0].ID, testModels[2].ID})

@@ -20,7 +20,7 @@ type JobRunRepository struct {
 }
 
 func (repo *JobRunRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
-	resource, err := repo.adapter.FromJobRun(ctx, spec, namespace, jobDestination)
+	resource, err := repo.adapter.FromJobRun(spec, namespace, jobDestination)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (repo *JobRunRepository) Save(ctx context.Context, namespace models.Namespa
 		return fmt.Errorf("unable to find jobrun by id: %w", err)
 	}
 
-	resource, err := repo.adapter.FromJobRun(ctx, spec, namespace, jobDestination)
+	resource, err := repo.adapter.FromJobRun(spec, namespace, jobDestination)
 	if err != nil {
 		return err
 	}

@@ -184,7 +184,7 @@ type JobSpecRepository struct {
 }
 
 func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec, jobDestination string) error {
-	resource, err := repo.adapter.FromSpecWithNamespace(ctx, spec, repo.namespace, jobDestination)
+	resource, err := repo.adapter.FromSpecWithNamespace(spec, repo.namespace, jobDestination)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec, jo
 		return fmt.Errorf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
-	resource, err := repo.adapter.FromJobSpec(ctx, spec, jobDestination)
+	resource, err := repo.adapter.FromJobSpec(spec, jobDestination)
 	if err != nil {
 		return err
 	}

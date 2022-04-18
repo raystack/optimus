@@ -52,6 +52,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			},
 		},
 	}
+	jobDestination := "project.dataset.table"
 	namespaceSpec := models.NamespaceSpec{
 		ID:          uuid.New(),
 		Name:        "dev-team-1",
@@ -171,7 +172,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-		err = jobRepo.Insert(ctx, jobConfigs[0])
+		err = jobRepo.Insert(ctx, jobConfigs[0], jobDestination)
 		assert.Nil(t, err)
 
 		repo := postgres.NewReplayRepository(db, adapter)
@@ -212,7 +213,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err = jobRepo.Insert(ctx, jobConfigs[0])
+		err = jobRepo.Insert(ctx, jobConfigs[0], jobDestination)
 		assert.Nil(t, err)
 
 		repo := postgres.NewReplayRepository(db, adapter)
@@ -262,7 +263,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 			err := namespaceRepo.Insert(ctx, namespaceSpec)
@@ -271,11 +272,11 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job)
+			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job)
+			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job)
+			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -322,7 +323,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 			err := namespaceRepo.Insert(ctx, namespaceSpec)
@@ -330,11 +331,11 @@ func TestIntegrationReplayRepository(t *testing.T) {
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobRepo.Insert(ctx, testModels[0].Job)
+			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job)
+			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job)
+			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -379,7 +380,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
 			err := projectRepo.Insert(ctx, projectSpec)
@@ -392,11 +393,11 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job)
+			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job)
+			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job)
+			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -442,7 +443,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
 			err := projectRepo.Insert(ctx, projectSpec)
@@ -455,11 +456,11 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job)
+			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job)
+			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job)
+			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -500,7 +501,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
 			err := projectRepo.Insert(ctx, projectSpec)
@@ -513,11 +514,11 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
 			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job)
+			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job)
+			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job)
+			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
