@@ -19,15 +19,15 @@ type JobRunRepository struct {
 	instanceRepo *InstanceRepository
 }
 
-func (repo *JobRunRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun) error {
-	resource, err := repo.adapter.FromJobRun(ctx, spec, namespace)
+func (repo *JobRunRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
+	resource, err := repo.adapter.FromJobRun(ctx, spec, namespace, jobDestination)
 	if err != nil {
 		return err
 	}
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
 }
 
-func (repo *JobRunRepository) Save(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun) error {
+func (repo *JobRunRepository) Save(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
 	if spec.Status == "" {
 		// mark default state pending
 		spec.Status = models.RunStatePending
@@ -35,12 +35,12 @@ func (repo *JobRunRepository) Save(ctx context.Context, namespace models.Namespa
 
 	existingResource, _, err := repo.GetByID(ctx, spec.ID)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, namespace, spec)
+		return repo.Insert(ctx, namespace, spec, jobDestination)
 	} else if err != nil {
 		return fmt.Errorf("unable to find jobrun by id: %w", err)
 	}
 
-	resource, err := repo.adapter.FromJobRun(ctx, spec, namespace)
+	resource, err := repo.adapter.FromJobRun(ctx, spec, namespace, jobDestination)
 	if err != nil {
 		return err
 	}

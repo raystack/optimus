@@ -63,7 +63,12 @@ func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.Na
 			// more than once.
 			newJobRun.ExecutedAt = jobRun.ExecutedAt
 		}
-		if err := repo.Save(ctx, namespace, newJobRun); err != nil {
+		jobDestinationResponse, err := s.pluginService.GenerateDestination(ctx, jobSpec, namespace)
+		if err != nil {
+			return models.JobRun{}, fmt.Errorf("failed to GenerateDestination for job: %s: %w", jobSpec.Name, err)
+		}
+		jobDestination := jobDestinationResponse.URN()
+		if err := repo.Save(ctx, namespace, newJobRun, jobDestination); err != nil {
 			return models.JobRun{}, err
 		}
 	} else {

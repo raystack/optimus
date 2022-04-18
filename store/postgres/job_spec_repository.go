@@ -183,8 +183,8 @@ type JobSpecRepository struct {
 	adapter            *JobSpecAdapter
 }
 
-func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec) error {
-	resource, err := repo.adapter.FromSpecWithNamespace(ctx, spec, repo.namespace)
+func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec, jobDestination string) error {
+	resource, err := repo.adapter.FromSpecWithNamespace(ctx, spec, repo.namespace, jobDestination)
 	if err != nil {
 		return err
 	}
@@ -198,11 +198,11 @@ func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec) 
 	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 
-func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) error {
+func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec, jobDestination string) error {
 	// while saving a JobSpec, we need to ensure that it's name is unique for a project
 	existingJobSpec, namespaceSpec, err := repo.projectJobSpecRepo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, spec)
+		return repo.Insert(ctx, spec, jobDestination)
 	} else if err != nil {
 		return fmt.Errorf("unable to retrieve spec by name: %w", err)
 	}
@@ -211,7 +211,7 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec) er
 		return fmt.Errorf("job %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
-	resource, err := repo.adapter.FromJobSpec(ctx, spec)
+	resource, err := repo.adapter.FromJobSpec(ctx, spec, jobDestination)
 	if err != nil {
 		return err
 	}

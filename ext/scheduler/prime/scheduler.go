@@ -47,8 +47,9 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	}
 
 	repo := s.jobRunRepoFac.New()
+	jobDestination := "impliment me" // fetch job destination from plugin service
 	for _, runs := range jobRuns {
-		if err := repo.Save(ctx, namespace, runs); err != nil {
+		if err := repo.Save(ctx, namespace, runs, jobDestination); err != nil {
 			return err
 		}
 	}
