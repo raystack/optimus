@@ -39,3 +39,19 @@ $ optimus secret set someSecret someSecretValue --update-only
 ```
 
 It will return an error if the secret to update does not exist already.
+
+
+## Listing a secret
+
+The list command can be used to show the user defined secrets which are registered with optimus. It will list
+the namespace associated for a secret.
+
+```shell
+$ optimus secret list
+Secrets for project: optimus-local
+     NAME    |                    DIGEST                    | NAMESPACE |         DATE
+-------------+----------------------------------------------+-----------+-----------------------
+   secret1   | SIBzsgUuHnExBY4qSzqcrlrb+3zCAHGu/4Fv1O8eMI8= |     *     | 2022-04-12T04:30:45Z
+```
+
+It shows a digest for the encrypted secret, so as not to send the cleartext password on the network.
