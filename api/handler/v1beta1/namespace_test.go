@@ -2,6 +2,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -135,6 +136,51 @@ func TestNamespaceOnServer(t *testing.T) {
 			resp, err := namespaceServiceServer.ListProjectNamespaces(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, []*pb.NamespaceSpecification{namespaceAdapted}, resp.GetNamespaces())
+		})
+	})
+
+	t.Run("GetNamespace", func(t *testing.T) {
+		projectName := "a-data-project"
+		namespaceName := "namespace1"
+
+		t.Run("should return nil and error if error is found during getting namespace", func(t *testing.T) {
+			adapter := v1.NewAdapter(nil, nil)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectName, namespaceName).Return(models.NamespaceSpec{}, errors.New("random error"))
+			namespaceServiceServer := v1.NewNamespaceServiceServer(
+				log,
+				adapter,
+				namespaceService,
+			)
+
+			request := &pb.GetNamespaceRequest{
+				ProjectName:   projectName,
+				NamespaceName: namespaceName,
+			}
+			response, err := namespaceServiceServer.GetNamespace(ctx, request)
+
+			assert.Nil(t, response)
+			assert.Error(t, err)
+		})
+
+		t.Run("should return value and nil if error is found during getting namespace", func(t *testing.T) {
+			adapter := v1.NewAdapter(nil, nil)
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectName, namespaceName).Return(models.NamespaceSpec{}, nil)
+			namespaceServiceServer := v1.NewNamespaceServiceServer(
+				log,
+				adapter,
+				namespaceService,
+			)
+
+			request := &pb.GetNamespaceRequest{
+				ProjectName:   projectName,
+				NamespaceName: namespaceName,
+			}
+			response, err := namespaceServiceServer.GetNamespace(ctx, request)
+
+			assert.NotNil(t, response)
+			assert.NoError(t, err)
 		})
 	})
 }

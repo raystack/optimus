@@ -103,3 +103,17 @@ func (repo *DependencyResolverMod) GenerateDependencies(ctx context.Context, inp
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.GenerateDependenciesResponse), args.Error(1)
 }
+
+type DependencyResolverPluginService struct {
+	mock.Mock
+}
+
+func (d *DependencyResolverPluginService) GenerateDestination(ctx context.Context, spec models.JobSpec, namespace models.NamespaceSpec) (*models.GenerateDestinationResponse, error) {
+	args := d.Called(ctx, spec, namespace)
+	return args.Get(0).(*models.GenerateDestinationResponse), args.Error(1)
+}
+
+func (d *DependencyResolverPluginService) GenerateDependencies(ctx context.Context, spec models.JobSpec, namespace models.NamespaceSpec, dryRun bool) (*models.GenerateDependenciesResponse, error) {
+	args := d.Called(ctx, spec, namespace, dryRun)
+	return args.Get(0).(*models.GenerateDependenciesResponse), args.Error(1)
+}

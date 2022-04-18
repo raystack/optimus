@@ -11,7 +11,7 @@ from kubernetes.client import models as k8s
 
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor, CrossTenantDependencySensor, ExternalHttpSensor
+    SuperExternalTaskSensor, ExternalHttpSensor
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -26,6 +26,12 @@ default_args = {
         "job_name": {{.Job.Name | quote}},
         "optimus_hostname": {{.Hostname | quote}}
     },
+    {{- if ne .Metadata.Airflow.Pool "" }}
+    "pool": "{{ .Metadata.Airflow.Pool }}",
+    {{- end }}
+    {{- if ne .Metadata.Airflow.Queue "" }}
+    "queue": "{{ .Metadata.Airflow.Queue }}",
+    {{- end }}
     "owner": {{.Job.Owner | quote}},
     "depends_on_past": {{ if .Job.Behavior.DependsOnPast }} True {{- else -}} False {{- end -}},
     "retries": {{ if gt .Job.Behavior.Retry.Count 0 -}} {{.Job.Behavior.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
@@ -183,20 +189,19 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 
 {{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    external_dag_id="{{$dependency.Job.Name}}",
-    window_size={{$baseWindow.Size.String | quote}},
-    window_offset={{$baseWindow.Offset.String | quote}},
-    window_truncate_to={{$baseWindow.TruncateTo | quote}},
     optimus_hostname="{{$.Hostname}}",
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
+    upstream_optimus_project="{{$.Namespace.ProjectSpec.Name}}",
+    upstream_optimus_job="{{$dependency.Job.Name}}",
+    window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
     dag=dag
 )
 {{- end -}}
 
 {{- if eq $dependency.Type $.JobSpecDependencyTypeInter }}
-wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = CrossTenantDependencySensor(
+wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",

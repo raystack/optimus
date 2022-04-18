@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "00880bfaaf98d6c02adfdab2fe6dd89ed452af26"
+PROTON_COMMIT := "da1f6413e587ac1b13ad3429a133526514e2f5fe"
 
 .PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
@@ -17,7 +17,10 @@ build: # build optimus binary
 	@go build -ldflags "-X ${NAME}/config.BuildVersion=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 
-test-ci: smoke-test unit-test-ci vet ## run tests
+test-ci: smoke-test unit-test-ci vet scheduler-resource-test ## run tests
+
+scheduler-resource-test:
+	cd ./ext/scheduler/airflow2/tests && pip3 install -r requirements.txt && python3 -m unittest discover .
 
 generate-proto: ## regenerate protos
 	@echo " > generating protobuf from odpf/proton"

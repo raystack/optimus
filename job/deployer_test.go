@@ -880,6 +880,168 @@ func TestDeployer(t *testing.T) {
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
+		t.Run("should fail when unable to get namespace spec", func(t *testing.T) {
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			priorityResolver := new(mock.PriorityResolver)
+			defer priorityResolver.AssertExpectations(t)
+
+			batchScheduler := new(mock.Scheduler)
+			defer batchScheduler.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+
+			jobID1 := uuid.New()
+			jobID2 := uuid.New()
+
+			jobSpecsBase := []models.JobSpec{
+				{
+					Version: 1,
+					ID:      jobID1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec1,
+				},
+				{
+					Version: 1,
+					ID:      jobID2,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec2,
+				},
+			}
+			jobSpecsAfterJobDependencyEnrich := []models.JobSpec{
+				{
+					Version: 1,
+					ID:      jobID1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+					Dependencies: map[string]models.JobSpecDependency{
+						jobSpecsBase[1].Name: {
+							Project: &projectSpec,
+							Job:     &jobSpecsBase[1],
+							Type:    models.JobSpecDependencyTypeIntra,
+						},
+					},
+					NamespaceSpec: namespaceSpec1,
+				},
+				{
+					Version: 1,
+					ID:      jobID2,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec2,
+				},
+			}
+			jobSpecsAfterHookDependencyEnrich := []models.JobSpec{
+				{
+					Version: 1,
+					ID:      jobID1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+					Dependencies: map[string]models.JobSpecDependency{
+						jobSpecsBase[1].Name: {
+							Project: &projectSpec,
+							Job:     &jobSpecsBase[1],
+							Type:    models.JobSpecDependencyTypeIntra,
+						},
+					},
+					NamespaceSpec: namespaceSpec1,
+				},
+				{
+					Version: 1,
+					ID:      jobID2,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec2,
+				},
+			}
+			jobSpecsAfterPriorityResolution := []models.JobSpec{
+				{
+					Version: 1,
+					ID:      jobID1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{
+						Priority: 10000,
+					},
+					Dependencies: map[string]models.JobSpecDependency{
+						jobSpecsBase[1].Name: {
+							Project: &projectSpec,
+							Job:     &jobSpecsBase[1],
+							Type:    models.JobSpecDependencyTypeIntra,
+						},
+					},
+					NamespaceSpec: namespaceSpec1,
+				},
+				{
+					Version: 1,
+					ID:      jobID2,
+					Name:    "test-2",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{
+						Priority: 9000,
+					},
+					NamespaceSpec: namespaceSpec2,
+				},
+			}
+
+			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec, nil).Return(jobSpecsAfterJobDependencyEnrich, nil)
+			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()
+			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[1]).Return([]models.JobSpecHook{}).Once()
+
+			priorityResolver.On("Resolve", ctx, jobSpecsAfterHookDependencyEnrich, nil).Return(jobSpecsAfterPriorityResolution, nil)
+
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsAfterPriorityResolution[0]}, nil).Return(nil)
+			deployError := errors.New(errorMsg)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec2.Name).Return(models.NamespaceSpec{}, deployError).Once()
+
+			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, nil, namespaceService)
+			err := deployer.Deploy(ctx, jobDeployment)
+
+			assert.Equal(t, &multierror.Error{Errors: []error{deployError}}, err)
+		})
 		t.Run("should fail when unable to deploy jobs", func(t *testing.T) {
 			dependencyResolver := new(mock.DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)

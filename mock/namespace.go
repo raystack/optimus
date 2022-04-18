@@ -64,3 +64,8 @@ func (n *NamespaceService) GetAll(ctx context.Context, prjName string) ([]models
 	args := n.Called(ctx, prjName)
 	return args.Get(0).([]models.NamespaceSpec), args.Error(1)
 }
+
+func (n *NamespaceService) GetByName(ctx context.Context, project models.ProjectSpec, name string) (models.NamespaceSpec, error) {
+	args := n.Called(ctx, project, name)
+	return args.Get(0).(models.NamespaceSpec), args.Error(1)
+}

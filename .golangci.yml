@@ -44,6 +44,7 @@ linters:
     - gocyclo
     - dupl
     - gofumpt
+    - nolintlint
 linters-settings:
   gofumpt:
     lang-version: "1.17"
@@ -73,6 +74,11 @@ linters-settings:
     checks:
       - "all"
       - "-S1002"
+  staticcheck:
+    go: "1.17"
+    checks:
+      - "all"
+      - "-SA1019"
   goimports:
     local-prefixes: github.com/odpf/optimus
   gci:

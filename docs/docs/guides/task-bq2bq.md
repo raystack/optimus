@@ -40,6 +40,8 @@ task:
     PROJECT: example
     SQL_TYPE: STANDARD
     TABLE: hello_table
+    TASK_BQ2BQ: "{{.secret.TASK_BQ2BQ}}"
+    GOOGLE_APPLICATION_CREDENTIALS: "/tmp/auth.json"
   window:
     size: 24h
     offset: "0"

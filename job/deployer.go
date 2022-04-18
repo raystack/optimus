@@ -2,12 +2,12 @@ package job
 
 import (
 	"context"
-	"github.com/odpf/optimus/service"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
 
@@ -49,7 +49,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 		return err
 	}
 
-	// Compile & Deploy -> we want to know which is failed & why
+	// Compile & Deploy
 	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
 	for namespaceName, jobs := range jobSpecGroup {
 		deployNamespaceDetail, err := d.deployPerNamespace(ctx, jobDeployment.Project.Name, namespaceName, jobs)

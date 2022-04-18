@@ -24,7 +24,7 @@ func (sv *ProjectServiceServer) RegisterProject(ctx context.Context, req *pb.Reg
 	}
 
 	responseMsg := "project saved successfully."
-	if req.Namespace != nil { //nolint:staticcheck
+	if req.Namespace != nil { // nolint:staticcheck
 		responseMsg += " ignoring to save namespace (deprecated). please use register namespace rpc."
 	}
 	return &pb.RegisterProjectResponse{
@@ -46,6 +46,16 @@ func (sv *ProjectServiceServer) ListProjects(ctx context.Context, _ *pb.ListProj
 
 	return &pb.ListProjectsResponse{
 		Projects: projSpecsProto,
+	}, nil
+}
+
+func (sv *ProjectServiceServer) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
+	projectSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
+	}
+	return &pb.GetProjectResponse{
+		Project: sv.adapter.ToProjectProto(projectSpec),
 	}, nil
 }
 

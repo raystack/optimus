@@ -16,6 +16,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -111,6 +112,20 @@ func TestJobRunServiceServer(t *testing.T) {
 			Status:      models.RunStateAccepted,
 			ScheduledAt: scheduledAt,
 		}
+		secrets := []models.ProjectSecretItem{
+			{
+				ID:    uuid.New(),
+				Name:  "table_name",
+				Value: "secret_table",
+				Type:  models.SecretTypeUserDefined,
+			},
+			{
+				ID:    uuid.New(),
+				Name:  "bucket",
+				Value: "gs://some_secret_bucket",
+				Type:  models.SecretTypeUserDefined,
+			},
+		}
 		t.Run("should register a new job instance with run for scheduled triggers", func(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
@@ -120,13 +135,17 @@ func TestJobRunServiceServer(t *testing.T) {
 			jobService.On("GetByNameForProject", ctx, jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
+			secretService := new(mock.SecretService)
+			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+			defer secretService.AssertExpectations(t)
+
 			jobRunService := new(mock.JobRunService)
 			jobRunService.On("GetScheduledRun", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRun, nil)
 			jobRunService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
 			defer jobRunService.AssertExpectations(t)
 
 			jobRunInputCompiler := new(mock.JobInputCompiler)
-			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -142,21 +161,21 @@ func TestJobRunServiceServer(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				jobService,
-				projectService, nil,
+				projectService, nil, secretService,
 				v1.NewAdapter(nil, nil),
 				jobRunService,
 				jobRunInputCompiler,
 				nil,
 			)
 
-			versionRequest := pb.RegisterInstanceRequest{
+			registerInstanceRequest := pb.RegisterInstanceRequest{
 				ProjectName:  projectName,
 				JobName:      jobName,
 				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
 				ScheduledAt:  scheduledAtTimestamp,
 				InstanceName: instanceSpec.Name,
 			}
-			resp, err := JobRunServiceServer.RegisterInstance(ctx, &versionRequest)
+			resp, err := JobRunServiceServer.RegisterInstance(ctx, &registerInstanceRequest)
 			assert.Nil(t, err)
 
 			adapter := v1.NewAdapter(nil, nil)
@@ -191,8 +210,12 @@ func TestJobRunServiceServer(t *testing.T) {
 			instanceService.On("Register", ctx, namespaceSpec, jobRun, instanceSpec.Type, instanceSpec.Name).Return(instanceSpec, nil)
 			defer instanceService.AssertExpectations(t)
 
+			secretService := new(mock.SecretService)
+			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+			defer secretService.AssertExpectations(t)
+
 			jobRunInputCompiler := new(mock.JobInputCompiler)
-			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, jobRun, instanceSpec).Return(
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobRun, instanceSpec).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -210,6 +233,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				projectService,
 				nil,
+				secretService,
 				v1.NewAdapter(nil, nil),
 				instanceService,
 				jobRunInputCompiler,
@@ -327,7 +351,9 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				jobService,
 				nil,
-				nsService, adapter,
+				nsService,
+				nil,
+				adapter,
 				nil,
 				nil,
 				nil,
@@ -416,13 +442,17 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobSpecs[0].Name, namespaceSpec).Return(jobSpecs[0], nil)
+			jobService.On("GetTaskDependencies", ctx, namespaceSpec, jobSpecs[0]).Return(models.JobSpecTaskDestination{},
+				models.JobSpecTaskDependencies([]string{}), service.ErrDependencyModNotFound)
 			defer jobService.AssertExpectations(t)
 
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				jobService,
 				nil,
-				namespaceService, adapter,
+				namespaceService,
+				nil,
+				adapter,
 				nil,
 				nil,
 				nil,
@@ -485,7 +515,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil,
+				jobService, projectService, nil, nil,
 				adapter,
 				nil,
 				nil,
@@ -519,7 +549,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		t.Run("should return the correct window date range", func(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
-				nil, nil, nil,
+				nil, nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -545,7 +575,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				nil, nil,
-				nil, nil,
+				nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -611,7 +641,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, adapter,
+				jobService, projectService, nil, nil, adapter,
 				instsvc,
 				nil,
 				nil,
@@ -653,7 +683,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				nil, projectService, nil, nil,
+				nil, projectService, nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -689,7 +719,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil,
+				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -734,7 +764,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, adapter,
+				jobService, projectService, nil, nil, adapter,
 				nil,
 				nil,
 				nil,
@@ -777,7 +807,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, adapter,
+				jobService, projectService, nil, nil, adapter,
 				nil,
 				nil,
 				nil,
@@ -832,7 +862,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, adapter,
+				jobService, projectService, nil, nil, adapter,
 				instsvc,
 				nil,
 				nil,
@@ -887,7 +917,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, adapter,
+				jobService, projectService, nil, nil, adapter,
 				instsvc,
 				nil,
 				nil,
@@ -950,7 +980,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, adapter,
+				jobService, projectService, nil, nil, adapter,
 				instsvc,
 				nil,
 				nil,

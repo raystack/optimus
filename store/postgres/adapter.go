@@ -124,17 +124,6 @@ func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	}, nil
 }
 
-// JobResource represents the resource management configuration
-type JobResource struct {
-	Request JobResourceConfig `json:"request,omitempty"`
-	Limit   JobResourceConfig `json:"limit,omitempty"`
-}
-
-type JobResourceConfig struct {
-	Memory string `json:"memory,omitempty"`
-	CPU    string `json:"cpu,omitempty"`
-}
-
 type JobSpecAdapter struct {
 	pluginRepo models.PluginRepository
 }
@@ -355,7 +344,7 @@ func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
 	var jobDestination string
-	if spec.Task.Unit.DependencyMod != nil {
+	if spec.Task.Unit.DependencyMod != nil { // TODO: this should move to plugin service if required
 		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),

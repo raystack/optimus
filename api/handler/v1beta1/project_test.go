@@ -81,4 +81,45 @@ func TestProjectOnServer(t *testing.T) {
 			}, resp)
 		})
 	})
+
+	t.Run("GetProject", func(t *testing.T) {
+		adapter := v1.NewAdapter(nil, nil)
+		projectName := "a-data-project"
+
+		t.Run("should return nil and error if there's error when getting project", func(t *testing.T) {
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(models.ProjectSpec{}, errors.New("random error"))
+			projectServiceServer := v1.NewProjectServiceServer(
+				log,
+				adapter,
+				projectService,
+			)
+
+			projectRequest := pb.GetProjectRequest{
+				ProjectName: projectName,
+			}
+			actualResponse, actualErr := projectServiceServer.GetProject(ctx, &projectRequest)
+
+			assert.Nil(t, actualResponse)
+			assert.Error(t, actualErr)
+		})
+
+		t.Run("should return value and nil if no error is encountered", func(t *testing.T) {
+			projectService := new(mock.ProjectService)
+			projectService.On("Get", ctx, projectName).Return(models.ProjectSpec{}, nil)
+			projectServiceServer := v1.NewProjectServiceServer(
+				log,
+				adapter,
+				projectService,
+			)
+
+			projectRequest := pb.GetProjectRequest{
+				ProjectName: projectName,
+			}
+			actualResponse, actualErr := projectServiceServer.GetProject(ctx, &projectRequest)
+
+			assert.NotNil(t, actualResponse)
+			assert.NoError(t, actualErr)
+		})
+	})
 }
