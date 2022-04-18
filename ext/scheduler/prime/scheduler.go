@@ -55,6 +55,25 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return nil
 }
 
+func (s *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+	var jobRuns []models.JobRun
+	for _, j := range jobs {
+		jobRuns = append(jobRuns, models.JobRun{
+			Spec:        j,
+			Trigger:     models.TriggerManual,
+			ScheduledAt: s.Now(),
+		})
+	}
+
+	repo := s.jobRunRepoFac.New()
+	for _, runs := range jobRuns {
+		if err := repo.Save(ctx, namespace, runs); err != nil {
+			return models.JobDeploymentDetail{}, err
+		}
+	}
+	return models.JobDeploymentDetail{}, nil
+}
+
 func (s *Scheduler) DeleteJobs(context.Context, models.NamespaceSpec, []string, progress.Observer) error {
 	return nil
 }

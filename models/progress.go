@@ -86,6 +86,10 @@ type (
 	ProgressJobDeploymentRequestCreated struct {
 		DeployID DeploymentID
 	}
+
+	ProgressJobDeploymentWorkersBusy struct{}
+
+	ProgressJobDeploymentInProgress struct{}
 )
 
 func (e *ProgressJobSpecFetch) String() string {

@@ -56,12 +56,12 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	Persist(ctx context.Context, jobSpec models.JobSpec) error
 
-	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) ([]models.JobSpec, error)
+	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error)
 	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
 }
 
 type Deployer interface {
-	Deploy(context.Context, models.DeployRequest) error
+	Deploy(context.Context, models.JobDeployment) error
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level

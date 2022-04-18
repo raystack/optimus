@@ -384,8 +384,8 @@
     "v1beta1GetDeployJobsStatusResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
+        "status": {
+          "type": "string"
         },
         "failures": {
           "type": "array",

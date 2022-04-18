@@ -31,6 +31,7 @@ type Replay struct {
 type Deployer struct {
 	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
 	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"300m"`
+	QueueCapacity int           `mapstructure:"queue_capacity" default:"10"`
 }
 
 type DBConfig struct {

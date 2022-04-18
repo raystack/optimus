@@ -2,55 +2,91 @@ package job
 
 import (
 	"context"
+	"github.com/odpf/optimus/service"
+	"time"
+
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type deployer struct {
 	dependencyResolver DependencyResolver
 	priorityResolver   PriorityResolver
+	namespaceService   service.NamespaceService
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
+
+	deployRepository store.JobDeploymentRepository
 }
 
-func NewDeployer(dependencyResolver DependencyResolver, priorityResolver PriorityResolver, batchScheduler models.SchedulerUnit) *deployer {
-	return &deployer{dependencyResolver: dependencyResolver, priorityResolver: priorityResolver, batchScheduler: batchScheduler}
+func NewDeployer(dependencyResolver DependencyResolver, priorityResolver PriorityResolver, batchScheduler models.SchedulerUnit,
+	deployRepository store.JobDeploymentRepository, namespaceService service.NamespaceService) *deployer {
+	return &deployer{dependencyResolver: dependencyResolver, priorityResolver: priorityResolver, batchScheduler: batchScheduler,
+		deployRepository: deployRepository, namespaceService: namespaceService}
 }
 
-func (d *deployer) Deploy(ctx context.Context, deployRequest models.DeployRequest) (deployError error) {
-	var progressObserver progress.Observer
+func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) (deployError error) {
+	jobDeployment.Status = models.JobDeploymentStatusInProgress
+	if err := d.deployRepository.UpdateByID(ctx, jobDeployment); err != nil {
+		return err
+	}
+
 	// fetch job specs and enrich with its dependencies
-	jobSpecs, err := d.dependencyResolver.FetchJobSpecsWithJobDependencies(ctx, deployRequest.Project, progressObserver)
+	jobSpecs, err := d.dependencyResolver.FetchJobSpecsWithJobDependencies(ctx, jobDeployment.Project)
 	if err != nil {
 		return err
 	}
-	d.notifyProgress(progressObserver, &models.ProgressJobSpecWithDependencyFetch{})
 
 	// Get all job specs and enrich with hook dependencies
 	jobSpecs = d.enrichJobSpecWithHookDependencies(jobSpecs)
-	d.notifyProgress(progressObserver, &models.ProgressJobSpecHookDependencyEnrich{})
 
 	// Resolve priority
-	jobSpecs, err = d.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
+	jobSpecs, err = d.priorityResolver.Resolve(ctx, jobSpecs, nil)
 	if err != nil {
 		return err
 	}
 
-	// Compile & Deploy
+	// Compile & Deploy -> we want to know which is failed & why
 	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
-	for _, jobs := range jobSpecGroup {
-		if len(jobs) == 0 {
-			continue
-		}
-		if err := d.batchScheduler.DeployJobs(ctx, jobs[0].NamespaceSpec, jobs, progressObserver); err != nil {
+	for namespaceName, jobs := range jobSpecGroup {
+		deployNamespaceDetail, err := d.deployPerNamespace(ctx, jobDeployment.Project.Name, namespaceName, jobs)
+		if err != nil {
 			deployError = multierror.Append(deployError, err)
 		}
+		if len(deployNamespaceDetail.Failures) > 0 {
+			jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
+		}
+		jobDeployment.Details.TotalSuccess += deployNamespaceDetail.TotalSuccess
+	}
+
+	time.Sleep(time.Second * 15)
+
+	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
+		return err
 	}
 
 	return deployError
+}
+
+func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment) error {
+	if len(jobDeployment.Details.Failures) > 0 {
+		jobDeployment.Status = models.JobDeploymentStatusFailed
+	} else {
+		jobDeployment.Status = models.JobDeploymentStatusSucceed
+	}
+	return d.deployRepository.UpdateByID(ctx, jobDeployment)
+}
+
+func (d *deployer) deployPerNamespace(ctx context.Context, projectName string, namespaceName string, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+	// fetch the namespace spec with secrets
+	namespaceSpec, err := d.namespaceService.Get(ctx, projectName, namespaceName)
+	if err != nil {
+		return models.JobDeploymentDetail{}, err
+	}
+	return d.batchScheduler.DeployJobsVerbose(ctx, namespaceSpec, jobs)
 }
 
 func (d *deployer) enrichJobSpecWithHookDependencies(jobSpecs []models.JobSpec) []models.JobSpec {
@@ -63,11 +99,4 @@ func (d *deployer) enrichJobSpecWithHookDependencies(jobSpecs []models.JobSpec) 
 		enrichedJobSpecs = append(enrichedJobSpecs, jobSpec)
 	}
 	return enrichedJobSpecs
-}
-
-func (d *deployer) notifyProgress(observer progress.Observer, e progress.Event) {
-	if observer == nil {
-		return
-	}
-	observer.Notify(e)
 }

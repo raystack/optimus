@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
-	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/odpf/salt/log"
+
+	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/utils"
 )
 
 type DeployManager interface {
@@ -21,52 +22,71 @@ type DeployManager interface {
 }
 
 type deployManager struct {
-	// wait group to synchronise on workers
-	wg sync.WaitGroup
-
-	// request queue, used by workers
-	requestQ chan models.DeployRequest
-
-	l log.Logger
-
+	l      log.Logger
 	config DeployManagerConfig
 
-	deployerCapacity int32
 	deployer         Deployer
-
-	uuidProvider utils.UUIDProvider
-
+	deployerCapacity int32
+	uuidProvider     utils.UUIDProvider
 	deployRepository store.JobDeploymentRepository
+
+	// wait group to synchronise on deployers
+	wg sync.WaitGroup
+
+	// request queue, used by deployers
+	requestQ chan models.JobDeployment
 }
 
 type DeployManagerConfig struct {
 	NumWorkers    int
 	WorkerTimeout time.Duration
-	//RunTimeout    time.Duration
-}
-
-type DeployerFactory interface {
-	New() Deployer
+	QueueCapacity int
 }
 
 func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
 	// Check deployment status for the requested Project
 	jobDeployment, err := m.deployRepository.GetByStatusAndProjectID(ctx, models.JobDeploymentStatusInQueue, projectSpec.ID)
-	if err != nil {
-		if !errors.Is(err, store.ErrResourceNotFound) {
-			return models.DeploymentID{}, err
-		}
-	}
-
-	// Will return with Deploy ID if it is already there in the queue
-	if jobDeployment.ID != models.DeploymentID(uuid.Nil) {
+	if err == nil {
 		return jobDeployment.ID, nil
 	}
 
-	// Insert into job_deployment table
+	// Return valid errors
+	if !errors.Is(err, store.ErrResourceNotFound) {
+		return models.DeploymentID{}, err
+	}
+
+	newDeployment, err := m.createNewRequest(ctx, projectSpec)
+	if err != nil {
+		return newDeployment.ID, err
+	}
+
+	for {
+		select {
+		case m.requestQ <- newDeployment:
+			m.l.Info(fmt.Sprintf("deployer taking request for %s", newDeployment.ID.UUID()))
+			if err := m.updateDeploymentStatus(ctx, newDeployment, models.JobDeploymentStatusInQueue); err != nil {
+				return models.DeploymentID{}, err
+			}
+			return newDeployment.ID, nil
+		default:
+			m.l.Info(fmt.Sprintf("failed to push deployment request ID %s to queue", newDeployment.ID.UUID()))
+			if err := m.updateDeploymentStatus(ctx, newDeployment, models.JobDeploymentStatusCancelled); err != nil {
+				return models.DeploymentID{}, err
+			}
+			return models.DeploymentID{}, errors.New("unable to push deployment request to queue")
+		}
+	}
+}
+
+func (m *deployManager) updateDeploymentStatus(ctx context.Context, jobDeployment models.JobDeployment, status models.JobDeploymentStatus) error {
+	jobDeployment.Status = status
+	return m.deployRepository.UpdateByID(ctx, jobDeployment)
+}
+
+func (m *deployManager) createNewRequest(ctx context.Context, projectSpec models.ProjectSpec) (models.JobDeployment, error) {
 	newDeploymentID, err := m.uuidProvider.NewUUID()
 	if err != nil {
-		return models.DeploymentID{}, err
+		return models.JobDeployment{}, err
 	}
 
 	newDeployment := models.JobDeployment{
@@ -75,31 +95,11 @@ func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSp
 		Status:  models.JobDeploymentStatusCreated,
 		Details: models.JobDeploymentDetail{},
 	}
-	if err = m.deployRepository.Save(ctx, newDeployment); err != nil {
-		return models.DeploymentID{}, err
-	}
 
-	// Push to deployer using Deploy ID, let it run asynchronously
-	deployRequest := models.DeployRequest{
-		ID:      newDeploymentID,
-		Project: projectSpec,
+	if err := m.deployRepository.Save(ctx, newDeployment); err != nil {
+		return models.JobDeployment{}, err
 	}
-
-	select {
-	case m.requestQ <- deployRequest:
-		fmt.Println("pushed to deployer")
-		newDeployment.Status = models.JobDeploymentStatusInQueue
-		if err = m.deployRepository.UpdateByID(ctx, newDeployment); err != nil {
-			return models.DeploymentID{}, err
-		}
-	default:
-		// failed to push to queue
-		// can be because of limit of workers
-		fmt.Println("failed to push to queue")
-	}
-
-	// Return with the new Deploy ID
-	return newDeployment.ID, nil
+	return newDeployment, nil
 }
 
 func (m *deployManager) GetStatus(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
@@ -126,12 +126,13 @@ func (m *deployManager) Init() {
 func (m *deployManager) spawnDeployer(deployer Deployer) {
 	defer m.wg.Done()
 	atomic.AddInt32(&m.deployerCapacity, 1)
-	for reqInput := range m.requestQ {
+
+	for deployRequest := range m.requestQ {
 		atomic.AddInt32(&m.deployerCapacity, -1)
 
-		m.l.Info("deployer picked up the request", "request id", reqInput.ID)
+		m.l.Info("deployer picked up the request", "request id", deployRequest)
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
-		if err := deployer.Deploy(ctx, reqInput); err != nil {
+		if err := deployer.Deploy(ctx, deployRequest); err != nil {
 			m.l.Error("deployment worker failed to process", "error", err)
 		}
 		cancelCtx()
@@ -156,7 +157,7 @@ func (m *deployManager) Close() error { // nolint: unparam
 func NewDeployManager(l log.Logger, config DeployManagerConfig, deployer Deployer, uuidProvider utils.UUIDProvider,
 	deployRepository store.JobDeploymentRepository) *deployManager {
 	mgr := &deployManager{
-		requestQ:         make(chan models.DeployRequest),
+		requestQ:         make(chan models.JobDeployment, config.QueueCapacity),
 		l:                l,
 		config:           config,
 		deployerCapacity: 0,

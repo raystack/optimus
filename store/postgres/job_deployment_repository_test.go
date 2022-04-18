@@ -48,13 +48,13 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 
 		jobDeployments := []models.JobDeployment{
 			{
-				ID:      uuid.New(),
+				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec1,
 				Status:  models.JobDeploymentStatusInProgress,
 				Details: models.JobDeploymentDetail{},
 			},
 			{
-				ID:      uuid.New(),
+				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec2,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
@@ -76,22 +76,23 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		storedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)
+		assert.Nil(t, err)
 		storedDeployment2, err := repo.GetByID(ctx, jobDeployments[1].ID)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobDeployments[0].ID, jobDeployments[1].ID}, []uuid.UUID{storedDeployment1.ID, storedDeployment2.ID})
+		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[1].ID}, []models.DeploymentID{storedDeployment1.ID, storedDeployment2.ID})
 	})
 	t.Run("UpdateByID", func(t *testing.T) {
 		db := DBSetup()
 
 		jobDeployments := []models.JobDeployment{
 			{
-				ID:      uuid.New(),
+				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec1,
 				Status:  models.JobDeploymentStatusInProgress,
 				Details: models.JobDeploymentDetail{},
 			},
 			{
-				ID:      uuid.New(),
+				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec2,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
@@ -113,9 +114,10 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		storedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)
+		assert.Nil(t, err)
 		storedDeployment2, err := repo.GetByID(ctx, jobDeployments[1].ID)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobDeployments[0].ID, jobDeployments[1].ID}, []uuid.UUID{storedDeployment1.ID, storedDeployment2.ID})
+		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[1].ID}, []models.DeploymentID{storedDeployment1.ID, storedDeployment2.ID})
 
 		jobDeployments[0].Status = models.JobDeploymentStatusSucceed
 
@@ -123,6 +125,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		modifiedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)
+		assert.Nil(t, err)
 		unmodifiedDeployment2, err := repo.GetByID(ctx, jobDeployments[1].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, []models.JobDeploymentStatus{jobDeployments[0].Status, jobDeployments[1].Status}, []models.JobDeploymentStatus{modifiedDeployment1.Status, unmodifiedDeployment2.Status})
@@ -132,13 +135,13 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 
 		jobDeployments := []models.JobDeployment{
 			{
-				ID:      uuid.New(),
+				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec1,
 				Status:  models.JobDeploymentStatusInProgress,
 				Details: models.JobDeploymentDetail{},
 			},
 			{
-				ID:      uuid.New(),
+				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec2,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
@@ -160,8 +163,9 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		storedDeployment1, err := repo.GetByStatusAndProjectID(ctx, jobDeployments[0].Status, jobDeployments[0].Project.ID)
+		assert.Nil(t, err)
 		storedDeployment2, err := repo.GetByStatusAndProjectID(ctx, jobDeployments[1].Status, jobDeployments[1].Project.ID)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobDeployments[0].ID, jobDeployments[1].ID}, []uuid.UUID{storedDeployment1.ID, storedDeployment2.ID})
+		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[1].ID}, []models.DeploymentID{storedDeployment1.ID, storedDeployment2.ID})
 	})
 }

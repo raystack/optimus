@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/odpf/optimus/store"
-	"gorm.io/datatypes"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type JobDeployment struct {
@@ -85,7 +85,7 @@ func (repo *jobDeploymentRepository) UpdateByID(ctx context.Context, deploymentS
 
 func (repo *jobDeploymentRepository) GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
 	var jobDeployment JobDeployment
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("job_deployment.id = ?", deployID).First(&jobDeployment).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("job_deployment.id = ?", deployID.UUID()).First(&jobDeployment).Error; err != nil {
 		return models.JobDeployment{}, err
 	}
 	return jobDeployment.ToSpec()

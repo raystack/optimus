@@ -88,10 +88,10 @@ func (js JobSpec) GetProjectSpec() ProjectSpec {
 
 type JobSpecs []JobSpec
 
-func (js JobSpecs) GroupJobsPerNamespace() map[uuid.UUID][]JobSpec {
-	jobsGroup := make(map[uuid.UUID][]JobSpec)
+func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
+	jobsGroup := make(map[string][]JobSpec)
 	for _, jobSpec := range js {
-		jobsGroup[jobSpec.NamespaceSpec.ID] = append(jobsGroup[jobSpec.NamespaceSpec.ID], jobSpec)
+		jobsGroup[jobSpec.NamespaceSpec.Name] = append(jobsGroup[jobSpec.NamespaceSpec.Name], jobSpec)
 	}
 	return jobsGroup
 }
@@ -457,11 +457,6 @@ func (j JobIDDependenciesPairs) GetExternalProjectAndDependenciesMap() map[Proje
 	return interDependenciesMap
 }
 
-type DeployRequest struct {
-	ID      uuid.UUID
-	Project ProjectSpec
-}
-
 type JobDeploymentStatus string
 
 func (j JobDeploymentStatus) String() string {
@@ -470,6 +465,7 @@ func (j JobDeploymentStatus) String() string {
 
 const (
 	JobDeploymentStatusCreated    JobDeploymentStatus = "Created"
+	JobDeploymentStatusCancelled  JobDeploymentStatus = "Cancelled"
 	JobDeploymentStatusInQueue    JobDeploymentStatus = "In Queue"
 	JobDeploymentStatusInProgress JobDeploymentStatus = "In Progress"
 	JobDeploymentStatusSucceed    JobDeploymentStatus = "Succeed"
@@ -490,7 +486,8 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	Failures []JobDeploymentFailure
+	TotalSuccess int
+	Failures     []JobDeploymentFailure
 }
 
 type JobDeploymentFailure struct {

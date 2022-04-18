@@ -26,6 +26,7 @@ type SchedulerUnit interface {
 	VerifyJob(ctx context.Context, namespace NamespaceSpec, job JobSpec) error
 	ListJobs(ctx context.Context, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
 	DeployJobs(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec, obs progress.Observer) error
+	DeployJobsVerbose(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec) (JobDeploymentDetail, error)
 	DeleteJobs(ctx context.Context, namespace NamespaceSpec, jobNames []string, obs progress.Observer) error
 
 	// Bootstrap will be executed per project when the application boots up

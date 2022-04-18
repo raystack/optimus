@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -313,23 +313,29 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 		return nil, err
 	}
 
-	jobDeployment, err := sv.jobSvc.GetDeployment(ctx, deployID)
+	jobDeployment, err := sv.jobSvc.GetDeployment(ctx, models.DeploymentID(deployID))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get job deployment: \n%s", err.Error())
 	}
 
 	switch jobDeployment.Status {
 	case models.JobDeploymentStatusSucceed:
+		var deployJobFailures []*pb.DeployJobFailure
+		for _, failure := range jobDeployment.Details.Failures {
+			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
+		}
+
 		return &pb.GetDeployJobsStatusResponse{
-			Success: true,
+			Status:       jobDeployment.Status.String(),
+			TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
+			TotalFailed:  int32(len(deployJobFailures)),
+			Failures:     deployJobFailures,
 		}, nil
-	case models.JobDeploymentStatusInProgress, models.JobDeploymentStatusInQueue, models.JobDeploymentStatusCreated:
+	default:
 		return &pb.GetDeployJobsStatusResponse{
-			Success: false,
+			Status: jobDeployment.Status.String(),
 		}, nil
 	}
-
-	return models.JobDeployment{}, nil
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,

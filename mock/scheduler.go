@@ -30,6 +30,11 @@ func (ms *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceS
 	return args.Error(0)
 }
 
+func (ms *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+	args := ms.Called(ctx, namespace, jobs)
+	return args.Get(0).(models.JobDeploymentDetail), args.Error(1)
+}
+
 func (ms *Scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, obs progress.Observer) error {
 	args := ms.Called(ctx, namespace, jobNames, obs)
 	return args.Error(0)

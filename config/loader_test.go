@@ -259,6 +259,7 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Serve.Replay.RunTimeout = 10 * time.Second
 	s.expectedServerConfig.Serve.Deployer.NumWorkers = 1
 	s.expectedServerConfig.Serve.Deployer.WorkerTimeout = 100 * time.Second
+	s.expectedServerConfig.Serve.Deployer.QueueCapacity = 10
 	s.expectedServerConfig.Serve.DB = config.DBConfig{}
 	s.expectedServerConfig.Serve.DB.DSN = "postgres://user:password@localhost:5432/database?sslmode=disable"
 	s.expectedServerConfig.Serve.DB.MaxIdleConnection = 5

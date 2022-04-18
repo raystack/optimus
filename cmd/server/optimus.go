@@ -276,12 +276,13 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
-	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler)
+	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
 	deployManagerConfig := job.DeployManagerConfig{
 		NumWorkers:    s.conf.Serve.Deployer.NumWorkers,
 		WorkerTimeout: s.conf.Serve.Deployer.WorkerTimeout,
+		QueueCapacity: s.conf.Serve.Deployer.QueueCapacity,
 	}
-	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
+	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
 	deployManager := job.NewDeployManager(s.logger, deployManagerConfig, deployer, utils.NewUUIDProvider(), jobDeploymentRepository)
 
 	engine := jobRunCompiler.NewGoEngine()

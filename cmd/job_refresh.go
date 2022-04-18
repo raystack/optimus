@@ -18,6 +18,8 @@ import (
 
 const (
 	refreshTimeout = time.Minute * 15
+	deployTimeout  = time.Hour * 3
+	pollInterval   = time.Second * 10
 )
 
 func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
@@ -52,9 +54,30 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 		l.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
 		start := time.Now()
 
-		if err := refreshJobSpecificationRequest(l, projectName, namespaces, jobs, conf.Host, verbose); err != nil {
+		deployID, err := refreshJobSpecificationRequest(l, projectName, namespaces, jobs, conf.Host, verbose)
+		if err != nil {
 			return err
 		}
+
+		for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
+			isFinished, err := pollJobDeployment(l, deployID, conf.Host)
+			if err != nil {
+				return err
+			}
+
+			if isFinished {
+				return nil
+			}
+
+			time.Sleep(pollInterval)
+
+			select {
+			case <-timeout:
+				keepPolling = false
+			default:
+			}
+		}
+
 		l.Info(coloredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
@@ -62,7 +85,7 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 }
 
 func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces, jobs []string, host string, verbose bool,
-) (err error) {
+) (deployID string, err error) {
 	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
 	defer dialCancel()
 
@@ -71,7 +94,7 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(ErrServerNotReachable(host).Error())
 		}
-		return err
+		return "", err
 	}
 	defer conn.Close()
 
@@ -88,14 +111,11 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 		if errors.Is(err, context.DeadlineExceeded) {
 			l.Error(coloredError("Refresh process took too long, timing out"))
 		}
-		return fmt.Errorf("refresh request failed: %w", err)
+		return "", fmt.Errorf("refresh request failed: %w", err)
 	}
 
 	var refreshErrors []string
 	refreshCounter, refreshSuccessCounter, refreshFailedCounter := 0, 0, 0
-
-	var deployErrors []string
-	deployCounter, deploySuccessCounter, deployFailedCounter := 0, 0, 0
 
 	var streamError error
 	for {
@@ -109,20 +129,6 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 		}
 
 		switch resp.Type {
-		case models.ProgressTypeJobUpload:
-			deployCounter++
-			if !resp.GetSuccess() {
-				deployFailedCounter++
-				if verbose {
-					l.Warn(coloredError(fmt.Sprintf("%d. %s failed to be deployed: %s", deployCounter, resp.GetJobName(), resp.GetValue())))
-				}
-				deployErrors = append(deployErrors, fmt.Sprintf("failed to deploy: %s, %s", resp.GetJobName(), resp.GetValue()))
-			} else {
-				deploySuccessCounter++
-				if verbose {
-					l.Info(fmt.Sprintf("%d. %s successfully deployed", deployCounter, resp.GetJobName()))
-				}
-			}
 		case models.ProgressTypeJobDependencyResolution:
 			refreshCounter++
 			if !resp.GetSuccess() {
@@ -139,11 +145,11 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 			}
 		case models.ProgressTypeJobDeploymentRequestCreated:
 			if !resp.GetSuccess() {
-				l.Warn(coloredError(fmt.Sprintf("unable to request job deployment")))
+				l.Warn(coloredError("unable to request job deployment"))
 			} else {
 				l.Info(fmt.Sprintf("Deployment request created with ID: %s", resp.GetValue()))
 			}
-			return nil
+			return resp.Value, nil
 		default:
 			if verbose {
 				// ordinary progress event
@@ -161,14 +167,57 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 		l.Info(coloredSuccess("Refreshed %d jobs.", refreshSuccessCounter))
 	}
 
-	if len(deployErrors) > 0 {
-		l.Error(coloredError("Deployed %d/%d jobs.", deploySuccessCounter, deploySuccessCounter+deployFailedCounter))
-		for _, reqErr := range deployErrors {
-			l.Error(coloredError(reqErr))
+	return "", streamError
+}
+
+func pollJobDeployment(l log.Logger, deployID string, host string) (isFinished bool, err error) {
+	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	defer dialCancel()
+
+	var conn *grpc.ClientConn
+	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(ErrServerNotReachable(host).Error())
 		}
-	} else {
-		l.Info(coloredSuccess("Deployed %d jobs.", deploySuccessCounter))
+		return false, err
+	}
+	defer conn.Close()
+
+	refreshTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), refreshTimeout)
+	defer deployCancel()
+
+	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
+	resp, err := jobSpecService.GetDeployJobsStatus(refreshTimeoutCtx, &pb.GetDeployJobsStatusRequest{
+		DeployId: deployID,
+	})
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			l.Error(coloredError("Get deployment process took too long, timing out"))
+		}
+		return false, fmt.Errorf("getting deployment status failed: %w", err)
 	}
 
-	return streamError
+	switch resp.Status {
+	case models.JobDeploymentStatusInProgress.String():
+		l.Info("Deployment is in progress...")
+		return false, nil
+	case models.JobDeploymentStatusInQueue.String():
+		l.Info("Deployer is busy. Deployment request is still in queue...")
+		return false, nil
+	case models.JobDeploymentStatusCancelled.String():
+		l.Error("Deployment request is cancelled. Deployer queue might be full.")
+		return false, nil
+	}
+
+	if len(resp.Failures) > 0 {
+		l.Error(coloredError("Unable to deploy below jobs:"))
+		for i, failedJob := range resp.Failures {
+			l.Error(coloredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+		}
+	} else {
+		l.Info(coloredSuccess("All jobs deployed successfully."))
+	}
+	l.Info(coloredSuccess("Deployed %d jobs", resp.TotalSucceed))
+
+	return true, nil
 }

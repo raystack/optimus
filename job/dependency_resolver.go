@@ -76,20 +76,18 @@ func (r *dependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec
 	return nil
 }
 
-func (r *dependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) ([]models.JobSpec, error) {
+func (r *dependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error) {
 	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
 	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	r.notifyProgress(observer, &models.ProgressJobSpecFetch{})
 
 	// fetch all dependencies
 	dependencies, err := r.dependencyRepo.GetAll(ctx, projectSpec.ID)
 	if err != nil {
 		return nil, err
 	}
-	r.notifyProgress(observer, &models.ProgressJobDependencyFetch{})
 
 	// fetch inter project dependencies job specs
 	externalJobSpecs, err := r.getExternalProjectJobSpecs(ctx, dependencies)
