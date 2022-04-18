@@ -57,30 +57,38 @@ func deployCommand() *cli.Command {
 		}
 		l := initClientLogger(clientConfig.Log)
 
-		l.Info("Initializing client plugins")
+		l.Info(coloredNotice("Initializing client plugins"))
 		cleanupPlugin, err := initializeClientPlugins(clientConfig.Log.Level)
 		if err != nil {
 			return err
 		}
 		defer cleanupPlugin()
+		l.Info("initialization finished!\n")
 
-		l.Info(fmt.Sprintf("Registering project [%s] to [%s]", clientConfig.Project.Name, clientConfig.Host))
+		l.Info(coloredNotice(fmt.Sprintf("Registering project [%s] to [%s]", clientConfig.Project.Name, clientConfig.Host)))
 		if err := registerProject(l, clientConfig.Host, clientConfig.Project); err != nil {
 			return err
 		}
+		l.Info("project registration finished!\n")
 
-		l.Info("Validating namespaces")
+		l.Info(coloredNotice("Validating namespaces"))
 		selectedNamespaces, err := clientConfig.GetSelectedNamespaces(selectedNamespaceNames...)
 		if err != nil {
 			return err
 		}
-		l.Info(fmt.Sprintf("Registering namespaces for [%s] to [%s]", clientConfig.Project.Name, clientConfig.Host))
+		if len(selectedNamespaces) == 0 {
+			selectedNamespaces = clientConfig.Namespaces
+		}
+		l.Info("validation finished!\n")
+
+		l.Info(coloredNotice(fmt.Sprintf("Registering namespaces for [%s] to [%s]", clientConfig.Project.Name, clientConfig.Host)))
 		if err := registerSelectedNamespaces(l, clientConfig.Host, clientConfig.Project.Name, selectedNamespaces...); err != nil {
 			return err
 		}
+		l.Info("namespace registration finished!\n")
 
 		if ignoreJobs && ignoreResources {
-			l.Info("No jobs and resources to be deployed")
+			l.Info(coloredNotice("No jobs and resources to be deployed"))
 			return nil
 		}
 		return postDeploymentRequest(l, clientConfig, selectedNamespaces, ignoreJobs, ignoreResources, verbose)
@@ -102,6 +110,7 @@ func postDeploymentRequest(
 	defer closeConn()
 
 	if !ignoreResources {
+		l.Info(coloredNotice("> Deploying all resources"))
 		resourceServiceClient := pb.NewResourceServiceClient(conn)
 		if err := deployAllResources(ctx,
 			resourceServiceClient, l, clientConfig,
@@ -110,11 +119,13 @@ func postDeploymentRequest(
 		); err != nil {
 			return err
 		}
+		l.Info("> resource deployment finished!\n")
 	} else {
 		l.Info("> Skipping resource deployment")
 	}
 
 	if !ignoreJobDeployment {
+		l.Info(coloredNotice("> Deploying all jobs"))
 		jobServiceClient := pb.NewJobSpecificationServiceClient(conn)
 		if err := deployAllJobs(ctx,
 			jobServiceClient, l, clientConfig,
@@ -123,6 +134,7 @@ func postDeploymentRequest(
 		); err != nil {
 			return err
 		}
+		l.Info("> job deployment finished!\n")
 	} else {
 		l.Info("> Skipping job deployment")
 	}
@@ -151,7 +163,7 @@ func deployAllJobs(ctx context.Context,
 			progressFn,
 		); err != nil {
 			if errors.Is(err, models.ErrNoJobs) {
-				l.Info("no job specifications are found for namespace [%s]", namespace.Name)
+				l.Info(fmt.Sprintf("no job specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespace.Name, err)
@@ -176,6 +188,8 @@ func getJobDeploymentResponse(
 	l.Info("> Receiving responses:")
 	var counter int
 	spinner := NewProgressBar()
+	defer spinner.Stop()
+
 	if !verbose {
 		spinner.StartProgress(totalSpecsCount, "please wait")
 	}
@@ -202,7 +216,6 @@ func getJobDeploymentResponse(
 			}
 		}
 	}
-	spinner.Stop()
 	return nil
 }
 
@@ -308,6 +321,8 @@ func getResourceDeploymentResponse(
 	l.Info("> Receiving responses:")
 	var counter int
 	spinner := NewProgressBar()
+	defer spinner.Stop()
+
 	if !verbose {
 		spinner.StartProgress(totalSpecsCount, "please wait")
 	}
@@ -334,7 +349,6 @@ func getResourceDeploymentResponse(
 			}
 		}
 	}
-	spinner.Stop()
 	return nil
 }
 
@@ -349,7 +363,7 @@ func sendNamespaceResourceDeploymentRequest(
 		request, err := getResourceDeploymentRequest(ctx, projectName, namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
-				l.Info("no resource specifications are found for namespace [%s]", namespace.Name)
+				l.Info(fmt.Sprintf("no resource specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
