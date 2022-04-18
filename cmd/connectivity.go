@@ -80,15 +80,8 @@ func initClientConnection(l log.Logger, serverHost string, requestTimeout time.D
 	closeConnection func(),
 	err error,
 ) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-
-	connection, err = createConnection(dialTimeoutCtx, serverHost)
+	connection, err = createConnection(serverHost)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(serverHost).Error())
-			err = ErrServerNotReachable(serverHost)
-		}
-		dialCancel()
 		return
 	}
 	reqCtx, reqCancel := context.WithTimeout(context.Background(), requestTimeout)
@@ -99,12 +92,11 @@ func initClientConnection(l log.Logger, serverHost string, requestTimeout time.D
 
 		connection.Close()
 		reqCancel()
-		dialCancel()
 	}
 	return
 }
 
-func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
+func createConnection(host string) (*grpc.ClientConn, error) {
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(GRPCMaxRetry),
@@ -139,5 +131,12 @@ func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error
 			Token: token,
 		}))
 	}
-	return grpc.DialContext(ctx, host, opts...)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
+	conn, err := grpc.DialContext(ctx, host, opts...)
+	if errors.Is(err, context.DeadlineExceeded) {
+		err = ErrServerNotReachable(host)
+	}
+	dialCancel()
+	return conn, err
 }
