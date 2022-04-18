@@ -247,7 +247,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
-			defer depMod1.AssertExpectations(t)
 
 			for idx, jobConfig := range jobConfigs {
 				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
@@ -258,12 +257,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
-
-			unitData := models.GenerateDestinationRequest{
-				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
-			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 			err := namespaceRepo.Insert(ctx, namespaceSpec)
@@ -308,7 +301,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
-			defer depMod1.AssertExpectations(t)
 			for idx, jobConfig := range jobConfigs {
 				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
@@ -318,12 +310,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
-
-			unitData := models.GenerateDestinationRequest{
-				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
-			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
 			err := namespaceRepo.Insert(ctx, namespaceSpec)
@@ -365,7 +351,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
-			defer depMod1.AssertExpectations(t)
+
 			for idx, jobConfig := range jobConfigs {
 				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
@@ -375,12 +361,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
-
-			unitData := models.GenerateDestinationRequest{
-				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
-			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
 			err := projectRepo.Insert(ctx, projectSpec)
@@ -428,7 +408,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
-			defer depMod1.AssertExpectations(t)
 			for idx, jobConfig := range jobConfigs {
 				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
@@ -438,12 +417,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
-
-			unitData := models.GenerateDestinationRequest{
-				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
-			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
 			err := projectRepo.Insert(ctx, projectSpec)
@@ -487,7 +460,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
-			defer depMod1.AssertExpectations(t)
 			for idx, jobConfig := range jobConfigs {
 				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
@@ -496,12 +468,6 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			pluginRepo := new(mock.SupportedPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 			adapter := postgres.NewAdapter(pluginRepo)
-
-			unitData := models.GenerateDestinationRequest{
-				Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
-				Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
-			}
-			depMod1.On("GenerateDestination", context.TODO(), unitData).Return(&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
 			err := projectRepo.Insert(ctx, projectSpec)
