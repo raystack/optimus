@@ -405,6 +405,7 @@ type Notifier interface {
 // JobSpecMetadata contains metadata for a job spec
 type JobSpecMetadata struct {
 	Resource JobSpecResource
+	Airflow  JobSpecAirflow
 }
 
 // JobSpecResource represents resource management configuration
@@ -417,6 +418,12 @@ type JobSpecResource struct {
 type JobSpecResourceConfig struct {
 	Memory string
 	CPU    string
+}
+
+// JobSpecAirflow represents additional configuration for airflow specific
+type JobSpecAirflow struct {
+	Pool  string
+	Queue string
 }
 
 // JobQuery  represents the query to get run status from scheduler

@@ -441,6 +441,9 @@
       "properties": {
         "resource": {
           "$ref": "#/definitions/v1beta1JobSpecMetadataResource"
+        },
+        "airflow": {
+          "$ref": "#/definitions/v1beta1JobSpecMetadataAirflow"
         }
       }
     },
@@ -455,6 +458,17 @@
           "items": {
             "$ref": "#/definitions/v1beta1JobConfigItem"
           }
+        }
+      }
+    },
+    "v1beta1JobSpecMetadataAirflow": {
+      "type": "object",
+      "properties": {
+        "pool": {
+          "type": "string"
+        },
+        "queue": {
+          "type": "string"
         }
       }
     },
