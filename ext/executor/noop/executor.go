@@ -11,21 +11,23 @@ import (
 )
 
 type Executor struct {
-	state map[string]models.JobRunState
-	mu    *sync.Mutex
+	state     map[string]models.ExecutorStatus
+	mu        *sync.Mutex
+	fakeSleep time.Duration
 }
 
 func NewExecutor() *Executor {
 	return &Executor{
-		state: map[string]models.JobRunState{},
-		mu:    new(sync.Mutex),
+		state:     map[string]models.ExecutorStatus{},
+		mu:        new(sync.Mutex),
+		fakeSleep: time.Second * 2,
 	}
 }
 
 func (e *Executor) Start(ctx context.Context, req *models.ExecutorStartRequest) (*models.ExecutorStartResponse, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.state[req.ID] = models.RunStateRunning
+	e.state[req.InstanceID] = models.ExecutorStatusRunning
 	return &models.ExecutorStartResponse{}, nil
 }
 
@@ -39,25 +41,17 @@ func (e *Executor) Stop(ctx context.Context, req *models.ExecutorStopRequest) er
 	return nil
 }
 
-func (e *Executor) WaitForFinish(ctx context.Context, id string) (chan int, error) {
+func (e *Executor) WaitForFinish(ctx context.Context, id string) (int, error) {
 	if _, ok := e.state[id]; !ok {
-		return nil, errors.New("invalid id, no such execution")
+		return 1, errors.New("invalid id, no such execution")
 	}
+	time.Sleep(e.fakeSleep)
 
-	resultChan := make(chan int)
-	go func(id string) {
-		// simulate work
-		time.Sleep(time.Second * 5)
-
-		// mark complete
-		e.mu.Lock()
-		defer e.mu.Unlock()
-		e.state[id] = models.RunStateSuccess
-
-		resultChan <- 0 // exit code 0
-		close(resultChan)
-	}(id)
-	return resultChan, nil
+	// mark complete
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.state[id] = models.ExecutorStatusSuccess
+	return 0, nil
 }
 
 func (e *Executor) Stats(ctx context.Context, id string) (*models.ExecutorStats, error) {
@@ -68,6 +62,6 @@ func (e *Executor) Stats(ctx context.Context, id string) (*models.ExecutorStats,
 	}
 
 	return &models.ExecutorStats{
-		Status: e.state[id].String(),
+		Status: e.state[id],
 	}, nil
 }

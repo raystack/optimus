@@ -95,22 +95,21 @@ type SchedulerConfig struct {
 	Name     string `mapstructure:"name" default:"airflow2"`
 	SkipInit bool   `mapstructure:"skip_init"`
 
-
 	// RaftAddr used for leader consensus and maintaining RAFT log
-	RaftAddr   string `mapstructure:"raft_addr"`
+	RaftAddr string `mapstructure:"raft_addr"`
 
 	// GossipAddr used for forming a cluster of nodes
 	GossipAddr string `mapstructure:"gossip_addr"`
 
 	// NodeID is a unique ID in a cluster, should be in `node-%d` format
-	NodeID     string `mapstructure:"node_id"`
+	NodeID string `mapstructure:"node_id"`
 
 	// DataDir is used to keep raft WAL
-	DataDir    string `mapstructure:"data_dir"`
+	DataDir string `mapstructure:"data_dir"`
 
 	// Peers are comma delimited list of nodes this local node should search for starting up.
 	// At least one is required to join a cluster. This will be empty for first node.
-	Peers      string `mapstructure:"peers"`
+	Peers string `mapstructure:"peers"`
 }
 
 type AdminConfig struct {

@@ -6,6 +6,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/briandowns/spinner v1.18.0
+	github.com/docker/docker v20.10.14+incompatible
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/emirpasic/gods v1.12.0
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3

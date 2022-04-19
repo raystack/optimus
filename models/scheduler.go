@@ -8,6 +8,18 @@ import (
 	"github.com/odpf/optimus/core/progress"
 )
 
+type ExecutorStatus string
+
+func (e ExecutorStatus) String() string {
+	return string(e)
+}
+
+const (
+	ExecutorStatusRunning ExecutorStatus = "running"
+	ExecutorStatusSuccess ExecutorStatus = "success"
+	ExecutorStatusFailed  ExecutorStatus = "failed"
+)
+
 var (
 	// BatchScheduler is a single unit initialized at the start of application
 	// based on configs. This will be used to perform schedule triggered
@@ -95,24 +107,26 @@ type ExecutorUnit interface {
 	// should not throw error for already stopped jobs or unknown jobs
 	Stop(ctx context.Context, req *ExecutorStopRequest) error
 
-	// WaitForFinish returns a channel that should return the exit code of execution
+	// WaitForFinish returns a integer that should return the exit code of execution
 	// once it finishes
-	WaitForFinish(ctx context.Context, id string) (chan int, error)
+	WaitForFinish(ctx context.Context, instanceID string) (int, error)
 
 	// Stats provides current statistics of the running/finished instance
-	Stats(ctx context.Context, id string) (*ExecutorStats, error)
+	Stats(ctx context.Context, instanceID string) (*ExecutorStats, error)
 }
 
 type ExecutorStartRequest struct {
-	// ID will be used for identifying the job in future calls
-	ID string
+	// InstanceID will be used for identifying the job in future calls
+	InstanceID string
 
-	Name      string
-	Unit      *Plugin
-	Config    JobSpecConfigs
-	Assets    JobAssets
+	JobName   string
+	JobLabels map[string]string
 	Namespace NamespaceSpec
-	Type      InstanceType
+
+	Unit   *Plugin
+	Config JobSpecConfigs
+	Assets JobAssets
+	Type   InstanceType
 }
 
 type ExecutorStopRequest struct {
@@ -124,6 +138,7 @@ type ExecutorStartResponse struct {
 }
 
 type ExecutorStats struct {
-	Logs   []byte
-	Status string
+	Logs     []byte
+	Status   ExecutorStatus
+	ExitCode int
 }

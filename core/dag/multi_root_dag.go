@@ -23,6 +23,7 @@ func (t *MultiRootDAG) GetRootNodes() []*TreeNode {
 		candidates[node] = struct{}{}
 	}
 
+	// if any in-degree, can't be root
 	for _, node := range t.dataMap {
 		for _, edge := range node.Edges {
 			if edge.String() == node.String() {
@@ -156,7 +157,6 @@ func (t *MultiRootDAG) hasCycle(root *TreeNode, visited, pathMap map[string]bool
 // to both B and C, and B connects to C, then the transitive reduction
 // is same graph with only a single edge between A and B, and a single edge
 // between B and C.
-// O(V(VE))
 func (t *MultiRootDAG) TransitiveReduction() {
 	// do DFS for each node
 	for _, u := range t.Nodes() {

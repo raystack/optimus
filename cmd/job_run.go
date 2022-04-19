@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
@@ -69,7 +68,7 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 
 	l.Info("please wait...")
 	runtime := pb.NewRuntimeServiceClient(conn)
-	jobResponse, err := runtime.RunJob(runTimeoutCtx, &pb.RunJobRequest{
+	_, err = runtime.RunJob(runTimeoutCtx, &pb.RunJobRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespace,
 		Specifications: []*pb.JobSpecification{
@@ -82,6 +81,6 @@ func runJobSpecificationRequest(l log.Logger, projectName, namespace, host strin
 		}
 		return errors.Wrapf(err, "request failed for job %s", jobSpec.Name)
 	}
-	l.Info(fmt.Sprintf("%v", jobResponse))
+	l.Info("Requested job run successfully")
 	return nil
 }

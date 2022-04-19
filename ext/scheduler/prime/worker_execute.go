@@ -3,11 +3,62 @@ package prime
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/odpf/optimus/core/gossip"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/optimus/models"
 )
+
+// nodeJobExecution looks for job assigned to this node and executes them
+// this is executed by leaders as well as workers because each leader is also
+// a worker.
+func (p *Planner) nodeJobExecution(ctx context.Context) {
+	p.wg.Add(1)
+	defer p.wg.Done()
+	loopIdx := 0
+	for {
+		runRepo := p.jobRunRepoFac.New()
+
+		// find what we need to execute
+		localNodeID := p.clusterManager.GetLocalMember().Name
+		currentAllocations, ok := p.clusterManager.GetState().Allocation[localNodeID]
+		if ok {
+			for _, rawAlloc := range currentAllocations.Values() {
+				alloc := rawAlloc.(gossip.StateJob)
+				if alloc.Status == models.RunStateAccepted.String() ||
+					alloc.Status == models.RunStateRunning.String() {
+					// execute this
+					runUUID, err := uuid.Parse(alloc.UUID)
+					if err != nil {
+						p.errChan <- err
+						return
+					}
+					jobRun, namespaceSpec, err := runRepo.GetByID(ctx, runUUID)
+					if err != nil {
+						p.errChan <- err
+						return
+					}
+
+					if err := p.executeRun(ctx, namespaceSpec, jobRun); err != nil {
+						p.errChan <- err
+						return
+					}
+				}
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(1 * time.Second):
+			// repeats loop:
+			loopIdx++
+		}
+	}
+}
 
 // executeRun finds all tasks/hooks that belong to this run job spec and
 // execute them in order.
@@ -26,23 +77,23 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 		return err
 	}
 
+	// TODO(kushsharma): parallelize execution for each root node
 	for _, root := range execGraph.GetRootNodes() {
 		var execOrder []*models.ExecutorStartRequest
 		for _, item := range execGraph.ReverseTopologicalSort(root) {
-			// TODO(kushsharma): parallelize execution for each root node
 			execOrder = append(execOrder, item.Data.(ExecNode).GetRequest())
 		}
 
 		for _, currentExec := range execOrder {
 			for _, instance := range jobRun.Instances {
-				if currentExec.Name == instance.Name && instance.Status == models.RunStateSuccess {
+				if currentExec.Unit.Info().Name == instance.Name && instance.Status == models.RunStateSuccess {
 					continue
 				}
 			}
-			err := p.executeInstance(ctx, currentExec, jobRun)
-			if err != nil {
+			if err := p.executeInstance(ctx, jobRun.ID, currentExec); err != nil {
 				err = multierror.Append(err, err)
 				// stop this exec sequence but we can try to execute parallel dags
+				// from a different root
 				break
 			}
 		}
@@ -50,24 +101,25 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 	return err
 }
 
-func (p *Planner) executeInstance(ctx context.Context, startRequest *models.ExecutorStartRequest, jobRun models.JobRun) error {
-	instanceID, err := uuid.Parse(startRequest.ID)
+func (p *Planner) executeInstance(ctx context.Context, jobRunID uuid.UUID, startRequest *models.ExecutorStartRequest) error {
+	instanceName := startRequest.Unit.Info().Name
+	instanceID, err := uuid.Parse(startRequest.InstanceID)
 	if err != nil {
-		return fmt.Errorf("failed to parse uuid for instance: %v", err)
+		return fmt.Errorf("failed to parse uuid for instance: %v(%s)", err, instanceName)
 	}
 
 	// create an instance, if already present, replace it as fresh
 	if err := p.broadcastInstanceCreate(GossipInstanceCreateRequest{
-		RunID:      jobRun.ID,
+		RunID:      jobRunID,
 		InstanceID: instanceID,
-		Name:       startRequest.Name,
+		Name:       instanceName,
 		Type:       startRequest.Type,
 	}); err != nil {
 		return err
 	}
 
 	// send it to executor for execution
-	p.l.Info("starting executing job", "instance name", startRequest.Name)
+	p.l.Info("starting executing job", "instance name", instanceName)
 	_, err = p.executor.Start(ctx, startRequest)
 	if err != nil {
 		return err
@@ -82,12 +134,20 @@ func (p *Planner) executeInstance(ctx context.Context, startRequest *models.Exec
 	}
 
 	// block until the given task finishes
-	finishChan, err := p.executor.WaitForFinish(ctx, instanceID.String())
+	exitCode, err := p.executor.WaitForFinish(ctx, instanceID.String())
 	if err != nil {
 		return err
 	}
-	if finishCode := <-finishChan; finishCode != 0 {
-		p.l.Warn("job finished with non zero code", "code", finishCode, "instance name", startRequest.Name)
+	if exitCode == 0 {
+		// mark instance success
+		if err := p.broadcastInstanceStatus(GossipInstanceUpdateRequest{
+			InstanceID: instanceID,
+			RunState:   models.RunStateSuccess,
+		}); err != nil {
+			return err
+		}
+	} else {
+		p.l.Warn("job finished with non zero code", "code", exitCode, "instance name", instanceName)
 
 		// mark instance failed
 		if err := p.broadcastInstanceStatus(GossipInstanceUpdateRequest{
@@ -96,15 +156,15 @@ func (p *Planner) executeInstance(ctx context.Context, startRequest *models.Exec
 		}); err != nil {
 			return err
 		}
-	}
 
-	// mark instance success
-	if err := p.broadcastInstanceStatus(GossipInstanceUpdateRequest{
-		InstanceID: instanceID,
-		RunState:   models.RunStateSuccess,
-	}); err != nil {
-		return err
+		instanceStatus, err := p.executor.Stats(ctx, instanceID.String())
+		if err != nil {
+			return err
+		}
+		p.l.Info("logs for failed execution", "instance id", instanceID,
+			"status", instanceStatus.Status, "exit code", instanceStatus.ExitCode,
+			"logs", string(instanceStatus.Logs))
 	}
-	p.l.Info("finished executing job spec", "instance name", startRequest.Name)
+	p.l.Info("finished executing job spec", "instance name", instanceName)
 	return nil
 }

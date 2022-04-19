@@ -7,6 +7,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+// Note: we can optimize these broadcast behaviour by directly creating a connection
+// from follower to leader.
+
+// TODO(kushsharma): refactor retry mechanism
 func (p *Planner) broadcastInstanceCreate(msg GossipInstanceCreateRequest) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
@@ -22,6 +26,7 @@ func (p *Planner) broadcastInstanceCreate(msg GossipInstanceCreateRequest) error
 			continue
 		}
 		p.l.Info("serf query response", "payload", string(response))
+		break
 	}
 	if len(errs) > 0 {
 		// TODO(kushsharma): test this line
@@ -45,6 +50,7 @@ func (p *Planner) broadcastInstanceStatus(msg GossipInstanceUpdateRequest) error
 			continue
 		}
 		p.l.Info("serf query response", "payload", string(response))
+		break
 	}
 	if len(errs) > 0 {
 		// TODO(kushsharma): test this line

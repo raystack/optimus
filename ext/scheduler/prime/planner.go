@@ -97,58 +97,15 @@ func (p *Planner) Init(ctx context.Context) error {
 	go p.leaderJobReconcile(ctx)
 	go p.leaderClusterEventHandler(ctx)
 
+	// leader and worker
 	go p.nodeJobExecution(ctx)
+
 	return nil
 }
 
 func (p *Planner) Close() error {
 	p.wg.Wait()
 	return nil
-}
-
-// nodeJobExecution looks for job assigned to this node and executes them
-func (p *Planner) nodeJobExecution(ctx context.Context) {
-	p.wg.Add(1)
-	defer p.wg.Done()
-	loopIdx := 0
-	for {
-		runRepo := p.jobRunRepoFac.New()
-
-		// find what we need to execute
-		localNodeID := p.clusterManager.GetLocalMember().Name
-		currentAllocations, ok := p.clusterManager.GetState().Allocation[localNodeID]
-		if ok {
-			for _, rawAlloc := range currentAllocations.Values() {
-				alloc := rawAlloc.(gossip.StateJob)
-				if alloc.Status == models.ReplayStatusAccepted {
-					// execute this
-					runUUID, err := uuid.Parse(alloc.UUID)
-					if err != nil {
-						p.errChan <- err
-						return
-					}
-					jobRun, namespaceSpec, err := runRepo.GetByID(ctx, runUUID)
-					if err != nil {
-						p.errChan <- err
-						return
-					}
-
-					if err := p.executeRun(ctx, namespaceSpec, jobRun); err != nil {
-						p.errChan <- err
-						return
-					}
-				}
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(1 * time.Second):
-			// repeats loop:
-			loopIdx++
-		}
-	}
 }
 
 func NewPlanner(l log.Logger, sv ClusterManager, jobRunRepoFac RunRepoFactory,

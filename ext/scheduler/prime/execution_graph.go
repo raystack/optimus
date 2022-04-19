@@ -35,13 +35,14 @@ func BuildGraph(uuid utils.UUIDProvider, ns models.NamespaceSpec, jobSpec models
 	nodes[taskName] = ExecNode{
 		name: taskName,
 		request: &models.ExecutorStartRequest{
-			ID:        taskUID.String(),
-			Name:      taskName,
-			Unit:      jobSpec.Task.Unit,
-			Config:    jobSpec.Task.Config,
-			Assets:    jobSpec.Assets,
-			Namespace: ns,
-			Type:      models.InstanceTypeTask,
+			InstanceID: taskUID.String(),
+			JobName:    jobSpec.GetName(),
+			JobLabels:  jobSpec.Labels,
+			Namespace:  ns,
+			Unit:       jobSpec.Task.Unit,
+			Config:     jobSpec.Task.Config,
+			Assets:     jobSpec.Assets,
+			Type:       models.InstanceTypeTask,
 		},
 	}
 	for _, taskHook := range jobSpec.Hooks {
@@ -53,13 +54,14 @@ func BuildGraph(uuid utils.UUIDProvider, ns models.NamespaceSpec, jobSpec models
 		nodes[hookName] = ExecNode{
 			name: hookName,
 			request: &models.ExecutorStartRequest{
-				ID:        uid.String(),
-				Name:      taskHook.Unit.Info().Name,
-				Unit:      taskHook.Unit,
-				Config:    taskHook.Config,
-				Assets:    jobSpec.Assets,
-				Namespace: ns,
-				Type:      models.InstanceTypeHook,
+				JobName:    jobSpec.GetName(),
+				JobLabels:  jobSpec.Labels,
+				InstanceID: uid.String(),
+				Unit:       taskHook.Unit,
+				Config:     taskHook.Config,
+				Assets:     jobSpec.Assets,
+				Namespace:  ns,
+				Type:       models.InstanceTypeHook,
 			},
 		}
 	}
