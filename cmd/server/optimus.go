@@ -347,7 +347,8 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		namespaceService,
 		adapterService,
-		projectService))
+		projectService,
+		jobService)) // TODO: Replace with replayService after extracting
 	// project service
 	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
 		adapterService,

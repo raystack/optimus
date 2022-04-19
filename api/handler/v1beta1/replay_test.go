@@ -83,8 +83,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
+			defer replayService.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -96,6 +99,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
@@ -133,8 +137,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(replayPlan, nil)
+			defer replayService.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -146,6 +153,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
@@ -182,6 +190,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:   projectName,
@@ -207,8 +216,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(models.ReplayPlan{}, errors.New("populating jobs spec failed"))
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("ReplayDryRun", ctx, replayWorkerRequest).Return(models.ReplayPlan{}, errors.New("populating jobs spec failed"))
+			defer replayService.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -220,6 +232,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
 				ProjectName:                 projectName,
@@ -291,8 +304,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
+			defer replayService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
@@ -300,6 +316,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -329,8 +346,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
+			defer replayService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
@@ -338,6 +358,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -362,6 +383,7 @@ func TestReplayOnServer(t *testing.T) {
 				log,
 				nil, namespaceService,
 				adapter,
+				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -392,8 +414,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, errors.New(errMessage))
+			defer replayService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
@@ -401,6 +426,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -428,6 +454,7 @@ func TestReplayOnServer(t *testing.T) {
 				log,
 				nil, namespaceService,
 				adapter,
+				nil,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -459,6 +486,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				nil,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -488,8 +516,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrConflictedJobRun)
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrConflictedJobRun)
+			defer replayService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
@@ -497,6 +528,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -527,8 +559,11 @@ func TestReplayOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(jobSpec, nil)
-			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrRequestQueueFull)
 			defer jobService.AssertExpectations(t)
+
+			replayService := new(mock.ReplayService)
+			replayService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrRequestQueueFull)
+			defer replayService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
@@ -536,6 +571,7 @@ func TestReplayOnServer(t *testing.T) {
 				jobService, namespaceService,
 				adapter,
 				nil,
+				replayService,
 			)
 			replayRequest := pb.ReplayRequest{
 				ProjectName:                 projectName,
@@ -611,17 +647,18 @@ func TestReplayOnServer(t *testing.T) {
 			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-			jobService.On("GetReplayStatus", ctx, replayRequest).Return(replayState, nil)
+			replayService := new(mock.ReplayService)
+			replayService.On("GetReplayStatus", ctx, replayRequest).Return(replayState, nil)
+			defer replayService.AssertExpectations(t)
 
 			adapter := v1.NewAdapter(nil, nil)
 
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				jobService, nil,
+				nil, nil,
 				adapter,
 				projectService,
+				replayService,
 			)
 			expectedReplayStatusNodeResponse, err := adapter.ToReplayStatusTreeNode(replayState.Node)
 			assert.Nil(t, err)
@@ -642,17 +679,18 @@ func TestReplayOnServer(t *testing.T) {
 			defer projectService.AssertExpectations(t)
 
 			errMessage := "internal error"
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-			jobService.On("GetReplayStatus", ctx, replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
+			replayService := new(mock.ReplayService)
+			defer replayService.AssertExpectations(t)
+			replayService.On("GetReplayStatus", ctx, replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
 
 			adapter := v1.NewAdapter(nil, nil)
 
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				jobService, nil,
+				nil, nil,
 				adapter,
 				projectService,
+				replayService,
 			)
 
 			replayRequestPb := pb.GetReplayStatusRequest{
@@ -739,17 +777,18 @@ func TestReplayOnServer(t *testing.T) {
 			projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-			jobService.On("GetReplayList", ctx, projectSpec.ID).Return(replaySpecs, nil)
+			replayService := new(mock.ReplayService)
+			defer replayService.AssertExpectations(t)
+			replayService.On("GetReplayList", ctx, projectSpec.ID).Return(replaySpecs, nil)
 
 			adapter := v1.NewAdapter(nil, nil)
 
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				jobService, nil,
+				nil, nil,
 				adapter,
 				projectService,
+				replayService,
 			)
 
 			replayRequestPb := pb.ListReplaysRequest{
@@ -766,17 +805,18 @@ func TestReplayOnServer(t *testing.T) {
 			defer projectService.AssertExpectations(t)
 
 			errMessage := "internal error"
-			jobService := new(mock.JobService)
-			defer jobService.AssertExpectations(t)
-			jobService.On("GetReplayList", ctx, projectSpec.ID).Return([]models.ReplaySpec{}, errors.New(errMessage))
+			replayService := new(mock.ReplayService)
+			defer replayService.AssertExpectations(t)
+			replayService.On("GetReplayList", ctx, projectSpec.ID).Return([]models.ReplaySpec{}, errors.New(errMessage))
 
 			adapter := v1.NewAdapter(nil, nil)
 
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
-				jobService, nil,
+				nil, nil,
 				adapter,
 				projectService,
+				replayService,
 			)
 
 			replayRequestPb := pb.ListReplaysRequest{
