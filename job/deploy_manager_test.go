@@ -169,7 +169,8 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(nil)
 
-			deployer.On("Deploy", mockTestify.Anything, jobDeployment).Return(nil)
+			// Deploy is run asynchronously. Can be done before or after deploy manager returns.
+			deployer.On("Deploy", mockTestify.Anything, jobDeployment).Return(nil).Maybe()
 
 			jobDeployment.Status = models.JobDeploymentStatusInQueue
 			jobDeploymentRepository.On("UpdateByID", ctx, jobDeployment).Return(errors.New(errorMsg))
@@ -208,7 +209,8 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(nil)
 
-			deployer.On("Deploy", mockTestify.Anything, jobDeployment).Return(nil)
+			// Deploy is run asynchronously. Can be done before or after deploy manager returns.
+			deployer.On("Deploy", mockTestify.Anything, jobDeployment).Return(nil).Maybe()
 
 			jobDeployment.Status = models.JobDeploymentStatusInQueue
 			jobDeploymentRepository.On("UpdateByID", ctx, jobDeployment).Return(nil)
