@@ -78,7 +78,7 @@ func getInstanceBuildRequest(l log.Logger, jobName, inputDirectory, host, projec
 	}
 	jobScheduledTimeProto := timestamppb.New(jobScheduledTime)
 
-	ctx, conn, closeConn, err := initClientConnection(l, host, adminBuildInstanceTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, adminBuildInstanceTimeout)
 	if err != nil {
 		return err
 	}

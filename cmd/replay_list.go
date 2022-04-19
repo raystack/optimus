@@ -29,7 +29,7 @@ The list command is used to fetch the recent replay in one project.
 	reCmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		l := initClientLogger(conf.Log)
-		ctx, conn, closeConn, err := initClientConnection(l, conf.Host, replayTimeout)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, replayTimeout)
 		if err != nil {
 			return err
 		}

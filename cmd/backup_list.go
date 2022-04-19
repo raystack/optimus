@@ -46,7 +46,7 @@ func backupListCommand(conf *config.ClientConfig) *cli.Command {
 			DatastoreName: storerName,
 		}
 
-		ctx, conn, closeConn, err := initClientConnection(l, conf.Host, backupTimeout)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, backupTimeout)
 		if err != nil {
 			return err
 		}

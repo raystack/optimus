@@ -234,7 +234,7 @@ func validateProperlyEncoded(secretValue string) error {
 }
 
 func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, secretTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) er
 }
 
 func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, secretTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
 	if err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) error 
 }
 
 func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, secretTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) error 
 }
 
 func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, secretTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
 	if err != nil {
 		return err
 	}

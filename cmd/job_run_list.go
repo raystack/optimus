@@ -60,7 +60,7 @@ func getJobRunList(l log.Logger, host, projectName, jobName, startDate, endDate 
 }
 
 func callJobRun(l log.Logger, host string, jobRunRequest *pb.JobRunRequest) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, jobStatusTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, jobStatusTimeout)
 	if err != nil {
 		return err
 	}

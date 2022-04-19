@@ -169,7 +169,7 @@ func extractDescription(description string) (string, error) {
 }
 
 func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, backupTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, backupTimeout)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupD
 }
 
 func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupRequest) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, backupTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, backupTimeout)
 	if err != nil {
 		return err
 	}

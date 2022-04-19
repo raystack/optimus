@@ -48,7 +48,7 @@ func backupStatusCommand(conf *config.ClientConfig) *cli.Command {
 			Id:            args[0],
 		}
 
-		ctx, conn, closeConn, err := initClientConnection(l, conf.Host, backupTimeout)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, backupTimeout)
 		if err != nil {
 			return err
 		}

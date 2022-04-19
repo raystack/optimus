@@ -61,7 +61,7 @@ func jobRunCommand(conf *config.ClientConfig) *cli.Command {
 }
 
 func runJobSpecificationRequest(l log.Logger, projectName, namespace, host string, jobSpec models.JobSpec, pluginRepo models.PluginRepository) (err error) {
-	ctx, conn, closeConn, err := initClientConnection(l, host, runJobTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, runJobTimeout)
 	if err != nil {
 		return err
 	}

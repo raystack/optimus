@@ -73,7 +73,7 @@ func projectDescribeCommand() *cli.Command {
 		}
 
 		l.Info(fmt.Sprintf("Getting project [%s] from host [%s]", clientConfig.Project.Name, clientConfig.Host))
-		project, err := getProject(l, clientConfig.Project.Name, clientConfig.Host)
+		project, err := getProject(clientConfig.Project.Name, clientConfig.Host)
 		if err != nil {
 			return err
 		}
@@ -91,9 +91,9 @@ func projectDescribeCommand() *cli.Command {
 	return cmd
 }
 
-func getProject(l log.Logger, projectName, host string) (config.Project, error) {
+func getProject(projectName, host string) (config.Project, error) {
 	var project config.Project
-	ctx, conn, closeConn, err := initClientConnection(l, host, deploymentTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, deploymentTimeout)
 	if err != nil {
 		return project, err
 	}
@@ -115,7 +115,7 @@ func getProject(l log.Logger, projectName, host string) (config.Project, error) 
 }
 
 func registerProject(l log.Logger, serverHost string, project config.Project) error {
-	ctx, conn, closeConn, err := initClientConnection(l, serverHost, deploymentTimeout)
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/version"
 	cli "github.com/spf13/cobra"
 
@@ -59,7 +58,7 @@ func versionCommand() *cli.Command {
 
 			l = initClientLogger(conf.Log)
 
-			srvVer, err := getVersionRequest(l, config.BuildVersion, conf.Host)
+			srvVer, err := getVersionRequest(config.BuildVersion, conf.Host)
 			if err != nil {
 				return err
 			}
@@ -98,8 +97,8 @@ func versionCommand() *cli.Command {
 }
 
 // getVersionRequest send a version request to service
-func getVersionRequest(l log.Logger, clientVer, host string) (ver string, err error) {
-	ctx, conn, closeConn, err := initClientConnection(l, host, versionTimeout)
+func getVersionRequest(clientVer, host string) (ver string, err error) {
+	ctx, conn, closeConn, err := initClientConnection(host, versionTimeout)
 	if err != nil {
 		return "", err
 	}

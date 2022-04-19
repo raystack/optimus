@@ -111,7 +111,7 @@ Date ranges are inclusive.
 
 func printReplayExecutionTree(l log.Logger, projectName, namespace, jobName, startDate, endDate string,
 	allowedDownstreamNamespaces []string, host string) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, replayTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, replayTimeout)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func printExecutionTree(instance *pb.ReplayExecutionTreeNode, tree treeprint.Tre
 
 func runReplayRequest(l log.Logger, projectName, namespace, jobName, startDate, endDate string, forceRun bool,
 	allowedDownstreamNamespaces []string, host string) (string, error) {
-	ctx, conn, closeConn, err := initClientConnection(l, host, replayTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, replayTimeout)
 	if err != nil {
 		return "", err
 	}

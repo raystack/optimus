@@ -103,7 +103,7 @@ func postDeploymentRequest(
 	selectedNamespaces []*config.Namespace,
 	ignoreJobDeployment, ignoreResources, verbose bool,
 ) error {
-	ctx, conn, closeConn, err := initClientConnection(l, clientConfig.Host, deploymentTimeout)
+	ctx, conn, closeConn, err := initClientConnection(clientConfig.Host, deploymentTimeout)
 	if err != nil {
 		return err
 	}

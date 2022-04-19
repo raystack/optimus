@@ -34,7 +34,7 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	reCmd.Flags().StringP("project-name", "p", defaultProjectName, "project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
 		l := initClientLogger(conf.Log)
-		ctx, conn, closeConn, err := initClientConnection(l, conf.Host, replayTimeout)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, replayTimeout)
 		if err != nil {
 			return err
 		}

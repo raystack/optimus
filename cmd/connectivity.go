@@ -12,7 +12,6 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/mattn/go-isatty"
-	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -74,7 +73,7 @@ func createDataStoreSpecFs(namespace *config.Namespace) map[string]afero.Fs {
 	return dtSpec
 }
 
-func initClientConnection(l log.Logger, serverHost string, requestTimeout time.Duration) (
+func initClientConnection(serverHost string, requestTimeout time.Duration) (
 	requestCtx context.Context,
 	connection *grpc.ClientConn,
 	closeConnection func(),
@@ -88,8 +87,6 @@ func initClientConnection(l log.Logger, serverHost string, requestTimeout time.D
 
 	requestCtx = reqCtx
 	closeConnection = func() {
-		l.Info("Closing client connection")
-
 		connection.Close()
 		reqCancel()
 	}

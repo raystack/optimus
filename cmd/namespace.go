@@ -45,7 +45,7 @@ func namespaceListCommand() *cli.Command {
 		}
 
 		l.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", clientConfig.Project.Name, clientConfig.Host))
-		namespacesFromServer, err := listNamespacesFromServer(l, clientConfig.Project.Name, clientConfig.Host)
+		namespacesFromServer, err := listNamespacesFromServer(clientConfig.Project.Name, clientConfig.Host)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func namespaceDescribeCommand() *cli.Command {
 		}
 
 		l.Info(fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]", namespaceName, clientConfig.Project.Name, clientConfig.Host))
-		namespace, err := getNamespace(l, clientConfig.Project.Name, namespaceName, clientConfig.Host)
+		namespace, err := getNamespace(clientConfig.Project.Name, namespaceName, clientConfig.Host)
 		if err != nil {
 			return err
 		}
@@ -127,8 +127,8 @@ func namespaceRegisterCommand() *cli.Command {
 	return cmd
 }
 
-func listNamespacesFromServer(l log.Logger, serverHost, projectName string) ([]*config.Namespace, error) {
-	ctx, conn, closeConn, err := initClientConnection(l, serverHost, deploymentTimeout)
+func listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -193,8 +193,8 @@ func stringifyNamespaceForNamespaceDescribe(namespace *config.Namespace) string 
 	return output
 }
 
-func getNamespace(l log.Logger, serverHost, projectName, namespaceName string) (*config.Namespace, error) {
-	ctx, conn, closeConn, err := initClientConnection(l, serverHost, deploymentTimeout)
+func getNamespace(serverHost, projectName, namespaceName string) (*config.Namespace, error) {
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func registerSelectedNamespaces(l log.Logger, serverHost, projectName string, se
 }
 
 func registerNamespace(l log.Logger, serverHost, projectName string, namespace *config.Namespace) error {
-	ctx, conn, closeConn, err := initClientConnection(l, serverHost, deploymentTimeout)
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
 		return err
 	}

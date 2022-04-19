@@ -72,7 +72,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string, verbose bool) (err error) {
 	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
-	ctx, conn, closeConn, err := initClientConnection(l, host, validateTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, validateTimeout)
 	if err != nil {
 		return err
 	}

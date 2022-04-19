@@ -61,7 +61,7 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 }
 
 func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces, jobs []string, host string, verbose bool) error {
-	ctx, conn, closeConn, err := initClientConnection(l, host, refreshTimeout)
+	ctx, conn, closeConn, err := initClientConnection(host, refreshTimeout)
 	if err != nil {
 		return err
 	}
