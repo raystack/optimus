@@ -2,14 +2,13 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/odpf/salt/log"
-	"github.com/pkg/errors"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -61,25 +60,15 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	return cmd
 }
 
-func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces, jobs []string, host string, verbose bool,
-) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces, jobs []string, host string, verbose bool) error {
+	ctx, conn, closeConn, err := initClientConnection(host, refreshTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	refreshTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), refreshTimeout)
-	defer deployCancel()
+	defer closeConn()
 
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
-	respStream, err := jobSpecService.RefreshJobs(refreshTimeoutCtx, &pb.RefreshJobsRequest{
+	respStream, err := jobSpecService.RefreshJobs(ctx, &pb.RefreshJobsRequest{
 		ProjectName:    projectName,
 		NamespaceNames: namespaces,
 		JobNames:       jobs,

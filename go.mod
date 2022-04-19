@@ -10,6 +10,7 @@ require (
 	github.com/briandowns/spinner v1.18.0
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/emirpasic/gods v1.12.0
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.3.0
@@ -37,6 +38,7 @@ require (
 	github.com/slack-go/slack v0.9.1
 	github.com/spf13/afero v1.6.0
 	github.com/spf13/cobra v1.2.1
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xlab/treeprint v1.1.0
@@ -60,12 +62,6 @@ require (
 	gorm.io/datatypes v1.0.0
 	gorm.io/driver/postgres v1.0.5
 	gorm.io/gorm v1.21.16
-)
-
-require (
-	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
-	github.com/pkg/errors v0.9.1
-	github.com/spf13/pflag v1.0.5
 )
 
 require (
@@ -135,6 +131,7 @@ require (
 	github.com/muesli/termenv v0.9.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect

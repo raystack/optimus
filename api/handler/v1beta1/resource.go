@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -172,8 +173,8 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 	}
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
 	if len(errNamespaces) > 0 {
-		sv.l.Warn("there's error while deploying namespaces: %v", errNamespaces)
-		return fmt.Errorf("error when deploying: %v", errNamespaces)
+		sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", strings.Join(errNamespaces, ", ")))
+		return fmt.Errorf("error when deploying: [%s]", strings.Join(errNamespaces, ", "))
 	}
 	return nil
 }

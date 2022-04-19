@@ -106,6 +106,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 	metadata := models.JobSpecMetadata{}
 	if spec.Metadata != nil {
 		metadata.Resource = adapt.FromJobSpecMetadataResourceProto(spec.Metadata.Resource)
+		metadata.Airflow = adapt.FromJobSpecMetadataAirflowProto(spec.Metadata.Airflow)
 	}
 	return models.JobSpec{
 		Version:     int(spec.Version),
@@ -205,6 +206,7 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
 		},
 		Metadata: &pb.JobMetadata{
 			Resource: adapt.ToJobSpecMetadataResourceProto(spec.Metadata.Resource),
+			Airflow:  adapt.ToJobSpecMetadataAirflowProto(spec.Metadata.Airflow),
 		},
 	}
 	if spec.Schedule.EndDate != nil {
@@ -535,6 +537,17 @@ func (*Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) 
 	return output
 }
 
+func (*Adapter) ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflow) *pb.JobSpecMetadataAirflow {
+	var output *pb.JobSpecMetadataAirflow
+	if airflow.Pool != "" || airflow.Queue != "" {
+		output = &pb.JobSpecMetadataAirflow{
+			Pool:  airflow.Pool,
+			Queue: airflow.Queue,
+		}
+	}
+	return output
+}
+
 func (*Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
 	var output models.JobSpecResource
 	if resource != nil {
@@ -546,6 +559,15 @@ func (*Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataRes
 			output.Limit.Memory = resource.Limit.Memory
 			output.Limit.CPU = resource.Limit.Cpu
 		}
+	}
+	return output
+}
+
+func (*Adapter) FromJobSpecMetadataAirflowProto(airflow *pb.JobSpecMetadataAirflow) models.JobSpecAirflow {
+	var output models.JobSpecAirflow
+	if airflow != nil {
+		output.Pool = airflow.Pool
+		output.Queue = airflow.Queue
 	}
 	return output
 }

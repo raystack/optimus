@@ -9,7 +9,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -169,27 +168,18 @@ func extractDescription(description string) (string, error) {
 	return description, nil
 }
 
-func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupDryRunRequest, backupDownstream bool) error {
+	ctx, conn, closeConn, err := initClientConnection(host, backupTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	requestTimeoutCtx, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
-	defer requestCancel()
+	defer closeConn()
 
 	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	backupDryRunResponse, err := backup.BackupDryRun(requestTimeoutCtx, backupRequest)
+	backupDryRunResponse, err := backup.BackupDryRun(ctx, backupRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -202,27 +192,18 @@ func runBackupDryRunRequest(l log.Logger, host string, backupRequest *pb.BackupD
 	return nil
 }
 
-func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupRequest) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func runBackupRequest(l log.Logger, host string, backupRequest *pb.CreateBackupRequest) error {
+	ctx, conn, closeConn, err := initClientConnection(host, backupTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
-	defer requestCancel()
+	defer closeConn()
 
 	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	backupResponse, err := backup.CreateBackup(requestTimeout, backupRequest)
+	backupResponse, err := backup.CreateBackup(ctx, backupRequest)
 	spinner.Stop()
 
 	if err != nil {

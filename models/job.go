@@ -88,10 +88,10 @@ func (js JobSpec) GetProjectSpec() ProjectSpec {
 
 type JobSpecs []JobSpec
 
-func (js JobSpecs) GroupJobsPerNamespace() map[uuid.UUID][]JobSpec {
-	jobsGroup := make(map[uuid.UUID][]JobSpec)
+func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
+	jobsGroup := make(map[string][]JobSpec)
 	for _, jobSpec := range js {
-		jobsGroup[jobSpec.NamespaceSpec.ID] = append(jobsGroup[jobSpec.NamespaceSpec.ID], jobSpec)
+		jobsGroup[jobSpec.NamespaceSpec.Name] = append(jobsGroup[jobSpec.NamespaceSpec.Name], jobSpec)
 	}
 	return jobsGroup
 }
@@ -405,6 +405,7 @@ type Notifier interface {
 // JobSpecMetadata contains metadata for a job spec
 type JobSpecMetadata struct {
 	Resource JobSpecResource
+	Airflow  JobSpecAirflow
 }
 
 // JobSpecResource represents resource management configuration
@@ -417,6 +418,12 @@ type JobSpecResource struct {
 type JobSpecResourceConfig struct {
 	Memory string
 	CPU    string
+}
+
+// JobSpecAirflow represents additional configuration for airflow specific
+type JobSpecAirflow struct {
+	Pool  string
+	Queue string
 }
 
 // JobQuery  represents the query to get run status from scheduler

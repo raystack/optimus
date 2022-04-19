@@ -24,7 +24,7 @@ type namespaceService struct {
 	namespaceRepoFac NamespaceRepoFactory
 }
 
-func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFactory) *namespaceService {
+func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFactory) NamespaceService {
 	return &namespaceService{
 		projectService:   projectService,
 		namespaceRepoFac: factory,

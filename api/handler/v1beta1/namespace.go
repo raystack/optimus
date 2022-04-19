@@ -45,6 +45,16 @@ func (sv *NamespaceServiceServer) ListProjectNamespaces(ctx context.Context, req
 	}, nil
 }
 
+func (sv *NamespaceServiceServer) GetNamespace(ctx context.Context, request *pb.GetNamespaceRequest) (*pb.GetNamespaceResponse, error) {
+	namespace, err := sv.namespaceService.Get(ctx, request.ProjectName, request.NamespaceName)
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+	return &pb.GetNamespaceResponse{
+		Namespace: sv.adapter.ToNamespaceProto(namespace),
+	}, nil
+}
+
 func NewNamespaceServiceServer(l log.Logger, adapter ProtoAdapter, namespaceService service.NamespaceService) *NamespaceServiceServer {
 	return &NamespaceServiceServer{
 		l:                l,

@@ -1,27 +1,14 @@
 package cmd
 
 import (
-	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/mattn/go-isatty"
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/term"
-	"github.com/spf13/afero"
 	cli "github.com/spf13/cobra"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"google.golang.org/grpc"
-
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
 var (
@@ -38,28 +25,6 @@ var (
 			3. Is Optimus server currently unreachable`, host))
 	}
 )
-
-const (
-	GRPCMaxClientSendSize      = 64 << 20 // 64MB
-	GRPCMaxClientRecvSize      = 64 << 20 // 64MB
-	GRPCMaxRetry          uint = 3
-
-	OptimusDialTimeout = time.Second * 2
-	BackoffDuration    = 100 * time.Millisecond
-)
-
-const (
-	defaultProjectName = "sample_project"
-	defaultHost        = "localhost:9100"
-)
-
-// JobSpecRepository represents a storage interface for Job specifications locally
-type JobSpecRepository interface {
-	SaveAt(models.JobSpec, string) error
-	Save(models.JobSpec) error
-	GetByName(string) (models.JobSpec, error)
-	GetAll() ([]models.JobSpec, error)
-}
 
 // New constructs the 'root' command. It houses all other sub commands
 // default output of logging should go to stdout
@@ -115,100 +80,20 @@ func New() *cli.Command {
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	cmd.AddCommand(initCommand())
-	cmd.AddCommand(versionCommand())
-	cmd.AddCommand(jobCommand())
-	cmd.AddCommand(deployCommand())
-	cmd.AddCommand(resourceCommand())
-	cmd.AddCommand(replayCommand())
-	cmd.AddCommand(backupCommand())
 	cmd.AddCommand(adminCommand())
+	cmd.AddCommand(backupCommand())
+	cmd.AddCommand(deployCommand())
+	cmd.AddCommand(initCommand())
+	cmd.AddCommand(jobCommand())
+	cmd.AddCommand(namespaceCommand())
+	cmd.AddCommand(projectCommand())
+	cmd.AddCommand(replayCommand())
+	cmd.AddCommand(resourceCommand())
 	cmd.AddCommand(secretCommand())
+	cmd.AddCommand(versionCommand())
 
 	cmd.AddCommand(serveCommand())
 
 	addExtensionCommand(cmd)
 	return cmd
-}
-
-func createConnection(ctx context.Context, host string) (*grpc.ClientConn, error) {
-	retryOpts := []grpc_retry.CallOption{
-		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
-		grpc_retry.WithMax(GRPCMaxRetry),
-	}
-	var opts []grpc.DialOption
-	opts = append(opts,
-		grpc.WithInsecure(),
-		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallSendMsgSize(GRPCMaxClientSendSize),
-			grpc.MaxCallRecvMsgSize(GRPCMaxClientRecvSize),
-		),
-		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
-			grpc_retry.UnaryClientInterceptor(retryOpts...),
-			otelgrpc.UnaryClientInterceptor(),
-			grpc_prometheus.UnaryClientInterceptor,
-		)),
-		grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
-			otelgrpc.StreamClientInterceptor(),
-			grpc_prometheus.StreamClientInterceptor,
-		)),
-	)
-
-	// pass rpc credentials
-	if token := os.Getenv("OPTIMUS_AUTH_BASIC_TOKEN"); token != "" {
-		base64Token := base64.StdEncoding.EncodeToString([]byte(token))
-		opts = append(opts, grpc.WithPerRPCCredentials(&BasicAuthentication{
-			Token: base64Token,
-		}))
-	} else if token := os.Getenv("OPTIMUS_AUTH_BEARER_TOKEN"); token != "" {
-		opts = append(opts, grpc.WithPerRPCCredentials(&BearerAuthentication{
-			Token: token,
-		}))
-	}
-	return grpc.DialContext(ctx, host, opts...)
-}
-
-type BearerAuthentication struct {
-	Token string
-}
-
-func (a *BearerAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	return map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", a.Token),
-	}, nil
-}
-
-func (*BearerAuthentication) RequireTransportSecurity() bool {
-	return false
-}
-
-type BasicAuthentication struct {
-	Token string
-}
-
-func (a *BasicAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	return map[string]string{
-		"Authorization": fmt.Sprintf("Basic %s", a.Token),
-	}, nil
-}
-
-func (*BasicAuthentication) RequireTransportSecurity() bool {
-	return false
-}
-
-func isTerminal(f *os.File) bool {
-	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
-}
-
-func getDatastoreSpecFs(namespaces []*config.Namespace) map[string]map[string]afero.Fs {
-	output := make(map[string]map[string]afero.Fs)
-	for _, namespace := range namespaces {
-		dtSpec := make(map[string]afero.Fs)
-		for _, dsConfig := range namespace.Datastore {
-			dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-		}
-		output[namespace.Name] = dtSpec
-	}
-	return output
 }

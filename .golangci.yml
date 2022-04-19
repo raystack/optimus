@@ -44,6 +44,7 @@ linters:
     - gocyclo
     - dupl
     - gofumpt
+    - nolintlint
 linters-settings:
   gofumpt:
     lang-version: "1.17"
