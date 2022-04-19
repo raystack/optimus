@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/job"
@@ -51,7 +51,7 @@ func TestReplayValidator(t *testing.T) {
 				jobSpec2.Name: jobSpec2,
 			},
 		}
-		executionTree := tree.NewTreeNode(jobSpec)
+		executionTree := dag.NewTreeNode(jobSpec)
 		executionTree.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 		executionTree.Runs.Add(time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC))
 		executionTree.Runs.Add(time.Date(2020, time.Month(8), 24, 2, 0, 0, 0, time.UTC))
@@ -75,7 +75,7 @@ func TestReplayValidator(t *testing.T) {
 			assert.Contains(t, err.Error(), errMessage)
 		})
 		t.Run("should throw an error if conflicting replays found", func(t *testing.T) {
-			activeExecutionTree := tree.NewTreeNode(jobSpec)
+			activeExecutionTree := dag.NewTreeNode(jobSpec)
 			activeExecutionTree.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 
 			activeReplaySpec := []models.ReplaySpec{
@@ -103,10 +103,10 @@ func TestReplayValidator(t *testing.T) {
 			assert.Equal(t, err, job.ErrConflictedJobRun)
 		})
 		t.Run("should throw an error if multiple replays are active and conflicting replays found", func(t *testing.T) {
-			activeExecutionTreeJob := tree.NewTreeNode(jobSpec)
+			activeExecutionTreeJob := dag.NewTreeNode(jobSpec)
 			activeExecutionTreeJob.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 
-			activeExecutionTreeJob2 := tree.NewTreeNode(jobSpec2)
+			activeExecutionTreeJob2 := dag.NewTreeNode(jobSpec2)
 			activeExecutionTreeJob2.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 
 			activeReplaySpec := []models.ReplaySpec{
@@ -142,7 +142,7 @@ func TestReplayValidator(t *testing.T) {
 			assert.Equal(t, err, job.ErrConflictedJobRun)
 		})
 		t.Run("should pass replay validation when no conflicting dag found", func(t *testing.T) {
-			activeExecutionTreeJob2 := tree.NewTreeNode(jobSpec2)
+			activeExecutionTreeJob2 := dag.NewTreeNode(jobSpec2)
 			activeExecutionTreeJob2.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 
 			activeReplaySpec := []models.ReplaySpec{
@@ -173,7 +173,7 @@ func TestReplayValidator(t *testing.T) {
 			activeStartDate, _ := time.Parse(job.ReplayDateFormat, "2021-01-01")
 			activeEndDate, _ := time.Parse(job.ReplayDateFormat, "2021-01-02")
 
-			activeExecutionTreeJob := tree.NewTreeNode(jobSpec)
+			activeExecutionTreeJob := dag.NewTreeNode(jobSpec)
 			activeExecutionTreeJob.Runs.Add(time.Date(2021, time.Month(1), 1, 2, 0, 0, 0, time.UTC))
 			activeExecutionTreeJob.Runs.Add(time.Date(2021, time.Month(1), 2, 2, 0, 0, 0, time.UTC))
 
@@ -239,7 +239,7 @@ func TestReplayValidator(t *testing.T) {
 			assert.Equal(t, job.ErrConflictedJobRun, err)
 		})
 		t.Run("should return error when no running instance found in batchScheduler but accepted in replay", func(t *testing.T) {
-			activeExecutionTreeJob := tree.NewTreeNode(jobSpec)
+			activeExecutionTreeJob := dag.NewTreeNode(jobSpec)
 			activeExecutionTreeJob.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 
 			activeReplaySpec := []models.ReplaySpec{

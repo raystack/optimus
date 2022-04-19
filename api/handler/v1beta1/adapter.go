@@ -4,15 +4,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/utils"
-
-	"google.golang.org/protobuf/types/known/durationpb"
-
 	"github.com/golang/protobuf/proto"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/utils"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -440,16 +438,16 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 	return typeController.Adapter().FromProtobuf(buf)
 }
 
-func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error) {
+func (adapt *Adapter) ToReplayExecutionTreeNode(res *dag.TreeNode) (*pb.ReplayExecutionTreeNode, error) {
 	response := &pb.ReplayExecutionTreeNode{
-		JobName: res.GetName(),
+		JobName: res.String(),
 	}
 	for _, run := range res.Runs.Values() {
 		runTime := run.(time.Time)
 		timestampPb := timestamppb.New(runTime)
 		response.Runs = append(response.Runs, timestampPb)
 	}
-	for _, dep := range res.Dependents {
+	for _, dep := range res.Edges {
 		parsedDep, err := adapt.ToReplayExecutionTreeNode(dep)
 		if err != nil {
 			return nil, err
@@ -459,9 +457,9 @@ func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayE
 	return response, nil
 }
 
-func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error) {
+func (adapt *Adapter) ToReplayStatusTreeNode(res *dag.TreeNode) (*pb.ReplayStatusTreeNode, error) {
 	response := &pb.ReplayStatusTreeNode{
-		JobName: res.GetName(),
+		JobName: res.String(),
 	}
 	for _, run := range res.Runs.Values() {
 		runStatus := run.(models.JobStatus)
@@ -471,7 +469,7 @@ func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStat
 		}
 		response.Runs = append(response.Runs, runStatusPb)
 	}
-	for _, dep := range res.Dependents {
+	for _, dep := range res.Edges {
 		parsedDep, err := adapt.ToReplayStatusTreeNode(dep)
 		if err != nil {
 			return nil, err

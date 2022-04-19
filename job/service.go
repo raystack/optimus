@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/pkg/errors"
@@ -450,8 +450,8 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 		return nil, fmt.Errorf("couldn't find any job with name %s", rootJobName)
 	}
 
-	dagTree := tree.NewMultiRootTree()
-	dagTree.AddNode(tree.NewTreeNode(rootJobSpec))
+	dagTree := dag.NewMultiRootDAG()
+	dagTree.AddNode(dag.NewTreeNode(rootJobSpec))
 	rootInstance, err := populateDownstreamDAGs(dagTree, rootJobSpec, jobSpecMap)
 	if err != nil {
 		return nil, err
@@ -460,7 +460,7 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 	var jobSpecs []models.JobSpec
 	for _, node := range rootInstance.GetAllNodes() {
 		//ignore the root
-		if node.GetName() != rootInstance.GetName() {
+		if node.String() != rootInstance.String() {
 			jobSpecs = append(jobSpecs, node.Data.(models.JobSpec))
 		}
 	}
@@ -501,12 +501,12 @@ func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec 
 	return jobNamespaceMap, err
 }
 
-func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedDownstream []string, jobNamespaceMap map[string]string) *tree.TreeNode {
+func filterNode(parentNode *dag.TreeNode, dependents []*dag.TreeNode, allowedDownstream []string, jobNamespaceMap map[string]string) *dag.TreeNode {
 	for _, dep := range dependents {
 		//if dep is not within allowed namespace, skip this dependency
 		isAuthorized := false
 		for _, namespace := range allowedDownstream {
-			if namespace == models.AllNamespace || namespace == jobNamespaceMap[dep.GetName()] {
+			if namespace == models.AllNamespace || namespace == jobNamespaceMap[dep.String()] {
 				isAuthorized = true
 				break
 			}
@@ -516,27 +516,27 @@ func filterNode(parentNode *tree.TreeNode, dependents []*tree.TreeNode, allowedD
 		}
 
 		//if dep is within allowed namespace, add the node to parent
-		depNode := tree.NewTreeNode(dep.Data)
+		depNode := dag.NewTreeNode(dep.Data.(dag.NodeNamer))
 
 		//check for the dependent
-		depNode = filterNode(depNode, dep.Dependents, allowedDownstream, jobNamespaceMap)
+		depNode = filterNode(depNode, dep.Edges, allowedDownstream, jobNamespaceMap)
 
 		//add the complete node
-		parentNode.AddDependent(depNode)
+		parentNode.AddEdge(depNode)
 	}
 	return parentNode
 }
 
-func listIgnoredJobs(rootInstance *tree.TreeNode, rootFilteredTree *tree.TreeNode) []string {
-	allowedNodesMap := make(map[string]*tree.TreeNode)
+func listIgnoredJobs(rootInstance *dag.TreeNode, rootFilteredTree *dag.TreeNode) []string {
+	allowedNodesMap := make(map[string]*dag.TreeNode)
 	for _, allowedNode := range rootFilteredTree.GetAllNodes() {
-		allowedNodesMap[allowedNode.GetName()] = allowedNode
+		allowedNodesMap[allowedNode.String()] = allowedNode
 	}
 
 	ignoredJobsMap := make(map[string]bool)
 	for _, node := range rootInstance.GetAllNodes() {
-		if _, ok := allowedNodesMap[node.GetName()]; !ok {
-			ignoredJobsMap[node.GetName()] = true
+		if _, ok := allowedNodesMap[node.String()]; !ok {
+			ignoredJobsMap[node.String()] = true
 		}
 	}
 
@@ -697,11 +697,10 @@ func (e *EventJobCheckSuccess) String() string {
 	return fmt.Sprintf("check for job passed: %s", e.Name)
 }
 
-func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec, jobSpecMap map[string]models.JobSpec) (*tree.TreeNode, error) {
+func populateDownstreamDAGs(dagTree *dag.MultiRootDAG, jobSpec models.JobSpec, jobSpecMap map[string]models.JobSpec) (*dag.TreeNode, error) {
 	for _, childSpec := range jobSpecMap {
 		childNode := findOrCreateDAGNode(dagTree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
-			var isExternal = false
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
@@ -711,21 +710,10 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 				// be available in jobSpecs []models.JobSpec object (which is tenant specific)
 				// so we'll add a dummy JobSpec for that cross tenant/external dependency.
 				parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
-				isExternal = true
 			}
 			parentNode := findOrCreateDAGNode(dagTree, parentSpec)
-			parentNode.AddDependent(childNode)
+			parentNode.AddEdge(childNode)
 			dagTree.AddNode(parentNode)
-
-			if isExternal {
-				// dependency that are outside current project will be considered as root because
-				// optimus don't know dependencies of those external parents
-				dagTree.MarkRoot(parentNode)
-			}
-		}
-
-		if len(childSpec.Dependencies) == 0 {
-			dagTree.MarkRoot(childNode)
 		}
 	}
 

@@ -6,13 +6,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
-	"gorm.io/datatypes"
-
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -39,7 +37,7 @@ type ExecutionTree struct {
 	Runs       []time.Time
 }
 
-func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
+func fromTreeNode(treeNode *dag.TreeNode) *ExecutionTree {
 	//only store necessary job spec data in tree
 	treeNodeJob := treeNode.Data.(models.JobSpec)
 	jobSpec := Job{
@@ -54,7 +52,7 @@ func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
 	}
 
 	var dependents []*ExecutionTree
-	for _, dependent := range treeNode.Dependents {
+	for _, dependent := range treeNode.Edges {
 		dependents = append(dependents, fromTreeNode(dependent))
 	}
 
@@ -101,7 +99,7 @@ func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
 	}, nil
 }
 
-func toTreeNode(executionTree *ExecutionTree) *tree.TreeNode {
+func toTreeNode(executionTree *ExecutionTree) *dag.TreeNode {
 	jobSpec := models.JobSpec{
 		ID:          executionTree.JobSpec.ID,
 		Version:     executionTree.JobSpec.Version,
@@ -114,9 +112,9 @@ func toTreeNode(executionTree *ExecutionTree) *tree.TreeNode {
 			Interval:  *executionTree.JobSpec.Interval,
 		},
 	}
-	treeNode := tree.NewTreeNode(jobSpec)
+	treeNode := dag.NewTreeNode(jobSpec)
 	for _, dependent := range executionTree.Dependents {
-		treeNode.AddDependent(toTreeNode(dependent))
+		treeNode.AddEdge(toTreeNode(dependent))
 	}
 	for _, run := range executionTree.Runs {
 		treeNode.Runs.Add(run)
@@ -130,7 +128,7 @@ func (p Replay) ToSpec(jobSpec models.JobSpec) (models.ReplaySpec, error) {
 		return models.ReplaySpec{}, nil
 	}
 
-	var treeNode *tree.TreeNode
+	var treeNode *dag.TreeNode
 	if p.ExecutionTree != nil {
 		jobTree := ExecutionTree{}
 		if err := json.Unmarshal(p.ExecutionTree, &jobTree); err != nil {

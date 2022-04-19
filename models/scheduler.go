@@ -89,10 +89,11 @@ func (e *EventJobRemoteDelete) String() string {
 // ExecutorUnit executes the actual job instance
 type ExecutorUnit interface {
 	// Start initiates the instance execution
-	Start(ctx context.Context, req ExecutorStartRequest) (*ExecutorStartResponse, error)
+	Start(ctx context.Context, req *ExecutorStartRequest) (*ExecutorStartResponse, error)
 
 	// Stop aborts the execution
-	Stop(ctx context.Context, req ExecutorStopRequest) error
+	// should not throw error for already stopped jobs or unknown jobs
+	Stop(ctx context.Context, req *ExecutorStopRequest) error
 
 	// WaitForFinish returns a channel that should return the exit code of execution
 	// once it finishes
@@ -106,8 +107,12 @@ type ExecutorStartRequest struct {
 	// ID will be used for identifying the job in future calls
 	ID string
 
-	Job       JobSpec
+	Name      string
+	Unit      *Plugin
+	Config    JobSpecConfigs
+	Assets    JobAssets
 	Namespace NamespaceSpec
+	Type      InstanceType
 }
 
 type ExecutorStopRequest struct {

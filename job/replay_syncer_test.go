@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -49,14 +49,14 @@ func TestReplaySyncer(t *testing.T) {
 	specs[spec1] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow}
 	specs[spec2] = models.JobSpec{ID: uuid.Must(uuid.NewRandom()), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow}
 
-	executionTreeDependent := tree.NewTreeNode(specs[spec2])
+	executionTreeDependent := dag.NewTreeNode(specs[spec2])
 	executionTreeDependent.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 	executionTreeDependent.Runs.Add(time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC))
 
-	executionTree := tree.NewTreeNode(specs[spec1])
+	executionTree := dag.NewTreeNode(specs[spec1])
 	executionTree.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 	executionTree.Runs.Add(time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC))
-	executionTree.AddDependent(executionTreeDependent)
+	executionTree.AddEdge(executionTreeDependent)
 
 	activeReplaySpec := []models.ReplaySpec{
 		{

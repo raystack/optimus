@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
@@ -51,7 +51,7 @@ type ReplaySyncer interface {
 }
 
 type ReplayValidator interface {
-	Validate(context.Context, store.ReplaySpecRepository, models.ReplayRequest, *tree.TreeNode) error
+	Validate(context.Context, store.ReplaySpecRepository, models.ReplayRequest, *dag.TreeNode) error
 }
 
 // Manager for replaying operation(s).

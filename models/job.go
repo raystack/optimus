@@ -119,7 +119,7 @@ type JobSpecTaskDestination struct {
 
 type JobSpecTaskDependencies []string
 
-// using array to keep order, map would be more performant
+// JobSpecConfigs uses array to keep order, map would be more performant
 type JobSpecConfigs []JobSpecConfigItem
 
 func (j JobSpecConfigs) Get(name string) (string, bool) {

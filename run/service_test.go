@@ -103,7 +103,7 @@ func TestService(t *testing.T) {
 			localRun.Instances = append(jobRun.Instances, instanceSpec)
 
 			runRepo := new(mock.JobRunRepository)
-			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
+			runRepo.On("AddInstance", ctx, jobRun.ID, instanceSpec).Return(nil)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -165,7 +165,7 @@ func TestService(t *testing.T) {
 			existingRun.Spec.Task = jobRun.Spec.Task
 			existingRun.Instances = append(existingRun.Instances, instanceSpec)
 			existingRun.Instances[0].ExecutedAt = mockedTimeNow
-			runRepo.On("AddInstance", ctx, namespaceSpec, existingRun, instanceSpec).Return(nil)
+			runRepo.On("AddInstance", ctx, existingRun.ID, instanceSpec).Return(nil)
 
 			returnedInstanceSpec, err := runService.Register(ctx, namespaceSpec, existingRun, models.InstanceTypeTask, "bq")
 			assert.Nil(t, err)
@@ -202,7 +202,7 @@ func TestService(t *testing.T) {
 			}
 
 			runRepo := new(mock.JobRunRepository)
-			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(nil)
+			runRepo.On("AddInstance", ctx, jobRun.ID, instanceSpec).Return(nil)
 			localRun := jobRun
 			localRun.Instances = append(jobRun.Instances, instanceSpec)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(localRun, namespaceSpec, nil)
@@ -259,7 +259,7 @@ func TestService(t *testing.T) {
 			var newJobRun models.JobRun
 			Copy(&newJobRun, &existingJobRun)
 			newJobRun.Spec.Task.Unit = jobRun.Spec.Task.Unit
-			runRepo.On("AddInstance", ctx, namespaceSpec, existingJobRun, instanceSpec).Return(nil)
+			runRepo.On("AddInstance", ctx, existingJobRun.ID, instanceSpec).Return(nil)
 			runRepo.On("GetByID", ctx, jobRun.ID).Return(newJobRun, namespaceSpec, nil)
 			defer runRepo.AssertExpectations(t)
 
@@ -303,7 +303,7 @@ func TestService(t *testing.T) {
 			}
 
 			runRepo := new(mock.JobRunRepository)
-			runRepo.On("AddInstance", ctx, namespaceSpec, jobRun, instanceSpec).Return(errors.New("a random error"))
+			runRepo.On("AddInstance", ctx, jobRun.ID, instanceSpec).Return(errors.New("a random error"))
 			defer runRepo.AssertExpectations(t)
 
 			jobRunSpecRep := new(mock.JobRunRepoFactory)

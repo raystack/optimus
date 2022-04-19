@@ -22,20 +22,19 @@ func NewExecutor() *Executor {
 	}
 }
 
-func (e *Executor) Start(ctx context.Context, req models.ExecutorStartRequest) (*models.ExecutorStartResponse, error) {
+func (e *Executor) Start(ctx context.Context, req *models.ExecutorStartRequest) (*models.ExecutorStartResponse, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.state[req.ID] = models.RunStateRunning
 	return &models.ExecutorStartResponse{}, nil
 }
 
-func (e *Executor) Stop(ctx context.Context, req models.ExecutorStopRequest) error {
+func (e *Executor) Stop(ctx context.Context, req *models.ExecutorStopRequest) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if _, ok := e.state[req.ID]; !ok {
-		return errors.New("invalid id, no such execution")
+		return nil
 	}
-
 	delete(e.state, req.ID)
 	return nil
 }

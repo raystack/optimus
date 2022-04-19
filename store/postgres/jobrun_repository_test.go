@@ -1,3 +1,4 @@
+//go:build !unit_test
 // +build !unit_test
 
 package postgres
@@ -258,8 +259,8 @@ func TestJobRunRepository(t *testing.T) {
 		repo := NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
-		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
-		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[1]))
+		assert.Nil(t, repo.AddInstance(ctx, testModels[0].ID, testModels[0].Instances[0]))
+		assert.Nil(t, repo.AddInstance(ctx, testModels[0].ID, testModels[0].Instances[1]))
 
 		err = repo.ClearInstance(ctx, testModels[0].ID, models.InstanceTypeTask, "do-this")
 		assert.Nil(t, err)
@@ -296,7 +297,7 @@ func TestJobRunRepository(t *testing.T) {
 		err := repo.Insert(ctx, namespaceSpec, testModels[1])
 		assert.Nil(t, err)
 
-		err = repo.AddInstance(ctx, namespaceSpec, testModels[1], testInstanceSpecs[0])
+		err = repo.AddInstance(ctx, testModels[1].ID, testInstanceSpecs[0])
 		assert.Nil(t, err)
 
 		jr, _, err := repo.GetByID(ctx, testModels[1].ID)
@@ -314,8 +315,8 @@ func TestJobRunRepository(t *testing.T) {
 		repo := NewJobRunRepository(db, adapter)
 		err := repo.Insert(ctx, namespaceSpec, testModels[0])
 		assert.Nil(t, err)
-		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
-		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[1]))
+		assert.Nil(t, repo.AddInstance(ctx, testModels[0].ID, testModels[0].Instances[0]))
+		assert.Nil(t, repo.AddInstance(ctx, testModels[0].ID, testModels[0].Instances[1]))
 
 		err = repo.Clear(ctx, testModels[0].ID)
 		assert.Nil(t, err)

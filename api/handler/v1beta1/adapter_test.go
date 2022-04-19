@@ -9,8 +9,8 @@ import (
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/core/set"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -19,9 +19,9 @@ import (
 
 func TestAdapter(t *testing.T) {
 	t.Run("should parse dag node to replay node", func(t *testing.T) {
-		treeNode := tree.NewTreeNode(models.JobSpec{Name: "job-name"})
-		nestedTreeNode := tree.NewTreeNode(models.JobSpec{Name: "nested-job-name"})
-		treeNode.Dependents = append(treeNode.Dependents, nestedTreeNode)
+		treeNode := dag.NewTreeNode(models.JobSpec{Name: "job-name"})
+		nestedTreeNode := dag.NewTreeNode(models.JobSpec{Name: "nested-job-name"})
+		treeNode.Edges = append(treeNode.Edges, nestedTreeNode)
 		timeRun := time.Date(2021, 11, 8, 0, 0, 0, 0, time.UTC)
 		treeNode.Runs.Add(timeRun)
 		adap := v1.Adapter{}
@@ -32,9 +32,9 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, replayExecutionTreeNode.Dependents[0].JobName, "nested-job-name")
 	})
 	t.Run("should parse dag with status node to replay with status node", func(t *testing.T) {
-		treeNode := tree.NewTreeNode(models.JobSpec{Name: "job-name"})
-		nestedTreeNode := tree.NewTreeNode(models.JobSpec{Name: "nested-job-name"})
-		treeNode.Dependents = append(treeNode.Dependents, nestedTreeNode)
+		treeNode := dag.NewTreeNode(models.JobSpec{Name: "job-name"})
+		nestedTreeNode := dag.NewTreeNode(models.JobSpec{Name: "nested-job-name"})
+		treeNode.Edges = append(treeNode.Edges, nestedTreeNode)
 		timeRun := time.Date(2021, 11, 8, 0, 0, 0, 0, time.UTC)
 		jobStatus := models.JobStatus{
 			State:       models.RunStateRunning,

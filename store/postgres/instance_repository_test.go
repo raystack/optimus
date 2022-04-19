@@ -1,3 +1,4 @@
+//go:build !unit_test
 // +build !unit_test
 
 package postgres
@@ -164,7 +165,7 @@ func TestInstanceRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewInstanceRepository(db, adapter)
-		err := repo.Insert(ctx, jobRuns[0], testModels[0])
+		err := repo.Insert(ctx, jobRuns[0].ID, testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByID(ctx, testModels[0].ID)
@@ -181,7 +182,7 @@ func TestInstanceRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewInstanceRepository(db, adapter)
-		err := repo.Insert(ctx, jobRuns[0], testModels[0])
+		err := repo.Insert(ctx, jobRuns[0].ID, testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByID(ctx, testModels[0].ID)
@@ -194,7 +195,7 @@ func TestInstanceRepository(t *testing.T) {
 
 		testModels[0].Name = "updated-name"
 
-		err = repo.Save(ctx, jobRuns[0], testModels[0])
+		err = repo.Save(ctx, jobRuns[0].ID, testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err = repo.GetByID(ctx, testModels[0].ID)
@@ -211,7 +212,7 @@ func TestInstanceRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := NewInstanceRepository(db, adapter)
-		err := repo.Save(ctx, jobRuns[0], testModels[0])
+		err := repo.Save(ctx, jobRuns[0].ID, testModels[0])
 		assert.Nil(t, err)
 
 		checkModel, err := repo.GetByID(ctx, testModels[0].ID)

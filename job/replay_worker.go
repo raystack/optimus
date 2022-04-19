@@ -40,8 +40,8 @@ func (w *replayWorker) Process(ctx context.Context, input models.ReplayRequest) 
 		runTimes := treeNode.Runs.Values()
 		startTime := runTimes[0].(time.Time)
 		endTime := runTimes[treeNode.Runs.Size()-1].(time.Time)
-		if err = w.scheduler.Clear(ctx, input.Project, treeNode.GetName(), startTime, endTime); err != nil {
-			err = errors.Wrapf(err, "error while clearing dag runs for job %s", treeNode.GetName())
+		if err = w.scheduler.Clear(ctx, input.Project, treeNode.String(), startTime, endTime); err != nil {
+			err = errors.Wrapf(err, "error while clearing dag runs for job %s", treeNode.String())
 			w.log.Warn("error while running replay", "replay id", input.ID.String(), "error", err.Error())
 			if updateStatusErr := replaySpecRepo.UpdateStatus(ctx, input.ID, models.ReplayStatusFailed, models.ReplayMessage{
 				Type:    AirflowClearDagRunFailed,

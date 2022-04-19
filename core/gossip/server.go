@@ -181,6 +181,7 @@ func (s *Server) BroadcastQuery(cmd string, payload []byte) ([]byte, error) {
 		case resp := <-qResp.ResponseCh():
 			s.l.Info("serf query response from", "node", resp.From)
 			response = resp.Payload
+			// we don't wait for others to respond because only leader should respond back
 			qResp.Close()
 		}
 	}

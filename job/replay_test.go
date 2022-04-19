@@ -11,7 +11,7 @@ import (
 
 	"github.com/odpf/optimus/job"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 
 	"github.com/pkg/errors"
 
@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]time.Time) {
-	key := fmt.Sprintf("%s#%s", parentNodeName, node.GetName())
+func getRuns(node *dag.TreeNode, parentNodeName string, runMap map[string][]time.Time) {
+	key := fmt.Sprintf("%s#%s", parentNodeName, node.String())
 	if _, ok := runMap[key]; ok {
 		return
 	}
@@ -33,8 +33,8 @@ func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]tim
 			runMap[key] = append(runMap[key], run)
 		}
 	}
-	for _, dep := range node.Dependents {
-		getRuns(dep, node.GetName(), runMap)
+	for _, dep := range node.Edges {
+		getRuns(dep, node.String(), runMap)
 	}
 }
 
@@ -633,24 +633,24 @@ func TestReplay(t *testing.T) {
 		run3 := time.Date(2020, time.Month(8), 7, 2, 0, 0, 0, time.UTC)
 
 		jobSpec2 := jobSpecs[2]
-		executionTree2 := tree.NewTreeNode(jobSpec2)
+		executionTree2 := dag.NewTreeNode(jobSpec2)
 		executionTree2.Runs.Add(run1)
 		executionTree2.Runs.Add(run2)
 		executionTree2.Runs.Add(run3)
 
 		jobSpec1 := jobSpecs[1]
-		executionTree1 := tree.NewTreeNode(jobSpec1)
+		executionTree1 := dag.NewTreeNode(jobSpec1)
 		executionTree1.Runs.Add(run1)
 		executionTree1.Runs.Add(run2)
 		executionTree1.Runs.Add(run3)
-		executionTree1.AddDependent(executionTree2)
+		executionTree1.AddEdge(executionTree2)
 
 		jobSpec0 := jobSpecs[0]
-		executionTree0 := tree.NewTreeNode(jobSpec0)
+		executionTree0 := dag.NewTreeNode(jobSpec0)
 		executionTree0.Runs.Add(run1)
 		executionTree0.Runs.Add(run2)
 		executionTree0.Runs.Add(run3)
-		executionTree0.AddDependent(executionTree1)
+		executionTree0.AddEdge(executionTree1)
 
 		t.Run("should fail if unable to fetch replay spec", func(t *testing.T) {
 			ctx := context.TODO()

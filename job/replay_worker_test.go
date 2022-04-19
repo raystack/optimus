@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 
 	"github.com/odpf/salt/log"
 
@@ -36,7 +36,7 @@ func TestReplayWorker(t *testing.T) {
 		},
 	}
 
-	executionTree := tree.NewTreeNode(jobSpec)
+	executionTree := dag.NewTreeNode(jobSpec)
 	executionTree.Runs.Add(time.Date(2020, time.Month(8), 22, 2, 0, 0, 0, time.UTC))
 	executionTree.Runs.Add(time.Date(2020, time.Month(8), 23, 2, 0, 0, 0, time.UTC))
 	executionTree.Runs.Add(time.Date(2020, time.Month(8), 24, 2, 0, 0, 0, time.UTC))

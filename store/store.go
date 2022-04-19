@@ -56,7 +56,7 @@ type NamespaceRepository interface {
 	GetAll(context.Context) ([]models.NamespaceSpec, error)
 }
 
-// JobRunSpecRepository represents a storage interface for Job runs generated to
+// JobRunRepository represents a storage interface for Job runs generated to
 // represent a job in running state
 type JobRunRepository interface {
 	// Save updates the run in place if it can else insert new
@@ -70,7 +70,7 @@ type JobRunRepository interface {
 	GetByTrigger(ctx context.Context, trigger models.JobRunTrigger, state ...models.JobRunState) ([]models.JobRun, error)
 	Delete(context.Context, uuid.UUID) error
 
-	AddInstance(ctx context.Context, namespace models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error
+	AddInstance(ctx context.Context, runID uuid.UUID, spec models.InstanceSpec) error
 
 	// Clear will not delete the record but will reset all the run details
 	// for fresh start
@@ -78,10 +78,10 @@ type JobRunRepository interface {
 	ClearInstance(ctx context.Context, runID uuid.UUID, instanceType models.InstanceType, instanceName string) error
 }
 
-// JobRunSpecRepository represents a storage interface for Job run instances created
+// InstanceRepository represents a storage interface for Job run instances created
 // during execution
 type InstanceRepository interface {
-	Save(ctx context.Context, run models.JobRun, spec models.InstanceSpec) error
+	Save(ctx context.Context, runID uuid.UUID, spec models.InstanceSpec) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error
 	GetByName(ctx context.Context, runID uuid.UUID, instanceName, instanceType string) (models.InstanceSpec, error)
 

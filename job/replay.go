@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/cron"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/core/set"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/pkg/errors"
 )
@@ -58,8 +58,8 @@ func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, e
 	}
 
 	// compute runs that require replay
-	dagTree := tree.NewMultiRootTree()
-	rootNode := tree.NewTreeNode(replayJobSpec)
+	dagTree := dag.NewMultiRootDAG()
+	rootNode := dag.NewTreeNode(replayJobSpec)
 	rootRuns, err := getRunsBetweenDates(replayRequest.Start, replayRequest.End, replayJobSpec.Schedule.Interval)
 	if err != nil {
 		return models.ReplayPlan{}, err
@@ -76,13 +76,13 @@ func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, e
 	}
 
 	// form a new rootInstance with only allowed nodes
-	rootFilteredExecutionTree := tree.NewTreeNode(replayJobSpec)
+	rootFilteredExecutionTree := dag.NewTreeNode(replayJobSpec)
 	for _, run := range rootRuns {
 		rootFilteredExecutionTree.Runs.Add(run)
 	}
 
 	if len(replayRequest.AllowedDownstreamNamespaces) > 0 {
-		rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Dependents, replayRequest.AllowedDownstreamNamespaces, replayRequest.JobNamespaceMap)
+		rootFilteredExecutionTree = filterNode(rootFilteredExecutionTree, rootExecutionTree.Edges, replayRequest.AllowedDownstreamNamespaces, replayRequest.JobNamespaceMap)
 	}
 
 	// listed down non allowed nodes
@@ -100,17 +100,17 @@ func prepareReplayPlan(replayRequest models.ReplayRequest) (models.ReplayPlan, e
 	}, nil
 }
 
-func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {
+func findOrCreateDAGNode(dagTree *dag.MultiRootDAG, dagSpec models.JobSpec) *dag.TreeNode {
 	node, ok := dagTree.GetNodeByName(dagSpec.Name)
 	if !ok {
-		node = tree.NewTreeNode(dagSpec)
+		node = dag.NewTreeNode(dagSpec)
 		dagTree.AddNode(node)
 	}
 	return node
 }
 
-func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
-	for idx, childNode := range parentNode.Dependents {
+func populateDownstreamRuns(parentNode *dag.TreeNode) (*dag.TreeNode, error) {
+	for idx, childNode := range parentNode.Edges {
 		childDag := childNode.Data.(models.JobSpec)
 		taskSchedule, err := cron.ParseCronSchedule(childDag.Schedule.Interval)
 		if err != nil {
@@ -144,7 +144,7 @@ func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		parentNode.Dependents[idx] = updatedChildNode
+		parentNode.Edges[idx] = updatedChildNode
 	}
 	return parentNode, nil
 }
@@ -206,7 +206,7 @@ func TimeOfJobStatusComparator(a, b interface{}) int {
 }
 
 // prepareReplayStatusTree update execution tree with the status per run
-func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest models.ReplayRequest, replaySpec models.ReplaySpec) (*tree.TreeNode, error) {
+func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest models.ReplayRequest, replaySpec models.ReplaySpec) (*dag.TreeNode, error) {
 	runsWithStatus := set.NewTreeSetWith(TimeOfJobStatusComparator)
 	jobStatusList, err := srv.replayManager.GetRunStatus(ctx, replayRequest.Project, replaySpec.StartDate, replaySpec.EndDate, replaySpec.Job.Name)
 	if err != nil {
@@ -219,8 +219,8 @@ func (srv *Service) prepareReplayStatusTree(ctx context.Context, replayRequest m
 	return srv.populateDownstreamRunsWithStatus(ctx, replayRequest.Project, replaySpec.StartDate, replaySpec.EndDate, replaySpec.ExecutionTree)
 }
 
-func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time, parentNode *tree.TreeNode) (*tree.TreeNode, error) {
-	for _, dependent := range parentNode.Dependents {
+func (srv *Service) populateDownstreamRunsWithStatus(ctx context.Context, projectSpec models.ProjectSpec, startDate time.Time, endDate time.Time, parentNode *dag.TreeNode) (*dag.TreeNode, error) {
+	for _, dependent := range parentNode.Edges {
 		runsWithStatus := set.NewTreeSetWith(TimeOfJobStatusComparator)
 		jobStatusList, err := srv.replayManager.GetRunStatus(ctx, projectSpec, startDate, endDate, dependent.Data.(models.JobSpec).Name)
 		if err != nil {

@@ -31,9 +31,9 @@ const (
 	InstanceTypeTask InstanceType = "task"
 	InstanceTypeHook InstanceType = "hook"
 
-	// job run created by a batch schedule
+	// TriggerSchedule job run created by a batch schedule
 	TriggerSchedule JobRunTrigger = "schedule"
-	// job run created by a manual user request
+	// TriggerManual job run created by a manual user request
 	TriggerManual JobRunTrigger = "manual"
 )
 

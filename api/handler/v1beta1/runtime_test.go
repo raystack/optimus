@@ -21,7 +21,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 
 	"github.com/google/uuid"
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
@@ -1814,7 +1814,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:                     projectSpec,
 				AllowedDownstreamNamespaces: []string{models.AllNamespace},
 			}
-			dagNode := tree.NewTreeNode(jobSpec)
+			dagNode := dag.NewTreeNode(jobSpec)
 			dagNode.Runs.Add(time.Date(2020, 11, 25, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 26, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 27, 2, 0, 0, 0, time.UTC))
@@ -1882,7 +1882,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				Project:                     projectSpec,
 				AllowedDownstreamNamespaces: []string{namespaceSpec.Name},
 			}
-			dagNode := tree.NewTreeNode(jobSpec)
+			dagNode := dag.NewTreeNode(jobSpec)
 			dagNode.Runs.Add(time.Date(2020, 11, 25, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 26, 2, 0, 0, 0, time.UTC))
 			dagNode.Runs.Add(time.Date(2020, 11, 27, 2, 0, 0, 0, time.UTC))
@@ -2556,7 +2556,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 				},
 			}
 
-			dagNode := tree.NewTreeNode(jobSpec)
+			dagNode := dag.NewTreeNode(jobSpec)
 			dagNode.Runs = set.NewTreeSetWith(job.TimeOfJobStatusComparator)
 			dagNode.Runs.Add(jobStatusList[0])
 			dagNode.Runs.Add(jobStatusList[1])

@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
@@ -72,8 +72,8 @@ type ProtoAdapter interface {
 	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
 	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
 
-	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
-	ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error)
+	ToReplayExecutionTreeNode(res *dag.TreeNode) (*pb.ReplayExecutionTreeNode, error)
+	ToReplayStatusTreeNode(res *dag.TreeNode) (*pb.ReplayStatusTreeNode, error)
 }
 
 type RuntimeServiceServer struct {

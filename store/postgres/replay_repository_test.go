@@ -1,3 +1,4 @@
+//go:build !unit_test
 // +build !unit_test
 
 package postgres
@@ -10,7 +11,7 @@ import (
 
 	"github.com/odpf/optimus/store"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/mock"
@@ -19,12 +20,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func treeIsEqual(treeNode *tree.TreeNode, treeNodeComparator *tree.TreeNode) bool {
-	if treeNode.Data.GetName() != treeNodeComparator.Data.GetName() {
+func treeIsEqual(treeNode *dag.TreeNode, treeNodeComparator *dag.TreeNode) bool {
+	if treeNode.String() != treeNodeComparator.String() {
 		return false
 	}
-	for idx, dependent := range treeNode.Dependents {
-		if !treeIsEqual(dependent, treeNodeComparator.Dependents[idx]) {
+	for idx, dependent := range treeNode.Edges {
+		if !treeIsEqual(dependent, treeNodeComparator.Edges[idx]) {
 			return false
 		}
 	}
@@ -82,7 +83,7 @@ func TestReplayRepository(t *testing.T) {
 	run5 := time.Date(2021, 1, 19, 2, 0, 0, 0, time.UTC)
 	run6 := time.Date(2021, 1, 20, 2, 0, 0, 0, time.UTC)
 
-	treeNode3 := tree.NewTreeNode(jobConfigs[2])
+	treeNode3 := dag.NewTreeNode(jobConfigs[2])
 	treeNode3.Runs.Add(run1)
 	treeNode3.Runs.Add(run2)
 	treeNode3.Runs.Add(run3)
@@ -90,23 +91,23 @@ func TestReplayRepository(t *testing.T) {
 	treeNode3.Runs.Add(run5)
 	treeNode3.Runs.Add(run6)
 
-	treeNode2 := tree.NewTreeNode(jobConfigs[1])
+	treeNode2 := dag.NewTreeNode(jobConfigs[1])
 	treeNode2.Runs.Add(run1)
 	treeNode2.Runs.Add(run2)
 	treeNode2.Runs.Add(run3)
 	treeNode2.Runs.Add(run4)
 	treeNode2.Runs.Add(run5)
 	treeNode2.Runs.Add(run6)
-	treeNode2.AddDependent(treeNode3)
+	treeNode2.AddEdge(treeNode3)
 
-	treeNode1 := tree.NewTreeNode(jobConfigs[0])
+	treeNode1 := dag.NewTreeNode(jobConfigs[0])
 	treeNode1.Runs.Add(run1)
 	treeNode1.Runs.Add(run2)
 	treeNode1.Runs.Add(run3)
 	treeNode1.Runs.Add(run4)
 	treeNode1.Runs.Add(run5)
 	treeNode1.Runs.Add(run6)
-	treeNode1.AddDependent(treeNode2)
+	treeNode1.AddEdge(treeNode2)
 
 	testConfigs := []*models.ReplaySpec{
 		{

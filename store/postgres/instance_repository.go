@@ -83,23 +83,23 @@ type InstanceRepository struct {
 	Now func()
 }
 
-func (repo *InstanceRepository) Insert(ctx context.Context, run models.JobRun, spec models.InstanceSpec) error {
-	resource, err := Instance{}.FromSpec(spec, run.ID)
+func (repo *InstanceRepository) Insert(ctx context.Context, runID uuid.UUID, spec models.InstanceSpec) error {
+	resource, err := Instance{}.FromSpec(spec, runID)
 	if err != nil {
 		return err
 	}
 	return repo.db.WithContext(ctx).Omit("JobRun").Create(&resource).Error
 }
 
-func (repo *InstanceRepository) Save(ctx context.Context, run models.JobRun, spec models.InstanceSpec) error {
-	existingResource, err := repo.GetByName(ctx, run.ID, spec.Name, spec.Type.String())
+func (repo *InstanceRepository) Save(ctx context.Context, runID uuid.UUID, spec models.InstanceSpec) error {
+	existingResource, err := repo.GetByName(ctx, runID, spec.Name, spec.Type.String())
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, run, spec)
+		return repo.Insert(ctx, runID, spec)
 	} else if err != nil {
 		return errors.Wrap(err, "unable to find instance by schedule")
 	}
 
-	resource, err := Instance{}.FromSpec(spec, run.ID)
+	resource, err := Instance{}.FromSpec(spec, runID)
 	if err != nil {
 		return err
 	}

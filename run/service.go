@@ -95,7 +95,7 @@ func (s *Service) Register(ctx context.Context, namespace models.NamespaceSpec, 
 	if err != nil {
 		return models.InstanceSpec{}, errors.Wrap(err, "Register: failed to prepare instance")
 	}
-	if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
+	if err := jobRunRepo.AddInstance(ctx, jobRun.ID, instanceToSave); err != nil {
 		return models.InstanceSpec{}, err
 	}
 

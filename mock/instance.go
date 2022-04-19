@@ -60,8 +60,8 @@ func (r *JobRunRepository) Delete(ctx context.Context, u uuid.UUID) error {
 	return args.Error(0)
 }
 
-func (r *JobRunRepository) AddInstance(ctx context.Context, namespace models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error {
-	args := r.Called(ctx, namespace, run, spec)
+func (r *JobRunRepository) AddInstance(ctx context.Context, runID uuid.UUID, spec models.InstanceSpec) error {
+	args := r.Called(ctx, runID, spec)
 	return args.Error(0)
 }
 

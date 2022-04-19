@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -24,7 +24,7 @@ func NewReplayValidator(scheduler models.SchedulerUnit) *Validator {
 }
 
 func (v *Validator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository,
-	reqInput models.ReplayRequest, replayTree *tree.TreeNode) error {
+	reqInput models.ReplayRequest, replayTree *dag.TreeNode) error {
 	if !reqInput.Force {
 		reqReplayNodes := replayTree.GetAllNodes()
 
@@ -66,7 +66,7 @@ func cancelConflictedReplays(ctx context.Context, replaySpecRepo store.ReplaySpe
 	return nil
 }
 
-func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes []*tree.TreeNode, reqInput models.ReplayRequest) error {
+func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes []*dag.TreeNode, reqInput models.ReplayRequest) error {
 	for _, reqReplayNode := range reqReplayNodes {
 		batchEndDate := reqInput.End.AddDate(0, 0, 1).Add(time.Second * -1)
 		jobStatusAllRuns, err := v.scheduler.GetJobRunStatus(ctx, reqInput.Project, reqReplayNode.Data.(models.JobSpec).Name, reqInput.Start, batchEndDate, schedulerBatchSize)
@@ -82,7 +82,7 @@ func (v *Validator) validateRunningInstance(ctx context.Context, reqReplayNodes 
 	return nil
 }
 
-func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqReplayNodes []*tree.TreeNode) error {
+func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqReplayNodes []*dag.TreeNode) error {
 	for _, activeSpec := range activeReplaySpecs {
 		activeNodes := activeSpec.ExecutionTree.GetAllNodes()
 		if err := checkAnyConflictedDags(activeNodes, reqReplayNodes); err != nil {
@@ -92,15 +92,15 @@ func validateReplayJobsConflict(activeReplaySpecs []models.ReplaySpec, reqReplay
 	return nil
 }
 
-func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree.TreeNode) error {
-	activeNodesMap := make(map[string]*tree.TreeNode)
+func checkAnyConflictedDags(activeNodes []*dag.TreeNode, reqReplayNodes []*dag.TreeNode) error {
+	activeNodesMap := make(map[string]*dag.TreeNode)
 	for _, activeNode := range activeNodes {
-		activeNodesMap[activeNode.GetName()] = activeNode
+		activeNodesMap[activeNode.String()] = activeNode
 	}
 
 	for _, reqNode := range reqReplayNodes {
-		if _, ok := activeNodesMap[reqNode.GetName()]; ok {
-			if err := checkAnyConflictedRuns(activeNodesMap[reqNode.GetName()], reqNode); err != nil {
+		if _, ok := activeNodesMap[reqNode.String()]; ok {
+			if err := checkAnyConflictedRuns(activeNodesMap[reqNode.String()], reqNode); err != nil {
 				return err
 			}
 		}
@@ -108,7 +108,7 @@ func checkAnyConflictedDags(activeNodes []*tree.TreeNode, reqReplayNodes []*tree
 	return nil
 }
 
-func checkAnyConflictedRuns(activeNode *tree.TreeNode, reqNode *tree.TreeNode) error {
+func checkAnyConflictedRuns(activeNode *dag.TreeNode, reqNode *dag.TreeNode) error {
 	for _, reqNodeRun := range reqNode.Runs.Values() {
 		if activeNode.Runs.Contains(reqNodeRun.(time.Time)) {
 			return ErrConflictedJobRun

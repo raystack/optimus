@@ -3,9 +3,8 @@ package models
 import (
 	"time"
 
-	"github.com/odpf/optimus/core/tree"
-
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/dag"
 )
 
 const (
@@ -38,7 +37,7 @@ type ReplayRequest struct {
 }
 
 type ReplayPlan struct {
-	ExecutionTree *tree.TreeNode
+	ExecutionTree *dag.TreeNode
 	IgnoredJobs   []string
 }
 
@@ -48,7 +47,7 @@ type ReplaySpec struct {
 	StartDate     time.Time
 	EndDate       time.Time
 	Config        map[string]string
-	ExecutionTree *tree.TreeNode
+	ExecutionTree *dag.TreeNode
 	Status        string
 	Message       ReplayMessage
 	CreatedAt     time.Time
@@ -56,7 +55,7 @@ type ReplaySpec struct {
 
 type ReplayState struct {
 	Status string
-	Node   *tree.TreeNode
+	Node   *dag.TreeNode
 }
 
 type ReplayResult struct {

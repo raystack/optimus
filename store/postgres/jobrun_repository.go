@@ -75,8 +75,8 @@ func (repo *JobRunRepository) GetByScheduledAt(ctx context.Context, jobID uuid.U
 }
 
 // AddInstance associate instance details
-func (repo *JobRunRepository) AddInstance(ctx context.Context, namespaceSpec models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error {
-	instance, err := repo.instanceRepo.GetByName(ctx, run.ID, spec.Name, spec.Type.String())
+func (repo *JobRunRepository) AddInstance(ctx context.Context, runID uuid.UUID, spec models.InstanceSpec) error {
+	instance, err := repo.instanceRepo.GetByName(ctx, runID, spec.Name, spec.Type.String())
 	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 		return err
 	}
@@ -86,7 +86,7 @@ func (repo *JobRunRepository) AddInstance(ctx context.Context, namespaceSpec mod
 			return err
 		}
 	}
-	return repo.instanceRepo.Save(ctx, run, spec)
+	return repo.instanceRepo.Save(ctx, runID, spec)
 }
 
 // ClearInstance deletes associated instance details

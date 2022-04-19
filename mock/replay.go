@@ -4,9 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/odpf/optimus/core/dag"
 	"github.com/odpf/optimus/job"
-
-	"github.com/odpf/optimus/core/tree"
 
 	"github.com/google/uuid"
 	"github.com/odpf/optimus/models"
@@ -147,7 +146,7 @@ type ReplayValidator struct {
 }
 
 func (rv *ReplayValidator) Validate(ctx context.Context, replaySpecRepo store.ReplaySpecRepository,
-	replayRequest models.ReplayRequest, replayTree *tree.TreeNode) error {
+	replayRequest models.ReplayRequest, replayTree *dag.TreeNode) error {
 	args := rv.Called(ctx, replaySpecRepo, replayRequest, replayTree)
 	return args.Error(0)
 }
