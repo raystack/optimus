@@ -55,7 +55,7 @@ func jobValidateCommand(conf *config.ClientConfig) *cli.Command {
 				return fmt.Errorf("directory '%s': %w", namespace.Job.Path, err)
 			}
 
-			if err := validateJobSpecificationRequest(l, projectName, namespace.Name, pluginRepo, jobSpecs, host, verbose); err != nil {
+			if err := validateJobSpecificationRequest(l, projectName, namespace.Name, jobSpecs, host, verbose); err != nil {
 				return err
 			}
 			l.Info(coloredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
@@ -68,10 +68,7 @@ func jobValidateCommand(conf *config.ClientConfig) *cli.Command {
 	return cmd
 }
 
-func validateJobSpecificationRequest(l log.Logger, projectName, namespace string,
-	pluginRepo models.PluginRepository, jobSpecs []models.JobSpec, host string, verbose bool) (err error) {
-	adapt := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
-
+func validateJobSpecificationRequest(l log.Logger, projectName, namespace string, jobSpecs []models.JobSpec, host string, verbose bool) (err error) {
 	ctx, conn, closeConn, err := initClientConnection(host, validateTimeout)
 	if err != nil {
 		return err
@@ -80,7 +77,7 @@ func validateJobSpecificationRequest(l log.Logger, projectName, namespace string
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
-		adaptJob := adapt.ToJobProto(spec)
+		adaptJob := v1handler.ToJobProto(spec)
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptJob)
 	}
 

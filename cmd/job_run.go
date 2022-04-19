@@ -52,7 +52,7 @@ func jobRunCommand(conf *config.ClientConfig) *cli.Command {
 			if err != nil {
 				return err
 			}
-			return runJobSpecificationRequest(l, projectName, namespace.Name, host, jobSpec, pluginRepo)
+			return runJobSpecificationRequest(l, projectName, namespace.Name, host, jobSpec)
 		},
 	}
 	cmd.Flags().StringVarP(&namespaceName, "namespace", "n", namespaceName, "Namespace of the resource within project")
@@ -60,15 +60,14 @@ func jobRunCommand(conf *config.ClientConfig) *cli.Command {
 	return cmd
 }
 
-func runJobSpecificationRequest(l log.Logger, projectName, namespace, host string, jobSpec models.JobSpec, pluginRepo models.PluginRepository) (err error) {
+func runJobSpecificationRequest(l log.Logger, projectName, namespace, host string, jobSpec models.JobSpec) (err error) {
 	ctx, conn, closeConn, err := initClientConnection(host, runJobTimeout)
 	if err != nil {
 		return err
 	}
 	defer closeConn()
 
-	adapt := v1handler.NewAdapter(pluginRepo, nil)
-	adaptedSpec := adapt.ToJobProto(jobSpec)
+	adaptedSpec := v1handler.ToJobProto(jobSpec)
 
 	l.Info("please wait...")
 	jobRun := pb.NewJobRunServiceClient(conn)

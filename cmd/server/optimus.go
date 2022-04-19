@@ -332,10 +332,11 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac, pluginService)
 	// adapter service
-	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
+	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
+	pluginRepo := models.PluginRegistry
 
 	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
-	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, models.PluginRegistry)
+	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
 	// secret service
@@ -344,26 +345,23 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
 		dataStoreService,
 		namespaceService,
-		adapterService,
+		models.DatastoreRegistry,
 		progressObs))
 	// replay service
 	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
 		jobService,
 		namespaceService,
-		adapterService,
 		projectService))
 	// project service
 	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
-		adapterService,
 		projectService))
 	// namespace service
 	pb.RegisterNamespaceServiceServer(s.grpcServer, v1handler.NewNamespaceServiceServer(s.logger,
-		adapterService,
 		namespaceService))
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
-		adapterService,
+		pluginRepo,
 		projectService,
 		namespaceService,
 		progressObs))
@@ -373,7 +371,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectService,
 		namespaceService,
 		secretService,
-		adapterService,
+		pluginRepo,
 		jobRunService,
 		runInputCompiler,
 		models.BatchScheduler))

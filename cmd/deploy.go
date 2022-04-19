@@ -237,8 +237,6 @@ func sendNamespaceJobDeploymentRequest(
 
 func getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
 	pluginRepo := models.PluginRegistry
-	datastoreRepo := models.DatastoreRegistry
-	adapter := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 
 	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 	jobSpecRepo := local.NewJobSpecRepository(
@@ -253,7 +251,7 @@ func getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*
 
 	adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
 	for i, spec := range jobSpecs {
-		adaptedJobSpecs[i] = adapter.ToJobProto(spec)
+		adaptedJobSpecs[i] = v1handler.ToJobProto(spec)
 	}
 	return &pb.DeployJobSpecificationRequest{
 		Jobs:          adaptedJobSpecs,
@@ -382,9 +380,7 @@ func getResourceDeploymentRequest(
 	projectName, namespaceName, storeName string,
 	repoFS afero.Fs,
 ) (*pb.DeployResourceSpecificationRequest, error) {
-	pluginRepo := models.PluginRegistry
 	datastoreRepo := models.DatastoreRegistry
-	adapter := v1handler.NewAdapter(pluginRepo, datastoreRepo)
 
 	ds, err := datastoreRepo.GetByName(storeName)
 	if err != nil {
@@ -399,7 +395,7 @@ func getResourceDeploymentRequest(
 
 	adaptedSpecs := make([]*pb.ResourceSpecification, len(resourceSpecs))
 	for i, spec := range resourceSpecs {
-		adapted, err := adapter.ToResourceProto(spec)
+		adapted, err := v1handler.ToResourceProto(spec)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
 		}

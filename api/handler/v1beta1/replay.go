@@ -22,7 +22,6 @@ type ReplayServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
 	namespaceService service.NamespaceService
-	adapter          ProtoAdapter
 	projectService   service.ProjectService
 	pb.UnimplementedReplayServiceServer
 }
@@ -39,7 +38,7 @@ func (sv *ReplayServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayD
 		return nil, status.Errorf(codes.Internal, "error while processing replay dry run: %v", err)
 	}
 
-	node, err := sv.adapter.ToReplayExecutionTreeNode(replayPlan.ExecutionTree)
+	node, err := ToReplayExecutionTreeNode(replayPlan.ExecutionTree)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while preparing replay dry run response: %v", err)
 	}
@@ -84,7 +83,7 @@ func (sv *ReplayServiceServer) GetReplayStatus(ctx context.Context, req *pb.GetR
 		return nil, status.Errorf(codes.Internal, "error while getting replay: %v", err)
 	}
 
-	node, err := sv.adapter.ToReplayStatusTreeNode(replayState.Node)
+	node, err := ToReplayStatusTreeNode(replayState.Node)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting replay status tree: %v", err)
 	}
@@ -181,11 +180,10 @@ func (sv *ReplayServiceServer) parseReplayRequest(ctx context.Context, projectNa
 	return replayRequest, nil
 }
 
-func NewReplayServiceServer(l log.Logger, jobService models.JobService, namespaceService service.NamespaceService, adapter ProtoAdapter, projectService service.ProjectService) *ReplayServiceServer {
+func NewReplayServiceServer(l log.Logger, jobService models.JobService, namespaceService service.NamespaceService, projectService service.ProjectService) *ReplayServiceServer {
 	return &ReplayServiceServer{
 		l:                l,
 		jobSvc:           jobService,
-		adapter:          adapter,
 		namespaceService: namespaceService,
 		projectService:   projectService,
 	}

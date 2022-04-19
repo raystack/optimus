@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +27,7 @@ type JobSpecServiceServerTestSuite struct {
 	projectService   *mock.ProjectService
 	namespaceService *mock.NamespaceService
 	jobService       *mock.JobService // TODO: refactor to service package
-	adapter          *mock.ProtoAdapter
+	pluginRepo       *mock.SupportedPluginRepo
 	log              log.Logger
 	progressObserver progress.Observer
 
@@ -39,7 +40,7 @@ type JobSpecServiceServerTestSuite struct {
 func (s *JobSpecServiceServerTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.namespaceService = new(mock.NamespaceService)
-	s.adapter = new(mock.ProtoAdapter)
+	s.pluginRepo = new(mock.SupportedPluginRepo)
 	s.jobService = new(mock.JobService)
 	s.log = log.NewNoop()
 
@@ -65,7 +66,7 @@ func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecSer
 	return v1.NewJobSpecServiceServer(
 		s.log,
 		s.jobService,
-		s.adapter,
+		s.pluginRepo,
 		s.projectService,
 		s.namespaceService,
 		s.progressObserver,
@@ -99,12 +100,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 
 func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJobSpecs() {
 	jobSpecs := []*pb.JobSpecification{}
-	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
-	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-2"})
+	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1", StartDate: "2021-10-25"})
+	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-2", StartDate: "2021-08-10"})
 	s.jobReq.Jobs = jobSpecs
-	adaptedJobs := []models.JobSpec{}
-	adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-1"})
-	adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-2"})
 
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
@@ -112,11 +110,14 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	for i := range jobSpecs {
-		s.adapter.On("FromJobProto", jobSpecs[i]).Return(adaptedJobs[i], nil).Once()
-		s.jobService.On("Create", s.ctx, s.namespaceSpec, adaptedJobs[i]).Return(nil).Once()
-	}
-	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, adaptedJobs, mock2.Anything).Return(nil).Once()
+	s.pluginRepo.On("GetByName", mock2.Anything).Return(&models.Plugin{}, nil)
+	s.jobService.On("Create", s.ctx, s.namespaceSpec, mock2.MatchedBy(func(j models.JobSpec) bool {
+		return strings.Contains(j.Name, "job-")
+	})).Return(nil)
+
+	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.MatchedBy(func(l []models.JobSpec) bool {
+		return len(l) == 2
+	}), mock2.Anything).Return(nil).Once()
 	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
@@ -125,7 +126,6 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
-	s.adapter.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
@@ -170,7 +170,6 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterF
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.adapter.On("FromJobProto", jobSpecs[0]).Return(models.JobSpec{}, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -178,16 +177,13 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_AdapterF
 
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
-	s.adapter.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 }
 
 func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceCreateError() {
 	jobSpecs := []*pb.JobSpecification{}
-	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1"})
+	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1", StartDate: "2022-02-10"})
 	s.jobReq.Jobs = jobSpecs
-	adaptedJobs := []models.JobSpec{}
-	adaptedJobs = append(adaptedJobs, models.JobSpec{Name: "job-1"})
 
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
@@ -195,8 +191,10 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.adapter.On("FromJobProto", jobSpecs[0]).Return(adaptedJobs[0], nil).Once()
-	s.jobService.On("Create", s.ctx, s.namespaceSpec, adaptedJobs[0]).Return(errors.New("any error")).Once()
+	s.pluginRepo.On("GetByName", mock2.Anything).Return(&models.Plugin{}, nil)
+	s.jobService.On("Create", s.ctx, s.namespaceSpec, mock2.MatchedBy(func(j models.JobSpec) bool {
+		return j.Name == "job-1"
+	})).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -204,7 +202,6 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServi
 
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
-	s.adapter.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
@@ -253,12 +250,13 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Success() {
 	req.ProjectName = s.projectSpec.Name
 	req.NamespaceName = s.namespaceSpec.Name
 	req.JobName = "job-1"
-	jobSpec := models.JobSpec{Name: req.JobName}
-	jobSpecProto := &pb.JobSpecification{Name: req.JobName}
+
+	execUnit1 := new(mock.BasePlugin)
+	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
+	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
-	s.adapter.On("ToJobProto", jobSpec).Return(jobSpecProto, nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
@@ -331,7 +329,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
-			adapter := v1.NewAdapter(pluginRepo, nil)
 
 			jobSpec := models.JobSpec{
 				Name: jobName,
@@ -374,13 +371,13 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
-				adapter,
+				pluginRepo,
 				nil,
 				namespaceService,
 				nil,
 			)
 
-			jobProto := adapter.ToJobProto(jobSpec)
+			jobProto := v1.ToJobProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,
@@ -448,7 +445,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
-			adapter := v1.NewAdapter(pluginRepo, nil)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
@@ -465,7 +461,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				adapter,
+				pluginRepo,
 				nil,
 				namespaceService,
 				nil,
@@ -505,7 +501,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			pluginRepo := new(mock.SupportedPluginRepo)
-			adapter := v1.NewAdapter(pluginRepo, nil)
 
 			nsService := new(mock.NamespaceService)
 			defer nsService.AssertExpectations(t)
@@ -531,7 +526,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				adapter,
+				pluginRepo,
 				projectService,
 				nsService,
 				nil,
@@ -566,7 +561,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer jobSpecRepoFactory.AssertExpectations(t)
 
 			pluginRepo := new(mock.SupportedPluginRepo)
-			adapter := v1.NewAdapter(pluginRepo, nil)
 
 			nsService := new(mock.NamespaceService)
 			defer nsService.AssertExpectations(t)
@@ -593,7 +587,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				adapter,
+				pluginRepo,
 				projectService,
 				nsService,
 				nil,
