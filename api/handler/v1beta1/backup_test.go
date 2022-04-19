@@ -101,7 +101,9 @@ func TestBackupOnServer(t *testing.T) {
 				DryRun:       true,
 			}
 			backupPlan := models.BackupPlan{Resources: []string{resourceName}}
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0]}).Return(backupPlan, nil)
+			backupService := new(mock.BackupService)
+			backupService.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec, jobSpecDownstreams[0]}).Return(backupPlan, nil)
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -109,6 +111,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
@@ -190,8 +193,10 @@ func TestBackupOnServer(t *testing.T) {
 					resourceDownstream2Urn,
 				},
 			}
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest,
+			backupService := new(mock.BackupService)
+			backupService.On("BackupResourceDryRun", ctx, backupRequest,
 				[]models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupPlan, nil)
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -199,6 +204,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
@@ -280,8 +286,10 @@ func TestBackupOnServer(t *testing.T) {
 					resourceDownstream2Urn,
 				},
 			}
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest,
+			backupService := new(mock.BackupService)
+			backupService.On("BackupResourceDryRun", ctx, backupRequest,
 				[]models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupPlan, nil)
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -289,6 +297,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
@@ -315,6 +324,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				nil, namespaceService,
 				nil,
+				nil,
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
@@ -340,6 +350,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				nil,
 				namespaceService,
+				nil,
 				nil,
 			)
 
@@ -375,6 +386,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				resourceSvc,
 				namespaceService,
+				nil,
 				nil,
 			)
 
@@ -413,6 +425,7 @@ func TestBackupOnServer(t *testing.T) {
 				jobService,
 				resourceSvc,
 				namespaceService,
+				nil,
 				nil,
 			)
 
@@ -474,6 +487,7 @@ func TestBackupOnServer(t *testing.T) {
 				jobService,
 				resourceSvc,
 				namespaceService,
+				nil,
 				nil,
 			)
 			backupRequestPb := pb.BackupDryRunRequest{
@@ -538,8 +552,10 @@ func TestBackupOnServer(t *testing.T) {
 			}
 			errorMsg := "unable to get jobspec"
 
-			resourceSvc.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).
+			backupService := new(mock.BackupService)
+			backupService.On("BackupResourceDryRun", ctx, backupRequest, []models.JobSpec{jobSpec}).
 				Return(models.BackupPlan{}, errors.New(errorMsg))
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -547,6 +563,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 
 			backupRequestPb := pb.BackupDryRunRequest{
@@ -644,7 +661,10 @@ func TestBackupOnServer(t *testing.T) {
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
-			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(backupResult, nil)
+
+			backupService := new(mock.BackupService)
+			backupService.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(backupResult, nil)
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -652,6 +672,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
@@ -737,7 +758,9 @@ func TestBackupOnServer(t *testing.T) {
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
-			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
+			backupService := new(mock.BackupService)
+			backupService.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -745,6 +768,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
@@ -830,7 +854,9 @@ func TestBackupOnServer(t *testing.T) {
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
-			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec, jobSpecDownstreams[0], jobSpecDownstreams[1]}).Return(backupResult, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -838,6 +864,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
@@ -870,6 +897,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				nil,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
@@ -895,6 +923,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil,
 				nil,
 				namespaceService,
+				nil,
 				nil,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
@@ -929,6 +958,7 @@ func TestBackupOnServer(t *testing.T) {
 				log,
 				nil, resourceSvc,
 				namespaceService,
+				nil,
 				nil,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
@@ -967,6 +997,7 @@ func TestBackupOnServer(t *testing.T) {
 				jobService,
 				resourceSvc,
 				namespaceService,
+				nil,
 				nil,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
@@ -1028,6 +1059,7 @@ func TestBackupOnServer(t *testing.T) {
 				jobService,
 				resourceSvc,
 				namespaceService,
+				nil,
 				nil,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
@@ -1096,7 +1128,10 @@ func TestBackupOnServer(t *testing.T) {
 			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 			errorMsg := "unable to get jobspec"
-			resourceSvc.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(models.BackupResult{}, errors.New(errorMsg))
+
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(models.BackupResult{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -1104,6 +1139,7 @@ func TestBackupOnServer(t *testing.T) {
 				resourceSvc,
 				namespaceService,
 				nil,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.CreateBackup(ctx, &backupRequestPb)
 
@@ -1175,13 +1211,16 @@ func TestBackupOnServer(t *testing.T) {
 				},
 			}
 
-			resourceSvc.On("ListResourceBackups", ctx, projectSpec, datastoreName).Return(backupSpecs, nil)
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("ListResourceBackups", ctx, projectSpec, datastoreName).Return(backupSpecs, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.ListBackups(ctx, &listBackupsReq)
 
@@ -1203,6 +1242,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil, resourceSvc,
 				nil,
 				projectService,
+				nil,
 			)
 			backupResponse, err := backupServiceServer.ListBackups(ctx, &listBackupsReq)
 
@@ -1218,13 +1258,16 @@ func TestBackupOnServer(t *testing.T) {
 			defer resourceSvc.AssertExpectations(t)
 
 			errorMsg := "unable to get list of backups"
-			resourceSvc.On("ListResourceBackups", ctx, projectSpec, datastoreName).Return([]models.BackupSpec{}, errors.New(errorMsg))
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("ListResourceBackups", ctx, projectSpec, datastoreName).Return([]models.BackupSpec{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.ListBackups(ctx, &listBackupsReq)
 
@@ -1280,13 +1323,16 @@ func TestBackupOnServer(t *testing.T) {
 				},
 			}
 
-			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(backupSpec, nil)
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(backupSpec, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
@@ -1307,6 +1353,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil, resourceSvc,
 				nil,
 				projectService,
+				nil,
 			)
 			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
@@ -1322,13 +1369,16 @@ func TestBackupOnServer(t *testing.T) {
 			defer resourceSvc.AssertExpectations(t)
 
 			errorMsg := "unable to get backup detail"
-			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(models.BackupSpec{}, errors.New(errorMsg))
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(models.BackupSpec{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
@@ -1342,7 +1392,10 @@ func TestBackupOnServer(t *testing.T) {
 
 			resourceSvc := new(mock.DatastoreService)
 			defer resourceSvc.AssertExpectations(t)
-			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(models.BackupSpec{}, store.ErrResourceNotFound)
+
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(models.BackupSpec{}, store.ErrResourceNotFound)
 
 			errorMsg := fmt.Sprintf("backup with ID %s not found", backupID)
 			backupServiceServer := v1.NewBackupServiceServer(
@@ -1350,6 +1403,7 @@ func TestBackupOnServer(t *testing.T) {
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
@@ -1378,13 +1432,16 @@ func TestBackupOnServer(t *testing.T) {
 				},
 			}
 
-			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(invalidBackupSpec, nil)
+			backupService := new(mock.BackupService)
+			defer backupService.AssertExpectations(t)
+			backupService.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(invalidBackupSpec, nil)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 
@@ -1412,13 +1469,16 @@ func TestBackupOnServer(t *testing.T) {
 					},
 				},
 			}
-			resourceSvc.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(invalidBackupSpec, nil)
+			backupService := new(mock.BackupService)
+			backupService.On("GetResourceBackup", ctx, projectSpec, datastoreName, backupID).Return(invalidBackupSpec, nil)
+			defer backupService.AssertExpectations(t)
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
 				nil, resourceSvc,
 				nil,
 				projectService,
+				backupService,
 			)
 			backupResponse, err := backupServiceServer.GetBackup(ctx, &getBackupDetailReq)
 

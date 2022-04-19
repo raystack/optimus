@@ -378,7 +378,8 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		dataStoreService,
 		namespaceService,
-		projectService))
+		projectService,
+		dataStoreService)) // TODO: replace with backup service
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,
