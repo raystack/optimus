@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"github.com/odpf/salt/version"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -100,17 +98,11 @@ func versionCommand() *cli.Command {
 
 // getVersionRequest send a version request to service
 func getVersionRequest(clientVer, host string) (ver string, err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
+	ctx, conn, closeConn, err := initClientConnection(host, versionTimeout)
+	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), versionTimeout)
-	defer cancel()
+	defer closeConn()
 
 	runtime := pb.NewRuntimeServiceClient(conn)
 	spinner := NewProgressBar()

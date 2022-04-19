@@ -62,7 +62,6 @@ func createResourceSubCommand(conf *config.ClientConfig) *cli.Command {
 	cmd.RunE = func(cmd *cli.Command, args []string) error {
 		l := initClientLogger(conf.Log)
 		dsRepo := models.DatastoreRegistry
-		datastoreSpecFs := getDatastoreSpecFs(conf.Namespaces)
 
 		namespace, err := askToSelectNamespace(l, conf)
 		if err != nil {
@@ -79,7 +78,7 @@ func createResourceSubCommand(conf *config.ClientConfig) *cli.Command {
 		}, &storerName); err != nil {
 			return err
 		}
-		repoFS, ok := datastoreSpecFs[namespace.Name][storerName]
+		repoFS, ok := createDataStoreSpecFs(namespace)[storerName]
 		if !ok {
 			return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
 		}

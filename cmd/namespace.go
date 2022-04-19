@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"path"
@@ -128,24 +127,18 @@ func namespaceRegisterCommand() *cli.Command {
 	return cmd
 }
 
-func listNamespacesFromServer(projectName, serverHost string) ([]*config.Namespace, error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+func listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return nil, err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	request := &pb.ListProjectNamespacesRequest{
 		ProjectName: projectName,
 	}
-
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
-	response, err := namespaceServiceClient.ListProjectNamespaces(requestTimeoutCtx, request)
+	response, err := namespaceServiceClient.ListProjectNamespaces(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list namespace for project [%s]: %w", projectName, err)
 	}
@@ -200,25 +193,19 @@ func stringifyNamespaceForNamespaceDescribe(namespace *config.Namespace) string 
 	return output
 }
 
-func getNamespace(projectName, namespaceName, serverHost string) (*config.Namespace, error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+func getNamespace(serverHost, projectName, namespaceName string) (*config.Namespace, error) {
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return nil, err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	request := &pb.GetNamespaceRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespaceName,
 	}
-
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
-	response, err := namespaceServiceClient.GetNamespace(requestTimeoutCtx, request)
+	response, err := namespaceServiceClient.GetNamespace(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get namespace [%s]: %w", namespaceName, err)
 	}
@@ -280,19 +267,14 @@ func registerSelectedNamespaces(l log.Logger, serverHost, projectName string, se
 }
 
 func registerNamespace(l log.Logger, serverHost, projectName string, namespace *config.Namespace) error {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	registerTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
-		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
-	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(registerTimeoutCtx, &pb.RegisterProjectNamespaceRequest{
+	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(ctx, &pb.RegisterProjectNamespaceRequest{
 		ProjectName: projectName,
 		Namespace: &pb.NamespaceSpecification{
 			Name:   namespace.Name,
