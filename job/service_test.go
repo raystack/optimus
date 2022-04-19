@@ -1642,4 +1642,46 @@ func TestService(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+
+	t.Run("GetDeployment", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		t.Run("should able to get job deployment successfully", func(t *testing.T) {
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
+
+			deployID := models.DeploymentID(uuid.New())
+			expectedDeployment := models.JobDeployment{
+				ID:      deployID,
+				Project: projSpec,
+				Status:  models.JobDeploymentStatusInProgress,
+			}
+
+			deployManager.On("GetStatus", ctx, deployID).Return(expectedDeployment, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil,
+				nil, nil, nil, nil, nil, deployManager, nil)
+			deployment, err := svc.GetDeployment(ctx, deployID)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedDeployment, deployment)
+		})
+		t.Run("should failed when unable to get job deployment", func(t *testing.T) {
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
+
+			deployID := models.DeploymentID(uuid.New())
+			errorMsg := "internal error"
+
+			deployManager.On("GetStatus", ctx, deployID).Return(models.JobDeployment{}, errors.New(errorMsg))
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil,
+				nil, nil, nil, nil, nil, deployManager, nil)
+			deployment, err := svc.GetDeployment(ctx, deployID)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.JobDeployment{}, deployment)
+		})
+	})
 }
