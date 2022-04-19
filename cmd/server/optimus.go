@@ -326,7 +326,8 @@ func (s *OptimusServer) setupHandlers() error {
 	backupRepoFac := backupRepoFactory{
 		db: s.dbConn,
 	}
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac, pluginService)
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry)
+	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac, pluginService)
 	// adapter service
 	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
 
@@ -380,7 +381,7 @@ func (s *OptimusServer) setupHandlers() error {
 		dataStoreService,
 		namespaceService,
 		projectService,
-		dataStoreService)) // TODO: replace with backup service
+		backupService))
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,
