@@ -65,8 +65,8 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
 
-	switch evt := e.(type) {
-	case *datastore.EventResourceUpdated:
+	evt, ok := e.(*datastore.EventResourceUpdated)
+	if ok {
 		resp := &pb.DeployResourceSpecificationResponse{
 			Success:      true,
 			Ack:          true,

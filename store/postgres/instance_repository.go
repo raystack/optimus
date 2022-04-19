@@ -62,7 +62,7 @@ func (j Instance) FromSpec(spec models.InstanceSpec, jobRunID uuid.UUID) (Instan
 		return Instance{}, err
 	}
 
-	var execAt *time.Time = nil
+	var execAt *time.Time
 	if !spec.ExecutedAt.IsZero() {
 		execAt = &spec.ExecutedAt
 	}

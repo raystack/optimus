@@ -448,7 +448,6 @@ func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 	switch info.PluginType {
 	case PluginTypeTask:
 	case PluginTypeHook:
-		break
 	default:
 		return ErrUnsupportedPlugin
 	}

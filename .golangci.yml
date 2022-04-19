@@ -50,8 +50,11 @@ linters-settings:
     lang-version: "1.17"
     extra-rules: true
   revive:
-    ignore-generated-header: true
-    severity: warning
+    severity: error
+    rules:
+      - name: var-declaration
+      - name: unnecessary-stmt
+      - name: useless-break
   goconst:
     ignore-tests: true
     numbers: true

@@ -29,7 +29,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
-	var endDate *time.Time = nil
+	var endDate *time.Time
 	if spec.EndDate != "" {
 		end, err := time.Parse(models.JobDatetimeLayout, spec.EndDate)
 		if err != nil {
@@ -366,8 +366,7 @@ func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceS
 	var data []models.InstanceSpecData
 	for _, asset := range conf.GetData() {
 		assetType := models.InstanceDataTypeEnv
-		switch asset.Type {
-		case pb.InstanceSpecData_TYPE_FILE:
+		if asset.Type == pb.InstanceSpecData_TYPE_FILE {
 			assetType = models.InstanceDataTypeFile
 		}
 		data = append(data, models.InstanceSpecData{
