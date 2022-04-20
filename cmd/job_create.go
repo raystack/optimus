@@ -32,6 +32,14 @@ var (
 	specFileNames = []string{local.ResourceSpecFileName, local.JobSpecFileName}
 )
 
+// JobSpecRepository represents a storage interface for Job specifications locally
+type JobSpecRepository interface {
+	SaveAt(models.JobSpec, string) error
+	Save(models.JobSpec) error
+	GetByName(string) (models.JobSpec, error)
+	GetAll() ([]models.JobSpec, error)
+}
+
 func jobCreateCommand(conf *config.ClientConfig) *cli.Command {
 	cmd := &cli.Command{
 		Use:     "create",

@@ -28,30 +28,20 @@ The list command is used to fetch the recent replay in one project.
 	)
 	reCmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	reCmd.RunE = func(cmd *cli.Command, args []string) error {
-		projectName := conf.Project.Name
 		l := initClientLogger(conf.Log)
-		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-		defer dialCancel()
-
-		conn, err := createConnection(dialTimeoutCtx, conf.Host)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, replayTimeout)
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.Host).Error())
-			}
 			return err
 		}
-		defer conn.Close()
-
-		replayRequestTimeout, replayRequestCancel := context.WithTimeout(context.Background(), replayTimeout)
-		defer replayRequestCancel()
+		defer closeConn()
 
 		replay := pb.NewReplayServiceClient(conn)
 		replayStatusRequest := &pb.ListReplaysRequest{
-			ProjectName: projectName,
+			ProjectName: conf.Project.Name,
 		}
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		replayResponse, err := replay.ListReplays(replayRequestTimeout, replayStatusRequest)
+		replayResponse, err := replay.ListReplays(ctx, replayStatusRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
@@ -60,7 +50,7 @@ The list command is used to fetch the recent replay in one project.
 			return fmt.Errorf("failed to get replay requests: %w", err)
 		}
 		if len(replayResponse.ReplayList) == 0 {
-			l.Info(fmt.Sprintf("No replays were found in %s project.", projectName))
+			l.Info(fmt.Sprintf("No replays were found in %s project.", conf.Project.Name))
 		} else {
 			printReplayListResponse(l, replayResponse)
 		}

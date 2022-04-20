@@ -48,26 +48,17 @@ func backupStatusCommand(conf *config.ClientConfig) *cli.Command {
 			Id:            args[0],
 		}
 
-		dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-		defer dialCancel()
-
-		conn, err := createConnection(dialTimeoutCtx, conf.Host)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, backupTimeout)
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(ErrServerNotReachable(conf.Host).Error())
-			}
 			return err
 		}
-		defer conn.Close()
-
-		requestTimeout, requestCancel := context.WithTimeout(context.Background(), backupTimeout)
-		defer requestCancel()
+		defer closeConn()
 
 		backup := pb.NewBackupServiceClient(conn)
 
 		spinner := NewProgressBar()
 		spinner.Start("please wait...")
-		backupDetailResponse, err := backup.GetBackup(requestTimeout, listBackupsRequest)
+		backupDetailResponse, err := backup.GetBackup(ctx, listBackupsRequest)
 		spinner.Stop()
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {

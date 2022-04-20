@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -57,32 +55,21 @@ func getJobRunList(l log.Logger, host, projectName, jobName, startDate, endDate 
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	err = callJobRun(ctx, l, host, req)
+	err = callJobRun(l, host, req)
 	return err
 }
 
-func callJobRun(ctx context.Context, l log.Logger, host string, jobRunRequest *pb.JobRunRequest) error {
-	var err error
-	dialTimeoutCtx, dialCancel := context.WithTimeout(ctx, OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Info("can't reach optimus service, timing out")
-		}
+func callJobRun(l log.Logger, host string, jobRunRequest *pb.JobRunRequest) error {
+	ctx, conn, closeConn, err := initClientConnection(host, jobStatusTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, jobStatusTimeout)
-	defer cancel()
+	defer closeConn()
 
 	run := pb.NewJobRunServiceClient(conn)
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
-	jobRunResponse, err := run.JobRun(timeoutCtx, jobRunRequest)
+	jobRunResponse, err := run.JobRun(ctx, jobRunRequest)
 	spinner.Stop()
 	if err != nil {
 		return fmt.Errorf("request failed for job %s: %w", jobRunRequest.JobName, err)
