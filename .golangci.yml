@@ -90,12 +90,10 @@ linters-settings:
     disabled-checks:
       - ifElseChain
       - singleCaseSwitch
-      - unnamedResult
-      - whyNoLint
     enabled-tags:
       - diagnostic
-      - style
-      - opinionated
+#      - style
+#      - opinionated
 #      - performance
   unparam:
     # Inspect exported functions.
