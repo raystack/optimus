@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/odpf/optimus/config"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,7 +24,7 @@ type DeployManager interface {
 
 type deployManager struct {
 	l      log.Logger
-	config DeployManagerConfig
+	config config.Deployer
 
 	deployer         Deployer
 	deployerCapacity int32
@@ -35,12 +36,6 @@ type deployManager struct {
 
 	// request queue, used by deployers
 	requestQ chan models.JobDeployment
-}
-
-type DeployManagerConfig struct {
-	NumWorkers    int
-	WorkerTimeout time.Duration
-	QueueCapacity int
 }
 
 func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
@@ -154,12 +149,12 @@ func (m *deployManager) Close() error { // nolint: unparam
 }
 
 // NewDeployManager constructs a new instance of Job Deployment Manager
-func NewDeployManager(l log.Logger, config DeployManagerConfig, deployer Deployer, uuidProvider utils.UUIDProvider,
+func NewDeployManager(l log.Logger, deployerConfig config.Deployer, deployer Deployer, uuidProvider utils.UUIDProvider,
 	deployRepository store.JobDeploymentRepository) *deployManager {
 	mgr := &deployManager{
-		requestQ:         make(chan models.JobDeployment, config.QueueCapacity),
+		requestQ:         make(chan models.JobDeployment, deployerConfig.QueueCapacity),
 		l:                l,
-		config:           config,
+		config:           deployerConfig,
 		deployerCapacity: 0,
 		deployer:         deployer,
 		uuidProvider:     uuidProvider,

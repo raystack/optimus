@@ -3,6 +3,7 @@ package job_test
 import (
 	"context"
 	"errors"
+	"github.com/odpf/optimus/config"
 	"testing"
 	"time"
 
@@ -38,7 +39,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    1,
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
@@ -67,7 +68,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    1,
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
@@ -91,7 +92,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    1,
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
@@ -117,7 +118,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    1,
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
@@ -151,7 +152,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    1,
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
@@ -191,7 +192,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    1,
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
@@ -231,7 +232,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    0,
 				WorkerTimeout: 300,
 				QueueCapacity: 0,
@@ -268,7 +269,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    0,
 				WorkerTimeout: 300,
 				QueueCapacity: 0,
@@ -308,7 +309,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    3,
 				WorkerTimeout: time.Second,
 			}
@@ -336,7 +337,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository := new(mock.JobDeploymentRepository)
 			defer jobDeploymentRepository.AssertExpectations(t)
 
-			deployManagerConfig := job.DeployManagerConfig{
+			deployManagerConfig := config.Deployer{
 				NumWorkers:    3,
 				WorkerTimeout: time.Second,
 			}
@@ -362,7 +363,7 @@ func TestDeployManager(t *testing.T) {
 		jobDeploymentRepository := new(mock.JobDeploymentRepository)
 		defer jobDeploymentRepository.AssertExpectations(t)
 
-		deployManagerConfig := job.DeployManagerConfig{
+		deployManagerConfig := config.Deployer{
 			NumWorkers:    3,
 			WorkerTimeout: time.Second,
 		}
