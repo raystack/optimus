@@ -127,9 +127,14 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
 	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
+			return fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+		}
 	}
-	jobDestination := jobDestinationResponse.URN()
+	var jobDestination string
+	if jobDestinationResponse != nil {
+		jobDestination = jobDestinationResponse.URN()
+	}
 	if err := jobRepo.Save(ctx, spec, jobDestination); err != nil {
 		return fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}

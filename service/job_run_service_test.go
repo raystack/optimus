@@ -319,6 +319,32 @@ func TestJobRunService(t *testing.T) {
 		})
 	})
 	t.Run("GetScheduledRun", func(t *testing.T) {
+		t.Run("should not fail if dependency module is not found in plugin service", func(t *testing.T) {
+			runRepo := new(mock.JobRunRepository)
+			runRepo.On("GetByScheduledAt", ctx, jobSpec.ID, scheduledAt).Return(jobRun, namespaceSpec, nil)
+			jobDestination := "://"
+			runRepo.On("Save", ctx, namespaceSpec, models.JobRun{
+				ID:          jobRun.ID,
+				Spec:        jobSpec,
+				Trigger:     models.TriggerSchedule,
+				Status:      models.RunStatePending,
+				ScheduledAt: scheduledAt,
+				ExecutedAt:  mockedTimeNow,
+			}, jobDestination).Return(nil)
+			defer runRepo.AssertExpectations(t)
+
+			jobRunSpecRep := new(mock.JobRunRepoFactory)
+			jobRunSpecRep.On("New").Return(runRepo, nil)
+			defer jobRunSpecRep.AssertExpectations(t)
+			noDepModpluginService := new(mock.DependencyResolverPluginService)
+			noDepModpluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
+				&models.GenerateDestinationResponse{}, service.ErrDependencyModNotFound)
+
+			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, noDepModpluginService)
+			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
+			assert.Nil(t, err)
+			assert.Equal(t, jobRun, returnedSpec)
+		})
 		t.Run("should update job run even if already exists", func(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("GetByScheduledAt", ctx, jobSpec.ID, scheduledAt).Return(jobRun, namespaceSpec, nil)
