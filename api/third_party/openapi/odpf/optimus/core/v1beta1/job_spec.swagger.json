@@ -393,7 +393,11 @@
             "$ref": "#/definitions/v1beta1DeployJobFailure"
           }
         },
-        "totalSucceed": {
+        "successCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "failureCount": {
           "type": "integer",
           "format": "int32"
         }

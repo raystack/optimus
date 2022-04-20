@@ -222,17 +222,17 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentDetailNamespace2 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 2,
+					SuccessCount: 2,
 				},
 			}
 
@@ -446,17 +446,17 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentDetailNamespace2 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 2,
+					SuccessCount: 2,
 				},
 			}
 
@@ -674,17 +674,17 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentDetailNamespace2 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 2,
+					SuccessCount: 2,
 				},
 			}
 
@@ -1033,14 +1033,14 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 1,
+					SuccessCount: 1,
 				},
 			}
 
@@ -1213,14 +1213,14 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 1,
+					SuccessCount: 1,
 				},
 			}
 
@@ -1400,17 +1400,17 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentDetailNamespace2 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 2,
+					SuccessCount: 2,
 				},
 			}
 
@@ -1589,10 +1589,10 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 			jobDeploymentDetailNamespace2 := models.JobDeploymentDetail{
-				TotalSuccess: 0,
+				SuccessCount: 0,
 				Failures: []models.JobDeploymentFailure{
 					{
 						JobName: "job-a",
@@ -1605,7 +1605,7 @@ func TestDeployer(t *testing.T) {
 				Project: jobDeployment.Project,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 1,
+					SuccessCount: 1,
 					Failures: []models.JobDeploymentFailure{
 						{
 							JobName: "job-a",

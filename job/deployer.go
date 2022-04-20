@@ -55,10 +55,9 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 		if err != nil {
 			deployError = multierror.Append(deployError, err)
 		}
-		if len(deployNamespaceDetail.Failures) > 0 {
-			jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
-		}
-		jobDeployment.Details.TotalSuccess += deployNamespaceDetail.TotalSuccess
+		jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
+		jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
+		jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
 	}
 
 	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {

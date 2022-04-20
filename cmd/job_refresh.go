@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	refreshTimeout = time.Minute * 15
-	deployTimeout  = time.Hour * 3
+	refreshTimeout = time.Minute * 30
+	deployTimeout  = time.Minute * 30
 	pollInterval   = time.Second * 15
 )
 
@@ -65,23 +65,8 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 			return err
 		}
 
-		for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
-			isFinished, err := pollJobDeployment(l, deployID, conf.Host)
-			if err != nil {
-				return err
-			}
-
-			if isFinished {
-				return nil
-			}
-
-			time.Sleep(pollInterval)
-
-			select {
-			case <-timeout:
-				keepPolling = false
-			default:
-			}
+		if err := pollJobDeployment(ctx, l, jobSpecService, deployID); err != nil {
+			return err
 		}
 
 		l.Info(coloredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
@@ -160,38 +145,47 @@ func refreshJobSpecificationRequest(ctx context.Context, l log.Logger, jobSpecSe
 	return "", streamError
 }
 
-func pollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobSpecificationServiceClient, deployID string, host string) (isFinished bool, err error) {
-	resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
-		DeployId: deployID,
-	})
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(coloredError("Get deployment process took too long, timing out"))
+func pollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
+	for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
+		resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
+			DeployId: deployID,
+		})
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				l.Error(coloredError("Get deployment process took too long, timing out"))
+			}
+			return fmt.Errorf("getting deployment status failed: %w", err)
 		}
-		return false, fmt.Errorf("getting deployment status failed: %w", err)
-	}
 
-	switch resp.Status {
-	case models.JobDeploymentStatusInProgress.String():
-		l.Info("Deployment is in progress...")
-		return false, nil
-	case models.JobDeploymentStatusInQueue.String():
-		l.Info("Deployer is busy. Deployment request is still in queue...")
-		return false, nil
-	case models.JobDeploymentStatusCancelled.String():
-		l.Error("Deployment request is cancelled. Deployer queue might be full.")
-		return false, nil
-	}
-
-	if len(resp.Failures) > 0 {
-		l.Error(coloredError("Unable to deploy below jobs:"))
-		for i, failedJob := range resp.Failures {
-			l.Error(coloredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+		switch resp.Status {
+		case models.JobDeploymentStatusInProgress.String():
+			l.Info("Deployment is in progress...")
+		case models.JobDeploymentStatusInQueue.String():
+			l.Info("Deployer is busy. Deployment request is still in queue...")
+		case models.JobDeploymentStatusCancelled.String():
+			l.Error("Deployment request is cancelled. Deployer queue might be full.")
+		case models.JobDeploymentStatusSucceed.String():
+			l.Info(coloredSuccess("All jobs deployed successfully."))
+			l.Info(coloredSuccess("Deployed %d jobs", resp.SuccessCount))
+			return nil
+		case models.JobDeploymentStatusFailed.String():
+			if resp.FailureCount > 0 {
+				l.Error(coloredError("Unable to deploy below jobs:"))
+				for i, failedJob := range resp.Failures {
+					l.Error(coloredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+				}
+			}
+			l.Info(coloredSuccess("Deployed %d jobs", resp.SuccessCount))
+			return nil
 		}
-	} else {
-		l.Info(coloredSuccess("All jobs deployed successfully."))
-	}
-	l.Info(coloredSuccess("Deployed %d jobs", resp.TotalSucceed))
 
-	return true, nil
+		time.Sleep(pollInterval)
+
+		select {
+		case <-timeout:
+			keepPolling = false
+		default:
+		}
+	}
+	return nil
 }

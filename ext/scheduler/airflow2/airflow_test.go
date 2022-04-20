@@ -187,7 +187,7 @@ func TestAirflow2(t *testing.T) {
 			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 
 			expectedDeployDetail := models.JobDeploymentDetail{
-				TotalSuccess: 1,
+				SuccessCount: 1,
 			}
 
 			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
@@ -240,7 +240,8 @@ func TestAirflow2(t *testing.T) {
 			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{}, errors.New(errorMsg))
 
 			expectedDeployDetail := models.JobDeploymentDetail{
-				TotalSuccess: 0,
+				SuccessCount: 0,
+				FailureCount: 1,
 				Failures: []models.JobDeploymentFailure{
 					{
 						JobName: jobSpecs[0].Name,

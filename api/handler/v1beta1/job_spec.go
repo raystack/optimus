@@ -320,7 +320,12 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 	}
 
 	switch jobDeployment.Status {
-	case models.JobDeploymentStatusSucceed, models.JobDeploymentStatusFailed:
+	case models.JobDeploymentStatusSucceed:
+		return &pb.GetDeployJobsStatusResponse{
+			Status:       jobDeployment.Status.String(),
+			SuccessCount: int32(jobDeployment.Details.SuccessCount),
+		}, nil
+	case models.JobDeploymentStatusFailed:
 		var deployJobFailures []*pb.DeployJobFailure
 		for _, failure := range jobDeployment.Details.Failures {
 			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
@@ -328,7 +333,8 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 
 		return &pb.GetDeployJobsStatusResponse{
 			Status:       jobDeployment.Status.String(),
-			TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
+			SuccessCount: int32(jobDeployment.Details.SuccessCount),
+			FailureCount: int32(jobDeployment.Details.FailureCount),
 			Failures:     deployJobFailures,
 		}, nil
 	default:

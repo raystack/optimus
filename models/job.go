@@ -493,7 +493,8 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	TotalSuccess int
+	SuccessCount int
+	FailureCount int
 	Failures     []JobDeploymentFailure
 }
 

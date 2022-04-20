@@ -633,7 +633,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
 				Status:       jobDeployment.Status.String(),
-				TotalSucceed: 0,
+				SuccessCount: 0,
 			}
 
 			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)
@@ -662,12 +662,12 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Project: projectSpec,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 5,
+					SuccessCount: 5,
 				},
 			}
 			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
 				Status:       jobDeployment.Status.String(),
-				TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
+				SuccessCount: int32(jobDeployment.Details.SuccessCount),
 			}
 
 			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)
@@ -696,7 +696,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Project: projectSpec,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
-					TotalSuccess: 4,
+					SuccessCount: 4,
 					Failures: []models.JobDeploymentFailure{
 						{
 							JobName: "job-a",
@@ -707,7 +707,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
 				Status:       jobDeployment.Status.String(),
-				TotalSucceed: int32(jobDeployment.Details.TotalSuccess),
+				SuccessCount: int32(jobDeployment.Details.SuccessCount),
 				Failures: []*pb.DeployJobFailure{
 					{
 						JobName: jobDeployment.Details.Failures[0].JobName,
