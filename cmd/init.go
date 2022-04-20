@@ -260,8 +260,8 @@ func askToConfirm(message, help string, defaultValue bool) (bool, error) {
 	return response, nil
 }
 
-func isPathOccupied(path string) (bool, error) {
-	if _, err := os.Stat(path); err != nil {
+func isPathOccupied(dirPath string) (bool, error) {
+	if _, err := os.Stat(dirPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}

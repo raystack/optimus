@@ -212,7 +212,7 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, progressObserver progress.Observer) (err error) {
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, progressObserver progress.Observer) (err error) {
 	args := srv.Called(ctx, projectName, namespaceNames, jobNames, progressObserver)
 	return args.Error(0)
 }

@@ -136,7 +136,7 @@ func enrichSingleJobSpecWithDependencies(dependencies []models.JobIDDependencies
 	return jobSpec
 }
 
-func createJobSpecMap(jobSpecs []models.JobSpec, externalProjectJobSpecs []models.JobSpec) map[uuid.UUID]models.JobSpec {
+func createJobSpecMap(jobSpecs, externalProjectJobSpecs []models.JobSpec) map[uuid.UUID]models.JobSpec {
 	jobSpecMap := make(map[uuid.UUID]models.JobSpec)
 	for _, jobSpec := range append(externalProjectJobSpecs, jobSpecs...) {
 		jobSpecMap[jobSpec.ID] = jobSpec
