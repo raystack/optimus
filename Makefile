@@ -43,6 +43,9 @@ vet: ## run go vet
 test:
 	go test -race -cover -timeout 1m -tags=unit_test ./...
 
+bench:
+	@go test -bench=. ./tests/bench -benchmem
+
 coverage: ## print code coverage
 	go test -race -coverprofile coverage.txt -covermode=atomic ./... -tags=unit_test && go tool cover -html=coverage.txt
 
