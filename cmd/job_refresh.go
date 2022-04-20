@@ -9,7 +9,6 @@ import (
 
 	"github.com/odpf/salt/log"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -54,7 +53,14 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 		l.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
 		start := time.Now()
 
-		deployID, err := refreshJobSpecificationRequest(l, projectName, namespaces, jobs, conf.Host, verbose)
+		ctx, conn, closeConn, err := initClientConnection(conf.Host, refreshTimeout)
+		if err != nil {
+			return err
+		}
+		defer closeConn()
+
+		jobSpecService := pb.NewJobSpecificationServiceClient(conn)
+		deployID, err := refreshJobSpecificationRequest(ctx, l, jobSpecService, projectName, namespaces, jobs, verbose)
 		if err != nil {
 			return err
 		}
@@ -84,25 +90,9 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	return cmd
 }
 
-func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces, jobs []string, host string, verbose bool,
+func refreshJobSpecificationRequest(ctx context.Context, l log.Logger, jobSpecService pb.JobSpecificationServiceClient, projectName string, namespaces, jobs []string, verbose bool,
 ) (deployID string, err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
-		return "", err
-	}
-	defer conn.Close()
-
-	refreshTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), refreshTimeout)
-	defer deployCancel()
-
-	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
-	respStream, err := jobSpecService.RefreshJobs(refreshTimeoutCtx, &pb.RefreshJobsRequest{
+	respStream, err := jobSpecService.RefreshJobs(ctx, &pb.RefreshJobsRequest{
 		ProjectName:    projectName,
 		NamespaceNames: namespaces,
 		JobNames:       jobs,
@@ -170,24 +160,8 @@ func refreshJobSpecificationRequest(l log.Logger, projectName string, namespaces
 	return "", streamError
 }
 
-func pollJobDeployment(l log.Logger, deployID string, host string) (isFinished bool, err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
-		return false, err
-	}
-	defer conn.Close()
-
-	refreshTimeoutCtx, deployCancel := context.WithTimeout(context.Background(), refreshTimeout)
-	defer deployCancel()
-
-	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
-	resp, err := jobSpecService.GetDeployJobsStatus(refreshTimeoutCtx, &pb.GetDeployJobsStatusRequest{
+func pollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobSpecificationServiceClient, deployID string, host string) (isFinished bool, err error) {
+	resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
 		DeployId: deployID,
 	})
 	if err != nil {

@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  build:
+  verify:
+    uses: ./.github/workflows/verify.yml
+  publish-latest:
     runs-on: ubuntu-latest
+    needs: verify
     steps:
       - name: Checkout
         uses: actions/checkout@v2

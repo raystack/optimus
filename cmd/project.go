@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"path"
 
@@ -92,25 +91,20 @@ func projectDescribeCommand() *cli.Command {
 	return cmd
 }
 
-func getProject(projectName, serverHost string) (config.Project, error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	requestTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
+func getProject(projectName, host string) (config.Project, error) {
 	var project config.Project
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	ctx, conn, closeConn, err := initClientConnection(host, deploymentTimeout)
 	if err != nil {
-		return project, fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return project, err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	request := &pb.GetProjectRequest{
 		ProjectName: projectName,
 	}
 
 	projectServiceClient := pb.NewProjectServiceClient(conn)
-	response, err := projectServiceClient.GetProject(requestTimeoutCtx, request)
+	response, err := projectServiceClient.GetProject(ctx, request)
 	if err != nil {
 		return project, err
 	}
@@ -121,23 +115,18 @@ func getProject(projectName, serverHost string) (config.Project, error) {
 }
 
 func registerProject(l log.Logger, serverHost string, project config.Project) error {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-	registerTimeoutCtx, registerCancel := context.WithTimeout(context.Background(), deploymentTimeout)
-	defer registerCancel()
-
-	conn, err := createConnection(dialTimeoutCtx, serverHost)
+	ctx, conn, closeConn, err := initClientConnection(serverHost, deploymentTimeout)
 	if err != nil {
-		return fmt.Errorf("failed creating connection to [%s]: %w", serverHost, err)
+		return err
 	}
-	defer conn.Close()
+	defer closeConn()
 
 	projectServiceClient := pb.NewProjectServiceClient(conn)
 	projectSpec := &pb.ProjectSpecification{
 		Name:   project.Name,
 		Config: project.Config,
 	}
-	registerResponse, err := projectServiceClient.RegisterProject(registerTimeoutCtx, &pb.RegisterProjectRequest{
+	registerResponse, err := projectServiceClient.RegisterProject(ctx, &pb.RegisterProjectRequest{
 		Project: projectSpec,
 	})
 	if err != nil {

@@ -67,6 +67,7 @@ brews:
     description: "Optimus helps your organization to build & manage data pipelines with ease."
     homepage: https://odpf.github.io/optimus
     folder: Formula
+    skip_upload: auto
     dependencies:
       - name: git
     install: |-

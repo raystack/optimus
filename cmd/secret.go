@@ -13,7 +13,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	cli "github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -234,27 +233,18 @@ func validateProperlyEncoded(secretValue string) error {
 	return nil
 }
 
-func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) error {
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
-	defer secretRequestCancel()
+	defer closeConn()
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
 	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = secret.RegisterSecret(secretRequestTimeout, req)
+	_, err = secret.RegisterSecret(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -268,27 +258,18 @@ func registerSecret(l log.Logger, host string, req *pb.RegisterSecretRequest) (e
 	return nil
 }
 
-func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) error {
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
-	defer secretRequestCancel()
+	defer closeConn()
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
 	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = secret.UpdateSecret(secretRequestTimeout, req)
+	_, err = secret.UpdateSecret(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -302,27 +283,18 @@ func updateSecret(l log.Logger, host string, req *pb.UpdateSecretRequest) (err e
 	return nil
 }
 
-func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) error {
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
-	defer secretRequestCancel()
+	defer closeConn()
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
 	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = secret.DeleteSecret(secretRequestTimeout, req)
+	_, err = secret.DeleteSecret(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -336,27 +308,18 @@ func deleteSecret(l log.Logger, host string, req *pb.DeleteSecretRequest) (err e
 	return nil
 }
 
-func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) (err error) {
-	dialTimeoutCtx, dialCancel := context.WithTimeout(context.Background(), OptimusDialTimeout)
-	defer dialCancel()
-
-	var conn *grpc.ClientConn
-	if conn, err = createConnection(dialTimeoutCtx, host); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			l.Error(ErrServerNotReachable(host).Error())
-		}
+func listSecret(l log.Logger, host string, req *pb.ListSecretsRequest) error {
+	ctx, conn, closeConn, err := initClientConnection(host, secretTimeout)
+	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	secretRequestTimeout, secretRequestCancel := context.WithTimeout(context.Background(), secretTimeout)
-	defer secretRequestCancel()
+	defer closeConn()
 
 	spinner := NewProgressBar()
 	spinner.Start("please wait...")
 	secret := pb.NewSecretServiceClient(conn)
 
-	listSecretsResponse, err := secret.ListSecrets(secretRequestTimeout, req)
+	listSecretsResponse, err := secret.ListSecrets(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
