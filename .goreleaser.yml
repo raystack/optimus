@@ -55,9 +55,8 @@ dockers:
       - optimus
     dockerfile: Dockerfile
     image_templates:
-      - 'docker.io/odpf/{{.ProjectName}}:latest'
       - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}'
-      - 'docker.io/odpf/{{.ProjectName}}:{{ .Tag }}-amd64'
+      - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}-amd64'
 brews:
   - name: optimus
     tap:
