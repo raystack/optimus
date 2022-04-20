@@ -96,12 +96,13 @@ func (d DependencyPluginService) compileConfig(ctx context.Context, configs mode
 	var confs models.PluginConfigs
 	for _, config := range configs {
 		compiledCnf, err := d.engine.CompileString(config.Value, tmplCtx)
-		if err == nil {
-			confs = append(confs, models.PluginConfig{
-				Name:  config.Name,
-				Value: compiledCnf,
-			})
+		if err != nil {
+			return nil, err
 		}
+		confs = append(confs, models.PluginConfig{
+			Name:  config.Name,
+			Value: compiledCnf,
+		})
 	}
 	return confs, nil
 }
