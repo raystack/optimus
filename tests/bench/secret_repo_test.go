@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
 )
 
@@ -53,15 +54,11 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 	b.Run("Save", func(b *testing.B) {
 		dbConn := dbSetup()
-		repo := postgres.NewSecretRepository(dbConn, key)
+		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			secret := models.ProjectSecretItem{
-				Name:  fmt.Sprintf("Secret%d", i),
-				Value: "secret",
-				Type:  models.SecretTypeUserDefined,
-			}
+			secret := getSecret(i)
 
 			err := repo.Save(ctx, project, namespace, secret)
 			if err != nil {
@@ -72,7 +69,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 	b.Run("Update", func(b *testing.B) {
 		dbConn := dbSetup()
-		repo := postgres.NewSecretRepository(dbConn, key)
+		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		for i := 0; i < 50; i++ {
 			secret := models.ProjectSecretItem{
 				Name:  fmt.Sprintf("Secret%d", i),
@@ -100,7 +97,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 	b.Run("GetAll", func(b *testing.B) {
 		dbConn := dbSetup()
-		repo := postgres.NewSecretRepository(dbConn, key)
+		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		for i := 0; i < 20; i++ {
 			secretNS := models.ProjectSecretItem{
 				Name:  fmt.Sprintf("SecretNS-%d", i),
@@ -141,7 +138,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 	b.Run("GetSecrets", func(b *testing.B) {
 		dbConn := dbSetup()
-		repo := postgres.NewSecretRepository(dbConn, key)
+		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		for i := 0; i < 20; i++ {
 			secretNS := models.ProjectSecretItem{
 				Name:  fmt.Sprintf("SecretNS-%d", i),
@@ -182,7 +179,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 	b.Run("Delete", func(b *testing.B) {
 		dbConn := dbSetup()
-		repo := postgres.NewSecretRepository(dbConn, key)
+		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -204,4 +201,12 @@ func BenchmarkSecretRepo(b *testing.B) {
 			}
 		}
 	})
+}
+
+func getSecret(i int) models.ProjectSecretItem {
+	return models.ProjectSecretItem{
+		Name:  fmt.Sprintf("Secret%d", i),
+		Value: "secret",
+		Type:  models.SecretTypeUserDefined,
+	}
 }
