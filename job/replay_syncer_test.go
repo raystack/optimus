@@ -317,3 +317,15 @@ func TestReplaySyncer(t *testing.T) {
 		})
 	})
 }
+
+func getDependencyObject(specs map[string]models.JobSpec, dependencySpecs ...string) map[string]models.JobSpecDependency {
+	dependenciesMap := make(map[string]models.JobSpecDependency)
+	for _, dependencySpec := range dependencySpecs {
+		depSpec, ok := specs[dependencySpec]
+		if !ok {
+			dependenciesMap[dependencySpec] = models.JobSpecDependency{Job: nil}
+		}
+		dependenciesMap[dependencySpec] = models.JobSpecDependency{Job: &depSpec}
+	}
+	return dependenciesMap
+}

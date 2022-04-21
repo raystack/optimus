@@ -25,6 +25,7 @@ import (
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
+	"github.com/odpf/optimus/resolver"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/utils"
@@ -239,8 +240,8 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 
 	jobDependencyRepo := postgres.NewJobDependencyRepository(s.dbConn)
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
-	priorityResolver := job.NewPriorityResolver()
+	dependencyResolver := resolver.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
+	priorityResolver := resolver.NewPriorityResolver()
 
 	replaySpecRepoFac := &replaySpecRepoRepository{
 		db:             s.dbConn,

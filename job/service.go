@@ -16,6 +16,7 @@ import (
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/resolver"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"
 )
@@ -104,7 +105,7 @@ type ReplayManager interface {
 type Service struct {
 	jobSpecRepoFactory        SpecRepoFactory
 	dependencyResolver        DependencyResolver
-	priorityResolver          PriorityResolver
+	priorityResolver          resolver.PriorityResolver
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	replayManager             ReplayManager
 	projectService            service.ProjectService
@@ -630,7 +631,7 @@ func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
 // the necessary dependencies as arguments
 func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.SchedulerUnit,
 	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
-	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
+	dependencyResolver DependencyResolver, priorityResolver resolver.PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
 	projectService service.ProjectService, deployer Deployer, pluginService service.PluginService,
@@ -661,7 +662,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
 			if !ok {
 				if depDAG.Type == models.JobSpecDependencyTypeIntra {
-					return nil, fmt.Errorf("%s: %w", depDAG.Job.Name, ErrJobSpecNotFound)
+					return nil, fmt.Errorf("%s: %w", depDAG.Job.Name, resolver.ErrJobSpecNotFound)
 				}
 				// when the dependency of a jobSpec belong to some other tenant or is external, the jobSpec won't
 				// be available in jobSpecs []models.JobSpec object (which is tenant specific)

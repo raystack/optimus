@@ -1,4 +1,4 @@
-package job
+package resolver
 
 import (
 	"context"
@@ -24,6 +24,11 @@ var (
 )
 
 const InterJobDependencyNameSections = 2
+
+// ProjectJobSpecRepoFactory is used to manage job specs at project level
+type ProjectJobSpecRepoFactory interface {
+	New(proj models.ProjectSpec) store.ProjectJobSpecRepository
+}
 
 type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory

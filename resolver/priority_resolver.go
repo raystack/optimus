@@ -1,4 +1,4 @@
-package job
+package resolver
 
 import (
 	"context"

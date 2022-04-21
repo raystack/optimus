@@ -7,19 +7,20 @@ import (
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/resolver"
 	"github.com/odpf/optimus/service"
 )
 
 type deployer struct {
 	dependencyResolver DependencyResolver
-	priorityResolver   PriorityResolver
+	priorityResolver   resolver.PriorityResolver
 	namespaceService   service.NamespaceService
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
 }
 
-func NewDeployer(dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
+func NewDeployer(dependencyResolver DependencyResolver, priorityResolver resolver.PriorityResolver,
 	batchScheduler models.SchedulerUnit, namespaceService service.NamespaceService) *deployer {
 	return &deployer{dependencyResolver: dependencyResolver, priorityResolver: priorityResolver,
 		batchScheduler: batchScheduler, namespaceService: namespaceService}
