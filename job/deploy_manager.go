@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +40,8 @@ type deployManager struct {
 	requestQ chan models.JobDeployment
 
 	assignerScheduler *cron.Cron
+
+	wg sync.WaitGroup
 }
 
 func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
@@ -83,16 +86,12 @@ func (m *deployManager) GetStatus(ctx context.Context, deployID models.Deploymen
 func (m *deployManager) Init() {
 	m.l.Info("starting deployers", "count", m.config.NumWorkers)
 	for i := 0; i < m.config.NumWorkers; i++ {
+		m.wg.Add(1)
 		go m.spawnDeployer(m.deployer)
 	}
 
-	// wait until all workers are ready
-	for {
-		if int(atomic.LoadInt32(&m.deployerCapacity)) == m.config.NumWorkers {
-			break
-		}
-		time.Sleep(time.Millisecond * 50) //nolint: gomnd
-	}
+	// wait until all deployers are ready
+	m.wg.Wait()
 
 	if m.assignerScheduler != nil {
 		_, err := m.assignerScheduler.AddFunc(deployAssignInterval, m.Assign)
@@ -105,6 +104,8 @@ func (m *deployManager) Init() {
 
 // start a deployer goroutine that runs the deployment in background
 func (m *deployManager) spawnDeployer(deployer Deployer) {
+	// deployer has spawned
+	m.wg.Done()
 	atomic.AddInt32(&m.deployerCapacity, 1)
 
 	for deployRequest := range m.requestQ {
@@ -126,7 +127,7 @@ func (m *deployManager) Assign() {
 	defer cancelCtx()
 	m.cancelTimedOutDeployments(ctx)
 
-	if m.deployerCapacity <= 0 {
+	if int(atomic.LoadInt32(&m.deployerCapacity)) <= 0 {
 		m.l.Debug("deployers are all occupied.")
 		return
 	}
