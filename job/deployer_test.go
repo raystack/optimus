@@ -58,11 +58,6 @@ func TestDeployer(t *testing.T) {
 		jobDeployment := models.JobDeployment{
 			ID:      models.DeploymentID(uuid.New()),
 			Project: projectSpec,
-			Status:  models.JobDeploymentStatusInQueue,
-		}
-		jobDeploymentInProgress := models.JobDeployment{
-			ID:      jobDeployment.ID,
-			Project: jobDeployment.Project,
 			Status:  models.JobDeploymentStatusInProgress,
 		}
 		errorMsg := "internal error"
@@ -235,8 +230,6 @@ func TestDeployer(t *testing.T) {
 					SuccessCount: 2,
 				},
 			}
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()
@@ -459,8 +452,6 @@ func TestDeployer(t *testing.T) {
 					SuccessCount: 2,
 				},
 			}
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 
@@ -688,8 +679,6 @@ func TestDeployer(t *testing.T) {
 				},
 			}
 
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
-
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return(jobSpecHooksResolved).Once()
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[1]).Return([]models.JobSpecHook{}).Once()
@@ -709,30 +698,6 @@ func TestDeployer(t *testing.T) {
 			assert.Nil(t, err)
 		})
 
-		t.Run("should fail when unable to update job deployment status to in progress", func(t *testing.T) {
-			dependencyResolver := new(mock.DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
-
-			priorityResolver := new(mock.PriorityResolver)
-			defer priorityResolver.AssertExpectations(t)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
-
-			jobDeploymentRepo := new(mock.JobDeploymentRepository)
-			defer jobDeploymentRepo.AssertExpectations(t)
-
-			namespaceService := new(mock.NamespaceService)
-			defer namespaceService.AssertExpectations(t)
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(errors.New(errorMsg))
-
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
-			err := deployer.Deploy(ctx, jobDeployment)
-
-			assert.Equal(t, errorMsg, err.Error())
-		})
-
 		t.Run("should fail when unable to fetch job specs with job dependencies", func(t *testing.T) {
 			dependencyResolver := new(mock.DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
@@ -748,8 +713,6 @@ func TestDeployer(t *testing.T) {
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return([]models.JobSpec{}, errors.New(errorMsg))
 
@@ -870,8 +833,6 @@ func TestDeployer(t *testing.T) {
 					NamespaceSpec: namespaceSpec2,
 				},
 			}
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()
@@ -1043,8 +1004,6 @@ func TestDeployer(t *testing.T) {
 					SuccessCount: 1,
 				},
 			}
-
-			jobDeploymentRepository.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()
@@ -1223,8 +1182,6 @@ func TestDeployer(t *testing.T) {
 					SuccessCount: 1,
 				},
 			}
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()
@@ -1413,8 +1370,6 @@ func TestDeployer(t *testing.T) {
 					SuccessCount: 2,
 				},
 			}
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()
@@ -1614,8 +1569,6 @@ func TestDeployer(t *testing.T) {
 					},
 				},
 			}
-
-			jobDeploymentRepo.On("UpdateByID", ctx, jobDeploymentInProgress).Return(nil).Once()
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return(jobSpecsAfterJobDependencyEnrich, nil)
 			dependencyResolver.On("FetchHookWithDependencies", jobSpecsAfterJobDependencyEnrich[0]).Return([]models.JobSpecHook{}).Once()

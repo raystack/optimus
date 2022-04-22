@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/odpf/optimus/config"
+	"github.com/robfig/cron/v3"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,10 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
+)
+
+const (
+	deployAssignInterval = "@every 1m"
 )
 
 type DeployManager interface {
@@ -34,8 +39,10 @@ type deployManager struct {
 	// wait group to synchronise on deployers
 	wg sync.WaitGroup
 
-	// request queue, used by deployers
+	// unbuffered request channel to assign request to deployer
 	requestQ chan models.JobDeployment
+
+	assignerScheduler *cron.Cron
 }
 
 func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
@@ -51,31 +58,7 @@ func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSp
 	}
 
 	newDeployment, err := m.createNewRequest(ctx, projectSpec)
-	if err != nil {
-		return newDeployment.ID, err
-	}
-
-	for {
-		select {
-		case m.requestQ <- newDeployment:
-			m.l.Info(fmt.Sprintf("deployer taking request for %s", newDeployment.ID.UUID()))
-			if err := m.updateDeploymentStatus(ctx, newDeployment, models.JobDeploymentStatusInQueue); err != nil {
-				return models.DeploymentID{}, err
-			}
-			return newDeployment.ID, nil
-		default:
-			m.l.Info(fmt.Sprintf("failed to push deployment request ID %s to queue", newDeployment.ID.UUID()))
-			if err := m.updateDeploymentStatus(ctx, newDeployment, models.JobDeploymentStatusCancelled); err != nil {
-				return models.DeploymentID{}, err
-			}
-			return models.DeploymentID{}, errors.New("unable to push deployment request to queue")
-		}
-	}
-}
-
-func (m *deployManager) updateDeploymentStatus(ctx context.Context, jobDeployment models.JobDeployment, status models.JobDeploymentStatus) error {
-	jobDeployment.Status = status
-	return m.deployRepository.UpdateByID(ctx, jobDeployment)
+	return newDeployment.ID, err
 }
 
 func (m *deployManager) createNewRequest(ctx context.Context, projectSpec models.ProjectSpec) (models.JobDeployment, error) {
@@ -87,7 +70,7 @@ func (m *deployManager) createNewRequest(ctx context.Context, projectSpec models
 	newDeployment := models.JobDeployment{
 		ID:      models.DeploymentID(newDeploymentID),
 		Project: projectSpec,
-		Status:  models.JobDeploymentStatusCreated,
+		Status:  models.JobDeploymentStatusInQueue,
 		Details: models.JobDeploymentDetail{},
 	}
 
@@ -115,6 +98,69 @@ func (m *deployManager) Init() {
 		}
 		time.Sleep(time.Millisecond * 50) //nolint: gomnd
 	}
+
+	if m.assignerScheduler != nil {
+		_, err := m.assignerScheduler.AddFunc(deployAssignInterval, m.Assign)
+		if err != nil {
+			m.l.Fatal("Failed to start deploy assigner", "error", err)
+		}
+		m.assignerScheduler.Start()
+	}
+}
+
+func (m *deployManager) Assign() {
+	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
+	defer cancelCtx()
+	m.cancelTimedOutDeployments(ctx)
+
+	// check if deployer is available, use unbuffered channel
+	if m.deployerCapacity <= 0 {
+		m.l.Debug("deployers are all occupied.")
+		return
+	}
+
+	m.l.Debug("trying to assign deployment...")
+
+	jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
+	if err != nil {
+		if errors.Is(err, store.ErrResourceNotFound) {
+			m.l.Debug("no deployment request found.")
+			return
+		}
+		m.l.Error(fmt.Sprintf("failed to fetch executable deployment request: %s", err.Error()))
+		return
+	}
+
+	// call deployer
+	select {
+	case m.requestQ <- jobDeployment:
+		m.l.Info(fmt.Sprintf("deployer taking request for %s", jobDeployment.ID.UUID()))
+		return
+	default:
+		m.l.Error(fmt.Sprintf("unable to assign deployer to take request %s", jobDeployment.ID.UUID()))
+		jobDeployment.Status = models.JobDeploymentStatusCancelled
+		if err := m.deployRepository.UpdateByID(ctx, jobDeployment); err != nil {
+			m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled: %s", jobDeployment.ID.UUID(), err.Error()))
+		}
+	}
+}
+
+func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
+	inProgressDeployments, err := m.deployRepository.GetByStatus(ctx, models.JobDeploymentStatusInProgress)
+	if err != nil {
+		m.l.Error(fmt.Sprintf("failed to fetch in progress deployments: %s", err.Error()))
+		return
+	}
+
+	for _, deployment := range inProgressDeployments {
+		// check stale/timeout deployment, mark as cancelled
+		if time.Now().Sub(deployment.UpdatedAt).Minutes() > 30 {
+			deployment.Status = models.JobDeploymentStatusCancelled
+			if err := m.deployRepository.UpdateByID(ctx, deployment); err != nil {
+				m.l.Error(fmt.Sprintf("failed to mark timed out deployment as cancelled: %s", err.Error()))
+			}
+		}
+	}
 }
 
 // start a deployer goroutine that runs the deployment in background
@@ -136,29 +182,18 @@ func (m *deployManager) spawnDeployer(deployer Deployer) {
 	}
 }
 
-// Close stops consuming any new request
-func (m *deployManager) Close() error { // nolint: unparam
-	if m.requestQ != nil {
-		// stop accepting any more requests
-		close(m.requestQ)
-	}
-	// wait for request worker to finish
-	m.wg.Wait()
-
-	return nil
-}
-
 // NewDeployManager constructs a new instance of Job Deployment Manager
 func NewDeployManager(l log.Logger, deployerConfig config.Deployer, deployer Deployer, uuidProvider utils.UUIDProvider,
-	deployRepository store.JobDeploymentRepository) *deployManager {
+	deployRepository store.JobDeploymentRepository, assignerScheculer *cron.Cron) *deployManager {
 	mgr := &deployManager{
-		requestQ:         make(chan models.JobDeployment, deployerConfig.QueueCapacity),
-		l:                l,
-		config:           deployerConfig,
-		deployerCapacity: 0,
-		deployer:         deployer,
-		uuidProvider:     uuidProvider,
-		deployRepository: deployRepository,
+		requestQ:          make(chan models.JobDeployment),
+		l:                 l,
+		config:            deployerConfig,
+		deployerCapacity:  0,
+		deployer:          deployer,
+		uuidProvider:      uuidProvider,
+		deployRepository:  deployRepository,
+		assignerScheduler: assignerScheculer,
 	}
 	mgr.Init()
 	return mgr

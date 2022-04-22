@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/robfig/cron/v3"
 	"net/http"
 	"os"
 	"time"
@@ -281,7 +282,8 @@ func (s *OptimusServer) setupHandlers() error {
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
 	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
-	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository)
+	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
+	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
 
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler

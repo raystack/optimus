@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
-	mockTestify "github.com/stretchr/testify/mock"
-
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+	testifyMock "github.com/stretchr/testify/mock"
 )
 
 func TestDeployManager(t *testing.T) {
@@ -52,7 +51,7 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(existingJobDeployment, nil)
 
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployID, err := deployManager.Deploy(ctx, projectSpec)
 
 			assert.Equal(t, existingJobDeployment.ID, deployID)
@@ -76,7 +75,7 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(models.JobDeployment{}, errors.New(errorMsg))
 
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployID, err := deployManager.Deploy(ctx, projectSpec)
 
 			assert.Equal(t, models.DeploymentID{}, deployID)
@@ -102,13 +101,13 @@ func TestDeployManager(t *testing.T) {
 
 			uuidProvider.On("NewUUID").Return(uuid.Nil, errors.New(errorMsg))
 
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployID, err := deployManager.Deploy(ctx, projectSpec)
 
 			assert.Equal(t, models.DeploymentID{}, deployID)
 			assert.Equal(t, errorMsg, err.Error())
 		})
-		t.Run("should failed when unable to save new deployment", func(t *testing.T) {
+		t.Run("should failed when unable to save new job deployment", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -123,26 +122,25 @@ func TestDeployManager(t *testing.T) {
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
 			}
-
-			newJobDeployment := models.JobDeployment{
+			jobDeployment := models.JobDeployment{
 				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec,
-				Status:  models.JobDeploymentStatusCreated,
+				Status:  models.JobDeploymentStatusInQueue,
 			}
 
 			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(models.JobDeployment{}, store.ErrResourceNotFound)
 
-			uuidProvider.On("NewUUID").Return(newJobDeployment.ID.UUID(), nil)
+			uuidProvider.On("NewUUID").Return(jobDeployment.ID.UUID(), nil)
 
-			jobDeploymentRepository.On("Save", ctx, newJobDeployment).Return(errors.New(errorMsg))
+			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(errors.New(errorMsg))
 
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployID, err := deployManager.Deploy(ctx, projectSpec)
 
 			assert.Equal(t, models.DeploymentID{}, deployID)
 			assert.Equal(t, errorMsg, err.Error())
 		})
-		t.Run("should failed when unable to update status deployment to queue", func(t *testing.T) {
+		t.Run("should able to return new deployment ID if no similar existing request found", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -157,11 +155,10 @@ func TestDeployManager(t *testing.T) {
 				WorkerTimeout: 300,
 				QueueCapacity: 10,
 			}
-
 			jobDeployment := models.JobDeployment{
 				ID:      models.DeploymentID(uuid.New()),
 				Project: projectSpec,
-				Status:  models.JobDeploymentStatusCreated,
+				Status:  models.JobDeploymentStatusInQueue,
 			}
 
 			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(models.JobDeployment{}, store.ErrResourceNotFound)
@@ -170,131 +167,11 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(nil)
 
-			// Deploy is run asynchronously. Can be done before or after deploy manager returns.
-			deployer.On("Deploy", mockTestify.Anything, jobDeployment).Return(nil).Maybe()
-
-			jobDeployment.Status = models.JobDeploymentStatusInQueue
-			jobDeploymentRepository.On("UpdateByID", ctx, jobDeployment).Return(errors.New(errorMsg))
-
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
-			deployID, err := deployManager.Deploy(ctx, projectSpec)
-
-			assert.Equal(t, models.DeploymentID{}, deployID)
-			assert.Equal(t, errorMsg, err.Error())
-		})
-		t.Run("should return new deployment request ID when able to push to queue and update the status", func(t *testing.T) {
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
-
-			uuidProvider := new(mock.UUIDProvider)
-			defer uuidProvider.AssertExpectations(t)
-
-			jobDeploymentRepository := new(mock.JobDeploymentRepository)
-			defer jobDeploymentRepository.AssertExpectations(t)
-
-			deployManagerConfig := config.Deployer{
-				NumWorkers:    1,
-				WorkerTimeout: 300,
-				QueueCapacity: 10,
-			}
-
-			jobDeployment := models.JobDeployment{
-				ID:      models.DeploymentID(uuid.New()),
-				Project: projectSpec,
-				Status:  models.JobDeploymentStatusCreated,
-			}
-
-			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(models.JobDeployment{}, store.ErrResourceNotFound)
-
-			uuidProvider.On("NewUUID").Return(jobDeployment.ID.UUID(), nil)
-
-			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(nil)
-
-			// Deploy is run asynchronously. Can be done before or after deploy manager returns.
-			deployer.On("Deploy", mockTestify.Anything, jobDeployment).Return(nil).Maybe()
-
-			jobDeployment.Status = models.JobDeploymentStatusInQueue
-			jobDeploymentRepository.On("UpdateByID", ctx, jobDeployment).Return(nil)
-
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployID, err := deployManager.Deploy(ctx, projectSpec)
 
 			assert.Equal(t, jobDeployment.ID, deployID)
 			assert.Nil(t, err)
-		})
-		t.Run("should failed when unable to push to queue", func(t *testing.T) {
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
-
-			uuidProvider := new(mock.UUIDProvider)
-			defer uuidProvider.AssertExpectations(t)
-
-			jobDeploymentRepository := new(mock.JobDeploymentRepository)
-			defer jobDeploymentRepository.AssertExpectations(t)
-
-			deployManagerConfig := config.Deployer{
-				NumWorkers:    0,
-				WorkerTimeout: 300,
-				QueueCapacity: 0,
-			}
-
-			jobDeployment := models.JobDeployment{
-				ID:      models.DeploymentID(uuid.New()),
-				Project: projectSpec,
-				Status:  models.JobDeploymentStatusCreated,
-			}
-
-			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(models.JobDeployment{}, store.ErrResourceNotFound)
-
-			uuidProvider.On("NewUUID").Return(jobDeployment.ID.UUID(), nil)
-
-			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(nil)
-
-			jobDeployment.Status = models.JobDeploymentStatusCancelled
-			jobDeploymentRepository.On("UpdateByID", ctx, jobDeployment).Return(nil)
-
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
-			deployID, err := deployManager.Deploy(ctx, projectSpec)
-
-			assert.Equal(t, models.DeploymentID{}, deployID)
-			assert.Equal(t, "unable to push deployment request to queue", err.Error())
-		})
-		t.Run("should return error when unable to mark job deployment as cancelled", func(t *testing.T) {
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
-
-			uuidProvider := new(mock.UUIDProvider)
-			defer uuidProvider.AssertExpectations(t)
-
-			jobDeploymentRepository := new(mock.JobDeploymentRepository)
-			defer jobDeploymentRepository.AssertExpectations(t)
-
-			deployManagerConfig := config.Deployer{
-				NumWorkers:    0,
-				WorkerTimeout: 300,
-				QueueCapacity: 0,
-			}
-
-			jobDeployment := models.JobDeployment{
-				ID:      models.DeploymentID(uuid.New()),
-				Project: projectSpec,
-				Status:  models.JobDeploymentStatusCreated,
-			}
-
-			jobDeploymentRepository.On("GetByStatusAndProjectID", ctx, models.JobDeploymentStatusInQueue, projectSpec.ID).Return(models.JobDeployment{}, store.ErrResourceNotFound)
-
-			uuidProvider.On("NewUUID").Return(jobDeployment.ID.UUID(), nil)
-
-			jobDeploymentRepository.On("Save", ctx, jobDeployment).Return(nil)
-
-			jobDeployment.Status = models.JobDeploymentStatusCancelled
-			jobDeploymentRepository.On("UpdateByID", ctx, jobDeployment).Return(errors.New(errorMsg))
-
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
-			deployID, err := deployManager.Deploy(ctx, projectSpec)
-
-			assert.Equal(t, models.DeploymentID{}, deployID)
-			assert.Equal(t, errorMsg, err.Error())
 		})
 	})
 
@@ -321,7 +198,7 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("GetByID", ctx, expectedJobDeployment.ID).Return(expectedJobDeployment, nil)
 
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			jobDeployment, err := deployManager.GetStatus(ctx, expectedJobDeployment.ID)
 
 			assert.Nil(t, err)
@@ -345,7 +222,7 @@ func TestDeployManager(t *testing.T) {
 
 			jobDeploymentRepository.On("GetByID", ctx, jobDeploymentID).Return(models.JobDeployment{}, errors.New(errorMsg))
 
-			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			jobDeployment, err := deployManager.GetStatus(ctx, jobDeploymentID)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -353,24 +230,178 @@ func TestDeployManager(t *testing.T) {
 		})
 	})
 
-	t.Run("Close", func(t *testing.T) {
-		deployer := new(mock.Deployer)
-		defer deployer.AssertExpectations(t)
+	t.Run("Assign", func(t *testing.T) {
+		t.Run("should able to assign deployer a new request", func(t *testing.T) {
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
 
-		uuidProvider := new(mock.UUIDProvider)
-		defer uuidProvider.AssertExpectations(t)
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
 
-		jobDeploymentRepository := new(mock.JobDeploymentRepository)
-		defer jobDeploymentRepository.AssertExpectations(t)
+			jobDeploymentRepository := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepository.AssertExpectations(t)
 
-		deployManagerConfig := config.Deployer{
-			NumWorkers:    3,
-			WorkerTimeout: time.Second,
-		}
+			deployManagerConfig := config.Deployer{
+				NumWorkers:    3,
+				WorkerTimeout: time.Second,
+			}
+			jobDeployment := models.JobDeployment{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec,
+				Status:  models.JobDeploymentStatusInProgress,
+			}
 
-		deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository)
+			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return([]models.JobDeployment{}, nil)
+			jobDeploymentRepository.On("GetFirstExecutableRequest", testifyMock.Anything).Return(jobDeployment, nil)
+			deployer.On("Deploy", testifyMock.Anything, jobDeployment).Return(nil).Maybe()
 
-		err := deployManager.Close()
-		assert.Nil(t, err)
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
+			deployManager.Assign()
+		})
+		t.Run("should able to cancel timed out deployments", func(t *testing.T) {
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			jobDeploymentRepository := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepository.AssertExpectations(t)
+
+			deployManagerConfig := config.Deployer{
+				NumWorkers:    3,
+				WorkerTimeout: time.Second,
+			}
+			timedOutDeployments := []models.JobDeployment{
+				{
+					ID:        models.DeploymentID(uuid.New()),
+					Project:   projectSpec,
+					Status:    models.JobDeploymentStatusInProgress,
+					CreatedAt: time.Now().Add(time.Hour * -6),
+				},
+			}
+
+			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
+			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
+			jobDeploymentRepository.On("UpdateByID", testifyMock.Anything, timedOutDeployments[0]).Return(nil)
+			jobDeploymentRepository.On("GetFirstExecutableRequest", testifyMock.Anything).Return(models.JobDeployment{}, store.ErrResourceNotFound)
+
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
+			deployManager.Assign()
+		})
+		t.Run("should fail when unable to get in progress deployments", func(t *testing.T) {
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			jobDeploymentRepository := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepository.AssertExpectations(t)
+
+			deployManagerConfig := config.Deployer{
+				NumWorkers:    3,
+				WorkerTimeout: time.Second,
+			}
+
+			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return([]models.JobDeployment{}, errors.New(errorMsg))
+			jobDeploymentRepository.On("GetFirstExecutableRequest", testifyMock.Anything).Return(models.JobDeployment{}, store.ErrResourceNotFound)
+
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
+			deployManager.Assign()
+		})
+		t.Run("should fail when unable to mark timed out deployments as cancelled", func(t *testing.T) {
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			jobDeploymentRepository := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepository.AssertExpectations(t)
+
+			deployManagerConfig := config.Deployer{
+				NumWorkers:    3,
+				WorkerTimeout: time.Second,
+			}
+			timedOutDeployments := []models.JobDeployment{
+				{
+					ID:        models.DeploymentID(uuid.New()),
+					Project:   projectSpec,
+					Status:    models.JobDeploymentStatusInProgress,
+					CreatedAt: time.Now().Add(time.Hour * -6),
+				},
+			}
+
+			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
+			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
+			jobDeploymentRepository.On("UpdateByID", testifyMock.Anything, timedOutDeployments[0]).Return(errors.New(errorMsg))
+			jobDeploymentRepository.On("GetFirstExecutableRequest", testifyMock.Anything).Return(models.JobDeployment{}, store.ErrResourceNotFound)
+
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
+			deployManager.Assign()
+		})
+		t.Run("should not assign if executable requests are not found", func(t *testing.T) {
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			jobDeploymentRepository := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepository.AssertExpectations(t)
+
+			deployManagerConfig := config.Deployer{
+				NumWorkers:    3,
+				WorkerTimeout: time.Second,
+			}
+			timedOutDeployments := []models.JobDeployment{
+				{
+					ID:        models.DeploymentID(uuid.New()),
+					Project:   projectSpec,
+					Status:    models.JobDeploymentStatusInProgress,
+					CreatedAt: time.Now().Add(time.Hour * -6),
+				},
+			}
+
+			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
+			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
+			jobDeploymentRepository.On("UpdateByID", testifyMock.Anything, timedOutDeployments[0]).Return(nil)
+			jobDeploymentRepository.On("GetFirstExecutableRequest", testifyMock.Anything).Return(models.JobDeployment{}, store.ErrResourceNotFound)
+
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
+			deployManager.Assign()
+		})
+		t.Run("should fail if unable to get executable requests", func(t *testing.T) {
+			deployer := new(mock.Deployer)
+			defer deployer.AssertExpectations(t)
+
+			uuidProvider := new(mock.UUIDProvider)
+			defer uuidProvider.AssertExpectations(t)
+
+			jobDeploymentRepository := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepository.AssertExpectations(t)
+
+			deployManagerConfig := config.Deployer{
+				NumWorkers:    3,
+				WorkerTimeout: time.Second,
+			}
+			timedOutDeployments := []models.JobDeployment{
+				{
+					ID:        models.DeploymentID(uuid.New()),
+					Project:   projectSpec,
+					Status:    models.JobDeploymentStatusInProgress,
+					CreatedAt: time.Now().Add(time.Hour * -6),
+				},
+			}
+
+			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
+			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
+			jobDeploymentRepository.On("UpdateByID", testifyMock.Anything, timedOutDeployments[0]).Return(nil)
+			jobDeploymentRepository.On("GetFirstExecutableRequest", testifyMock.Anything).Return(models.JobDeployment{}, errors.New(errorMsg))
+
+			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
+			deployManager.Assign()
+		})
 	})
 }

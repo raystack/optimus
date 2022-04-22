@@ -486,10 +486,12 @@ func (d DeploymentID) UUID() uuid.UUID {
 }
 
 type JobDeployment struct {
-	ID      DeploymentID
-	Project ProjectSpec
-	Status  JobDeploymentStatus
-	Details JobDeploymentDetail
+	ID        DeploymentID
+	Project   ProjectSpec
+	Status    JobDeploymentStatus
+	Details   JobDeploymentDetail
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type JobDeploymentDetail struct {

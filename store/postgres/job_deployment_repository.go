@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"gorm.io/gorm/clause"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,10 +40,12 @@ func (d JobDeployment) ToSpec() (models.JobDeployment, error) {
 	}
 
 	return models.JobDeployment{
-		ID:      models.DeploymentID(d.ID),
-		Project: projectSpec,
-		Status:  models.JobDeploymentStatus(d.Status),
-		Details: jobDeploymentDetail,
+		ID:        models.DeploymentID(d.ID),
+		Project:   projectSpec,
+		Status:    models.JobDeploymentStatus(d.Status),
+		Details:   jobDeploymentDetail,
+		CreatedAt: d.CreatedAt,
+		UpdatedAt: d.UpdatedAt,
 	}, nil
 }
 
@@ -100,6 +103,46 @@ func (repo *jobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context
 		return models.JobDeployment{}, err
 	}
 	return jobDeployment.ToSpec()
+}
+
+func (repo *jobDeploymentRepository) GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error) {
+	var jobDeployment JobDeployment
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
+		models.JobDeploymentStatusInQueue, models.JobDeploymentStatusInProgress).Order("created_at ASC").Clauses(clause.Locking{Strength: "UPDATE"}).First(&jobDeployment).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobDeployment{}, store.ErrResourceNotFound
+		}
+		return models.JobDeployment{}, err
+	}
+	jobDeploymentSpec, err := jobDeployment.ToSpec()
+	if err != nil {
+		return models.JobDeployment{}, err
+	}
+	jobDeploymentSpec.Status = models.JobDeploymentStatusInProgress
+	if err := repo.UpdateByID(ctx, jobDeploymentSpec); err != nil {
+		return models.JobDeployment{}, err
+	}
+	return jobDeploymentSpec, nil
+}
+
+func (repo *jobDeploymentRepository) GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error) {
+	var jobDeployments []JobDeployment
+	if err := repo.db.WithContext(ctx).Preload("Project").Where("status = ?", status.String()).Find(&jobDeployments).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, store.ErrResourceNotFound
+		}
+		return nil, err
+	}
+
+	var jobDeploymentSpecs []models.JobDeployment
+	for _, deployment := range jobDeployments {
+		deploymentSpec, err := deployment.ToSpec()
+		if err != nil {
+			return nil, err
+		}
+		jobDeploymentSpecs = append(jobDeploymentSpecs, deploymentSpec)
+	}
+	return jobDeploymentSpecs, nil
 }
 
 func NewJobDeploymentRepository(db *gorm.DB) *jobDeploymentRepository {

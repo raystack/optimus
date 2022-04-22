@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/models"
@@ -28,11 +27,6 @@ func NewDeployer(dependencyResolver DependencyResolver, priorityResolver Priorit
 }
 
 func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) (deployError error) {
-	jobDeployment.Status = models.JobDeploymentStatusInProgress
-	if err := d.deployRepository.UpdateByID(ctx, jobDeployment); err != nil {
-		return err
-	}
-
 	// fetch job specs and enrich with its dependencies
 	jobSpecs, err := d.dependencyResolver.FetchJobSpecsWithJobDependencies(ctx, jobDeployment.Project)
 	if err != nil {

@@ -30,6 +30,13 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 			"bucket": "gs://some_folder",
 		},
 	}
+	projectSpec3 := models.ProjectSpec{
+		ID:   models.ProjectID(uuid.New()),
+		Name: "t-optimus-project-3",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	ctx := context.Background()
 
@@ -40,6 +47,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec1))
 		assert.Nil(t, projRepo.Save(ctx, projectSpec2))
+		assert.Nil(t, projRepo.Save(ctx, projectSpec3))
 		return dbConn
 	}
 
@@ -167,5 +175,94 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		storedDeployment2, err := repo.GetByStatusAndProjectID(ctx, jobDeployments[1].Status, jobDeployments[1].Project.ID)
 		assert.Nil(t, err)
 		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[1].ID}, []models.DeploymentID{storedDeployment1.ID, storedDeployment2.ID})
+	})
+
+	t.Run("GetFirstExecutableRequest", func(t *testing.T) {
+		db := DBSetup()
+
+		jobDeployments := []models.JobDeployment{
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInProgress,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInQueue,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec2,
+				Status:  models.JobDeploymentStatusInQueue,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec3,
+				Status:  models.JobDeploymentStatusInQueue,
+				Details: models.JobDeploymentDetail{},
+			},
+		}
+		repo := postgres.NewJobDeploymentRepository(db)
+
+		err := repo.Save(ctx, jobDeployments[0])
+		assert.Nil(t, err)
+
+		err = repo.Save(ctx, jobDeployments[1])
+		assert.Nil(t, err)
+
+		err = repo.Save(ctx, jobDeployments[2])
+		assert.Nil(t, err)
+
+		err = repo.Save(ctx, jobDeployments[3])
+		assert.Nil(t, err)
+
+		executableRequest, err := repo.GetFirstExecutableRequest(ctx)
+		assert.Nil(t, err)
+
+		assert.Equal(t, jobDeployments[2].ID, executableRequest.ID)
+	})
+
+	t.Run("GetByStatus", func(t *testing.T) {
+		db := DBSetup()
+
+		jobDeployments := []models.JobDeployment{
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInProgress,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec1,
+				Status:  models.JobDeploymentStatusInQueue,
+				Details: models.JobDeploymentDetail{},
+			},
+			{
+				ID:      models.DeploymentID(uuid.New()),
+				Project: projectSpec2,
+				Status:  models.JobDeploymentStatusInProgress,
+				Details: models.JobDeploymentDetail{},
+			},
+		}
+		repo := postgres.NewJobDeploymentRepository(db)
+
+		err := repo.Save(ctx, jobDeployments[0])
+		assert.Nil(t, err)
+
+		err = repo.Save(ctx, jobDeployments[1])
+		assert.Nil(t, err)
+
+		err = repo.Save(ctx, jobDeployments[2])
+		assert.Nil(t, err)
+
+		inProgressDeployments, err := repo.GetByStatus(ctx, models.JobDeploymentStatusInProgress)
+		assert.Nil(t, err)
+
+		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[2].ID}, []models.DeploymentID{inProgressDeployments[0].ID, inProgressDeployments[1].ID})
 	})
 }

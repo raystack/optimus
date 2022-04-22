@@ -131,4 +131,6 @@ type JobDeploymentRepository interface {
 	GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error)
 	GetByStatusAndProjectID(context.Context, models.JobDeploymentStatus, models.ProjectID) (models.JobDeployment, error)
 	UpdateByID(ctx context.Context, deploymentSpec models.JobDeployment) error
+	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
+	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
 }
