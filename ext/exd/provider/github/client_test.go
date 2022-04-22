@@ -25,14 +25,15 @@ type ClientTestSuite struct {
 }
 
 func (c *ClientTestSuite) TestDownload() {
+	var ctx = context.Background()
+	var httpDoer = &mock.HTTPDoer{}
+	client, err := github.NewClient(ctx, httpDoer)
+	if err != nil {
+		panic(err)
+	}
+
 	c.Run("should return nil and error if metadata is nil", func() {
 		var metadata *exd.Metadata
-		var ctx = context.Background()
-		var httpDoer = &mock.HTTPDoer{}
-		client, err := github.NewClient(ctx, httpDoer)
-		if err != nil {
-			panic(err)
-		}
 
 		actualAsset, actualErr := client.Download(metadata)
 
@@ -43,12 +44,6 @@ func (c *ClientTestSuite) TestDownload() {
 	c.Run("should return nil and error if metadata provider is not recognized", func() {
 		metadata := &exd.Metadata{
 			ProviderName: "unrecognized",
-		}
-		var ctx = context.Background()
-		var httpDoer = &mock.HTTPDoer{}
-		client, err := github.NewClient(ctx, httpDoer)
-		if err != nil {
-			panic(err)
 		}
 
 		actualAsset, actualErr := client.Download(metadata)
@@ -62,12 +57,6 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: ":invalid-url",
 		}
-		var ctx = context.Background()
-		var httpDoer = &mock.HTTPDoer{}
-		client, err := github.NewClient(ctx, httpDoer)
-		if err != nil {
-			panic(err)
-		}
 
 		actualAsset, actualErr := client.Download(metadata)
 
@@ -80,8 +69,7 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
-		var ctx = context.Background()
-		var httpDoer = &mock.HTTPDoer{}
+		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(nil, errors.New("random error"))
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
@@ -99,11 +87,10 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
-		var ctx = context.Background()
-		var httpDoer = &mock.HTTPDoer{}
 		response := &http.Response{
 			Body: io.NopCloser(strings.NewReader("invalid-body")),
 		}
+		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
@@ -121,13 +108,12 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
-		var ctx = context.Background()
 		release := github.RepositoryRelease{}
 		marshalled, _ := json.Marshal(release)
-		var httpDoer = &mock.HTTPDoer{}
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader(marshalled)),
 		}
+		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
@@ -145,7 +131,6 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
-		var ctx = context.Background()
 		suffix := runtime.GOOS + "-" + runtime.GOARCH
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
@@ -156,10 +141,10 @@ func (c *ClientTestSuite) TestDownload() {
 			},
 		}
 		marshalled, _ := json.Marshal(release)
-		var httpDoer = &mock.HTTPDoer{}
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader(marshalled)),
 		}
+		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
@@ -177,7 +162,6 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
-		var ctx = context.Background()
 		suffix := runtime.GOOS + "-" + runtime.GOARCH
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
@@ -188,10 +172,10 @@ func (c *ClientTestSuite) TestDownload() {
 			},
 		}
 		marshalled, _ := json.Marshal(release)
-		var httpDoer = &mock.HTTPDoer{}
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader(marshalled)),
 		}
+		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
 		httpDoer.On("Do", tMock.Anything).Return(nil, errors.New("random error")).Once()
 		client, err := github.NewClient(ctx, httpDoer)
@@ -210,7 +194,6 @@ func (c *ClientTestSuite) TestDownload() {
 			ProviderName: "github",
 			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
-		var ctx = context.Background()
 		suffix := runtime.GOOS + "-" + runtime.GOARCH
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
@@ -221,10 +204,10 @@ func (c *ClientTestSuite) TestDownload() {
 			},
 		}
 		marshalled, _ := json.Marshal(release)
-		var httpDoer = &mock.HTTPDoer{}
 		releaseResponse := &http.Response{
 			Body: io.NopCloser(bytes.NewReader(marshalled)),
 		}
+		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(releaseResponse, nil).Once()
 		downloadResponse := &http.Response{
 			Body: io.NopCloser(strings.NewReader("random payload")),
@@ -252,6 +235,7 @@ func TestNewClient(t *testing.T) {
 		assert.Nil(t, actualGithub)
 		assert.Error(t, actualErr)
 	})
+
 	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
 		ctx := context.Background()
 		var httpDoer exd.HTTPDoer
@@ -261,6 +245,7 @@ func TestNewClient(t *testing.T) {
 		assert.Nil(t, actualGithub)
 		assert.Error(t, actualErr)
 	})
+
 	t.Run("should return github and nil if no error encountered", func(t *testing.T) {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}

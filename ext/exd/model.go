@@ -24,9 +24,9 @@ type Manifest struct {
 }
 
 type Parser func(remotePath string) (*Metadata, error)
+
 type Client interface {
 	Download(*Metadata) ([]byte, error)
-	Install(asset []byte, metadata *Metadata) error
 }
 
 // HTTPDoer is an HTTP contract to do an HTTP request
@@ -39,4 +39,9 @@ type NewClient func(ctx context.Context, httpDoer HTTPDoer) (Client, error)
 type Manifester interface {
 	Load(dirPath string) (*Manifest, error)
 	Flush(manifest *Manifest, dirPath string) error
+}
+
+type AssetInstaller interface {
+	PrepareContainer(*Metadata) error
+	WriteAsset([]byte) error
 }

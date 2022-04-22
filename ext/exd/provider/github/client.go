@@ -63,10 +63,6 @@ func (c *Client) Download(metadata *exd.Metadata) ([]byte, error) {
 	return c.downloadAsset(assetURL)
 }
 
-func (c *Client) Install(asset []byte, metadata *exd.Metadata) error {
-	panic("not implemented")
-}
-
 func (c *Client) downloadAsset(url string) ([]byte, error) {
 	request, err := http.NewRequestWithContext(c.ctx, "GET", url, http.NoBody)
 	if err != nil {
@@ -119,9 +115,11 @@ func (c *Client) getRepositoryRelease(apitPath string) (*RepositoryRelease, erro
 }
 
 func init() {
-	if err := exd.NewClientRegistry.Add(providerName, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
-		return NewClient(ctx, httpDoer)
-	}); err != nil {
+	if err := exd.NewClientRegistry.Add(providerName,
+		func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return NewClient(ctx, httpDoer)
+		},
+	); err != nil {
 		panic(err)
 	}
 }
