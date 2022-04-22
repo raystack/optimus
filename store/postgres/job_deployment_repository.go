@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -105,24 +104,26 @@ func (repo *jobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context
 	return jobDeployment.ToSpec()
 }
 
-func (repo *jobDeploymentRepository) GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error) {
-	var jobDeployment JobDeployment
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
-		models.JobDeploymentStatusInQueue, models.JobDeploymentStatusInProgress).Order("created_at ASC").Clauses(clause.Locking{Strength: "UPDATE"}).First(&jobDeployment).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobDeployment{}, store.ErrResourceNotFound
+func (repo *jobDeploymentRepository) GetFirstExecutableRequest(ctx context.Context) (jobDeploymentSpec models.JobDeployment, err error) {
+	err = repo.db.Transaction(func(tx *gorm.DB) error {
+		var jobDeployment JobDeployment
+		if err := tx.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
+			models.JobDeploymentStatusInQueue, models.JobDeploymentStatusInProgress).Order("created_at ASC").First(&jobDeployment).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return store.ErrResourceNotFound
+			}
+			return err
 		}
-		return models.JobDeployment{}, err
-	}
-	jobDeploymentSpec, err := jobDeployment.ToSpec()
-	if err != nil {
-		return models.JobDeployment{}, err
-	}
-	jobDeploymentSpec.Status = models.JobDeploymentStatusInProgress
-	if err := repo.Update(ctx, jobDeploymentSpec); err != nil {
-		return models.JobDeployment{}, err
-	}
-	return jobDeploymentSpec, nil
+		jobDeploymentSpec, err = jobDeployment.ToSpec()
+		if err != nil {
+			return err
+		}
+
+		jobDeployment.Status = models.JobDeploymentStatusInProgress.String()
+		return tx.WithContext(ctx).Save(&jobDeployment).Error
+	})
+
+	return jobDeploymentSpec, err
 }
 
 func (repo *jobDeploymentRepository) GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error) {
