@@ -116,13 +116,6 @@ func (repo *JobRunRepository) Clear(ctx context.Context, runID uuid.UUID) error 
 	return repo.db.WithContext(ctx).Model(&JobRun{ID: runID}).Updates(JobRun{Status: models.RunStatePending.String()}).Error
 }
 
-func (repo *JobRunRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	if err := repo.instanceRepo.DeleteByJobRun(ctx, id); err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
-	}
-	return repo.db.WithContext(ctx).Where("id = ?", id).Delete(&JobRun{}).Error
-}
-
 func (repo *JobRunRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error {
 	var jr JobRun
 	if err := repo.db.WithContext(ctx).Where("id = ?", id).Find(&jr).Error; err != nil {
@@ -130,26 +123,6 @@ func (repo *JobRunRepository) UpdateStatus(ctx context.Context, id uuid.UUID, st
 	}
 	jr.Status = status.String()
 	return repo.db.Omit("Namespace").Save(jr).Error
-}
-
-func (repo *JobRunRepository) GetByStatus(ctx context.Context, statuses ...models.JobRunState) ([]models.JobRun, error) {
-	var specs []models.JobRun
-	var runs []JobRun
-	if err := repo.db.WithContext(ctx).Where("status IN (?)", statuses).Find(&runs).Error; err != nil {
-		return specs, err
-	}
-
-	for _, run := range runs {
-		if instances, err := repo.instanceRepo.GetByJobRun(ctx, run.ID); err == nil {
-			run.Instances = instances
-		}
-		adapt, _, err := repo.adapter.ToJobRun(run)
-		if err != nil {
-			return specs, err
-		}
-		specs = append(specs, adapt)
-	}
-	return specs, nil
 }
 
 func (repo *JobRunRepository) GetByTrigger(ctx context.Context, trigger models.JobRunTrigger, statuses ...models.JobRunState) ([]models.JobRun, error) {

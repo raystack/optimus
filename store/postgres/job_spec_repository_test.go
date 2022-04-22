@@ -189,7 +189,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err = repo.Insert(ctx, testModels[1])
 			assert.NotNil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
+			checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -230,7 +230,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err := repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
+			checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 
@@ -242,7 +242,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err = repo.Insert(ctx, testModels[0])
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModels[0].ID)
+			checkModel, err = repo.GetByName(ctx, testModels[0].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 		})
@@ -273,7 +273,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -283,7 +283,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelB.ID)
+			checkModel, err = repo.GetByName(ctx, testModelB.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema = checkModel.Task.Unit.Info()
@@ -314,7 +314,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -328,7 +328,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelA.ID)
+			checkModel, err = repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			taskSchema = checkModel.Task.Unit.Info()
 			assert.Equal(t, tTask, taskSchema.Name)
@@ -365,7 +365,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 
 			err := repo.Insert(ctx, testModel)
 			assert.Nil(t, err)
-			checkModel, err := repo.GetByID(ctx, testModel.ID)
+			checkModel, err := repo.GetByName(ctx, testModel.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema := checkModel.Task.Unit.Info()
@@ -387,7 +387,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			}
 			err = repo.Save(ctx, testModel)
 			assert.Nil(t, err)
-			checkModel, err = repo.GetByID(ctx, testModel.ID)
+			checkModel, err = repo.GetByName(ctx, testModel.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema = checkModel.Task.Unit.Info()
@@ -419,7 +419,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			})
 			err = repo.Save(ctx, testModel)
 			assert.Nil(t, err)
-			checkModel, err = repo.GetByID(ctx, testModel.ID)
+			checkModel, err = repo.GetByName(ctx, testModel.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-id", checkModel.Name)
 			taskSchema = checkModel.Task.Unit.Info()
@@ -490,7 +490,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 			assert.Equal(t, true, checkModel.Behavior.CatchUp)
@@ -505,7 +505,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelA.ID)
+			checkModel, err = repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, false, checkModel.Behavior.CatchUp)
 			assert.Equal(t, true, checkModel.Behavior.DependsOnPast)
