@@ -48,6 +48,7 @@ func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSp
 	// Check deployment status for the requested Project
 	jobDeployment, err := m.deployRepository.GetByStatusAndProjectID(ctx, models.JobDeploymentStatusInQueue, projectSpec.ID)
 	if err == nil {
+		m.l.Info(fmt.Sprintf("deployment request for %s already exist in queue", projectSpec.Name), "request id", jobDeployment.ID.UUID())
 		return jobDeployment.ID, nil
 	}
 
@@ -76,6 +77,7 @@ func (m *deployManager) createNewRequest(ctx context.Context, projectSpec models
 	if err := m.deployRepository.Save(ctx, newDeployment); err != nil {
 		return models.JobDeployment{}, err
 	}
+	m.l.Info("new deployment request created", "request id", newDeployment.ID.UUID())
 	return newDeployment, nil
 }
 
@@ -96,7 +98,7 @@ func (m *deployManager) Init() {
 	if m.assignerScheduler != nil {
 		_, err := m.assignerScheduler.AddFunc(deployAssignInterval, m.Assign)
 		if err != nil {
-			m.l.Fatal("Failed to start deploy assigner", "error", err)
+			m.l.Fatal("failed to schedule deployment assigner", "error", err.Error())
 		}
 		m.assignerScheduler.Start()
 	}
@@ -111,10 +113,10 @@ func (m *deployManager) spawnDeployer(deployer Deployer) {
 	for deployRequest := range m.requestQ {
 		atomic.AddInt32(&m.deployerCapacity, -1)
 
-		m.l.Info("deployer picked up the request", "request id", deployRequest)
+		m.l.Info("deployer start processing a request", "request id", deployRequest.ID.UUID())
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := deployer.Deploy(ctx, deployRequest); err != nil {
-			m.l.Error("deployment worker failed to process", "error", err)
+			m.l.Error("deployment worker failed to process", "error", err.Error())
 		}
 		cancelCtx()
 
@@ -132,26 +134,26 @@ func (m *deployManager) Assign() {
 		return
 	}
 
-	m.l.Debug("trying to assign deployment...")
+	m.l.Debug("attempting to assign deployment request...")
 	jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			m.l.Debug("no deployment request found.")
 			return
 		}
-		m.l.Error(fmt.Sprintf("failed to fetch executable deployment request: %s", err.Error()))
+		m.l.Error("failed to fetch executable deployment request", "error", err.Error())
 		return
 	}
 
 	select {
 	case m.requestQ <- jobDeployment:
-		m.l.Info(fmt.Sprintf("deployer taking request for %s", jobDeployment.ID.UUID()))
+		m.l.Info("deployer taking a request", "request id", jobDeployment.ID.UUID())
 		return
 	default:
-		m.l.Error(fmt.Sprintf("unable to assign deployer to take request %s", jobDeployment.ID.UUID()))
+		m.l.Error("unable to assign deployer to take the request", "request id", jobDeployment.ID.UUID())
 		jobDeployment.Status = models.JobDeploymentStatusCancelled
 		if err := m.deployRepository.Update(ctx, jobDeployment); err != nil {
-			m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled: %s", jobDeployment.ID.UUID(), err.Error()))
+			m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled", jobDeployment.ID.UUID()), "error", err.Error())
 		}
 	}
 }
@@ -159,7 +161,7 @@ func (m *deployManager) Assign() {
 func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 	inProgressDeployments, err := m.deployRepository.GetByStatus(ctx, models.JobDeploymentStatusInProgress)
 	if err != nil {
-		m.l.Error(fmt.Sprintf("failed to fetch in progress deployments: %s", err.Error()))
+		m.l.Error("failed to fetch in progress deployments", "error", err.Error())
 		return
 	}
 
@@ -168,7 +170,7 @@ func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 		if time.Since(deployment.UpdatedAt).Minutes() > m.config.WorkerTimeout.Minutes() {
 			deployment.Status = models.JobDeploymentStatusCancelled
 			if err := m.deployRepository.Update(ctx, deployment); err != nil {
-				m.l.Error(fmt.Sprintf("failed to mark timed out deployment as cancelled: %s", err.Error()))
+				m.l.Error("failed to mark timed out deployment as cancelled", "error", err.Error())
 			}
 		}
 	}
@@ -176,7 +178,7 @@ func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 
 // NewDeployManager constructs a new instance of Job Deployment Manager
 func NewDeployManager(l log.Logger, deployerConfig config.Deployer, deployer Deployer, uuidProvider utils.UUIDProvider,
-	deployRepository store.JobDeploymentRepository, assignerScheculer *cron.Cron) *deployManager {
+	deployRepository store.JobDeploymentRepository, assignerScheduler *cron.Cron) *deployManager {
 	mgr := &deployManager{
 		requestQ:          make(chan models.JobDeployment),
 		l:                 l,
@@ -185,7 +187,7 @@ func NewDeployManager(l log.Logger, deployerConfig config.Deployer, deployer Dep
 		deployer:          deployer,
 		uuidProvider:      uuidProvider,
 		deployRepository:  deployRepository,
-		assignerScheduler: assignerScheculer,
+		assignerScheduler: assignerScheduler,
 	}
 	mgr.Init()
 	return mgr

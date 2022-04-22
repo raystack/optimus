@@ -281,7 +281,7 @@ func (s *OptimusServer) setupHandlers() error {
 	})
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
-	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
+	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
 	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
 	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
 

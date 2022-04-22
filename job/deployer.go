@@ -2,6 +2,8 @@ package job
 
 import (
 	"context"
+	"fmt"
+	"github.com/odpf/salt/log"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -11,6 +13,8 @@ import (
 )
 
 type deployer struct {
+	l log.Logger
+
 	dependencyResolver DependencyResolver
 	priorityResolver   PriorityResolver
 	namespaceService   service.NamespaceService
@@ -21,9 +25,9 @@ type deployer struct {
 	deployRepository store.JobDeploymentRepository
 }
 
-func NewDeployer(dependencyResolver DependencyResolver, priorityResolver PriorityResolver, batchScheduler models.SchedulerUnit,
+func NewDeployer(l log.Logger, dependencyResolver DependencyResolver, priorityResolver PriorityResolver, batchScheduler models.SchedulerUnit,
 	deployRepository store.JobDeploymentRepository, namespaceService service.NamespaceService) *deployer {
-	return &deployer{dependencyResolver: dependencyResolver, priorityResolver: priorityResolver, batchScheduler: batchScheduler,
+	return &deployer{l: l, dependencyResolver: dependencyResolver, priorityResolver: priorityResolver, batchScheduler: batchScheduler,
 		deployRepository: deployRepository, namespaceService: namespaceService}
 }
 
@@ -33,6 +37,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	if err != nil {
 		return err
 	}
+	d.l.Debug("job dependency fetched", "request id", jobDeployment.ID.UUID())
 
 	// Get all job specs and enrich with hook dependencies
 	jobSpecs = d.enrichJobSpecWithHookDependencies(jobSpecs)
@@ -42,6 +47,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	if err != nil {
 		return err
 	}
+	d.l.Debug("job priority resolved", "request id", jobDeployment.ID.UUID())
 
 	// Compile & Deploy
 	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
@@ -53,12 +59,14 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 		jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
 		jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
 		jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
+		d.l.Debug(fmt.Sprintf("%s/%s deployed", jobDeployment.Project.Name, namespaceName), "request id", jobDeployment.ID.UUID())
 	}
 
 	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
 		return err
 	}
 
+	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID())
 	return deployError
 }
 
