@@ -163,7 +163,8 @@ func pollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		case models.JobDeploymentStatusInQueue.String():
 			l.Info("Deployment request is in queue...")
 		case models.JobDeploymentStatusCancelled.String():
-			l.Error("Deployment request is cancelled. Deployer queue might be full.")
+			l.Error("Deployment request is cancelled.")
+			return nil
 		case models.JobDeploymentStatusSucceed.String():
 			l.Info(coloredSuccess("All jobs deployed successfully."))
 			l.Info(coloredSuccess("Deployed %d jobs", resp.SuccessCount))
