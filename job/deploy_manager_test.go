@@ -58,7 +58,7 @@ func TestDeployManager(t *testing.T) {
 			assert.Equal(t, existingJobDeployment.ID, deployID)
 			assert.Nil(t, err)
 		})
-		t.Run("should failed when unable to get job deployment using status", func(t *testing.T) {
+		t.Run("should fail when unable to get job deployment using status", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -82,7 +82,7 @@ func TestDeployManager(t *testing.T) {
 			assert.Equal(t, models.DeploymentID{}, deployID)
 			assert.Equal(t, errorMsg, err.Error())
 		})
-		t.Run("should failed when unable to create new deployment ID", func(t *testing.T) {
+		t.Run("should fail when unable to create new deployment ID", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -108,7 +108,7 @@ func TestDeployManager(t *testing.T) {
 			assert.Equal(t, models.DeploymentID{}, deployID)
 			assert.Equal(t, errorMsg, err.Error())
 		})
-		t.Run("should failed when unable to save new job deployment", func(t *testing.T) {
+		t.Run("should fail when unable to save new job deployment", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -141,7 +141,7 @@ func TestDeployManager(t *testing.T) {
 			assert.Equal(t, models.DeploymentID{}, deployID)
 			assert.Equal(t, errorMsg, err.Error())
 		})
-		t.Run("should able to return new deployment ID if no similar existing request found", func(t *testing.T) {
+		t.Run("should be able to return new deployment ID if no similar existing request found", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -177,7 +177,7 @@ func TestDeployManager(t *testing.T) {
 	})
 
 	t.Run("GetStatus", func(t *testing.T) {
-		t.Run("should able to return job deployment", func(t *testing.T) {
+		t.Run("should be able to return job deployment", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -205,7 +205,7 @@ func TestDeployManager(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, expectedJobDeployment, jobDeployment)
 		})
-		t.Run("should failed when unable to return job deployment", func(t *testing.T) {
+		t.Run("should fail when unable to return job deployment", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -232,7 +232,7 @@ func TestDeployManager(t *testing.T) {
 	})
 
 	t.Run("Assign", func(t *testing.T) {
-		t.Run("should able to assign deployer a new request", func(t *testing.T) {
+		t.Run("should be able to assign deployer a new request", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -259,7 +259,7 @@ func TestDeployManager(t *testing.T) {
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
 		})
-		t.Run("should able to cancel timed out deployments", func(t *testing.T) {
+		t.Run("should be able to cancel timed out deployments", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -290,7 +290,7 @@ func TestDeployManager(t *testing.T) {
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
 		})
-		t.Run("should fail when unable to get in progress deployments", func(t *testing.T) {
+		t.Run("should not proceed on cancelling timed out deployments when unable to get in progress deployments", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -311,7 +311,7 @@ func TestDeployManager(t *testing.T) {
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
 		})
-		t.Run("should fail when unable to mark timed out deployments as cancelled", func(t *testing.T) {
+		t.Run("should proceed with assigning when unable to mark timed out deployments as cancelled", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 
@@ -373,7 +373,7 @@ func TestDeployManager(t *testing.T) {
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
 		})
-		t.Run("should fail if unable to get executable requests", func(t *testing.T) {
+		t.Run("should not assign if unable to get executable requests", func(t *testing.T) {
 			deployer := new(mock.Deployer)
 			defer deployer.AssertExpectations(t)
 

@@ -20,7 +20,7 @@ type JobDeployment struct {
 	ProjectID uuid.UUID `gorm:"not null" json:"project_id"`
 	Project   Project   `gorm:"foreignKey:ProjectID"`
 
-	Status  string `gorm:"not null"`
+	Status  string `gorm:"not null;default:null"`
 	Details datatypes.JSON
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`

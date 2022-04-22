@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,9 +34,6 @@ type deployManager struct {
 	deployerCapacity int32
 	uuidProvider     utils.UUIDProvider
 	deployRepository store.JobDeploymentRepository
-
-	// wait group to synchronise on deployers
-	wg sync.WaitGroup
 
 	// unbuffered request channel to assign request to deployer
 	requestQ chan models.JobDeployment
@@ -87,7 +83,6 @@ func (m *deployManager) GetStatus(ctx context.Context, deployID models.Deploymen
 func (m *deployManager) Init() {
 	m.l.Info("starting deployers", "count", m.config.NumWorkers)
 	for i := 0; i < m.config.NumWorkers; i++ {
-		m.wg.Add(1)
 		go m.spawnDeployer(m.deployer)
 	}
 
@@ -105,6 +100,24 @@ func (m *deployManager) Init() {
 			m.l.Fatal("Failed to start deploy assigner", "error", err)
 		}
 		m.assignerScheduler.Start()
+	}
+}
+
+// start a deployer goroutine that runs the deployment in background
+func (m *deployManager) spawnDeployer(deployer Deployer) {
+	atomic.AddInt32(&m.deployerCapacity, 1)
+
+	for deployRequest := range m.requestQ {
+		atomic.AddInt32(&m.deployerCapacity, -1)
+
+		m.l.Info("deployer picked up the request", "request id", deployRequest)
+		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
+		if err := deployer.Deploy(ctx, deployRequest); err != nil {
+			m.l.Error("deployment worker failed to process", "error", err)
+		}
+		cancelCtx()
+
+		atomic.AddInt32(&m.deployerCapacity, 1)
 	}
 }
 
@@ -157,25 +170,6 @@ func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 				m.l.Error(fmt.Sprintf("failed to mark timed out deployment as cancelled: %s", err.Error()))
 			}
 		}
-	}
-}
-
-// start a deployer goroutine that runs the deployment in background
-func (m *deployManager) spawnDeployer(deployer Deployer) {
-	defer m.wg.Done()
-	atomic.AddInt32(&m.deployerCapacity, 1)
-
-	for deployRequest := range m.requestQ {
-		atomic.AddInt32(&m.deployerCapacity, -1)
-
-		m.l.Info("deployer picked up the request", "request id", deployRequest)
-		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
-		if err := deployer.Deploy(ctx, deployRequest); err != nil {
-			m.l.Error("deployment worker failed to process", "error", err)
-		}
-		cancelCtx()
-
-		atomic.AddInt32(&m.deployerCapacity, 1)
 	}
 }
 

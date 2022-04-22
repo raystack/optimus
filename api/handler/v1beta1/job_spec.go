@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -309,7 +309,7 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 }
 
 func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb.GetDeployJobsStatusRequest) (*pb.GetDeployJobsStatusResponse, error) {
-	deployID, err := uuid.FromString(req.DeployId)
+	deployID, err := uuid.Parse(req.DeployId)
 	if err != nil {
 		return nil, err
 	}
