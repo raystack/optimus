@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/models"

@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/odpf/optimus/config"
-	"github.com/robfig/cron/v3"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/odpf/salt/log"
+	"github.com/robfig/cron/v3"
 
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
@@ -113,14 +113,12 @@ func (m *deployManager) Assign() {
 	defer cancelCtx()
 	m.cancelTimedOutDeployments(ctx)
 
-	// check if deployer is available, use unbuffered channel
 	if m.deployerCapacity <= 0 {
 		m.l.Debug("deployers are all occupied.")
 		return
 	}
 
 	m.l.Debug("trying to assign deployment...")
-
 	jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
@@ -131,7 +129,6 @@ func (m *deployManager) Assign() {
 		return
 	}
 
-	// call deployer
 	select {
 	case m.requestQ <- jobDeployment:
 		m.l.Info(fmt.Sprintf("deployer taking request for %s", jobDeployment.ID.UUID()))
@@ -153,8 +150,8 @@ func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 	}
 
 	for _, deployment := range inProgressDeployments {
-		// check stale/timeout deployment, mark as cancelled
-		if time.Now().Sub(deployment.UpdatedAt).Minutes() > 30 {
+		// check state / timed out deployment, mark as cancelled
+		if time.Since(deployment.UpdatedAt).Minutes() > m.config.WorkerTimeout.Minutes() {
 			deployment.Status = models.JobDeploymentStatusCancelled
 			if err := m.deployRepository.UpdateByID(ctx, deployment); err != nil {
 				m.l.Error(fmt.Sprintf("failed to mark timed out deployment as cancelled: %s", err.Error()))

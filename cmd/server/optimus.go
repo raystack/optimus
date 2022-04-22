@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/robfig/cron/v3"
 	"net/http"
 	"os"
 	"time"
@@ -13,6 +12,7 @@ import (
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/robfig/cron/v3"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"

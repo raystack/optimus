@@ -3,18 +3,19 @@ package job_test
 import (
 	"context"
 	"errors"
-	"github.com/odpf/optimus/config"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/assert"
+	testifyMock "github.com/stretchr/testify/mock"
+
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/odpf/salt/log"
-	"github.com/stretchr/testify/assert"
-	testifyMock "github.com/stretchr/testify/mock"
 )
 
 func TestDeployManager(t *testing.T) {
