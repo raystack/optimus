@@ -7,8 +7,10 @@ import (
 	"os"
 	"sync"
 
+	"github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
 
+	"github.com/odpf/optimus/ext/datastore/bigquery"
 	"github.com/odpf/optimus/store/postgres"
 )
 
@@ -70,4 +72,15 @@ func truncateTables(db *gorm.DB) {
 	db.Exec("TRUNCATE TABLE project CASCADE")
 
 	db.Exec("TRUNCATE TABLE job_dependency CASCADE")
+}
+
+func getBigQueryDataStore() *bigquery.BigQuery {
+	bQClient := new(bigquery.BqClientMock)
+
+	bQClientFactory := new(bigquery.BQClientFactoryMock)
+	bQClientFactory.On("New", mock.Anything, mock.Anything).Return(bQClient, nil)
+
+	return &bigquery.BigQuery{
+		ClientFac: bQClientFactory,
+	}
 }
