@@ -89,7 +89,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[1].ID}, []models.DeploymentID{storedDeployment1.ID, storedDeployment2.ID})
 	})
-	t.Run("UpdateByID", func(t *testing.T) {
+	t.Run("Update", func(t *testing.T) {
 		db := DBSetup()
 
 		jobDeployments := []models.JobDeployment{
@@ -129,7 +129,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 
 		jobDeployments[0].Status = models.JobDeploymentStatusSucceed
 
-		err = repo.UpdateByID(ctx, jobDeployments[0])
+		err = repo.Update(ctx, jobDeployments[0])
 		assert.Nil(t, err)
 
 		modifiedDeployment1, err := repo.GetByID(ctx, jobDeployments[0].ID)

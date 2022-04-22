@@ -344,7 +344,7 @@ func (repo *JobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context
 	return args.Get(0).(models.JobDeployment), args.Error(1)
 }
 
-func (repo *JobDeploymentRepository) UpdateByID(ctx context.Context, deploymentSpec models.JobDeployment) error {
+func (repo *JobDeploymentRepository) Update(ctx context.Context, deploymentSpec models.JobDeployment) error {
 	args := repo.Called(ctx, deploymentSpec)
 	return args.Error(0)
 }

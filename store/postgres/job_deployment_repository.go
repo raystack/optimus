@@ -71,7 +71,7 @@ func (repo *jobDeploymentRepository) Save(ctx context.Context, deploymentSpec mo
 	return repo.db.WithContext(ctx).Create(&deployment).Error
 }
 
-func (repo *jobDeploymentRepository) UpdateByID(ctx context.Context, deploymentSpec models.JobDeployment) error {
+func (repo *jobDeploymentRepository) Update(ctx context.Context, deploymentSpec models.JobDeployment) error {
 	deploymentToUpdate, err := JobDeployment{}.FromSpec(deploymentSpec)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (repo *jobDeploymentRepository) GetFirstExecutableRequest(ctx context.Conte
 		return models.JobDeployment{}, err
 	}
 	jobDeploymentSpec.Status = models.JobDeploymentStatusInProgress
-	if err := repo.UpdateByID(ctx, jobDeploymentSpec); err != nil {
+	if err := repo.Update(ctx, jobDeploymentSpec); err != nil {
 		return models.JobDeployment{}, err
 	}
 	return jobDeploymentSpec, nil

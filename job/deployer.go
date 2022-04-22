@@ -68,7 +68,7 @@ func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment mode
 	} else {
 		jobDeployment.Status = models.JobDeploymentStatusSucceed
 	}
-	return d.deployRepository.UpdateByID(ctx, jobDeployment)
+	return d.deployRepository.Update(ctx, jobDeployment)
 }
 
 func (d *deployer) deployPerNamespace(ctx context.Context, projectName string, namespaceName string, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {

@@ -149,7 +149,7 @@ func (m *deployManager) Assign() {
 	default:
 		m.l.Error(fmt.Sprintf("unable to assign deployer to take request %s", jobDeployment.ID.UUID()))
 		jobDeployment.Status = models.JobDeploymentStatusCancelled
-		if err := m.deployRepository.UpdateByID(ctx, jobDeployment); err != nil {
+		if err := m.deployRepository.Update(ctx, jobDeployment); err != nil {
 			m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled: %s", jobDeployment.ID.UUID(), err.Error()))
 		}
 	}
@@ -166,7 +166,7 @@ func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 		// check state / timed out deployment, mark as cancelled
 		if time.Since(deployment.UpdatedAt).Minutes() > m.config.WorkerTimeout.Minutes() {
 			deployment.Status = models.JobDeploymentStatusCancelled
-			if err := m.deployRepository.UpdateByID(ctx, deployment); err != nil {
+			if err := m.deployRepository.Update(ctx, deployment); err != nil {
 				m.l.Error(fmt.Sprintf("failed to mark timed out deployment as cancelled: %s", err.Error()))
 			}
 		}

@@ -130,7 +130,7 @@ type JobDeploymentRepository interface {
 	Save(ctx context.Context, deployment models.JobDeployment) error
 	GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error)
 	GetByStatusAndProjectID(context.Context, models.JobDeploymentStatus, models.ProjectID) (models.JobDeployment, error)
-	UpdateByID(ctx context.Context, deploymentSpec models.JobDeployment) error
+	Update(ctx context.Context, deploymentSpec models.JobDeployment) error
 	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
 	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
 }
