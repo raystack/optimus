@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	tmock "github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
@@ -109,7 +108,6 @@ func (b bqPlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 }
 
 func (b bqPlugin) GenerateDestination(ctx2 context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
-	time.Sleep(time.Millisecond * 20) // Simulate the delay
 	proj, ok1 := request.Config.Get("PROJECT")
 	dataset, ok2 := request.Config.Get("DATASET")
 	tab, ok3 := request.Config.Get("TABLE")
@@ -122,9 +120,9 @@ func (b bqPlugin) GenerateDestination(ctx2 context.Context, request models.Gener
 	return nil, errors.New("missing config key required to generate destination")
 }
 
-func (b bqPlugin) GenerateDependencies(_ context.Context, _ models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
-	time.Sleep(time.Millisecond * 100) // Simulate the delay
-	return &models.GenerateDependenciesResponse{Dependencies: []string{}}, nil
+func (b bqPlugin) GenerateDependencies(_ context.Context, req models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
+	c, _ := req.Config.Get("DEST")
+	return &models.GenerateDependenciesResponse{Dependencies: []string{c.Value}}, nil
 }
 
 func inMemoryPluginRegistry() models.PluginRepository {
@@ -133,9 +131,10 @@ func inMemoryPluginRegistry() models.PluginRepository {
 	transporterHook := "transporter"
 	hookUnit := new(mock.BasePlugin)
 	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-		Name:     transporterHook,
-		HookType: models.HookTypePre,
-		Image:    "example.io/namespace/hook-image:latest",
+		Name:       transporterHook,
+		HookType:   models.HookTypePre,
+		PluginType: models.PluginTypeHook,
+		Image:      "example.io/namespace/hook-image:latest",
 	}, nil)
 
 	pluginRepo := new(mock.SupportedPluginRepo)

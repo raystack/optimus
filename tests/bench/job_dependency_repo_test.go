@@ -52,7 +52,7 @@ func BenchmarkJobDependencyRepository(b *testing.B) {
 	b.Run("Save", func(b *testing.B) {
 		db := dbSetup()
 
-		job := getJob(1, namespace, mod)
+		job := getJob(1, namespace, mod, nil)
 		job.ID = uuid.New()
 
 		jobDependencies := models.JobSpecDependency{
@@ -74,7 +74,7 @@ func BenchmarkJobDependencyRepository(b *testing.B) {
 	b.Run("GetAll", func(b *testing.B) {
 		db := dbSetup()
 
-		job := getJob(1, namespace, mod)
+		job := getJob(1, namespace, mod, nil)
 		job.ID = uuid.New()
 
 		jobDependencies := models.JobSpecDependency{
@@ -104,14 +104,14 @@ func BenchmarkJobDependencyRepository(b *testing.B) {
 	})
 }
 
-func getJob(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod) models.JobSpec {
+func getJob(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod, hookUnit models.BasePlugin) models.JobSpec {
 	jobConfig := []models.JobSpecConfigItem{
 		{Name: "DATASET", Value: "playground"},
 		{Name: "JOB_LABELS", Value: "owner=optimus"},
 		{Name: "LOAD_METHOD", Value: "REPLACE"},
 		{Name: "PROJECT", Value: "integration"},
 		{Name: "SQL_TYPE", Value: "STANDARD"},
-		{Name: "TABLE", Value: "hello_test_table"},
+		{Name: "TABLE", Value: fmt.Sprintf("table%d", i)},
 		{Name: "TASK_TIMEZONE", Value: "UTC"},
 		{Name: "SECRET_NAME", Value: "{{.secret.secret3}}"},
 		{Name: "TASK_BQ2BQ", Value: "{{.secret.TASK_BQ2BQ}}"},
@@ -129,10 +129,22 @@ func getJob(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolv
 		Offset:     time.Second * 0,
 		TruncateTo: "h",
 	}
+	var hooks []models.JobSpecHook
+	if hookUnit != nil {
+		hooks = append(hooks, models.JobSpecHook{
+			Config: []models.JobSpecConfigItem{
+				{
+					Name:  "FILTER_EXPRESSION",
+					Value: "event_timestamp > 10000",
+				},
+			},
+			Unit: &models.Plugin{Base: hookUnit},
+		})
+	}
 
 	jobSpec := models.JobSpec{
 		Version:     1,
-		Name:        fmt.Sprintf("test_job_%d", i),
+		Name:        fmt.Sprintf("job_%d", i),
 		Description: "A test job for benchmarking deploy",
 		Labels:      map[string]string{"orchestrator": "optimus"},
 		Owner:       "Benchmark",
@@ -174,10 +186,23 @@ SELECT * FROM Characters`,
 				},
 			},
 		),
-		Hooks:                []models.JobSpecHook{},
-		Metadata:             jobMeta,
-		ExternalDependencies: models.ExternalDependency{},
-		NamespaceSpec:        namespace,
+		Hooks:    hooks,
+		Metadata: jobMeta,
+		ExternalDependencies: models.ExternalDependency{
+			HTTPDependencies: []models.HTTPDependency{
+				{
+					Name: "test_http_sensor_1",
+					RequestParams: map[string]string{
+						"key_test": "value_test",
+					},
+					URL: "http://test/optimus/status/1",
+					Headers: map[string]string{
+						"Content-Type": "application/json",
+					},
+				},
+			},
+		},
+		NamespaceSpec: namespace,
 	}
 
 	return jobSpec
