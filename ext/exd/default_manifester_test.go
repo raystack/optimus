@@ -31,7 +31,7 @@ func (d *DefaultManifesterTestSuite) TearDownTest() {
 
 func (d *DefaultManifesterTestSuite) TestLoadManifest() {
 	d.Run("should return empty and nil if no file is found", func() {
-		manifester := &exd.DefaultManifester{}
+		manifester := exd.NewDefaultManifester()
 
 		actualManifest, actualErr := manifester.Load(manifestDirName)
 
@@ -41,7 +41,7 @@ func (d *DefaultManifesterTestSuite) TestLoadManifest() {
 
 	d.Run("should return nil and error if failed to unmarshal manifest", func() {
 		d.writeFile(manifestDirName, manifestFileName, manifestInvalidContent)
-		manifester := &exd.DefaultManifester{}
+		manifester := exd.NewDefaultManifester()
 
 		actualManifest, actualErr := manifester.Load(manifestDirName)
 
@@ -51,7 +51,7 @@ func (d *DefaultManifesterTestSuite) TestLoadManifest() {
 
 	d.Run("should return manifest and nil if no error encountered", func() {
 		d.writeFile(manifestDirName, manifestFileName, manifestValidContent)
-		manifester := &exd.DefaultManifester{}
+		manifester := exd.NewDefaultManifester()
 
 		actualManifest, actualErr := manifester.Load(manifestDirName)
 

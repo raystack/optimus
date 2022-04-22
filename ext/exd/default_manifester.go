@@ -10,11 +10,15 @@ import (
 
 const manifestFileName = "manifest.yaml"
 
-type DefaultManifester struct {
+type defaultManifester struct {
+}
+
+func NewDefaultManifester() Manifester {
+	return &defaultManifester{}
 }
 
 // Load loads manifest from local machine
-func (d *DefaultManifester) Load(dirPath string) (*Manifest, error) {
+func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &Manifest{}
 	if _, err := os.Stat(manifestPath); err == nil {
@@ -31,7 +35,7 @@ func (d *DefaultManifester) Load(dirPath string) (*Manifest, error) {
 }
 
 // Flush flushes manifest into a file in local machine
-func (d *DefaultManifester) Flush(manifest *Manifest, dirPath string) error {
+func (d *defaultManifester) Flush(manifest *Manifest, dirPath string) error {
 	content, err := yaml.Marshal(manifest)
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %v", err)
