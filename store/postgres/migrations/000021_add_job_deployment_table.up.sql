@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS job_deployment (
     status VARCHAR(15) NOT NULL,
     details JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
