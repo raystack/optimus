@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-var ErrUnrecognizedRemotePath = errors.New("remote path is not recognized")
-
+// ExtensionDir is directory path where to store the extensions
 const ExtensionDir = ".optimus/extensions"
 
+// Manager defines the extension management
 type Manager struct {
 	ctx        context.Context
 	httpDoer   HTTPDoer
@@ -18,6 +18,7 @@ type Manager struct {
 	installer  Installer
 }
 
+// NewManager initializes new manager
 func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) (*Manager, error) {
 	if err := validate(ctx, httpDoer, manifester, installer); err != nil {
 		return nil, fmt.Errorf("error validating parameter: %w", err)
@@ -33,9 +34,10 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 	}, nil
 }
 
-func (m *Manager) Install(sourcePath string) error {
-	if sourcePath == "" {
-		return errors.New("source path is empty")
+// Install installs extension based on the remote path
+func (m *Manager) Install(remotePath string) error {
+	if remotePath == "" {
+		return errors.New("remote path is empty")
 	}
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
 		return fmt.Errorf("error validating installation: %w", err)
@@ -44,7 +46,7 @@ func (m *Manager) Install(sourcePath string) error {
 	if err != nil {
 		return fmt.Errorf("error loading manifest: %w", err)
 	}
-	metadata, err := m.getMetadata(sourcePath)
+	metadata, err := m.getMetadata(remotePath)
 	if err != nil {
 		return fmt.Errorf("error getting metadata: %w", err)
 	}
@@ -79,15 +81,15 @@ func (m *Manager) getClient(providerName string) (Client, error) {
 	return newClient(m.ctx, m.httpDoer)
 }
 
-func (m *Manager) getMetadata(sourcePath string) (*Metadata, error) {
+func (m *Manager) getMetadata(remotePath string) (*Metadata, error) {
 	var metadata *Metadata
 	for _, parseFn := range ParseRegistry {
-		mtdt, err := parseFn(sourcePath)
+		mtdt, err := parseFn(remotePath)
 		if errors.Is(err, ErrUnrecognizedRemotePath) {
 			continue
 		}
 		if err != nil {
-			return nil, fmt.Errorf("errors parsing source path: %w", err)
+			return nil, fmt.Errorf("errors parsing remote path: %w", err)
 		}
 		if mtdt != nil {
 			metadata = mtdt
@@ -95,7 +97,7 @@ func (m *Manager) getMetadata(sourcePath string) (*Metadata, error) {
 		}
 	}
 	if metadata == nil {
-		return nil, fmt.Errorf("[%s] is not recognized", sourcePath)
+		return nil, fmt.Errorf("[%s] is not recognized", remotePath)
 	}
 	return metadata, nil
 }

@@ -12,11 +12,16 @@ import (
 
 const manifestFileName = "manifest.yaml"
 
-var DefaultManifesterFS = afero.NewOsFs()
+// ManifesterFS is file system that will be used for manifester operations.
+// It can be changed before calling any manifester operation.
+// But, make sure to change it back after the operation is done
+// to its default value to avoid unexpected behaviour.
+var ManifesterFS = afero.NewOsFs()
 
 type defaultManifester struct {
 }
 
+// NewDefaultManifester initializes default manifester
 func NewDefaultManifester() Manifester {
 	return &defaultManifester{}
 }
@@ -25,8 +30,8 @@ func NewDefaultManifester() Manifester {
 func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &Manifest{}
-	if _, err := DefaultManifesterFS.Stat(manifestPath); err == nil {
-		f, err := DefaultManifesterFS.OpenFile(manifestPath, os.O_RDONLY, 0o755)
+	if _, err := ManifesterFS.Stat(manifestPath); err == nil {
+		f, err := ManifesterFS.OpenFile(manifestPath, os.O_RDONLY, 0o755)
 		if err != nil {
 			return nil, fmt.Errorf("error opening manifest file: %w", err)
 		}
@@ -49,11 +54,11 @@ func (d *defaultManifester) Flush(manifest *Manifest, dirPath string) error {
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %v", err)
 	}
-	if err := DefaultManifesterFS.MkdirAll(dirPath, os.ModePerm); err != nil {
+	if err := ManifesterFS.MkdirAll(dirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating dir: %v", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
-	f, err := DefaultManifesterFS.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	f, err := ManifesterFS.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return fmt.Errorf("error opening file: %v", err)
 	}

@@ -31,9 +31,9 @@ func (d *DefaultManifesterTestSuite) TearDownTest() {
 }
 
 func (d *DefaultManifesterTestSuite) TestLoadManifest() {
-	defaultFS := exd.DefaultManifesterFS
-	defer func() { exd.DefaultManifesterFS = defaultFS }()
-	exd.DefaultManifesterFS = afero.NewMemMapFs()
+	defaultFS := exd.ManifesterFS
+	defer func() { exd.ManifesterFS = defaultFS }()
+	exd.ManifesterFS = afero.NewMemMapFs()
 
 	d.Run("should return empty and nil if no file is found", func() {
 		manifester := exd.NewDefaultManifester()
@@ -66,11 +66,11 @@ func (d *DefaultManifesterTestSuite) TestLoadManifest() {
 }
 
 func (d *DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string) {
-	if err := exd.DefaultManifesterFS.MkdirAll(dirPath, 0o755); err != nil {
+	if err := exd.ManifesterFS.MkdirAll(dirPath, 0o755); err != nil {
 		panic(err)
 	}
 	filePath := path.Join(dirPath, fileName)
-	file, err := exd.DefaultManifesterFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	file, err := exd.ManifesterFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +81,7 @@ func (d *DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string
 }
 
 func (d *DefaultManifesterTestSuite) removeDir(dirPath string) {
-	if err := exd.DefaultManifesterFS.RemoveAll(dirPath); err != nil {
+	if err := exd.ManifesterFS.RemoveAll(dirPath); err != nil {
 		panic(err)
 	}
 }

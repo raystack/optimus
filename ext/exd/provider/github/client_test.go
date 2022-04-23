@@ -65,15 +65,17 @@ func (c *ClientTestSuite) TestDownload() {
 	})
 
 	c.Run("should return nil and error if encountered error when doing request", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(nil, errors.New("random error"))
+
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
 			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
 
 		actualAsset, actualErr := client.Download(metadata)
@@ -83,18 +85,20 @@ func (c *ClientTestSuite) TestDownload() {
 	})
 
 	c.Run("should return nil and error if encountered error when decoding response", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
 		response := &http.Response{
 			Body: io.NopCloser(strings.NewReader("invalid-body")),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
 			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
 
 		actualAsset, actualErr := client.Download(metadata)
@@ -104,10 +108,6 @@ func (c *ClientTestSuite) TestDownload() {
 	})
 
 	c.Run("should return nil and error if cannot find asset with the specified suffix", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
 		release := github.RepositoryRelease{}
 		marshalled, _ := json.Marshal(release)
 		response := &http.Response{
@@ -115,9 +115,15 @@ func (c *ClientTestSuite) TestDownload() {
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
 			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
 
 		actualAsset, actualErr := client.Download(metadata)
@@ -127,15 +133,10 @@ func (c *ClientTestSuite) TestDownload() {
 	})
 
 	c.Run("should return nil and error if error when creating request to download url", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-		suffix := runtime.GOOS + "-" + runtime.GOARCH
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
 				{
-					Name:               "asset" + suffix,
+					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
 					BrowserDownloadURL: ":invalid-url",
 				},
 			},
@@ -146,9 +147,15 @@ func (c *ClientTestSuite) TestDownload() {
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
 			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
 
 		actualAsset, actualErr := client.Download(metadata)
@@ -158,15 +165,10 @@ func (c *ClientTestSuite) TestDownload() {
 	})
 
 	c.Run("should return nil and error if error when sending download request", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-		suffix := runtime.GOOS + "-" + runtime.GOARCH
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
 				{
-					Name:               "asset" + suffix,
+					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
 					BrowserDownloadURL: "http://github.com/odpf/optimus",
 				},
 			},
@@ -178,9 +180,15 @@ func (c *ClientTestSuite) TestDownload() {
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
 		httpDoer.On("Do", tMock.Anything).Return(nil, errors.New("random error")).Once()
+
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
 			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
 
 		actualAsset, actualErr := client.Download(metadata)
@@ -190,15 +198,10 @@ func (c *ClientTestSuite) TestDownload() {
 	})
 
 	c.Run("should return bytes and nil if no error is encountered", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-		suffix := runtime.GOOS + "-" + runtime.GOARCH
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
 				{
-					Name:               "asset" + suffix,
+					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
 					BrowserDownloadURL: "http://github.com/odpf/optimus",
 				},
 			},
@@ -207,15 +210,22 @@ func (c *ClientTestSuite) TestDownload() {
 		releaseResponse := &http.Response{
 			Body: io.NopCloser(bytes.NewReader(marshalled)),
 		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(releaseResponse, nil).Once()
 		downloadResponse := &http.Response{
 			Body: io.NopCloser(strings.NewReader("random payload")),
 		}
+
+		httpDoer := &mock.HTTPDoer{}
+		httpDoer.On("Do", tMock.Anything).Return(releaseResponse, nil).Once()
 		httpDoer.On("Do", tMock.Anything).Return(downloadResponse, nil).Once()
+
 		client, err := github.NewClient(ctx, httpDoer)
 		if err != nil {
 			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
 		}
 
 		actualAsset, actualErr := client.Download(metadata)

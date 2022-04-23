@@ -15,6 +15,7 @@ import (
 
 const providerName = "github"
 
+// RepositoryRelease defines github repository release
 type RepositoryRelease struct {
 	TagName    string          `json:"tag_name"`
 	Draft      bool            `json:"draft"`
@@ -22,16 +23,19 @@ type RepositoryRelease struct {
 	Assets     []*ReleaseAsset `json:"assets"`
 }
 
+// ReleaseAsset defines github release asset
 type ReleaseAsset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
+// Client defines github client
 type Client struct {
 	ctx      context.Context
 	httpdoer exd.HTTPDoer
 }
 
+// NewClient initializes github client
 func NewClient(ctx context.Context, httpDoer exd.HTTPDoer) (*Client, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
@@ -45,6 +49,7 @@ func NewClient(ctx context.Context, httpDoer exd.HTTPDoer) (*Client, error) {
 	}, nil
 }
 
+// Download downloads github asset based on the metadata
 func (c *Client) Download(metadata *exd.Metadata) ([]byte, error) {
 	if metadata == nil {
 		return nil, fmt.Errorf("metadata is nil")

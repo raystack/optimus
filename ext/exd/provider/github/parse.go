@@ -10,6 +10,7 @@ import (
 	"github.com/odpf/optimus/ext/exd"
 )
 
+// Parse parses remote path into metadata according to github convention
 func Parse(remotePath string) (*exd.Metadata, error) {
 	if err := validate(remotePath); err != nil {
 		return nil, err

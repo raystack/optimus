@@ -17,9 +17,9 @@ type DefaultInstallerTestSuite struct {
 }
 
 func (d *DefaultInstallerTestSuite) TestPrepare() {
-	defaultFS := exd.DefaultInstallerFS
-	defer func() { exd.DefaultInstallerFS = defaultFS }()
-	exd.DefaultInstallerFS = afero.NewMemMapFs()
+	defaultFS := exd.InstallerFS
+	defer func() { exd.InstallerFS = defaultFS }()
+	exd.InstallerFS = afero.NewMemMapFs()
 
 	d.Run("should return error if metadata is nil", func() {
 		var metadata *exd.Metadata
@@ -38,7 +38,7 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 		installer := exd.NewDefaultInstaller()
 
 		actualPrepareErr := installer.Prepare(metadata)
-		actualInfo, actualStatErr := exd.DefaultInstallerFS.Stat(dirPath)
+		actualInfo, actualStatErr := exd.InstallerFS.Stat(dirPath)
 
 		d.NoError(actualPrepareErr)
 		d.NoError(actualStatErr)
@@ -47,18 +47,18 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 }
 
 func (d *DefaultInstallerTestSuite) TestInstall() {
-	defaultFS := exd.DefaultInstallerFS
-	defer func() { exd.DefaultInstallerFS = defaultFS }()
-	exd.DefaultInstallerFS = afero.NewMemMapFs()
+	defaultFS := exd.InstallerFS
+	defer func() { exd.InstallerFS = defaultFS }()
+	exd.InstallerFS = afero.NewMemMapFs()
 
 	d.Run("should return error if asset is nil", func() {
-		var asset []byte
-		dirPath := "./extension"
 		metadata := &exd.Metadata{
-			AssetDirPath: dirPath,
+			AssetDirPath: "./extension",
 			TagName:      "valor",
 		}
 		installer := exd.NewDefaultInstaller()
+
+		var asset []byte
 
 		actualInstallErr := installer.Install(asset, metadata)
 
@@ -66,10 +66,10 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	})
 
 	d.Run("should return error if metadata is nil", func() {
-		message := "lorem ipsum"
-		asset := []byte(message)
 		var metadata *exd.Metadata
 		installer := exd.NewDefaultInstaller()
+
+		asset := []byte("lorem ipsum")
 
 		actualInstallErr := installer.Install(asset, metadata)
 
@@ -77,8 +77,6 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	})
 
 	d.Run("should write asset to the targeted path", func() {
-		message := "lorem ipsum"
-		asset := []byte(message)
 		dirPath := "./extension"
 		tagName := "valor"
 		metadata := &exd.Metadata{
@@ -86,11 +84,14 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 			TagName:      tagName,
 		}
 		installer := exd.NewDefaultInstaller()
+		filePath := path.Join(dirPath, tagName)
+
+		message := "lorem ipsum"
+		asset := []byte(message)
 
 		actualInstallErr := installer.Install(asset, metadata)
 		defer d.removeDir(dirPath)
-		filePath := path.Join(dirPath, tagName)
-		actualFile, actualOpenErr := exd.DefaultInstallerFS.OpenFile(filePath, os.O_RDONLY, 0o755)
+		actualFile, actualOpenErr := exd.InstallerFS.OpenFile(filePath, os.O_RDONLY, 0o755)
 		actualContent, actualReadErr := io.ReadAll(actualFile)
 
 		d.NoError(actualInstallErr)
