@@ -80,7 +80,7 @@ func removeURLPrefix(remotePath string) string {
 
 func validate(remotePath string) error {
 	if remotePath == "" {
-		return fmt.Errorf("remote path is empty")
+		return exd.ErrEmptyRemotePath
 	}
 	detectGithub := regexp.MustCompile(`^((https?:\/\/)?(www\.)?github\.com/)?([a-zA-Z0-9\-]+/optimus-extension-[a-zA-Z0-9\-]+(@\S+)?)$`)
 	if result := detectGithub.FindString(remotePath); result == "" {

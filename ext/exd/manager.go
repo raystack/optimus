@@ -23,9 +23,6 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 	if err := validate(ctx, httpDoer, manifester, installer); err != nil {
 		return nil, fmt.Errorf("error validating parameter: %w", err)
 	}
-	if installer == nil {
-		return nil, errors.New("installer is nil")
-	}
 	return &Manager{
 		ctx:        ctx,
 		httpDoer:   httpDoer,
@@ -37,7 +34,7 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 // Install installs extension based on the remote path
 func (m *Manager) Install(remotePath string) error {
 	if remotePath == "" {
-		return errors.New("remote path is empty")
+		return ErrEmptyRemotePath
 	}
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
 		return fmt.Errorf("error validating installation: %w", err)
@@ -104,16 +101,16 @@ func (m *Manager) getMetadata(remotePath string) (*Metadata, error) {
 
 func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) error {
 	if ctx == nil {
-		return errors.New("ctx is nil")
+		return ErrNilContext
 	}
 	if httpDoer == nil {
-		return errors.New("http doer is nil")
+		return ErrNilHTTPDoer
 	}
 	if manifester == nil {
-		return errors.New("manifester is nils")
+		return ErrNilManifester
 	}
 	if installer == nil {
-		return errors.New("installer is nil")
+		return ErrNilInstaller
 	}
 	return nil
 }

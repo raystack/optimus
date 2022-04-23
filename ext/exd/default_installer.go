@@ -1,7 +1,6 @@
 package exd
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -27,7 +26,7 @@ func NewDefaultInstaller() Installer {
 // Prepare prepares installation based on the metadata
 func (d *defaultInstaller) Prepare(metadata *Metadata) error {
 	if metadata == nil {
-		return errors.New("metadata is nil")
+		return ErrNilMetadata
 	}
 	directoryPermission := 0o750
 	return InstallerFS.MkdirAll(metadata.AssetDirPath, fs.FileMode(directoryPermission))
@@ -36,10 +35,10 @@ func (d *defaultInstaller) Prepare(metadata *Metadata) error {
 // Install installs asset based on the metadata
 func (d *defaultInstaller) Install(asset []byte, metadata *Metadata) error {
 	if asset == nil {
-		return errors.New("asset is nil")
+		return ErrNilAsset
 	}
 	if metadata == nil {
-		return errors.New("metadata is nil")
+		return ErrNilMetadata
 	}
 	filePath := path.Join(metadata.AssetDirPath, metadata.TagName)
 	f, err := InstallerFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)

@@ -3,7 +3,6 @@ package github
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,10 +37,10 @@ type Client struct {
 // NewClient initializes github client
 func NewClient(ctx context.Context, httpDoer exd.HTTPDoer) (*Client, error) {
 	if ctx == nil {
-		return nil, errors.New("context is nil")
+		return nil, exd.ErrNilContext
 	}
 	if httpDoer == nil {
-		return nil, errors.New("http doer is nil")
+		return nil, exd.ErrNilHTTPDoer
 	}
 	return &Client{
 		ctx:      ctx,
@@ -52,7 +51,7 @@ func NewClient(ctx context.Context, httpDoer exd.HTTPDoer) (*Client, error) {
 // Download downloads github asset based on the metadata
 func (c *Client) Download(metadata *exd.Metadata) ([]byte, error) {
 	if metadata == nil {
-		return nil, fmt.Errorf("metadata is nil")
+		return nil, exd.ErrNilMetadata
 	}
 	if metadata.ProviderName != providerName {
 		return nil, fmt.Errorf("metadata provider is not %s", providerName)

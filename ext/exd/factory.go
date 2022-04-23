@@ -1,7 +1,6 @@
 package exd
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -19,7 +18,7 @@ type NewClientFactory struct {
 // Add adds client initializer based on provider
 func (c *NewClientFactory) Add(providerName string, newClient NewClient) error {
 	if providerName == "" {
-		return errors.New("provider name is empty")
+		return ErrEmptyProviderName
 	}
 	if newClient == nil {
 		return fmt.Errorf("[%s] newClient is nil", providerName)
@@ -37,7 +36,7 @@ func (c *NewClientFactory) Add(providerName string, newClient NewClient) error {
 // Get gets client initializer for a specified provider name
 func (c *NewClientFactory) Get(providerName string) (NewClient, error) {
 	if providerName == "" {
-		return nil, errors.New("provider name is empty")
+		return nil, ErrEmptyProviderName
 	}
 	if c.registry == nil {
 		c.registry = make(map[string]NewClient)

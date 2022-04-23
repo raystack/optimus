@@ -52,15 +52,15 @@ func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
 func (d *defaultManifester) Flush(manifest *Manifest, dirPath string) error {
 	content, err := yaml.Marshal(manifest)
 	if err != nil {
-		return fmt.Errorf("error marshalling manifest: %v", err)
+		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
 	if err := ManifesterFS.MkdirAll(dirPath, os.ModePerm); err != nil {
-		return fmt.Errorf("error creating dir: %v", err)
+		return fmt.Errorf("error creating dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
 	f, err := ManifesterFS.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
-		return fmt.Errorf("error opening file: %v", err)
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 	_, err = f.Write(content)
