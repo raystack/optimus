@@ -40,7 +40,8 @@ func composeAssetDirPath(ownerName, repoName string) string {
 	homeDir, _ := os.UserHomeDir()
 	optimusDir := ".optimus"
 	extensionDir := "extensions"
-	return path.Join(homeDir, optimusDir, extensionDir, ownerName, repoName)
+	hostName := providerName + ".com"
+	return path.Join(homeDir, optimusDir, extensionDir, hostName, ownerName, repoName)
 }
 
 func composeAPIPath(ownerName, repoName, tagName string) string {

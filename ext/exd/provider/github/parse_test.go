@@ -121,7 +121,7 @@ func TestParse(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		expectedAssetDirPath := path.Join(homeDir, ".optimus", "extensions", "gojek", "optimus-extension-valor")
+		expectedAssetDirPath := path.Join(homeDir, ".optimus", "extensions", "github.com", "gojek", "optimus-extension-valor")
 
 		actualMetadata, actualErr := github.Parse(remotePath)
 
