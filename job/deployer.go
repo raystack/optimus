@@ -3,9 +3,9 @@ package job
 import (
 	"context"
 	"fmt"
-	"github.com/odpf/salt/log"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"

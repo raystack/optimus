@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/job"
@@ -18,6 +19,7 @@ import (
 func TestDeployer(t *testing.T) {
 	t.Run("Deploy", func(t *testing.T) {
 		ctx := context.Background()
+		log := log.NewNoop()
 		projectSpec := models.ProjectSpec{
 			Name: "a-data-project",
 			Config: map[string]string{
@@ -244,7 +246,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
@@ -467,7 +469,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
@@ -692,7 +694,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
@@ -716,7 +718,7 @@ func TestDeployer(t *testing.T) {
 
 			dependencyResolver.On("FetchJobSpecsWithJobDependencies", ctx, projectSpec).Return([]models.JobSpec{}, errors.New(errorMsg))
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -840,7 +842,7 @@ func TestDeployer(t *testing.T) {
 
 			priorityResolver.On("Resolve", ctx, jobSpecsAfterHookDependencyEnrich, nil).Return([]models.JobSpec{}, errors.New(errorMsg))
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1018,7 +1020,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepository.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepository, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepository, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, &multierror.Error{Errors: []error{deployError}}, err)
@@ -1197,7 +1199,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, &multierror.Error{Errors: []error{deployError}}, err)
@@ -1384,7 +1386,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(errors.New(errorMsg))
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1583,7 +1585,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentFailed).Return(errors.New(errorMsg)).Once()
 
-			deployer := job.NewDeployer(dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, batchScheduler, jobDeploymentRepo, namespaceService)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, errorMsg, err.Error())
