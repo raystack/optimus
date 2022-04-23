@@ -1,10 +1,12 @@
 package exd_test
 
 import (
+	"io"
 	"os"
 	"path"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/ext/exd"
@@ -15,6 +17,10 @@ type DefaultInstallerTestSuite struct {
 }
 
 func (d *DefaultInstallerTestSuite) TestPrepare() {
+	defaultFS := exd.DefaultInstallerFS
+	defer func() { exd.DefaultInstallerFS = defaultFS }()
+	exd.DefaultInstallerFS = afero.NewMemMapFs()
+
 	d.Run("should return error if metadata is nil", func() {
 		var metadata *exd.Metadata
 		installer := exd.NewDefaultInstaller()
@@ -32,7 +38,7 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 		installer := exd.NewDefaultInstaller()
 
 		actualPrepareErr := installer.Prepare(metadata)
-		actualInfo, actualStatErr := os.Stat(dirPath)
+		actualInfo, actualStatErr := exd.DefaultInstallerFS.Stat(dirPath)
 
 		d.NoError(actualPrepareErr)
 		d.NoError(actualStatErr)
@@ -41,6 +47,10 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 }
 
 func (d *DefaultInstallerTestSuite) TestInstall() {
+	defaultFS := exd.DefaultInstallerFS
+	defer func() { exd.DefaultInstallerFS = defaultFS }()
+	exd.DefaultInstallerFS = afero.NewMemMapFs()
+
 	d.Run("should return error if asset is nil", func() {
 		var asset []byte
 		dirPath := "./extension"
@@ -79,11 +89,14 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 
 		actualInstallErr := installer.Install(asset, metadata)
 		defer d.removeDir(dirPath)
-		actualFile, actualFileErr := os.ReadFile(path.Join(dirPath, tagName))
+		filePath := path.Join(dirPath, tagName)
+		actualFile, actualOpenErr := exd.DefaultInstallerFS.OpenFile(filePath, os.O_RDONLY, 0o755)
+		actualContent, actualReadErr := io.ReadAll(actualFile)
 
 		d.NoError(actualInstallErr)
-		d.NoError(actualFileErr)
-		d.Equal(message, string(actualFile))
+		d.NoError(actualOpenErr)
+		d.NoError(actualReadErr)
+		d.Equal(message, string(actualContent))
 	})
 }
 

@@ -2,10 +2,15 @@ package exd
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
+
+	"github.com/spf13/afero"
 )
+
+var DefaultInstallerFS = afero.NewOsFs()
 
 type defaultInstaller struct {
 }
@@ -19,7 +24,7 @@ func (d *defaultInstaller) Prepare(metadata *Metadata) error {
 		return errors.New("metadata is nil")
 	}
 	directoryPermission := 0o750
-	return os.MkdirAll(metadata.AssetDirPath, fs.FileMode(directoryPermission))
+	return DefaultInstallerFS.MkdirAll(metadata.AssetDirPath, fs.FileMode(directoryPermission))
 }
 
 func (d *defaultInstaller) Install(asset []byte, metadata *Metadata) error {
@@ -30,5 +35,11 @@ func (d *defaultInstaller) Install(asset []byte, metadata *Metadata) error {
 		return errors.New("metadata is nil")
 	}
 	filePath := path.Join(metadata.AssetDirPath, metadata.TagName)
-	return os.WriteFile(filePath, asset, 0o755)
+	f, err := DefaultInstallerFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	if err != nil {
+		return fmt.Errorf("error opening file: %w", err)
+	}
+	defer f.Close()
+	_, err = f.Write(asset)
+	return err
 }
