@@ -41,7 +41,7 @@ type Manifester interface {
 	Flush(manifest *Manifest, dirPath string) error
 }
 
-type AssetInstaller interface {
-	PrepareContainer(*Metadata) error
-	WriteAsset([]byte) error
+type Installer interface {
+	Prepare(*Metadata) error
+	Install([]byte, *Metadata) error
 }
