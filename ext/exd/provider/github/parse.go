@@ -38,10 +38,8 @@ func extractCommandName(repoName string) string {
 
 func composeAssetDirPath(ownerName, repoName string) string {
 	homeDir, _ := os.UserHomeDir()
-	optimusDir := ".optimus"
-	extensionDir := "extensions"
 	hostName := providerName + ".com"
-	return path.Join(homeDir, optimusDir, extensionDir, hostName, ownerName, repoName)
+	return path.Join(homeDir, exd.ExtensionDir, hostName, ownerName, repoName)
 }
 
 func composeAPIPath(ownerName, repoName, tagName string) string {
