@@ -4,9 +4,11 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 
 	"github.com/odpf/optimus/ext/exd"
 )
@@ -30,7 +32,7 @@ func (d *DefaultManifesterTestSuite) TearDownTest() {
 	d.removeDir(manifestDirName)
 }
 
-func (d *DefaultManifesterTestSuite) TestLoadManifest() {
+func (d *DefaultManifesterTestSuite) TestLoad() {
 	defaultFS := exd.ManifesterFS
 	defer func() { exd.ManifesterFS = defaultFS }()
 	exd.ManifesterFS = afero.NewMemMapFs()
@@ -62,6 +64,45 @@ func (d *DefaultManifesterTestSuite) TestLoadManifest() {
 
 		d.NotNil(actualManifest)
 		d.NoError(actualErr)
+	})
+}
+
+func (d *DefaultManifesterTestSuite) TestFlush() {
+	defaultFS := exd.ManifesterFS
+	defer func() { exd.ManifesterFS = defaultFS }()
+	exd.ManifesterFS = afero.NewMemMapFs()
+
+	d.Run("should return error if manifest is nil", func() {
+		var manifest *exd.Manifest
+		dirPath := "./extension"
+		manifester := exd.NewDefaultManifester()
+
+		actualErr := manifester.Flush(manifest, dirPath)
+
+		d.Error(actualErr)
+	})
+
+	d.Run("should return nil and create file", func() {
+		now := time.Now()
+		manifest := &exd.Manifest{
+			UpdatedAt: now,
+		}
+		dirPath := "./extension"
+		manifester := exd.NewDefaultManifester()
+
+		actualErr := manifester.Flush(manifest, dirPath)
+		filepath := path.Join(dirPath, "manifest.yaml")
+		file, openErr := exd.ManifesterFS.OpenFile(filepath, os.O_RDONLY, 0o755)
+		if openErr != nil {
+			panic(openErr)
+		}
+		decoder := yaml.NewDecoder(file)
+		var actualManifest exd.Manifest
+		unmarshallErr := decoder.Decode(&actualManifest)
+
+		d.NoError(actualErr)
+		d.NoError(unmarshallErr)
+		d.True(actualManifest.UpdatedAt.Equal(manifest.UpdatedAt))
 	})
 }
 

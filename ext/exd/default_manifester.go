@@ -50,11 +50,14 @@ func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
 
 // Flush flushes manifest into a file in local machine
 func (d *defaultManifester) Flush(manifest *Manifest, dirPath string) error {
+	if manifest == nil {
+		return ErrNilManifester
+	}
 	content, err := yaml.Marshal(manifest)
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
-	if err := ManifesterFS.MkdirAll(dirPath, os.ModePerm); err != nil {
+	if err := ManifesterFS.MkdirAll(dirPath, 0o755); err != nil {
 		return fmt.Errorf("error creating dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
