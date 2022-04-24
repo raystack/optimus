@@ -40,7 +40,11 @@ func (d *defaultInstaller) Install(asset []byte, metadata *Metadata) error {
 	if metadata == nil {
 		return ErrNilMetadata
 	}
-	filePath := path.Join(metadata.AssetDirPath, metadata.TagName)
+	fileName := metadata.TagName
+	if fileName == "" {
+		fileName = "latest"
+	}
+	filePath := path.Join(metadata.AssetDirPath, fileName)
 	f, err := InstallerFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)

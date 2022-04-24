@@ -102,7 +102,7 @@ func (c *Client) getRepositoryRelease(apitPath string) (*RepositoryRelease, erro
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
-	request.Header.Set("Accept", "application/octet-stream")
+	request.Header.Set("Accept", "application/json")
 
 	response, err := c.httpdoer.Do(request)
 	if err != nil {
