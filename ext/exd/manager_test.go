@@ -120,6 +120,46 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
+	m.Run("should return error if remote path is already installed", func() {
+		providerName := "testing"
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.Metadata, error) {
+				return &exd.Metadata{
+					ProviderName: providerName,
+					OwnerName:    "gojek",
+					RepoName:     "optimus-extension-valor",
+					TagName:      "",
+				}, nil
+			},
+		}
+
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+			Metadatas: []*exd.Metadata{
+				{
+					ProviderName: providerName,
+					OwnerName:    "gojek",
+					RepoName:     "optimus-extension-valor",
+					TagName:      "",
+				},
+			},
+		}, nil)
+
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
+		installer := &mock.Installer{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+
+		actualErr := manager.Install(remotePath)
+
+		m.Error(actualErr)
+	})
+
 	m.Run("should return error if error getting new client", func() {
 		providerName := "testing"
 		exd.ParseRegistry = []exd.Parser{

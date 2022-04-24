@@ -33,23 +33,23 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 
 // Install installs extension based on the remote path
 func (m *Manager) Install(remotePath string) error {
-	if remotePath == "" {
-		return ErrEmptyRemotePath
-	}
-	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
+	if err := m.validateInput(remotePath); err != nil {
 		return fmt.Errorf("error validating installation: %w", err)
 	}
 	manifest, err := m.manifester.Load(ExtensionDir)
 	if err != nil {
 		return fmt.Errorf("error loading manifest: %w", err)
 	}
-	metadata, err := m.getMetadata(remotePath)
+	metadata, err := m.extractMetadata(remotePath)
 	if err != nil {
-		return fmt.Errorf("error getting metadata: %w", err)
+		return fmt.Errorf("error extracting metadata: %w", err)
 	}
-	client, err := m.getClient(metadata.ProviderName)
+	if m.alreadyInstalled(manifest, metadata) {
+		return fmt.Errorf("[%s] is already installed", remotePath)
+	}
+	client, err := m.findClientProvider(metadata.ProviderName)
 	if err != nil {
-		return fmt.Errorf("error getting client: %w", err)
+		return fmt.Errorf("error finding client provider: %w", err)
 	}
 	asset, err := client.Download(metadata)
 	if err != nil {
@@ -70,7 +70,7 @@ func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata) error {
 	return m.manifester.Flush(manifest, ExtensionDir)
 }
 
-func (m *Manager) getClient(providerName string) (Client, error) {
+func (m *Manager) findClientProvider(providerName string) (Client, error) {
 	newClient, err := NewClientRegistry.Get(providerName)
 	if err != nil {
 		return nil, fmt.Errorf("error getting new client: %w", err)
@@ -78,7 +78,18 @@ func (m *Manager) getClient(providerName string) (Client, error) {
 	return newClient(m.ctx, m.httpDoer)
 }
 
-func (m *Manager) getMetadata(remotePath string) (*Metadata, error) {
+func (m *Manager) alreadyInstalled(manifest *Manifest, metadata *Metadata) bool {
+	for _, m := range manifest.Metadatas {
+		if m.OwnerName == metadata.OwnerName &&
+			m.RepoName == metadata.RepoName &&
+			m.TagName == metadata.TagName {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Manager) extractMetadata(remotePath string) (*Metadata, error) {
 	var metadata *Metadata
 	for _, parseFn := range ParseRegistry {
 		mtdt, err := parseFn(remotePath)
@@ -97,6 +108,13 @@ func (m *Manager) getMetadata(remotePath string) (*Metadata, error) {
 		return nil, fmt.Errorf("[%s] is not recognized", remotePath)
 	}
 	return metadata, nil
+}
+
+func (m *Manager) validateInput(remotePath string) error {
+	if remotePath == "" {
+		return ErrEmptyRemotePath
+	}
+	return validate(m.ctx, m.httpDoer, m.manifester, m.installer)
 }
 
 func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) error {

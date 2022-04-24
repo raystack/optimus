@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// Manifest describes extensions' information
+type Manifest struct {
+	UpdatedAt time.Time   `yaml:"updated_at"`
+	Metadatas []*Metadata `yaml:"metadatas"`
+}
+
 // Metadata defines metadata for an extension
 type Metadata struct {
 	ProviderName string `yaml:"provider_name"`
@@ -17,12 +23,7 @@ type Metadata struct {
 	AssetDirPath string `yaml:"asset_dir_path"`
 
 	CommandName string `yaml:"command_name"`
-}
-
-// Manifest describes extensions' information
-type Manifest struct {
-	UpdatedAt time.Time   `yaml:"updated_at"`
-	Metadatas []*Metadata `yaml:"metadatas"`
+	Active      bool   `yaml:"active"`
 }
 
 // Parser is contract that will be defined by each provider
