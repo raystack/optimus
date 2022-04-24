@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -114,6 +115,10 @@ func (c *Client) getRepositoryRelease(apitPath string) (*RepositoryRelease, erro
 	decoder := json.NewDecoder(response.Body)
 	if err := decoder.Decode(&repositoryRelease); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if repositoryRelease.Draft || repositoryRelease.Prerelease {
+		return nil, errors.New("specified release tag is either a draft or a pre-release")
 	}
 	return &repositoryRelease, nil
 }

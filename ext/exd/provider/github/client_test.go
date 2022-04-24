@@ -197,6 +197,66 @@ func (c *ClientTestSuite) TestDownload() {
 		c.Error(actualErr)
 	})
 
+	c.Run("should return nil and error if error when decoding response", func() {
+		marshalled := []byte("unknown message")
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader(marshalled)),
+		}
+		httpDoer := &mock.HTTPDoer{}
+		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
+		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
+
+		client, err := github.NewClient(ctx, httpDoer)
+		if err != nil {
+			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
+		}
+
+		actualAsset, actualErr := client.Download(metadata)
+
+		c.Nil(actualAsset)
+		c.Error(actualErr)
+	})
+
+	c.Run("should return nil and error if the specified release is either draft or pre-release", func() {
+		release := github.RepositoryRelease{
+			Draft:      true,
+			Prerelease: true,
+			Assets: []*github.ReleaseAsset{
+				{
+					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
+					BrowserDownloadURL: "http://github.com/odpf/optimus",
+				},
+			},
+		}
+		marshalled, _ := json.Marshal(release)
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader(marshalled)),
+		}
+		httpDoer := &mock.HTTPDoer{}
+		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
+		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
+
+		client, err := github.NewClient(ctx, httpDoer)
+		if err != nil {
+			panic(err)
+		}
+
+		metadata := &exd.Metadata{
+			ProviderName: "github",
+			AssetAPIPath: "http://github.com/odpf/optimus",
+		}
+
+		actualAsset, actualErr := client.Download(metadata)
+
+		c.Nil(actualAsset)
+		c.Error(actualErr)
+	})
+
 	c.Run("should return bytes and nil if no error is encountered", func() {
 		release := github.RepositoryRelease{
 			Assets: []*github.ReleaseAsset{
