@@ -24,8 +24,8 @@ type JobRunRepository struct {
 	mock.Mock
 }
 
-func (r *JobRunRepository) Save(ctx context.Context, spec models.NamespaceSpec, run models.JobRun) error {
-	args := r.Called(ctx, spec, run)
+func (r *JobRunRepository) Save(ctx context.Context, spec models.NamespaceSpec, run models.JobRun, jobDestination string) error {
+	args := r.Called(ctx, spec, run, jobDestination)
 	return args.Error(0)
 }
 
