@@ -16,7 +16,7 @@ type GRPCServer struct {
 	pbp.UnimplementedBaseServiceServer
 }
 
-func (s *GRPCServer) PluginInfo(ctx context.Context, req *pbp.PluginInfoRequest) (*pbp.PluginInfoResponse, error) {
+func (s *GRPCServer) PluginInfo(_ context.Context, _ *pbp.PluginInfoRequest) (*pbp.PluginInfoResponse, error) {
 	n, err := s.Impl.PluginInfo()
 	if err != nil {
 		return nil, err

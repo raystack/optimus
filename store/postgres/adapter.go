@@ -83,7 +83,7 @@ func (a JobAsset) ToSpec() models.JobSpecAsset {
 	}
 }
 
-func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
+func (JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
 	return JobAsset{
 		Name:  spec.Name,
 		Value: spec.Value,
@@ -113,7 +113,7 @@ func (a JobHook) ToSpec(pluginRepo models.PluginRepository) (models.JobSpecHook,
 	}, nil
 }
 
-func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
+func (JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	configJSON, err := json.Marshal(spec.Config)
 	if err != nil {
 		return JobHook{}, err
@@ -261,7 +261,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromJobSpec converts the optimus representation of JobSpec to postgres' Job
-func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec) (Job, error) {
+func (JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}

@@ -39,7 +39,7 @@ type backupRepository struct {
 	datastorer models.Datastorer
 }
 
-func (b Backup) FromSpec(backupSpec models.BackupSpec) (Backup, error) {
+func (Backup) FromSpec(backupSpec models.BackupSpec) (Backup, error) {
 	adaptResource, err := Resource{}.FromSpec(backupSpec.Resource)
 	if err != nil {
 		return Backup{}, err
