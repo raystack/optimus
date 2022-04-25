@@ -28,7 +28,7 @@ func ValidateClientConfig(conf *ClientConfig) error {
 	)
 }
 
-func ValidateServerConfig(conf *ServerConfig) error {
+func ValidateServerConfig(_ *ServerConfig) error {
 	// implement this
 	return nil
 }

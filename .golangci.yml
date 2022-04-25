@@ -52,6 +52,37 @@ linters-settings:
   revive:
     severity: error
     rules:
+      - name: atomic
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: defer
+      - name: dot-imports
+      - name: empty-block
+      - name: error-naming
+      - name: error-return
+      - name: error-strings
+#      - name: early-return
+      - name: errorf
+#      - name: exported
+#      - name: if-return
+      - name: increment-decrement
+#      - name: indent-error-flow
+#      - name: flag-parameter
+      - name: modifies-parameter
+      - name: modifies-value-receiver
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: redefines-builtin-id
+      - name: superfluous-else
+      - name: time-naming
+#      - name: unexported-naming
+#      - name: unexported-return
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: unused-receiver
+      - name: var-declaration
+      - name: var-naming
       - name: var-declaration
       - name: unnecessary-stmt
       - name: useless-break
