@@ -1,7 +1,7 @@
 # Optimus
 
-[![test workflow](https://github.com/odpf/optimus/actions/workflows/test.yml/badge.svg)](test)
-[![build workflow](https://github.com/odpf/optimus/actions/workflows/build.yml/badge.svg)](build)
+[![verify workflow](https://github.com/odpf/optimus/actions/workflows/verify.yml/badge.svg)](verification)
+[![publish latest workflow](https://github.com/odpf/optimus/actions/workflows/publish-latest.yml/badge.svg)](build)
 [![Coverage Status](https://coveralls.io/repos/github/odpf/optimus/badge.svg?branch=main)](https://coveralls.io/github/odpf/optimus?branch=main)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/odpf/optimus?logo=semantic-release)](Version)

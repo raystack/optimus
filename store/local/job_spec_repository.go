@@ -142,12 +142,12 @@ func (repo *jobRepository) GetByName(jobName string) (models.JobSpec, error) {
 	return blob.item.(models.JobSpec), nil
 }
 
-func (repo *jobRepository) GetByDestination(jobName string) (models.JobSpec, models.ProjectSpec, error) {
+func (*jobRepository) GetByDestination(string) (models.JobSpec, models.ProjectSpec, error) {
 	panic("GetByDestination() should not be invoked with local.JobSpecRepo")
 }
 
 // Delete deletes a requested job by name
-func (repo *jobRepository) Delete(jobName string) error {
+func (*jobRepository) Delete(string) error {
 	panic("unimplemented")
 }
 
@@ -326,18 +326,18 @@ func (repo *jobRepository) getDirs(dirPath string) ([]string, error) {
 
 // thisFilePath generates the filename for this specification which will be inherited by
 // all children
-func (repo *jobRepository) thisFilePath(name string) string {
+func (*jobRepository) thisFilePath(name string) string {
 	return filepath.Join(name, JobSpecParentName)
 }
 
 // jobFilePath generates the filename for a given job
-func (repo *jobRepository) jobFilePath(name string) string {
+func (*jobRepository) jobFilePath(name string) string {
 	return filepath.Join(name, JobSpecFileName)
 }
 
 // assetFolderPath generates the directory for a given job that
 // contains attached asset files
-func (repo *jobRepository) assetFolderPath(name string) string {
+func (*jobRepository) assetFolderPath(name string) string {
 	return filepath.Join(name, AssetFolderName)
 }
 

@@ -580,7 +580,7 @@ func listIgnoredJobs(rootInstance, rootFilteredTree *tree.TreeNode) []string {
 	return ignoredJobs
 }
 
-func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
+func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
 	}
@@ -604,7 +604,7 @@ func setSubtract(from, remove []string) []string {
 	return res
 }
 
-func (srv *Service) ifPresentInNamespace(jobSpecNames []string, jobSpecToFind string) bool {
+func (*Service) ifPresentInNamespace(jobSpecNames []string, jobSpecToFind string) bool {
 	for _, jName := range jobSpecNames {
 		if jName == jobSpecToFind {
 			return true

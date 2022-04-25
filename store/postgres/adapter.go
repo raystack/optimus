@@ -82,7 +82,7 @@ func (a JobAsset) ToSpec() models.JobSpecAsset {
 	}
 }
 
-func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
+func (JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
 	return JobAsset{
 		Name:  spec.Name,
 		Value: spec.Value,
@@ -112,7 +112,7 @@ func (a JobHook) ToSpec(pluginRepo models.PluginRepository) (models.JobSpecHook,
 	}, nil
 }
 
-func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
+func (JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	configJSON, err := json.Marshal(spec.Config)
 	if err != nil {
 		return JobHook{}, err
