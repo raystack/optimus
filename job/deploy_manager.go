@@ -134,26 +134,28 @@ func (m *deployManager) Assign() {
 		return
 	}
 
-	m.l.Debug("attempting to assign deployment request...")
-	jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
-	if err != nil {
-		if errors.Is(err, store.ErrResourceNotFound) {
-			m.l.Debug("no deployment request found.")
+	capacity := int(atomic.LoadInt32(&m.deployerCapacity))
+	m.l.Debug("attempting to assign deployment request...", "capacity", capacity)
+	for i := 0; i < capacity; i++ {
+		jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
+		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				m.l.Debug("no deployment request found.")
+				return
+			}
+			m.l.Error("failed to fetch executable deployment request", "error", err.Error())
 			return
 		}
-		m.l.Error("failed to fetch executable deployment request", "error", err.Error())
-		return
-	}
 
-	select {
-	case m.requestQ <- jobDeployment:
-		m.l.Info("deployer taking a request", "request id", jobDeployment.ID.UUID())
-		return
-	default:
-		m.l.Error("unable to assign deployer to take the request", "request id", jobDeployment.ID.UUID())
-		jobDeployment.Status = models.JobDeploymentStatusCancelled
-		if err := m.deployRepository.Update(ctx, jobDeployment); err != nil {
-			m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled", jobDeployment.ID.UUID()), "error", err.Error())
+		select {
+		case m.requestQ <- jobDeployment:
+			m.l.Info("deployer taking a request", "request id", jobDeployment.ID.UUID())
+		default:
+			m.l.Error("unable to assign deployer to take the request", "request id", jobDeployment.ID.UUID())
+			jobDeployment.Status = models.JobDeploymentStatusCancelled
+			if err := m.deployRepository.Update(ctx, jobDeployment); err != nil {
+				m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled", jobDeployment.ID.UUID()), "error", err.Error())
+			}
 		}
 	}
 }

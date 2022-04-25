@@ -23,11 +23,11 @@ const (
 
 func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		projectName string
-		verbose     bool
-		namespaces  []string
-		jobs        []string
-		cmd         = &cli.Command{
+		projectName            string
+		verbose                bool
+		selectedNamespaceNames []string
+		jobs                   []string
+		cmd                    = &cli.Command{
 			Use:     "refresh",
 			Short:   "Refresh job deployments",
 			Long:    "Redeploy jobs based on current server state",
@@ -36,7 +36,7 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	)
 
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Namespaces of Optimus project")
+	cmd.Flags().StringSliceVarP(&selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().StringSliceVarP(&jobs, "jobs", "J", nil, "Job names")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
@@ -47,10 +47,12 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 			return fmt.Errorf("project configuration is required")
 		}
 
-		if len(namespaces) > 0 || len(jobs) > 0 {
-			l.Info("Refreshing job dependencies of selected jobs/namespaces")
+		if len(selectedNamespaceNames) > 0 || len(jobs) > 0 {
+			l.Info("Refreshing job dependencies of selected jobs/namespaces in %s", projectName)
+		} else {
+			l.Info(fmt.Sprintf("Refreshing job dependencies of all jobs in %s", projectName))
 		}
-		l.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
+
 		start := time.Now()
 
 		ctx, conn, closeConn, err := initClientConnection(conf.Host, refreshTimeout)
@@ -60,16 +62,17 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 		defer closeConn()
 
 		jobSpecService := pb.NewJobSpecificationServiceClient(conn)
-		deployID, err := refreshJobSpecificationRequest(ctx, l, jobSpecService, projectName, namespaces, jobs, verbose)
+		deployID, err := refreshJobSpecificationRequest(ctx, l, jobSpecService, projectName, selectedNamespaceNames, jobs, verbose)
 		if err != nil {
 			return err
 		}
 
+		l.Info(fmt.Sprintf("\nRedeploying all jobs in %s project", projectName))
 		if err := pollJobDeployment(ctx, l, jobSpecService, deployID); err != nil {
 			return err
 		}
 
-		l.Info(coloredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
+		l.Info(coloredNotice("\nJob refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
 		return nil
 	}
 	return cmd
@@ -119,11 +122,21 @@ func refreshJobSpecificationRequest(ctx context.Context, l log.Logger, jobSpecSe
 				}
 			}
 		case models.ProgressTypeJobDeploymentRequestCreated:
-			if !resp.GetSuccess() {
-				l.Warn(coloredError("unable to request job deployment"))
+			if len(refreshErrors) > 0 {
+				l.Error(coloredError(fmt.Sprintf("Refreshed %d/%d jobs.", refreshSuccessCounter, refreshSuccessCounter+refreshFailedCounter)))
+				for _, reqErr := range refreshErrors {
+					l.Error(coloredError(reqErr))
+				}
 			} else {
-				l.Info(fmt.Sprintf("Deployment request created with ID: %s", resp.GetValue()))
+				l.Info(coloredSuccess("Refreshed %d jobs.", refreshSuccessCounter))
 			}
+
+			if !resp.GetSuccess() {
+				l.Warn(coloredError("Unable to request job deployment"))
+			} else {
+				l.Info(coloredNotice(fmt.Sprintf("Deployment request created with ID: %s", resp.GetValue())))
+			}
+
 			return resp.Value, nil
 		default:
 			if verbose {
@@ -131,15 +144,6 @@ func refreshJobSpecificationRequest(ctx context.Context, l log.Logger, jobSpecSe
 				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetValue()))
 			}
 		}
-	}
-
-	if len(refreshErrors) > 0 {
-		l.Error(coloredError(fmt.Sprintf("Refreshed %d/%d jobs.", refreshSuccessCounter, refreshSuccessCounter+refreshFailedCounter)))
-		for _, reqErr := range refreshErrors {
-			l.Error(coloredError(reqErr))
-		}
-	} else {
-		l.Info(coloredSuccess("Refreshed %d jobs.", refreshSuccessCounter))
 	}
 
 	return "", streamError
@@ -166,7 +170,6 @@ func pollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 			l.Error("Deployment request is cancelled.")
 			return nil
 		case models.JobDeploymentStatusSucceed.String():
-			l.Info(coloredSuccess("All jobs deployed successfully."))
 			l.Info(coloredSuccess("Deployed %d jobs", resp.SuccessCount))
 			return nil
 		case models.JobDeploymentStatusFailed.String():
@@ -176,7 +179,7 @@ func pollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 					l.Error(coloredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
 				}
 			}
-			l.Info(coloredSuccess("Deployed %d jobs", resp.SuccessCount))
+			l.Error(coloredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
 			return nil
 		}
 
