@@ -168,7 +168,7 @@ func (w *JobSpecTaskWindow) GetEnd(scheduledAt time.Time) time.Time {
 	return e
 }
 
-func (w *JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffset time.Duration, windowTruncateTo string) (time.Time, time.Time) {
+func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffset time.Duration, windowTruncateTo string) (time.Time, time.Time) {
 	floatingEnd := today
 
 	// apply truncation to end
@@ -238,7 +238,7 @@ type JobAssets struct {
 	data []JobSpecAsset
 }
 
-func (a JobAssets) FromMap(mp map[string]string) JobAssets {
+func (JobAssets) FromMap(mp map[string]string) JobAssets {
 	if len(mp) == 0 {
 		return JobAssets{}
 	}
@@ -269,7 +269,7 @@ func (a *JobAssets) GetAll() []JobSpecAsset {
 	return a.data
 }
 
-func (a JobAssets) New(data []JobSpecAsset) *JobAssets {
+func (JobAssets) New(data []JobSpecAsset) *JobAssets {
 	return &JobAssets{
 		data: data,
 	}
@@ -292,7 +292,7 @@ func (w *JobSpecTaskWindow) OffsetString() string {
 	return w.inHrs(int(w.Offset.Hours()))
 }
 
-func (w *JobSpecTaskWindow) inHrs(hrs int) string {
+func (*JobSpecTaskWindow) inHrs(hrs int) string {
 	if hrs == 0 {
 		return "0"
 	}

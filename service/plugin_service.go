@@ -93,13 +93,18 @@ func (d DependencyPluginService) compileConfig(ctx context.Context, configs mode
 		compiler.From(secrets.ToMap()).WithName("secret"),
 	)
 
-	for i, config := range configs {
+	var confs models.PluginConfigs
+	for _, config := range configs {
 		compiledCnf, err := d.engine.CompileString(config.Value, tmplCtx)
-		if err == nil {
-			configs[i].Value = compiledCnf
+		if err != nil {
+			return nil, err
 		}
+		confs = append(confs, models.PluginConfig{
+			Name:  config.Name,
+			Value: compiledCnf,
+		})
 	}
-	return models.PluginConfigs{}.FromJobSpec(configs), nil
+	return confs, nil
 }
 
 func NewPluginService(secretService SecretService, pluginRepo models.PluginRepository, engine models.TemplateEngine) *DependencyPluginService {

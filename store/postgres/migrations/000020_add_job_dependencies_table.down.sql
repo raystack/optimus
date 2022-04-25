@@ -1,1 +1,1 @@
-ALTER TABLE job DROP IF EXISTS job_dependency;
+DROP TABLE IF EXISTS job_dependency;

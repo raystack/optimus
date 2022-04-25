@@ -86,8 +86,8 @@ type JobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepository) Save(ctx context.Context, t models.JobSpec) error {
-	return repo.Called(ctx, t).Error(0)
+func (repo *JobSpecRepository) Save(ctx context.Context, t models.JobSpec, jobDestination string) error {
+	return repo.Called(ctx, t, jobDestination).Error(0)
 }
 
 func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {

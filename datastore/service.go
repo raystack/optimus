@@ -139,7 +139,7 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	return repo.Delete(ctx, name)
 }
 
-func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
+func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
 	}

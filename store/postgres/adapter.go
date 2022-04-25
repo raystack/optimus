@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,7 +82,7 @@ func (a JobAsset) ToSpec() models.JobSpecAsset {
 	}
 }
 
-func (a JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
+func (JobAsset) FromSpec(spec models.JobSpecAsset) JobAsset {
 	return JobAsset{
 		Name:  spec.Name,
 		Value: spec.Value,
@@ -113,7 +112,7 @@ func (a JobHook) ToSpec(pluginRepo models.PluginRepository) (models.JobSpecHook,
 	}, nil
 }
 
-func (a JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
+func (JobHook) FromSpec(spec models.JobSpecHook) (JobHook, error) {
 	configJSON, err := json.Marshal(spec.Config)
 	if err != nil {
 		return JobHook{}, err
@@ -261,7 +260,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromJobSpec converts the optimus representation of JobSpec to postgres' Job
-func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec) (Job, error) {
+func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
@@ -343,18 +342,6 @@ func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec
 	wsize := spec.Task.Window.Size.Nanoseconds()
 	woffset := spec.Task.Window.Offset.Nanoseconds()
 
-	var jobDestination string
-	if spec.Task.Unit.DependencyMod != nil { // TODO: this should move to plugin service if required
-		jobDestinationResponse, err := spec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
-			Config: models.PluginConfigs{}.FromJobSpec(spec.Task.Config),
-			Assets: models.PluginAssets{}.FromJobSpec(spec.Assets),
-		})
-		if err != nil {
-			return Job{}, err
-		}
-		jobDestination = jobDestinationResponse.URN()
-	}
-
 	metadata, err := json.Marshal(spec.Metadata)
 	if err != nil {
 		return Job{}, err
@@ -385,8 +372,8 @@ func (adapt JobSpecAdapter) FromJobSpec(ctx context.Context, spec models.JobSpec
 	}, nil
 }
 
-func (adapt JobSpecAdapter) FromSpecWithNamespace(ctx context.Context, spec models.JobSpec, namespace models.NamespaceSpec) (Job, error) {
-	adaptJob, err := adapt.FromJobSpec(ctx, spec)
+func (adapt JobSpecAdapter) FromSpecWithNamespace(spec models.JobSpec, namespace models.NamespaceSpec, jobDestination string) (Job, error) {
+	adaptJob, err := adapt.FromJobSpec(spec, jobDestination)
 	if err != nil {
 		return adaptJob, err
 	}
@@ -433,8 +420,8 @@ type JobRunData struct {
 	ExecutedAt time.Time
 }
 
-func (adapt JobSpecAdapter) FromJobRun(ctx context.Context, jr models.JobRun, nsSpec models.NamespaceSpec) (JobRun, error) {
-	adaptedJobSpec, err := adapt.FromJobSpec(ctx, jr.Spec)
+func (adapt JobSpecAdapter) FromJobRun(jr models.JobRun, nsSpec models.NamespaceSpec, jobDestination string) (JobRun, error) {
+	adaptedJobSpec, err := adapt.FromJobSpec(jr.Spec, jobDestination)
 	if err != nil {
 		return JobRun{}, err
 	}
