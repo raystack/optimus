@@ -55,9 +55,8 @@ dockers:
       - optimus
     dockerfile: Dockerfile
     image_templates:
-      - 'docker.io/odpf/{{.ProjectName}}:latest'
       - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}'
-      - 'docker.io/odpf/{{.ProjectName}}:{{ .Tag }}-amd64'
+      - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}-amd64'
 brews:
   - name: optimus
     tap:
@@ -67,6 +66,7 @@ brews:
     description: "Optimus helps your organization to build & manage data pipelines with ease."
     homepage: https://odpf.github.io/optimus
     folder: Formula
+    skip_upload: auto
     dependencies:
       - name: git
     install: |-

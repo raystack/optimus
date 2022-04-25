@@ -29,7 +29,7 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
-	var endDate *time.Time = nil
+	var endDate *time.Time
 	if spec.EndDate != "" {
 		end, err := time.Parse(models.JobDatetimeLayout, spec.EndDate)
 		if err != nil {
@@ -243,14 +243,14 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
 	return conf
 }
 
-func (adapt *Adapter) ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
+func (*Adapter) ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
 	return &pb.ProjectSpecification{
 		Name:   spec.Name,
 		Config: spec.Config,
 	}
 }
 
-func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
+func (*Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
 	pConf := map[string]string{}
 	for key, val := range conf.GetConfig() {
 		pConf[strings.ToUpper(key)] = val
@@ -262,7 +262,7 @@ func (adapt *Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.Pro
 }
 
 // ToProjectProtoWithSecrets is unused, TODO: delete
-func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
+func (*Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
 		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{
@@ -277,7 +277,7 @@ func (adapt *Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.Pro
 	}
 }
 
-func (adapt *Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
+func (*Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
 	if conf == nil {
 		return models.ProjectSpec{}
 	}
@@ -303,7 +303,7 @@ func (adapt *Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification)
 	}
 }
 
-func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType models.InstanceType, pluginName string) *pb.ProjectSpecification {
+func (*Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType models.InstanceType, pluginName string) *pb.ProjectSpecification {
 	pluginSecretName := models.PluginSecretString(pluginType, pluginName)
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
@@ -322,14 +322,14 @@ func (adapt *Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginTy
 	}
 }
 
-func (adapt *Adapter) ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
+func (*Adapter) ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
 	return &pb.NamespaceSpecification{
 		Name:   spec.Name,
 		Config: spec.Config,
 	}
 }
 
-func (adapt *Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models.NamespaceSpec {
+func (*Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models.NamespaceSpec {
 	namespaceConf := map[string]string{}
 	for key, val := range conf.GetConfig() {
 		namespaceConf[strings.ToUpper(key)] = val
@@ -341,7 +341,7 @@ func (adapt *Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models
 	}
 }
 
-func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec {
+func (*Adapter) ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec {
 	var data []*pb.InstanceSpecData
 	for _, asset := range spec.Data {
 		data = append(data, &pb.InstanceSpecData{
@@ -359,7 +359,7 @@ func (adapt *Adapter) ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec
 	}
 }
 
-func (adapt *Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
+func (*Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
 	if conf == nil {
 		return models.InstanceSpec{}, nil
 	}
@@ -413,7 +413,7 @@ func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 	return hooks, nil
 }
 
-func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
+func (*Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
 	for _, hook := range hooks {
 		hookConfigs := []*pb.JobConfigItem{}
 		for _, c := range hook.Config {
@@ -431,7 +431,7 @@ func (adapt *Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.
 	return
 }
 
-func (adapt *Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
+func (*Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
 	typeController, ok := spec.Datastore.Types()[spec.Type]
 	if !ok {
 		return nil, fmt.Errorf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name())
@@ -506,7 +506,7 @@ func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStat
 	return response, nil
 }
 
-func (adapt *Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) *pb.JobSpecMetadataResource {
+func (*Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) *pb.JobSpecMetadataResource {
 	if resource.Request.CPU == "" && resource.Request.Memory == "" &&
 		resource.Limit.CPU == "" && resource.Limit.Memory == "" {
 		return nil
@@ -537,7 +537,7 @@ func (adapt *Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecReso
 	return output
 }
 
-func (adapt *Adapter) ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflow) *pb.JobSpecMetadataAirflow {
+func (*Adapter) ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflow) *pb.JobSpecMetadataAirflow {
 	var output *pb.JobSpecMetadataAirflow
 	if airflow.Pool != "" || airflow.Queue != "" {
 		output = &pb.JobSpecMetadataAirflow{
@@ -548,7 +548,7 @@ func (adapt *Adapter) ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflo
 	return output
 }
 
-func (adapt *Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
+func (*Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
 	var output models.JobSpecResource
 	if resource != nil {
 		if resource.Request != nil {
@@ -563,7 +563,7 @@ func (adapt *Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetad
 	return output
 }
 
-func (adapt *Adapter) FromJobSpecMetadataAirflowProto(airflow *pb.JobSpecMetadataAirflow) models.JobSpecAirflow {
+func (*Adapter) FromJobSpecMetadataAirflowProto(airflow *pb.JobSpecMetadataAirflow) models.JobSpecAirflow {
 	var output models.JobSpecAirflow
 	if airflow != nil {
 		output.Pool = airflow.Pool

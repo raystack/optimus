@@ -82,7 +82,7 @@ func (ac airflowClient) invoke(ctx context.Context, r airflowRequest, projectSpe
 	return ac.parseResponse(HTTPResp)
 }
 
-func (ac airflowClient) getHostAuth(projectSpec models.ProjectSpec) (string, string, error) {
+func (airflowClient) getHostAuth(projectSpec models.ProjectSpec) (string, string, error) {
 	schdHost, ok := projectSpec.Config[models.ProjectSchedulerHost]
 	if !ok {
 		return "", "", fmt.Errorf("scheduler host not set for %s", projectSpec.Name)
@@ -95,7 +95,7 @@ func (ac airflowClient) getHostAuth(projectSpec models.ProjectSpec) (string, str
 	return schdHost, authToken, nil
 }
 
-func (ac airflowClient) parseResponse(resp *http.Response) ([]byte, error) {
+func (airflowClient) parseResponse(resp *http.Response) ([]byte, error) {
 	var body []byte
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -105,7 +105,7 @@ func (ac airflowClient) parseResponse(resp *http.Response) ([]byte, error) {
 	return body, nil
 }
 
-func (ac airflowClient) buildEndPoint(host, reqURL, pathParam string) string {
+func (airflowClient) buildEndPoint(host, reqURL, pathParam string) string {
 	host = strings.Trim(host, "/")
 	u := &url.URL{
 		Scheme: "http",

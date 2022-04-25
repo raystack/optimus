@@ -15,19 +15,19 @@ type BqClientMock struct {
 	bqiface.Client
 }
 
-func (cli *BqClientMock) Location() string {
+func (*BqClientMock) Location() string {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) SetLocation(string) {
+func (*BqClientMock) SetLocation(string) {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) Close() error {
+func (*BqClientMock) Close() error {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) Dataset(dataset string) bqiface.Dataset {
+func (*BqClientMock) Dataset(string) bqiface.Dataset {
 	panic("not implemented")
 }
 
@@ -35,27 +35,27 @@ func (cli *BqClientMock) DatasetInProject(project, dataset string) bqiface.Datas
 	return cli.Called(project, dataset).Get(0).(bqiface.Dataset)
 }
 
-func (cli *BqClientMock) Datasets(context.Context) bqiface.DatasetIterator {
+func (*BqClientMock) Datasets(context.Context) bqiface.DatasetIterator {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) DatasetsInProject(context.Context, string) bqiface.DatasetIterator {
+func (*BqClientMock) DatasetsInProject(context.Context, string) bqiface.DatasetIterator {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) Query(q string) bqiface.Query {
+func (*BqClientMock) Query(string) bqiface.Query {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) JobFromID(context.Context, string) (bqiface.Job, error) {
+func (*BqClientMock) JobFromID(context.Context, string) (bqiface.Job, error) {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) JobFromIDLocation(context.Context, string, string) (bqiface.Job, error) {
+func (*BqClientMock) JobFromIDLocation(context.Context, string, string) (bqiface.Job, error) {
 	panic("not implemented")
 }
 
-func (cli *BqClientMock) Jobs(context.Context) bqiface.JobIterator {
+func (*BqClientMock) Jobs(context.Context) bqiface.JobIterator {
 	panic("not implemented")
 }
 
@@ -64,7 +64,7 @@ type BqDatasetMock struct {
 	bqiface.Dataset
 }
 
-func (ds *BqDatasetMock) ProjectID() string {
+func (*BqDatasetMock) ProjectID() string {
 	panic("not implemented")
 }
 
@@ -80,7 +80,7 @@ func (ds *BqDatasetMock) Delete(ctx context.Context) error {
 	return ds.Called(ctx).Error(0)
 }
 
-func (ds *BqDatasetMock) DeleteWithContents(context.Context) error {
+func (*BqDatasetMock) DeleteWithContents(context.Context) error {
 	panic("not implemented")
 }
 
@@ -98,7 +98,7 @@ func (ds *BqDatasetMock) Table(name string) bqiface.Table {
 	return ds.Called(name).Get(0).(bqiface.Table)
 }
 
-func (ds *BqDatasetMock) Tables(context.Context) bqiface.TableIterator {
+func (*BqDatasetMock) Tables(context.Context) bqiface.TableIterator {
 	panic("not implemented")
 }
 
@@ -116,7 +116,7 @@ func (table *BqTableMock) Create(ctx context.Context, meta *bigquery.TableMetada
 	return table.Called(ctx, meta).Error(0)
 }
 
-func (table *BqTableMock) DatasetID() string {
+func (*BqTableMock) DatasetID() string {
 	panic("not implemented")
 }
 
@@ -124,15 +124,15 @@ func (table *BqTableMock) Delete(ctx context.Context) error {
 	return table.Called(ctx).Error(0)
 }
 
-func (table *BqTableMock) ExtractorTo(dst *bigquery.GCSReference) bqiface.Extractor {
+func (*BqTableMock) ExtractorTo(*bigquery.GCSReference) bqiface.Extractor {
 	panic("not implemented")
 }
 
-func (table *BqTableMock) FullyQualifiedName() string {
+func (*BqTableMock) FullyQualifiedName() string {
 	panic("not implemented")
 }
 
-func (table *BqTableMock) LoaderFrom(bigquery.LoadSource) bqiface.Loader {
+func (*BqTableMock) LoaderFrom(bigquery.LoadSource) bqiface.Loader {
 	panic("not implemented")
 }
 
@@ -141,15 +141,15 @@ func (table *BqTableMock) Metadata(ctx context.Context) (*bigquery.TableMetadata
 	return args.Get(0).(*bigquery.TableMetadata), args.Error(1)
 }
 
-func (table *BqTableMock) ProjectID() string {
+func (*BqTableMock) ProjectID() string {
 	panic("not implemented")
 }
 
-func (table *BqTableMock) Read(ctx context.Context) bqiface.RowIterator {
+func (*BqTableMock) Read(context.Context) bqiface.RowIterator {
 	panic("not implemented")
 }
 
-func (table *BqTableMock) TableID() string {
+func (*BqTableMock) TableID() string {
 	panic("not implemented")
 }
 
@@ -158,7 +158,7 @@ func (table *BqTableMock) Update(ctx context.Context, meta bigquery.TableMetadat
 	return args.Get(0).(*bigquery.TableMetadata), args.Error(1)
 }
 
-func (table *BqTableMock) Uploader() bqiface.Uploader {
+func (*BqTableMock) Uploader() bqiface.Uploader {
 	panic("not implemented")
 }
 
@@ -175,19 +175,19 @@ type BigQueryMock struct {
 	mock.Mock
 }
 
-func (b *BigQueryMock) CreateResource(ctx context.Context, request models.CreateResourceRequest) error {
+func (*BigQueryMock) CreateResource(context.Context, models.CreateResourceRequest) error {
 	panic("not implemented")
 }
 
-func (b *BigQueryMock) UpdateResource(ctx context.Context, request models.UpdateResourceRequest) error {
+func (*BigQueryMock) UpdateResource(context.Context, models.UpdateResourceRequest) error {
 	panic("not implemented")
 }
 
-func (b *BigQueryMock) ReadResource(ctx context.Context, request models.ReadResourceRequest) (models.ReadResourceResponse, error) {
+func (*BigQueryMock) ReadResource(context.Context, models.ReadResourceRequest) (models.ReadResourceResponse, error) {
 	panic("not implemented")
 }
 
-func (b *BigQueryMock) DeleteResource(ctx context.Context, request models.DeleteResourceRequest) error {
+func (*BigQueryMock) DeleteResource(context.Context, models.DeleteResourceRequest) error {
 	panic("not implemented")
 }
 
@@ -196,11 +196,11 @@ type BqCopierMock struct {
 	bqiface.Copier
 }
 
-func (copier *BqCopierMock) JobIDConfig() *bigquery.JobIDConfig {
+func (*BqCopierMock) JobIDConfig() *bigquery.JobIDConfig {
 	panic("not implemented")
 }
 
-func (copier *BqCopierMock) SetCopyConfig(c bqiface.CopyConfig) {
+func (*BqCopierMock) SetCopyConfig(bqiface.CopyConfig) {
 	panic("not implemented")
 }
 
@@ -214,27 +214,27 @@ type BqJobMock struct {
 	bqiface.Job
 }
 
-func (job *BqJobMock) ID() string {
+func (*BqJobMock) ID() string {
 	panic("not implemented")
 }
 
-func (job *BqJobMock) Location() string {
+func (*BqJobMock) Location() string {
 	panic("not implemented")
 }
 
-func (job *BqJobMock) Config() (bigquery.JobConfig, error) {
+func (*BqJobMock) Config() (bigquery.JobConfig, error) {
 	panic("not implemented")
 }
 
-func (job *BqJobMock) Status(ctx context.Context) (*bigquery.JobStatus, error) {
+func (*BqJobMock) Status(context.Context) (*bigquery.JobStatus, error) {
 	panic("not implemented")
 }
 
-func (job *BqJobMock) LastStatus() *bigquery.JobStatus {
+func (*BqJobMock) LastStatus() *bigquery.JobStatus {
 	panic("not implemented")
 }
 
-func (job *BqJobMock) Cancel(ctx context.Context) error {
+func (*BqJobMock) Cancel(context.Context) error {
 	panic("not implemented")
 }
 
@@ -243,6 +243,6 @@ func (job *BqJobMock) Wait(ctx context.Context) (*bigquery.JobStatus, error) {
 	return args.Get(0).(*bigquery.JobStatus), args.Error(1)
 }
 
-func (job *BqJobMock) Read(ctx context.Context) (bqiface.RowIterator, error) {
+func (*BqJobMock) Read(context.Context) (bqiface.RowIterator, error) {
 	panic("not implemented")
 }

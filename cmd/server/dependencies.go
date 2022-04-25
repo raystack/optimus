@@ -132,7 +132,7 @@ func (fac *backupRepoFactory) New(projectSpec models.ProjectSpec, storer models.
 
 type airflowBucketFactory struct{}
 
-func (o *airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
+func (*airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
 	storagePath, ok := projectSpec.Config[models.ProjectStoragePathKey]
 	if !ok {
 		return nil, fmt.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
