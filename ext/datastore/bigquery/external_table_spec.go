@@ -29,11 +29,11 @@ type BQExternalSource struct {
 
 type externalTableSpec struct{}
 
-func (s externalTableSpec) Adapter() models.DatastoreSpecAdapter {
+func (externalTableSpec) Adapter() models.DatastoreSpecAdapter {
 	return &tableSpecHandler{}
 }
 
-func (s externalTableSpec) Validator() models.DatastoreSpecValidator {
+func (externalTableSpec) Validator() models.DatastoreSpecValidator {
 	return func(spec models.ResourceSpec) error {
 		if !tableNameParseRegex.MatchString(spec.Name) {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
@@ -46,7 +46,7 @@ func (s externalTableSpec) Validator() models.DatastoreSpecValidator {
 	}
 }
 
-func (s externalTableSpec) GenerateURN(tableConfig interface{}) (string, error) {
+func (externalTableSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	bqTable, ok := tableConfig.(BQTable)
 	if !ok {
 		return "", errors.New("failed to read external table spec for bigquery")
@@ -54,7 +54,7 @@ func (s externalTableSpec) GenerateURN(tableConfig interface{}) (string, error) 
 	return fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), bqTable.Project, bqTable.Dataset, bqTable.Table), nil
 }
 
-func (s externalTableSpec) DefaultAssets() map[string]string {
+func (externalTableSpec) DefaultAssets() map[string]string {
 	return map[string]string{}
 }
 

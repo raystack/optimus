@@ -30,15 +30,15 @@ type BigQuery struct {
 	ClientFac ClientFactory
 }
 
-func (b BigQuery) Name() string {
+func (BigQuery) Name() string {
 	return "bigquery"
 }
 
-func (b BigQuery) Description() string {
+func (BigQuery) Description() string {
 	return "GCP BigQuery"
 }
 
-func (b BigQuery) Types() map[models.ResourceType]models.DatastoreTypeController {
+func (BigQuery) Types() map[models.ResourceType]models.DatastoreTypeController {
 	return map[models.ResourceType]models.DatastoreTypeController{
 		models.ResourceTypeTable:         &tableSpec{},
 		models.ResourceTypeView:          &standardViewSpec{},

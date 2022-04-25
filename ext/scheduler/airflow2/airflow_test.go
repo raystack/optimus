@@ -70,7 +70,7 @@ func (m *MockedBucket) Delete(ctx context.Context, key string) error {
 	return m.bucket.Delete(ctx, key)
 }
 
-func (m *MockedBucket) Close() error {
+func (*MockedBucket) Close() error {
 	return nil
 }
 

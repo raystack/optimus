@@ -104,7 +104,7 @@ func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook
 }
 
 // FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
-func (a JobHook) FromSpec(spec models.JobSpecHook) JobHook {
+func (JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	return JobHook{
 		Name:   spec.Unit.Info().Name,
 		Config: JobSpecConfigToYamlSlice(spec.Config),
@@ -536,7 +536,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	return job, nil
 }
 
-func (adapt JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
+func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("exec unit is nil")
 	}

@@ -56,13 +56,13 @@ func (j Instance) ToSpec() (models.InstanceSpec, error) {
 	}, nil
 }
 
-func (j Instance) FromSpec(spec models.InstanceSpec, jobRunID uuid.UUID) (Instance, error) {
+func (Instance) FromSpec(spec models.InstanceSpec, jobRunID uuid.UUID) (Instance, error) {
 	dataJSON, err := spec.DataToJSON()
 	if err != nil {
 		return Instance{}, err
 	}
 
-	var execAt *time.Time = nil
+	var execAt *time.Time
 	if !spec.ExecutedAt.IsZero() {
 		execAt = &spec.ExecutedAt
 	}

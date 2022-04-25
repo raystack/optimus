@@ -140,7 +140,7 @@ func (e *Extension) downloadAsset(ctx context.Context, url, destPath string) err
 	return nil
 }
 
-func (e *Extension) getResponseError(resp *http.Response) error {
+func (*Extension) getResponseError(resp *http.Response) error {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading body: %w", err)
@@ -164,7 +164,7 @@ func (e *Extension) getDownloadURL(release *github.RepositoryRelease) (string, e
 	return "", fmt.Errorf("asset for [%s] is not found", currentDist)
 }
 
-func (e *Extension) getCurrentDist() string {
+func (*Extension) getCurrentDist() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 

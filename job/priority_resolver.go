@@ -153,7 +153,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 	return multiRootTree, nil
 }
 
-func (a *priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {
+func (*priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {
 	node, ok := dagTree.GetNodeByName(dagSpec.Name)
 	if !ok {
 		node = tree.NewTreeNode(dagSpec)

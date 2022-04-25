@@ -106,7 +106,7 @@ func (r *dependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Contex
 	return r.enrichJobSpecsWithJobDependencies(jobSpecs, dependencies, jobSpecMap)
 }
 
-func (r *dependencyResolver) enrichJobSpecsWithJobDependencies(jobSpecs []models.JobSpec, jobDependencies []models.JobIDDependenciesPair,
+func (*dependencyResolver) enrichJobSpecsWithJobDependencies(jobSpecs []models.JobSpec, jobDependencies []models.JobIDDependenciesPair,
 	jobSpecMap map[uuid.UUID]models.JobSpec) ([]models.JobSpec, error) {
 	var enrichedJobSpecs []models.JobSpec
 	jobSpecAndDependenciesMap := models.JobIDDependenciesPairs(jobDependencies).GetJobDependencyMap()
@@ -251,7 +251,7 @@ func extractDependency(projectJobPairs []store.ProjectJobPair, projectSpec model
 
 // update named (explicit/static) dependencies if unresolved with its spec model
 // this can normally happen when reading specs from a store[local/postgres]
-func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+func (*dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model
 	for depName, depSpec := range jobSpec.Dependencies {
@@ -291,7 +291,7 @@ func (r *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 
 // hooks can be dependent on each other inside a job spec, this will populate
 // the local array that points to its dependent hook
-func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) models.JobSpec {
+func (*dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) models.JobSpec {
 	for hookIdx, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
 		for _, depends := range jobHook.Unit.Info().DependsOn {
@@ -305,7 +305,7 @@ func (r *dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) mod
 	return jobSpec
 }
 
-func (r *dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {
+func (*dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook {
 	var hooks []models.JobSpecHook
 	for _, jobHook := range jobSpec.Hooks {
 		jobHook.DependsOn = nil
@@ -320,7 +320,7 @@ func (r *dependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) [
 	return hooks
 }
 
-func (r *dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {
+func (*dependencyResolver) notifyProgress(observer progress.Observer, e progress.Event) {
 	if observer == nil {
 		return
 	}

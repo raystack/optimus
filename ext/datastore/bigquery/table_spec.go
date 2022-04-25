@@ -126,7 +126,7 @@ type BQPartitioningRange struct {
 // tableSpecHandler helps serializing/deserializing datastore resource for table
 type tableSpecHandler struct{}
 
-func (s tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
+func (tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error) {
 	if optResource.Spec == nil {
 		// usually happens when resource is requested to be created for the first time via optimus cli
 		optResource.Spec = BQTable{}
@@ -148,7 +148,7 @@ func (s tableSpecHandler) ToYaml(optResource models.ResourceSpec) ([]byte, error
 	return yaml.Marshal(yamlResource)
 }
 
-func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
+func (tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	var yamlResource TableResourceSpec
 	if err := yaml.Unmarshal(b, &yamlResource); err != nil {
 		return models.ResourceSpec{}, err
@@ -178,7 +178,7 @@ func (s tableSpecHandler) FromYaml(b []byte) (models.ResourceSpec, error) {
 	return optResource, nil
 }
 
-func (s tableSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, error) {
+func (tableSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, error) {
 	bqResource, ok := optResource.Spec.(BQTable)
 	if !ok {
 		return nil, errors.New("failed to convert resource, malformed spec")
@@ -198,7 +198,7 @@ func (s tableSpecHandler) ToProtobuf(optResource models.ResourceSpec) ([]byte, e
 	return proto.Marshal(resSpec)
 }
 
-func (s tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
+func (tableSpecHandler) FromProtobuf(b []byte) (models.ResourceSpec, error) {
 	protoSpec := &v1.ResourceSpecification{}
 	if err := proto.Unmarshal(b, protoSpec); err != nil {
 		return models.ResourceSpec{}, err
@@ -346,11 +346,11 @@ func extractTablePartitionFromProtoStruct(protoVal *structpb.Value) *BQPartition
 
 type tableSpec struct{}
 
-func (s tableSpec) Adapter() models.DatastoreSpecAdapter {
+func (tableSpec) Adapter() models.DatastoreSpecAdapter {
 	return &tableSpecHandler{}
 }
 
-func (s tableSpec) Validator() models.DatastoreSpecValidator {
+func (tableSpec) Validator() models.DatastoreSpecValidator {
 	return func(spec models.ResourceSpec) error {
 		if !tableNameParseRegex.MatchString(spec.Name) {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
@@ -363,7 +363,7 @@ func (s tableSpec) Validator() models.DatastoreSpecValidator {
 	}
 }
 
-func (s tableSpec) GenerateURN(tableConfig interface{}) (string, error) {
+func (tableSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	bqTable, ok := tableConfig.(BQTable)
 	if !ok {
 		return "", errors.New("failed to read table spec for bigquery")
@@ -371,7 +371,7 @@ func (s tableSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	return fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), bqTable.Project, bqTable.Dataset, bqTable.Table), nil
 }
 
-func (s tableSpec) DefaultAssets() map[string]string {
+func (tableSpec) DefaultAssets() map[string]string {
 	return map[string]string{}
 }
 
