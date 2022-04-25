@@ -30,6 +30,7 @@ func TestJobRunService(t *testing.T) {
 		Name:        "dev-team-1",
 		ProjectSpec: projSpec,
 	}
+	jobDestination := "project.dataset.table"
 	jobSpec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -66,7 +67,7 @@ func TestJobRunService(t *testing.T) {
 	}
 	pluginService := new(mock.DependencyResolverPluginService)
 	pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
-		&models.GenerateDestinationResponse{Destination: "proj.data.tab"}, nil)
+		&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
 	t.Run("Register", func(t *testing.T) {
 		t.Run("for transformation, save specs and return data", func(t *testing.T) {
@@ -93,7 +94,7 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDestination,
-						Value: "proj.data.tab",
+						Value: jobDestination,
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -140,7 +141,7 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDestination,
-						Value: "proj.data.tab",
+						Value: jobDestination,
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -195,7 +196,7 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDestination,
-						Value: "proj.data.tab",
+						Value: jobDestination,
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -242,7 +243,7 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDestination,
-						Value: "proj.data.tab",
+						Value: jobDestination,
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -296,7 +297,7 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDestination,
-						Value: "proj.data.tab",
+						Value: jobDestination,
 						Type:  models.InstanceDataTypeEnv,
 					},
 				},
@@ -318,9 +319,10 @@ func TestJobRunService(t *testing.T) {
 		})
 	})
 	t.Run("GetScheduledRun", func(t *testing.T) {
-		t.Run("should update job run even if already exists", func(t *testing.T) {
+		t.Run("should not fail if dependency module is not found in plugin service", func(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("GetByScheduledAt", ctx, jobSpec.ID, scheduledAt).Return(jobRun, namespaceSpec, nil)
+			jobDestination := "://"
 			runRepo.On("Save", ctx, namespaceSpec, models.JobRun{
 				ID:          jobRun.ID,
 				Spec:        jobSpec,
@@ -328,7 +330,33 @@ func TestJobRunService(t *testing.T) {
 				Status:      models.RunStatePending,
 				ScheduledAt: scheduledAt,
 				ExecutedAt:  mockedTimeNow,
-			}).Return(nil)
+			}, jobDestination).Return(nil)
+			defer runRepo.AssertExpectations(t)
+
+			jobRunSpecRep := new(mock.JobRunRepoFactory)
+			jobRunSpecRep.On("New").Return(runRepo, nil)
+			defer jobRunSpecRep.AssertExpectations(t)
+			noDepModpluginService := new(mock.DependencyResolverPluginService)
+			noDepModpluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
+				&models.GenerateDestinationResponse{}, service.ErrDependencyModNotFound)
+
+			runService := service.NewJobRunService(jobRunSpecRep, mockedTimeFunc, nil, noDepModpluginService)
+			returnedSpec, err := runService.GetScheduledRun(ctx, namespaceSpec, jobSpec, scheduledAt)
+			assert.Nil(t, err)
+			assert.Equal(t, jobRun, returnedSpec)
+		})
+		t.Run("should update job run even if already exists", func(t *testing.T) {
+			runRepo := new(mock.JobRunRepository)
+			runRepo.On("GetByScheduledAt", ctx, jobSpec.ID, scheduledAt).Return(jobRun, namespaceSpec, nil)
+			jobDestination := "://project.dataset.table"
+			runRepo.On("Save", ctx, namespaceSpec, models.JobRun{
+				ID:          jobRun.ID,
+				Spec:        jobSpec,
+				Trigger:     models.TriggerSchedule,
+				Status:      models.RunStatePending,
+				ScheduledAt: scheduledAt,
+				ExecutedAt:  mockedTimeNow,
+			}, jobDestination).Return(nil)
 			defer runRepo.AssertExpectations(t)
 
 			jobRunSpecRep := new(mock.JobRunRepoFactory)
@@ -343,13 +371,14 @@ func TestJobRunService(t *testing.T) {
 		t.Run("should save a new job run if doesn't exists", func(t *testing.T) {
 			runRepo := new(mock.JobRunRepository)
 			runRepo.On("GetByScheduledAt", ctx, jobSpec.ID, scheduledAt).Return(models.JobRun{}, models.NamespaceSpec{}, store.ErrResourceNotFound)
+			jobDestination := "://project.dataset.table"
 			runRepo.On("Save", ctx, namespaceSpec, models.JobRun{
 				Spec:        jobSpec,
 				Trigger:     models.TriggerSchedule,
 				Status:      models.RunStatePending,
 				ScheduledAt: scheduledAt,
 				ExecutedAt:  mockedTimeNow,
-			}).Return(nil)
+			}, jobDestination).Return(nil)
 			defer runRepo.AssertExpectations(t)
 
 			jobRunSpecRep := new(mock.JobRunRepoFactory)

@@ -39,7 +39,7 @@ type Resource struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (r Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
+func (Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 	assetBytes, err := json.Marshal(resourceSpec.Assets)
 	if err != nil {
 		return Resource{}, err

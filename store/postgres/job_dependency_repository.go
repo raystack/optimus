@@ -44,7 +44,7 @@ func (d JobDependencies) ToSpec() ([]models.JobIDDependenciesPair, error) {
 	return jobDependencies, nil
 }
 
-func (d JobDependency) FromSpec(projectID models.ProjectID, jobID uuid.UUID, jobDependency models.JobSpecDependency) JobDependency {
+func (JobDependency) FromSpec(projectID models.ProjectID, jobID uuid.UUID, jobDependency models.JobSpecDependency) JobDependency {
 	return JobDependency{
 		JobID:              jobID,
 		ProjectID:          projectID.UUID(),

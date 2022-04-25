@@ -34,7 +34,7 @@ type Secret struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (p Secret) FromSpec(spec models.ProjectSecretItem, proj models.ProjectSpec, namespace models.NamespaceSpec,
+func (Secret) FromSpec(spec models.ProjectSecretItem, proj models.ProjectSpec, namespace models.NamespaceSpec,
 	hash models.ApplicationKey) (Secret, error) {
 	// encrypt secret, TODO: What to do when the Value is empty ?
 	cipher, err := cryptopasta.Encrypt([]byte(spec.Value), hash.GetKey())
