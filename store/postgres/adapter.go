@@ -260,7 +260,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromJobSpec converts the optimus representation of JobSpec to postgres' Job
-func (adapt JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (Job, error) {
+func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
