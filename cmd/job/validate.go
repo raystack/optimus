@@ -15,7 +15,6 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/progressbar"
-	oSurvey "github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -24,19 +23,15 @@ import (
 const validateTimeout = time.Minute * 5
 
 type validateCommand struct {
-	logger          log.Logger
-	clientConfig    *config.ClientConfig
-	jobSurvey       *oSurvey.JobSurvey
-	namespaceSurvey *oSurvey.NamespaceSurvey
+	logger       log.Logger
+	clientConfig *config.ClientConfig
 }
 
 // NewValidateCommand initializes command for rendering job specification
 func NewValidateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
 	validate := &validateCommand{
-		logger:          logger,
-		clientConfig:    clientConfig,
-		jobSurvey:       oSurvey.NewJobSurvey(),
-		namespaceSurvey: oSurvey.NewNamespaceSurvey(logger),
+		logger:       logger,
+		clientConfig: clientConfig,
 	}
 	cmd := &cobra.Command{
 		Use:     "render",
