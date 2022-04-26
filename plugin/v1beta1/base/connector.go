@@ -21,14 +21,14 @@ type Connector struct {
 	logger hclog.Logger
 }
 
-func (p *Connector) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
+func (p *Connector) GRPCServer(_ *plugin.GRPCBroker, s *grpc.Server) error {
 	pbp.RegisterBaseServiceServer(s, &GRPCServer{
 		Impl: p.impl,
 	})
 	return nil
 }
 
-func (p *Connector) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (p *Connector) GRPCClient(_ context.Context, _ *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClient{
 		Client: pbp.NewBaseServiceClient(c),
 		Logger: p.logger,

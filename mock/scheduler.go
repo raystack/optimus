@@ -40,7 +40,7 @@ func (ms *Scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceS
 	return args.Error(0)
 }
 
-func (ms *Scheduler) GetName() string {
+func (*Scheduler) GetName() string {
 	return "mocked"
 }
 

@@ -92,7 +92,7 @@ type (
 	ProgressJobDeploymentInProgress struct{}
 )
 
-func (e *ProgressJobSpecFetch) String() string {
+func (*ProgressJobSpecFetch) String() string {
 	return "fetching job specs"
 }
 
@@ -100,7 +100,7 @@ func (e *ProgressSavedJobDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
 }
 
-func (e *ProgressJobPriorityWeightAssign) String() string {
+func (*ProgressJobPriorityWeightAssign) String() string {
 	return "assigned priority weights"
 }
 
@@ -108,7 +108,7 @@ func (e *ProgressJobPriorityWeightAssignmentFailed) String() string {
 	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
 }
 
-func (e *ProgressJobDependencyResolutionFinished) String() string {
+func (*ProgressJobDependencyResolutionFinished) String() string {
 	return "dependencies resolved"
 }
 
@@ -116,7 +116,7 @@ func (e *ProgressJobSpecUnknownDependencyUsed) String() string {
 	return fmt.Sprintf("could not find registered destination '%s' during compiling dependencies for the provided job %s", e.Dependency, e.Job)
 }
 
-func (e *ProgressJobSpecUnknownDependencyUsed) Type() string {
+func (*ProgressJobSpecUnknownDependencyUsed) Type() string {
 	return ProgressTypeJobSpecUnknownDependencyUsed
 }
 
@@ -127,15 +127,15 @@ func (e *ProgressJobDependencyResolution) String() string {
 	return fmt.Sprintf("resolved job dependencies of '%s'", e.Job)
 }
 
-func (e *ProgressJobDependencyResolution) Type() string {
+func (*ProgressJobDependencyResolution) Type() string {
 	return ProgressTypeJobDependencyResolution
 }
 
-func (e *ProgressJobDependencyFetch) String() string {
+func (*ProgressJobDependencyFetch) String() string {
 	return "job dependencies has been fetched"
 }
 
-func (e *ProgressJobSpecWithDependencyFetch) String() string {
+func (*ProgressJobSpecWithDependencyFetch) String() string {
 	return "job specs with job dependencies has been fetched"
 }
 
@@ -158,7 +158,7 @@ func (e *ProgressJobUpload) String() string {
 	return fmt.Sprintf("uploaded: %s", e.Name)
 }
 
-func (e *ProgressJobUpload) Type() string {
+func (*ProgressJobUpload) Type() string {
 	return ProgressTypeJobUpload
 }
 
@@ -166,7 +166,7 @@ func (e *ProgressJobRemoteDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
 }
 
-func (e *ProgressJobSpecHookDependencyEnrich) String() string {
+func (*ProgressJobSpecHookDependencyEnrich) String() string {
 	return "jobs enriched with hook dependencies"
 }
 

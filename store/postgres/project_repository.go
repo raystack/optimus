@@ -28,7 +28,7 @@ type Project struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (p Project) FromSpec(spec models.ProjectSpec) Project {
+func (Project) FromSpec(spec models.ProjectSpec) Project {
 	jsonBytes, err := json.Marshal(spec.Config)
 	if err != nil {
 		return Project{}

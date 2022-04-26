@@ -11,7 +11,7 @@ import (
 
 type plainFormatter int
 
-func (p *plainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+func (*plainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if len(entry.Data) > 0 {
 		var data string
 		for key, val := range entry.Data {

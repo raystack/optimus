@@ -67,11 +67,11 @@ type scheduler struct {
 	compiler  models.JobCompiler
 }
 
-func (s *scheduler) GetName() string {
+func (*scheduler) GetName() string {
 	return "airflow2"
 }
 
-func (s *scheduler) GetTemplate() []byte {
+func (*scheduler) GetTemplate() []byte {
 	return resBaseDAG
 }
 
@@ -379,7 +379,7 @@ func covertToExecDate(jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) *mo
 	return modifiedJobQuery
 }
 
-func (s *scheduler) notifyProgress(po progress.Observer, event progress.Event) {
+func (*scheduler) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
 	}

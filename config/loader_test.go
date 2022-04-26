@@ -274,7 +274,7 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Telemetry.JaegerAddr = "http://localhost:14268/api/traces"
 }
 
-func (s *ConfigTestSuite) initServerConfigEnv() {
+func (*ConfigTestSuite) initServerConfigEnv() {
 	os.Setenv("OPTIMUS_VERSION", "4")
 	os.Setenv("OPTIMUS_LOG_LEVEL", "info")
 	os.Setenv("OPTIMUS_SERVE_PORT", "9100")
@@ -293,7 +293,7 @@ func (s *ConfigTestSuite) initServerConfigEnv() {
 	os.Setenv("OPTIMUS_TELEMETRY_JAEGER_ADDR", "http://localhost:14268/api/traces")
 }
 
-func (s *ConfigTestSuite) unsetServerConfigEnv() {
+func (*ConfigTestSuite) unsetServerConfigEnv() {
 	unsetServerConfigEnv()
 }
 
