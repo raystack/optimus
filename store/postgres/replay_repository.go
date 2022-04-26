@@ -69,7 +69,7 @@ func fromTreeNode(treeNode *tree.TreeNode) *ExecutionTree {
 	}
 }
 
-func (p Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
+func (Replay) FromSpec(spec *models.ReplaySpec) (Replay, error) {
 	message, err := json.Marshal(spec.Message)
 	if err != nil {
 		return Replay{}, nil

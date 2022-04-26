@@ -198,7 +198,7 @@ func (c PluginConfigs) Get(name string) (PluginConfig, bool) {
 	return PluginConfig{}, false
 }
 
-func (c PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
+func (PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
 	taskPluginConfigs := PluginConfigs{}
 	for _, c := range jobSpecConfig {
 		taskPluginConfigs = append(taskPluginConfigs, PluginConfig(c))
@@ -240,7 +240,7 @@ func (c PluginAssets) Get(name string) (PluginAsset, bool) {
 	return PluginAsset{}, false
 }
 
-func (c PluginAssets) FromJobSpec(jobSpecAssets JobAssets) PluginAssets {
+func (PluginAssets) FromJobSpec(jobSpecAssets JobAssets) PluginAssets {
 	taskPluginAssets := PluginAssets{}
 	for _, c := range jobSpecAssets.GetAll() {
 		taskPluginAssets = append(taskPluginAssets, PluginAsset(c))

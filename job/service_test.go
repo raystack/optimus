@@ -44,8 +44,13 @@ func TestService(t *testing.T) {
 				ProjectSpec: projSpec,
 			}
 
+			destination := &models.GenerateDestinationResponse{
+				Destination: "project.dataset.table",
+				Type:        models.DestinationTypeBigquery,
+			}
+
 			repo := new(mock.JobSpecRepository)
-			repo.On("Save", ctx, jobSpec).Return(nil)
+			repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(nil)
 			defer repo.AssertExpectations(t)
 
 			repoFac := new(mock.JobSpecRepoFactory)
@@ -55,7 +60,53 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
+			err := svc.Create(ctx, namespaceSpec, jobSpec)
+			assert.Nil(t, err)
+		})
+
+		t.Run("should not fail if dependency module is not found in plugin service", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				Version: 1,
+				Name:    "test",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+			}
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+
+			repo := new(mock.JobSpecRepository)
+
+			repo.On("Save", ctx, jobSpec, "://").Return(nil)
+			// confirm with sandeep
+
+			defer repo.AssertExpectations(t)
+
+			repoFac := new(mock.JobSpecRepoFactory)
+			repoFac.On("New", namespaceSpec).Return(repo)
+			defer repoFac.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(&models.GenerateDestinationResponse{}, service.ErrDependencyModNotFound)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
 			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
@@ -80,14 +131,23 @@ func TestService(t *testing.T) {
 			}
 
 			repo := new(mock.JobSpecRepository)
-			repo.On("Save", ctx, jobSpec).Return(errors.New("unknown error"))
+			repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(errors.New("unknown error"))
 			defer repo.AssertExpectations(t)
 
 			repoFac := new(mock.JobSpecRepoFactory)
 			repoFac.On("New", namespaceSpec).Return(repo)
 			defer repoFac.AssertExpectations(t)
 
-			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil, nil)
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
+			destination := &models.GenerateDestinationResponse{
+				Destination: "project.dataset.table",
+				Type:        models.DestinationTypeBigquery,
+			}
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil, pluginService)
 			err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})

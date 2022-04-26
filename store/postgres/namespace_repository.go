@@ -28,7 +28,7 @@ type Namespace struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (p Namespace) FromSpec(spec models.NamespaceSpec) Namespace {
+func (Namespace) FromSpec(spec models.NamespaceSpec) Namespace {
 	jsonBytes, err := json.Marshal(spec.Config)
 	if err != nil {
 		return Namespace{}

@@ -125,7 +125,17 @@ type Service struct {
 // Create constructs a Job for a namespace and commits it to the store
 func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) error {
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
-	if err := jobRepo.Save(ctx, spec); err != nil {
+	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
+	if err != nil {
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
+			return fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+		}
+	}
+	var jobDestination string
+	if jobDestinationResponse != nil {
+		jobDestination = jobDestinationResponse.URN()
+	}
+	if err := jobRepo.Save(ctx, spec, jobDestination); err != nil {
 		return fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
 	return nil
@@ -570,7 +580,7 @@ func listIgnoredJobs(rootInstance, rootFilteredTree *tree.TreeNode) []string {
 	return ignoredJobs
 }
 
-func (srv *Service) notifyProgress(po progress.Observer, event progress.Event) {
+func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
 	}
@@ -594,7 +604,7 @@ func setSubtract(from, remove []string) []string {
 	return res
 }
 
-func (srv *Service) ifPresentInNamespace(jobSpecNames []string, jobSpecToFind string) bool {
+func (*Service) ifPresentInNamespace(jobSpecNames []string, jobSpecToFind string) bool {
 	for _, jName := range jobSpecNames {
 		if jName == jobSpecToFind {
 			return true

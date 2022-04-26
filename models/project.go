@@ -71,7 +71,7 @@ func (s ProjectSpec) String() string {
 
 type ProjectSecrets []ProjectSecretItem
 
-func (s ProjectSecrets) String() string {
+func (ProjectSecrets) String() string {
 	return "*redacted*"
 }
 

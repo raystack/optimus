@@ -307,7 +307,7 @@ func TestExtensionSuite(t *testing.T) {
 
 func TestNewExtension(t *testing.T) {
 	t.Run("should return nil and error if manifest is nil", func(t *testing.T) {
-		var manifest *extension.Manifest = nil
+		var manifest *extension.Manifest
 		ghReleaseGetter := &mock.GithubReleaseGetter{}
 		httpDoer := &mock.HTTPDoer{}
 		dirPath := "./out"
@@ -321,7 +321,7 @@ func TestNewExtension(t *testing.T) {
 
 	t.Run("should return nil and error if github release getter is nil", func(t *testing.T) {
 		manifest := &extension.Manifest{}
-		var ghReleaseGetter extension.GithubReleaseGetter = nil
+		var ghReleaseGetter extension.GithubReleaseGetter
 		httpDoer := &mock.HTTPDoer{}
 		dirPath := "./out"
 		reservedCommands := []string{"help"}
@@ -335,7 +335,7 @@ func TestNewExtension(t *testing.T) {
 	t.Run("should return nil and error if httpdoer is nil", func(t *testing.T) {
 		manifest := &extension.Manifest{}
 		ghReleaseGetter := &mock.GithubReleaseGetter{}
-		var httpDoer extension.HTTPDoer = nil
+		var httpDoer extension.HTTPDoer
 		dirPath := "./out"
 		reservedCommands := []string{"help"}
 

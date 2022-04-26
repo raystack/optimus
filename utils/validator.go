@@ -31,7 +31,7 @@ func CronIntervalValidator(val interface{}, _ string) error {
 // the global implementation can be called 'validatorFactory'
 type VFactory struct{}
 
-func (f *VFactory) NewFromRegex(re, message string) survey.Validator {
+func (*VFactory) NewFromRegex(re, message string) survey.Validator {
 	regex := regexp.MustCompile(re)
 	return func(v interface{}) error {
 		k := reflect.ValueOf(v).Kind()

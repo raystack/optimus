@@ -13,11 +13,11 @@ const (
 
 type standardViewSpec struct{}
 
-func (s standardViewSpec) Adapter() models.DatastoreSpecAdapter {
+func (standardViewSpec) Adapter() models.DatastoreSpecAdapter {
 	return &tableSpecHandler{}
 }
 
-func (s standardViewSpec) Validator() models.DatastoreSpecValidator {
+func (standardViewSpec) Validator() models.DatastoreSpecValidator {
 	return func(spec models.ResourceSpec) error {
 		if !tableNameParseRegex.MatchString(spec.Name) {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
@@ -30,7 +30,7 @@ func (s standardViewSpec) Validator() models.DatastoreSpecValidator {
 	}
 }
 
-func (s standardViewSpec) GenerateURN(tableConfig interface{}) (string, error) {
+func (standardViewSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	bqTable, ok := tableConfig.(BQTable)
 	if !ok {
 		return "", errors.New("failed to read standard view spec for bigquery")
@@ -38,7 +38,7 @@ func (s standardViewSpec) GenerateURN(tableConfig interface{}) (string, error) {
 	return fmt.Sprintf(tableURNFormat, BigQuery{}.Name(), bqTable.Project, bqTable.Dataset, bqTable.Table), nil
 }
 
-func (s standardViewSpec) DefaultAssets() map[string]string {
+func (standardViewSpec) DefaultAssets() map[string]string {
 	return map[string]string{
 		ViewQueryFile: `-- view query goes here`,
 	}
