@@ -8,6 +8,11 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
+const (
+	defaultProjectName = "sample_project"
+	defaultHost        = "localhost:9100"
+)
+
 type jobCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
@@ -38,7 +43,7 @@ func NewJobCommand() *cobra.Command {
 	cmd.AddCommand(NewRenderCommand(logger, job.clientConfig))
 	cmd.AddCommand(NewValidateCommand(logger, job.clientConfig))
 	cmd.AddCommand(NewRunCommand(logger, job.clientConfig))
-	// cmd.AddCommand(jobRunListCommand(&conf))
+	cmd.AddCommand(NewRunListCommand(logger, job.clientConfig))
 	// cmd.AddCommand(jobRefreshCommand(&conf))
 
 	return nil
