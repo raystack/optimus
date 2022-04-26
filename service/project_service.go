@@ -7,10 +7,6 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-type ProjectRepoFactory interface {
-	New() store.ProjectRepository
-}
-
 type ProjectService interface {
 	Get(context.Context, string) (models.ProjectSpec, error)
 	Save(context.Context, models.ProjectSpec) error
@@ -18,12 +14,12 @@ type ProjectService interface {
 }
 
 type projectService struct {
-	projectRepoFac ProjectRepoFactory
+	projectRepo store.ProjectRepository
 }
 
-func NewProjectService(factory ProjectRepoFactory) ProjectService {
+func NewProjectService(projectRepo store.ProjectRepository) ProjectService {
 	return &projectService{
-		projectRepoFac: factory,
+		projectRepo: projectRepo,
 	}
 }
 
@@ -33,8 +29,7 @@ func (s projectService) Get(ctx context.Context, projectName string) (models.Pro
 			NewError(models.ProjectEntity, ErrInvalidArgument, "project name cannot be empty")
 	}
 
-	projectRepo := s.projectRepoFac.New()
-	projSpec, err := projectRepo.GetByName(ctx, projectName)
+	projSpec, err := s.projectRepo.GetByName(ctx, projectName)
 	if err != nil {
 		return models.ProjectSpec{}, FromError(err, models.ProjectEntity, "")
 	}
@@ -46,8 +41,7 @@ func (s projectService) Save(ctx context.Context, project models.ProjectSpec) er
 		return NewError(models.ProjectEntity, ErrInvalidArgument, "project name cannot be empty")
 	}
 
-	projectRepo := s.projectRepoFac.New()
-	err := projectRepo.Save(ctx, project)
+	err := s.projectRepo.Save(ctx, project)
 	if err != nil {
 		return FromError(err, models.ProjectEntity, "")
 	}
@@ -55,8 +49,7 @@ func (s projectService) Save(ctx context.Context, project models.ProjectSpec) er
 }
 
 func (s projectService) GetAll(ctx context.Context) ([]models.ProjectSpec, error) {
-	projectRepo := s.projectRepoFac.New()
-	prjs, err := projectRepo.GetAll(ctx)
+	prjs, err := s.projectRepo.GetAll(ctx)
 	if err != nil {
 		return []models.ProjectSpec{}, FromError(err, models.ProjectEntity, "")
 	}
