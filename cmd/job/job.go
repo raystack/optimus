@@ -8,7 +8,7 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-type job struct {
+type jobCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
@@ -17,7 +17,7 @@ type job struct {
 
 // NewJobCommand initializes command for job
 func NewJobCommand() *cobra.Command {
-	j := job{
+	job := jobCommand{
 		clientConfig: &config.ClientConfig{},
 	}
 	logger := logger.NewDefaultLogger()
@@ -29,11 +29,11 @@ func NewJobCommand() *cobra.Command {
 			"group:core": "true",
 		},
 	}
-	cmd.PersistentPreRunE = j.PersistentPreRunE
-	cmd.PersistentPostRunE = j.PersistentPostRunE
-	cmd.PersistentFlags().StringVarP(&j.configFilePath, "config", "c", j.configFilePath, "File path for client configuration")
+	cmd.PersistentPreRunE = job.PersistentPreRunE
+	cmd.PersistentPostRunE = job.PersistentPostRunE
+	cmd.PersistentFlags().StringVarP(&job.configFilePath, "config", "c", job.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewCreateCommand(logger, j.clientConfig))
+	cmd.AddCommand(NewCreateCommand(logger, job.clientConfig))
 	cmd.AddCommand(NewAddHookCommand(logger))
 	// cmd.AddCommand(jobRenderTemplateCommand(&conf))
 	// cmd.AddCommand(jobValidateCommand(&conf))
@@ -44,7 +44,7 @@ func NewJobCommand() *cobra.Command {
 	return nil
 }
 
-func (j *job) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(j.configFilePath, cmd.Flags())
 	if err != nil {
@@ -57,7 +57,7 @@ func (j *job) PersistentPreRunE(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func (j *job) PersistentPostRunE(cmd *cobra.Command, args []string) error {
+func (j *jobCommand) PersistentPostRunE(cmd *cobra.Command, args []string) error {
 	j.pluginCleanFn()
 	return nil
 }
