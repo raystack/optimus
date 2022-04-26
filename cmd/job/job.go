@@ -34,7 +34,7 @@ func NewJobCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&j.configFilePath, "config", "c", j.configFilePath, "File path for client configuration")
 
 	cmd.AddCommand(NewCreateCommand(logger, j.clientConfig))
-	// cmd.AddCommand(jobAddHookCommand(&conf))
+	cmd.AddCommand(NewAddHookCommand(logger))
 	// cmd.AddCommand(jobRenderTemplateCommand(&conf))
 	// cmd.AddCommand(jobValidateCommand(&conf))
 	// cmd.AddCommand(jobRunCommand(&conf))

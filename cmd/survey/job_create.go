@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
 	"github.com/spf13/afero"
+	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -27,23 +27,18 @@ var (
 		survey.MaxLength(220))
 )
 
-// JobSpecRepository represents a storage interface for Job specifications locally
-type JobSpecRepository interface {
-	SaveAt(models.JobSpec, string) error
-	Save(models.JobSpec) error
-	GetByName(string) (models.JobSpec, error)
-	GetAll() ([]models.JobSpec, error)
-}
-
 // JobCreateSurvey defines survey for job creation operation
 type JobCreateSurvey struct {
 	specFileNames []string
+
+	jobSurvey *JobSurvey
 }
 
 // NewJobCreateSurvey initializes job create survey
 func NewJobCreateSurvey() *JobCreateSurvey {
 	return &JobCreateSurvey{
 		specFileNames: []string{local.ResourceSpecFileName, local.JobSpecFileName},
+		jobSurvey:     NewJobSurvey(),
 	}
 }
 
@@ -68,29 +63,56 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecRepo JobSpecRepository, defaultJ
 		return jobInput, nil
 	}
 
-	ctx := context.Background()
-	pluginAnswers, err := j.askPluginQuestions(ctx, cliMod, jobInput.Name)
+	pluginAnswers, err := j.askPluginQuestions(cliMod, jobInput.Name)
 	if err != nil {
 		return jobInput, err
 	}
 
-	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, models.DefaultConfigRequest{Answers: pluginAnswers})
+	taskConfig, err := j.getTaskConfig(cliMod, pluginAnswers)
 	if err != nil {
 		return jobInput, err
 	}
-	if generatedConfigResponse.Config != nil {
-		jobInput.Task.Config = local.JobSpecConfigToYamlSlice(generatedConfigResponse.Config.ToJobSpec())
+	if taskConfig != nil {
+		jobInput.Task.Config = taskConfig
 	}
 
-	generatedAssetResponse, err := cliMod.DefaultAssets(ctx, models.DefaultAssetsRequest{Answers: pluginAnswers})
+	asset, err := j.getJobAsset(cliMod, pluginAnswers)
 	if err != nil {
 		return jobInput, err
 	}
-	if generatedAssetResponse.Assets != nil {
-		jobInput.Asset = generatedAssetResponse.Assets.ToJobSpec().ToMap()
+	if asset != nil {
+		jobInput.Asset = asset
 	}
-
 	return jobInput, nil
+}
+
+func (j *JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
+	ctx := context.Background()
+	defaultAssetRequest := models.DefaultAssetsRequest{Answers: answers}
+	generatedAssetResponse, err := cliMod.DefaultAssets(ctx, defaultAssetRequest)
+	if err != nil {
+		return nil, err
+	}
+	var asset map[string]string
+	if generatedAssetResponse.Assets != nil {
+		asset = generatedAssetResponse.Assets.ToJobSpec().ToMap()
+	}
+	return asset, nil
+}
+
+func (j *JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (yaml.MapSlice, error) {
+	ctx := context.Background()
+	defaultConfigRequest := models.DefaultConfigRequest{Answers: answers}
+	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, defaultConfigRequest)
+	if err != nil {
+		return nil, err
+	}
+	var taskConfig yaml.MapSlice
+	if generatedConfigResponse.Config != nil {
+		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
+		taskConfig = local.JobSpecConfigToYamlSlice(jobSpecConfigs)
+	}
+	return taskConfig, nil
 }
 
 func (j *JobCreateSurvey) getAvailableTaskNames() []string {
@@ -206,22 +228,23 @@ func (j *JobCreateSurvey) getPluginCLIMod(taskName string) (models.CommandLineMo
 	return executionTask.CLIMod, nil
 }
 
-func (j *JobCreateSurvey) askPluginQuestions(ctx context.Context, cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
-	pluginQuestionRequest := models.GetQuestionsRequest{JobName: jobName}
-	pluginQuestionResponse, err := cliMod.GetQuestions(ctx, pluginQuestionRequest)
+func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
+	ctx := context.Background()
+	questionRequest := models.GetQuestionsRequest{JobName: jobName}
+	questionResponse, err := cliMod.GetQuestions(ctx, questionRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	pluginAnswers := models.PluginAnswers{}
-	for _, question := range pluginQuestionResponse.Questions {
-		answers, err := j.askCLIModSurveyQuestion(cliMod, question)
+	answers := models.PluginAnswers{}
+	for _, question := range questionResponse.Questions {
+		answers, err := j.jobSurvey.askCLIModSurveyQuestion(cliMod, question)
 		if err != nil {
 			return nil, err
 		}
-		pluginAnswers = append(pluginAnswers, answers...)
+		answers = append(answers, answers...)
 	}
-	return pluginAnswers, nil
+	return answers, nil
 }
 
 // getValidateJobUniqueness return a validator that checks if the job already exists with the same name
@@ -274,103 +297,6 @@ func (j *JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindo
 		Offset:     "0",
 		TruncateTo: "h",
 	}
-}
-
-func (j *JobCreateSurvey) askCLIModSurveyQuestion(cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
-	surveyPrompt := j.getSurveyPromptFromPluginQuestion(question)
-
-	var responseStr string
-	if err := survey.AskOne(
-		surveyPrompt,
-		&responseStr,
-		survey.WithValidator(j.getValidatePluginQuestion(cliMod, question)),
-	); err != nil {
-		return nil, fmt.Errorf("AskSurveyQuestion: %w", err)
-	}
-
-	answers := models.PluginAnswers{
-		models.PluginAnswer{
-			Question: question,
-			Value:    responseStr,
-		},
-	}
-
-	// check if sub questions are attached on this question
-	for _, subQues := range question.SubQuestions {
-		if responseStr == subQues.IfValue {
-			for _, subQuestion := range subQues.Questions {
-				subQuestionAnswers, err := j.askCLIModSurveyQuestion(cliMod, subQuestion)
-				if err != nil {
-					return nil, err
-				}
-				answers = append(answers, subQuestionAnswers...)
-			}
-		}
-	}
-
-	return answers, nil
-}
-
-func (j *JobCreateSurvey) getValidatePluginQuestion(cliMod models.CommandLineMod, question models.PluginQuestion) survey.Validator {
-	return func(val interface{}) error {
-		str, err := j.convertUserInputPluginToString(val)
-		if err != nil {
-			return err
-		}
-		resp, err := cliMod.ValidateQuestion(context.TODO(), models.ValidateQuestionRequest{
-			Answer: models.PluginAnswer{
-				Question: question,
-				Value:    str,
-			},
-		})
-		if err != nil {
-			return err
-		}
-		if !resp.Success {
-			return errors.New(resp.Error)
-		}
-		return nil
-	}
-}
-
-func (j *JobCreateSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuestion) survey.Prompt {
-	var surveyPrompt survey.Prompt
-	if len(question.Multiselect) > 0 {
-		sel := &survey.Select{
-			Message: question.Prompt,
-			Help:    question.Help,
-			Options: question.Multiselect,
-		}
-		if len(question.Default) > 0 {
-			sel.Default = question.Default
-		}
-		surveyPrompt = sel
-	} else {
-		sel := &survey.Input{
-			Message: question.Prompt,
-			Help:    question.Help,
-		}
-		if len(question.Default) > 0 {
-			sel.Default = question.Default
-		}
-		surveyPrompt = sel
-	}
-	return surveyPrompt
-}
-
-func (j *JobCreateSurvey) convertUserInputPluginToString(val interface{}) (string, error) {
-	var responseStr string
-	switch reflect.TypeOf(val).Name() {
-	case "int":
-		responseStr = strconv.Itoa(val.(int))
-	case "string":
-		responseStr = val.(string)
-	case "OptionAnswer":
-		responseStr = val.(survey.OptionAnswer).Value
-	default:
-		return "", fmt.Errorf("unknown type found while parsing input: %v", val)
-	}
-	return responseStr, nil
 }
 
 // AskWorkingDirectory asks and returns the directory where the new spec folder should be created
