@@ -19,23 +19,11 @@ import (
 
 func BenchmarkSecretRepo(b *testing.B) {
 	ctx := context.Background()
-	project := models.ProjectSpec{
-		ID:   models.ProjectID(uuid.New()),
-		Name: "t-optimus-project",
-		Config: map[string]string{
-			"bucket": "gs://some_folder",
-		},
-	}
-	namespace := models.NamespaceSpec{
-		ID:          uuid.New(),
-		Name:        "sample-namespace",
-		ProjectSpec: project,
-	}
-	otherNamespace := models.NamespaceSpec{
-		ID:          uuid.New(),
-		Name:        "other-namespace",
-		ProjectSpec: project,
-	}
+	project := getProject(1)
+	project.ID = models.ProjectID(uuid.New())
+
+	namespace := getNamespace(1, project)
+	otherNamespace := getNamespace(2, project)
 
 	key, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
@@ -71,11 +59,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 		dbConn := dbSetup()
 		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		for i := 0; i < 50; i++ {
-			secret := models.ProjectSecretItem{
-				Name:  fmt.Sprintf("Secret%d", i),
-				Value: "secret",
-				Type:  models.SecretTypeUserDefined,
-			}
+			secret := getSecret(i)
 			err := repo.Save(ctx, project, namespace, secret)
 			assert.Nil(b, err)
 		}
@@ -83,11 +67,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			num := i % 50
-			secret := models.ProjectSecretItem{
-				Name:  fmt.Sprintf("Secret%d", num),
-				Value: "secret",
-				Type:  models.SecretTypeUserDefined,
-			}
+			secret := getSecret(num)
 			err := repo.Update(ctx, project, namespace, secret)
 			if err != nil {
 				panic(err)
@@ -184,11 +164,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			secretName := fmt.Sprintf("Secret%d", i)
-			secret := models.ProjectSecretItem{
-				Name:  secretName,
-				Value: "secret",
-				Type:  models.SecretTypeUserDefined,
-			}
+			secret := getSecret(i)
 
 			err := repo.Save(ctx, project, namespace, secret)
 			if err != nil {

@@ -1,3 +1,6 @@
+//go:build !unit_test
+// +build !unit_test
+
 package bench
 
 import (
@@ -104,7 +107,7 @@ func BenchmarkJobDependencyRepository(b *testing.B) {
 	})
 }
 
-func getJob(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod, hookUnit models.BasePlugin) models.JobSpec {
+func getJob(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod, hookUnit models.BasePlugin) models.JobSpec { //nolint:unparam
 	jobConfig := []models.JobSpecConfigItem{
 		{Name: "DATASET", Value: "playground"},
 		{Name: "JOB_LABELS", Value: "owner=optimus"},

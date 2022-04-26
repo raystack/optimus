@@ -1,3 +1,6 @@
+//go:build !unit_test
+// +build !unit_test
+
 package bench
 
 import (
@@ -212,7 +215,7 @@ func BenchmarkReplayRepository(b *testing.B) {
 	})
 }
 
-func getReplaySpec(job models.JobSpec, numOfRuns int) *models.ReplaySpec {
+func getReplaySpec(job models.JobSpec, numOfRuns int) *models.ReplaySpec { //nolint:unparam
 	startTime := time.Date(2021, 1, 15, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2021, 1, 15+numOfRuns, 0, 0, 0, 0, time.UTC)
 	treeNode := tree.NewTreeNode(job)

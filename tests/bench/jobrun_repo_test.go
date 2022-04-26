@@ -1,3 +1,6 @@
+//go:build !unit_test
+// +build !unit_test
+
 package bench
 
 import (
@@ -145,12 +148,9 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.JobRunRepository = postgres.NewJobRunRepository(db, adapter)
-		var jobIds []uuid.UUID
 		for i := 0; i < 100; i++ {
 			job := getJob(i, namespace, bq2bq, nil)
 			jobRun := getJobRun(job)
-			jobRun.ID = uuid.New()
-			jobIds = append(jobIds, jobRun.ID)
 			err := repo.Save(ctx, namespace, jobRun)
 			if err != nil {
 				panic(err)
@@ -180,7 +180,6 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-
 			err := repo.AddInstance(ctx, namespace, jobRun, getInstanceSpecs()[0])
 			if err != nil {
 				panic(err)

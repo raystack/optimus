@@ -1,3 +1,6 @@
+//go:build !unit_test
+// +build !unit_test
+
 package bench
 
 import (
@@ -55,7 +58,8 @@ func BenchmarkJobRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			jobSpec := getJob(i, namespace, bq2bq, nil)
+			err := repo.Save(ctx, jobSpec)
 			if err != nil {
 				panic(err)
 			}

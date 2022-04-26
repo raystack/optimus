@@ -1,3 +1,6 @@
+//go:build !unit_test
+// +build !unit_test
+
 package bench
 
 import (
@@ -98,7 +101,6 @@ func BenchmarkProjectRepository(b *testing.B) {
 			}
 		}
 	})
-
 }
 
 func getProject(i int) models.ProjectSpec {
