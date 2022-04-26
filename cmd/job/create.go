@@ -33,8 +33,8 @@ func NewCreateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 		Use:     "create",
 		Short:   "Create a new Job",
 		Example: "optimus job create",
+		RunE:    create.RunE,
 	}
-	cmd.RunE = create.RunE
 	return cmd
 }
 

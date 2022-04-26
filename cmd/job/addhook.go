@@ -26,8 +26,14 @@ func NewAddHookCommand(logger log.Logger) *cobra.Command {
 		jobAddHookSurvey: oSurvey.NewJobAddHookSurvey(),
 		namespaceSurvey:  oSurvey.NewNamespaceSurvey(logger),
 	}
-	cmd := &cobra.Command{}
-	cmd.RunE = addHook.RunE
+	cmd := &cobra.Command{
+		Use:     "addhook",
+		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},
+		Short:   "Attach a new Hook to existing job",
+		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
+		Example: "optimus addhook",
+		RunE:    addHook.RunE,
+	}
 	return cmd
 }
 
