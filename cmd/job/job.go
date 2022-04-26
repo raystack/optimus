@@ -37,7 +37,7 @@ func NewJobCommand() *cobra.Command {
 	cmd.AddCommand(NewAddHookCommand(logger))
 	cmd.AddCommand(NewRenderCommand(logger, job.clientConfig))
 	cmd.AddCommand(NewValidateCommand(logger, job.clientConfig))
-	// cmd.AddCommand(jobRunCommand(&conf))
+	cmd.AddCommand(NewRunCommand(logger, job.clientConfig))
 	// cmd.AddCommand(jobRunListCommand(&conf))
 	// cmd.AddCommand(jobRefreshCommand(&conf))
 

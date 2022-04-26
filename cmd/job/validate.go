@@ -81,7 +81,7 @@ func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (v *validateCommand) validateJobSpecificationRequest(namespace string, jobSpecs []models.JobSpec, verbose bool) (err error) {
+func (v *validateCommand) validateJobSpecificationRequest(namespace string, jobSpecs []models.JobSpec, verbose bool) error {
 	pluginRepo := models.PluginRegistry
 	adapter := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
