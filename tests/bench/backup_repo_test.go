@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 )
 
-func BenchmarkBackupRepository(b *testing.B) {
+func BenchmarkDatastoreBackupRepository(b *testing.B) {
 	ctx := context.Background()
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
