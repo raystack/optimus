@@ -58,8 +58,9 @@ func BenchmarkJobRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
 			jobSpec := getJob(i, namespace, bq2bq, nil)
-			err := repo.Save(ctx, jobSpec)
+			err := repo.Save(ctx, jobSpec, dest)
 			if err != nil {
 				panic(err)
 			}
@@ -73,7 +74,8 @@ func BenchmarkJobRepository(b *testing.B) {
 		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -101,7 +103,8 @@ func BenchmarkJobRepository(b *testing.B) {
 		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -159,7 +162,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -187,7 +191,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -212,7 +217,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -240,7 +246,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -268,7 +275,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil))
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -295,7 +303,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 			ids = append(ids, id)
 			spec := getJob(i, namespace, bq2bq, nil)
 			spec.ID = id
-			err := jobSpecRepo.Save(ctx, spec)
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepo.Save(ctx, spec, dest)
 			if err != nil {
 				panic(err)
 			}

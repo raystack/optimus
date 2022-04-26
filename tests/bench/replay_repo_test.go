@@ -5,6 +5,7 @@ package bench
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -34,9 +35,9 @@ func BenchmarkReplayRepository(b *testing.B) {
 
 	var jobs []models.JobSpec
 	for i := 0; i < 20; i++ {
-		job := getJob(i, namespace, bq2bq, nil)
-		job.ID = uuid.New()
-		jobs = append(jobs, job)
+		jobSpec := getJob(i, namespace, bq2bq, nil)
+		jobSpec.ID = uuid.New()
+		jobs = append(jobs, jobSpec)
 	}
 
 	dbSetup := func() *gorm.DB {
@@ -58,7 +59,8 @@ func BenchmarkReplayRepository(b *testing.B) {
 		jobRepo := postgres.NewJobSpecRepository(dbConn, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < len(jobs); i++ {
-			err := jobRepo.Insert(ctx, jobs[i])
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobRepo.Insert(ctx, jobs[i], dest)
 			assert.Nil(b, err)
 		}
 

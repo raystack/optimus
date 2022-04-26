@@ -92,7 +92,7 @@ func getBigQueryDataStore() *bigquery.BigQuery {
 
 type bqPlugin struct{}
 
-func (b bqPlugin) PluginInfo() (*models.PluginInfoResponse, error) {
+func (bqPlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 	return &models.PluginInfoResponse{
 		Name:          "bq2bq",
 		Description:   "BigQuery to BigQuery transformation task",
@@ -107,7 +107,7 @@ func (b bqPlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 	}, nil
 }
 
-func (b bqPlugin) GenerateDestination(ctx2 context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
+func (bqPlugin) GenerateDestination(_ context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
 	proj, ok1 := request.Config.Get("PROJECT")
 	dataset, ok2 := request.Config.Get("DATASET")
 	tab, ok3 := request.Config.Get("TABLE")
@@ -120,7 +120,7 @@ func (b bqPlugin) GenerateDestination(ctx2 context.Context, request models.Gener
 	return nil, errors.New("missing config key required to generate destination")
 }
 
-func (b bqPlugin) GenerateDependencies(_ context.Context, req models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
+func (bqPlugin) GenerateDependencies(_ context.Context, req models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
 	c, _ := req.Config.Get("DEST")
 	return &models.GenerateDependenciesResponse{Dependencies: []string{c.Value}}, nil
 }

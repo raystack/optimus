@@ -5,6 +5,7 @@ package bench
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -56,7 +57,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			jobRun := getJobRun(getJob(i, namespace, bq2bq, nil))
-			err := repo.Save(ctx, namespace, jobRun)
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, namespace, jobRun, dest)
 			if err != nil {
 				panic(err)
 			}
@@ -72,7 +74,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 			job.ID = uuid.New()
 			jobIds = append(jobIds, job.ID)
 			jobRun := getJobRun(job)
-			err := repo.Save(ctx, namespace, jobRun)
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, namespace, jobRun, dest)
 			if err != nil {
 				panic(err)
 			}
@@ -101,7 +104,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 			jobRun := getJobRun(job)
 			jobRun.ID = uuid.New()
 			jobIds = append(jobIds, jobRun.ID)
-			err := repo.Save(ctx, namespace, jobRun)
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, namespace, jobRun, dest)
 			if err != nil {
 				panic(err)
 			}
@@ -129,7 +133,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 			jobRun := getJobRun(job)
 			jobRun.ID = uuid.New()
 			jobIds = append(jobIds, jobRun.ID)
-			err := repo.Save(ctx, namespace, jobRun)
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, namespace, jobRun, dest)
 			if err != nil {
 				panic(err)
 			}
@@ -151,7 +156,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		for i := 0; i < 100; i++ {
 			job := getJob(i, namespace, bq2bq, nil)
 			jobRun := getJobRun(job)
-			err := repo.Save(ctx, namespace, jobRun)
+			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := repo.Save(ctx, namespace, jobRun, dest)
 			if err != nil {
 				panic(err)
 			}
@@ -175,7 +181,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		job := getJob(1, namespace, bq2bq, nil)
 		jobRun := getJobRun(job)
 		jobRun.ID = uuid.New()
-		err := repo.Save(ctx, namespace, jobRun)
+		dest := fmt.Sprintf("bigquery://integration:playground.table%d", 1)
+		err := repo.Save(ctx, namespace, jobRun, dest)
 		assert.Nil(b, err)
 		b.ResetTimer()
 
