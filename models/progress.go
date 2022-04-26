@@ -170,7 +170,7 @@ func (*ProgressJobSpecHookDependencyEnrich) String() string {
 	return "jobs enriched with hook dependencies"
 }
 
-func (e *ProgressJobDeploymentRequestCreated) String() string {
+func (*ProgressJobDeploymentRequestCreated) String() string {
 	return "job deployment requested"
 }
 
@@ -178,6 +178,6 @@ func (e *ProgressJobDeploymentRequestCreated) ID() DeploymentID {
 	return e.DeployID
 }
 
-func (e *ProgressJobDeploymentRequestCreated) Type() string {
+func (*ProgressJobDeploymentRequestCreated) Type() string {
 	return ProgressTypeJobDeploymentRequestCreated
 }

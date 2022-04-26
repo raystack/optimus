@@ -67,8 +67,9 @@ func (s *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.Name
 	}
 
 	repo := s.jobRunRepoFac.New()
+	jobDestination := "" // fetch job destination from plugin service
 	for _, runs := range jobRuns {
-		if err := repo.Save(ctx, namespace, runs); err != nil {
+		if err := repo.Save(ctx, namespace, runs, jobDestination); err != nil {
 			return models.JobDeploymentDetail{}, err
 		}
 	}

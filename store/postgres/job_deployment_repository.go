@@ -48,7 +48,7 @@ func (d JobDeployment) ToSpec() (models.JobDeployment, error) {
 	}, nil
 }
 
-func (d JobDeployment) FromSpec(deployment models.JobDeployment) (JobDeployment, error) {
+func (JobDeployment) FromSpec(deployment models.JobDeployment) (JobDeployment, error) {
 	details, err := json.Marshal(deployment.Details)
 	if err != nil {
 		return JobDeployment{}, err
