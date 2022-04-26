@@ -37,7 +37,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	if err != nil {
 		return err
 	}
-	d.l.Debug("job dependency fetched", "request id", jobDeployment.ID.UUID())
+	d.l.Debug("job dependency fetched", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
 	// Get all job specs and enrich with hook dependencies
 	jobSpecs = d.enrichJobSpecWithHookDependencies(jobSpecs)
@@ -47,7 +47,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	if err != nil {
 		return err
 	}
-	d.l.Debug("job priority resolved", "request id", jobDeployment.ID.UUID())
+	d.l.Debug("job priority resolved", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
 	// Compile & Deploy
 	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
@@ -59,14 +59,14 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 		jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
 		jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
 		jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
-		d.l.Debug(fmt.Sprintf("%s/%s deployed", jobDeployment.Project.Name, namespaceName), "request id", jobDeployment.ID.UUID())
+		d.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	}
 
 	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
 		return err
 	}
 
-	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID())
+	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	return deployError
 }
 

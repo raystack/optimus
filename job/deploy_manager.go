@@ -48,7 +48,7 @@ func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSp
 	// Check deployment status for the requested Project
 	jobDeployment, err := m.deployRepository.GetByStatusAndProjectID(ctx, models.JobDeploymentStatusInQueue, projectSpec.ID)
 	if err == nil {
-		m.l.Info(fmt.Sprintf("deployment request for %s already exist in queue", projectSpec.Name), "request id", jobDeployment.ID.UUID())
+		m.l.Info("deployment request already exist in queue", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 		return jobDeployment.ID, nil
 	}
 
@@ -77,7 +77,7 @@ func (m *deployManager) createNewRequest(ctx context.Context, projectSpec models
 	if err := m.deployRepository.Save(ctx, newDeployment); err != nil {
 		return models.JobDeployment{}, err
 	}
-	m.l.Info("new deployment request created", "request id", newDeployment.ID.UUID())
+	m.l.Info("new deployment request created", "request id", newDeployment.ID.UUID(), "project name", newDeployment.Project.Name)
 	return newDeployment, nil
 }
 
@@ -113,10 +113,10 @@ func (m *deployManager) spawnDeployer(deployer Deployer) {
 	for deployRequest := range m.requestQ {
 		atomic.AddInt32(&m.deployerCapacity, -1)
 
-		m.l.Info("deployer start processing a request", "request id", deployRequest.ID.UUID())
+		m.l.Info("deployer start processing a request", "request id", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name)
 		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 		if err := deployer.Deploy(ctx, deployRequest); err != nil {
-			m.l.Error("deployment worker failed to process", "error", err.Error())
+			m.l.Error("deployer failed to process", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name, "error", err.Error())
 		}
 		cancelCtx()
 
@@ -140,21 +140,21 @@ func (m *deployManager) Assign() {
 		jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
-				m.l.Debug("no deployment request found.")
+				m.l.Debug(fmt.Sprintf("no deployment request found to assign deployer %d", i+1))
 				return
 			}
-			m.l.Error("failed to fetch executable deployment request", "error", err.Error())
+			m.l.Error(fmt.Sprintf("failed to fetch executable deployment request to assign deployer %d", i+1), "error", err.Error())
 			return
 		}
 
 		select {
 		case m.requestQ <- jobDeployment:
-			m.l.Info("deployer taking a request", "request id", jobDeployment.ID.UUID())
+			m.l.Info(fmt.Sprintf("deployer %d taking a request", i+1), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 		default:
-			m.l.Error("unable to assign deployer to take the request", "request id", jobDeployment.ID.UUID())
+			m.l.Error(fmt.Sprintf("unable to assign deployer %d to take the request", i+1), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 			jobDeployment.Status = models.JobDeploymentStatusCancelled
 			if err := m.deployRepository.Update(ctx, jobDeployment); err != nil {
-				m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled", jobDeployment.ID.UUID()), "error", err.Error())
+				m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled", jobDeployment.ID.UUID()), "project name", jobDeployment.Project.Name, "error", err.Error())
 			}
 		}
 	}
