@@ -75,15 +75,6 @@ func (*scheduler) GetTemplate() []byte {
 	return resBaseDAG
 }
 
-func (s *scheduler) Bootstrap(ctx context.Context, proj models.ProjectSpec) error {
-	bucket, err := s.bucketFac.New(ctx, proj)
-	if err != nil {
-		return err
-	}
-	defer bucket.Close()
-	return bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
-}
-
 func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec, job models.JobSpec) error {
 	_, err := s.compiler.Compile(s.GetTemplate(), namespace, job)
 	return err
@@ -97,6 +88,8 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 		return err
 	}
 	defer bucket.Close()
+
+	bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, j := range jobs {
@@ -157,6 +150,7 @@ func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSp
 	return nil
 }
 
+// TODO list jobs should not refer from the scheduler, rather should list from db and it has notthing to do with scheduler.
 func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
 	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
 	if err != nil {

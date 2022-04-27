@@ -219,7 +219,7 @@ func (s *OptimusServer) setupHandlers() error {
 		db: s.dbConn,
 	}
 
-	scheduler, err := initScheduler(s.logger, s.conf, projectRepoFac)
+	scheduler, err := initScheduler(s.conf)
 	if err != nil {
 		return err
 	}
