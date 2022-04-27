@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/odpf/salt/log"
+
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/salt/log"
 )
 
 var (
