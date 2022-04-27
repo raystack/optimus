@@ -37,9 +37,7 @@ log:
 #scheduler:
 #  # name of the registered scheduler, default: airflow2
 #  name: airflow2
-#  # skip bootstrap step of scheduler required for proper functioning
-#  # but can be disabled for local development, default: false
-#  skip_init: true
+
 
 # application telemetry
 #telemetry:

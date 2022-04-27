@@ -35,7 +35,6 @@ type DBConfig struct {
 
 type SchedulerConfig struct {
 	Name       string `mapstructure:"name" default:"airflow"`
-	SkipInit   bool   `mapstructure:"skip_init"`
 	RaftAddr   string `mapstructure:"raft_addr"`
 	GossipAddr string `mapstructure:"gossip_addr"`
 	NodeID     string `mapstructure:"node_id"`
