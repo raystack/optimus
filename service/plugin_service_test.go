@@ -151,6 +151,10 @@ func TestPluginService(t *testing.T) {
 							Name:  "SECRET_TABLE_NAME",
 							Value: "{{.secret.table_name}}",
 						},
+						{
+							Name:  "DEND",
+							Value: `? DATE(event_timestamp) >= "{{ .DSTART|DATE }}" AND DATE(event_timestamp)< "{{ .DEND|DATE }}"`,
+						},
 					},
 				},
 			}
@@ -160,6 +164,10 @@ func TestPluginService(t *testing.T) {
 					{
 						Name:  "SECRET_TABLE_NAME",
 						Value: "secret_table",
+					},
+					{
+						Name:  "DEND",
+						Value: `? DATE(event_timestamp) >= "{{ .DSTART|DATE }}" AND DATE(event_timestamp)< "{{ .DEND|DATE }}"`,
 					},
 				},
 				Assets:  models.PluginAssets{},

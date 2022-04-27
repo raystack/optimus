@@ -7,6 +7,7 @@ import (
 
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/salt/log"
 )
 
 var (
@@ -19,6 +20,7 @@ type PluginService interface {
 }
 
 type DependencyPluginService struct {
+	logger        log.Logger
 	secretService SecretService
 	pluginRepo    models.PluginRepository
 	engine        models.TemplateEngine
@@ -97,7 +99,8 @@ func (d DependencyPluginService) compileConfig(ctx context.Context, configs mode
 	for _, config := range configs {
 		compiledCnf, err := d.engine.CompileString(config.Value, tmplCtx)
 		if err != nil {
-			return nil, err
+			d.logger.Warn(" error in template compilation :: ", err.Error())
+			compiledCnf = config.Value
 		}
 		confs = append(confs, models.PluginConfig{
 			Name:  config.Name,
@@ -107,8 +110,9 @@ func (d DependencyPluginService) compileConfig(ctx context.Context, configs mode
 	return confs, nil
 }
 
-func NewPluginService(secretService SecretService, pluginRepo models.PluginRepository, engine models.TemplateEngine) *DependencyPluginService {
+func NewPluginService(secretService SecretService, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *DependencyPluginService {
 	return &DependencyPluginService{
+		logger:        logger,
 		secretService: secretService,
 		pluginRepo:    pluginRepo,
 		engine:        engine,
