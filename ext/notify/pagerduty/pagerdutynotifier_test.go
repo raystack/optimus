@@ -2,12 +2,14 @@ package pagerduty
 
 import (
 	"context"
-	"github.com/odpf/optimus/models"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/structpb"
-	"testing"
-	"time"
+
+	"github.com/odpf/optimus/models"
 )
 
 type PagerDutyServiceImplMock struct {
@@ -21,7 +23,6 @@ func (s *PagerDutyServiceImplMock) SendPagerDutyAlert(ctx context.Context, evt E
 
 func TestPagerDuty(t *testing.T) {
 	t.Run("should send alert to pagerduty service using service name successfully", func(t *testing.T) {
-
 		ctx, cancel := context.WithCancel(context.Background())
 		var sendErrors []error
 

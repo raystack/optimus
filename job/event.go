@@ -40,8 +40,7 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 				scheme := chanParts[0]
 				route := chanParts[1]
 
-				e.log.Debug("notification event for job", "job spec name", jobSpec.Name)
-				//e.log.Debug("notification event for job", "job spec name", jobSpec.Name, "event", fmt.Sprintf("%v", evt))
+				e.log.Debug("notification event for job", "job spec name", jobSpec.Name, "event", fmt.Sprintf("%v", evt))
 				if notifyChannel, ok := e.notifyChannels[scheme]; ok {
 					if currErr := notifyChannel.Notify(ctx, models.NotifyAttrs{
 						Namespace: namespace,

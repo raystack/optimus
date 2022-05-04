@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/odpf/optimus/models"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"io"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (
@@ -51,7 +53,7 @@ type Event struct {
 	meta          models.JobEvent
 }
 
-func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
+func (s *Notifier) Notify(_ context.Context, attr models.NotifyAttrs) error {
 	routingKey, ok := attr.Namespace.ProjectSpec.Secret.GetByName(strings.ReplaceAll(attr.Route, "#", "notify_"))
 	if !ok {
 		return fmt.Errorf("failed to find authentication token of bot required for sending notifications, please register %s secret", strings.ReplaceAll(attr.Route, "#", "notify_"))
@@ -85,7 +87,6 @@ type customDetails struct {
 }
 
 func buildPayloadCustomDetails(evt Event) (string, error) {
-
 	details := &customDetails{Owner: evt.owner, Namespace: evt.namespaceName}
 	if logURL, ok := evt.meta.Value["log_url"]; ok && logURL.GetStringValue() != "" {
 		details.LogURL = logURL.GetStringValue()

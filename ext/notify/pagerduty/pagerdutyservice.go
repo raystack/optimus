@@ -2,6 +2,7 @@ package pagerduty
 
 import (
 	"context"
+
 	"github.com/PagerDuty/go-pagerduty"
 )
 
@@ -12,8 +13,7 @@ type PagerDutyService interface {
 type PagerDutyServiceImpl struct {
 }
 
-func (s *PagerDutyServiceImpl) SendPagerDutyAlert(ctx context.Context, evt Event) error {
-
+func (*PagerDutyServiceImpl) SendPagerDutyAlert(ctx context.Context, evt Event) error {
 	details, err := buildPayloadCustomDetails(evt)
 	if err != nil {
 		return err

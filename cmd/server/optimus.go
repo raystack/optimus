@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"net/http"
 	"os"
 	"time"
@@ -22,6 +21,7 @@ import (
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/datastore"
+	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
