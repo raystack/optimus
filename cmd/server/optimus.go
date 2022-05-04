@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"net/http"
 	"os"
 	"time"
@@ -276,6 +277,14 @@ func (s *OptimusServer) setupHandlers() error {
 			func(err error) {
 				s.logger.Error("slack error accumulator", "error", err)
 			},
+		),
+		"pagerduty": pagerduty.NewNotifier(
+			notificationContext,
+			pagerduty.DefaultEventBatchInterval,
+			func(err error) {
+				s.logger.Error("pagerduty error accumulator", "error", err)
+			},
+			new(pagerduty.PagerDutyServiceImpl),
 		),
 	})
 

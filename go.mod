@@ -7,6 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/PagerDuty/go-pagerduty v1.5.1
 	github.com/briandowns/spinner v1.18.0
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/emirpasic/gods v1.12.0
