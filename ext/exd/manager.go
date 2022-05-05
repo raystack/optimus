@@ -58,7 +58,7 @@ func (m *Manager) Install(remotePath, commandName string) error {
 	}
 	alreadyInstalled := m.isAlreadyInstalled(manifest, metadata)
 	if alreadyInstalled {
-		return fmt.Errorf("[%s] is already installed", remotePath)
+		return fmt.Errorf("[%s/%s@%s] is already installed", metadata.OwnerName, metadata.RepoName, metadata.TagName)
 	}
 	asset, err := client.DownloadAsset(metadata.AssetAPIPath)
 	if err != nil {
