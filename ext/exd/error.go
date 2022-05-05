@@ -9,8 +9,8 @@ var (
 	ErrNilMetadata = errors.New("metadata is nil")
 	// ErrNilAsset is error when asset is nil
 	ErrNilAsset = errors.New("asset is nil")
-	// ErrEmptyProviderName is error when provider name is empty
-	ErrEmptyProviderName = errors.New("provider name is empty")
+	// ErrEmptyProvider is error when provider is empty
+	ErrEmptyProvider = errors.New("provider is empty")
 	// ErrNilContext is error when context is nil
 	ErrNilContext = errors.New("context is nil")
 	// ErrNilHTTPDoer is error when http doer is nil
@@ -21,4 +21,6 @@ var (
 	ErrNilInstaller = errors.New("installer is nil")
 	// ErrEmptyRemotePath is error when remote path is empty
 	ErrEmptyRemotePath = errors.New("remote path is empty")
+	// ErrEmptyAPIPath is error when api path is empty
+	ErrEmptyAPIPath = errors.New("api path is empty")
 )

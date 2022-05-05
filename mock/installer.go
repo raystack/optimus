@@ -12,13 +12,13 @@ type Installer struct {
 	mock.Mock
 }
 
-// Install provides a mock function with given fields: _a0, _a1
-func (_m *Installer) Install(_a0 []byte, _a1 *exd.Metadata) error {
-	ret := _m.Called(_a0, _a1)
+// Install provides a mock function with given fields: asset, metadata
+func (_m *Installer) Install(asset []byte, metadata *exd.Metadata) error {
+	ret := _m.Called(asset, metadata)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]byte, *exd.Metadata) error); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(asset, metadata)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -26,13 +26,13 @@ func (_m *Installer) Install(_a0 []byte, _a1 *exd.Metadata) error {
 	return r0
 }
 
-// Prepare provides a mock function with given fields: _a0
-func (_m *Installer) Prepare(_a0 *exd.Metadata) error {
-	ret := _m.Called(_a0)
+// Prepare provides a mock function with given fields: metadata
+func (_m *Installer) Prepare(metadata *exd.Metadata) error {
+	ret := _m.Called(metadata)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*exd.Metadata) error); ok {
-		r0 = rf(_a0)
+		r0 = rf(metadata)
 	} else {
 		r0 = ret.Error(0)
 	}

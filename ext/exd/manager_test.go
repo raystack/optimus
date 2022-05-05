@@ -35,8 +35,9 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		var remotePath string
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
@@ -44,8 +45,9 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if validation is error", func() {
 		manager := &exd.Manager{}
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
@@ -64,16 +66,17 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error parsing remote path", func() {
+	m.Run("should return error if error extracting metadata", func() {
 		exd.ParseRegistry = []exd.Parser{
 			func(remotePath string) (*exd.Metadata, error) {
-				return nil, errors.New("parsing failed")
+				return nil, errors.New("extraction failed")
 			},
 		}
 
@@ -89,8 +92,9 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
@@ -114,58 +118,19 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
-
-		m.Error(actualErr)
-	})
-
-	m.Run("should return error if remote path is already installed", func() {
-		providerName := "testing"
-		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
-					ProviderName: providerName,
-					OwnerName:    "gojek",
-					RepoName:     "optimus-extension-valor",
-					TagName:      "",
-				}, nil
-			},
-		}
-
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			Metadatas: []*exd.Metadata{
-				{
-					ProviderName: providerName,
-					OwnerName:    "gojek",
-					RepoName:     "optimus-extension-valor",
-					TagName:      "",
-				},
-			},
-		}, nil)
-
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
-		if err != nil {
-			panic(err)
-		}
-
-		remotePath := "gojek/optimus-extension-valor"
-
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
 
 	m.Run("should return error if error getting new client", func() {
-		providerName := "testing"
+		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
 			func(remotePath string) (*exd.Metadata, error) {
 				return &exd.Metadata{
-					ProviderName: providerName,
+					ProviderName: provider,
 				}, nil
 			},
 		}
@@ -185,26 +150,27 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error when downloading", func() {
-		providerName := "testing"
+	m.Run("should return error if error getting release", func() {
+		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
 			func(remotePath string) (*exd.Metadata, error) {
 				return &exd.Metadata{
-					ProviderName: providerName,
+					ProviderName: provider,
 				}, nil
 			},
 		}
 
 		client := &mock.Client{}
-		client.On("Download", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("GetRelease", tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &exd.NewClientFactory{}
-		newClientFactory.Add(providerName, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
 		})
 		exd.NewClientRegistry = newClientFactory
@@ -221,26 +187,126 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error when preparing installation", func() {
-		providerName := "testing"
+	m.Run("should return error if remote path is already installed", func() {
+		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
 			func(remotePath string) (*exd.Metadata, error) {
 				return &exd.Metadata{
-					ProviderName: providerName,
+					ProviderName: provider,
+					OwnerName:    "gojek",
+					RepoName:     "optimus-extension-valor",
+					TagName:      "",
 				}, nil
 			},
 		}
 
 		client := &mock.Client{}
-		client.On("Download", tMock.Anything).Return([]byte{}, nil)
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			Name: "v1.0",
+		}, nil)
 		newClientFactory := &exd.NewClientFactory{}
-		newClientFactory.Add(providerName, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return client, nil
+		})
+		exd.NewClientRegistry = newClientFactory
+
+		commandName := "valor"
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{
+				{
+					Name:     "gojek",
+					Provider: provider,
+					Projects: []*exd.RepositoryProject{
+						{
+							Name:          "optimus-extension-valor",
+							CommandName:   commandName,
+							ActiveTagName: "v1.0",
+						},
+					},
+				},
+			},
+		}, nil)
+
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
+		installer := &mock.Installer{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+
+		actualErr := manager.Install(remotePath, commandName)
+
+		m.Error(actualErr)
+	})
+
+	m.Run("should return error if error when downloading", func() {
+		provider := "testing"
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.Metadata, error) {
+				return &exd.Metadata{
+					ProviderName: provider,
+				}, nil
+			},
+		}
+
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			Name: "v1.0",
+		}, nil)
+		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return client, nil
+		})
+		exd.NewClientRegistry = newClientFactory
+
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
+
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
+		installer := &mock.Installer{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
+
+		actualErr := manager.Install(remotePath, commandName)
+
+		m.Error(actualErr)
+	})
+
+	m.Run("should return error if error when preparing installation", func() {
+		provider := "testing"
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.Metadata, error) {
+				return &exd.Metadata{
+					ProviderName: provider,
+				}, nil
+			},
+		}
+
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			Name: "v1.0",
+		}, nil)
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
 		})
 		exd.NewClientRegistry = newClientFactory
@@ -259,26 +325,30 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
 
 	m.Run("should return error if error when executing installation", func() {
-		providerName := "testing"
+		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
 			func(remotePath string) (*exd.Metadata, error) {
 				return &exd.Metadata{
-					ProviderName: providerName,
+					ProviderName: provider,
 				}, nil
 			},
 		}
 
 		client := &mock.Client{}
-		client.On("Download", tMock.Anything).Return([]byte{}, nil)
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			Name: "v1.0",
+		}, nil)
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
-		newClientFactory.Add(providerName, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
 		})
 		exd.NewClientRegistry = newClientFactory
@@ -298,26 +368,30 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
 
-		actualErr := manager.Install(remotePath)
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.Error(actualErr)
 	})
 
 	m.Run("should update manifest and return nil if no error is encountered", func() {
-		providerName := "testing"
+		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
 			func(remotePath string) (*exd.Metadata, error) {
 				return &exd.Metadata{
-					ProviderName: providerName,
+					ProviderName: provider,
 				}, nil
 			},
 		}
 
 		client := &mock.Client{}
-		client.On("Download", tMock.Anything).Return([]byte{}, nil)
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			Name: "v1.0",
+		}, nil)
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
-		newClientFactory.Add(providerName, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
 		})
 		exd.NewClientRegistry = newClientFactory
@@ -337,9 +411,11 @@ func (m *ManagerTestSuite) TestInstall() {
 		if err != nil {
 			panic(err)
 		}
-		remotePath := "gojek/optimus-extension-valor"
 
-		actualErr := manager.Install(remotePath)
+		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
+
+		actualErr := manager.Install(remotePath, commandName)
 
 		m.NoError(actualErr)
 	})

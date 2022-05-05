@@ -24,7 +24,7 @@ type ClientTestSuite struct {
 	suite.Suite
 }
 
-func (c *ClientTestSuite) TestDownload() {
+func (c *ClientTestSuite) TestGetRelease() {
 	var ctx = context.Background()
 	var httpDoer = &mock.HTTPDoer{}
 	client, err := github.NewClient(ctx, httpDoer)
@@ -32,35 +32,21 @@ func (c *ClientTestSuite) TestDownload() {
 		panic(err)
 	}
 
-	c.Run("should return nil and error if metadata is nil", func() {
-		var metadata *exd.Metadata
+	c.Run("should return nil and error if asset api path is empty", func() {
+		var assetAPIPath string
 
-		actualAsset, actualErr := client.Download(metadata)
+		actualRelease, actualErr := client.GetRelease(assetAPIPath)
 
-		c.Nil(actualAsset)
-		c.Error(actualErr)
-	})
-
-	c.Run("should return nil and error if metadata provider is not recognized", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "unrecognized",
-		}
-
-		actualAsset, actualErr := client.Download(metadata)
-
-		c.Nil(actualAsset)
+		c.Nil(actualRelease)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return nil and error if error when creating request to API path", func() {
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: ":invalid-url",
-		}
+		assetAPIPath := ":invalid-url"
 
-		actualAsset, actualErr := client.Download(metadata)
+		actualRelease, actualErr := client.GetRelease(assetAPIPath)
 
-		c.Nil(actualAsset)
+		c.Nil(actualRelease)
 		c.Error(actualErr)
 	})
 
@@ -72,15 +58,11 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
+		actualRelease, actualErr := client.GetRelease(assetAPIPath)
 
-		actualAsset, actualErr := client.Download(metadata)
-
-		c.Nil(actualAsset)
+		c.Nil(actualRelease)
 		c.Error(actualErr)
 	})
 
@@ -95,20 +77,16 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
+		actualRelease, actualErr := client.GetRelease(assetAPIPath)
 
-		actualAsset, actualErr := client.Download(metadata)
-
-		c.Nil(actualAsset)
+		c.Nil(actualRelease)
 		c.Error(actualErr)
 	})
 
-	c.Run("should return nil and error if cannot find asset with the specified suffix", func() {
-		release := github.RepositoryRelease{}
+	c.Run("should return release and nil if no error is encountered", func() {
+		release := github.Release{}
 		marshalled, _ := json.Marshal(release)
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader(marshalled)),
@@ -120,21 +98,75 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
+		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+
+		c.NotNil(actualRelease)
+		c.NoError(actualErr)
+	})
+}
+
+func (c *ClientTestSuite) TestDownloadAsset() {
+	var ctx = context.Background()
+	var httpDoer = &mock.HTTPDoer{}
+	client, err := github.NewClient(ctx, httpDoer)
+	if err != nil {
+		panic(err)
+	}
+
+	c.Run("should return nil and error if asset api path is empty", func() {
+		var assetAPIPath string
+
+		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+
+		c.Nil(actualAsset)
+		c.Error(actualErr)
+	})
+
+	c.Run("should return nil and error if encountered error when getting release", func() {
+		response := &http.Response{
+			Body: io.NopCloser(strings.NewReader("invalid-body")),
 		}
+		httpDoer := &mock.HTTPDoer{}
+		httpDoer.On("Do", tMock.Anything).Return(response, nil)
 
-		actualAsset, actualErr := client.Download(metadata)
+		client, err := github.NewClient(ctx, httpDoer)
+		if err != nil {
+			panic(err)
+		}
+		assetAPIPath := "http://github.com/odpf/optimus"
+
+		actualRelease, actualErr := client.DownloadAsset(assetAPIPath)
+
+		c.Nil(actualRelease)
+		c.Error(actualErr)
+	})
+
+	c.Run("should return nil and error if cannot find asset with the specified suffix", func() {
+		release := github.Release{}
+		marshalled, _ := json.Marshal(release)
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader(marshalled)),
+		}
+		httpDoer := &mock.HTTPDoer{}
+		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+
+		client, err := github.NewClient(ctx, httpDoer)
+		if err != nil {
+			panic(err)
+		}
+		assetAPIPath := "http://github.com/odpf/optimus"
+
+		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return nil and error if error when creating request to download url", func() {
-		release := github.RepositoryRelease{
-			Assets: []*github.ReleaseAsset{
+		release := github.Release{
+			Assets: []*github.Asset{
 				{
 					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
 					BrowserDownloadURL: ":invalid-url",
@@ -152,21 +184,17 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-
-		actualAsset, actualErr := client.Download(metadata)
+		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return nil and error if error when sending download request", func() {
-		release := github.RepositoryRelease{
-			Assets: []*github.ReleaseAsset{
+		release := github.Release{
+			Assets: []*github.Asset{
 				{
 					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
 					BrowserDownloadURL: "http://github.com/odpf/optimus",
@@ -185,13 +213,9 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-
-		actualAsset, actualErr := client.Download(metadata)
+		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
@@ -210,58 +234,19 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-
-		actualAsset, actualErr := client.Download(metadata)
-
-		c.Nil(actualAsset)
-		c.Error(actualErr)
-	})
-
-	c.Run("should return nil and error if the specified release is either draft or pre-release", func() {
-		release := github.RepositoryRelease{
-			Draft:      true,
-			Prerelease: true,
-			Assets: []*github.ReleaseAsset{
-				{
-					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
-					BrowserDownloadURL: "http://github.com/odpf/optimus",
-				},
-			},
-		}
-		marshalled, _ := json.Marshal(release)
-		response := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
-		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
-
-		client, err := github.NewClient(ctx, httpDoer)
-		if err != nil {
-			panic(err)
-		}
-
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-
-		actualAsset, actualErr := client.Download(metadata)
+		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return bytes and nil if no error is encountered", func() {
-		release := github.RepositoryRelease{
-			Assets: []*github.ReleaseAsset{
+		release := github.Release{
+			Assets: []*github.Asset{
 				{
-					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
+					Name:               "asset-" + runtime.GOOS + "-" + runtime.GOARCH,
 					BrowserDownloadURL: "http://github.com/odpf/optimus",
 				},
 			},
@@ -282,13 +267,9 @@ func (c *ClientTestSuite) TestDownload() {
 		if err != nil {
 			panic(err)
 		}
+		assetAPIPath := "http://github.com/odpf/optimus"
 
-		metadata := &exd.Metadata{
-			ProviderName: "github",
-			AssetAPIPath: "http://github.com/odpf/optimus",
-		}
-
-		actualAsset, actualErr := client.Download(metadata)
+		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
 
 		c.NotNil(actualAsset)
 		c.NoError(actualErr)

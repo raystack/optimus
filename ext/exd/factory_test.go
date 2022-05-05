@@ -13,37 +13,37 @@ type NewClientFactoryTestSuite struct {
 }
 
 func (n *NewClientFactoryTestSuite) TestAdd() {
-	n.Run("should return error if provider name is empty", func() {
-		var providerName string
+	n.Run("should return error if provider is empty", func() {
+		var provider string
 		newClientFactory := &exd.NewClientFactory{}
 		newClient := func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return nil, nil
 		}
 
-		actualErr := newClientFactory.Add(providerName, newClient)
+		actualErr := newClientFactory.Add(provider, newClient)
 
 		n.Error(actualErr)
 	})
 
 	n.Run("should return error if client initializer is nil", func() {
-		providerName := "test_provider"
+		provider := "test_provider"
 		newClientFactory := &exd.NewClientFactory{}
 		var newClient exd.NewClient
 
-		actualErr := newClientFactory.Add(providerName, newClient)
+		actualErr := newClientFactory.Add(provider, newClient)
 
 		n.Error(actualErr)
 	})
 
 	n.Run("should return error if client initializer is already registered", func() {
-		providerName := "test_provider"
+		provider := "test_provider"
 		newClientFactory := &exd.NewClientFactory{}
 		newClient := func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return nil, nil
 		}
 
-		actualFirstErr := newClientFactory.Add(providerName, newClient)
-		actualSecondErr := newClientFactory.Add(providerName, newClient)
+		actualFirstErr := newClientFactory.Add(provider, newClient)
+		actualSecondErr := newClientFactory.Add(provider, newClient)
 
 		n.NoError(actualFirstErr)
 		n.Error(actualSecondErr)
@@ -51,48 +51,48 @@ func (n *NewClientFactoryTestSuite) TestAdd() {
 }
 
 func (n *NewClientFactoryTestSuite) TestGet() {
-	n.Run("should return nil and error if provider name is empty", func() {
-		registeredProviderName := "test_provider"
+	n.Run("should return nil and error if provider is empty", func() {
+		registeredProvider := "test_provider"
 		newClientFactory := &exd.NewClientFactory{}
 		newClient := func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return nil, nil
 		}
-		if err := newClientFactory.Add(registeredProviderName, newClient); err != nil {
+		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {
 			panic(err)
 		}
 
-		var testProviderName string
+		var testProvider string
 
-		actualNewClient, actualErr := newClientFactory.Get(testProviderName)
+		actualNewClient, actualErr := newClientFactory.Get(testProvider)
 
 		n.Nil(actualNewClient)
 		n.Error(actualErr)
 	})
 
-	n.Run("should return nil and error if provider name is not registered", func() {
+	n.Run("should return nil and error if provider is not registered", func() {
 		newClientFactory := &exd.NewClientFactory{}
 
-		testProviderName := "test_provider"
+		testProvider := "test_provider"
 
-		actualNewClient, actualErr := newClientFactory.Get(testProviderName)
+		actualNewClient, actualErr := newClientFactory.Get(testProvider)
 
 		n.Nil(actualNewClient)
 		n.Error(actualErr)
 	})
 
 	n.Run("should return client initializer and nil if no error is encountered", func() {
-		registeredProviderName := "test_provider"
+		registeredProvider := "test_provider"
 		newClientFactory := &exd.NewClientFactory{}
 		newClient := func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return nil, nil
 		}
-		if err := newClientFactory.Add(registeredProviderName, newClient); err != nil {
+		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {
 			panic(err)
 		}
 
-		testProviderName := "test_provider"
+		testProvider := "test_provider"
 
-		actualNewClient, actualErr := newClientFactory.Get(testProviderName)
+		actualNewClient, actualErr := newClientFactory.Get(testProvider)
 
 		n.NotNil(actualNewClient)
 		n.NoError(actualErr)

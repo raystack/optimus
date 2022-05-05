@@ -16,33 +16,33 @@ type NewClientFactory struct {
 }
 
 // Add adds client initializer based on provider
-func (c *NewClientFactory) Add(providerName string, newClient NewClient) error {
-	if providerName == "" {
-		return ErrEmptyProviderName
+func (c *NewClientFactory) Add(provider string, newClient NewClient) error {
+	if provider == "" {
+		return ErrEmptyProvider
 	}
 	if newClient == nil {
-		return fmt.Errorf("[%s] newClient is nil", providerName)
+		return fmt.Errorf("[%s] newClient is nil", provider)
 	}
 	if c.registry == nil {
 		c.registry = make(map[string]NewClient)
 	}
-	if c.registry[providerName] != nil {
-		return fmt.Errorf("[%s] is already registered", providerName)
+	if c.registry[provider] != nil {
+		return fmt.Errorf("[%s] is already registered", provider)
 	}
-	c.registry[providerName] = newClient
+	c.registry[provider] = newClient
 	return nil
 }
 
-// Get gets client initializer for a specified provider name
-func (c *NewClientFactory) Get(providerName string) (NewClient, error) {
-	if providerName == "" {
-		return nil, ErrEmptyProviderName
+// Get gets client initializer for a specified provider
+func (c *NewClientFactory) Get(provider string) (NewClient, error) {
+	if provider == "" {
+		return nil, ErrEmptyProvider
 	}
 	if c.registry == nil {
 		c.registry = make(map[string]NewClient)
 	}
-	if c.registry[providerName] == nil {
-		return nil, fmt.Errorf("[%s] is not registered", providerName)
+	if c.registry[provider] == nil {
+		return nil, fmt.Errorf("[%s] is not registered", provider)
 	}
-	return c.registry[providerName], nil
+	return c.registry[provider], nil
 }

@@ -13,7 +13,7 @@ import (
 // Parse parses remote path into metadata according to github convention
 func Parse(remotePath string) (*exd.Metadata, error) {
 	if err := validate(remotePath); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error validating remote path: %w", err)
 	}
 
 	cleanedRemotePath := removeURLPrefix(remotePath)
@@ -22,7 +22,7 @@ func Parse(remotePath string) (*exd.Metadata, error) {
 	tagName := extractTag(cleanedRemotePath)
 
 	return &exd.Metadata{
-		ProviderName: providerName,
+		ProviderName: provider,
 		OwnerName:    ownerName,
 		RepoName:     repoName,
 		TagName:      tagName,
@@ -39,7 +39,7 @@ func extractCommandName(repoName string) string {
 
 func composeAssetDirPath(ownerName, repoName string) string {
 	homeDir, _ := os.UserHomeDir()
-	hostName := providerName + ".com"
+	hostName := provider + ".com"
 	return path.Join(homeDir, exd.ExtensionDir, hostName, ownerName, repoName)
 }
 
@@ -84,7 +84,7 @@ func validate(remotePath string) error {
 	}
 	detectGithub := regexp.MustCompile(`^((https?:\/\/)?(www\.)?github\.com/)?([a-zA-Z0-9\-]+/optimus-extension-[a-zA-Z0-9\-]+(@\S+)?)$`)
 	if result := detectGithub.FindString(remotePath); result == "" {
-		return fmt.Errorf("%s can't recognize remote path: %w", providerName, exd.ErrUnrecognizedRemotePath)
+		return fmt.Errorf("%s can't recognize remote path: %w", provider, exd.ErrUnrecognizedRemotePath)
 	}
 	_, err := os.UserHomeDir()
 	return err

@@ -12,12 +12,12 @@ type Client struct {
 	mock.Mock
 }
 
-// Download provides a mock function with given fields: _a0
-func (_m *Client) Download(_a0 *exd.Metadata) ([]byte, error) {
+// DownloadAsset provides a mock function with given fields: _a0
+func (_m *Client) DownloadAsset(_a0 string) ([]byte, error) {
 	ret := _m.Called(_a0)
 
 	var r0 []byte
-	if rf, ok := ret.Get(0).(func(*exd.Metadata) []byte); ok {
+	if rf, ok := ret.Get(0).(func(string) []byte); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
@@ -26,7 +26,30 @@ func (_m *Client) Download(_a0 *exd.Metadata) ([]byte, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*exd.Metadata) error); ok {
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetRelease provides a mock function with given fields: _a0
+func (_m *Client) GetRelease(_a0 string) (*exd.RepositoryRelease, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *exd.RepositoryRelease
+	if rf, ok := ret.Get(0).(func(string) *exd.RepositoryRelease); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*exd.RepositoryRelease)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)

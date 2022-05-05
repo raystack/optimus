@@ -66,7 +66,7 @@ func TestParse(t *testing.T) {
 		assert.Equal(t, expectedRepoName, actualMetadata.RepoName)
 	})
 
-	t.Run("should return metadata with the empty tag name if not specified", func(t *testing.T) {
+	t.Run("should return metadata with empty tag name if not specified", func(t *testing.T) {
 		remotePath := "github.com/gojek/optimus-extension-valor"
 
 		expectedTagName := ""

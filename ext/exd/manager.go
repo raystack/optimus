@@ -32,7 +32,7 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 }
 
 // Install installs extension based on the remote path
-func (m *Manager) Install(remotePath string) error {
+func (m *Manager) Install(remotePath, commandName string) error {
 	if err := m.validateInput(remotePath); err != nil {
 		return fmt.Errorf("error validating installation: %w", err)
 	}
@@ -44,16 +44,25 @@ func (m *Manager) Install(remotePath string) error {
 	if err != nil {
 		return fmt.Errorf("error extracting metadata: %w", err)
 	}
-	if m.alreadyInstalled(manifest, metadata) {
-		return fmt.Errorf("[%s] is already installed", remotePath)
-	}
 	client, err := m.findClientProvider(metadata.ProviderName)
 	if err != nil {
 		return fmt.Errorf("error finding client provider: %w", err)
 	}
-	asset, err := client.Download(metadata)
+	release, err := client.GetRelease(metadata.AssetAPIPath)
 	if err != nil {
-		return fmt.Errorf("error downloading: %w", err)
+		return fmt.Errorf("error getting release: %w", err)
+	}
+	metadata.TagName = release.Name
+	if commandName != "" {
+		metadata.CommandName = commandName
+	}
+	alreadyInstalled := m.isAlreadyInstalled(manifest, metadata)
+	if alreadyInstalled {
+		return fmt.Errorf("[%s] is already installed", remotePath)
+	}
+	asset, err := client.DownloadAsset(metadata.AssetAPIPath)
+	if err != nil {
+		return fmt.Errorf("error downloading asset: %w", err)
 	}
 	if err := m.installer.Prepare(metadata); err != nil {
 		return fmt.Errorf("error preparing installation: %w", err)
@@ -61,29 +70,68 @@ func (m *Manager) Install(remotePath string) error {
 	if err := m.installer.Install(asset, metadata); err != nil {
 		return fmt.Errorf("error installing asset: %w", err)
 	}
-	return m.updateManifest(manifest, metadata)
+	return m.updateManifest(manifest, metadata, release)
 }
 
-func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata) error {
-	manifest.Metadatas = append(manifest.Metadatas, metadata)
+func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) error {
+	var updated bool
+	for _, owner := range manifest.RepositoryOwners {
+		if owner.Name == metadata.OwnerName {
+			for _, project := range owner.Projects {
+				if project.Name == metadata.RepoName {
+					project.ActiveTagName = metadata.TagName
+					project.AssetAPIPath = metadata.AssetAPIPath
+					project.AssetDirPath = metadata.AssetDirPath
+					project.CommandName = metadata.CommandName
+					project.Releases[metadata.TagName] = release
+
+					updated = true
+					break
+				}
+			}
+			break
+		}
+	}
+	if !updated {
+		manifest.RepositoryOwners = append(manifest.RepositoryOwners, &RepositoryOwner{
+			Name:     metadata.OwnerName,
+			Provider: metadata.ProviderName,
+			Projects: []*RepositoryProject{
+				{
+					Name:          metadata.RepoName,
+					CommandName:   metadata.CommandName,
+					ActiveTagName: metadata.TagName,
+					AssetAPIPath:  metadata.AssetAPIPath,
+					AssetDirPath:  metadata.AssetDirPath,
+					Releases: map[string]*RepositoryRelease{
+						release.Name: release,
+					},
+				},
+			},
+		})
+	}
 	manifest.UpdatedAt = time.Now()
 	return m.manifester.Flush(manifest, ExtensionDir)
 }
 
-func (m *Manager) findClientProvider(providerName string) (Client, error) {
-	newClient, err := NewClientRegistry.Get(providerName)
+func (m *Manager) findClientProvider(provider string) (Client, error) {
+	newClient, err := NewClientRegistry.Get(provider)
 	if err != nil {
 		return nil, fmt.Errorf("error getting new client: %w", err)
 	}
 	return newClient(m.ctx, m.httpDoer)
 }
 
-func (m *Manager) alreadyInstalled(manifest *Manifest, metadata *Metadata) bool {
-	for _, m := range manifest.Metadatas {
-		if m.OwnerName == metadata.OwnerName &&
-			m.RepoName == metadata.RepoName &&
-			m.TagName == metadata.TagName {
-			return true
+func (m *Manager) isAlreadyInstalled(manifest *Manifest, metadata *Metadata) bool {
+	for _, owner := range manifest.RepositoryOwners {
+		if owner.Name == metadata.OwnerName {
+			for _, project := range owner.Projects {
+				if project.Name == metadata.RepoName &&
+					project.ActiveTagName == metadata.TagName {
+					return true
+				}
+			}
+			return false
 		}
 	}
 	return false
