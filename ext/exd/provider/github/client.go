@@ -50,6 +50,9 @@ func (c *Client) GetRelease(apiPath string) (*exd.RepositoryRelease, error) {
 		return nil, fmt.Errorf("error sending request: %w", err)
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status response: %s", response.Status)
+	}
 
 	var release Release
 	decoder := json.NewDecoder(response.Body)

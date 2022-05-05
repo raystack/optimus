@@ -66,9 +66,34 @@ func (c *ClientTestSuite) TestGetRelease() {
 		c.Error(actualErr)
 	})
 
+	c.Run("should return nil and error if response status is not ok", func() {
+		release := github.Release{}
+		marshalled, _ := json.Marshal(release)
+		response := &http.Response{
+			Status:     http.StatusText(http.StatusNotFound),
+			StatusCode: http.StatusNotFound,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
+		}
+		httpDoer := &mock.HTTPDoer{}
+		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+
+		client, err := github.NewClient(ctx, httpDoer)
+		if err != nil {
+			panic(err)
+		}
+		assetAPIPath := "http://github.com/odpf/optimus"
+
+		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+
+		c.Nil(actualRelease)
+		c.Error(actualErr)
+	})
+
 	c.Run("should return nil and error if encountered error when decoding response", func() {
 		response := &http.Response{
-			Body: io.NopCloser(strings.NewReader("invalid-body")),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader("invalid-body")),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
@@ -89,7 +114,9 @@ func (c *ClientTestSuite) TestGetRelease() {
 		release := github.Release{}
 		marshalled, _ := json.Marshal(release)
 		response := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
@@ -126,7 +153,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 
 	c.Run("should return nil and error if encountered error when getting release", func() {
 		response := &http.Response{
-			Body: io.NopCloser(strings.NewReader("invalid-body")),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader("invalid-body")),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
@@ -147,7 +176,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		release := github.Release{}
 		marshalled, _ := json.Marshal(release)
 		response := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
@@ -175,7 +206,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		}
 		marshalled, _ := json.Marshal(release)
 		response := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil)
@@ -203,7 +236,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		}
 		marshalled, _ := json.Marshal(release)
 		response := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
@@ -224,7 +259,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 	c.Run("should return nil and error if error when decoding response", func() {
 		marshalled := []byte("unknown message")
 		response := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
 		}
 		httpDoer := &mock.HTTPDoer{}
 		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
@@ -253,7 +290,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		}
 		marshalled, _ := json.Marshal(release)
 		releaseResponse := &http.Response{
-			Body: io.NopCloser(bytes.NewReader(marshalled)),
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(marshalled)),
 		}
 		downloadResponse := &http.Response{
 			Body: io.NopCloser(strings.NewReader("random payload")),

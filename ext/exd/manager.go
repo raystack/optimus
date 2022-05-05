@@ -134,9 +134,13 @@ func (*Manager) isAlreadyInstalled(manifest *Manifest, metadata *Metadata) bool 
 	for _, owner := range manifest.RepositoryOwners {
 		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
-				if project.Name == metadata.RepoName &&
-					project.ActiveTagName == metadata.TagName {
-					return true
+				if project.Name == metadata.RepoName {
+					for tagName := range project.Releases {
+						if tagName == metadata.TagName {
+							return true
+						}
+					}
+					return false
 				}
 			}
 			return false

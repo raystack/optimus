@@ -229,6 +229,11 @@ func (m *ManagerTestSuite) TestInstall() {
 							Name:          "optimus-extension-valor",
 							CommandName:   commandName,
 							ActiveTagName: "v1.0",
+							Releases: map[string]*exd.RepositoryRelease{
+								"v1.0": {
+									Name: "v1.0",
+								},
+							},
 						},
 					},
 				},
