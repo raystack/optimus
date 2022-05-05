@@ -22,23 +22,17 @@ type RepositoryOwner struct {
 // RepositoryProject represents the repository or place
 // where the extension projects resides
 type RepositoryProject struct {
-	Name          string `yaml:"name"`
-	CommandName   string `yaml:"command_name"`
-	ActiveTagName string `yaml:"active_tag_name"`
-	AssetAPIPath  string `yaml:"asset_api_path"`
-	AssetDirPath  string `yaml:"asset_dir_path"`
-	// Releases is a map of tag to release.
-	// The key is the tag name while the value
-	// is the related release.
-	Releases map[string]*RepositoryRelease `yaml:"releases"`
+	Name          string               `yaml:"name"`
+	CommandName   string               `yaml:"command_name"`
+	ActiveTagName string               `yaml:"active_tag_name"`
+	AssetAPIPath  string               `yaml:"asset_api_path"`
+	AssetDirPath  string               `yaml:"asset_dir_path"`
+	Releases      []*RepositoryRelease `yaml:"releases"`
 }
 
 // RepositoryRelease defines the release version of a repository release
 type RepositoryRelease struct {
-	// Name is the name of a certain release.
-	// It can be the tag name or any other name
-	// depending on how each provider defines it.
-	Name string `yaml:"name"`
+	TagName string `yaml:"tag_name"`
 	// Metadata is additional metadata which might be
 	// required. Each provider can define the key
 	// and its value according to its own requirements.

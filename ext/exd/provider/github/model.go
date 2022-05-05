@@ -16,7 +16,7 @@ func (r *Release) toRepositoryRelease() *exd.RepositoryRelease {
 		assets[i] = a.toRepositoryAsset()
 	}
 	return &exd.RepositoryRelease{
-		Name: r.TagName,
+		TagName: r.TagName,
 		Metadata: map[string]interface{}{
 			"draft":      r.Draft,
 			"prerelease": r.Prerelease,

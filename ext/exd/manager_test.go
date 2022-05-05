@@ -209,7 +209,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
-			Name: "v1.0",
+			TagName: "v1.0",
 		}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -229,11 +229,7 @@ func (m *ManagerTestSuite) TestInstall() {
 							Name:          "optimus-extension-valor",
 							CommandName:   commandName,
 							ActiveTagName: "v1.0",
-							Releases: map[string]*exd.RepositoryRelease{
-								"v1.0": {
-									Name: "v1.0",
-								},
-							},
+							Releases:      []*exd.RepositoryRelease{{TagName: "v1.0"}},
 						},
 					},
 				},
@@ -267,7 +263,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
-			Name: "v1.0",
+			TagName: "v1.0",
 		}, nil)
 		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &exd.NewClientFactory{}
@@ -307,7 +303,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
-			Name: "v1.0",
+			TagName: "v1.0",
 		}, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
@@ -349,7 +345,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
-			Name: "v1.0",
+			TagName: "v1.0",
 		}, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
@@ -392,7 +388,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
-			Name: "v1.0",
+			TagName: "v1.0",
 		}, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}

@@ -57,7 +57,7 @@ func (m *Manager) Install(remotePath, commandName string) error {
 			metadata.OwnerName, metadata.RepoName, metadata.TagName, err,
 		)
 	}
-	metadata.TagName = release.Name
+	metadata.TagName = release.TagName
 	if commandName != "" {
 		metadata.CommandName = commandName
 	}
@@ -106,9 +106,7 @@ func (*Manager) addNewProjectToManifest(manifest *Manifest, metadata *Metadata, 
 				ActiveTagName: metadata.TagName,
 				AssetAPIPath:  metadata.AssetAPIPath,
 				AssetDirPath:  metadata.AssetDirPath,
-				Releases: map[string]*RepositoryRelease{
-					release.Name: release,
-				},
+				Releases:      []*RepositoryRelease{release},
 			},
 		},
 	})
@@ -123,7 +121,7 @@ func (*Manager) updateExistingProjectInManifest(manifest *Manifest, metadata *Me
 					project.AssetAPIPath = metadata.AssetAPIPath
 					project.AssetDirPath = metadata.AssetDirPath
 					project.CommandName = metadata.CommandName
-					project.Releases[metadata.TagName] = release
+					project.Releases = append(project.Releases, release)
 					return true
 				}
 			}
@@ -146,8 +144,8 @@ func (*Manager) isAlreadyInstalled(manifest *Manifest, metadata *Metadata) bool 
 		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
 				if project.Name == metadata.RepoName {
-					for tagName := range project.Releases {
-						if tagName == metadata.TagName {
+					for _, release := range project.Releases {
+						if release.TagName == metadata.TagName {
 							return true
 						}
 					}
