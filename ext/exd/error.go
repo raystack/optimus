@@ -1,6 +1,9 @@
 package exd
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// ErrUnrecognizedRemotePath is error when remote path is not recognized
@@ -24,3 +27,14 @@ var (
 	// ErrEmptyAPIPath is error when api path is empty
 	ErrEmptyAPIPath = errors.New("api path is empty")
 )
+
+func formatError(format string, a ...interface{}) error {
+	for i := 0; i < len(a); i++ {
+		if e, ok := a[i].(error); ok {
+			if u := errors.Unwrap(e); u != nil {
+				a[i] = u
+			}
+		}
+	}
+	return fmt.Errorf(format, a...)
+}

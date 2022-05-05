@@ -58,12 +58,12 @@ func (*defaultManifester) Flush(manifest *Manifest, dirPath string) error {
 		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
 	if err := ManifesterFS.MkdirAll(dirPath, 0o755); err != nil {
-		return fmt.Errorf("error creating dir: %w", err)
+		return fmt.Errorf("error creating manifest dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
 	f, err := ManifesterFS.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
-		return fmt.Errorf("error opening file: %w", err)
+		return fmt.Errorf("error opening manifest file: %w", err)
 	}
 	defer f.Close()
 	_, err = f.Write(content)
