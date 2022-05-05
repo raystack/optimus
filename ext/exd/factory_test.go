@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/odpf/optimus/ext/exd"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/odpf/optimus/ext/exd"
 )
 
 type NewClientFactoryTestSuite struct {

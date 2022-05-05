@@ -16,7 +16,7 @@ const provider = "github"
 
 // Client defines github client
 type Client struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx
 	httpdoer exd.HTTPDoer
 }
 
@@ -105,11 +105,11 @@ func (c *Client) getAssetURL(release *exd.RepositoryRelease) (string, error) {
 	return "", fmt.Errorf("asset with suffix [%s] is not found", suffix)
 }
 
-func (c *Client) getDistSuffix() string {
+func (*Client) getDistSuffix() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	if err := exd.NewClientRegistry.Add(provider,
 		func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return NewClient(ctx, httpDoer)

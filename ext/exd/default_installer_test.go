@@ -101,7 +101,7 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	})
 }
 
-func (d *DefaultInstallerTestSuite) removeDir(dirPath string) {
+func (*DefaultInstallerTestSuite) removeDir(dirPath string) {
 	if err := os.RemoveAll(dirPath); err != nil {
 		panic(err)
 	}

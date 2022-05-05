@@ -106,7 +106,7 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 	})
 }
 
-func (d *DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string) {
+func (*DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string) {
 	if err := exd.ManifesterFS.MkdirAll(dirPath, 0o755); err != nil {
 		panic(err)
 	}
@@ -121,7 +121,7 @@ func (d *DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string
 	}
 }
 
-func (d *DefaultManifesterTestSuite) removeDir(dirPath string) {
+func (*DefaultManifesterTestSuite) removeDir(dirPath string) {
 	if err := exd.ManifesterFS.RemoveAll(dirPath); err != nil {
 		panic(err)
 	}

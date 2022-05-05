@@ -90,6 +90,6 @@ func validate(remotePath string) error {
 	return err
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	exd.ParseRegistry = append(exd.ParseRegistry, Parse)
 }

@@ -15,6 +15,6 @@ implementations:
 * Notify
   Contains implementation for notification.
 * Scheduler
-  Contains implementaiton for scheduler.
+  Contains implementation for scheduler.
 */
 package ext

@@ -27,7 +27,7 @@ func NewDefaultManifester() Manifester {
 }
 
 // Load loads manifest from local machine
-func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
+func (*defaultManifester) Load(dirPath string) (*Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &Manifest{}
 	if _, err := ManifesterFS.Stat(manifestPath); err == nil {
@@ -49,7 +49,7 @@ func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
 }
 
 // Flush flushes manifest into a file in local machine
-func (d *defaultManifester) Flush(manifest *Manifest, dirPath string) error {
+func (*defaultManifester) Flush(manifest *Manifest, dirPath string) error {
 	if manifest == nil {
 		return ErrNilManifester
 	}

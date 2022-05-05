@@ -12,7 +12,7 @@ const ExtensionDir = ".optimus/extensions"
 
 // Manager defines the extension management
 type Manager struct {
-	ctx        context.Context
+	ctx        context.Context //nolint:containedctx
 	httpDoer   HTTPDoer
 	manifester Manifester
 	installer  Installer
@@ -122,7 +122,7 @@ func (m *Manager) findClientProvider(provider string) (Client, error) {
 	return newClient(m.ctx, m.httpDoer)
 }
 
-func (m *Manager) isAlreadyInstalled(manifest *Manifest, metadata *Metadata) bool {
+func (*Manager) isAlreadyInstalled(manifest *Manifest, metadata *Metadata) bool {
 	for _, owner := range manifest.RepositoryOwners {
 		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
@@ -137,7 +137,7 @@ func (m *Manager) isAlreadyInstalled(manifest *Manifest, metadata *Metadata) boo
 	return false
 }
 
-func (m *Manager) extractMetadata(remotePath string) (*Metadata, error) {
+func (*Manager) extractMetadata(remotePath string) (*Metadata, error) {
 	var metadata *Metadata
 	for _, parseFn := range ParseRegistry {
 		mtdt, err := parseFn(remotePath)

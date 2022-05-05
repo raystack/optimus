@@ -24,7 +24,7 @@ func NewDefaultInstaller() Installer {
 }
 
 // Prepare prepares installation based on the metadata
-func (d *defaultInstaller) Prepare(metadata *Metadata) error {
+func (*defaultInstaller) Prepare(metadata *Metadata) error {
 	if metadata == nil {
 		return ErrNilMetadata
 	}
@@ -33,7 +33,7 @@ func (d *defaultInstaller) Prepare(metadata *Metadata) error {
 }
 
 // Install installs asset based on the metadata
-func (d *defaultInstaller) Install(asset []byte, metadata *Metadata) error {
+func (*defaultInstaller) Install(asset []byte, metadata *Metadata) error {
 	if asset == nil {
 		return ErrNilAsset
 	}
