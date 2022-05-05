@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path"
 	"time"
 )
 
@@ -36,7 +38,8 @@ func (m *Manager) Install(remotePath, commandName string) error {
 	if err := m.validateInput(remotePath); err != nil {
 		return fmt.Errorf("error validating installation: %w", err)
 	}
-	manifest, err := m.manifester.Load(ExtensionDir)
+	dirPath := m.getExtensionDirPath()
+	manifest, err := m.manifester.Load(dirPath)
 	if err != nil {
 		return fmt.Errorf("error loading manifest: %w", err)
 	}
@@ -70,11 +73,37 @@ func (m *Manager) Install(remotePath, commandName string) error {
 	if err := m.installer.Install(asset, metadata); err != nil {
 		return fmt.Errorf("error installing asset: %w", err)
 	}
-	return m.updateManifest(manifest, metadata, release)
+	if updated := m.updateExistingProjectInManifest(manifest, metadata, release); !updated {
+		m.addNewProjectToManifest(manifest, metadata, release)
+	}
+	return m.applyManifest(manifest, dirPath)
 }
 
-func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) error {
-	var updated bool
+func (m *Manager) applyManifest(manifest *Manifest, dirPath string) error {
+	manifest.UpdatedAt = time.Now()
+	return m.manifester.Flush(manifest, dirPath)
+}
+
+func (*Manager) addNewProjectToManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) {
+	manifest.RepositoryOwners = append(manifest.RepositoryOwners, &RepositoryOwner{
+		Name:     metadata.OwnerName,
+		Provider: metadata.ProviderName,
+		Projects: []*RepositoryProject{
+			{
+				Name:          metadata.RepoName,
+				CommandName:   metadata.CommandName,
+				ActiveTagName: metadata.TagName,
+				AssetAPIPath:  metadata.AssetAPIPath,
+				AssetDirPath:  metadata.AssetDirPath,
+				Releases: map[string]*RepositoryRelease{
+					release.Name: release,
+				},
+			},
+		},
+	})
+}
+
+func (*Manager) updateExistingProjectInManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) bool {
 	for _, owner := range manifest.RepositoryOwners {
 		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
@@ -84,34 +113,13 @@ func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata, release
 					project.AssetDirPath = metadata.AssetDirPath
 					project.CommandName = metadata.CommandName
 					project.Releases[metadata.TagName] = release
-
-					updated = true
-					break
+					return true
 				}
 			}
 			break
 		}
 	}
-	if !updated {
-		manifest.RepositoryOwners = append(manifest.RepositoryOwners, &RepositoryOwner{
-			Name:     metadata.OwnerName,
-			Provider: metadata.ProviderName,
-			Projects: []*RepositoryProject{
-				{
-					Name:          metadata.RepoName,
-					CommandName:   metadata.CommandName,
-					ActiveTagName: metadata.TagName,
-					AssetAPIPath:  metadata.AssetAPIPath,
-					AssetDirPath:  metadata.AssetDirPath,
-					Releases: map[string]*RepositoryRelease{
-						release.Name: release,
-					},
-				},
-			},
-		})
-	}
-	manifest.UpdatedAt = time.Now()
-	return m.manifester.Flush(manifest, ExtensionDir)
+	return false
 }
 
 func (m *Manager) findClientProvider(provider string) (Client, error) {
@@ -156,6 +164,11 @@ func (*Manager) extractMetadata(remotePath string) (*Metadata, error) {
 		return nil, fmt.Errorf("[%s] is not recognized", remotePath)
 	}
 	return metadata, nil
+}
+
+func (*Manager) getExtensionDirPath() string {
+	userHomeDir, _ := os.UserHomeDir()
+	return path.Join(userHomeDir, ExtensionDir)
 }
 
 func (m *Manager) validateInput(remotePath string) error {
