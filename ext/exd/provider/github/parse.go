@@ -46,7 +46,7 @@ func composeAssetDirPath(ownerName, repoName string) string {
 func composeAPIPath(ownerName, repoName, tagName string) string {
 	prefix := "https://api.github.com/repos"
 	output := fmt.Sprintf("%s/%s/%s/releases", prefix, ownerName, repoName)
-	if tagName == "" {
+	if tagName == "" || tagName == "latest" {
 		output = fmt.Sprintf("%s/latest", output)
 	} else {
 		output = fmt.Sprintf("%s/tags/%s", output, tagName)
