@@ -35,64 +35,65 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 
 // Install installs extension based on the remote path
 func (m *Manager) Install(remotePath, commandName string) error {
-	if err := m.validateInput(remotePath); err != nil {
+	if err := m.validateRemotePath(remotePath); err != nil {
 		return formatError("error validating installation for [%s]: %w", remotePath, err)
 	}
+
 	dirPath := m.getExtensionDirPath()
 	manifest, err := m.manifester.Load(dirPath)
 	if err != nil {
 		return formatError("error loading manifest: %w", err)
 	}
+
 	remoteMetadata, err := m.extractMetadata(remotePath)
 	if err != nil {
 		return formatError("error extracting remote metadata for: %w", err)
 	}
+
 	client, err := m.findClientProvider(remoteMetadata.ProviderName)
 	if err != nil {
 		return formatError("error finding client provider [%s]: %w", remoteMetadata.ProviderName, err)
 	}
+
 	release, err := client.GetRelease(remoteMetadata.AssetAPIPath)
 	if err != nil {
 		return formatError("error getting release for [%s/%s@%s]: %w",
 			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
 		)
 	}
-	remoteMetadata.TagName = release.TagName
-	if commandName != "" {
-		remoteMetadata.CommandName = commandName
+	m.updateRemoteMetadata(remoteMetadata, release, commandName)
+
+	if m.isAlreadyInstalled(manifest, remoteMetadata) {
+		return formatError("[%s/%s@%s] is already installed",
+			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName,
+		)
 	}
-	alreadyInstalled := m.isAlreadyInstalled(manifest, remoteMetadata)
-	if alreadyInstalled {
-		return formatError("[%s/%s@%s] is already installed", remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName)
-	}
+
 	asset, err := client.DownloadAsset(remoteMetadata.AssetAPIPath)
 	if err != nil {
 		return formatError("error downloading asset for [%s/%s@%s]: %w",
 			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
 		)
 	}
-	if err := m.installer.Prepare(remoteMetadata); err != nil {
-		return formatError("error preparing installation for [%s/%s@%s]: %w",
-			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
-		)
-	}
-	if err := m.installer.Install(asset, remoteMetadata); err != nil {
+
+	if err := m.installAsset(asset, remoteMetadata); err != nil {
 		return formatError("error installing asset for [%s/%s@%s]: %w",
 			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
 		)
 	}
-	if updated := m.updateExistingProjectInManifest(manifest, remoteMetadata, release); !updated {
-		m.addNewProjectToManifest(manifest, remoteMetadata, release)
-	}
-	if err := m.applyManifest(manifest, dirPath); err != nil {
-		return formatError("error applying manifest: %w", err)
+
+	m.updateManifest(manifest, remoteMetadata, release)
+	if err := m.manifester.Flush(manifest, dirPath); err != nil {
+		return formatError("error flushing manifest: %w", err)
 	}
 	return nil
 }
 
-func (m *Manager) applyManifest(manifest *Manifest, dirPath string) error {
+func (m *Manager) updateManifest(manifest *Manifest, remoteMetadata *RemoteMetadata, release *RepositoryRelease) {
+	if updated := m.updateExistingProjectInManifest(manifest, remoteMetadata, release); !updated {
+		m.addNewProjectToManifest(manifest, remoteMetadata, release)
+	}
 	manifest.UpdatedAt = time.Now()
-	return m.manifester.Flush(manifest, dirPath)
 }
 
 func (*Manager) addNewProjectToManifest(manifest *Manifest, remoteMetadata *RemoteMetadata, release *RepositoryRelease) {
@@ -158,6 +159,20 @@ func (*Manager) isAlreadyInstalled(manifest *Manifest, remoteMetadata *RemoteMet
 	return false
 }
 
+func (m *Manager) installAsset(asset []byte, remoteMetadata *RemoteMetadata) error {
+	if err := m.installer.Prepare(remoteMetadata); err != nil {
+		return fmt.Errorf("error preparing installation: %w", err)
+	}
+	return m.installer.Install(asset, remoteMetadata)
+}
+
+func (*Manager) updateRemoteMetadata(remoteMetadata *RemoteMetadata, release *RepositoryRelease, commandName string) {
+	remoteMetadata.TagName = release.TagName
+	if commandName != "" {
+		remoteMetadata.CommandName = commandName
+	}
+}
+
 func (*Manager) extractMetadata(remotePath string) (*RemoteMetadata, error) {
 	var remoteMetadata *RemoteMetadata
 	for _, parseFn := range ParseRegistry {
@@ -184,7 +199,7 @@ func (*Manager) getExtensionDirPath() string {
 	return path.Join(userHomeDir, ExtensionDir)
 }
 
-func (m *Manager) validateInput(remotePath string) error {
+func (m *Manager) validateRemotePath(remotePath string) error {
 	if remotePath == "" {
 		return ErrEmptyRemotePath
 	}
