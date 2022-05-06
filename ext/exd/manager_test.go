@@ -194,6 +194,63 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
+	m.Run("should return error if command name is already used by different project", func() {
+		provider := "testing"
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
+					ProviderName: provider,
+					OwnerName:    "gojek",
+					RepoName:     "optimus-extension-valor",
+					TagName:      "",
+				}, nil
+			},
+		}
+
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			TagName: "v1.0",
+		}, nil)
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return client, nil
+		})
+		exd.NewClientRegistry = newClientFactory
+
+		commandName := "valor"
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{
+				{
+					Name:     "odpf",
+					Provider: provider,
+					Projects: []*exd.RepositoryProject{
+						{
+							Name:          "optimus-extension-valor",
+							CommandName:   commandName,
+							ActiveTagName: "v1.0",
+							Releases:      []*exd.RepositoryRelease{{TagName: "v1.0"}},
+						},
+					},
+				},
+			},
+		}, nil)
+
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
+		installer := &mock.Installer{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+
+		actualErr := manager.Install(remotePath, commandName)
+
+		m.Error(actualErr)
+	})
+
 	m.Run("should return error if remote path is already installed", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{

@@ -63,6 +63,10 @@ func (m *Manager) Install(remotePath, commandName string) error {
 	}
 	m.updateRemoteMetadata(remoteMetadata, release, commandName)
 
+	if err := m.validateRemoteMetadataToManifest(remoteMetadata, manifest); err != nil {
+		return formatError("error remote metadata on manifest: %w", err)
+	}
+
 	if m.isAlreadyInstalled(manifest, remoteMetadata) {
 		return formatError("[%s/%s@%s] is already installed",
 			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName,
@@ -132,12 +136,27 @@ func (*Manager) updateExistingProjectInManifest(manifest *Manifest, remoteMetada
 	return false
 }
 
-func (m *Manager) findClientProvider(provider string) (Client, error) {
-	newClient, err := NewClientRegistry.Get(provider)
-	if err != nil {
-		return nil, fmt.Errorf("error getting new client: %w", err)
+func (m *Manager) installAsset(asset []byte, remoteMetadata *RemoteMetadata) error {
+	if err := m.installer.Prepare(remoteMetadata); err != nil {
+		return fmt.Errorf("error preparing installation: %w", err)
 	}
-	return newClient(m.ctx, m.httpDoer)
+	return m.installer.Install(asset, remoteMetadata)
+}
+
+func (*Manager) validateRemoteMetadataToManifest(remoteMetadata *RemoteMetadata, manifest *Manifest) error {
+	for _, owner := range manifest.RepositoryOwners {
+		for _, project := range owner.Projects {
+			if project.CommandName == remoteMetadata.CommandName {
+				if owner.Name == remoteMetadata.OwnerName && project.Name == remoteMetadata.RepoName {
+					return nil
+				}
+				return fmt.Errorf("command [%s] is already used by [%s/%s@%s]",
+					remoteMetadata.CommandName, owner.Name, project.Name, project.ActiveTagName,
+				)
+			}
+		}
+	}
+	return nil
 }
 
 func (*Manager) isAlreadyInstalled(manifest *Manifest, remoteMetadata *RemoteMetadata) bool {
@@ -159,18 +178,19 @@ func (*Manager) isAlreadyInstalled(manifest *Manifest, remoteMetadata *RemoteMet
 	return false
 }
 
-func (m *Manager) installAsset(asset []byte, remoteMetadata *RemoteMetadata) error {
-	if err := m.installer.Prepare(remoteMetadata); err != nil {
-		return fmt.Errorf("error preparing installation: %w", err)
-	}
-	return m.installer.Install(asset, remoteMetadata)
-}
-
 func (*Manager) updateRemoteMetadata(remoteMetadata *RemoteMetadata, release *RepositoryRelease, commandName string) {
 	remoteMetadata.TagName = release.TagName
 	if commandName != "" {
 		remoteMetadata.CommandName = commandName
 	}
+}
+
+func (m *Manager) findClientProvider(provider string) (Client, error) {
+	newClient, err := NewClientRegistry.Get(provider)
+	if err != nil {
+		return nil, fmt.Errorf("error getting new client: %w", err)
+	}
+	return newClient(m.ctx, m.httpDoer)
 }
 
 func (*Manager) extractMetadata(remotePath string) (*RemoteMetadata, error) {
