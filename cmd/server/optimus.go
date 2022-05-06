@@ -219,7 +219,7 @@ func (s *OptimusServer) setupHandlers() error {
 		db: s.dbConn,
 	}
 
-	scheduler, err := initScheduler(s.logger, s.conf, projectRepoFac)
+	scheduler, err := initScheduler(s.conf)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func (s *OptimusServer) setupHandlers() error {
 	projectService := service.NewProjectService(projectRepoFac)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine)
+	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{

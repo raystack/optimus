@@ -60,10 +60,6 @@ func (*Scheduler) DeleteJobs(context.Context, models.NamespaceSpec, []string, pr
 	return nil
 }
 
-func (*Scheduler) Bootstrap(context.Context, models.ProjectSpec) error {
-	return nil
-}
-
 func (*Scheduler) GetJobStatus(context.Context, models.ProjectSpec, string) ([]models.JobStatus, error) {
 	panic("implement me")
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/compiler"
@@ -18,6 +19,7 @@ func TestPluginService(t *testing.T) {
 	ctx := context.Background()
 	depMod := new(mock.DependencyResolverMod)
 	baseUnit := new(mock.BasePlugin)
+	l := log.NewNoop()
 	plugin := &models.Plugin{Base: baseUnit, DependencyMod: depMod}
 	baseUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: "bq",
@@ -75,7 +77,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "plugin not found")
@@ -99,7 +101,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "dependency mod not found for plugin")
@@ -127,7 +129,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "error")
@@ -151,6 +153,10 @@ func TestPluginService(t *testing.T) {
 							Name:  "SECRET_TABLE_NAME",
 							Value: "{{.secret.table_name}}",
 						},
+						{
+							Name:  "DEND",
+							Value: `? DATE(event_timestamp) >= "{{ .DSTART|DATE }}" AND DATE(event_timestamp)< "{{ .DEND|DATE }}"`,
+						},
 					},
 				},
 			}
@@ -161,6 +167,10 @@ func TestPluginService(t *testing.T) {
 						Name:  "SECRET_TABLE_NAME",
 						Value: "secret_table",
 					},
+					{
+						Name:  "DEND",
+						Value: `? DATE(event_timestamp) >= "{{ .DSTART|DATE }}" AND DATE(event_timestamp)< "{{ .DEND|DATE }}"`,
+					},
 				},
 				Assets:  models.PluginAssets{},
 				Project: namespaceSpec.ProjectSpec,
@@ -170,7 +180,7 @@ func TestPluginService(t *testing.T) {
 				Type:        models.DestinationTypeBigquery,
 			}, nil)
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)
@@ -199,7 +209,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "plugin not found")
@@ -223,7 +233,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "dependency mod not found for plugin")
@@ -251,7 +261,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "error")
@@ -293,7 +303,7 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{"project.dataset.table2_destination"}},
 				nil)
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)
