@@ -10,7 +10,7 @@ import (
 )
 
 // ExtensionDir is directory path where to store the extensions
-const ExtensionDir = ".optimus/extensions"
+var ExtensionDir string
 
 // Manager defines the extension management
 type Manager struct {
@@ -39,8 +39,7 @@ func (m *Manager) Install(remotePath, commandName string) error {
 		return formatError("error validating installation for [%s]: %w", remotePath, err)
 	}
 
-	dirPath := m.getExtensionDirPath()
-	manifest, err := m.manifester.Load(dirPath)
+	manifest, err := m.manifester.Load(ExtensionDir)
 	if err != nil {
 		return formatError("error loading manifest: %w", err)
 	}
@@ -87,7 +86,7 @@ func (m *Manager) Install(remotePath, commandName string) error {
 	}
 
 	m.updateManifest(manifest, remoteMetadata, release)
-	if err := m.manifester.Flush(manifest, dirPath); err != nil {
+	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
 		return formatError("error flushing manifest: %w", err)
 	}
 	return nil
@@ -214,11 +213,6 @@ func (*Manager) extractMetadata(remotePath string) (*RemoteMetadata, error) {
 	return remoteMetadata, nil
 }
 
-func (*Manager) getExtensionDirPath() string {
-	userHomeDir, _ := os.UserHomeDir()
-	return path.Join(userHomeDir, ExtensionDir)
-}
-
 func (m *Manager) validateRemotePath(remotePath string) error {
 	if remotePath == "" {
 		return ErrEmptyRemotePath
@@ -240,4 +234,12 @@ func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, ins
 		return ErrNilInstaller
 	}
 	return nil
+}
+
+func init() { //nolint:gochecknoinits
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	ExtensionDir = path.Join(userHomeDir, ".optimus/extensions")
 }
