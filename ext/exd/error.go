@@ -8,8 +8,8 @@ import (
 var (
 	// ErrUnrecognizedRemotePath is error when remote path is not recognized
 	ErrUnrecognizedRemotePath = errors.New("remote path is not recognized")
-	// ErrNilMetadata is error when metadata is nil
-	ErrNilMetadata = errors.New("metadata is nil")
+	// ErrNilRemoteMetadata is error when remote metadata is nil
+	ErrNilRemoteMetadata = errors.New("remote metadata is nil")
 	// ErrNilAsset is error when asset is nil
 	ErrNilAsset = errors.New("asset is nil")
 	// ErrEmptyProvider is error when provider is empty

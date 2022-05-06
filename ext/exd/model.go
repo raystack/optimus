@@ -46,8 +46,8 @@ type RepositoryAsset struct {
 	URL  string `yaml:"url"`
 }
 
-// Metadata defines metadata for an extension
-type Metadata struct {
+// RemoteMetadata defines remote metadata for an extension
+type RemoteMetadata struct {
 	ProviderName string `yaml:"provider_name"`
 	OwnerName    string `yaml:"owner_name"`
 	RepoName     string `yaml:"repo_name"`
@@ -60,8 +60,8 @@ type Metadata struct {
 }
 
 // Parser is contract that will be defined by each provider
-// to parse metadata
-type Parser func(remotePath string) (*Metadata, error)
+// to parse remote metadata from path
+type Parser func(remotePath string) (*RemoteMetadata, error)
 
 // Client is a contract that will be defined by each provider
 // to execute client-related operation
@@ -86,10 +86,10 @@ type HTTPDoer interface {
 type NewClient func(ctx context.Context, httpDoer HTTPDoer) (Client, error)
 
 // Installer is a contract to install extension based on
-// metadata and its asset
+// remote metadata and its asset
 type Installer interface {
-	Prepare(metadata *Metadata) error
-	Install(asset []byte, metadata *Metadata) error
+	Prepare(remoteMetadata *RemoteMetadata) error
+	Install(asset []byte, remoteMetadata *RemoteMetadata) error
 }
 
 // Manifester is a contract to operate on manifest file

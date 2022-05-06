@@ -12,13 +12,13 @@ type Installer struct {
 	mock.Mock
 }
 
-// Install provides a mock function with given fields: asset, metadata
-func (_m *Installer) Install(asset []byte, metadata *exd.Metadata) error {
-	ret := _m.Called(asset, metadata)
+// Install provides a mock function with given fields: asset, remoteMetadata
+func (_m *Installer) Install(asset []byte, remoteMetadata *exd.RemoteMetadata) error {
+	ret := _m.Called(asset, remoteMetadata)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]byte, *exd.Metadata) error); ok {
-		r0 = rf(asset, metadata)
+	if rf, ok := ret.Get(0).(func([]byte, *exd.RemoteMetadata) error); ok {
+		r0 = rf(asset, remoteMetadata)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -26,13 +26,13 @@ func (_m *Installer) Install(asset []byte, metadata *exd.Metadata) error {
 	return r0
 }
 
-// Prepare provides a mock function with given fields: metadata
-func (_m *Installer) Prepare(metadata *exd.Metadata) error {
-	ret := _m.Called(metadata)
+// Prepare provides a mock function with given fields: remoteMetadata
+func (_m *Installer) Prepare(remoteMetadata *exd.RemoteMetadata) error {
+	ret := _m.Called(remoteMetadata)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*exd.Metadata) error); ok {
-		r0 = rf(metadata)
+	if rf, ok := ret.Get(0).(func(*exd.RemoteMetadata) error); ok {
+		r0 = rf(remoteMetadata)
 	} else {
 		r0 = ret.Error(0)
 	}

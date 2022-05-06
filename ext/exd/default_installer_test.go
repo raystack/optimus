@@ -21,23 +21,23 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 	defer func() { exd.InstallerFS = defaultFS }()
 	exd.InstallerFS = afero.NewMemMapFs()
 
-	d.Run("should return error if metadata is nil", func() {
-		var metadata *exd.Metadata
+	d.Run("should return error if remote metadata is nil", func() {
+		var remoteMetadata *exd.RemoteMetadata
 		installer := exd.NewDefaultInstaller()
 
-		actualPrepareErr := installer.Prepare(metadata)
+		actualPrepareErr := installer.Prepare(remoteMetadata)
 
 		d.Error(actualPrepareErr)
 	})
 
 	d.Run("should create directory", func() {
 		dirPath := "./extension"
-		metadata := &exd.Metadata{
+		remoteMetadata := &exd.RemoteMetadata{
 			AssetDirPath: dirPath,
 		}
 		installer := exd.NewDefaultInstaller()
 
-		actualPrepareErr := installer.Prepare(metadata)
+		actualPrepareErr := installer.Prepare(remoteMetadata)
 		actualInfo, actualStatErr := exd.InstallerFS.Stat(dirPath)
 
 		d.NoError(actualPrepareErr)
@@ -52,7 +52,7 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	exd.InstallerFS = afero.NewMemMapFs()
 
 	d.Run("should return error if asset is nil", func() {
-		metadata := &exd.Metadata{
+		remoteMetadata := &exd.RemoteMetadata{
 			AssetDirPath: "./extension",
 			TagName:      "valor",
 		}
@@ -60,18 +60,18 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 
 		var asset []byte
 
-		actualInstallErr := installer.Install(asset, metadata)
+		actualInstallErr := installer.Install(asset, remoteMetadata)
 
 		d.Error(actualInstallErr)
 	})
 
-	d.Run("should return error if metadata is nil", func() {
-		var metadata *exd.Metadata
+	d.Run("should return error if remote metadata is nil", func() {
+		var remoteMetadata *exd.RemoteMetadata
 		installer := exd.NewDefaultInstaller()
 
 		asset := []byte("lorem ipsum")
 
-		actualInstallErr := installer.Install(asset, metadata)
+		actualInstallErr := installer.Install(asset, remoteMetadata)
 
 		d.Error(actualInstallErr)
 	})
@@ -79,7 +79,7 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	d.Run("should write asset to the targeted path", func() {
 		dirPath := "./extension"
 		tagName := "valor"
-		metadata := &exd.Metadata{
+		remoteMetadata := &exd.RemoteMetadata{
 			AssetDirPath: dirPath,
 			TagName:      tagName,
 		}
@@ -89,7 +89,7 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 		message := "lorem ipsum"
 		asset := []byte(message)
 
-		actualInstallErr := installer.Install(asset, metadata)
+		actualInstallErr := installer.Install(asset, remoteMetadata)
 		defer d.removeDir(dirPath)
 		actualFile, actualOpenErr := exd.InstallerFS.OpenFile(filePath, os.O_RDONLY, 0o755)
 		actualContent, actualReadErr := io.ReadAll(actualFile)

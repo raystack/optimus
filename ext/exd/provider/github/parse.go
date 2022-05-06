@@ -10,8 +10,8 @@ import (
 	"github.com/odpf/optimus/ext/exd"
 )
 
-// Parse parses remote path into metadata according to github convention
-func Parse(remotePath string) (*exd.Metadata, error) {
+// Parse parses remote path to get its metadata according to github convention
+func Parse(remotePath string) (*exd.RemoteMetadata, error) {
 	if err := validate(remotePath); err != nil {
 		return nil, fmt.Errorf("error validating remote path: %w", err)
 	}
@@ -21,7 +21,7 @@ func Parse(remotePath string) (*exd.Metadata, error) {
 	repoName := extractRepoName(cleanedRemotePath)
 	tagName := extractTag(cleanedRemotePath)
 
-	return &exd.Metadata{
+	return &exd.RemoteMetadata{
 		ProviderName: provider,
 		OwnerName:    ownerName,
 		RepoName:     repoName,

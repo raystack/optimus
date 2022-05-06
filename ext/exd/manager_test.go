@@ -73,9 +73,9 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error extracting metadata", func() {
+	m.Run("should return error if error extracting remote metadata", func() {
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
+			func(remotePath string) (*exd.RemoteMetadata, error) {
 				return nil, errors.New("extraction failed")
 			},
 		}
@@ -101,7 +101,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if no parser could recognize remote path", func() {
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
+			func(remotePath string) (*exd.RemoteMetadata, error) {
 				return nil, exd.ErrUnrecognizedRemotePath
 			},
 		}
@@ -128,8 +128,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if error getting new client", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 				}, nil
 			},
@@ -160,8 +160,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if error getting release", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 				}, nil
 			},
@@ -197,8 +197,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if remote path is already installed", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 					OwnerName:    "gojek",
 					RepoName:     "optimus-extension-valor",
@@ -254,8 +254,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if error when downloading", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 				}, nil
 			},
@@ -294,8 +294,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if error when preparing installation", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 				}, nil
 			},
@@ -336,8 +336,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should return error if error when executing installation", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 				}, nil
 			},
@@ -379,8 +379,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	m.Run("should update manifest and return nil if no error is encountered", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.Metadata, error) {
-				return &exd.Metadata{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
 					ProviderName: provider,
 				}, nil
 			},
