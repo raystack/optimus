@@ -26,6 +26,10 @@ var (
 	ErrEmptyRemotePath = errors.New("remote path is empty")
 	// ErrEmptyAPIPath is error when api path is empty
 	ErrEmptyAPIPath = errors.New("api path is empty")
+	// ErrEmptyCommandName is error when command name is empty
+	ErrEmptyCommandName = errors.New("command name is empty")
+	// ErrEmptyTagName is error when tag name is empty
+	ErrEmptyTagName = errors.New("tag name is empty")
 )
 
 func formatError(format string, a ...interface{}) error {

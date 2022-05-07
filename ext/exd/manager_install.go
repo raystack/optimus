@@ -186,7 +186,7 @@ func (*Manager) extractMetadata(remotePath string) (*RemoteMetadata, error) {
 	return remoteMetadata, nil
 }
 
-func (m *Manager) validateInstall(remotePath, commandName string) error {
+func (m *Manager) validateInstall(remotePath, _ string) error {
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
 		return err
 	}
