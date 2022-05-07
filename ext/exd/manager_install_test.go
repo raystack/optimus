@@ -426,6 +426,50 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
+	m.Run("should return error if error encountered during updating manifest", func() {
+		provider := "testing"
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.RemoteMetadata, error) {
+				return &exd.RemoteMetadata{
+					ProviderName: provider,
+				}, nil
+			},
+		}
+
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+			TagName: "v1.0",
+		}, nil)
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return client, nil
+		})
+		exd.NewClientRegistry = newClientFactory
+
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
+		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
+
+		installer := &mock.Installer{}
+		installer.On("Prepare", tMock.Anything).Return(nil)
+		installer.On("Install", tMock.Anything, tMock.Anything).Return(nil)
+
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
+
+		actualErr := manager.Install(remotePath, commandName)
+
+		m.Error(actualErr)
+	})
+
 	m.Run("should update manifest and return nil if no error is encountered", func() {
 		provider := "testing"
 		exd.ParseRegistry = []exd.Parser{
@@ -450,7 +494,6 @@ func (m *ManagerTestSuite) TestInstall() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
-		defer manifester.AssertCalled(m.T(), "Flush", tMock.Anything, tMock.Anything)
 
 		installer := &mock.Installer{}
 		installer.On("Prepare", tMock.Anything).Return(nil)
