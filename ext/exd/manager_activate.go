@@ -4,7 +4,7 @@ import "fmt"
 
 // Activate activates the tag for an extension specified by the command name
 func (m *Manager) Activate(commandName, tagName string) error {
-	if err := m.validateActivate(commandName, tagName); err != nil {
+	if err := m.validateActivateInput(commandName, tagName); err != nil {
 		return formatError("error validating activate: %w", err)
 	}
 
@@ -38,18 +38,7 @@ func (*Manager) activateTagInProject(project *RepositoryProject, tagName string)
 	return fmt.Errorf("tag name [%s] is not installed", tagName)
 }
 
-func (*Manager) getProjectByCommandName(manifest *Manifest, commandName string) *RepositoryProject {
-	for _, owner := range manifest.RepositoryOwners {
-		for _, project := range owner.Projects {
-			if project.CommandName == commandName {
-				return project
-			}
-		}
-	}
-	return nil
-}
-
-func (m *Manager) validateActivate(commandName, tagName string) error {
+func (m *Manager) validateActivateInput(commandName, tagName string) error {
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
 		return err
 	}

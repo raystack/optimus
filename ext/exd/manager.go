@@ -31,6 +31,17 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 	}, nil
 }
 
+func (*Manager) getProjectByCommandName(manifest *Manifest, commandName string) *RepositoryProject {
+	for _, owner := range manifest.RepositoryOwners {
+		for _, project := range owner.Projects {
+			if project.CommandName == commandName {
+				return project
+			}
+		}
+	}
+	return nil
+}
+
 func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) error {
 	if ctx == nil {
 		return ErrNilContext

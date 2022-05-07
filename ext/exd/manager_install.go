@@ -8,7 +8,7 @@ import (
 
 // Install installs extension based on the remote path
 func (m *Manager) Install(remotePath, commandName string) error {
-	if err := m.validateInstall(remotePath, commandName); err != nil {
+	if err := m.validateInstallInput(remotePath, commandName); err != nil {
 		return formatError("error validating install: %w", err)
 	}
 
@@ -184,7 +184,7 @@ func (*Manager) extractMetadata(remotePath string) (*RemoteMetadata, error) {
 	return remoteMetadata, nil
 }
 
-func (m *Manager) validateInstall(remotePath, _ string) error {
+func (m *Manager) validateInstallInput(remotePath, _ string) error {
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
 		return err
 	}
