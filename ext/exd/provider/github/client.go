@@ -59,7 +59,7 @@ func (c *Client) GetRelease(apiPath string) (*exd.RepositoryRelease, error) {
 	if err := decoder.Decode(&release); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
-	return release.toRepositoryRelease(), nil
+	return release.toRepositoryRelease(apiPath), nil
 }
 
 // DownloadAsset downloads github asset based on the asset api path.

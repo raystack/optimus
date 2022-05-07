@@ -1,6 +1,11 @@
 package github
 
-import "github.com/odpf/optimus/ext/exd"
+import (
+	"fmt"
+	"regexp"
+
+	"github.com/odpf/optimus/ext/exd"
+)
 
 // Release defines github repository release
 type Release struct {
@@ -10,7 +15,7 @@ type Release struct {
 	Assets     []*Asset `json:"assets"`
 }
 
-func (r *Release) toRepositoryRelease() *exd.RepositoryRelease {
+func (r *Release) toRepositoryRelease(apiPath string) *exd.RepositoryRelease {
 	assets := make([]*exd.RepositoryAsset, len(r.Assets))
 	for i, a := range r.Assets {
 		assets[i] = a.toRepositoryAsset()
@@ -21,8 +26,18 @@ func (r *Release) toRepositoryRelease() *exd.RepositoryRelease {
 			"draft":      r.Draft,
 			"prerelease": r.Prerelease,
 		},
-		Assets: assets,
+		APIPath: r.getStandardizedAPIPath(apiPath),
+		Assets:  assets,
 	}
+}
+
+func (r *Release) getStandardizedAPIPath(apiPath string) string {
+	detectLatest := regexp.MustCompile(`latest/?$`)
+	if found := detectLatest.FindString(apiPath); found != "" {
+		repl := fmt.Sprintf("tags/%s", r.TagName)
+		apiPath = detectLatest.ReplaceAllString(apiPath, repl)
+	}
+	return apiPath
 }
 
 // Asset defines github release asset

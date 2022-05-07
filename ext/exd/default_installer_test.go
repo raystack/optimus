@@ -33,7 +33,7 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 	d.Run("should create directory", func() {
 		dirPath := "./extension"
 		remoteMetadata := &exd.RemoteMetadata{
-			AssetDirPath: dirPath,
+			DirPath: dirPath,
 		}
 		installer := exd.NewDefaultInstaller()
 
@@ -53,8 +53,8 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 
 	d.Run("should return error if asset is nil", func() {
 		remoteMetadata := &exd.RemoteMetadata{
-			AssetDirPath: "./extension",
-			TagName:      "valor",
+			DirPath: "./extension",
+			TagName: "valor",
 		}
 		installer := exd.NewDefaultInstaller()
 
@@ -80,8 +80,8 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 		dirPath := "./extension"
 		tagName := "valor"
 		remoteMetadata := &exd.RemoteMetadata{
-			AssetDirPath: dirPath,
-			TagName:      tagName,
+			DirPath: dirPath,
+			TagName: tagName,
 		}
 		installer := exd.NewDefaultInstaller()
 		filePath := path.Join(dirPath, tagName)

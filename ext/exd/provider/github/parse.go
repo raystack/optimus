@@ -26,8 +26,8 @@ func Parse(remotePath string) (*exd.RemoteMetadata, error) {
 		OwnerName:    ownerName,
 		RepoName:     repoName,
 		TagName:      tagName,
-		AssetAPIPath: composeAPIPath(ownerName, repoName, tagName),
-		AssetDirPath: composeAssetDirPath(ownerName, repoName),
+		APIPath:      composeAPIPath(ownerName, repoName, tagName),
+		DirPath:      composeDirPath(ownerName, repoName),
 		CommandName:  extractCommandName(repoName),
 	}, nil
 }
@@ -37,7 +37,7 @@ func extractCommandName(repoName string) string {
 	return strings.Replace(loweredRepoName, "optimus-extension-", "", 1)
 }
 
-func composeAssetDirPath(ownerName, repoName string) string {
+func composeDirPath(ownerName, repoName string) string {
 	hostName := provider + ".com"
 	return path.Join(exd.ExtensionDir, hostName, ownerName, repoName)
 }

@@ -25,8 +25,7 @@ type RepositoryProject struct {
 	Name          string               `yaml:"name"`
 	CommandName   string               `yaml:"command_name"`
 	ActiveTagName string               `yaml:"active_tag_name"`
-	AssetAPIPath  string               `yaml:"asset_api_path"`
-	AssetDirPath  string               `yaml:"asset_dir_path"`
+	DirPath       string               `yaml:"dir_path"`
 	Releases      []*RepositoryRelease `yaml:"releases"`
 }
 
@@ -37,6 +36,7 @@ type RepositoryRelease struct {
 	// required. Each provider can define the key
 	// and its value according to its own requirements.
 	Metadata map[string]interface{} `yaml:"metadata"`
+	APIPath  string                 `yaml:"api_path"`
 	Assets   []*RepositoryAsset     `yaml:"assets"`
 }
 
@@ -48,15 +48,15 @@ type RepositoryAsset struct {
 
 // RemoteMetadata defines remote metadata for an extension
 type RemoteMetadata struct {
-	ProviderName string `yaml:"provider_name"`
-	OwnerName    string `yaml:"owner_name"`
-	RepoName     string `yaml:"repo_name"`
-	TagName      string `yaml:"tag_name"`
+	ProviderName string
+	OwnerName    string
+	RepoName     string
+	TagName      string
 
-	AssetAPIPath string `yaml:"asset_api_path"`
-	AssetDirPath string `yaml:"asset_dir_path"`
+	APIPath string
+	DirPath string
 
-	CommandName string `yaml:"command_name"`
+	CommandName string
 }
 
 // Parser is contract that will be defined by each provider

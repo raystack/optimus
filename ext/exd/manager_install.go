@@ -27,7 +27,7 @@ func (m *Manager) Install(remotePath, commandName string) error {
 		return formatError("error finding client provider [%s]: %w", remoteMetadata.ProviderName, err)
 	}
 
-	release, err := client.GetRelease(remoteMetadata.AssetAPIPath)
+	release, err := client.GetRelease(remoteMetadata.APIPath)
 	if err != nil {
 		return formatError("error getting release for [%s/%s@%s]: %w",
 			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
@@ -45,7 +45,7 @@ func (m *Manager) Install(remotePath, commandName string) error {
 		)
 	}
 
-	asset, err := client.DownloadAsset(remoteMetadata.AssetAPIPath)
+	asset, err := client.DownloadAsset(remoteMetadata.APIPath)
 	if err != nil {
 		return formatError("error downloading asset for [%s/%s@%s]: %w",
 			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
@@ -81,8 +81,7 @@ func (*Manager) addNewProjectToManifest(manifest *Manifest, remoteMetadata *Remo
 				Name:          remoteMetadata.RepoName,
 				CommandName:   remoteMetadata.CommandName,
 				ActiveTagName: remoteMetadata.TagName,
-				AssetAPIPath:  remoteMetadata.AssetAPIPath,
-				AssetDirPath:  remoteMetadata.AssetDirPath,
+				DirPath:       remoteMetadata.DirPath,
 				Releases:      []*RepositoryRelease{release},
 			},
 		},
@@ -95,8 +94,7 @@ func (*Manager) updateExistingProjectInManifest(manifest *Manifest, remoteMetada
 			for _, project := range owner.Projects {
 				if project.Name == remoteMetadata.RepoName {
 					project.ActiveTagName = remoteMetadata.TagName
-					project.AssetAPIPath = remoteMetadata.AssetAPIPath
-					project.AssetDirPath = remoteMetadata.AssetDirPath
+					project.DirPath = remoteMetadata.DirPath
 					project.CommandName = remoteMetadata.CommandName
 					project.Releases = append(project.Releases, release)
 					return true

@@ -93,25 +93,25 @@ func TestParse(t *testing.T) {
 	t.Run("should return remote metadata with api path latest release if tag is not specified", func(t *testing.T) {
 		remotePath := "github.com/gojek/optimus-extension-valor"
 
-		expectedAssetAPIPath := "https://api.github.com/repos/gojek/optimus-extension-valor/releases/latest"
+		expectedAPIPath := "https://api.github.com/repos/gojek/optimus-extension-valor/releases/latest"
 
 		actualMetadata, actualErr := github.Parse(remotePath)
 
 		assert.NotNil(t, actualMetadata)
 		assert.NoError(t, actualErr)
-		assert.Equal(t, expectedAssetAPIPath, actualMetadata.AssetAPIPath)
+		assert.Equal(t, expectedAPIPath, actualMetadata.APIPath)
 	})
 
 	t.Run("should return remote metadata with api path selected tag release if tag is specified", func(t *testing.T) {
 		remotePath := "github.com/gojek/optimus-extension-valor@v1.0.0"
 
-		expectedAssetAPIPath := "https://api.github.com/repos/gojek/optimus-extension-valor/releases/tags/v1.0.0"
+		expectedAPIPath := "https://api.github.com/repos/gojek/optimus-extension-valor/releases/tags/v1.0.0"
 
 		actualMetadata, actualErr := github.Parse(remotePath)
 
 		assert.NotNil(t, actualMetadata)
 		assert.NoError(t, actualErr)
-		assert.Equal(t, expectedAssetAPIPath, actualMetadata.AssetAPIPath)
+		assert.Equal(t, expectedAPIPath, actualMetadata.APIPath)
 	})
 
 	t.Run("should return remote metadata with the same dir path as expected", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestParse(t *testing.T) {
 
 		assert.NotNil(t, actualMetadata)
 		assert.NoError(t, actualErr)
-		assert.Equal(t, expectedAssetDirPath, actualMetadata.AssetDirPath)
+		assert.Equal(t, expectedAssetDirPath, actualMetadata.DirPath)
 	})
 
 	t.Run("should return remote metadata with the same command name as expected", func(t *testing.T) {
