@@ -33,18 +33,18 @@ func (c *ClientTestSuite) TestGetRelease() {
 	}
 
 	c.Run("should return nil and error if asset api path is empty", func() {
-		var assetAPIPath string
+		var apiPath string
 
-		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+		actualRelease, actualErr := client.GetRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return nil and error if error when creating request to API path", func() {
-		assetAPIPath := ":invalid-url"
+		apiPath := ":invalid-url"
 
-		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+		actualRelease, actualErr := client.GetRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -58,9 +58,9 @@ func (c *ClientTestSuite) TestGetRelease() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+		actualRelease, actualErr := client.GetRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -81,9 +81,9 @@ func (c *ClientTestSuite) TestGetRelease() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+		actualRelease, actualErr := client.GetRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -102,9 +102,9 @@ func (c *ClientTestSuite) TestGetRelease() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+		actualRelease, actualErr := client.GetRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -125,9 +125,9 @@ func (c *ClientTestSuite) TestGetRelease() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus/tags/latest"
 
-		actualRelease, actualErr := client.GetRelease(assetAPIPath)
+		actualRelease, actualErr := client.GetRelease(apiPath)
 
 		c.NotNil(actualRelease)
 		c.NoError(actualErr)
@@ -143,9 +143,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 	}
 
 	c.Run("should return nil and error if asset api path is empty", func() {
-		var assetAPIPath string
+		var apiPath string
 
-		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+		actualAsset, actualErr := client.DownloadAsset(apiPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
@@ -164,9 +164,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.DownloadAsset(assetAPIPath)
+		actualRelease, actualErr := client.DownloadAsset(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -187,9 +187,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+		actualAsset, actualErr := client.DownloadAsset(apiPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
@@ -217,9 +217,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+		actualAsset, actualErr := client.DownloadAsset(apiPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
@@ -248,9 +248,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+		actualAsset, actualErr := client.DownloadAsset(apiPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
@@ -271,9 +271,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+		actualAsset, actualErr := client.DownloadAsset(apiPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
@@ -306,9 +306,9 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		if err != nil {
 			panic(err)
 		}
-		assetAPIPath := "http://github.com/odpf/optimus"
+		apiPath := "http://github.com/odpf/optimus"
 
-		actualAsset, actualErr := client.DownloadAsset(assetAPIPath)
+		actualAsset, actualErr := client.DownloadAsset(apiPath)
 
 		c.NotNil(actualAsset)
 		c.NoError(actualErr)

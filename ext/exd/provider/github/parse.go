@@ -22,13 +22,14 @@ func Parse(remotePath string) (*exd.RemoteMetadata, error) {
 	tagName := extractTag(cleanedRemotePath)
 
 	return &exd.RemoteMetadata{
-		ProviderName: provider,
-		OwnerName:    ownerName,
-		RepoName:     repoName,
-		TagName:      tagName,
-		APIPath:      composeAPIPath(ownerName, repoName, tagName),
-		DirPath:      composeDirPath(ownerName, repoName),
-		CommandName:  extractCommandName(repoName),
+		ProviderName:   provider,
+		OwnerName:      ownerName,
+		RepoName:       repoName,
+		TagName:        tagName,
+		CurrentAPIPath: composeCurrentAPIPath(ownerName, repoName, tagName),
+		UpgradeAPIPath: composeUpgradeAPIPath(ownerName, repoName),
+		LocalDirPath:   composeLocalDirPath(ownerName, repoName),
+		CommandName:    extractCommandName(repoName),
 	}, nil
 }
 
@@ -37,20 +38,20 @@ func extractCommandName(repoName string) string {
 	return strings.Replace(loweredRepoName, "optimus-extension-", "", 1)
 }
 
-func composeDirPath(ownerName, repoName string) string {
+func composeLocalDirPath(ownerName, repoName string) string {
 	hostName := provider + ".com"
 	return path.Join(exd.ExtensionDir, hostName, ownerName, repoName)
 }
 
-func composeAPIPath(ownerName, repoName, tagName string) string {
-	prefix := "https://api.github.com/repos"
-	output := fmt.Sprintf("%s/%s/%s/releases", prefix, ownerName, repoName)
-	if tagName == "" || tagName == "latest" {
-		output = fmt.Sprintf("%s/latest", output)
-	} else {
-		output = fmt.Sprintf("%s/tags/%s", output, tagName)
+func composeUpgradeAPIPath(ownerName, repoName string) string {
+	return fmt.Sprintf("%s/%s/%s/releases/latest", apiPrefix, ownerName, repoName)
+}
+
+func composeCurrentAPIPath(ownerName, repoName, tagName string) string {
+	if tagName == "" {
+		return ""
 	}
-	return output
+	return fmt.Sprintf("%s/%s/%s/releases/tags/%s", apiPrefix, ownerName, repoName, tagName)
 }
 
 func extractTag(cleanedRemotePath string) string {

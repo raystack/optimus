@@ -25,18 +25,19 @@ type RepositoryProject struct {
 	Name          string               `yaml:"name"`
 	CommandName   string               `yaml:"command_name"`
 	ActiveTagName string               `yaml:"active_tag_name"`
-	DirPath       string               `yaml:"dir_path"`
+	LocalDirPath  string               `yaml:"local_dir_path"`
 	Releases      []*RepositoryRelease `yaml:"releases"`
 }
 
 // RepositoryRelease defines the release version of a repository release
 type RepositoryRelease struct {
-	TagName string `yaml:"tag_name"`
+	TagName        string `yaml:"tag_name"`
+	CurrentAPIPath string `yaml:"current_api_path"`
+	UpgradeAPIPath string `yaml:"upgrade_api_path"`
 	// Metadata is additional metadata which might be
 	// required. Each provider can define the key
 	// and its value according to its own requirements.
 	Metadata map[string]interface{} `yaml:"metadata"`
-	APIPath  string                 `yaml:"api_path"`
 	Assets   []*RepositoryAsset     `yaml:"assets"`
 }
 
@@ -53,8 +54,9 @@ type RemoteMetadata struct {
 	RepoName     string
 	TagName      string
 
-	APIPath string
-	DirPath string
+	CurrentAPIPath string
+	UpgradeAPIPath string
+	LocalDirPath   string
 
 	CommandName string
 }
