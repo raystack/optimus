@@ -20,6 +20,9 @@ const registerTimeout = time.Minute * 15
 
 type registerCommand struct {
 	logger log.Logger
+
+	dirPath       string
+	namespaceName string
 }
 
 // NewRegisterCommand initializes command for registering namespace
@@ -34,23 +37,20 @@ func NewRegisterCommand(logger log.Logger) *cobra.Command {
 		Example: "optimus namespace register [--flag]",
 		RunE:    register.RunE,
 	}
-	cmd.Flags().String("dir", "", "Directory where the Optimus client config resides")
-	cmd.Flags().String("name", "", "If set, then only that namespace will be registered")
+	cmd.Flags().StringVar(&register.dirPath, "dir", register.dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&register.namespaceName, "name", register.namespaceName, "If set, then only that namespace will be registered")
 	return cmd
 }
 
 func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
-	dirPath, _ := cmd.Flags().GetString("dir")
-	namespaceName, _ := cmd.Flags().GetString("name")
-
-	filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	filePath := path.Join(r.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
 		return err
 	}
-	if namespaceName != "" {
-		r.logger.Info(fmt.Sprintf("Registering namespace [%s] to [%s]", namespaceName, clientConfig.Host))
-		namespace, err := clientConfig.GetNamespaceByName(namespaceName)
+	if r.namespaceName != "" {
+		r.logger.Info(fmt.Sprintf("Registering namespace [%s] to [%s]", r.namespaceName, clientConfig.Host))
+		namespace, err := clientConfig.GetNamespaceByName(r.namespaceName)
 		if err != nil {
 			return err
 		}

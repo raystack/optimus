@@ -20,6 +20,9 @@ const jobStatusTimeout = time.Second * 30
 type runListCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
+
+	startDate string
+	endDate   string
 }
 
 // NewRunListCommand initializes run list command
@@ -28,6 +31,7 @@ func NewRunListCommand(logger log.Logger, clientConfig *config.ClientConfig) *co
 		logger:       logger,
 		clientConfig: clientConfig,
 	}
+
 	cmd := &cobra.Command{
 		Use:     "list-runs",
 		Short:   "Get Job run details",
@@ -37,8 +41,8 @@ func NewRunListCommand(logger log.Logger, clientConfig *config.ClientConfig) *co
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
-	cmd.Flags().String("start_date", "", "start date of job run")
-	cmd.Flags().String("end_date", "", "end date of job run")
+	cmd.Flags().StringVar(&run.startDate, "start_date", "", "start date of job run")
+	cmd.Flags().StringVar(&run.endDate, "end_date", "", "end date of job run")
 	return cmd
 }
 
@@ -47,14 +51,12 @@ func (r *runListCommand) RunE(cmd *cobra.Command, args []string) error {
 	r.logger.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
 		r.clientConfig.Project.Name, jobName, r.clientConfig.Host))
 
-	startDate, _ := cmd.Flags().GetString("start_date")
-	endDate, _ := cmd.Flags().GetString("end_date")
-	if err := r.validateDateArgs(startDate, endDate); err != nil {
+	if err := r.validateDateArgs(r.startDate, r.endDate); err != nil {
 		return err
 	}
 	var err error
 	var req *pb.JobRunRequest
-	req, err = r.createJobRunRequest(jobName, startDate, endDate)
+	req, err = r.createJobRunRequest(jobName, r.startDate, r.endDate)
 	if err != nil {
 		return err
 	}

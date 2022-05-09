@@ -23,6 +23,8 @@ const runJobTimeout = time.Minute * 1
 type runCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
+
+	namespaceName string
 }
 
 // NewRunCommand initializes run command
@@ -31,6 +33,7 @@ func NewRunCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.
 		logger:       logger,
 		clientConfig: clientConfig,
 	}
+
 	cmd := &cobra.Command{
 		Use:     "run",
 		Short:   "[EXPERIMENTAL] run the provided job on optimus cluster",
@@ -39,15 +42,13 @@ func NewRunCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.
 		Hidden:  true,
 		RunE:    run.RunE,
 	}
-	cmd.Flags().StringP("namespace", "n", "", "Namespace of the resource within project")
+	cmd.Flags().StringVarP(&run.namespaceName, "namespace", "n", run.namespaceName, "Namespace of the resource within project")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
 func (r *runCommand) RunE(cmd *cobra.Command, args []string) error {
-	namespaceName, _ := cmd.Flags().GetString("namespace")
-
-	namespace, err := r.clientConfig.GetNamespaceByName(namespaceName)
+	namespace, err := r.clientConfig.GetNamespaceByName(r.namespaceName)
 	if err != nil {
 		return err
 	}

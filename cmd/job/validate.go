@@ -25,6 +25,9 @@ const validateTimeout = time.Minute * 5
 type validateCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
+
+	verbose       bool
+	namespaceName string
 }
 
 // NewValidateCommand initializes command for rendering job specification
@@ -33,6 +36,7 @@ func NewValidateCommand(logger log.Logger, clientConfig *config.ClientConfig) *c
 		logger:       logger,
 		clientConfig: clientConfig,
 	}
+
 	cmd := &cobra.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
@@ -40,17 +44,14 @@ func NewValidateCommand(logger log.Logger, clientConfig *config.ClientConfig) *c
 		Example: "optimus job render [<job_name>]",
 		RunE:    validate.RunE,
 	}
-	cmd.Flags().BoolP("verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringP("namespace", "n", "", "Namespace of the resource within project")
+	cmd.Flags().BoolVarP(&validate.verbose, "verbose", "v", false, "Print details related to operation")
+	cmd.Flags().StringVarP(&validate.namespaceName, "namespace", "n", validate.namespaceName, "Namespace of the resource within project")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
 func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {
-	namespaceName, _ := cmd.Flags().GetString("namespace")
-	verbose, _ := cmd.Flags().GetBool("verbose")
-
-	namespace, err := v.clientConfig.GetNamespaceByName(namespaceName)
+	namespace, err := v.clientConfig.GetNamespaceByName(v.namespaceName)
 	if err != nil {
 		return err
 	}
@@ -69,14 +70,14 @@ func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("directory '%s': %w", namespace.Job.Path, err)
 	}
-	if err := v.validateJobSpecificationRequest(namespace.Name, jobSpecs, verbose); err != nil {
+	if err := v.validateJobSpecificationRequest(jobSpecs); err != nil {
 		return err
 	}
 	v.logger.Info("Jobs validated successfully, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 
-func (v *validateCommand) validateJobSpecificationRequest(namespace string, jobSpecs []models.JobSpec, verbose bool) error {
+func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobSpec) error {
 	pluginRepo := models.PluginRegistry
 	adapter := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
 
@@ -95,7 +96,7 @@ func (v *validateCommand) validateJobSpecificationRequest(namespace string, jobS
 	checkJobSpecRequest := &pb.CheckJobSpecificationsRequest{
 		ProjectName:   v.clientConfig.Project.Name,
 		Jobs:          adaptedJobSpecs,
-		NamespaceName: namespace,
+		NamespaceName: v.namespaceName,
 	}
 	job := pb.NewJobSpecificationServiceClient(conn.GetConnection())
 	respStream, err := job.CheckJobSpecifications(conn.GetContext(), checkJobSpecRequest)
@@ -105,18 +106,15 @@ func (v *validateCommand) validateJobSpecificationRequest(namespace string, jobS
 		}
 		return fmt.Errorf("validate request failed: %w", err)
 	}
-	return v.getCheckJobSpecificationsResponse(respStream, len(jobSpecs), verbose)
+	return v.getCheckJobSpecificationsResponse(respStream, len(jobSpecs))
 }
 
-func (v *validateCommand) getCheckJobSpecificationsResponse(
-	stream pb.JobSpecificationService_CheckJobSpecificationsClient,
-	totalJobs int, verbose bool,
-) error {
+func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecificationService_CheckJobSpecificationsClient, totalJobs int) error {
 	ackCounter := 0
 	failedCounter := 0
 
 	spinner := progressbar.NewProgressBar()
-	if !verbose {
+	if !v.verbose {
 		spinner.StartProgress(totalJobs, "validating jobs")
 	}
 
@@ -138,11 +136,11 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(
 				validateErrors = append(validateErrors, fmt.Sprintf("failed to validate: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
 			}
 			ackCounter++
-			if verbose {
+			if v.verbose {
 				v.logger.Info(fmt.Sprintf("%d/%d. %s successfully checked", ackCounter, totalJobs, resp.GetJobName()))
 			}
 			spinner.SetProgress(ackCounter)
-		} else if verbose {
+		} else if v.verbose {
 			// ordinary progress event
 			v.logger.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
 		}
@@ -150,7 +148,7 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(
 	spinner.Stop()
 
 	if len(validateErrors) > 0 {
-		if verbose {
+		if v.verbose {
 			for i, reqErr := range validateErrors {
 				v.logger.Error(fmt.Sprintf("%d. %s", i+1, reqErr))
 			}

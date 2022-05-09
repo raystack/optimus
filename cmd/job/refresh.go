@@ -22,6 +22,10 @@ type refreshCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
 
+	verbose    bool
+	namespaces []string
+	jobs       []string
+
 	refreshCounter        int
 	refreshSuccessCounter int
 	refreshFailedCounter  int
@@ -36,6 +40,7 @@ func NewRefreshCommand(logger log.Logger, clientConfig *config.ClientConfig) *co
 		logger:       logger,
 		clientConfig: clientConfig,
 	}
+
 	cmd := &cobra.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
@@ -43,25 +48,16 @@ func NewRefreshCommand(logger log.Logger, clientConfig *config.ClientConfig) *co
 		Example: "optimus job render [<job_name>]",
 		RunE:    render.RunE,
 	}
-	cmd.Flags().BoolP("verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringSliceP("namespaces", "N", nil, "Namespaces of Optimus project")
-	cmd.Flags().StringSliceP("jobs", "J", nil, "Job names")
+	cmd.Flags().BoolVarP(&render.verbose, "verbose", "v", false, "Print details related to operation")
+	cmd.Flags().StringSliceVarP(&render.namespaces, "namespaces", "N", nil, "Namespaces of Optimus project")
+	cmd.Flags().StringSliceVarP(&render.jobs, "jobs", "J", nil, "Job names")
 	return cmd
 }
 
 func (r *refreshCommand) RunE(cmd *cobra.Command, args []string) error {
-	namespaces, err := cmd.Flags().GetStringSlice("namespaces")
-	if err != nil {
-		return err
-	}
-	jobs, err := cmd.Flags().GetStringSlice("jobs")
-	if err != nil {
-		return err
-	}
-	if len(namespaces) > 0 || len(jobs) > 0 {
+	if len(r.namespaces) > 0 || len(r.jobs) > 0 {
 		r.logger.Info("Refreshing job dependencies of selected jobs/namespaces")
 	}
-	verbose, _ := cmd.Flags().GetBool("verbose")
 
 	projectName := r.clientConfig.Project.Name
 	if projectName == "" {
@@ -70,14 +66,14 @@ func (r *refreshCommand) RunE(cmd *cobra.Command, args []string) error {
 	r.logger.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
 	start := time.Now()
 
-	if err := r.refreshJobSpecificationRequest(namespaces, jobs, verbose); err != nil {
+	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
 	r.logger.Info("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 
-func (r *refreshCommand) refreshJobSpecificationRequest(namespaces, jobs []string, verbose bool) error {
+func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, refreshTimeout)
 	if err != nil {
 		return err
@@ -87,8 +83,8 @@ func (r *refreshCommand) refreshJobSpecificationRequest(namespaces, jobs []strin
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
 	respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
 		ProjectName:    r.clientConfig.Project.Name,
-		NamespaceNames: namespaces,
-		JobNames:       jobs,
+		NamespaceNames: r.namespaces,
+		JobNames:       r.jobs,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -96,10 +92,10 @@ func (r *refreshCommand) refreshJobSpecificationRequest(namespaces, jobs []strin
 		}
 		return fmt.Errorf("refresh request failed: %w", err)
 	}
-	return r.getRefreshJobsResponse(respStream, verbose)
+	return r.getRefreshJobsResponse(respStream)
 }
 
-func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationService_RefreshJobsClient, verbose bool) error {
+func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationService_RefreshJobsClient) error {
 	r.resetCounters()
 	defer r.resetCounters()
 
@@ -116,7 +112,7 @@ func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationServic
 			break
 		}
 
-		refreshErrs, deployErrs := r.handleStreamResponse(resp, verbose)
+		refreshErrs, deployErrs := r.handleStreamResponse(resp)
 		allRefreshErrors = append(refreshErrs, refreshErrs...)
 		allDeployErrors = append(allDeployErrors, deployErrs...)
 	}
@@ -144,19 +140,19 @@ func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationServic
 	return streamError
 }
 
-func (r *refreshCommand) handleStreamResponse(refreshResponse *pb.RefreshJobsResponse, verbose bool) (refreshErrs, deployErrs []error) {
+func (r *refreshCommand) handleStreamResponse(refreshResponse *pb.RefreshJobsResponse) (refreshErrs, deployErrs []error) {
 	switch refreshResponse.Type {
 	case models.ProgressTypeJobUpload:
 		r.deployCounter++
 		if !refreshResponse.GetSuccess() {
 			r.deployFailedCounter++
-			if verbose {
+			if r.verbose {
 				r.logger.Warn(fmt.Sprintf("%d. %s failed to be deployed: %s", r.deployCounter, refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 			}
 			deployErrs = append(deployErrs, fmt.Errorf("failed to deploy: %s, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 		} else {
 			r.deploySuccessCounter++
-			if verbose {
+			if r.verbose {
 				r.logger.Info(fmt.Sprintf("%d. %s successfully deployed", r.deployCounter, refreshResponse.GetJobName()))
 			}
 		}
@@ -164,18 +160,18 @@ func (r *refreshCommand) handleStreamResponse(refreshResponse *pb.RefreshJobsRes
 		r.refreshCounter++
 		if !refreshResponse.GetSuccess() {
 			r.refreshFailedCounter++
-			if verbose {
+			if r.verbose {
 				r.logger.Warn(fmt.Sprintf("error '%s': failed to refresh dependency, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 			}
 			refreshErrs = append(refreshErrs, fmt.Errorf("failed to refresh: %s, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 		} else {
 			r.refreshSuccessCounter++
-			if verbose {
+			if r.verbose {
 				r.logger.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", refreshResponse.GetJobName()))
 			}
 		}
 	default:
-		if verbose {
+		if r.verbose {
 			// ordinary progress event
 			r.logger.Info(fmt.Sprintf("info '%s': %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 		}

@@ -20,6 +20,9 @@ const registerTimeout = time.Minute * 15
 
 type registerCommand struct {
 	logger log.Logger
+
+	dirPath        string
+	withNamespaces bool
 }
 
 // NewRegisterCommand initializes command to create a project
@@ -34,16 +37,13 @@ func NewRegisterCommand(logger log.Logger) *cobra.Command {
 		Example: "optimus project register [--flag]",
 		RunE:    register.RunE,
 	}
-	cmd.Flags().String("dir", "", "Directory where the Optimus client config resides")
-	cmd.Flags().Bool("with-namespaces", false, "If yes, then namespace will be registered or updated as well")
+	cmd.Flags().StringVar(&register.dirPath, "dir", register.dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().BoolVar(&register.withNamespaces, "with-namespaces", register.withNamespaces, "If yes, then namespace will be registered or updated as well")
 	return cmd
 }
 
 func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
-	dirPath, _ := cmd.Flags().GetString("dir")
-	withNamespaces, _ := cmd.Flags().GetBool("with-namespaces")
-
-	filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	filePath := path.Join(r.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := r.registerProject(clientConfig.Host, clientConfig.Project); err != nil {
 		return err
 	}
-	if withNamespaces {
+	if r.withNamespaces {
 		r.logger.Info(fmt.Sprintf("Registering all namespaces from: %s", filePath))
 		if err := namespace.RegisterSelectedNamespaces(r.logger, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
 			return err

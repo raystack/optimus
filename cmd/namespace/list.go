@@ -19,6 +19,10 @@ const listTimeout = time.Minute * 15
 
 type listCommand struct {
 	logger log.Logger
+
+	dirPath     string
+	host        string
+	projectName string
 }
 
 // NewListCommand initializes command for listing namespace
@@ -32,21 +36,18 @@ func NewListCommand(logger log.Logger) *cobra.Command {
 		Example: "optimus namespace list [--flag]",
 		RunE:    list.RunE,
 	}
-	cmd.Flags().String("dir", "", "Directory where the Optimus client config resides")
-	cmd.Flags().String("host", "", "Targeted server host, by default taking from client config")
-	cmd.Flags().String("project-name", "", "Targeted project name, by default taking from client config")
+	cmd.Flags().StringVar(&list.dirPath, "dir", list.dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&list.host, "host", list.host, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&list.projectName, "project-name", list.projectName, "Targeted project name, by default taking from client config")
 	return cmd
 }
 
 func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
-	dirPath, _ := cmd.Flags().GetString("dir")
-
-	filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	filePath := path.Join(l.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
 		return err
 	}
-	projectName, _ := cmd.Flags().GetString("project-name")
 
 	l.logger.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", clientConfig.Project.Name, clientConfig.Host))
 	namespacesFromServer, err := l.listNamespacesFromServer(clientConfig.Host, clientConfig.Project.Name)
@@ -54,7 +55,7 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var namespacesFromLocal []*config.Namespace
-	if clientConfig != nil && clientConfig.Project.Name == projectName {
+	if clientConfig != nil && clientConfig.Project.Name == l.projectName {
 		namespacesFromLocal = clientConfig.Namespaces
 	}
 	result := l.stringifyNamespaces(namespacesFromLocal, namespacesFromServer)

@@ -17,6 +17,11 @@ const describeTimeout = time.Minute * 15
 
 type describeCommand struct {
 	logger log.Logger
+
+	dirPath       string
+	host          string
+	projectName   string
+	namespaceName string
 }
 
 // NewDescribeCommand initializes command to describe namespace
@@ -31,26 +36,27 @@ func NewDescribeCommand(logger log.Logger) *cobra.Command {
 		Example: "optimus namespace describe [--flag]",
 		RunE:    describe.RunE,
 	}
-	cmd.Flags().String("dir", "", "Directory where the Optimus client config resides")
-	cmd.Flags().String("host", "", "Targeted server host, by default taking from client config")
-	cmd.Flags().String("project-name", "", "Targeted project name, by default taking from client config")
-	cmd.Flags().String("name", "", "Targeted namespace name, by default taking from client config")
+	cmd.Flags().StringVar(&describe.dirPath, "dir", describe.dirPath, "Directory where the Optimus client config resides")
+	cmd.Flags().StringVar(&describe.host, "host", describe.host, "Targeted server host, by default taking from client config")
+	cmd.Flags().StringVar(&describe.projectName, "project-name", describe.projectName, "Targeted project name, by default taking from client config")
+	cmd.Flags().StringVar(&describe.namespaceName, "name", describe.namespaceName, "Targeted namespace name, by default taking from client config")
 	cmd.MarkFlagRequired("name")
 	return cmd
 }
 
 func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
-	dirPath, _ := cmd.Flags().GetString("dir")
-	namespaceName, _ := cmd.Flags().GetString("name")
-
-	filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	filePath := path.Join(d.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	d.logger.Info(fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]", namespaceName, clientConfig.Project.Name, clientConfig.Host))
-	namespace, err := d.getNamespace(clientConfig.Project.Name, namespaceName, clientConfig.Host)
+	d.logger.Info(
+		fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]",
+			d.namespaceName, clientConfig.Project.Name, clientConfig.Host,
+		),
+	)
+	namespace, err := d.getNamespace(clientConfig.Project.Name, d.namespaceName, clientConfig.Host)
 	if err != nil {
 		return err
 	}
