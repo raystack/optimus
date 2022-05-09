@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	oSurvey "github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -17,8 +17,8 @@ import (
 type createCommand struct {
 	logger          log.Logger
 	clientConfig    *config.ClientConfig
-	namespaceSurvey *oSurvey.NamespaceSurvey
-	jobCreateSurvey *oSurvey.JobCreateSurvey
+	namespaceSurvey *survey.NamespaceSurvey
+	jobCreateSurvey *survey.JobCreateSurvey
 }
 
 // NewCreateCommand initializes job create command
@@ -26,8 +26,8 @@ func NewCreateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 	create := &createCommand{
 		logger:          logger,
 		clientConfig:    clientConfig,
-		namespaceSurvey: oSurvey.NewNamespaceSurvey(logger),
-		jobCreateSurvey: oSurvey.NewJobCreateSurvey(),
+		namespaceSurvey: survey.NewNamespaceSurvey(logger),
+		jobCreateSurvey: survey.NewJobCreateSurvey(),
 	}
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -45,12 +45,12 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jwd, err := c.jobCreateSurvey.AskWorkingDirectory(jobSpecFs, "")
+	jwd, err := survey.AskWorkingDirectory(jobSpecFs, "")
 	if err != nil {
 		return err
 	}
 
-	newDirName, err := c.jobCreateSurvey.AskDirectoryName(jwd)
+	newDirName, err := survey.AskDirectoryName(jwd)
 	if err != nil {
 		return err
 	}
