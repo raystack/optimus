@@ -267,7 +267,6 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 
 	s.expectedServerConfig.Scheduler = config.SchedulerConfig{}
 	s.expectedServerConfig.Scheduler.Name = "airflow2"
-	s.expectedServerConfig.Scheduler.SkipInit = true
 
 	s.expectedServerConfig.Telemetry = config.TelemetryConfig{}
 	s.expectedServerConfig.Telemetry.ProfileAddr = ":9110"

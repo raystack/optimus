@@ -19,7 +19,7 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-func initScheduler(l log.Logger, conf config.ServerConfig, projectRepoFac *projectRepoFactory) (models.SchedulerUnit, error) {
+func initScheduler(conf config.ServerConfig) (models.SchedulerUnit, error) {
 	jobCompiler := compiler.NewCompiler(conf.Serve.IngressHost)
 	// init default scheduler
 	var scheduler models.SchedulerUnit
@@ -34,24 +34,6 @@ func initScheduler(l log.Logger, conf config.ServerConfig, projectRepoFac *proje
 		return nil, fmt.Errorf("unsupported scheduler: %s", conf.Scheduler.Name)
 	}
 
-	if !conf.Scheduler.SkipInit { // TODO: This should not be required
-		registeredProjects, err := projectRepoFac.New().GetAll(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("projectRepoFactory.GetAll(): %w", err)
-		}
-		// bootstrap scheduler for registered projects
-		for _, proj := range registeredProjects {
-			bootstrapCtx, cancel := context.WithTimeout(context.Background(), BootstrapTimeout)
-			l.Info("bootstrapping project", "project name", proj.Name)
-			if err := scheduler.Bootstrap(bootstrapCtx, proj); err != nil {
-				// Major ERROR, but we can't make this fatal
-				// other projects might be working fine
-				l.Error("no bootstrapping project", "error", err)
-			}
-			l.Info("bootstrapped project", "project name", proj.Name)
-			cancel()
-		}
-	}
 	return scheduler, nil
 }
 

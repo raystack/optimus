@@ -110,28 +110,6 @@ func TestAirflow2(t *testing.T) {
 			Name: "job-1",
 		},
 	}
-	t.Run("Bootstrap", func(t *testing.T) {
-		t.Run("should successfully bootstrap for gcs buckets", func(t *testing.T) {
-			inMemBlob := memblob.OpenBucket(nil)
-			mockBucket := &MockedBucket{
-				bucket: inMemBlob,
-			}
-			defer mockBucket.AssertExpectations(t)
-
-			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
-			defer mockBucketFac.AssertExpectations(t)
-
-			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
-			mockBucket.On("WriteAll", ctx, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
-			err := air.Bootstrap(ctx, proj)
-			assert.Nil(t, err)
-
-			storedBytes, err := inMemBlob.ReadAll(ctx, "dags/__lib.py")
-			assert.Nil(t, err)
-			assert.Equal(t, airflow2.SharedLib, storedBytes)
-		})
-	})
 	t.Run("DeployJobs", func(t *testing.T) {
 		t.Run("should successfully deploy jobs to blob buckets", func(t *testing.T) {
 			inMemBlob := memblob.OpenBucket(nil)
@@ -153,6 +131,7 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
+			mockBucket.On("WriteAll", ctx, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
 			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 			err := air.DeployJobs(ctx, ns, jobSpecs, nil)
 			assert.Nil(t, err)

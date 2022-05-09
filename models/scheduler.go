@@ -29,10 +29,6 @@ type SchedulerUnit interface {
 	DeployJobsVerbose(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec) (JobDeploymentDetail, error)
 	DeleteJobs(ctx context.Context, namespace NamespaceSpec, jobNames []string, obs progress.Observer) error
 
-	// Bootstrap will be executed per project when the application boots up
-	// this can be used to do adhoc commands for initialization of scheduler
-	Bootstrap(context.Context, ProjectSpec) error
-
 	// GetJobStatus should return the current and previous status of job
 	GetJobStatus(ctx context.Context, projSpec ProjectSpec, jobName string) ([]JobStatus, error)
 
