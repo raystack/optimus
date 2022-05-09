@@ -113,7 +113,7 @@ func (repo *jobDeploymentRepository) GetFirstExecutableRequest(ctx context.Conte
 	err = repo.db.Transaction(func(tx *gorm.DB) error {
 		var jobDeployment JobDeployment
 		if err := tx.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
-			models.JobDeploymentStatusInQueue, models.JobDeploymentStatusInProgress).Order("created_at ASC").First(&jobDeployment).Error; err != nil {
+			models.JobDeploymentStatusInQueue.String(), models.JobDeploymentStatusInProgress.String()).Order("created_at ASC").First(&jobDeployment).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return store.ErrResourceNotFound
 			}
