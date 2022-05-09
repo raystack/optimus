@@ -38,10 +38,15 @@ func (d JobDeployment) ToSpec() (models.JobDeployment, error) {
 		return models.JobDeployment{}, err
 	}
 
+	jobDeploymentStatus, err := models.ToJobDeploymentStatus(d.Status)
+	if err != nil {
+		return models.JobDeployment{}, err
+	}
+
 	return models.JobDeployment{
 		ID:        models.DeploymentID(d.ID),
 		Project:   projectSpec,
-		Status:    models.JobDeploymentStatus(d.Status),
+		Status:    jobDeploymentStatus,
 		Details:   jobDeploymentDetail,
 		CreatedAt: d.CreatedAt,
 		UpdatedAt: d.UpdatedAt,
