@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 )
 
 func WriteStringToFileIndexed() func(filePath, data string, writer io.Writer) error {
@@ -17,4 +19,15 @@ func WriteStringToFileIndexed() func(filePath, data string, writer io.Writer) er
 		_, err := fmt.Fprintf(writer, "%d. writing file at %s\n", index, filePath)
 		return err
 	}
+}
+
+// IsPathOccupied checks whether the targeted path is already occupied
+func IsPathOccupied(path string) (bool, error) {
+	if _, err := os.Stat(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
