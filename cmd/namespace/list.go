@@ -40,16 +40,16 @@ func NewListCommand(logger log.Logger) *cobra.Command {
 
 func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 	dirPath, _ := cmd.Flags().GetString("dir")
-	projectName, _ := cmd.Flags().GetString("project-name")
 
 	filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
 		return err
 	}
+	projectName, _ := cmd.Flags().GetString("project-name")
 
 	l.logger.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", clientConfig.Project.Name, clientConfig.Host))
-	namespacesFromServer, err := l.listNamespacesFromServer(clientConfig.Project.Name, clientConfig.Host)
+	namespacesFromServer, err := l.listNamespacesFromServer(clientConfig.Host, clientConfig.Project.Name)
 	if err != nil {
 		return err
 	}

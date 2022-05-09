@@ -18,5 +18,5 @@ func NewNamespaceCommand() *cobra.Command {
 	cmd.AddCommand(NewRegisterCommand(logger))
 	cmd.AddCommand(NewDescribeCommand(logger))
 	cmd.AddCommand(NewListCommand(logger))
-	return nil
+	return cmd
 }

@@ -54,19 +54,20 @@ func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return r.registerNamespace(clientConfig.Host, clientConfig.Project.Name, namespace)
+		return RegisterNamespace(r.logger, clientConfig.Host, clientConfig.Project.Name, namespace)
 	}
 	r.logger.Info(fmt.Sprintf("Registering all available namespaces from client config to [%s]", clientConfig.Host))
-	return r.registerSelectedNamespaces(clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
+	return RegisterSelectedNamespaces(r.logger, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
 }
 
-func (r *registerCommand) registerSelectedNamespaces(serverHost, projectName string, selectedNamespaces ...*config.Namespace) error {
+// RegisterSelectedNamespaces registers all selected namespaces
+func RegisterSelectedNamespaces(l log.Logger, serverHost, projectName string, selectedNamespaces ...*config.Namespace) error {
 	ch := make(chan error, len(selectedNamespaces))
 	defer close(ch)
 
 	for _, namespace := range selectedNamespaces {
 		go func(namespace *config.Namespace) {
-			ch <- r.registerNamespace(serverHost, projectName, namespace)
+			ch <- RegisterNamespace(l, serverHost, projectName, namespace)
 		}(namespace)
 	}
 	var errMsg string
@@ -81,7 +82,8 @@ func (r *registerCommand) registerSelectedNamespaces(serverHost, projectName str
 	return nil
 }
 
-func (r *registerCommand) registerNamespace(serverHost, projectName string, namespace *config.Namespace) error {
+// RegisterNamespace registers one namespace to the targeted server
+func RegisterNamespace(l log.Logger, serverHost, projectName string, namespace *config.Namespace) error {
 	conn, err := connectivity.NewConnectivity(serverHost, registerTimeout)
 	if err != nil {
 		return err
@@ -98,13 +100,13 @@ func (r *registerCommand) registerNamespace(serverHost, projectName string, name
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			r.logger.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespace.Name, err))
+			l.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespace.Name, err))
 			return nil
 		}
 		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespace.Name, err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update namespace [%s]: %s", namespace.Name, registerResponse.Message)
 	}
-	r.logger.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespace.Name))
+	l.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespace.Name))
 	return nil
 }

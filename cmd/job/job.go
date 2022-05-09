@@ -33,9 +33,9 @@ func NewJobCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
+		PersistentPreRunE:  job.PersistentPreRunE,
+		PersistentPostRunE: job.PersistentPostRunE,
 	}
-	cmd.PersistentPreRunE = job.PersistentPreRunE
-	cmd.PersistentPostRunE = job.PersistentPostRunE
 	cmd.PersistentFlags().StringVarP(&job.configFilePath, "config", "c", job.configFilePath, "File path for client configuration")
 
 	cmd.AddCommand(NewCreateCommand(logger, job.clientConfig))
@@ -46,7 +46,7 @@ func NewJobCommand() *cobra.Command {
 	cmd.AddCommand(NewRunListCommand(logger, job.clientConfig))
 	cmd.AddCommand(NewRefreshCommand(logger, job.clientConfig))
 
-	return nil
+	return cmd
 }
 
 func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
