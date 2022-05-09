@@ -15,13 +15,12 @@ import (
 )
 
 var (
-	ErrNoSuchSpec                = errors.New("spec not found")
-	ErrNoSuchJob                 = errors.New("job not found")
-	ErrNoJobs                    = errors.New("no job found")
-	ErrNoResources               = errors.New("no resources found")
-	ErrNoSuchAsset               = errors.New("asset not found")
-	ErrNoSuchHook                = errors.New("hook not found")
-	ErrNoSuchJobDeploymentStatus = errors.New("unsupported job deployment status")
+	ErrNoSuchSpec  = errors.New("spec not found")
+	ErrNoSuchJob   = errors.New("job not found")
+	ErrNoJobs      = errors.New("no job found")
+	ErrNoResources = errors.New("no resources found")
+	ErrNoSuchAsset = errors.New("asset not found")
+	ErrNoSuchHook  = errors.New("hook not found")
 )
 
 const (
@@ -465,49 +464,19 @@ func (j JobIDDependenciesPairs) GetExternalProjectAndDependenciesMap() map[Proje
 	return interDependenciesMap
 }
 
-type JobDeploymentStatus int
-
-const (
-	JobDeploymentStatusInQueue JobDeploymentStatus = iota
-	JobDeploymentStatusCancelled
-	JobDeploymentStatusInProgress
-	JobDeploymentStatusSucceed
-	JobDeploymentStatusFailed
-)
-
-var (
-	jobDeploymentStatusInQueue    = "In Queue"
-	jobDeploymentStatusCancelled  = "Cancelled"
-	jobDeploymentStatusInProgress = "In Progress"
-	jobDeploymentStatusSucceed    = "Succeed"
-	jobDeploymentStatusFailed     = "Failed"
-)
+type JobDeploymentStatus string
 
 func (j JobDeploymentStatus) String() string {
-	return []string{
-		jobDeploymentStatusInQueue,
-		jobDeploymentStatusCancelled,
-		jobDeploymentStatusInProgress,
-		jobDeploymentStatusSucceed,
-		jobDeploymentStatusFailed,
-	}[j]
+	return string(j)
 }
 
-func ToJobDeploymentStatus(status string) (JobDeploymentStatus, error) {
-	switch status {
-	case jobDeploymentStatusCancelled:
-		return JobDeploymentStatusCancelled, nil
-	case jobDeploymentStatusInQueue:
-		return JobDeploymentStatusInQueue, nil
-	case jobDeploymentStatusInProgress:
-		return JobDeploymentStatusInProgress, nil
-	case jobDeploymentStatusSucceed:
-		return JobDeploymentStatusSucceed, nil
-	case jobDeploymentStatusFailed:
-		return JobDeploymentStatusFailed, nil
-	}
-	return -1, ErrNoSuchJobDeploymentStatus
-}
+const (
+	JobDeploymentStatusCancelled  JobDeploymentStatus = "Cancelled"
+	JobDeploymentStatusInQueue    JobDeploymentStatus = "In Queue"
+	JobDeploymentStatusInProgress JobDeploymentStatus = "In Progress"
+	JobDeploymentStatusSucceed    JobDeploymentStatus = "Succeed"
+	JobDeploymentStatusFailed     JobDeploymentStatus = "Failed"
+)
 
 type DeploymentID uuid.UUID
 

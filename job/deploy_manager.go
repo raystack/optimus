@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +40,8 @@ type deployManager struct {
 	requestQ chan models.JobDeployment
 
 	assignerScheduler *cron.Cron
+
+	wg sync.WaitGroup
 }
 
 func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
@@ -85,8 +88,12 @@ func (m *deployManager) GetStatus(ctx context.Context, deployID models.Deploymen
 func (m *deployManager) Init() {
 	m.l.Info("starting deployers", "count", m.config.NumWorkers)
 	for i := 0; i < m.config.NumWorkers; i++ {
+		m.wg.Add(1)
 		go m.spawnDeployer(m.deployer)
 	}
+
+	// wait until all deployers are ready
+	m.wg.Wait()
 
 	if m.assignerScheduler != nil {
 		_, err := m.assignerScheduler.AddFunc(deployAssignInterval, m.Assign)
@@ -101,6 +108,7 @@ func (m *deployManager) Init() {
 func (m *deployManager) spawnDeployer(deployer Deployer) {
 	// deployer has spawned
 	atomic.AddInt32(&m.deployerCapacity, 1)
+	m.wg.Done()
 
 	// TODO: avoid having multiple query
 	for deployRequest := range m.requestQ {

@@ -291,19 +291,4 @@ func TestJob(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 	})
-	t.Run("ToJobDeploymentStatus", func(t *testing.T) {
-		t.Run("should able to return job deployment status if it is valid", func(t *testing.T) {
-			status, err := models.ToJobDeploymentStatus(models.JobDeploymentStatusFailed.String())
-
-			assert.Equal(t, models.JobDeploymentStatusFailed, status)
-			assert.Nil(t, err)
-		})
-		t.Run("should able to return error when job status is not found", func(t *testing.T) {
-			invalidStatus := "invalid"
-			status, err := models.ToJobDeploymentStatus(invalidStatus)
-
-			assert.Equal(t, models.JobDeploymentStatus(-1), status)
-			assert.Equal(t, models.ErrNoSuchJobDeploymentStatus, err)
-		})
-	})
 }
