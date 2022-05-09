@@ -1,0 +1,110 @@
+package namespace
+
+import (
+	"errors"
+	"fmt"
+	"path"
+	"time"
+
+	"github.com/odpf/salt/log"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/config"
+)
+
+const registerTimeout = time.Minute * 15
+
+type registerCommand struct {
+	logger log.Logger
+}
+
+// NewRegisterCommand initializes command for registering namespace
+func NewRegisterCommand(logger log.Logger) *cobra.Command {
+	register := &registerCommand{
+		logger: logger,
+	}
+
+	cmd := &cobra.Command{
+		Use:     "register",
+		Short:   "Register namespace if it does not exist and update if it does",
+		Example: "optimus namespace register [--flag]",
+		RunE:    register.RunE,
+	}
+	cmd.Flags().String("dir", "", "Directory where the Optimus client config resides")
+	cmd.Flags().String("name", "", "If set, then only that namespace will be registered")
+	return cmd
+}
+
+func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
+	dirPath, _ := cmd.Flags().GetString("dir")
+	namespaceName, _ := cmd.Flags().GetString("name")
+
+	filePath := path.Join(dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+	if err != nil {
+		return err
+	}
+	if namespaceName != "" {
+		r.logger.Info(fmt.Sprintf("Registering namespace [%s] to [%s]", namespaceName, clientConfig.Host))
+		namespace, err := clientConfig.GetNamespaceByName(namespaceName)
+		if err != nil {
+			return err
+		}
+		return r.registerNamespace(clientConfig.Host, clientConfig.Project.Name, namespace)
+	}
+	r.logger.Info(fmt.Sprintf("Registering all available namespaces from client config to [%s]", clientConfig.Host))
+	return r.registerSelectedNamespaces(clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
+}
+
+func (r *registerCommand) registerSelectedNamespaces(serverHost, projectName string, selectedNamespaces ...*config.Namespace) error {
+	ch := make(chan error, len(selectedNamespaces))
+	defer close(ch)
+
+	for _, namespace := range selectedNamespaces {
+		go func(namespace *config.Namespace) {
+			ch <- r.registerNamespace(serverHost, projectName, namespace)
+		}(namespace)
+	}
+	var errMsg string
+	for i := 0; i < len(selectedNamespaces); i++ {
+		if err := <-ch; err != nil {
+			errMsg += err.Error() + "\n"
+		}
+	}
+	if len(errMsg) > 0 {
+		return errors.New(errMsg)
+	}
+	return nil
+}
+
+func (r *registerCommand) registerNamespace(serverHost, projectName string, namespace *config.Namespace) error {
+	conn, err := connectivity.NewConnectivity(serverHost, registerTimeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
+	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(conn.GetContext(), &pb.RegisterProjectNamespaceRequest{
+		ProjectName: projectName,
+		Namespace: &pb.NamespaceSpecification{
+			Name:   namespace.Name,
+			Config: namespace.Config,
+		},
+	})
+	if err != nil {
+		if status.Code(err) == codes.FailedPrecondition {
+			r.logger.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespace.Name, err))
+			return nil
+		}
+		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespace.Name, err)
+	} else if !registerResponse.Success {
+		return fmt.Errorf("failed to update namespace [%s]: %s", namespace.Name, registerResponse.Message)
+	}
+	r.logger.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespace.Name))
+	return nil
+}

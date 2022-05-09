@@ -31,7 +31,7 @@ var errServerNotReachable = func(host string) error {
 		3. Is Optimus server currently unreachable`, host))
 }
 
-// Connectivity defines client connection to a targetted server host
+// Connectivity defines client connection to a targeted server host
 type Connectivity struct {
 	requestCtx       context.Context
 	cancelRequestCtx func()
