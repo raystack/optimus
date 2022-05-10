@@ -50,15 +50,14 @@ func (p *ProgressBar) Start(label string) {
 			p.spinner.Suffix = " " + label
 		}
 		return
-	} else {
-		sp := spinner.New(spinner.CharSets[11], ProgressBarRefreshDuration,
-			spinner.WithWriter(p.writer), spinner.WithColor("fgCyan"))
-		if label != "" {
-			sp.Suffix = " " + label
-		}
-		sp.Start()
-		p.spinner = sp
 	}
+	sp := spinner.New(spinner.CharSets[11], ProgressBarRefreshDuration,
+		spinner.WithWriter(p.writer), spinner.WithColor("fgCyan"))
+	if label != "" {
+		sp.Suffix = " " + label
+	}
+	sp.Start()
+	p.spinner = sp
 }
 
 func (p *ProgressBar) StartProgress(count int, label string) {

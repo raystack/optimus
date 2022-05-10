@@ -63,12 +63,12 @@ linters-settings:
       - name: error-naming
       - name: error-return
       - name: error-strings
-#      - name: early-return
+      - name: early-return
       - name: errorf
 #      - name: exported
-#      - name: if-return
+      - name: if-return
       - name: increment-decrement
-#      - name: indent-error-flow
+      - name: indent-error-flow
 #      - name: flag-parameter
       - name: modifies-parameter
       - name: modifies-value-receiver

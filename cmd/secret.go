@@ -218,12 +218,11 @@ func getSecretValue(args []string, filePath string, encoded bool) (string, error
 
 	if !encoded {
 		return base64.StdEncoding.EncodeToString([]byte(secretValue)), nil
-	} else {
-		if err := validateProperlyEncoded(secretValue); err != nil {
-			return "", err
-		}
-		return secretValue, nil
 	}
+	if err := validateProperlyEncoded(secretValue); err != nil {
+		return "", err
+	}
+	return secretValue, nil
 }
 
 func validateProperlyEncoded(secretValue string) error {
