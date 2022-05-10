@@ -43,9 +43,7 @@ type deployCommand struct {
 
 // NewDeployCommand initializes command for deployment
 func NewDeployCommand() *cobra.Command {
-	deploy := &deployCommand{
-		logger: logger.NewDefaultLogger(),
-	}
+	deploy := &deployCommand{}
 
 	cmd := &cobra.Command{
 		Use:   "deploy",
@@ -74,6 +72,7 @@ func (d *deployCommand) PreRunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	d.logger = logger.NewClientLogger(d.clientConfig.Log)
 
 	d.logger.Info("Initializing client plugins")
 	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)

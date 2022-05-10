@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -23,9 +24,8 @@ type listCommand struct {
 }
 
 // NewListCommand initializes list command for replay
-func NewListCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	list := &listCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
 	}
 
@@ -36,10 +36,16 @@ func NewListCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra
 		Long: `
 The list command is used to fetch the recent replay in one project. 
 	`,
-		RunE: list.RunE,
+		RunE:    list.RunE,
+		PreRunE: list.PreRunE,
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	return cmd
+}
+
+func (l *listCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+	return nil
 }
 
 func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {

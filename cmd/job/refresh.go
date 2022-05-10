@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -35,9 +36,8 @@ type refreshCommand struct {
 }
 
 // NewRefreshCommand initializes command for rendering job specification
-func NewRefreshCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewRefreshCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	render := &refreshCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
 	}
 
@@ -47,11 +47,17 @@ func NewRefreshCommand(logger log.Logger, clientConfig *config.ClientConfig) *co
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE:    render.RunE,
+		PreRunE: render.PreRunE,
 	}
 	cmd.Flags().BoolVarP(&render.verbose, "verbose", "v", false, "Print details related to operation")
 	cmd.Flags().StringSliceVarP(&render.namespaces, "namespaces", "N", nil, "Namespaces of Optimus project")
 	cmd.Flags().StringSliceVarP(&render.jobs, "jobs", "J", nil, "Job names")
 	return cmd
+}
+
+func (r *refreshCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	return nil
 }
 
 func (r *refreshCommand) RunE(cmd *cobra.Command, args []string) error {

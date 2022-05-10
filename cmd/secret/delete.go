@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 )
@@ -22,9 +23,8 @@ type deleteCommand struct {
 }
 
 // NewDeleteCommand initializes command to delete secret
-func NewDeleteCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewDeleteCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	delete := &deleteCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
 	}
 
@@ -33,10 +33,17 @@ func NewDeleteCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 		Short:   "Delete a secrets registered with optimus",
 		Example: "optimus secret delete <secret_name>",
 		Long:    `This operation deletes a secret registered with optimus.`,
+		RunE:    delete.RunE,
+		PreRunE: delete.PreRunE,
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().StringVarP(&delete.namespaceName, "namespace", "n", delete.namespaceName, "Namespace name of optimus managed repository")
 	return cmd
+}
+
+func (d *deleteCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	d.logger = logger.NewClientLogger(d.clientConfig.Log)
+	return nil
 }
 
 func (d *deleteCommand) RunE(cmd *cobra.Command, args []string) error {

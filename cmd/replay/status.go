@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -23,9 +24,9 @@ type statusCommand struct {
 }
 
 // NewStatusCommand initializes command for replay status
-func NewStatusCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	status := &statusCommand{
-		logger: logger,
+		clientConfig: clientConfig,
 	}
 
 	cmd := &cobra.Command{
@@ -42,9 +43,15 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 			}
 			return nil
 		},
-		RunE: status.RunE,
+		RunE:    status.RunE,
+		PreRunE: status.PreRunE,
 	}
 	return cmd
+}
+
+func (s *statusCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+	return nil
 }
 
 func (s *statusCommand) RunE(cmd *cobra.Command, args []string) error {

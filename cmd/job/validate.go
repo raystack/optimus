@@ -14,6 +14,7 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -31,9 +32,8 @@ type validateCommand struct {
 }
 
 // NewValidateCommand initializes command for rendering job specification
-func NewValidateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewValidateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	validate := &validateCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
 	}
 
@@ -43,11 +43,17 @@ func NewValidateCommand(logger log.Logger, clientConfig *config.ClientConfig) *c
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE:    validate.RunE,
+		PreRunE: validate.PreRunE,
 	}
 	cmd.Flags().BoolVarP(&validate.verbose, "verbose", "v", false, "Print details related to operation")
 	cmd.Flags().StringVarP(&validate.namespaceName, "namespace", "n", validate.namespaceName, "Namespace of the resource within project")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
+}
+
+func (v *validateCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	v.logger = logger.NewClientLogger(v.clientConfig.Log)
+	return nil
 }
 
 func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {

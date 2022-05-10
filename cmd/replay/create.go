@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
@@ -41,11 +42,9 @@ type createCommand struct {
 }
 
 // NewCreateCommand initializes command for replay create
-func NewCreateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	create := &createCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
-		survey:       survey.NewReplayCreateSurvey(logger),
 	}
 
 	cmd := &cobra.Command{
@@ -67,7 +66,8 @@ Date ranges are inclusive.
 			}
 			return nil
 		},
-		RunE: create.RunE,
+		RunE:    create.RunE,
+		PreRunE: create.PreRunE,
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().StringVarP(&create.namespaceName, "namespace", "n", create.namespaceName, "Namespace of job that needs to be replayed")
@@ -79,6 +79,12 @@ Date ranges are inclusive.
 	cmd.Flags().BoolVar(&create.ignoreDownstream, "ignore-downstream", create.ignoreDownstream, "Run without replaying downstream jobs")
 	cmd.Flags().BoolVar(&create.allDownstream, "all-downstream", create.allDownstream, "Run replay for all downstream across namespaces")
 	return cmd
+}
+
+func (c *createCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	c.logger = logger.NewClientLogger(c.clientConfig.Log)
+	c.survey = survey.NewReplayCreateSurvey(c.logger)
+	return nil
 }
 
 func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {

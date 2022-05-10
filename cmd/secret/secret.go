@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -27,7 +26,6 @@ type secretCommand struct {
 
 // NewSecretCommand initializes command for secret
 func NewSecretCommand() *cobra.Command {
-	logger := logger.NewDefaultLogger()
 	secret := &secretCommand{
 		clientConfig: &config.ClientConfig{},
 	}
@@ -39,9 +37,9 @@ func NewSecretCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(&secret.configFilePath, "config", "c", secret.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewSetCommand(logger, secret.clientConfig))
-	cmd.AddCommand(NewListCommand(logger, secret.clientConfig))
-	cmd.AddCommand(NewDeleteCommand(logger, secret.clientConfig))
+	cmd.AddCommand(NewSetCommand(secret.clientConfig))
+	cmd.AddCommand(NewListCommand(secret.clientConfig))
+	cmd.AddCommand(NewDeleteCommand(secret.clientConfig))
 	return cmd
 }
 

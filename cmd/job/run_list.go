@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 )
@@ -26,9 +27,8 @@ type runListCommand struct {
 }
 
 // NewRunListCommand initializes run list command
-func NewRunListCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewRunListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	run := &runListCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
 	}
 
@@ -38,12 +38,18 @@ func NewRunListCommand(logger log.Logger, clientConfig *config.ClientConfig) *co
 		Example: `optimus job runs <sample_job_goes_here> [--project \"project-id\"] [--start_date \"2006-01-02T15:04:05Z07:00\" --end_date \"2006-01-02T15:04:05Z07:00\"]`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE:    run.RunE,
+		PreRunE: run.PreRunE,
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
 	cmd.Flags().StringVar(&run.startDate, "start_date", "", "start date of job run")
 	cmd.Flags().StringVar(&run.endDate, "end_date", "", "end date of job run")
 	return cmd
+}
+
+func (r *runListCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	return nil
 }
 
 func (r *runListCommand) RunE(cmd *cobra.Command, args []string) error {

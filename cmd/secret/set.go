@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
@@ -31,11 +32,9 @@ type setCommand struct {
 }
 
 // NewSetCommand initializes command for setting secret
-func NewSetCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewSetCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	set := &setCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
-		survey:       survey.NewSecretSetSurvey(),
 	}
 
 	cmd := &cobra.Command{
@@ -47,7 +46,8 @@ This operation takes secret name as its first argument.
 Secret value can be either provided in second argument or through file flag. 
 Use base64 flag if the value has been encoded.
 		`,
-		RunE: set.RunE,
+		RunE:    set.RunE,
+		PreRunE: set.PreRunE,
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().StringVarP(&set.namespaceName, "namespace", "n", set.namespaceName, "Namespace of deployee")
@@ -57,6 +57,12 @@ Use base64 flag if the value has been encoded.
 	cmd.Flags().BoolVar(&set.skipConfirm, "confirm", false, "Skip asking for confirmation")
 
 	return cmd
+}
+
+func (s *setCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+	s.survey = survey.NewSecretSetSurvey()
+	return nil
 }
 
 func (s *setCommand) RunE(cmd *cobra.Command, args []string) error {

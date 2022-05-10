@@ -3,7 +3,6 @@ package job
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/config"
 )
@@ -25,7 +24,6 @@ func NewJobCommand() *cobra.Command {
 	job := jobCommand{
 		clientConfig: &config.ClientConfig{},
 	}
-	logger := logger.NewDefaultLogger()
 
 	cmd := &cobra.Command{
 		Use:   "job",
@@ -38,13 +36,13 @@ func NewJobCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(&job.configFilePath, "config", "c", job.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewCreateCommand(logger, job.clientConfig))
-	cmd.AddCommand(NewAddHookCommand(logger))
-	cmd.AddCommand(NewRenderCommand(logger, job.clientConfig))
-	cmd.AddCommand(NewValidateCommand(logger, job.clientConfig))
-	cmd.AddCommand(NewRunCommand(logger, job.clientConfig))
-	cmd.AddCommand(NewRunListCommand(logger, job.clientConfig))
-	cmd.AddCommand(NewRefreshCommand(logger, job.clientConfig))
+	cmd.AddCommand(NewCreateCommand(job.clientConfig))
+	cmd.AddCommand(NewAddHookCommand(job.clientConfig))
+	cmd.AddCommand(NewRenderCommand(job.clientConfig))
+	cmd.AddCommand(NewValidateCommand(job.clientConfig))
+	cmd.AddCommand(NewRunCommand(job.clientConfig))
+	cmd.AddCommand(NewRunListCommand(job.clientConfig))
+	cmd.AddCommand(NewRefreshCommand(job.clientConfig))
 	return cmd
 }
 

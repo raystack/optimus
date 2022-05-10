@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
@@ -26,12 +27,9 @@ type renderCommand struct {
 }
 
 // NewRenderCommand initializes command for rendering job specification
-func NewRenderCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewRenderCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	render := &renderCommand{
-		logger:          logger,
-		clientConfig:    clientConfig,
-		jobSurvey:       survey.NewJobSurvey(),
-		namespaceSurvey: survey.NewNamespaceSurvey(logger),
+		clientConfig: clientConfig,
 	}
 	cmd := &cobra.Command{
 		Use:     "render",
@@ -39,8 +37,16 @@ func NewRenderCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 		Long:    "Process optimus job specification based on macros/functions used.",
 		Example: "optimus job render [<job_name>]",
 		RunE:    render.RunE,
+		PreRunE: render.PreRunE,
 	}
 	return cmd
+}
+
+func (r *renderCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	r.jobSurvey = survey.NewJobSurvey()
+	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
+	return nil
 }
 
 func (r *renderCommand) RunE(cmd *cobra.Command, args []string) error {

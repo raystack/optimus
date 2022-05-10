@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 )
 
@@ -24,7 +23,6 @@ func NewReplayCommand() *cobra.Command {
 	replay := &replayCommand{
 		clientConfig: &config.ClientConfig{},
 	}
-	logger := logger.NewDefaultLogger()
 
 	cmd := &cobra.Command{
 		Use:   "replay",
@@ -37,9 +35,9 @@ func NewReplayCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(&replay.configFilePath, "config", "c", replay.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewCreateCommand(logger, replay.clientConfig))
-	cmd.AddCommand(NewStatusCommand(logger, replay.clientConfig))
-	cmd.AddCommand(NewListCommand(logger, replay.clientConfig))
+	cmd.AddCommand(NewCreateCommand(replay.clientConfig))
+	cmd.AddCommand(NewStatusCommand(replay.clientConfig))
+	cmd.AddCommand(NewListCommand(replay.clientConfig))
 	return cmd
 }
 

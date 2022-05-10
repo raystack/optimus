@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -20,11 +21,9 @@ type addHookCommand struct {
 }
 
 // NewAddHookCommand initializes command for adding hook
-func NewAddHookCommand(logger log.Logger) *cobra.Command {
+func NewAddHookCommand(cliengConfig *config.ClientConfig) *cobra.Command {
 	addHook := &addHookCommand{
-		jobSurvey:        survey.NewJobSurvey(),
-		jobAddHookSurvey: survey.NewJobAddHookSurvey(),
-		namespaceSurvey:  survey.NewNamespaceSurvey(logger),
+		clientConfig: cliengConfig,
 	}
 	cmd := &cobra.Command{
 		Use:     "addhook",
@@ -33,8 +32,17 @@ func NewAddHookCommand(logger log.Logger) *cobra.Command {
 		Long:    "Add a runnable instance that will be triggered before or after the base transformation.",
 		Example: "optimus addhook",
 		RunE:    addHook.RunE,
+		PreRunE: addHook.PreRunE,
 	}
 	return cmd
+}
+
+func (a *addHookCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	a.logger = logger.NewClientLogger(a.clientConfig.Log)
+	a.jobSurvey = survey.NewJobSurvey()
+	a.jobAddHookSurvey = survey.NewJobAddHookSurvey()
+	a.namespaceSurvey = survey.NewNamespaceSurvey(a.logger)
+	return nil
 }
 
 func (a *addHookCommand) RunE(cmd *cobra.Command, args []string) error {

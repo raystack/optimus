@@ -13,6 +13,7 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -28,9 +29,8 @@ type runCommand struct {
 }
 
 // NewRunCommand initializes run command
-func NewRunCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewRunCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	run := &runCommand{
-		logger:       logger,
 		clientConfig: clientConfig,
 	}
 
@@ -41,10 +41,16 @@ func NewRunCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.
 		Example: "optimus job run <job_name>",
 		Hidden:  true,
 		RunE:    run.RunE,
+		PreRunE: run.PreRunE,
 	}
 	cmd.Flags().StringVarP(&run.namespaceName, "namespace", "n", run.namespaceName, "Namespace of the resource within project")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
+}
+
+func (r *runCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	return nil
 }
 
 func (r *runCommand) RunE(cmd *cobra.Command, args []string) error {

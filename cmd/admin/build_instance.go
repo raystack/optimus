@@ -44,7 +44,6 @@ type buildInstanceCommand struct {
 // NewBuildInstanceCommand initializes command to build instance for admin
 func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	buildInstance := &buildInstanceCommand{
-		logger:         logger.NewDefaultLogger(),
 		clientConfig:   clientConfig,
 		assetOutputDir: "/tmp/",
 		runType:        "task",
@@ -57,7 +56,8 @@ func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		RunE: buildInstance.RunE,
+		RunE:    buildInstance.RunE,
+		PreRunE: buildInstance.PreRunE,
 	}
 	cmd.Flags().StringVar(&buildInstance.assetOutputDir, "output-dir", buildInstance.assetOutputDir, "Output directory for assets")
 	cmd.MarkFlagRequired("output-dir")
@@ -71,6 +71,11 @@ func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Name of the optimus project")
 	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
 	return cmd
+}
+
+func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	b.logger = logger.NewClientLogger(b.clientConfig.Log)
+	return nil
 }
 
 func (b *buildInstanceCommand) RunE(cmd *cobra.Command, args []string) error {

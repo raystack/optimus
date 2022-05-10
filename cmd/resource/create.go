@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -23,12 +24,9 @@ type createCommand struct {
 }
 
 // NewCreateCommand initializes resource create command
-func NewCreateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cobra.Command {
+func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	create := &createCommand{
-		logger:               logger,
-		clientConfig:         clientConfig,
-		namespaceSurvey:      survey.NewNamespaceSurvey(logger),
-		resourceCreateSurvey: survey.NewResourceCreateSurvey(),
+		clientConfig: clientConfig,
 	}
 
 	cmd := &cobra.Command{
@@ -36,8 +34,16 @@ func NewCreateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
 		RunE:    create.RunE,
+		PreRunE: create.PreRunE,
 	}
 	return cmd
+}
+
+func (c *createCommand) PreRunE(cmd *cobra.Command, args []string) error {
+	c.logger = logger.NewClientLogger(c.clientConfig.Log)
+	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
+	c.resourceCreateSurvey = survey.NewResourceCreateSurvey()
+	return nil
 }
 
 func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
