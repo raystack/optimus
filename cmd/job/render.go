@@ -54,7 +54,6 @@ func (r *renderCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	jobSpec, err := r.getJobSpecByName(args, namespace.Job.Path)
 	if err != nil {
 		return err
@@ -62,7 +61,9 @@ func (r *renderCommand) RunE(cmd *cobra.Command, args []string) error {
 
 	// create temporary directory
 	renderedPath := filepath.Join(".", "render", jobSpec.Name)
-	_ = os.MkdirAll(renderedPath, 0o770)
+	if err := os.MkdirAll(renderedPath, 0o770); err != nil {
+		return err
+	}
 	r.logger.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
 
 	now := time.Now()

@@ -35,6 +35,7 @@ func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		Use:     "status",
 		Short:   "Get backup info using uuid and datastore",
 		Example: "optimus backup status <uuid>",
+		Args:    cobra.MinimumNArgs(1),
 		RunE:    status.RunE,
 		PreRunE: status.PreRunE,
 	}

@@ -13,14 +13,18 @@ type adminCommand struct {
 
 // NewAdminCommand initializes command for admin
 func NewAdminCommand() *cobra.Command {
-	admin := &adminCommand{}
+	admin := &adminCommand{
+		clientConfig: &config.ClientConfig{},
+	}
 
 	cmd := &cobra.Command{
-		Use:    "admin",
-		Short:  "Internal administration commands",
-		Hidden: true,
+		Use:               "admin",
+		Short:             "Internal administration commands",
+		Hidden:            true,
+		PersistentPreRunE: admin.PersistentPreRunE,
 	}
 	cmd.PersistentFlags().StringVarP(&admin.configFilePath, "config", "c", admin.configFilePath, "File path for client configuration")
+
 	cmd.AddCommand(NewBuildCommand(admin.clientConfig))
 	return cmd
 }

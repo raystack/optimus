@@ -24,7 +24,7 @@ type createCommand struct {
 	namespaceSurvey    *survey.NamespaceSurvey
 	backupCreateSurvey *survey.BackupCreateSurvey
 
-	dryRun           bool
+	onlyDryRun       bool
 	ignoreDownstream bool
 	allDownstream    bool
 	skipConfirm      bool
@@ -50,7 +50,7 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	cmd.Flags().StringVarP(&create.description, "description", "i", create.description, "Describe intention to help identify the backup")
 	cmd.Flags().StringVarP(&create.storerName, "datastore", "s", create.storerName, "Datastore type where the resource belongs")
 
-	cmd.Flags().BoolVarP(&create.dryRun, "dry-run", "d", create.dryRun, "Only do a trial run with no permanent changes")
+	cmd.Flags().BoolVarP(&create.onlyDryRun, "dry-run", "d", create.onlyDryRun, "Only do a trial run with no permanent changes")
 	cmd.Flags().BoolVar(&create.skipConfirm, "confirm", create.skipConfirm, "Skip asking for confirmation")
 	cmd.Flags().BoolVarP(&create.allDownstream, "all-downstream", "", create.allDownstream, "Run backup for all downstreams across namespaces")
 	cmd.Flags().BoolVar(&create.ignoreDownstream, "ignore-downstream", create.ignoreDownstream, "Do not take backups for dependent downstream resources")
@@ -78,8 +78,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 		c.logger.Info("Failed to run backup dry run")
 		return err
 	}
-	if c.dryRun {
-		// if only dry run, exit now
+	if c.onlyDryRun {
 		return nil
 	}
 
@@ -157,11 +156,8 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 	}
 	defer conn.Close()
 
-	backup := pb.NewBackupServiceClient(conn.GetConnection())
-
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-
 	request := &pb.BackupDryRunRequest{
 		ProjectName:                 c.clientConfig.Project.Name,
 		NamespaceName:               namespaceName,
@@ -170,6 +166,7 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 		Description:                 c.description,
 		AllowedDownstreamNamespaces: c.getAllowedDownstreamNamespaces(namespaceName),
 	}
+	backup := pb.NewBackupServiceClient(conn.GetConnection())
 	backupDryRunResponse, err := backup.BackupDryRun(conn.GetContext(), request)
 	spinner.Stop()
 	if err != nil {
@@ -183,23 +180,20 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 	return nil
 }
 
-func (c *createCommand) printBackupDryRunResponse(
-	request *pb.BackupDryRunRequest,
-	backupResponse *pb.BackupDryRunResponse,
-) {
+func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunRequest, response *pb.BackupDryRunResponse) {
 	if c.ignoreDownstream {
 		c.logger.Info(fmt.Sprintf("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName))
 	} else {
 		c.logger.Info(fmt.Sprintf("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName))
 	}
-	for counter, resource := range backupResponse.ResourceName {
+	for counter, resource := range response.ResourceName {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, resource))
 	}
 
-	if len(backupResponse.IgnoredResources) > 0 {
+	if len(response.IgnoredResources) > 0 {
 		c.logger.Info("\nThese resources will be ignored:")
 	}
-	for counter, ignoredResource := range backupResponse.IgnoredResources {
+	for counter, ignoredResource := range response.IgnoredResources {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, ignoredResource))
 	}
 	c.logger.Info("")

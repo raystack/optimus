@@ -86,6 +86,11 @@ func (v *versionCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func (v *versionCommand) PostRunE(cmd *cobra.Command, args []string) error {
+	v.pluginCleanFn()
+	return nil
+}
+
 func (v *versionCommand) printAllPluginInfos() {
 	pluginRepo := models.PluginRegistry
 	plugins := pluginRepo.GetAll()
@@ -127,9 +132,4 @@ func (v *versionCommand) getVersionRequest(clientVer, host string) (ver string, 
 	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
-}
-
-func (v *versionCommand) PostRunE(cmd *cobra.Command, args []string) error {
-	v.pluginCleanFn()
-	return nil
 }

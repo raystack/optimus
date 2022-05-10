@@ -1,6 +1,8 @@
 package job
 
 import (
+	"fmt"
+
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -73,6 +75,6 @@ func (a *addHookCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := jobSpecRepo.Save(jobSpec); err != nil {
 		return err
 	}
-	a.logger.Info("Hook successfully added to %s", selectedJobName)
+	a.logger.Info(fmt.Sprintf("Hook successfully added to %s", selectedJobName))
 	return nil
 }

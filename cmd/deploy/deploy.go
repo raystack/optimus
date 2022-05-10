@@ -171,10 +171,10 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		d.logger.Warn("no job specs are found from all the namespaces")
 		return nil
 	}
-	return d.getJobDeploymentResponse(stream, totalSpecsCount)
+	return d.processJobDeploymentResponse(stream, totalSpecsCount)
 }
 
-func (d *deployCommand) getJobDeploymentResponse(
+func (d *deployCommand) processJobDeploymentResponse(
 	stream pb.JobSpecificationService_DeployJobSpecificationClient,
 	totalSpecsCount int,
 ) error {
@@ -217,7 +217,7 @@ func (d *deployCommand) sendNamespaceJobRequest(
 	namespace *config.Namespace,
 	progressFn func(totalCount int),
 ) error {
-	request, err := getJobDeploymentRequest(d.clientConfig.Project.Name, namespace)
+	request, err := d.getJobDeploymentRequest(d.clientConfig.Project.Name, namespace)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (d *deployCommand) sendNamespaceJobRequest(
 	return nil
 }
 
-func getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
+func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
 	pluginRepo := models.PluginRegistry
 	datastoreRepo := models.DatastoreRegistry
 	adapter := v1handler.NewAdapter(pluginRepo, datastoreRepo)
@@ -298,10 +298,10 @@ func (d *deployCommand) deployResources(
 		d.logger.Warn("no resource specs are found from all the namespaces")
 		return nil
 	}
-	return d.getResourceDeploymentResponse(stream, totalSpecsCount)
+	return d.processResourceDeploymentResponse(stream, totalSpecsCount)
 }
 
-func (d *deployCommand) getResourceDeploymentResponse(
+func (d *deployCommand) processResourceDeploymentResponse(
 	stream pb.ResourceService_DeployResourceSpecificationClient,
 	totalSpecsCount int,
 ) error {

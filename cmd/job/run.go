@@ -70,10 +70,10 @@ func (r *runCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return r.runJobSpecificationRequest(namespace.Name, jobSpec)
+	return r.runJobSpecificationRequest(jobSpec)
 }
 
-func (r *runCommand) runJobSpecificationRequest(namespaceName string, jobSpec models.JobSpec) error {
+func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
 	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, runJobTimeout)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (r *runCommand) runJobSpecificationRequest(namespaceName string, jobSpec mo
 	jobRun := pb.NewJobRunServiceClient(conn.GetConnection())
 	jobResponse, err := jobRun.RunJob(conn.GetContext(), &pb.RunJobRequest{
 		ProjectName:   r.clientConfig.Project.Name,
-		NamespaceName: namespaceName,
+		NamespaceName: r.namespaceName,
 		Specifications: []*pb.JobSpecification{
 			adaptedSpec,
 		},

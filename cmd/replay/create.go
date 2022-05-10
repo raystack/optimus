@@ -117,7 +117,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	c.logger.Info("Replay request created with id %s", replayID)
+	c.logger.Info(fmt.Sprintf("Replay request created with id %s", replayID))
 	return nil
 }
 

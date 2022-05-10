@@ -89,7 +89,7 @@ func (r *runListCommand) callJobRun(jobRunRequest *pb.JobRunRequest) error {
 	for _, jobRun := range jobRuns {
 		r.logger.Info(fmt.Sprintf("%s - %s", jobRun.GetScheduledAt().AsTime(), jobRun.GetState()))
 	}
-	r.logger.Info("\nFound %d jobRun instances.", len(jobRuns))
+	r.logger.Info(fmt.Sprintf("\nFound %d jobRun instances.", len(jobRuns)))
 	return nil
 }
 

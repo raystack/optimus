@@ -84,15 +84,6 @@ func (b *buildInstanceCommand) RunE(cmd *cobra.Command, args []string) error {
 	b.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", b.runName, b.runType, b.scheduledAt))
 	b.logger.Info("please wait...")
 
-	// append base path to input file directory
-	dirPath := filepath.Join(b.assetOutputDir, taskInputDirectory)
-	return b.getInstanceBuildRequest(jobName, dirPath)
-}
-
-// getInstanceBuildRequest fetches a JobRun from the store (eg, postgres)
-// Based on the response, it builds assets like query, env and config
-// for the Job Run which is saved into output files.
-func (b *buildInstanceCommand) getInstanceBuildRequest(jobName, dirPath string) (err error) {
 	jobScheduledTimeProto, err := b.getJobScheduledTimeProto()
 	if err != nil {
 		return fmt.Errorf("invalid time format, please use %s: %w", models.InstanceScheduledAtTimeLayout, err)
@@ -102,7 +93,14 @@ func (b *buildInstanceCommand) getInstanceBuildRequest(jobName, dirPath string) 
 	if err != nil {
 		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
+	return b.writeInstanceResponse(jobResponse)
+}
 
+// writeInstanceResponse fetches a JobRun from the store (eg, postgres)
+// Based on the response, it builds assets like query, env and config
+// for the Job Run which is saved into output files.
+func (b *buildInstanceCommand) writeInstanceResponse(jobResponse *pb.RegisterInstanceResponse) (err error) {
+	dirPath := filepath.Join(b.assetOutputDir, taskInputDirectory)
 	if err := b.writeJobResponseMapToFiles(jobResponse, dirPath); err != nil {
 		return fmt.Errorf("error writing response map to file: %w", err)
 	}

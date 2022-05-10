@@ -56,7 +56,7 @@ func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
 			d.namespaceName, clientConfig.Project.Name, clientConfig.Host,
 		),
 	)
-	namespace, err := d.getNamespace(clientConfig.Project.Name, d.namespaceName, clientConfig.Host)
+	namespace, err := d.getNamespace(clientConfig.Host, clientConfig.Project.Name, d.namespaceName)
 	if err != nil {
 		return err
 	}

@@ -45,7 +45,7 @@ func namespaceListCommand() *cli.Command {
 		}
 
 		l.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", clientConfig.Project.Name, clientConfig.Host))
-		namespacesFromServer, err := listNamespacesFromServer(clientConfig.Project.Name, clientConfig.Host)
+		namespacesFromServer, err := listNamespacesFromServer(clientConfig.Host, clientConfig.Project.Name)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func namespaceDescribeCommand() *cli.Command {
 		}
 
 		l.Info(fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]", namespaceName, clientConfig.Project.Name, clientConfig.Host))
-		namespace, err := getNamespace(clientConfig.Project.Name, namespaceName, clientConfig.Host)
+		namespace, err := getNamespace(clientConfig.Host, clientConfig.Project.Name, namespaceName)
 		if err != nil {
 			return err
 		}

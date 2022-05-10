@@ -74,10 +74,10 @@ func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {
-		l.logger.Info("No secrets were found in %s project.", req.ProjectName)
+		l.logger.Info(fmt.Sprintf("No secrets were found in %s project.", req.ProjectName))
 	} else {
 		result := l.stringifyListOfSecrets(listSecretsResponse)
-		l.logger.Info("Secrets for project: %s", l.clientConfig.Project.Name)
+		l.logger.Info(fmt.Sprintf("Secrets for project: %s", l.clientConfig.Project.Name))
 		l.logger.Info(result)
 	}
 	return nil

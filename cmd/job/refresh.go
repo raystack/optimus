@@ -35,17 +35,17 @@ type refreshCommand struct {
 	deployFailedCounter   int
 }
 
-// NewRefreshCommand initializes command for rendering job specification
+// NewRefreshCommand initializes command for refreshing job specification
 func NewRefreshCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	render := &refreshCommand{
 		clientConfig: clientConfig,
 	}
 
 	cmd := &cobra.Command{
-		Use:     "render",
-		Short:   "Apply template values in job specification to current 'render' directory",
-		Long:    "Process optimus job specification based on macros/functions used.",
-		Example: "optimus job render [<job_name>]",
+		Use:     "refresh",
+		Short:   "Refresh job deployments",
+		Long:    "Redeploy jobs based on current server state",
+		Example: "optimus job refresh",
 		RunE:    render.RunE,
 		PreRunE: render.PreRunE,
 	}
@@ -75,7 +75,7 @@ func (r *refreshCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
-	r.logger.Info("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second))
+	r.logger.Info(fmt.Sprintf("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
 
@@ -130,7 +130,7 @@ func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationServic
 			r.logger.Error(reqErr.Error())
 		}
 	} else {
-		r.logger.Info("Refreshed %d jobs.", r.refreshSuccessCounter)
+		r.logger.Info(fmt.Sprintf("Refreshed %d jobs.", r.refreshSuccessCounter))
 	}
 
 	if len(allDeployErrors) > 0 {
@@ -140,7 +140,7 @@ func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationServic
 			r.logger.Error(reqErr.Error())
 		}
 	} else {
-		r.logger.Info("Deployed %d jobs.", r.deploySuccessCounter)
+		r.logger.Info(fmt.Sprintf("Deployed %d jobs.", r.deploySuccessCounter))
 	}
 
 	return streamError

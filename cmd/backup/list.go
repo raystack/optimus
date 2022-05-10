@@ -65,9 +65,9 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 	defer conn.Close()
 
-	backup := pb.NewBackupServiceClient(conn.GetConnection())
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
+	backup := pb.NewBackupServiceClient(conn.GetConnection())
 	listBackupsResponse, err := backup.ListBackups(conn.GetContext(), listBackupsRequest)
 	spinner.Stop()
 	if err != nil {
@@ -79,7 +79,7 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(listBackupsResponse.Backups) == 0 {
-		l.logger.Info("No backups were found in %s project.", l.clientConfig.Project.Name)
+		l.logger.Info(fmt.Sprintf("No backups were found in %s project.", l.clientConfig.Project.Name))
 	} else {
 		l.logger.Info("Recent backups")
 		result := l.stringifyBackupListResponse(listBackupsResponse)

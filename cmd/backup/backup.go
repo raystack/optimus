@@ -16,9 +16,8 @@ const (
 )
 
 type backCommand struct {
-	clientConfig *config.ClientConfig
-
 	configFilePath string
+	clientConfig   *config.ClientConfig
 }
 
 // NewBackupCommand initializes

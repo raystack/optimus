@@ -55,7 +55,7 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var namespacesFromLocal []*config.Namespace
-	if clientConfig != nil && clientConfig.Project.Name == l.projectName {
+	if l.projectName != "" {
 		namespacesFromLocal = clientConfig.Namespaces
 	}
 	result := l.stringifyNamespaces(namespacesFromLocal, namespacesFromServer)
@@ -93,13 +93,13 @@ func (l *listCommand) stringifyNamespaces(namespacesFromLocal, namespacesFromSer
 	namespaceNames := make(map[string]bool)
 	registeredInServer := make(map[string]bool)
 	for _, namespace := range namespacesFromServer {
-		registeredInServer[namespace.Name] = true
 		namespaceNames[namespace.Name] = true
+		registeredInServer[namespace.Name] = true
 	}
 	registeredInLocal := make(map[string]bool)
 	for _, namespace := range namespacesFromLocal {
-		registeredInLocal[namespace.Name] = true
 		namespaceNames[namespace.Name] = true
+		registeredInLocal[namespace.Name] = true
 	}
 
 	buff := &bytes.Buffer{}

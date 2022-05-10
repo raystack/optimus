@@ -202,7 +202,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (loca
 		},
 		Asset: map[string]string{},
 		Behavior: local.JobBehavior{
-			Catchup:       true,
+			Catchup:       false,
 			DependsOnPast: false,
 		},
 		Dependencies: []local.JobDependency{},
@@ -232,11 +232,11 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 
 	answers := models.PluginAnswers{}
 	for _, question := range questionResponse.Questions {
-		answers, err := j.jobSurvey.askCLIModSurveyQuestion(cliMod, question)
+		subAnswers, err := j.jobSurvey.askCLIModSurveyQuestion(cliMod, question)
 		if err != nil {
 			return nil, err
 		}
-		answers = append(answers, answers...)
+		answers = append(answers, subAnswers...)
 	}
 	return answers, nil
 }

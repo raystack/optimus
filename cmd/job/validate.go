@@ -31,17 +31,17 @@ type validateCommand struct {
 	namespaceName string
 }
 
-// NewValidateCommand initializes command for rendering job specification
+// NewValidateCommand initializes command for validating job specification
 func NewValidateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	validate := &validateCommand{
 		clientConfig: clientConfig,
 	}
 
 	cmd := &cobra.Command{
-		Use:     "render",
-		Short:   "Apply template values in job specification to current 'render' directory",
-		Long:    "Process optimus job specification based on macros/functions used.",
-		Example: "optimus job render [<job_name>]",
+		Use:     "validate",
+		Short:   "Run basic checks on all jobs",
+		Long:    "Check if specifications are valid for deployment",
+		Example: "optimus job validate",
 		RunE:    validate.RunE,
 		PreRunE: validate.PreRunE,
 	}
@@ -79,7 +79,7 @@ func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := v.validateJobSpecificationRequest(jobSpecs); err != nil {
 		return err
 	}
-	v.logger.Info("Jobs validated successfully, took %s", time.Since(start).Round(time.Second))
+	v.logger.Info(fmt.Sprintf("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
 
