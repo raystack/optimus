@@ -138,10 +138,8 @@ func InitTrace(db *gorm.DB) error {
 	if err := db.Callback().Raw().Before("gorm:raw").Register("otel:before_raw", beforeCallback("db:raw")); err != nil {
 		return err
 	}
-	if err := db.Callback().Raw().After("gorm:raw").Register("otel:after_raw", afterCallback); err != nil {
-		return err
-	}
-	return nil
+
+	return db.Callback().Raw().After("gorm:raw").Register("otel:after_raw", afterCallback)
 }
 
 func beforeCallback(operation string) func(db *gorm.DB) {

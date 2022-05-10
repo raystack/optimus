@@ -26,10 +26,7 @@ func createDataset(ctx context.Context, spec models.ResourceSpec, client bqiface
 	bqResource.Metadata.Labels = spec.Labels
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	if err := ensureDataset(ctx, dataset, bqResource, upsert); err != nil {
-		return err
-	}
-	return nil
+	return ensureDataset(ctx, dataset, bqResource, upsert)
 }
 
 func ensureDataset(ctx context.Context, datasetHandle bqiface.Dataset, bqResource BQDataset, upsert bool) error {

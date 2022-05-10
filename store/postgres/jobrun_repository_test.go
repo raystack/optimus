@@ -174,7 +174,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		assert.Equal(t, 0, len(checkModel.Instances))
 	})
 	t.Run("Save", func(t *testing.T) {
-		t.Run("should save and delete fresh runs correctly", func(t *testing.T) {
+		t.Run("should save fresh runs correctly", func(t *testing.T) {
 			db := DBSetup()
 
 			testModels := []models.JobRun{}
@@ -185,17 +185,6 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
-			assert.Equal(t, testModels[0].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
-
-			err = repo.Delete(ctx, testModels[0].ID)
-			assert.Nil(t, err)
-
-			err = repo.Save(ctx, namespaceSpec, testModels[0], jobDestination)
-			assert.Nil(t, err)
-
-			checkModel, _, err = repo.GetByID(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 			assert.Equal(t, testModels[0].Spec.Name, checkModel.Spec.Name)
 			assert.Equal(t, testModels[0].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
@@ -245,20 +234,6 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(checkModel.Instances))
-	})
-	t.Run("GetByStatus", func(t *testing.T) {
-		db := DBSetup()
-
-		var testModels []models.JobRun
-		testModels = append(testModels, testSpecs...)
-
-		repo := postgres.NewJobRunRepository(db, adapter)
-		err := repo.Insert(ctx, namespaceSpec, testModels[0], jobDestination)
-		assert.Nil(t, err)
-
-		runs, err := repo.GetByStatus(ctx, models.RunStateRunning)
-		assert.Nil(t, err)
-		assert.Equal(t, 1, len(runs))
 	})
 	t.Run("AddInstance", func(t *testing.T) {
 		db := DBSetup()
