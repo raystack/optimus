@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	oSurvey "github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -14,17 +14,17 @@ import (
 type addHookCommand struct {
 	logger           log.Logger
 	clientConfig     *config.ClientConfig
-	jobSurvey        *oSurvey.JobSurvey
-	jobAddHookSurvey *oSurvey.JobAddHookSurvey
-	namespaceSurvey  *oSurvey.NamespaceSurvey
+	jobSurvey        *survey.JobSurvey
+	jobAddHookSurvey *survey.JobAddHookSurvey
+	namespaceSurvey  *survey.NamespaceSurvey
 }
 
 // NewAddHookCommand initializes command for adding hook
 func NewAddHookCommand(logger log.Logger) *cobra.Command {
 	addHook := &addHookCommand{
-		jobSurvey:        oSurvey.NewJobSurvey(),
-		jobAddHookSurvey: oSurvey.NewJobAddHookSurvey(),
-		namespaceSurvey:  oSurvey.NewNamespaceSurvey(logger),
+		jobSurvey:        survey.NewJobSurvey(),
+		jobAddHookSurvey: survey.NewJobAddHookSurvey(),
+		namespaceSurvey:  survey.NewNamespaceSurvey(logger),
 	}
 	cmd := &cobra.Command{
 		Use:     "addhook",

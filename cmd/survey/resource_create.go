@@ -20,18 +20,6 @@ func NewResourceCreateSurvey() *ResourceCreateSurvey {
 	return nil
 }
 
-// AskToSelectDatastorer asks the user to select a available datastorer
-func (r *ResourceCreateSurvey) AskToSelectDatastorer(datastorers []string) (string, error) {
-	var storerName string
-	return storerName, survey.AskOne(
-		&survey.Select{
-			Message: "Select supported datastores?",
-			Options: datastorers,
-		},
-		&storerName,
-	)
-}
-
 // AskToSelectResourceType asks the user to select resource type
 func (r *ResourceCreateSurvey) AskToSelectResourceType(types []string) (string, error) {
 	var resourceType string

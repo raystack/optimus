@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	oSurvey "github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -21,8 +21,8 @@ import (
 type renderCommand struct {
 	logger          log.Logger
 	clientConfig    *config.ClientConfig
-	jobSurvey       *oSurvey.JobSurvey
-	namespaceSurvey *oSurvey.NamespaceSurvey
+	jobSurvey       *survey.JobSurvey
+	namespaceSurvey *survey.NamespaceSurvey
 }
 
 // NewRenderCommand initializes command for rendering job specification
@@ -30,8 +30,8 @@ func NewRenderCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 	render := &renderCommand{
 		logger:          logger,
 		clientConfig:    clientConfig,
-		jobSurvey:       oSurvey.NewJobSurvey(),
-		namespaceSurvey: oSurvey.NewNamespaceSurvey(logger),
+		jobSurvey:       survey.NewJobSurvey(),
+		namespaceSurvey: survey.NewNamespaceSurvey(logger),
 	}
 	cmd := &cobra.Command{
 		Use:     "render",

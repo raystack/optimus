@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	oSurvey "github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -18,8 +18,8 @@ type createCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
 
-	namespaceSurvey      *oSurvey.NamespaceSurvey
-	resourceCreateSurvey *oSurvey.ResourceCreateSurvey
+	namespaceSurvey      *survey.NamespaceSurvey
+	resourceCreateSurvey *survey.ResourceCreateSurvey
 }
 
 // NewCreateCommand initializes resource create command
@@ -27,8 +27,8 @@ func NewCreateCommand(logger log.Logger, clientConfig *config.ClientConfig) *cob
 	create := &createCommand{
 		logger:               logger,
 		clientConfig:         clientConfig,
-		namespaceSurvey:      oSurvey.NewNamespaceSurvey(logger),
-		resourceCreateSurvey: oSurvey.NewResourceCreateSurvey(),
+		namespaceSurvey:      survey.NewNamespaceSurvey(logger),
+		resourceCreateSurvey: survey.NewResourceCreateSurvey(),
 	}
 
 	cmd := &cobra.Command{
@@ -66,11 +66,11 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	typeController := datastorer.Types()[models.ResourceType(resourceType)]
 
 	// find directory to store spec
-	rwd, err := oSurvey.AskWorkingDirectory(repoFS, "")
+	rwd, err := survey.AskWorkingDirectory(repoFS, "")
 	if err != nil {
 		return err
 	}
-	newDirName, err := oSurvey.AskDirectoryName(rwd)
+	newDirName, err := survey.AskDirectoryName(rwd)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (c *createCommand) selectDatastorerName() (string, error) {
 	for _, s := range dsRepo.GetAll() {
 		datastorers = append(datastorers, s.Name())
 	}
-	return c.resourceCreateSurvey.AskToSelectDatastorer(datastorers)
+	return survey.AskToSelectDatastorer(datastorers)
 }
 
 func (c *createCommand) selectDataStoreType(datastorer models.Datastorer) (string, error) {
