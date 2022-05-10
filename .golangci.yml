@@ -60,7 +60,7 @@ linters-settings:
       - name: empty-block
       - name: error-naming
       - name: error-return
-      - name: error-strings
+#      - name: error-strings
       - name: early-return
       - name: errorf
 #      - name: exported
