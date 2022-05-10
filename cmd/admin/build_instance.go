@@ -103,11 +103,11 @@ func (b *buildInstanceCommand) getInstanceBuildRequest(jobName, dirPath string) 
 	}
 
 	if err := b.writeJobResponseEnvToFile(jobResponse, dirPath); err != nil {
-		return fmt.Errorf("error writing response env to file")
+		return fmt.Errorf("error writing response env to file: %w", err)
 	}
 
 	if err := b.writeJobResponseSecretToFile(jobResponse, dirPath); err != nil {
-		return fmt.Errorf("error writing response env to file")
+		return fmt.Errorf("error writing response env to file: %w", err)
 	}
 
 	if len(b.keysWithUnsubstitutedValue) > 0 {

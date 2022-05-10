@@ -1,8 +1,9 @@
 package admin
 
 import (
-	"github.com/odpf/optimus/config"
 	"github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/config"
 )
 
 type adminCommand struct {
