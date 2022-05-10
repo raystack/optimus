@@ -69,7 +69,7 @@ Date ranges are inclusive.
 		},
 		RunE: create.RunE,
 	}
-	cmd.Flags().StringP("project-name", "p", "", "Project name of optimus managed repository")
+	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	cmd.Flags().StringVarP(&create.namespaceName, "namespace", "n", create.namespaceName, "Namespace of job that needs to be replayed")
 	cmd.MarkFlagRequired("namespace")
 

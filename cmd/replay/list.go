@@ -38,7 +38,7 @@ The list command is used to fetch the recent replay in one project.
 	`,
 		RunE: list.RunE,
 	}
-	cmd.Flags().StringP("project-name", "p", "", "Project name of optimus managed repository")
+	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
 	return cmd
 }
 

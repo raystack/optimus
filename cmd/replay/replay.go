@@ -9,7 +9,10 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-const replayTimeout = time.Minute * 15
+const (
+	replayTimeout      = time.Minute * 15
+	defaultProjectName = "sample_project"
+)
 
 type replayCommand struct {
 	configFilePath string
