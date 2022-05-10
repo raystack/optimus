@@ -80,6 +80,9 @@ func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec,
 	return err
 }
 
+// DeployJobs is used by Deploy process
+// Any progress is being sent through observer
+// This will be deprecated when job deployment being done asynchronously
 func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec,
 	progressObserver progress.Observer,
 ) error {
@@ -125,6 +128,58 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 		}
 	}
 	return err
+}
+
+// DeployJobsVerbose does not use observer but instead return the deployment detail
+// This is being used by refresh command to deploy jobs after dependencies refreshed
+// TODO: Deprecate the other DeployJobs and rename this.
+func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	if err != nil {
+		return models.JobDeploymentDetail{}, err
+	}
+	defer bucket.Close()
+
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, j := range jobs {
+		runner.Add(func(currentJobSpec models.JobSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				return s.compileAndUpload(ctx, namespace, currentJobSpec, bucket), nil
+			}
+		}(j))
+	}
+
+	var jobDeploymentDetail models.JobDeploymentDetail
+	for _, result := range runner.Run() {
+		if result.Val != nil {
+			jobDeploymentDetail.Failures = append(jobDeploymentDetail.Failures, result.Val.(models.JobDeploymentFailure))
+		}
+	}
+
+	jobDeploymentDetail.FailureCount = len(jobDeploymentDetail.Failures)
+	jobDeploymentDetail.SuccessCount = len(jobs) - jobDeploymentDetail.FailureCount
+	return jobDeploymentDetail, nil
+}
+
+func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.NamespaceSpec, currentJobSpec models.JobSpec, bucket Bucket) interface{} {
+	compiledJob, err := s.compiler.Compile(s.GetTemplate(), namespace, currentJobSpec)
+	if err != nil {
+		deployFailure := models.JobDeploymentFailure{
+			JobName: currentJobSpec.Name,
+			Message: err.Error(),
+		}
+		return deployFailure
+	}
+
+	blobKey := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+	if err := bucket.WriteAll(ctx, blobKey, compiledJob.Contents, nil); err != nil {
+		deployFailure := models.JobDeploymentFailure{
+			JobName: currentJobSpec.Name,
+			Message: err.Error(),
+		}
+		return deployFailure
+	}
+	return nil
 }
 
 func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, progressObserver progress.Observer) error {

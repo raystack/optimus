@@ -364,6 +364,8 @@ type JobService interface {
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
 	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
+	// GetDeployment getting status and result of job deployment
+	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
@@ -460,4 +462,44 @@ func (j JobIDDependenciesPairs) GetExternalProjectAndDependenciesMap() map[Proje
 		}
 	}
 	return interDependenciesMap
+}
+
+type JobDeploymentStatus string
+
+func (j JobDeploymentStatus) String() string {
+	return string(j)
+}
+
+const (
+	JobDeploymentStatusCancelled  JobDeploymentStatus = "Cancelled"
+	JobDeploymentStatusInQueue    JobDeploymentStatus = "In Queue"
+	JobDeploymentStatusInProgress JobDeploymentStatus = "In Progress"
+	JobDeploymentStatusSucceed    JobDeploymentStatus = "Succeed"
+	JobDeploymentStatusFailed     JobDeploymentStatus = "Failed"
+)
+
+type DeploymentID uuid.UUID
+
+func (d DeploymentID) UUID() uuid.UUID {
+	return uuid.UUID(d)
+}
+
+type JobDeployment struct {
+	ID        DeploymentID
+	Project   ProjectSpec
+	Status    JobDeploymentStatus
+	Details   JobDeploymentDetail
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type JobDeploymentDetail struct {
+	SuccessCount int
+	FailureCount int
+	Failures     []JobDeploymentFailure
+}
+
+type JobDeploymentFailure struct {
+	JobName string
+	Message string
 }

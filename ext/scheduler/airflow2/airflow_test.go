@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -138,6 +139,99 @@ func TestAirflow2(t *testing.T) {
 			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name))
 			assert.Nil(t, err)
 			assert.Equal(t, []byte("job-1-compiled"), storedBytes)
+		})
+	})
+	t.Run("DeployJobsVerbose", func(t *testing.T) {
+		t.Run("should successfully deploy jobs to blob buckets", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			defer mockBucketFac.AssertExpectations(t)
+
+			compiler := new(MockedCompiler)
+			defer compiler.AssertExpectations(t)
+
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
+			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{
+				Name:     jobSpecs[0].Name,
+				Contents: []byte("job-1-compiled"),
+			}, nil)
+
+			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+
+			expectedDeployDetail := models.JobDeploymentDetail{
+				SuccessCount: 1,
+			}
+
+			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
+			assert.Nil(t, err)
+			assert.Equal(t, expectedDeployDetail, actualDeployDetail)
+
+			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name))
+			assert.Nil(t, err)
+			assert.Equal(t, []byte("job-1-compiled"), storedBytes)
+		})
+		t.Run("should failed when unable to get bucket for the requested project", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			defer mockBucketFac.AssertExpectations(t)
+
+			compiler := new(MockedCompiler)
+			defer compiler.AssertExpectations(t)
+
+			errorMsg := "internal error"
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, errors.New(errorMsg))
+
+			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
+			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.JobDeploymentDetail{}, actualDeployDetail)
+		})
+		t.Run("should able to add any compilation failures to response detail", func(t *testing.T) {
+			inMemBlob := memblob.OpenBucket(nil)
+			mockBucket := &MockedBucket{
+				bucket: inMemBlob,
+			}
+			defer mockBucket.AssertExpectations(t)
+
+			mockBucketFac := new(MockedBucketFactory)
+			defer mockBucketFac.AssertExpectations(t)
+
+			compiler := new(MockedCompiler)
+			defer compiler.AssertExpectations(t)
+
+			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+
+			errorMsg := "internal error"
+			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
+			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{}, errors.New(errorMsg))
+
+			expectedDeployDetail := models.JobDeploymentDetail{
+				SuccessCount: 0,
+				FailureCount: 1,
+				Failures: []models.JobDeploymentFailure{
+					{
+						JobName: jobSpecs[0].Name,
+						Message: errorMsg,
+					},
+				},
+			}
+
+			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
+			assert.Nil(t, err)
+			assert.Equal(t, expectedDeployDetail, actualDeployDetail)
 		})
 	})
 	t.Run("DeleteJobs", func(t *testing.T) {

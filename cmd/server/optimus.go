@@ -12,6 +12,7 @@ import (
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/robfig/cron/v3"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
@@ -279,7 +280,10 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
-	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler, namespaceService)
+	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
+	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
+	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
+	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
 
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
@@ -294,7 +298,7 @@ func (s *OptimusServer) setupHandlers() error {
 		replayManager,
 		namespaceService,
 		projectService,
-		deployer,
+		deployManager,
 		pluginService,
 	)
 

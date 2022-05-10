@@ -84,7 +84,7 @@ func New() *cli.Command {
 	cmd.AddCommand(backupCommand())
 	cmd.AddCommand(deployCommand())
 	cmd.AddCommand(initCommand())
-	cmd.AddCommand(jobCommand())
+	cmd.AddCommand(jobCommand(cmd))
 	cmd.AddCommand(namespaceCommand())
 	cmd.AddCommand(projectCommand())
 	cmd.AddCommand(replayCommand())
