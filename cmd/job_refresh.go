@@ -21,11 +21,11 @@ const (
 
 func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	var (
-		projectName string
-		verbose     bool
-		namespaces  []string
-		jobs        []string
-		cmd         = &cli.Command{
+		projectName            string
+		verbose                bool
+		selectedNamespaceNames []string
+		jobs                   []string
+		cmd                    = &cli.Command{
 			Use:     "refresh",
 			Short:   "Refresh job deployments",
 			Long:    "Redeploy jobs based on current server state",
@@ -34,7 +34,7 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	)
 
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringSliceVarP(&namespaces, "namespaces", "N", nil, "Namespaces of Optimus project")
+	cmd.Flags().StringSliceVarP(&selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().StringSliceVarP(&jobs, "jobs", "J", nil, "Job names")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
@@ -45,13 +45,13 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 			return fmt.Errorf("project configuration is required")
 		}
 
-		if len(namespaces) > 0 || len(jobs) > 0 {
+		if len(selectedNamespaceNames) > 0 || len(jobs) > 0 {
 			l.Info("Refreshing job dependencies of selected jobs/namespaces")
 		}
 		l.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
 		start := time.Now()
 
-		if err := refreshJobSpecificationRequest(l, projectName, namespaces, jobs, conf.Host, verbose); err != nil {
+		if err := refreshJobSpecificationRequest(l, projectName, selectedNamespaceNames, jobs, conf.Host, verbose); err != nil {
 			return err
 		}
 		l.Info(coloredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
