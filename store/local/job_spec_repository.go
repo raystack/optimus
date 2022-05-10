@@ -63,7 +63,7 @@ func (repo *jobRepository) SaveAt(job models.JobSpec, rootDir string) error {
 	// save assets
 	for assetName, assetValue := range config.Asset {
 		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0o755)); err != nil {
-			return fmt.Errorf("WriteFile.Asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
+			return fmt.Errorf("error in writing asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
 		}
 	}
 	config.Asset = nil

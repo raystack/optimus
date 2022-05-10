@@ -50,9 +50,7 @@ linters-settings:
     lang-version: "1.17"
     extra-rules: true
   revive:
-    ignore-generated-header: true
-    severity: warning
-    confidence: 0.8
+    severity: error
     rules:
       - name: atomic
       - name: context-as-argument
@@ -62,7 +60,7 @@ linters-settings:
       - name: empty-block
       - name: error-naming
       - name: error-return
-      - name: error-strings
+#      - name: error-strings
       - name: early-return
       - name: errorf
 #      - name: exported
@@ -70,7 +68,7 @@ linters-settings:
       - name: increment-decrement
       - name: indent-error-flow
 #      - name: flag-parameter
-      - name: modifies-parameter
+#      - name: modifies-parameter
       - name: modifies-value-receiver
       - name: package-comments
       - name: range
@@ -80,11 +78,14 @@ linters-settings:
       - name: time-naming
 #      - name: unexported-naming
 #      - name: unexported-return
-      - name: unreachable-code
-      - name: unused-parameter
-      - name: unused-receiver
       - name: var-declaration
       - name: var-naming
+      - name: var-declaration
+      - name: unused-receiver
+      - name: unused-parameter
+      - name: useless-break
+      - name: unnecessary-stmt
+      - name: unreachable-code
   goconst:
     ignore-tests: true
     numbers: true
