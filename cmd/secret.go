@@ -25,7 +25,7 @@ const (
 	secretTimeout = time.Minute * 2
 )
 
-func secretCommand() *cli.Command {
+func secretCommand(rootCmd *cli.Command) *cli.Command {
 	var (
 		configFilePath string
 		conf           config.ClientConfig
@@ -39,6 +39,8 @@ func secretCommand() *cli.Command {
 	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		rootCmd.PersistentPreRun(cmd, args)
+
 		// TODO: find a way to load the config in one place
 		c, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {
