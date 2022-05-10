@@ -252,7 +252,7 @@ this effects runtime dependencies and template macros`,
 		},
 		Asset: map[string]string{},
 		Behavior: local.JobBehavior{
-			Catchup:       true,
+			Catchup:       false,
 			DependsOnPast: false,
 		},
 		Dependencies: []local.JobDependency{},

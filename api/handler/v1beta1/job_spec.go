@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -298,12 +299,49 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStre
 		mu:     new(sync.Mutex),
 	})
 
-	if err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers); err != nil {
+	err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers)
+	if err != nil {
 		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
 	}
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
 	return nil
+}
+
+func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb.GetDeployJobsStatusRequest) (*pb.GetDeployJobsStatusResponse, error) {
+	deployID, err := uuid.Parse(req.DeployId)
+	if err != nil {
+		return nil, err
+	}
+
+	jobDeployment, err := sv.jobSvc.GetDeployment(ctx, models.DeploymentID(deployID))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get job deployment: \n%s", err.Error())
+	}
+
+	switch jobDeployment.Status {
+	case models.JobDeploymentStatusSucceed:
+		return &pb.GetDeployJobsStatusResponse{
+			Status:       jobDeployment.Status.String(),
+			SuccessCount: int32(jobDeployment.Details.SuccessCount),
+		}, nil
+	case models.JobDeploymentStatusFailed:
+		var deployJobFailures []*pb.DeployJobFailure
+		for _, failure := range jobDeployment.Details.Failures {
+			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
+		}
+
+		return &pb.GetDeployJobsStatusResponse{
+			Status:       jobDeployment.Status.String(),
+			SuccessCount: int32(jobDeployment.Details.SuccessCount),
+			FailureCount: int32(jobDeployment.Details.FailureCount),
+			Failures:     deployJobFailures,
+		}, nil
+	default:
+		return &pb.GetDeployJobsStatusResponse{
+			Status: jobDeployment.Status.String(),
+		}, nil
+	}
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,

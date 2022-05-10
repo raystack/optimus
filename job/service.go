@@ -56,12 +56,12 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	Persist(ctx context.Context, jobSpec models.JobSpec) error
 
-	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec, observer progress.Observer) ([]models.JobSpec, error)
+	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error)
 	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
 }
 
 type Deployer interface {
-	Deploy(context.Context, models.ProjectSpec, progress.Observer) error
+	Deploy(context.Context, models.JobDeployment) error
 }
 
 // SpecRepoFactory is used to manage job specs at namespace level
@@ -109,7 +109,7 @@ type Service struct {
 	replayManager             ReplayManager
 	projectService            service.ProjectService
 	namespaceService          service.NamespaceService
-	deployer                  Deployer
+	deployManager             DeployManager
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -643,7 +643,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
-	projectService service.ProjectService, deployer Deployer, pluginService service.PluginService,
+	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:        jobSpecRepoFactory,
@@ -655,7 +655,7 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		replayManager:             replayManager,
 		namespaceService:          namespaceService,
 		projectService:            projectService,
-		deployer:                  deployer,
+		deployManager:             deployManager,
 
 		assetCompiler: assetCompiler,
 		pluginService: pluginService,
@@ -708,7 +708,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 // Refresh fetches all the requested jobs, resolves its dependencies, assign proper priority weights,
 // compile all jobs in the project and upload them to the destination store.
 func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string,
-	progressObserver progress.Observer) (err error) {
+	progressObserver progress.Observer) error {
 	projectSpec, err := srv.projectService.Get(ctx, projectName)
 	if err != nil {
 		return err
@@ -723,7 +723,13 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	// resolve dependency and persist
 	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
 
-	return srv.deployer.Deploy(ctx, projectSpec, progressObserver)
+	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
+	if err != nil {
+		return err
+	}
+
+	srv.notifyProgress(progressObserver, &models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
+	return nil
 }
 
 func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.ProjectSpec,
@@ -820,4 +826,8 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 	}
 	return currentSpec.Name, nil
+}
+
+func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
+	return srv.deployManager.GetStatus(ctx, deployID)
 }

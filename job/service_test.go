@@ -1177,6 +1177,7 @@ func TestService(t *testing.T) {
 			Name:        "dev-team-1",
 			ProjectSpec: projSpec,
 		}
+		deployID := models.DeploymentID(uuid.New())
 		errorMsg := "internal error"
 
 		t.Run("should successfully refresh job specs for the whole project", func(t *testing.T) {
@@ -1195,8 +1196,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1231,10 +1232,10 @@ func TestService(t *testing.T) {
 			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
 			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
-			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
+			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
@@ -1255,8 +1256,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1294,10 +1295,10 @@ func TestService(t *testing.T) {
 			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
 			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
-			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
+			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
-				nil, nil, nil, namespaceService, projectService, deployer, nil)
+				nil, nil, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Nil(t, err)
@@ -1324,8 +1325,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1361,10 +1362,10 @@ func TestService(t *testing.T) {
 			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDependencyResolved[0], nil)
 			dependencyResolver.On("Persist", ctx, jobSpecsBase[0]).Return(nil)
 
-			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
+			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, dependencyResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Nil(t, err)
@@ -1385,13 +1386,13 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			projectService.On("Get", ctx, projSpec.Name).Return(models.ProjectSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1412,8 +1413,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
@@ -1421,7 +1422,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
@@ -1442,8 +1443,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			namespaceNames := []string{namespaceSpec.Name}
 
@@ -1452,7 +1453,7 @@ func TestService(t *testing.T) {
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
-				nil, nil, nil, namespaceService, projectService, deployer, nil)
+				nil, nil, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1473,8 +1474,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			namespaceNames := []string{namespaceSpec.Name}
 
@@ -1486,7 +1487,7 @@ func TestService(t *testing.T) {
 			jobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
-				nil, nil, nil, namespaceService, projectService, deployer, nil)
+				nil, nil, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
@@ -1507,8 +1508,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1530,7 +1531,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetByName", ctx, jobSpecsBase[0].Name).Return(models.JobSpec{}, models.NamespaceSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projectJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				nil, projectJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
@@ -1551,8 +1552,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1609,10 +1610,10 @@ func TestService(t *testing.T) {
 
 			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(models.JobSpec{}, errors.New(errorMsg))
 
-			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
+			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
@@ -1633,8 +1634,8 @@ func TestService(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
 
-			deployer := new(mock.Deployer)
-			defer deployer.AssertExpectations(t)
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1692,13 +1693,55 @@ func TestService(t *testing.T) {
 			dependencyResolver.On("Resolve", ctx, projSpec, jobSpecsBase[1], nil).Return(jobSpecsAfterDependencyResolved[1], nil)
 			dependencyResolver.On("Persist", ctx, jobSpecsAfterDependencyResolved[1]).Return(errors.New(errorMsg))
 
-			deployer.On("Deploy", ctx, projSpec, nil).Return(nil)
+			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployer, nil)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
+		})
+	})
+
+	t.Run("GetDeployment", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		t.Run("should able to get job deployment successfully", func(t *testing.T) {
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
+
+			deployID := models.DeploymentID(uuid.New())
+			expectedDeployment := models.JobDeployment{
+				ID:      deployID,
+				Project: projSpec,
+				Status:  models.JobDeploymentStatusInProgress,
+			}
+
+			deployManager.On("GetStatus", ctx, deployID).Return(expectedDeployment, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil,
+				nil, nil, nil, nil, nil, deployManager, nil)
+			deployment, err := svc.GetDeployment(ctx, deployID)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedDeployment, deployment)
+		})
+		t.Run("should failed when unable to get job deployment", func(t *testing.T) {
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
+
+			deployID := models.DeploymentID(uuid.New())
+			errorMsg := "internal error"
+
+			deployManager.On("GetStatus", ctx, deployID).Return(models.JobDeployment{}, errors.New(errorMsg))
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil,
+				nil, nil, nil, nil, nil, deployManager, nil)
+			deployment, err := svc.GetDeployment(ctx, deployID)
+
+			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.JobDeployment{}, deployment)
 		})
 	})
 }

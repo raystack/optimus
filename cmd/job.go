@@ -6,7 +6,7 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-func jobCommand() *cli.Command {
+func jobCommand(rootCmd *cli.Command) *cli.Command {
 	var (
 		configFilePath string
 		conf           config.ClientConfig
@@ -24,6 +24,8 @@ func jobCommand() *cli.Command {
 	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		rootCmd.PersistentPreRun(cmd, args)
+
 		// TODO: find a way to load the config in one place
 		c, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {

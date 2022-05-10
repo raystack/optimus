@@ -12,6 +12,7 @@ import (
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/robfig/cron/v3"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
@@ -220,7 +221,7 @@ func (s *OptimusServer) setupHandlers() error {
 		db: s.dbConn,
 	}
 
-	scheduler, err := initScheduler(s.logger, s.conf, projectRepoFac)
+	scheduler, err := initScheduler(s.conf)
 	if err != nil {
 		return err
 	}
@@ -231,7 +232,7 @@ func (s *OptimusServer) setupHandlers() error {
 	projectService := service.NewProjectService(projectRepoFac)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine)
+	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
 
 	// registered job store repository factory
 	jobSpecRepoFac := jobSpecRepoFactory{
@@ -288,7 +289,10 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	})
 
-	deployer := job.NewDeployer(dependencyResolver, priorityResolver, scheduler, namespaceService)
+	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
+	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
+	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
+	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
 
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
@@ -303,7 +307,7 @@ func (s *OptimusServer) setupHandlers() error {
 		replayManager,
 		namespaceService,
 		projectService,
-		deployer,
+		deployManager,
 		pluginService,
 	)
 
