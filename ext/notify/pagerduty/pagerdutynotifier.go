@@ -2,7 +2,6 @@ package pagerduty
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -77,44 +76,13 @@ func (s *Notifier) queueNotification(routingKey string, attr models.NotifyAttrs)
 	pagerdutyQueueCounter.Inc()
 }
 
-type customDetails struct {
-	Owner     string `json:"owner"`
-	Namespace string `json:"namespace"`
-	LogURL    string `json:"log_url"`
-	JobURL    string `json:"job_url"`
-	Exception string `json:"exception"`
-	Message   string `json:"message"`
-}
-
-func buildPayloadCustomDetails(evt Event) (string, error) {
-	details := &customDetails{Owner: evt.owner, Namespace: evt.namespaceName}
-	if logURL, ok := evt.meta.Value["log_url"]; ok && logURL.GetStringValue() != "" {
-		details.LogURL = logURL.GetStringValue()
-	}
-	if jobURL, ok := evt.meta.Value["job_url"]; ok && jobURL.GetStringValue() != "" {
-		details.JobURL = jobURL.GetStringValue()
-	}
-	if exception, ok := evt.meta.Value["exception"]; ok && exception.GetStringValue() != "" {
-		details.Exception = exception.GetStringValue()
-	}
-	if message, ok := evt.meta.Value["message"]; ok && message.GetStringValue() != "" {
-		details.Message = message.GetStringValue()
-	}
-
-	det, err := json.Marshal(&details)
-	if err != nil {
-		return "", err
-	}
-	return string(det), nil
-}
-
 func (s *Notifier) Worker(ctx context.Context) {
 	defer s.wg.Done()
 
 	for {
 		s.mu.Lock()
 		for _, evt := range s.msgQueue {
-			err := s.pdService.SendPagerDutyAlert(ctx, evt)
+			err := s.pdService.SendAlert(ctx, evt)
 			if err != nil {
 				s.workerErrChan <- fmt.Errorf("Worker_SendMessageContext: %w", err)
 			}
@@ -140,22 +108,22 @@ func (s *Notifier) Close() error { // nolint: unparam
 }
 
 func NewNotifier(ctx context.Context, eventBatchInterval time.Duration, errHandler func(error), pdService PagerDutyService) *Notifier {
-	this := &Notifier{
+	notifier := &Notifier{
 		msgQueue:           make([]Event, 0),
 		workerErrChan:      make(chan error),
 		eventBatchInterval: eventBatchInterval,
 		pdService:          pdService,
 	}
 
-	this.wg.Add(1)
+	notifier.wg.Add(1)
 	go func() {
-		for err := range this.workerErrChan {
+		for err := range notifier.workerErrChan {
 			errHandler(err)
 			pagerdutyWorkerSendErrCounter.Inc()
 		}
-		this.wg.Done()
+		notifier.wg.Done()
 	}()
-	this.wg.Add(1)
-	go this.Worker(ctx)
-	return this
+	notifier.wg.Add(1)
+	go notifier.Worker(ctx)
+	return notifier
 }
