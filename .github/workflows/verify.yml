@@ -1,9 +1,6 @@
 name: verify
 
 on:
-  push:
-    branches:
-      - 'releases/**'
   pull_request:
   workflow_call:
   workflow_dispatch:
