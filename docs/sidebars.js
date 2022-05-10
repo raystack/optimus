@@ -41,7 +41,8 @@ module.exports = {
         "guides/backup",
         "guides/replay",
         "guides/secret",
-        "guides/refresh-jobs"
+        "guides/refresh-jobs",
+        "guides/alerts"
       ],
     },
     {
