@@ -68,7 +68,7 @@ type NamespaceRepository interface {
 type JobRunRepository interface {
 	// Save updates the run in place if it can else insert new
 	// Note: it doesn't insert the instances attached to job run in db
-	Save(context.Context, models.NamespaceSpec, models.JobRun) error
+	Save(context.Context, models.NamespaceSpec, models.JobRun, string) error
 	GetByScheduledAt(ctx context.Context, jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error)
 	GetByID(context.Context, uuid.UUID) (models.JobRun, models.NamespaceSpec, error)
 	UpdateStatus(context.Context, uuid.UUID, models.JobRunState) error
@@ -124,4 +124,13 @@ type JobDependencyRepository interface {
 	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
 	GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
+}
+
+type JobDeploymentRepository interface {
+	Save(ctx context.Context, deployment models.JobDeployment) error
+	GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error)
+	GetByStatusAndProjectID(context.Context, models.JobDeploymentStatus, models.ProjectID) (models.JobDeployment, error)
+	Update(ctx context.Context, deploymentSpec models.JobDeployment) error
+	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
+	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
 }

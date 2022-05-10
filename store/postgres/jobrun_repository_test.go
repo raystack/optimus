@@ -31,7 +31,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		Name:        "dev-team-1",
 		ProjectSpec: projectSpec,
 	}
-
+	jobDestination := "p.d.t"
 	gTask := "g-task"
 	tTask := "t-task"
 	execUnit1 := new(mock.BasePlugin)
@@ -106,8 +106,8 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
 		jrepo := postgres.NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
-		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0]))
-		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1]).Error())
+		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0], jobDestination))
+		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
 		return dbConn
 	}
 
@@ -154,7 +154,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := postgres.NewJobRunRepository(db, adapter)
-		err := repo.Insert(ctx, namespaceSpec, testModels[1])
+		err := repo.Insert(ctx, namespaceSpec, testModels[1], jobDestination)
 		assert.Nil(t, err)
 
 		checkModel, ns, err := repo.GetByID(ctx, testModels[1].ID)
@@ -163,7 +163,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		assert.Equal(t, testModels[1].ScheduledAt.Unix(), checkModel.ScheduledAt.Unix())
 		assert.Equal(t, namespaceSpec.ID, ns.ID)
 
-		err = repo.Insert(ctx, namespaceSpec, testModels[0])
+		err = repo.Insert(ctx, namespaceSpec, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
 		checkModel, ns, err = repo.GetByID(ctx, testModels[0].ID)
@@ -181,7 +181,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			testModels = append(testModels, testSpecs...)
 
 			repo := postgres.NewJobRunRepository(db, adapter)
-			err := repo.Save(ctx, namespaceSpec, testModels[0])
+			err := repo.Save(ctx, namespaceSpec, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
@@ -192,7 +192,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			err = repo.Delete(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 
-			err = repo.Save(ctx, namespaceSpec, testModels[0])
+			err = repo.Save(ctx, namespaceSpec, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, _, err = repo.GetByID(ctx, testModels[0].ID)
@@ -207,7 +207,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			testModels = append(testModels, testSpecs...)
 
 			repo := postgres.NewJobRunRepository(db, adapter)
-			err := repo.Save(ctx, namespaceSpec, testModels[0])
+			err := repo.Save(ctx, namespaceSpec, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, _, err := repo.GetByID(ctx, testModels[0].ID)
@@ -218,7 +218,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 			// update resource
 			testModels[0].ScheduledAt = testModels[0].ScheduledAt.Add(time.Nanosecond)
 
-			err = repo.Save(ctx, namespaceSpec, testModels[0])
+			err = repo.Save(ctx, namespaceSpec, testModels[0], jobDestination)
 			assert.Nil(t, err)
 
 			checkModel, _, err = repo.GetByID(ctx, testModels[0].ID)
@@ -234,7 +234,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := postgres.NewJobRunRepository(db, adapter)
-		err := repo.Insert(ctx, namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, namespaceSpec, testModels[0], jobDestination)
 		assert.Nil(t, err)
 		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
 		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[1]))
@@ -253,7 +253,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := postgres.NewJobRunRepository(db, adapter)
-		err := repo.Insert(ctx, namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, namespaceSpec, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
 		runs, err := repo.GetByStatus(ctx, models.RunStateRunning)
@@ -267,7 +267,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := postgres.NewJobRunRepository(db, adapter)
-		err := repo.Insert(ctx, namespaceSpec, testModels[1])
+		err := repo.Insert(ctx, namespaceSpec, testModels[1], jobDestination)
 		assert.Nil(t, err)
 
 		err = repo.AddInstance(ctx, namespaceSpec, testModels[1], testInstanceSpecs[0])
@@ -284,7 +284,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 		testModels = append(testModels, testSpecs...)
 
 		repo := postgres.NewJobRunRepository(db, adapter)
-		err := repo.Insert(ctx, namespaceSpec, testModels[0])
+		err := repo.Insert(ctx, namespaceSpec, testModels[0], jobDestination)
 		assert.Nil(t, err)
 		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[0]))
 		assert.Nil(t, repo.AddInstance(ctx, namespaceSpec, testModels[0], testModels[0].Instances[1]))

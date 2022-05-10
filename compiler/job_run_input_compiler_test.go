@@ -39,7 +39,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 	plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod}
 
 	behavior := models.JobSpecBehavior{
-		CatchUp:       true,
+		CatchUp:       false,
 		DependsOnPast: false,
 	}
 

@@ -86,8 +86,8 @@ type JobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepository) Save(ctx context.Context, t models.JobSpec) error {
-	return repo.Called(ctx, t).Error(0)
+func (repo *JobSpecRepository) Save(ctx context.Context, t models.JobSpec, jobDestination string) error {
+	return repo.Called(ctx, t, jobDestination).Error(0)
 }
 
 func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {
@@ -212,9 +212,14 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, progressObserver progress.Observer) (err error) {
-	args := srv.Called(ctx, projectName, namespaceNames, jobNames, progressObserver)
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, observer progress.Observer) error {
+	args := srv.Called(ctx, projectName, namespaceNames, jobNames, observer)
 	return args.Error(0)
+}
+
+func (srv *JobService) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
+	args := srv.Called(ctx, deployID)
+	return args.Get(0).(models.JobDeployment), args.Error(1)
 }
 
 type DependencyResolver struct {
@@ -232,9 +237,8 @@ func (srv *DependencyResolver) Persist(ctx context.Context, jobSpec models.JobSp
 	return args.Error(0)
 }
 
-func (srv *DependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec,
-	observer progress.Observer) ([]models.JobSpec, error) {
-	args := srv.Called(ctx, projectSpec, observer)
+func (srv *DependencyResolver) FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, projectSpec)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
@@ -296,7 +300,61 @@ type Deployer struct {
 	mock.Mock
 }
 
-func (d *Deployer) Deploy(ctx context.Context, projectSpec models.ProjectSpec, progressObserver progress.Observer) error {
-	args := d.Called(ctx, projectSpec, progressObserver)
+func (d *Deployer) Deploy(ctx context.Context, deployRequest models.JobDeployment) error {
+	args := d.Called(ctx, deployRequest)
 	return args.Error(0)
+}
+
+type DeployManager struct {
+	mock.Mock
+}
+
+func (d *DeployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
+	args := d.Called(ctx, projectSpec)
+	return args.Get(0).(models.DeploymentID), args.Error(1)
+}
+
+func (d *DeployManager) GetStatus(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
+	args := d.Called(ctx, deployID)
+	return args.Get(0).(models.JobDeployment), args.Error(1)
+}
+
+func (d *DeployManager) Init() {
+	d.Called()
+}
+
+// JobDeploymentRepository to store job deployments
+type JobDeploymentRepository struct {
+	mock.Mock
+}
+
+func (repo *JobDeploymentRepository) Save(ctx context.Context, deployment models.JobDeployment) error {
+	args := repo.Called(ctx, deployment)
+	return args.Error(0)
+}
+
+func (repo *JobDeploymentRepository) GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
+	args := repo.Called(ctx, deployID)
+	return args.Get(0).(models.JobDeployment), args.Error(1)
+}
+
+func (repo *JobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context, jobDeploymentStatus models.JobDeploymentStatus,
+	projectID models.ProjectID) (models.JobDeployment, error) {
+	args := repo.Called(ctx, jobDeploymentStatus, projectID)
+	return args.Get(0).(models.JobDeployment), args.Error(1)
+}
+
+func (repo *JobDeploymentRepository) Update(ctx context.Context, deploymentSpec models.JobDeployment) error {
+	args := repo.Called(ctx, deploymentSpec)
+	return args.Error(0)
+}
+
+func (repo *JobDeploymentRepository) GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error) {
+	args := repo.Called(ctx)
+	return args.Get(0).(models.JobDeployment), args.Error(1)
+}
+
+func (repo *JobDeploymentRepository) GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error) {
+	args := repo.Called(ctx, status)
+	return args.Get(0).([]models.JobDeployment), args.Error(1)
 }
