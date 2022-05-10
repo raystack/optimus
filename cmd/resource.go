@@ -21,7 +21,7 @@ import (
 var validateResourceName = utils.ValidatorFactory.NewFromRegex(`^[a-zA-Z0-9][a-zA-Z0-9_\-\.]+$`,
 	`invalid name (can only contain characters A-Z (in either case), 0-9, "-", "_" or "." and must start with an alphanumeric character)`)
 
-func resourceCommand() *cli.Command {
+func resourceCommand(rootCmd *cli.Command) *cli.Command {
 	var (
 		configFilePath string
 		conf           config.ClientConfig
@@ -38,6 +38,8 @@ func resourceCommand() *cli.Command {
 	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		rootCmd.PersistentPreRun(cmd, args)
+
 		// TODO: find a way to load the config in one place
 		c, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {

@@ -13,7 +13,7 @@ const (
 	backupTimeout = time.Minute * 15
 )
 
-func backupCommand() *cli.Command {
+func backupCommand(rootCmd *cli.Command) *cli.Command {
 	var (
 		configFilePath string
 		conf           config.ClientConfig
@@ -34,6 +34,8 @@ func backupCommand() *cli.Command {
 	cmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", configFilePath, "File path for client configuration")
 
 	cmd.PersistentPreRunE = func(cmd *cli.Command, args []string) error {
+		rootCmd.PersistentPreRun(cmd, args)
+
 		// TODO: find a way to load the config in one place
 		c, err := config.LoadClientConfig(configFilePath, cmd.Flags())
 		if err != nil {
