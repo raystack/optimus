@@ -19,6 +19,8 @@ import (
 type initializeCommand struct {
 	logger     log.Logger
 	initSurvey *survey.InititalizeSurvey
+
+	dirPath string
 }
 
 // NewInitializeCommand initializes command to interactively initialize client config
@@ -34,13 +36,13 @@ func NewInitializeCommand() *cobra.Command {
 		Example: "optimus init [--dir]",
 		RunE:    initialize.RunE,
 	}
-	cmd.Flags().String("dir", "", "Directory where the Optimus client config will be stored")
+	cmd.Flags().StringVar(&initialize.dirPath, "dir", initialize.dirPath, "Directory where the Optimus client config will be stored")
 	return cmd
 }
 
 func (i *initializeCommand) RunE(cmd *cobra.Command, args []string) error {
-	dirPath, _ := cmd.Flags().GetString("dir")
-	filePath := i.getClientConfigPath(dirPath)
+	filePath := i.getClientConfigPath()
+
 	pathOccupied, err := utils.IsPathOccupied(filePath)
 	if err != nil {
 		return err
@@ -57,11 +59,13 @@ func (i *initializeCommand) RunE(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	}
-	clientConfig, err := i.initSurvey.AskInitClientConfig(dirPath)
+
+	clientConfig, err := i.initSurvey.AskInitClientConfig(i.dirPath)
 	if err != nil {
 		return err
 	}
-	if err := i.initClientConfig(dirPath, clientConfig); err != nil {
+
+	if err := i.initClientConfig(clientConfig); err != nil {
 		return err
 	}
 	i.logger.Info("Client config is initialized successfully")
@@ -69,23 +73,23 @@ func (i *initializeCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (i *initializeCommand) initClientConfig(dirPath string, clientConfig *config.ClientConfig) error {
-	if err := i.setupDirPathForClientConfig(dirPath, clientConfig); err != nil {
+func (i *initializeCommand) initClientConfig(clientConfig *config.ClientConfig) error {
+	if err := i.setupDirPathForClientConfig(clientConfig); err != nil {
 		return err
 	}
 	marshalledClientConfig, err := yaml.Marshal(clientConfig)
 	if err != nil {
 		return err
 	}
-	filePath := i.getClientConfigPath(dirPath)
+	filePath := i.getClientConfigPath()
 	filePermission := 0o660
 	return os.WriteFile(filePath, marshalledClientConfig, fs.FileMode(filePermission))
 }
 
-func (*initializeCommand) setupDirPathForClientConfig(dirPath string, clientConfig *config.ClientConfig) error {
+func (i *initializeCommand) setupDirPathForClientConfig(clientConfig *config.ClientConfig) error {
 	directoryPermission := 0o750
 	for _, namespace := range clientConfig.Namespaces {
-		namespaceDirPath := path.Join(dirPath, namespace.Name)
+		namespaceDirPath := path.Join(i.dirPath, namespace.Name)
 		namespaceDatastoreDirPath := path.Join(namespaceDirPath, "resources")
 		namespaceJobDirPath := path.Join(namespaceDirPath, "jobs")
 		paths := []string{namespaceDirPath, namespaceDatastoreDirPath, namespaceJobDirPath}
@@ -105,7 +109,7 @@ func (*initializeCommand) setupDirPathForClientConfig(dirPath string, clientConf
 	return nil
 }
 
-func (i *initializeCommand) getClientConfigPath(dirPath string) string {
+func (i *initializeCommand) getClientConfigPath() string {
 	fileName := fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension)
-	return path.Join(dirPath, fileName)
+	return path.Join(i.dirPath, fileName)
 }

@@ -45,12 +45,10 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	storerName, err := c.selectDatastorerName()
 	if err != nil {
 		return err
 	}
-
 	repoFS, ok := c.createDataStoreSpecFs(namespace)[storerName]
 	if !ok {
 		return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
@@ -58,7 +56,6 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 
 	// find requested datastorer
 	datastorer, _ := models.DatastoreRegistry.GetByName(storerName)
-
 	// find resource type
 	resourceType, err := c.selectDataStoreType(datastorer)
 	if err != nil {

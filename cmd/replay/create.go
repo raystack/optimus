@@ -82,21 +82,14 @@ Date ranges are inclusive.
 }
 
 func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
+	jobName := args[0]
+	startDate := args[1]
 	endDate := args[1]
 	if len(args) >= 3 { //nolint: gomnd
 		endDate = args[2]
 	}
 
-	var allowedDownstreamNamespaces []string
-	if !c.ignoreDownstream {
-		if c.allDownstream {
-			allowedDownstreamNamespaces = []string{"*"}
-		} else {
-			allowedDownstreamNamespaces = []string{c.namespaceName}
-		}
-	}
-
-	if err := c.printReplayExecutionTree(args[0], args[1], endDate, allowedDownstreamNamespaces); err != nil {
+	if err := c.printReplayExecutionTree(jobName, startDate, endDate); err != nil {
 		return err
 	}
 	if c.dryRun {
@@ -114,7 +107,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	replayID, err := c.runReplayRequest(args[0], args[1], endDate, allowedDownstreamNamespaces)
+	replayID, err := c.runReplayRequest(jobName, startDate, endDate)
 	if err != nil {
 		return err
 	}
@@ -122,7 +115,19 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *createCommand) runReplayRequest(jobName, startDate, endDate string, allowedDownstreamNamespaces []string) (string, error) {
+func (c *createCommand) getAllowedDownstreamNamespaces() []string {
+	var allowedDownstreamNamespaces []string
+	if !c.ignoreDownstream {
+		if c.allDownstream {
+			allowedDownstreamNamespaces = []string{"*"}
+		} else {
+			allowedDownstreamNamespaces = []string{c.namespaceName}
+		}
+	}
+	return allowedDownstreamNamespaces
+}
+
+func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (string, error) {
 	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, replayTimeout)
 	if err != nil {
 		return "", err
@@ -133,6 +138,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string, all
 	if c.forceRun {
 		c.logger.Info("> Force running replay even if its already in progress")
 	}
+
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
 	replayRequest := &pb.ReplayRequest{
 		ProjectName:                 c.clientConfig.Project.Name,
@@ -141,7 +147,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string, all
 		StartDate:                   startDate,
 		EndDate:                     endDate,
 		Force:                       c.forceRun,
-		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
+		AllowedDownstreamNamespaces: c.getAllowedDownstreamNamespaces(),
 	}
 
 	spinner := progressbar.NewProgressBar()
@@ -157,7 +163,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string, all
 	return replayResponse.Id, nil
 }
 
-func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate string, allowedDownstreamNamespaces []string) error {
+func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate string) error {
 	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, replayTimeout)
 	if err != nil {
 		return err
@@ -171,7 +177,7 @@ func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate str
 		NamespaceName:               c.namespaceName,
 		StartDate:                   startDate,
 		EndDate:                     endDate,
-		AllowedDownstreamNamespaces: allowedDownstreamNamespaces,
+		AllowedDownstreamNamespaces: c.getAllowedDownstreamNamespaces(),
 	}
 
 	spinner := progressbar.NewProgressBar()
