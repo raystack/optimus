@@ -49,7 +49,7 @@ func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.logger.Info(fmt.Sprintf("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host))
-	if err := r.registerProject(clientConfig.Host, clientConfig.Project); err != nil {
+	if err := RegisterProject(r.logger, clientConfig.Host, clientConfig.Project); err != nil {
 		return err
 	}
 	if r.withNamespaces {
@@ -61,7 +61,8 @@ func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (r *registerCommand) registerProject(serverHost string, project config.Project) error {
+// RegisterProject registers a project to the targeted server host
+func RegisterProject(logger log.Logger, serverHost string, project config.Project) error {
 	conn, err := connectivity.NewConnectivity(serverHost, registerTimeout)
 	if err != nil {
 		return err
@@ -78,13 +79,13 @@ func (r *registerCommand) registerProject(serverHost string, project config.Proj
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			r.logger.Warn(fmt.Sprintf("Ignoring project config changes: %v", err))
+			logger.Warn(fmt.Sprintf("Ignoring project config changes: %v", err))
 			return nil
 		}
 		return fmt.Errorf("failed to register or update project: %w", err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to register or update project, %s", registerResponse.Message)
 	}
-	r.logger.Info("Project registration finished successfully")
+	logger.Info("Project registration finished successfully")
 	return nil
 }

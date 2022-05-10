@@ -49,7 +49,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	repoFS, ok := c.createDataStoreSpecFs(namespace)[storerName]
+	repoFS, ok := CreateDataStoreSpecFs(namespace)[storerName]
 	if !ok {
 		return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
 	}
@@ -92,14 +92,6 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *createCommand) createDataStoreSpecFs(namespace *config.Namespace) map[string]afero.Fs {
-	dtSpec := make(map[string]afero.Fs)
-	for _, dsConfig := range namespace.Datastore {
-		dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
-	}
-	return dtSpec
-}
-
 func (c *createCommand) selectDatastorerName() (string, error) {
 	datastorers := []string{}
 	dsRepo := models.DatastoreRegistry
@@ -115,4 +107,13 @@ func (c *createCommand) selectDataStoreType(datastorer models.Datastorer) (strin
 		availableTypes = append(availableTypes, dsType.String())
 	}
 	return c.resourceCreateSurvey.AskToSelectResourceType(availableTypes)
+}
+
+// CreateDataStoreSpecFs creates specFS for data store
+func CreateDataStoreSpecFs(namespace *config.Namespace) map[string]afero.Fs {
+	dtSpec := make(map[string]afero.Fs)
+	for _, dsConfig := range namespace.Datastore {
+		dtSpec[dsConfig.Type] = afero.NewBasePathFs(afero.NewOsFs(), dsConfig.Path)
+	}
+	return dtSpec
 }

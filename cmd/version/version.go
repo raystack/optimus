@@ -54,11 +54,6 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func (v *versionCommand) PostRunE(cmd *cobra.Command, args []string) error {
-	v.pluginCleanFn()
-	return nil
-}
-
 func (v *versionCommand) RunE(cmd *cobra.Command, args []string) error {
 	// Print client version
 	v.logger.Info(fmt.Sprintf("Client: %s-%s", config.BuildVersion, config.BuildCommit))
@@ -132,4 +127,9 @@ func (v *versionCommand) getVersionRequest(clientVer, host string) (ver string, 
 	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
+}
+
+func (v *versionCommand) PostRunE(cmd *cobra.Command, args []string) error {
+	v.pluginCleanFn()
+	return nil
 }
