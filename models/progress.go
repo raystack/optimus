@@ -6,6 +6,7 @@ const (
 	ProgressTypeJobSpecUnknownDependencyUsed = "unknown dependency used"
 	ProgressTypeJobDependencyResolution      = "dependency resolution"
 	ProgressTypeJobUpload                    = "job upload"
+	ProgressTypeJobDeploymentRequestCreated  = "job deployment request created"
 )
 
 type (
@@ -80,6 +81,15 @@ type (
 
 	// ProgressJobSpecHookDependencyEnrich represents job specs have been enriched with the hook dependencies
 	ProgressJobSpecHookDependencyEnrich struct{}
+
+	// ProgressJobDeploymentRequestCreated represents a job deployment has been requested
+	ProgressJobDeploymentRequestCreated struct {
+		DeployID DeploymentID
+	}
+
+	ProgressJobDeploymentWorkersBusy struct{}
+
+	ProgressJobDeploymentInProgress struct{}
 )
 
 func (*ProgressJobSpecFetch) String() string {
@@ -158,4 +168,16 @@ func (e *ProgressJobRemoteDelete) String() string {
 
 func (*ProgressJobSpecHookDependencyEnrich) String() string {
 	return "jobs enriched with hook dependencies"
+}
+
+func (*ProgressJobDeploymentRequestCreated) String() string {
+	return "job deployment requested"
+}
+
+func (e *ProgressJobDeploymentRequestCreated) ID() DeploymentID {
+	return e.DeployID
+}
+
+func (*ProgressJobDeploymentRequestCreated) Type() string {
+	return ProgressTypeJobDeploymentRequestCreated
 }

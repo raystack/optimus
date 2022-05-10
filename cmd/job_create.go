@@ -252,7 +252,7 @@ this effects runtime dependencies and template macros`,
 		},
 		Asset: map[string]string{},
 		Behavior: local.JobBehavior{
-			Catchup:       true,
+			Catchup:       false,
 			DependsOnPast: false,
 		},
 		Dependencies: []local.JobDependency{},
@@ -336,15 +336,13 @@ func selectJobSurvey(jobSpecRepo JobSpecRepository) (string, error) {
 // IsJobNameUnique return a validator that checks if the job already exists with the same name
 func IsJobNameUnique(repository JobSpecRepository) survey.Validator {
 	return func(val interface{}) error {
-		if str, ok := val.(string); ok {
-			if _, err := repository.GetByName(str); err == nil {
-				return fmt.Errorf("job with the provided name already exists")
-			}
-		} else {
-			// otherwise we cannot convert the value into a string and cannot find a job name
+		jobName, ok := val.(string)
+		if !ok {
 			return fmt.Errorf("invalid type of job name %v", reflect.TypeOf(val).Name())
 		}
-		// the input is fine
+		if _, err := repository.GetByName(jobName); err == nil {
+			return fmt.Errorf("job with the provided name already exists")
+		}
 		return nil
 	}
 }

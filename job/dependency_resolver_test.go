@@ -1271,7 +1271,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec4.ID, jobSpec5.ID}).Return([]models.JobSpec{jobSpec4, jobSpec5}, nil)
 
 			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository, nil)
-			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, err)
 			assert.Equal(t, []uuid.UUID{expectedEnrichedSpecs[0].ID, expectedEnrichedSpecs[1].ID}, []uuid.UUID{actual[0].ID, actual[1].ID})
@@ -1293,7 +1293,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository, nil)
-			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, actual)
 			assert.Equal(t, errorMsg, err.Error())
@@ -1329,7 +1329,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobDependencyRepository.On("GetAll", ctx, projectSpec.ID).Return([]models.JobIDDependenciesPair{}, errors.New(errorMsg))
 
 			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository, nil)
-			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, actual)
 			assert.Equal(t, errorMsg, err.Error())
@@ -1415,7 +1415,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobSpecRepo.On("GetByIDs", ctx, []uuid.UUID{jobSpec4.ID, jobSpec5.ID}).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			resolver := job.NewDependencyResolver(projJobSpecRepoFac, jobDependencyRepository, nil)
-			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec, nil)
+			actual, err := resolver.FetchJobSpecsWithJobDependencies(ctx, projectSpec)
 
 			assert.Nil(t, actual)
 			assert.Equal(t, errorMsg, err.Error())

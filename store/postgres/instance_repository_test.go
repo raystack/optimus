@@ -32,6 +32,8 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 	}
 	ctx := context.Background()
 
+	jobDestination := "project.dataset.table"
+
 	gTask := "g-task"
 	tTask := "t-task"
 	execUnit1 := new(mock.BasePlugin)
@@ -116,11 +118,11 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
 		jrepo := postgres.NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
-		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0]))
-		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1]).Error())
+		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0], jobDestination))
+		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
 
 		jobRunRepo := postgres.NewJobRunRepository(dbConn, adapter)
-		err := jobRunRepo.Save(ctx, namespaceSpec, jobRuns[0])
+		err := jobRunRepo.Save(ctx, namespaceSpec, jobRuns[0], jobDestination)
 		assert.Nil(t, err)
 		return dbConn
 	}

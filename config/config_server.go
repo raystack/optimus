@@ -19,12 +19,19 @@ type Serve struct {
 	AppKey      string   `mapstructure:"app_key"`                // random 32 character hash used for encrypting secrets
 	DB          DBConfig `mapstructure:"db"`
 	Replay      Replay   `mapstructure:"replay"`
+	Deployer    Deployer `mapstructure:"deployer"`
 }
 
 type Replay struct {
 	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
 	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"120s"`
 	RunTimeout    time.Duration `mapstructure:"run_timeout"`
+}
+
+type Deployer struct {
+	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
+	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"300m"`
+	QueueCapacity int           `mapstructure:"queue_capacity" default:"10"`
 }
 
 type DBConfig struct {
@@ -35,7 +42,6 @@ type DBConfig struct {
 
 type SchedulerConfig struct {
 	Name       string `mapstructure:"name" default:"airflow"`
-	SkipInit   bool   `mapstructure:"skip_init"`
 	RaftAddr   string `mapstructure:"raft_addr"`
 	GossipAddr string `mapstructure:"gossip_addr"`
 	NodeID     string `mapstructure:"node_id"`

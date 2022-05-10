@@ -135,7 +135,7 @@ func (obs *jobRefreshObserver) Notify(e progress.Event) {
 		}
 		if evt.Err != nil {
 			resp.Success = false
-			resp.Message = evt.Err.Error()
+			resp.Value = evt.Err.Error()
 		}
 
 		if err := obs.stream.Send(resp); err != nil {
@@ -144,7 +144,7 @@ func (obs *jobRefreshObserver) Notify(e progress.Event) {
 	case *models.ProgressJobSpecUnknownDependencyUsed:
 		resp := &pb.RefreshJobsResponse{
 			JobName: evt.Job,
-			Message: evt.String(),
+			Value:   evt.String(),
 			Success: false,
 			Type:    evt.Type(),
 		}
@@ -154,16 +154,25 @@ func (obs *jobRefreshObserver) Notify(e progress.Event) {
 	case *models.ProgressJobDependencyResolution:
 		resp := &pb.RefreshJobsResponse{
 			JobName: evt.Job,
-			Message: evt.String(),
+			Value:   evt.String(),
 			Success: true,
 			Type:    evt.Type(),
 		}
 		if evt.Err != nil {
 			resp.Success = false
-			resp.Message = evt.Err.Error()
+			resp.Value = evt.Err.Error()
 		}
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error("failed to send failed dependency resolution notification", "evt", evt.String(), "error", err)
+		}
+	case *models.ProgressJobDeploymentRequestCreated:
+		resp := &pb.RefreshJobsResponse{
+			Value:   evt.ID().UUID().String(),
+			Success: true,
+			Type:    evt.Type(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send job deployment request created", "evt", evt.String(), "error", err)
 		}
 	}
 }
