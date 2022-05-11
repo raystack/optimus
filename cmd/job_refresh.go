@@ -34,7 +34,7 @@ func jobRefreshCommand(conf *config.ClientConfig) *cli.Command {
 	)
 
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringSliceVarP(&selectedNamespaceNames, "namespaces", "N", nil, "Selected namespaces of optimus project")
+	cmd.Flags().StringSliceVarP(&selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().StringSliceVarP(&jobs, "jobs", "J", nil, "Job names")
 
 	cmd.RunE = func(c *cli.Command, args []string) error {
