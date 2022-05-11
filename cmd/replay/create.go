@@ -117,7 +117,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	c.logger.Info(fmt.Sprintf("Replay request created with id %s", replayID))
+	c.logger.Info(logger.ColoredSuccess("Replay request created with id %s", replayID))
 	return nil
 }
 
@@ -142,7 +142,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (st
 
 	c.logger.Info("\n> Initiating replay")
 	if c.forceRun {
-		c.logger.Info("> Force running replay even if its already in progress")
+		c.logger.Info(logger.ColoredNotice("> Force running replay even if its already in progress"))
 	}
 
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
@@ -162,7 +162,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (st
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error("Replay request took too long, timing out")
+			c.logger.Error(logger.ColoredError("Replay request took too long, timing out"))
 		}
 		return "", fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
@@ -192,7 +192,7 @@ func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate str
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error("Replay dry run took too long, timing out")
+			c.logger.Error(logger.ColoredError("Replay dry run took too long, timing out"))
 		}
 		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
@@ -202,8 +202,8 @@ func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate str
 }
 
 func (c *createCommand) printReplayDryRunResponse(replayRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
-	c.logger.Info(fmt.Sprintf("For %s project and %s namespace\n", replayRequest.ProjectName, replayRequest.NamespaceName))
-	c.logger.Info("\n> Replay runs")
+	c.logger.Info(fmt.Sprintf("For %s project and %s namespace\n", logger.ColoredNotice(replayRequest.ProjectName), logger.ColoredNotice(replayRequest.NamespaceName)))
+	c.logger.Info(logger.ColoredNotice("\n> Replay runs"))
 	table := tablewriter.NewWriter(c.logger.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
@@ -231,7 +231,7 @@ func (c *createCommand) printReplayDryRunResponse(replayRequest *pb.ReplayDryRun
 	table.Render()
 
 	// print tree
-	c.logger.Info("\n> Dependency tree")
+	c.logger.Info(logger.ColoredNotice("\n> Dependency tree"))
 	c.logger.Info(c.printExecutionTree(replayDryRunResponse.ExecutionTree, treeprint.New()).String())
 
 	// ignored jobs

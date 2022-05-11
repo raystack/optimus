@@ -2,6 +2,7 @@ package survey
 
 import (
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/salt/log"
 )
 
@@ -62,7 +63,7 @@ func (b *BackupCreateSurvey) AskConfirmToContinue() (bool, error) {
 		return false, err
 	}
 	if proceedWithBackup == answerNo {
-		b.logger.Info("Aborting...")
+		b.logger.Info(logger.ColoredNotice("Aborting..."))
 		return false, nil
 	}
 	return true, nil

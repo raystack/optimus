@@ -79,7 +79,7 @@ func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := v.validateJobSpecificationRequest(jobSpecs); err != nil {
 		return err
 	}
-	v.logger.Info(fmt.Sprintf("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
+	v.logger.Info(logger.ColoredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
 
@@ -108,7 +108,7 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobS
 	respStream, err := job.CheckJobSpecifications(conn.GetContext(), checkJobSpecRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			v.logger.Error("Validate process took too long, timing out")
+			v.logger.Error(logger.ColoredError("Validate process took too long, timing out"))
 		}
 		return fmt.Errorf("validate request failed: %w", err)
 	}
@@ -162,7 +162,7 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecifi
 	} else if streamError != nil && ackCounter == totalJobs && failedCounter == 0 {
 		// if we have uploaded all jobs successfully, further steps in pipeline
 		// should not cause errors to fail and should end with warnings if any.
-		v.logger.Warn("request ended with warning", "err", streamError)
+		v.logger.Warn(logger.ColoredNotice("request ended with warning", "err", streamError))
 		return nil
 	}
 	return streamError

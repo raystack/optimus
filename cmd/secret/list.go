@@ -68,16 +68,16 @@ func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.logger.Error("Secret listing took too long, timing out")
+			l.logger.Error(logger.ColoredError("Secret listing took too long, timing out"))
 		}
 		return fmt.Errorf("%w: request failed for listing secrets", err)
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {
-		l.logger.Info(fmt.Sprintf("No secrets were found in %s project.", req.ProjectName))
+		l.logger.Info(logger.ColoredNotice("No secrets were found in %s project.", req.ProjectName))
 	} else {
 		result := l.stringifyListOfSecrets(listSecretsResponse)
-		l.logger.Info(fmt.Sprintf("Secrets for project: %s", l.clientConfig.Project.Name))
+		l.logger.Info(logger.ColoredNotice("Secrets for project: %s", l.clientConfig.Project.Name))
 		l.logger.Info(result)
 	}
 	return nil

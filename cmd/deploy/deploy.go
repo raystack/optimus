@@ -74,20 +74,20 @@ func (d *deployCommand) PreRunE(cmd *cobra.Command, args []string) error {
 	}
 	d.logger = logger.NewClientLogger(d.clientConfig.Log)
 
-	d.logger.Info("Initializing client plugins")
+	d.logger.Info(logger.ColoredNotice("Initializing client plugins"))
 	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)
 	d.logger.Info("initialization finished!\n")
 	return err
 }
 
 func (d *deployCommand) RunE(cmd *cobra.Command, args []string) error {
-	d.logger.Info(fmt.Sprintf("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
+	d.logger.Info(logger.ColoredNotice("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
 	if err := project.RegisterProject(d.logger, d.clientConfig.Host, d.clientConfig.Project); err != nil {
 		return err
 	}
 	d.logger.Info("project registration finished!\n")
 
-	d.logger.Info("Validating namespaces")
+	d.logger.Info(logger.ColoredNotice("Validating namespaces"))
 	selectedNamespaces, err := d.clientConfig.GetSelectedNamespaces(d.selectedNamespaceNames...)
 	if err != nil {
 		return err
@@ -97,14 +97,14 @@ func (d *deployCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 	d.logger.Info("validation finished!\n")
 
-	d.logger.Info(fmt.Sprintf("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
+	d.logger.Info(logger.ColoredNotice("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
 	if err := namespace.RegisterSelectedNamespaces(d.logger, d.clientConfig.Host, d.clientConfig.Project.Name, selectedNamespaces...); err != nil {
 		return err
 	}
 	d.logger.Info("namespace registration finished!\n")
 
 	if d.ignoreJobDeployment && d.ignoreResourceDeployment {
-		d.logger.Info("No jobs and resources to be deployed")
+		d.logger.Info(logger.ColoredNotice("No jobs and resources to be deployed"))
 		return nil
 	}
 	return d.deploy(selectedNamespaces)
@@ -123,7 +123,7 @@ func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
 	defer conn.Close()
 
 	if !d.ignoreResourceDeployment {
-		d.logger.Info("> Deploying all resources")
+		d.logger.Info(logger.ColoredNotice("> Deploying all resources"))
 		if err := d.deployResources(conn, selectedNamespaces); err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
 	}
 
 	if !d.ignoreJobDeployment {
-		d.logger.Info("> Deploying all jobs")
+		d.logger.Info(logger.ColoredNotice("> Deploying all jobs"))
 		if err := d.deployJobs(conn, selectedNamespaces); err != nil {
 			return err
 		}
@@ -262,7 +262,7 @@ func (d *deployCommand) getJobStreamClient(
 	stream, err := client.DeployJobSpecification(conn.GetContext())
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			d.logger.Error("Deployment process took too long, timing out")
+			d.logger.Error(logger.ColoredError("Deployment process took too long, timing out"))
 		}
 		return nil, fmt.Errorf("deployement failed: %w", err)
 	}
@@ -406,7 +406,7 @@ func (d *deployCommand) getResourceStreamClient(
 	stream, err := client.DeployResourceSpecification(conn.GetContext())
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			d.logger.Error("Deployment process took too long, timing out")
+			d.logger.Error(logger.ColoredError("Deployment process took too long, timing out"))
 		}
 		return nil, fmt.Errorf("deployement failed: %w", err)
 	}

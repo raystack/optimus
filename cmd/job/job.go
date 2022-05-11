@@ -38,11 +38,11 @@ func NewJobCommand() *cobra.Command {
 
 	cmd.AddCommand(NewCreateCommand(job.clientConfig))
 	cmd.AddCommand(NewAddHookCommand(job.clientConfig))
+	cmd.AddCommand(NewRefreshCommand(job.clientConfig))
 	cmd.AddCommand(NewRenderCommand(job.clientConfig))
-	cmd.AddCommand(NewValidateCommand(job.clientConfig))
 	cmd.AddCommand(NewRunCommand(job.clientConfig))
 	cmd.AddCommand(NewRunListCommand(job.clientConfig))
-	cmd.AddCommand(NewRefreshCommand(job.clientConfig))
+	cmd.AddCommand(NewValidateCommand(job.clientConfig))
 	return cmd
 }
 

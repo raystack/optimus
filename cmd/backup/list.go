@@ -72,16 +72,16 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.logger.Error("Getting list of backups took too long, timing out")
+			l.logger.Error(logger.ColoredError("Getting list of backups took too long, timing out"))
 			return err
 		}
 		return fmt.Errorf("request failed to get list of backups: %w", err)
 	}
 
 	if len(listBackupsResponse.Backups) == 0 {
-		l.logger.Info(fmt.Sprintf("No backups were found in %s project.", l.clientConfig.Project.Name))
+		l.logger.Info(logger.ColoredNotice("No backups were found in %s project.", l.clientConfig.Project.Name))
 	} else {
-		l.logger.Info("Recent backups")
+		l.logger.Info(logger.ColoredNotice("Recent backups"))
 		result := l.stringifyBackupListResponse(listBackupsResponse)
 		l.logger.Info(result)
 	}

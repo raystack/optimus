@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -81,6 +80,6 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := jobSpecRepo.SaveAt(spec, jobDirectory); err != nil {
 		return err
 	}
-	c.logger.Info(fmt.Sprintf("Job successfully created at %s", jobDirectory))
+	c.logger.Info(logger.ColoredSuccess("Job successfully created at %s", jobDirectory))
 	return nil
 }

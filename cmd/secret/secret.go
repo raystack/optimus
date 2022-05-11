@@ -37,9 +37,9 @@ func NewSecretCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(&secret.configFilePath, "config", "c", secret.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewSetCommand(secret.clientConfig))
-	cmd.AddCommand(NewListCommand(secret.clientConfig))
 	cmd.AddCommand(NewDeleteCommand(secret.clientConfig))
+	cmd.AddCommand(NewListCommand(secret.clientConfig))
+	cmd.AddCommand(NewSetCommand(secret.clientConfig))
 	return cmd
 }
 

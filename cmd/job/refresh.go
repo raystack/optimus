@@ -75,7 +75,7 @@ func (r *refreshCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
-	r.logger.Info(fmt.Sprintf("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
+	r.logger.Info(logger.ColoredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
 
@@ -94,7 +94,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Error("Refresh process took too long, timing out")
+			r.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
 		}
 		return fmt.Errorf("refresh request failed: %w", err)
 	}
@@ -124,23 +124,23 @@ func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationServic
 	}
 
 	if len(allRefreshErrors) > 0 {
-		r.logger.Error(fmt.Sprintf("Refreshed %d/%d jobs.",
+		r.logger.Error(logger.ColoredError("Refreshed %d/%d jobs.",
 			r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter))
 		for _, reqErr := range allRefreshErrors {
-			r.logger.Error(reqErr.Error())
+			r.logger.Error(logger.ColoredError(reqErr.Error()))
 		}
 	} else {
-		r.logger.Info(fmt.Sprintf("Refreshed %d jobs.", r.refreshSuccessCounter))
+		r.logger.Info(logger.ColoredSuccess("Refreshed %d jobs.", r.refreshSuccessCounter))
 	}
 
 	if len(allDeployErrors) > 0 {
-		r.logger.Error("Deployed %d/%d jobs.",
-			r.deploySuccessCounter, r.deploySuccessCounter+r.deployFailedCounter)
+		r.logger.Error(logger.ColoredError("Deployed %d/%d jobs.",
+			r.deploySuccessCounter, r.deploySuccessCounter+r.deployFailedCounter))
 		for _, reqErr := range allDeployErrors {
-			r.logger.Error(reqErr.Error())
+			r.logger.Error(logger.ColoredError(reqErr.Error()))
 		}
 	} else {
-		r.logger.Info(fmt.Sprintf("Deployed %d jobs.", r.deploySuccessCounter))
+		r.logger.Info(logger.ColoredSuccess("Deployed %d jobs.", r.deploySuccessCounter))
 	}
 
 	return streamError
@@ -153,7 +153,7 @@ func (r *refreshCommand) handleStreamResponse(refreshResponse *pb.RefreshJobsRes
 		if !refreshResponse.GetSuccess() {
 			r.deployFailedCounter++
 			if r.verbose {
-				r.logger.Warn(fmt.Sprintf("%d. %s failed to be deployed: %s", r.deployCounter, refreshResponse.GetJobName(), refreshResponse.GetMessage()))
+				r.logger.Warn(logger.ColoredError("%d. %s failed to be deployed: %s", r.deployCounter, refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 			}
 			deployErrs = append(deployErrs, fmt.Errorf("failed to deploy: %s, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 		} else {
@@ -167,7 +167,7 @@ func (r *refreshCommand) handleStreamResponse(refreshResponse *pb.RefreshJobsRes
 		if !refreshResponse.GetSuccess() {
 			r.refreshFailedCounter++
 			if r.verbose {
-				r.logger.Warn(fmt.Sprintf("error '%s': failed to refresh dependency, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
+				r.logger.Warn(logger.ColoredError("error '%s': failed to refresh dependency, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 			}
 			refreshErrs = append(refreshErrs, fmt.Errorf("failed to refresh: %s, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
 		} else {

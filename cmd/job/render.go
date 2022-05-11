@@ -82,7 +82,7 @@ func (r *renderCommand) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	r.logger.Info("\nRender complete.")
+	r.logger.Info(logger.ColoredSuccess("\nRender complete."))
 	return nil
 }
 

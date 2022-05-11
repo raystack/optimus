@@ -36,8 +36,8 @@ func NewReplayCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&replay.configFilePath, "config", "c", replay.configFilePath, "File path for client configuration")
 
 	cmd.AddCommand(NewCreateCommand(replay.clientConfig))
-	cmd.AddCommand(NewStatusCommand(replay.clientConfig))
 	cmd.AddCommand(NewListCommand(replay.clientConfig))
+	cmd.AddCommand(NewStatusCommand(replay.clientConfig))
 	return cmd
 }
 

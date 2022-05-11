@@ -75,7 +75,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := c.runBackupDryRunRequest(namespace.Name); err != nil {
-		c.logger.Info("Failed to run backup dry run")
+		c.logger.Info(logger.ColoredNotice("Failed to run backup dry run"))
 		return err
 	}
 	if c.onlyDryRun {
@@ -124,7 +124,7 @@ func (c *createCommand) runBackupRequest(namespace *config.Namespace) error {
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error("Backup took too long, timing out")
+			c.logger.Error(logger.ColoredError("Backup took too long, timing out"))
 		}
 		return fmt.Errorf("request failed to backup job %s: %w", backupRequest.ResourceName, err)
 	}
@@ -133,7 +133,7 @@ func (c *createCommand) runBackupRequest(namespace *config.Namespace) error {
 }
 
 func (c *createCommand) printBackupResponse(backupResponse *pb.CreateBackupResponse) {
-	c.logger.Info("Resource backup completed successfully:")
+	c.logger.Info(logger.ColoredSuccess("Resource backup completed successfully:"))
 	for counter, result := range backupResponse.Urn {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, result))
 	}
@@ -171,7 +171,7 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error("Backup dry run took too long, timing out")
+			c.logger.Error(logger.ColoredError("Backup dry run took too long, timing out"))
 		}
 		return fmt.Errorf("request failed to backup %s: %w", request.ResourceName, err)
 	}
@@ -182,9 +182,9 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 
 func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunRequest, response *pb.BackupDryRunResponse) {
 	if c.ignoreDownstream {
-		c.logger.Info(fmt.Sprintf("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName))
+		c.logger.Info(logger.ColoredNotice("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName))
 	} else {
-		c.logger.Info(fmt.Sprintf("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName))
+		c.logger.Info(logger.ColoredNotice("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName))
 	}
 	for counter, resource := range response.ResourceName {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, resource))

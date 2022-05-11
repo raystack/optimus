@@ -94,7 +94,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	c.logger.Info(fmt.Sprintf("Resource created successfully %s", resourceName))
+	c.logger.Info(logger.ColoredSuccess("Resource created successfully %s", resourceName))
 	return nil
 }
 
