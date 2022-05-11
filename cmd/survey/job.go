@@ -30,7 +30,7 @@ func NewJobSurvey() *JobSurvey {
 }
 
 // AskToSelectJobName asks to select job name
-func (j *JobSurvey) AskToSelectJobName(jobSpecRepo JobSpecRepository) (string, error) {
+func (*JobSurvey) AskToSelectJobName(jobSpecRepo JobSpecRepository) (string, error) {
 	jobs, err := jobSpecRepo.GetAll()
 	if err != nil {
 		return "", err
@@ -84,7 +84,7 @@ func (j *JobSurvey) askCLIModSurveyQuestion(cliMod models.CommandLineMod, questi
 	return answers, nil
 }
 
-func (j *JobSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuestion) survey.Prompt {
+func (*JobSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuestion) survey.Prompt {
 	var surveyPrompt survey.Prompt
 	if len(question.Multiselect) > 0 {
 		sel := &survey.Select{
@@ -131,7 +131,7 @@ func (j *JobSurvey) getValidatePluginQuestion(cliMod models.CommandLineMod, ques
 	}
 }
 
-func (j *JobSurvey) convertUserInputPluginToString(val interface{}) (string, error) {
+func (*JobSurvey) convertUserInputPluginToString(val interface{}) (string, error) {
 	var responseStr string
 	switch reflect.TypeOf(val).Name() {
 	case "int":

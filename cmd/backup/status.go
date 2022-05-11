@@ -43,12 +43,12 @@ func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (s *statusCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (s *statusCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	s.logger = logger.NewClientLogger(s.clientConfig.Log)
 	return nil
 }
 
-func (s *statusCommand) RunE(cmd *cobra.Command, args []string) error {
+func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	availableStorer := getAvailableDatastorers()
 	storerName, err := survey.AskToSelectDatastorer(availableStorer)
 	if err != nil {

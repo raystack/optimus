@@ -6,6 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+
+	"github.com/mattn/go-isatty"
 )
 
 func WriteStringToFileIndexed() func(filePath, data string, writer io.Writer) error {
@@ -30,4 +32,9 @@ func IsPathOccupied(path string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// IsTerminal checks if file descriptor is terminal or not
+func IsTerminal(f *os.File) bool {
+	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
 }

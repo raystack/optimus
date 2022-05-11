@@ -80,7 +80,7 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecRepo JobSpecRepository, defaultJ
 	return jobInput, nil
 }
 
-func (j *JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	defaultAssetRequest := models.DefaultAssetsRequest{Answers: answers}
 	generatedAssetResponse, err := cliMod.DefaultAssets(ctx, defaultAssetRequest)
@@ -94,7 +94,7 @@ func (j *JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers mode
 	return asset, nil
 }
 
-func (j *JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (yaml.MapSlice, error) {
+func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (yaml.MapSlice, error) {
 	ctx := context.Background()
 	defaultConfigRequest := models.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, defaultConfigRequest)
@@ -109,7 +109,7 @@ func (j *JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mo
 	return taskConfig, nil
 }
 
-func (j *JobCreateSurvey) getAvailableTaskNames() []string {
+func (*JobCreateSurvey) getAvailableTaskNames() []string {
 	pluginRepo := models.PluginRegistry
 	var output []string
 	for _, task := range pluginRepo.GetTasks() {
@@ -213,7 +213,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (loca
 	}, nil
 }
 
-func (j *JobCreateSurvey) getPluginCLIMod(taskName string) (models.CommandLineMod, error) {
+func (*JobCreateSurvey) getPluginCLIMod(taskName string) (models.CommandLineMod, error) {
 	pluginRepo := models.PluginRegistry
 	executionTask, err := pluginRepo.GetByName(taskName)
 	if err != nil {
@@ -242,7 +242,7 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 }
 
 // getValidateJobUniqueness return a validator that checks if the job already exists with the same name
-func (j *JobCreateSurvey) getValidateJobUniqueness(repository JobSpecRepository) survey.Validator {
+func (*JobCreateSurvey) getValidateJobUniqueness(repository JobSpecRepository) survey.Validator {
 	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
 			if _, err := repository.GetByName(str); err == nil {
@@ -257,7 +257,7 @@ func (j *JobCreateSurvey) getValidateJobUniqueness(repository JobSpecRepository)
 	}
 }
 
-func (j *JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow {
+func (*JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow {
 	switch winName {
 	case "hourly":
 		return local.JobTaskWindow{

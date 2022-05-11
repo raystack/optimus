@@ -5,9 +5,10 @@ import (
 	"path"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/odpf/salt/log"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/log"
 )
 
 // InititalizeSurvey defines surveys related to init client config
@@ -23,7 +24,7 @@ func NewInitializeSurvey(logger log.Logger) *InititalizeSurvey {
 }
 
 // AskToConfirm askes the user to confirm on a message
-func (i *InititalizeSurvey) AskToConfirm(message, help string, defaultValue bool) (bool, error) {
+func (*InititalizeSurvey) AskToConfirm(message, help string, defaultValue bool) (bool, error) {
 	prompt := &survey.Confirm{
 		Message: message,
 		Help:    help,
@@ -136,7 +137,7 @@ func (i *InititalizeSurvey) askInitNamespaces(dirPath string) ([]*config.Namespa
 	return output, nil
 }
 
-func (i *InititalizeSurvey) askInitNamespaceDatastoreType() (string, error) {
+func (*InititalizeSurvey) askInitNamespaceDatastoreType() (string, error) {
 	prompt := &survey.Select{
 		Message: "What is the type of data store for this namespace?",
 		Options: []string{

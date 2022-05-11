@@ -47,12 +47,12 @@ func NewRunListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (r *runListCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (r *runListCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	return nil
 }
 
-func (r *runListCommand) RunE(cmd *cobra.Command, args []string) error {
+func (r *runListCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
 	r.logger.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
 		r.clientConfig.Project.Name, jobName, r.clientConfig.Host))
@@ -121,7 +121,7 @@ func (r *runListCommand) createJobRunRequest(jobName, startDate, endDate string)
 	return req, nil
 }
 
-func (r *runListCommand) validateDateArgs(startDate, endDate string) error {
+func (*runListCommand) validateDateArgs(startDate, endDate string) error {
 	if startDate == "" && endDate != "" {
 		return errors.New("please provide the start date")
 	}

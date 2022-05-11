@@ -49,12 +49,12 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	return cmd
 }
 
-func (s *statusCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (s *statusCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	s.logger = logger.NewClientLogger(s.clientConfig.Log)
 	return nil
 }
 
-func (s *statusCommand) RunE(cmd *cobra.Command, args []string) error {
+func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	conn, err := connectivity.NewConnectivity(s.clientConfig.Host, replayTimeout)
 	if err != nil {
 		return err

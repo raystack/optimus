@@ -24,7 +24,7 @@ type deleteCommand struct {
 
 // NewDeleteCommand initializes command to delete secret
 func NewDeleteCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	delete := &deleteCommand{
+	dlt := &deleteCommand{
 		clientConfig: clientConfig,
 	}
 
@@ -33,20 +33,20 @@ func NewDeleteCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		Short:   "Delete a secrets registered with optimus",
 		Example: "optimus secret delete <secret_name>",
 		Long:    `This operation deletes a secret registered with optimus.`,
-		RunE:    delete.RunE,
-		PreRunE: delete.PreRunE,
+		RunE:    dlt.RunE,
+		PreRunE: dlt.PreRunE,
 	}
 	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVarP(&delete.namespaceName, "namespace", "n", delete.namespaceName, "Namespace name of optimus managed repository")
+	cmd.Flags().StringVarP(&dlt.namespaceName, "namespace", "n", dlt.namespaceName, "Namespace name of optimus managed repository")
 	return cmd
 }
 
-func (d *deleteCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (d *deleteCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	d.logger = logger.NewClientLogger(d.clientConfig.Log)
 	return nil
 }
 
-func (d *deleteCommand) RunE(cmd *cobra.Command, args []string) error {
+func (d *deleteCommand) RunE(_ *cobra.Command, args []string) error {
 	secretName, err := getSecretName(args)
 	if err != nil {
 		return err

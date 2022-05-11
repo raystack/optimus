@@ -42,14 +42,14 @@ func NewRenderCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (r *renderCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
 	return nil
 }
 
-func (r *renderCommand) RunE(cmd *cobra.Command, args []string) error {
+func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig)
 	if err != nil {
 		return err

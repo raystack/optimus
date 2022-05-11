@@ -81,13 +81,13 @@ Date ranges are inclusive.
 	return cmd
 }
 
-func (c *createCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	c.logger = logger.NewClientLogger(c.clientConfig.Log)
 	c.survey = survey.NewReplayCreateSurvey(c.logger)
 	return nil
 }
 
-func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
+func (c *createCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
 	startDate := args[1]
 	endDate := args[1]

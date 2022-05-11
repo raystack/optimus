@@ -42,7 +42,7 @@ func NewRegisterCommand(logger log.Logger) *cobra.Command {
 	return cmd
 }
 
-func (r *registerCommand) RunE(cmd *cobra.Command, args []string) error {
+func (r *registerCommand) RunE(cmd *cobra.Command, _ []string) error {
 	filePath := path.Join(r.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {

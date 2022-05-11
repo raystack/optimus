@@ -2,8 +2,9 @@ package survey
 
 import (
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/salt/log"
+
+	"github.com/odpf/optimus/cmd/logger"
 )
 
 // BackupCreateSurvey defines survey for creating backup
@@ -19,9 +20,9 @@ func NewBackupCreateSurvey(logger log.Logger) *BackupCreateSurvey {
 }
 
 // AskResourceName asks the user to add resource name for creating backup
-func (b *BackupCreateSurvey) AskResourceName() (string, error) {
+func (*BackupCreateSurvey) AskResourceName() (string, error) {
 	var resourceName string
-	return resourceName, survey.AskOne(
+	if err := survey.AskOne(
 		&survey.Input{
 			Message: "What is the resource name?",
 			Help:    "Input urn of the resource",
@@ -34,13 +35,16 @@ func (b *BackupCreateSurvey) AskResourceName() (string, error) {
 				survey.MaxLength(1024),
 			),
 		),
-	)
+	); err != nil {
+		return "", err
+	}
+	return resourceName, nil
 }
 
 // AskBackupDescription asks the user the need of backup creation
-func (b *BackupCreateSurvey) AskBackupDescription() (string, error) {
+func (*BackupCreateSurvey) AskBackupDescription() (string, error) {
 	var description string
-	return description, survey.AskOne(
+	if err := survey.AskOne(
 		&survey.Input{
 			Message: "Why is this backup needed?",
 			Help:    "Describe intention to help identify the backup",
@@ -49,7 +53,10 @@ func (b *BackupCreateSurvey) AskBackupDescription() (string, error) {
 		survey.WithValidator(
 			survey.ComposeValidators(survey.MinLength(3)),
 		),
-	)
+	); err != nil {
+		return "", err
+	}
+	return description, nil
 }
 
 // AskConfirmToContinue asks the user to confirm whether to continue on creating backup or not

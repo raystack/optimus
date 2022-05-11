@@ -40,7 +40,7 @@ func NewInitializeCommand() *cobra.Command {
 	return cmd
 }
 
-func (i *initializeCommand) RunE(cmd *cobra.Command, args []string) error {
+func (i *initializeCommand) RunE(_ *cobra.Command, _ []string) error {
 	filePath := i.getClientConfigPath()
 
 	pathOccupied, err := utils.IsPathOccupied(filePath)

@@ -57,14 +57,14 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (c *createCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	c.logger = logger.NewClientLogger(c.clientConfig.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
 	return nil
 }
 
-func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
+func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	var err error
 	namespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
 	if err != nil {

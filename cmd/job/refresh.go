@@ -17,15 +17,19 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-const refreshTimeout = time.Minute * 15
+const (
+	refreshTimeout = time.Minute * 30
+	deployTimeout  = time.Minute * 30
+	pollInterval   = time.Second * 15
+)
 
 type refreshCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
 
-	verbose    bool
-	namespaces []string
-	jobs       []string
+	verbose                bool
+	selectedNamespaceNames []string
+	selectedJobNames       []string
 
 	refreshCounter        int
 	refreshSuccessCounter int
@@ -50,28 +54,28 @@ func NewRefreshCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		PreRunE: render.PreRunE,
 	}
 	cmd.Flags().BoolVarP(&render.verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringSliceVarP(&render.namespaces, "namespaces", "N", nil, "Namespaces of Optimus project")
-	cmd.Flags().StringSliceVarP(&render.jobs, "jobs", "J", nil, "Job names")
+	cmd.Flags().StringSliceVarP(&render.selectedNamespaceNames, "namespaces", "N", nil, "Namespaces of Optimus project")
+	cmd.Flags().StringSliceVarP(&render.selectedJobNames, "jobs", "J", nil, "Job names")
 	return cmd
 }
 
-func (r *refreshCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (r *refreshCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	return nil
 }
 
-func (r *refreshCommand) RunE(cmd *cobra.Command, args []string) error {
-	if len(r.namespaces) > 0 || len(r.jobs) > 0 {
-		r.logger.Info("Refreshing job dependencies of selected jobs/namespaces")
-	}
-
+func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
 	projectName := r.clientConfig.Project.Name
 	if projectName == "" {
 		return fmt.Errorf("project configuration is required")
 	}
-	r.logger.Info(fmt.Sprintf("Redeploying all jobs in %s project", projectName))
-	start := time.Now()
+	if len(r.selectedNamespaceNames) > 0 || len(r.selectedJobNames) > 0 {
+		r.logger.Info("Refreshing job dependencies of selected jobs/namespaces")
+	} else {
+		r.logger.Info(fmt.Sprintf("Refreshing job dependencies of all jobs in %s", projectName))
+	}
 
+	start := time.Now()
 	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
@@ -89,8 +93,8 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
 	respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
 		ProjectName:    r.clientConfig.Project.Name,
-		NamespaceNames: r.namespaces,
-		JobNames:       r.jobs,
+		NamespaceNames: r.selectedNamespaceNames,
+		JobNames:       r.selectedJobNames,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -98,15 +102,64 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 		}
 		return fmt.Errorf("refresh request failed: %w", err)
 	}
-	return r.getRefreshJobsResponse(respStream)
+
+	deployID, err := r.getRefreshDeploymentID(respStream)
+	if err != nil {
+		return err
+	}
+	return r.pollJobDeployment(conn.GetContext(), jobSpecService, deployID)
 }
 
-func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationService_RefreshJobsClient) error {
+func (r *refreshCommand) pollJobDeployment(ctx context.Context, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
+	for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
+		resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
+			DeployId: deployID,
+		})
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				r.logger.Error(logger.ColoredError("Get deployment process took too long, timing out"))
+			}
+			return fmt.Errorf("getting deployment status failed: %w", err)
+		}
+
+		switch resp.Status {
+		case models.JobDeploymentStatusInProgress.String():
+			r.logger.Info("Deployment is in progress...")
+		case models.JobDeploymentStatusInQueue.String():
+			r.logger.Info("Deployment request is in queue...")
+		case models.JobDeploymentStatusCancelled.String():
+			r.logger.Error("Deployment request is cancelled.")
+			return nil
+		case models.JobDeploymentStatusSucceed.String():
+			r.logger.Info(logger.ColoredSuccess("Deployed %d jobs", resp.SuccessCount))
+			return nil
+		case models.JobDeploymentStatusFailed.String():
+			if resp.FailureCount > 0 {
+				r.logger.Error(logger.ColoredError("Unable to deploy below jobs:"))
+				for i, failedJob := range resp.Failures {
+					r.logger.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+				}
+			}
+			r.logger.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
+			return nil
+		}
+
+		time.Sleep(pollInterval)
+
+		select {
+		case <-timeout:
+			keepPolling = false
+		default:
+		}
+	}
+	return nil
+}
+
+func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationService_RefreshJobsClient) (string, error) {
 	r.resetCounters()
 	defer r.resetCounters()
 
-	var allRefreshErrors []error
-	var allDeployErrors []error
+	var deployID string
 	var streamError error
 	for {
 		resp, err := stream.Recv()
@@ -117,69 +170,51 @@ func (r *refreshCommand) getRefreshJobsResponse(stream pb.JobSpecificationServic
 			streamError = err
 			break
 		}
-
-		refreshErrs, deployErrs := r.handleStreamResponse(resp)
-		allRefreshErrors = append(refreshErrs, refreshErrs...)
-		allDeployErrors = append(allDeployErrors, deployErrs...)
+		deployID = r.handleStreamResponse(resp)
 	}
-
-	if len(allRefreshErrors) > 0 {
-		r.logger.Error(logger.ColoredError("Refreshed %d/%d jobs.",
-			r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter))
-		for _, reqErr := range allRefreshErrors {
-			r.logger.Error(logger.ColoredError(reqErr.Error()))
-		}
-	} else {
-		r.logger.Info(logger.ColoredSuccess("Refreshed %d jobs.", r.refreshSuccessCounter))
-	}
-
-	if len(allDeployErrors) > 0 {
-		r.logger.Error(logger.ColoredError("Deployed %d/%d jobs.",
-			r.deploySuccessCounter, r.deploySuccessCounter+r.deployFailedCounter))
-		for _, reqErr := range allDeployErrors {
-			r.logger.Error(logger.ColoredError(reqErr.Error()))
-		}
-	} else {
-		r.logger.Info(logger.ColoredSuccess("Deployed %d jobs.", r.deploySuccessCounter))
-	}
-
-	return streamError
+	return deployID, streamError
 }
 
-func (r *refreshCommand) handleStreamResponse(refreshResponse *pb.RefreshJobsResponse) (refreshErrs, deployErrs []error) {
-	switch refreshResponse.Type {
-	case models.ProgressTypeJobUpload:
-		r.deployCounter++
-		if !refreshResponse.GetSuccess() {
-			r.deployFailedCounter++
-			if r.verbose {
-				r.logger.Warn(logger.ColoredError("%d. %s failed to be deployed: %s", r.deployCounter, refreshResponse.GetJobName(), refreshResponse.GetMessage()))
-			}
-			deployErrs = append(deployErrs, fmt.Errorf("failed to deploy: %s, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
-		} else {
-			r.deploySuccessCounter++
-			if r.verbose {
-				r.logger.Info(fmt.Sprintf("%d. %s successfully deployed", r.deployCounter, refreshResponse.GetJobName()))
-			}
-		}
+func (r *refreshCommand) handleStreamResponse(response *pb.RefreshJobsResponse) (deployID string) {
+	var refreshErrors []error
+
+	switch response.Type {
 	case models.ProgressTypeJobDependencyResolution:
 		r.refreshCounter++
-		if !refreshResponse.GetSuccess() {
+		if !response.GetSuccess() {
 			r.refreshFailedCounter++
 			if r.verbose {
-				r.logger.Warn(logger.ColoredError("error '%s': failed to refresh dependency, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
+				r.logger.Warn(logger.ColoredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue())))
 			}
-			refreshErrs = append(refreshErrs, fmt.Errorf("failed to refresh: %s, %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
+			refreshErrors = append(refreshErrors, fmt.Errorf("failed to refresh: %s, %s", response.GetJobName(), response.GetValue()))
 		} else {
 			r.refreshSuccessCounter++
 			if r.verbose {
-				r.logger.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", refreshResponse.GetJobName()))
+				r.logger.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", response.GetJobName()))
 			}
 		}
+	case models.ProgressTypeJobDeploymentRequestCreated:
+		if len(refreshErrors) > 0 {
+			r.logger.Error(logger.ColoredError(fmt.Sprintf("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter)))
+			for _, reqErr := range refreshErrors {
+				r.logger.Error(logger.ColoredError(reqErr.Error()))
+			}
+		} else {
+			r.logger.Info(logger.ColoredSuccess("Refreshed %d jobs.", r.refreshSuccessCounter))
+		}
+
+		if !response.GetSuccess() {
+			r.logger.Warn(logger.ColoredError("Unable to request job deployment"))
+		} else {
+			r.logger.Info(logger.ColoredNotice(fmt.Sprintf("Deployment request created with ID: %s", response.GetValue())))
+		}
+
+		deployID = response.Value
+		return
 	default:
 		if r.verbose {
 			// ordinary progress event
-			r.logger.Info(fmt.Sprintf("info '%s': %s", refreshResponse.GetJobName(), refreshResponse.GetMessage()))
+			r.logger.Info(fmt.Sprintf("info '%s': %s", response.GetJobName(), response.GetValue()))
 		}
 	}
 	return

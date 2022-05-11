@@ -44,7 +44,7 @@ func NewDescribeCommand(logger log.Logger) *cobra.Command {
 	return cmd
 }
 
-func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
+func (d *describeCommand) RunE(cmd *cobra.Command, _ []string) error {
 	filePath := path.Join(d.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
@@ -66,7 +66,7 @@ func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (d *describeCommand) getNamespace(serverHost, projectName, namespaceName string) (*config.Namespace, error) {
+func (*describeCommand) getNamespace(serverHost, projectName, namespaceName string) (*config.Namespace, error) {
 	conn, err := connectivity.NewConnectivity(serverHost, describeTimeout)
 	if err != nil {
 		return nil, err

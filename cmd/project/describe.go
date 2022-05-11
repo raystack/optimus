@@ -42,7 +42,7 @@ func NewDescribeCommand(logger log.Logger) *cobra.Command {
 	return cmd
 }
 
-func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
+func (d *describeCommand) RunE(cmd *cobra.Command, _ []string) error {
 	filePath := path.Join(d.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
@@ -63,7 +63,7 @@ func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (d *describeCommand) getProject(projectName, serverHost string) (config.Project, error) {
+func (*describeCommand) getProject(projectName, serverHost string) (config.Project, error) {
 	var project config.Project
 	conn, err := connectivity.NewConnectivity(serverHost, describeTimeout)
 	if err != nil {

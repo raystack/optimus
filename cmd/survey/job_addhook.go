@@ -44,8 +44,7 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec models.JobSpec, pluginRepo model
 	}
 
 	var jobSpecConfigs models.JobSpecConfigs
-	cliMod := selectedHook.CLIMod
-	if cliMod != nil {
+	if cliMod := selectedHook.CLIMod; cliMod != nil {
 		ctx := context.Background()
 		hookAnswers, err := j.askHookQuestions(ctx, cliMod, jobSpec.Name)
 		if err != nil {
@@ -64,7 +63,7 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec models.JobSpec, pluginRepo model
 	return jobSpec, nil
 }
 
-func (j *JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (models.JobSpecConfigs, error) {
+func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (models.JobSpecConfigs, error) {
 	ctx := context.Background()
 	configRequest := models.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, configRequest)
@@ -78,7 +77,7 @@ func (j *JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers m
 	return config, nil
 }
 
-func (j *JobAddHookSurvey) getAvailableHookNames() []string {
+func (*JobAddHookSurvey) getAvailableHookNames() []string {
 	pluginRepo := models.PluginRegistry
 	var output []string
 	for _, hook := range pluginRepo.GetHooks() {
@@ -87,16 +86,19 @@ func (j *JobAddHookSurvey) getAvailableHookNames() []string {
 	return output
 }
 
-func (j *JobAddHookSurvey) askToSelectHook(options []string) (string, error) {
+func (*JobAddHookSurvey) askToSelectHook(options []string) (string, error) {
 	question := &survey.Select{
 		Message: "Select hook to attach?",
 		Options: options,
 	}
 	var answer string
-	return answer, survey.AskOne(question, &answer)
+	if err := survey.AskOne(question, &answer); err != nil {
+		return "", err
+	}
+	return answer, nil
 }
 
-func (j *JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec models.JobSpec, selectedHookName string) bool {
+func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec models.JobSpec, selectedHookName string) bool {
 	for _, hook := range jobSpec.Hooks {
 		if hook.Unit.Info().Name == selectedHookName {
 			return true

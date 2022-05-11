@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -21,15 +22,18 @@ func NewResourceCreateSurvey() *ResourceCreateSurvey {
 }
 
 // AskToSelectResourceType asks the user to select resource type
-func (r *ResourceCreateSurvey) AskToSelectResourceType(types []string) (string, error) {
+func (*ResourceCreateSurvey) AskToSelectResourceType(types []string) (string, error) {
 	var resourceType string
-	return resourceType, survey.AskOne(
+	if err := survey.AskOne(
 		&survey.Select{
 			Message: "Select supported resource type?",
 			Options: types,
 		},
 		&resourceType,
-	)
+	); err != nil {
+		return "", err
+	}
+	return resourceType, nil
 }
 
 // AskResourceName asks the user to input the required resource name
@@ -60,7 +64,7 @@ func (r *ResourceCreateSurvey) AskResourceName(
 }
 
 // isResourceNameUnique return a validator that checks if the resource already exists with the same name
-func (r *ResourceCreateSurvey) isResourceNameUnique(repository store.ResourceSpecRepository) survey.Validator {
+func (*ResourceCreateSurvey) isResourceNameUnique(repository store.ResourceSpecRepository) survey.Validator {
 	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
 			if _, err := repository.GetByName(context.Background(), str); err == nil {
@@ -78,7 +82,7 @@ func (r *ResourceCreateSurvey) isResourceNameUnique(repository store.ResourceSpe
 }
 
 // isValidDatastoreSpec tries to adapt provided resource with datastore
-func (r *ResourceCreateSurvey) isValidDatastoreSpec(valiFn models.DatastoreSpecValidator) survey.Validator {
+func (*ResourceCreateSurvey) isValidDatastoreSpec(valiFn models.DatastoreSpecValidator) survey.Validator {
 	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
 			if err := valiFn(models.ResourceSpec{

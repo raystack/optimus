@@ -11,7 +11,7 @@ func NewSecretSetSurvey() *SecretSetSurvey {
 }
 
 // AskToConfirmUpdate asks the user to confirm updating secret
-func (s *SecretSetSurvey) AskToConfirmUpdate() (bool, error) {
+func (*SecretSetSurvey) AskToConfirmUpdate() (bool, error) {
 	proceedWithUpdate := answerYes
 	if err := survey.AskOne(&survey.Select{
 		Message: "Secret already exists, proceed with update?",

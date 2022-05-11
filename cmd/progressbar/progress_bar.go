@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/mattn/go-isatty"
 	"github.com/schollz/progressbar/v3"
+
+	"github.com/odpf/optimus/utils"
 )
 
 const (
@@ -30,7 +31,7 @@ type ProgressBar struct {
 func NewProgressBar() *ProgressBar {
 	writer := io.Discard
 	disableProgressIndicator := strings.ToLower(os.Getenv("OPTIMUS_PROGRESS_INDICATOR"))
-	if isTerminal(os.Stderr) && disableProgressIndicator != "false" {
+	if utils.IsTerminal(os.Stderr) && disableProgressIndicator != "false" {
 		writer = os.Stderr
 	}
 	return NewProgressBarWithWriter(writer)
@@ -112,8 +113,4 @@ func (p *ProgressBar) Stop() {
 	}
 	p.bar = nil
 	p.spinner = nil
-}
-
-func isTerminal(f *os.File) bool {
-	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
 }

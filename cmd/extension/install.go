@@ -35,7 +35,7 @@ func newInstallCommand(installer extension.Installer) *cobra.Command {
 	return cmd
 }
 
-func (i *installCommand) RunE(cmd *cobra.Command, args []string) error {
+func (i *installCommand) RunE(_ *cobra.Command, args []string) error {
 	if len(args) != 1 {
 		return errors.New("one argument for [owner/repo] is required")
 	}

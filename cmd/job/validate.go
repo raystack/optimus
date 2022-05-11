@@ -51,12 +51,12 @@ func NewValidateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (v *validateCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	v.logger = logger.NewClientLogger(v.clientConfig.Log)
 	return nil
 }
 
-func (v *validateCommand) RunE(cmd *cobra.Command, args []string) error {
+func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	namespace, err := v.clientConfig.GetNamespaceByName(v.namespaceName)
 	if err != nil {
 		return err

@@ -46,7 +46,7 @@ func NewJobCommand() *cobra.Command {
 	return cmd
 }
 
-func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(j.configFilePath, cmd.Flags())
 	if err != nil {
@@ -59,7 +59,7 @@ func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error 
 	return err
 }
 
-func (j *jobCommand) PersistentPostRunE(cmd *cobra.Command, args []string) error {
+func (j *jobCommand) PersistentPostRunE(_ *cobra.Command, _ []string) error {
 	j.pluginCleanFn()
 	return nil
 }

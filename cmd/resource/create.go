@@ -39,14 +39,14 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (c *createCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	c.logger = logger.NewClientLogger(c.clientConfig.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.resourceCreateSurvey = survey.NewResourceCreateSurvey()
 	return nil
 }
 
-func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
+func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	namespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
 	if err != nil {
 		return err
@@ -83,6 +83,9 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 
 	resourceDirectory := filepath.Join(rwd, newDirName)
 	resourceName, err := c.resourceCreateSurvey.AskResourceName(resourceSpecRepo, typeController, resourceDirectory)
+	if err != nil {
+		return err
+	}
 
 	if err := resourceSpecRepo.SaveAt(models.ResourceSpec{
 		Version:   1,
@@ -98,7 +101,7 @@ func (c *createCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *createCommand) selectDatastorerName() (string, error) {
+func (*createCommand) selectDatastorerName() (string, error) {
 	datastorers := []string{}
 	dsRepo := models.DatastoreRegistry
 	for _, s := range dsRepo.GetAll() {

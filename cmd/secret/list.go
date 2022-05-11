@@ -10,12 +10,13 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/salt/log"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/salt/log"
 )
 
 type listCommand struct {
@@ -41,12 +42,12 @@ func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (l *listCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	l.logger = logger.NewClientLogger(l.clientConfig.Log)
 	return nil
 }
 
-func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	updateSecretRequest := &pb.ListSecretsRequest{
 		ProjectName: l.clientConfig.Project.Name,
 	}
@@ -83,7 +84,7 @@ func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
 	return nil
 }
 
-func (l *listCommand) stringifyListOfSecrets(listSecretsResponse *pb.ListSecretsResponse) string {
+func (*listCommand) stringifyListOfSecrets(listSecretsResponse *pb.ListSecretsResponse) string {
 	buff := &bytes.Buffer{}
 	table := tablewriter.NewWriter(buff)
 	table.SetBorder(false)

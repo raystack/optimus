@@ -42,12 +42,12 @@ func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (l *listCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	l.logger = logger.NewClientLogger(l.clientConfig.Log)
 	return nil
 }
 
-func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	availableStorer := getAvailableDatastorers()
 	storerName, err := survey.AskToSelectDatastorer(availableStorer)
 	if err != nil {
@@ -88,7 +88,7 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (l *listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBackupsResponse) string {
+func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBackupsResponse) string {
 	buff := &bytes.Buffer{}
 	table := tablewriter.NewWriter(buff)
 	table.SetBorder(false)

@@ -73,12 +73,12 @@ func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (b *buildInstanceCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	b.logger = logger.NewClientLogger(b.clientConfig.Log)
 	return nil
 }
 
-func (b *buildInstanceCommand) RunE(cmd *cobra.Command, args []string) error {
+func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
 	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.clientConfig.Project.Name, jobName, b.clientConfig.Host))
 	b.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", b.runName, b.runType, b.scheduledAt))

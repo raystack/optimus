@@ -66,7 +66,7 @@ func NewDeployCommand() *cobra.Command {
 	return cmd
 }
 
-func (d *deployCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (d *deployCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	var err error
 	d.clientConfig, err = config.LoadClientConfig(d.configFilePath, cmd.Flags())
 	if err != nil {
@@ -80,7 +80,7 @@ func (d *deployCommand) PreRunE(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func (d *deployCommand) RunE(cmd *cobra.Command, args []string) error {
+func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	d.logger.Info(logger.ColoredNotice("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
 	if err := project.RegisterProject(d.logger, d.clientConfig.Host, d.clientConfig.Project); err != nil {
 		return err
@@ -110,7 +110,7 @@ func (d *deployCommand) RunE(cmd *cobra.Command, args []string) error {
 	return d.deploy(selectedNamespaces)
 }
 
-func (d *deployCommand) PostRunE(cmd *cobra.Command, args []string) error {
+func (d *deployCommand) PostRunE(_ *cobra.Command, _ []string) error {
 	d.pluginCleanFn()
 	return nil
 }

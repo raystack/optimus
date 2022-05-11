@@ -48,12 +48,12 @@ func NewRunCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (r *runCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (r *runCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	return nil
 }
 
-func (r *runCommand) RunE(cmd *cobra.Command, args []string) error {
+func (r *runCommand) RunE(_ *cobra.Command, args []string) error {
 	namespace, err := r.clientConfig.GetNamespaceByName(r.namespaceName)
 	if err != nil {
 		return err

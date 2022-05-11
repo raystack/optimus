@@ -9,13 +9,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/odpf/salt/log"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/salt/log"
 )
 
 type setCommand struct {
@@ -59,13 +60,13 @@ Use base64 flag if the value has been encoded.
 	return cmd
 }
 
-func (s *setCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (s *setCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	s.logger = logger.NewClientLogger(s.clientConfig.Log)
 	s.survey = survey.NewSecretSetSurvey()
 	return nil
 }
 
-func (s *setCommand) RunE(cmd *cobra.Command, args []string) error {
+func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 	secretName, err := getSecretName(args)
 	if err != nil {
 		return err

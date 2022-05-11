@@ -15,7 +15,7 @@ func (a *bearerAuthentication) GetRequestMetadata(context.Context, ...string) (m
 	}, nil
 }
 
-func (a *bearerAuthentication) RequireTransportSecurity() bool {
+func (*bearerAuthentication) RequireTransportSecurity() bool {
 	return false
 }
 
@@ -29,6 +29,6 @@ func (a *basicAuthentication) GetRequestMetadata(context.Context, ...string) (ma
 	}, nil
 }
 
-func (a *basicAuthentication) RequireTransportSecurity() bool {
+func (*basicAuthentication) RequireTransportSecurity() bool {
 	return false
 }

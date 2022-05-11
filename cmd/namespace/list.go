@@ -42,7 +42,7 @@ func NewListCommand(logger log.Logger) *cobra.Command {
 	return cmd
 }
 
-func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) RunE(cmd *cobra.Command, _ []string) error {
 	filePath := path.Join(l.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
 	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
 	if err != nil {
@@ -64,7 +64,7 @@ func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (l *listCommand) listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
+func (*listCommand) listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
 	conn, err := connectivity.NewConnectivity(serverHost, listTimeout)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (l *listCommand) listNamespacesFromServer(serverHost, projectName string) (
 	return output, nil
 }
 
-func (l *listCommand) stringifyNamespaces(namespacesFromLocal, namespacesFromServer []*config.Namespace) string {
+func (*listCommand) stringifyNamespaces(namespacesFromLocal, namespacesFromServer []*config.Namespace) string {
 	namespaceNames := make(map[string]bool)
 	registeredInServer := make(map[string]bool)
 	for _, namespace := range namespacesFromServer {

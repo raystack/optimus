@@ -48,13 +48,13 @@ func NewVersionCommand() *cobra.Command {
 	return cmd
 }
 
-func (v *versionCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (v *versionCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	var err error
 	v.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevelInfo)
 	return err
 }
 
-func (v *versionCommand) RunE(cmd *cobra.Command, args []string) error {
+func (v *versionCommand) RunE(cmd *cobra.Command, _ []string) error {
 	// Print client version
 	v.logger.Info(fmt.Sprintf("Client: %s-%s", logger.ColoredNotice(config.BuildVersion), logger.ColoredNotice(config.BuildCommit)))
 
@@ -86,7 +86,7 @@ func (v *versionCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (v *versionCommand) PostRunE(cmd *cobra.Command, args []string) error {
+func (v *versionCommand) PostRunE(_ *cobra.Command, _ []string) error {
 	v.pluginCleanFn()
 	return nil
 }
@@ -113,7 +113,7 @@ func (v *versionCommand) printAllPluginInfos() {
 }
 
 // getVersionRequest send a version request to service
-func (v *versionCommand) getVersionRequest(clientVer, host string) (ver string, err error) {
+func (*versionCommand) getVersionRequest(clientVer, host string) (ver string, err error) {
 	conn, err := connectivity.NewConnectivity(host, versionTimeout)
 	if err != nil {
 		return "", err

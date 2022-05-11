@@ -37,7 +37,7 @@ func NewAddHookCommand(cliengConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (a *addHookCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (a *addHookCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	a.logger = logger.NewClientLogger(a.clientConfig.Log)
 	a.jobSurvey = survey.NewJobSurvey()
 	a.jobAddHookSurvey = survey.NewJobAddHookSurvey()
@@ -45,7 +45,7 @@ func (a *addHookCommand) PreRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (a *addHookCommand) RunE(cmd *cobra.Command, args []string) error {
+func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 	namespace, err := a.namespaceSurvey.AskToSelectNamespace(a.clientConfig)
 	if err != nil {
 		return err

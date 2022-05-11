@@ -29,7 +29,7 @@ func NewAdminCommand() *cobra.Command {
 	return cmd
 }
 
-func (a *adminCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+func (a *adminCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(a.configFilePath, cmd.Flags())
 	if err != nil {

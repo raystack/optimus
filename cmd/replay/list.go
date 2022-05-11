@@ -9,13 +9,14 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/salt/log"
+
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/salt/log"
 )
 
 type listCommand struct {
@@ -43,12 +44,12 @@ The list command is used to fetch the recent replay in one project.
 	return cmd
 }
 
-func (l *listCommand) PreRunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	l.logger = logger.NewClientLogger(l.clientConfig.Log)
 	return nil
 }
 
-func (l *listCommand) RunE(cmd *cobra.Command, args []string) error {
+func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	conn, err := connectivity.NewConnectivity(l.clientConfig.Host, replayTimeout)
 	if err != nil {
 		return err

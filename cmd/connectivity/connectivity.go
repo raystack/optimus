@@ -33,7 +33,7 @@ var errServerNotReachable = func(host string) error {
 
 // Connectivity defines client connection to a targeted server host
 type Connectivity struct {
-	requestCtx       context.Context
+	requestCtx       context.Context //nolint:containedctx
 	cancelRequestCtx func()
 
 	connection *grpc.ClientConn
