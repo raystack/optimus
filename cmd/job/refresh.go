@@ -161,8 +161,10 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 
 	var deployID string
 	var streamError error
+
+	var refreshErrors []error
 	for {
-		resp, err := stream.Recv()
+		response, err := stream.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -170,54 +172,47 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			streamError = err
 			break
 		}
-		deployID = r.handleStreamResponse(resp)
+
+		switch response.Type {
+		case models.ProgressTypeJobDependencyResolution:
+			r.refreshCounter++
+			if !response.GetSuccess() {
+				r.refreshFailedCounter++
+				if r.verbose {
+					r.logger.Warn(logger.ColoredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue())))
+				}
+				refreshErrors = append(refreshErrors, fmt.Errorf("failed to refresh: %s, %s", response.GetJobName(), response.GetValue()))
+			} else {
+				r.refreshSuccessCounter++
+				if r.verbose {
+					r.logger.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", response.GetJobName()))
+				}
+			}
+		case models.ProgressTypeJobDeploymentRequestCreated:
+			if len(refreshErrors) > 0 {
+				r.logger.Error(logger.ColoredError(fmt.Sprintf("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter)))
+				for _, reqErr := range refreshErrors {
+					r.logger.Error(logger.ColoredError(reqErr.Error()))
+				}
+			} else {
+				r.logger.Info(logger.ColoredSuccess("Refreshed %d jobs.", r.refreshSuccessCounter))
+			}
+
+			if !response.GetSuccess() {
+				r.logger.Warn(logger.ColoredError("Unable to request job deployment"))
+			} else {
+				r.logger.Info(logger.ColoredNotice(fmt.Sprintf("Deployment request created with ID: %s", response.GetValue())))
+			}
+			deployID = response.Value
+			break
+		default:
+			if r.verbose {
+				// ordinary progress event
+				r.logger.Info(fmt.Sprintf("info '%s': %s", response.GetJobName(), response.GetValue()))
+			}
+		}
 	}
 	return deployID, streamError
-}
-
-func (r *refreshCommand) handleStreamResponse(response *pb.RefreshJobsResponse) (deployID string) {
-	var refreshErrors []error
-
-	switch response.Type {
-	case models.ProgressTypeJobDependencyResolution:
-		r.refreshCounter++
-		if !response.GetSuccess() {
-			r.refreshFailedCounter++
-			if r.verbose {
-				r.logger.Warn(logger.ColoredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue())))
-			}
-			refreshErrors = append(refreshErrors, fmt.Errorf("failed to refresh: %s, %s", response.GetJobName(), response.GetValue()))
-		} else {
-			r.refreshSuccessCounter++
-			if r.verbose {
-				r.logger.Info(fmt.Sprintf("info '%s': dependency is successfully refreshed", response.GetJobName()))
-			}
-		}
-	case models.ProgressTypeJobDeploymentRequestCreated:
-		if len(refreshErrors) > 0 {
-			r.logger.Error(logger.ColoredError(fmt.Sprintf("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter)))
-			for _, reqErr := range refreshErrors {
-				r.logger.Error(logger.ColoredError(reqErr.Error()))
-			}
-		} else {
-			r.logger.Info(logger.ColoredSuccess("Refreshed %d jobs.", r.refreshSuccessCounter))
-		}
-
-		if !response.GetSuccess() {
-			r.logger.Warn(logger.ColoredError("Unable to request job deployment"))
-		} else {
-			r.logger.Info(logger.ColoredNotice(fmt.Sprintf("Deployment request created with ID: %s", response.GetValue())))
-		}
-
-		deployID = response.Value
-		return
-	default:
-		if r.verbose {
-			// ordinary progress event
-			r.logger.Info(fmt.Sprintf("info '%s': %s", response.GetJobName(), response.GetValue()))
-		}
-	}
-	return
 }
 
 func (r *refreshCommand) resetCounters() {
