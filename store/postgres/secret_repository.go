@@ -220,7 +220,7 @@ func (repo secretRepository) GetSecrets(ctx context.Context, project models.Proj
 }
 
 func (repo *secretRepository) Delete(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, secretName string) error {
-	query := repo.db.WithContext(ctx).
+	query := repo.db.Unscoped().WithContext(ctx).
 		Where("project_id = ?", project.ID.UUID()).
 		Where("name = ?", secretName)
 
