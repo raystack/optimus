@@ -49,14 +49,14 @@ func (*JobSurvey) AskToSelectJobName(jobSpecRepo JobSpecRepository) (string, err
 	return selectedJobName, nil
 }
 
-func (j *JobSurvey) askCLIModSurveyQuestion(cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
+func (j *JobSurvey) askCLIModSurveyQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
 	surveyPrompt := j.getSurveyPromptFromPluginQuestion(question)
 
 	var responseStr string
 	if err := survey.AskOne(
 		surveyPrompt,
 		&responseStr,
-		survey.WithValidator(j.getValidatePluginQuestion(cliMod, question)),
+		survey.WithValidator(j.getValidatePluginQuestion(ctx, cliMod, question)),
 	); err != nil {
 		return nil, fmt.Errorf("AskSurveyQuestion: %w", err)
 	}
@@ -72,7 +72,7 @@ func (j *JobSurvey) askCLIModSurveyQuestion(cliMod models.CommandLineMod, questi
 	for _, subQues := range question.SubQuestions {
 		if responseStr == subQues.IfValue {
 			for _, subQuestion := range subQues.Questions {
-				subQuestionAnswers, err := j.askCLIModSurveyQuestion(cliMod, subQuestion)
+				subQuestionAnswers, err := j.askCLIModSurveyQuestion(ctx, cliMod, subQuestion)
 				if err != nil {
 					return nil, err
 				}
@@ -109,13 +109,13 @@ func (*JobSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuesti
 	return surveyPrompt
 }
 
-func (j *JobSurvey) getValidatePluginQuestion(cliMod models.CommandLineMod, question models.PluginQuestion) survey.Validator {
+func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) survey.Validator {
 	return func(val interface{}) error {
 		str, err := j.convertUserInputPluginToString(val)
 		if err != nil {
 			return err
 		}
-		resp, err := cliMod.ValidateQuestion(context.TODO(), models.ValidateQuestionRequest{
+		resp, err := cliMod.ValidateQuestion(ctx, models.ValidateQuestionRequest{
 			Answer: models.PluginAnswer{
 				Question: question,
 				Value:    str,

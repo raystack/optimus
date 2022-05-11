@@ -155,12 +155,9 @@ func (r *refreshCommand) pollJobDeployment(ctx context.Context, jobSpecService p
 	return nil
 }
 
-func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationService_RefreshJobsClient) (string, error) {
+func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationService_RefreshJobsClient) (deployID string, streamError error) {
 	r.resetCounters()
 	defer r.resetCounters()
-
-	var deployID string
-	var streamError error
 
 	var refreshErrors []error
 	for {
@@ -170,7 +167,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 				break
 			}
 			streamError = err
-			break
+			return
 		}
 
 		switch response.Type {
@@ -204,7 +201,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 				r.logger.Info(logger.ColoredNotice(fmt.Sprintf("Deployment request created with ID: %s", response.GetValue())))
 			}
 			deployID = response.Value
-			break
+			return
 		default:
 			if r.verbose {
 				// ordinary progress event
@@ -212,7 +209,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			}
 		}
 	}
-	return deployID, streamError
+	return // nolint:nakedret
 }
 
 func (r *refreshCommand) resetCounters() {

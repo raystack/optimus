@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-
-	"github.com/odpf/salt/log"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"

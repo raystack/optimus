@@ -232,7 +232,7 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 
 	answers := models.PluginAnswers{}
 	for _, question := range questionResponse.Questions {
-		subAnswers, err := j.jobSurvey.askCLIModSurveyQuestion(cliMod, question)
+		subAnswers, err := j.jobSurvey.askCLIModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
 			return nil, err
 		}
