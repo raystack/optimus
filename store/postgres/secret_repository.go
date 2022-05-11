@@ -226,9 +226,9 @@ func (repo *secretRepository) Delete(ctx context.Context, project models.Project
 
 	var result *gorm.DB
 	if namespace.Name == "" {
-		result = query.Where("namespace_id is null").Delete(&Secret{})
+		result = query.Where("namespace_id is null").Unscoped().Delete(&Secret{})
 	} else {
-		result = query.Where("namespace_id = ?", namespace.ID).Delete(&Secret{})
+		result = query.Where("namespace_id = ?", namespace.ID).Unscoped().Delete(&Secret{})
 	}
 
 	if result.Error != nil {
