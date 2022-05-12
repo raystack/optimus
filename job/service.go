@@ -833,7 +833,13 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 }
 
 // Deploy only the modified jobs (created or updated)
-func (srv *Service) Deploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) error {
+func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) error {
+	// Get namespace spec
+	namespaceSpec, err := srv.namespaceService.Get(ctx, projectName, namespaceName)
+	if err != nil {
+		return err
+	}
+
 	// Get modified jobs (including job added and job updated)
 	modifiedJobs, err := srv.GetModifiedJobs(ctx, jobSpecs)
 	if err != nil {

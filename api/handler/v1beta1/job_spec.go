@@ -49,7 +49,6 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			log:    sv.l,
 			mu:     new(sync.Mutex),
 		})
-		ctx := stream.Context()
 
 		req, err := stream.Recv()
 		if err != nil {
@@ -64,21 +63,10 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			return err // immediate error returned (grpc error level)
 		}
 
-		namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
-		if err != nil {
-			stream.Send(&pb.DeployJobSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Message: err.Error(),
-			})
-			errNamespaces = append(errNamespaces, req.NamespaceName)
-			continue
-		}
-
 		jobSpecs := sv.convertProtoToJobSpec(req.GetJobs())
 
 		// Deploying only the modified jobs
-		if err := sv.jobSvc.Deploy(ctx, namespaceSpec, jobSpecs, observers); err != nil {
+		if err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, observers); err != nil {
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
 				Ack:     true,
@@ -89,16 +77,16 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		}
 
 		// TODO: will be deleted
-		if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
-			stream.Send(&pb.DeployJobSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Message: fmt.Sprintf("failed to sync jobs: \n%s", err.Error()),
-			})
-			errNamespaces = append(errNamespaces, req.NamespaceName)
-			continue
-		}
-		runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
+		// if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
+		// 	stream.Send(&pb.DeployJobSpecificationResponse{
+		// 		Success: false,
+		// 		Ack:     true,
+		// 		Message: fmt.Sprintf("failed to sync jobs: \n%s", err.Error()),
+		// 	})
+		// 	errNamespaces = append(errNamespaces, req.NamespaceName)
+		// 	continue
+		// }
+		// runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
 		stream.Send(&pb.DeployJobSpecificationResponse{
 			Success: true,
 			Ack:     true,
