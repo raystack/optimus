@@ -42,6 +42,15 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 	errNamespaces := []string{}
 
 	for {
+		observers := new(progress.ObserverChain)
+		observers.Join(sv.progressObserver)
+		observers.Join(&jobSyncObserver{
+			stream: stream,
+			log:    sv.l,
+			mu:     new(sync.Mutex),
+		})
+		ctx := stream.Context()
+
 		req, err := stream.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -54,7 +63,8 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			})
 			return err // immediate error returned (grpc error level)
 		}
-		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), req.GetProjectName(), req.GetNamespaceName())
+
+		namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 		if err != nil {
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
@@ -65,7 +75,8 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			continue
 		}
 
-		jobsToKeep, err := sv.getJobsToKeep(stream.Context(), namespaceSpec, req)
+		// move job create to service, only return jobSpecs to keep without save it to persistent
+		jobsToKeep, err := sv.getJobsToKeep(ctx, namespaceSpec, req)
 		if err != nil {
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
@@ -76,13 +87,17 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			continue
 		}
 
-		observers := new(progress.ObserverChain)
-		observers.Join(sv.progressObserver)
-		observers.Join(&jobSyncObserver{
-			stream: stream,
-			log:    sv.l,
-			mu:     new(sync.Mutex),
-		})
+		// Get modified jobs (including job added and job updated)
+		modifiedJobs, _ := sv.jobSvc.GetModifiedJobs(ctx, jobsToKeep)
+
+		// Save modified jobs
+		_ = sv.jobSvc.BulkCreate(ctx, namespaceSpec, modifiedJobs)
+
+		// Delete unnecessary jobs
+		_ = sv.jobSvc.KeepOnly(ctx, namespaceSpec, modifiedJobs, observers)
+
+		// Deploying only the modified jobs
+		_ = sv.jobSvc.Deploy(ctx, namespaceSpec, modifiedJobs, observers)
 
 		// delete specs not sent for deployment from internal repository
 		if err := sv.jobSvc.KeepOnly(stream.Context(), namespaceSpec, jobsToKeep, observers); err != nil {
@@ -94,6 +109,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			errNamespaces = append(errNamespaces, req.NamespaceName)
 			continue
 		}
+		// will be deleted
 		if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,

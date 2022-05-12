@@ -330,6 +330,8 @@ type HTTPDependency struct {
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(context.Context, NamespaceSpec, JobSpec) error
+	// BulkCreate save bulk of JobSpec within same namespace to persistent
+	BulkCreate(context.Context, NamespaceSpec, []JobSpec) error
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
@@ -348,6 +350,7 @@ type JobService interface {
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
+	// Will DELETED
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetByDestination fetches a Job by destination for a specific project
@@ -356,6 +359,10 @@ type JobService interface {
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
 	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
+	// Deploy the requested jobs per namespace
+	Deploy(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+	// GetModifiedJobs from requested jobSpecs against persistent jobSpecs
+	GetModifiedJobs(context.Context, []JobSpec) ([]JobSpec, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 }

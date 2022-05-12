@@ -130,6 +130,10 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	}
 	return nil
 }
+func (src *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec) error {
+	// TODO: implement here
+	return nil
+}
 
 // GetByName fetches a Job by name for a specific namespace
 func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
@@ -815,6 +819,16 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 	}
 	return currentSpec.Name, nil
+}
+
+func (srv *Service) Deploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) error {
+	// TODO: implement here
+	return nil
+}
+
+func (srv *Service) GetModifiedJobs(ctx context.Context, jobNames []models.JobSpec) ([]models.JobSpec, error) {
+	// TODO: implement here
+	return nil, nil
 }
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
