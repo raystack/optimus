@@ -130,9 +130,20 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	}
 	return nil
 }
-func (src *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec) error {
-	// TODO: implement here
-	return nil
+func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec) error {
+	var e error
+	for _, jobSpec := range jobSpecs {
+		if err := srv.Create(ctx, namespace, jobSpec); err != nil {
+			if e == nil {
+				e = err
+			} else {
+				e = fmt.Errorf("%w; %s", e, err.Error())
+			}
+			continue
+		}
+	}
+
+	return e
 }
 
 // GetByName fetches a Job by name for a specific namespace
@@ -821,8 +832,27 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 	return currentSpec.Name, nil
 }
 
+// Deploy only the modified jobs (created or updated)
 func (srv *Service) Deploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) error {
-	// TODO: implement here
+	// Get modified jobs (including job added and job updated)
+	modifiedJobs, err := srv.GetModifiedJobs(ctx, jobSpecs)
+	if err != nil {
+		return err
+	}
+
+	// Save modified jobs
+	if err := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs); err != nil {
+		return err
+	}
+
+	// Delete unnecessary jobs
+	if err := srv.KeepOnly(ctx, namespaceSpec, modifiedJobs, observers); err != nil {
+		return err
+	}
+
+	// TODO: Resolve dependency
+	// TODO: Deploy through deploy manager
+
 	return nil
 }
 
