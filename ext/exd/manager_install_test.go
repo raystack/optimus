@@ -45,39 +45,16 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error loading manifest", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
-
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
-		if err != nil {
-			panic(err)
-		}
-
-		remotePath := "gojek/optimus-extension-valor"
-		commandName := "valor"
-
-		actualErr := manager.Install(remotePath, commandName)
-
-		m.Error(actualErr)
-	})
-
 	m.Run("should return error if error extracting remote metadata", func() {
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
+			func(remotePath string) (*exd.Metadata, error) {
 				return nil, errors.New("extraction failed")
 			},
 		}
 
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
-
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
+		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
 		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
 		if err != nil {
@@ -94,13 +71,37 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if no parser could recognize remote path", func() {
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
+			func(remotePath string) (*exd.Metadata, error) {
 				return nil, exd.ErrUnrecognizedRemotePath
 			},
 		}
 
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
+		installer := &mock.Installer{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+		commandName := "valor"
+
+		actualErr := manager.Install(remotePath, commandName)
+
+		m.Error(actualErr)
+	})
+
+	m.Run("should return error if error loading manifest", func() {
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.Metadata, error) {
+				return &exd.Metadata{}, nil
+			},
+		}
+
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -120,11 +121,12 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if error getting new client", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
@@ -150,13 +152,14 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error getting release", func() {
+	m.Run("should return error if error downloading release", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
@@ -187,23 +190,25 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if command name is already used by different project", func() {
+	m.Run("should return error if command name is already used by different owner project", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+			OwnerName:    "gojek",
+			ProjectName:  "optimus-extension-valor",
+			TagName:      "",
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-					OwnerName:    "gojek",
-					RepoName:     "optimus-extension-valor",
-					TagName:      "",
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -211,8 +216,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		exd.NewClientRegistry = newClientFactory
 
 		commandName := "valor"
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+		manifest := &exd.Manifest{
 			RepositoryOwners: []*exd.RepositoryOwner{
 				{
 					Name:     "odpf",
@@ -222,12 +226,14 @@ func (m *ManagerTestSuite) TestInstall() {
 							Name:          "optimus-extension-valor",
 							CommandName:   commandName,
 							ActiveTagName: "v1.0",
-							Releases:      []*exd.RepositoryRelease{{TagName: "v1.0"}},
+							Releases:      []*exd.RepositoryRelease{release},
 						},
 					},
 				},
 			},
-		}, nil)
+		}
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -246,21 +252,23 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if remote path is already installed", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+			OwnerName:    "gojek",
+			ProjectName:  "optimus-extension-valor",
+			TagName:      "",
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-					OwnerName:    "gojek",
-					RepoName:     "optimus-extension-valor",
-					TagName:      "",
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -268,8 +276,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		exd.NewClientRegistry = newClientFactory
 
 		commandName := "valor"
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+		manifest := &exd.Manifest{
 			RepositoryOwners: []*exd.RepositoryOwner{
 				{
 					Name:     "gojek",
@@ -279,12 +286,14 @@ func (m *ManagerTestSuite) TestInstall() {
 							Name:          "optimus-extension-valor",
 							CommandName:   commandName,
 							ActiveTagName: "v1.0",
-							Releases:      []*exd.RepositoryRelease{{TagName: "v1.0"}},
+							Releases:      []*exd.RepositoryRelease{release},
 						},
 					},
 				},
 			},
-		}, nil)
+		}
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -301,20 +310,22 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error when downloading", func() {
+	m.Run("should return error if error when downloading asset", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -343,18 +354,20 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if error when preparing installation", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -385,18 +398,20 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if error when executing installation", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -428,18 +443,20 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should return error if error encountered during updating manifest", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -472,18 +489,20 @@ func (m *ManagerTestSuite) TestInstall() {
 
 	m.Run("should update manifest and return nil if no error is encountered", func() {
 		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+		}
 		exd.ParseRegistry = []exd.Parser{
-			func(remotePath string) (*exd.RemoteMetadata, error) {
-				return &exd.RemoteMetadata{
-					ProviderName: provider,
-				}, nil
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
 			},
 		}
 
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
+		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
-		}, nil)
+		}
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {

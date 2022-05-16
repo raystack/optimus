@@ -51,11 +51,11 @@ type RepositoryAsset struct {
 	URL  string `yaml:"url"`
 }
 
-// RemoteMetadata defines remote metadata for an extension
-type RemoteMetadata struct {
+// Metadata defines general metadata for an extension
+type Metadata struct {
 	ProviderName string
 	OwnerName    string
-	RepoName     string
+	ProjectName  string
 	TagName      string
 
 	CurrentAPIPath string
@@ -67,7 +67,7 @@ type RemoteMetadata struct {
 
 // Parser is contract that will be defined by each provider
 // to parse remote metadata from path
-type Parser func(remotePath string) (*RemoteMetadata, error)
+type Parser func(remotePath string) (*Metadata, error)
 
 // Client is a contract that will be defined by each provider
 // to execute client-related operation

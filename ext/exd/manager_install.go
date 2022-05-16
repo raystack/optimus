@@ -5,74 +5,65 @@ import (
 	"fmt"
 )
 
+type installResource struct {
+	client   Client
+	manifest *Manifest
+	metadata *Metadata
+	release  *RepositoryRelease
+}
+
 // Install installs extension based on the remote path
 func (m *Manager) Install(remotePath, commandName string) error {
 	if err := m.validateInstallInput(remotePath, commandName); err != nil {
-		return formatError("error validating install: %w", err)
+		return formatError("error validating installation: %w", err)
 	}
 
-	manifest, err := m.manifester.Load(ExtensionDir)
+	resource, err := m.setupInstallResource(remotePath, commandName)
 	if err != nil {
-		return formatError("error loading manifest: %w", err)
+		return formatError("error preparing installation: %w", err)
 	}
 
-	remoteMetadata, err := m.extractMetadata(remotePath)
-	if err != nil {
-		return formatError("error extracting remote metadata for: %w", err)
-	}
-
-	client, err := m.findClientProvider(remoteMetadata.ProviderName)
-	if err != nil {
-		return formatError("error finding client provider [%s]: %w", remoteMetadata.ProviderName, err)
-	}
-
-	release, err := m.getRemoteRelease(client, remoteMetadata.CurrentAPIPath, remoteMetadata.UpgradeAPIPath)
-	if err != nil {
-		return formatError("error getting release for [%s/%s@%s]: %w",
-			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
-		)
-	}
-	m.updateRemoteMetadata(remoteMetadata, release, commandName)
-
-	if err := m.validateRemoteMetadataToManifest(remoteMetadata, manifest); err != nil {
-		return formatError("error remote metadata on manifest: %w", err)
-	}
-
-	if m.isAlreadyInstalled(manifest, remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName) {
-		return formatError("[%s/%s@%s] is already installed",
-			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName,
+	if err := m.validateInstallResource(resource); err != nil {
+		return formatError("error validating metadata for [%s/%s@%s]: %w",
+			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName, err,
 		)
 	}
 
-	asset, err := m.downloadAsset(client, remoteMetadata.CurrentAPIPath, remoteMetadata.UpgradeAPIPath)
-	if err != nil {
-		return formatError("error downloading asset for [%s/%s@%s]: %w",
-			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
+	if err := m.install(resource.client, resource.metadata); err != nil {
+		return formatError("error encountered during installing [%s/%s@%s]: %w",
+			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName, err,
 		)
 	}
 
-	if err := m.installAsset(asset, remoteMetadata.LocalDirPath, remoteMetadata.TagName); err != nil {
-		return formatError("error installing asset for [%s/%s@%s]: %w",
-			remoteMetadata.OwnerName, remoteMetadata.RepoName, remoteMetadata.TagName, err,
-		)
-	}
-
-	m.updateManifest(manifest, remoteMetadata, release)
-	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
-		return formatError("error flushing manifest: %w", err)
+	if err := m.updateManifest(resource.manifest, resource.metadata, resource.release); err != nil {
+		return formatError("error updating manifest: %w", err)
 	}
 	return nil
 }
 
-func (*Manager) validateRemoteMetadataToManifest(remoteMetadata *RemoteMetadata, manifest *Manifest) error {
+func (m *Manager) validateInstallResource(resource *installResource) error {
+	manifest := resource.manifest
+	metadata := resource.metadata
+	if err := m.validateCommandName(manifest, metadata); err != nil {
+		return err
+	}
+	if m.isInstalled(manifest, metadata) {
+		return fmt.Errorf("[%s/%s@%s] is already installed",
+			metadata.OwnerName, metadata.ProjectName, metadata.TagName,
+		)
+	}
+	return nil
+}
+
+func (*Manager) validateCommandName(manifest *Manifest, metadata *Metadata) error {
 	for _, owner := range manifest.RepositoryOwners {
 		for _, project := range owner.Projects {
-			if project.CommandName == remoteMetadata.CommandName {
-				if owner.Name == remoteMetadata.OwnerName && project.Name == remoteMetadata.RepoName {
+			if project.CommandName == metadata.CommandName {
+				if owner.Name == metadata.OwnerName && project.Name == metadata.ProjectName {
 					return nil
 				}
 				return fmt.Errorf("command [%s] is already used by [%s/%s@%s]",
-					remoteMetadata.CommandName, owner.Name, project.Name, project.ActiveTagName,
+					metadata.CommandName, owner.Name, project.Name, project.ActiveTagName,
 				)
 			}
 		}
@@ -80,17 +71,39 @@ func (*Manager) validateRemoteMetadataToManifest(remoteMetadata *RemoteMetadata,
 	return nil
 }
 
-func (*Manager) updateRemoteMetadata(remoteMetadata *RemoteMetadata, release *RepositoryRelease, commandName string) {
-	if commandName != "" {
-		remoteMetadata.CommandName = commandName
+func (m *Manager) setupInstallResource(remotePath, commandName string) (*installResource, error) {
+	metadata, err := m.extractMetadata(remotePath)
+	if err != nil {
+		return nil, err
 	}
-	remoteMetadata.TagName = release.TagName
-	remoteMetadata.CurrentAPIPath = release.CurrentAPIPath
-	remoteMetadata.UpgradeAPIPath = release.UpgradeAPIPath
+	manifest, err := m.manifester.Load(ExtensionDir)
+	if err != nil {
+		return nil, err
+	}
+	client, err := m.findClientProvider(metadata.ProviderName)
+	if err != nil {
+		return nil, err
+	}
+	release, err := m.downloadRelease(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
+	if err != nil {
+		return nil, err
+	}
+	metadata.TagName = release.TagName
+	metadata.CurrentAPIPath = release.CurrentAPIPath
+	metadata.UpgradeAPIPath = release.UpgradeAPIPath
+	if commandName != "" {
+		metadata.CommandName = commandName
+	}
+	return &installResource{
+		manifest: manifest,
+		client:   client,
+		metadata: metadata,
+		release:  release,
+	}, nil
 }
 
-func (*Manager) extractMetadata(remotePath string) (*RemoteMetadata, error) {
-	var remoteMetadata *RemoteMetadata
+func (*Manager) extractMetadata(remotePath string) (*Metadata, error) {
+	var remoteMetadata *Metadata
 	for _, parseFn := range ParseRegistry {
 		mtdt, err := parseFn(remotePath)
 		if errors.Is(err, ErrUnrecognizedRemotePath) {

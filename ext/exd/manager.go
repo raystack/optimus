@@ -32,37 +32,71 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 	}, nil
 }
 
-func (m *Manager) updateManifest(manifest *Manifest, remoteMetadata *RemoteMetadata, release *RepositoryRelease) {
-	if updated := m.updateExistingProjectInManifest(manifest, remoteMetadata, release); !updated {
-		m.addNewProjectToManifest(manifest, remoteMetadata, release)
+func (m *Manager) install(client Client, metadata *Metadata) error {
+	asset, err := m.downloadAsset(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
+	if err != nil {
+		return err
 	}
-	manifest.UpdatedAt = time.Now()
+	if err := m.installAsset(asset, metadata.LocalDirPath, metadata.TagName); err != nil {
+		return formatError("error installing asset for [%s/%s@%s]: %w",
+			metadata.OwnerName, metadata.ProjectName, metadata.TagName, err,
+		)
+	}
+	return nil
 }
 
-func (*Manager) addNewProjectToManifest(manifest *Manifest, remoteMetadata *RemoteMetadata, release *RepositoryRelease) {
+func (m *Manager) installAsset(asset []byte, dirPath, fileName string) error {
+	if err := m.installer.Prepare(dirPath); err != nil {
+		return fmt.Errorf("error preparing installation: %w", err)
+	}
+	return m.installer.Install(asset, dirPath, fileName)
+}
+
+func (*Manager) downloadAsset(client Client, currentAPIPath, upgradeAPIPath string) ([]byte, error) {
+	apiPath := currentAPIPath
+	if apiPath == "" {
+		apiPath = upgradeAPIPath
+	}
+	return client.DownloadAsset(apiPath)
+}
+
+func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) error {
+	if updated := m.updateExistingProjectInManifest(manifest, metadata, release); !updated {
+		m.addNewProjectToManifest(manifest, metadata, release)
+	}
+	manifest.UpdatedAt = time.Now()
+	return m.manifester.Flush(manifest, ExtensionDir)
+}
+
+func (*Manager) addNewProjectToManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) {
 	manifest.RepositoryOwners = append(manifest.RepositoryOwners, &RepositoryOwner{
-		Name:     remoteMetadata.OwnerName,
-		Provider: remoteMetadata.ProviderName,
+		Name:     metadata.OwnerName,
+		Provider: metadata.ProviderName,
 		Projects: []*RepositoryProject{
 			{
-				Name:          remoteMetadata.RepoName,
-				CommandName:   remoteMetadata.CommandName,
-				ActiveTagName: remoteMetadata.TagName,
-				LocalDirPath:  remoteMetadata.LocalDirPath,
+				Name:          metadata.ProjectName,
+				CommandName:   metadata.CommandName,
+				ActiveTagName: metadata.TagName,
+				LocalDirPath:  metadata.LocalDirPath,
 				Releases:      []*RepositoryRelease{release},
 			},
 		},
 	})
 }
 
-func (*Manager) updateExistingProjectInManifest(manifest *Manifest, remoteMetadata *RemoteMetadata, release *RepositoryRelease) bool {
+func (*Manager) updateExistingProjectInManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) bool {
 	for _, owner := range manifest.RepositoryOwners {
-		if owner.Name == remoteMetadata.OwnerName {
+		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
-				if project.Name == remoteMetadata.RepoName {
-					project.ActiveTagName = remoteMetadata.TagName
-					project.LocalDirPath = remoteMetadata.LocalDirPath
-					project.CommandName = remoteMetadata.CommandName
+				if project.Name == metadata.ProjectName {
+					project.ActiveTagName = metadata.TagName
+					project.LocalDirPath = metadata.LocalDirPath
+					project.CommandName = metadata.CommandName
+					for _, r := range project.Releases {
+						if r.TagName == project.ActiveTagName {
+							return true
+						}
+					}
 					project.Releases = append(project.Releases, release)
 					return true
 				}
@@ -73,24 +107,13 @@ func (*Manager) updateExistingProjectInManifest(manifest *Manifest, remoteMetada
 	return false
 }
 
-func (*Manager) findProjectByCommandName(manifest *Manifest, commandName string) *RepositoryProject {
+func (*Manager) isInstalled(manifest *Manifest, metadata *Metadata) bool {
 	for _, owner := range manifest.RepositoryOwners {
-		for _, project := range owner.Projects {
-			if project.CommandName == commandName {
-				return project
-			}
-		}
-	}
-	return nil
-}
-
-func (*Manager) isAlreadyInstalled(manifest *Manifest, ownerName, projectName, tagName string) bool {
-	for _, owner := range manifest.RepositoryOwners {
-		if owner.Name == ownerName {
+		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
-				if project.Name == projectName {
+				if project.Name == metadata.ProjectName {
 					for _, release := range project.Releases {
-						if release.TagName == tagName {
+						if release.TagName == metadata.TagName {
 							return true
 						}
 					}
@@ -103,7 +126,7 @@ func (*Manager) isAlreadyInstalled(manifest *Manifest, ownerName, projectName, t
 	return false
 }
 
-func (*Manager) getRemoteRelease(client Client, currentAPIPath, upgradeAPIPath string) (*RepositoryRelease, error) {
+func (*Manager) downloadRelease(client Client, currentAPIPath, upgradeAPIPath string) (*RepositoryRelease, error) {
 	apiPath := currentAPIPath
 	if apiPath == "" {
 		apiPath = upgradeAPIPath
@@ -117,21 +140,6 @@ func (m *Manager) findClientProvider(provider string) (Client, error) {
 		return nil, err
 	}
 	return newClient(m.ctx, m.httpDoer)
-}
-
-func (*Manager) downloadAsset(client Client, currentAPIPath, upgradeAPIPath string) ([]byte, error) {
-	apiPath := currentAPIPath
-	if apiPath == "" {
-		apiPath = upgradeAPIPath
-	}
-	return client.DownloadAsset(apiPath)
-}
-
-func (m *Manager) installAsset(asset []byte, dirPath, fileName string) error {
-	if err := m.installer.Prepare(dirPath); err != nil {
-		return fmt.Errorf("error preparing installation: %w", err)
-	}
-	return m.installer.Install(asset, dirPath, fileName)
 }
 
 func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) error {

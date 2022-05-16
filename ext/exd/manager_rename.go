@@ -4,7 +4,7 @@ import "fmt"
 
 // Rename renames an existing command name into a targeted command name
 func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
-	if err := m.validateRenameCommandInput(sourceCommandName, targetCommandName); err != nil {
+	if err := m.validateRenameInput(sourceCommandName, targetCommandName); err != nil {
 		return formatError("error validating rename command: %w", err)
 	}
 	if sourceCommandName == targetCommandName {
@@ -33,7 +33,7 @@ func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
 	return nil
 }
 
-func (m *Manager) validateRenameCommandInput(sourceCommandName, targetCommandName string) error {
+func (m *Manager) validateRenameInput(sourceCommandName, targetCommandName string) error {
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
 		return err
 	}

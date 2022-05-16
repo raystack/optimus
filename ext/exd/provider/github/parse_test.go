@@ -63,7 +63,7 @@ func TestParse(t *testing.T) {
 
 		assert.NotNil(t, actualMetadata)
 		assert.NoError(t, actualErr)
-		assert.Equal(t, expectedRepoName, actualMetadata.RepoName)
+		assert.Equal(t, expectedRepoName, actualMetadata.ProjectName)
 	})
 
 	t.Run("should return remote metadata with empty tag name if not specified", func(t *testing.T) {

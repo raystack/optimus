@@ -91,8 +91,6 @@ func (m *ManagerTestSuite) TestUpgrade() {
 
 	m.Run("should return error if error getting new client", func() {
 		provider := "github"
-		newClientFactory := &exd.NewClientFactory{}
-		exd.NewClientRegistry = newClientFactory
 
 		project := &exd.RepositoryProject{
 			Name:        "optimus-extension-valor",
@@ -104,10 +102,14 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			Projects: []*exd.RepositoryProject{project},
 		}
 		project.Owner = owner
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+		manifest := &exd.Manifest{
 			RepositoryOwners: []*exd.RepositoryOwner{owner},
-		}, nil)
+		}
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
+
+		newClientFactory := &exd.NewClientFactory{}
+		exd.NewClientRegistry = newClientFactory
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -125,14 +127,8 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if no release is found within the active tag", func() {
+	m.Run("should return error if no current release is found within the active tag", func() {
 		provider := "github"
-
-		newClientFactory := &exd.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
-			return nil, nil
-		})
-		exd.NewClientRegistry = newClientFactory
 
 		release := &exd.RepositoryRelease{
 			TagName: "v0.0.1",
@@ -150,10 +146,17 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			Projects: []*exd.RepositoryProject{project},
 		}
 		project.Owner = owner
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+		manifest := &exd.Manifest{
 			RepositoryOwners: []*exd.RepositoryOwner{owner},
-		}, nil)
+		}
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
+
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return nil, nil
+		})
+		exd.NewClientRegistry = newClientFactory
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -171,16 +174,8 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		m.Error(actualErr)
 	})
 
-	m.Run("should return error if error when getting upgrade release", func() {
+	m.Run("should return error if error when downloading upgrade release", func() {
 		provider := "github"
-
-		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(nil, errors.New("random error"))
-		newClientFactory := &exd.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
-			return client, nil
-		})
-		exd.NewClientRegistry = newClientFactory
 
 		release := &exd.RepositoryRelease{
 			TagName: "v1.0.0",
@@ -198,10 +193,19 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			Projects: []*exd.RepositoryProject{project},
 		}
 		project.Owner = owner
-		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
+		manifest := &exd.Manifest{
 			RepositoryOwners: []*exd.RepositoryOwner{owner},
-		}, nil)
+		}
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
+
+		client := &mock.Client{}
+		client.On("GetRelease", tMock.Anything).Return(nil, errors.New("random error"))
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return client, nil
+		})
+		exd.NewClientRegistry = newClientFactory
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -237,6 +241,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			Projects: []*exd.RepositoryProject{project},
 		}
 		project.Owner = owner
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{owner},
+		}
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(release, nil)
@@ -247,9 +254,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		exd.NewClientRegistry = newClientFactory
 
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			RepositoryOwners: []*exd.RepositoryOwner{owner},
-		}, nil)
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
 		ctx := context.Background()
@@ -286,6 +291,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			Projects: []*exd.RepositoryProject{project},
 		}
 		project.Owner = owner
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{owner},
+		}
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(release, nil)
@@ -296,9 +304,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		exd.NewClientRegistry = newClientFactory
 
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			RepositoryOwners: []*exd.RepositoryOwner{owner},
-		}, nil)
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
@@ -335,6 +341,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			Projects: []*exd.RepositoryProject{project},
 		}
 		project.Owner = owner
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{owner},
+		}
 
 		client := &mock.Client{}
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
@@ -348,9 +357,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		exd.NewClientRegistry = newClientFactory
 
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			RepositoryOwners: []*exd.RepositoryOwner{owner},
-		}, nil)
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -391,7 +398,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -444,7 +451,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -498,7 +505,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		client.On("GetRelease", tMock.Anything).Return(&exd.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil

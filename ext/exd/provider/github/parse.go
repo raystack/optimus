@@ -11,7 +11,7 @@ import (
 )
 
 // Parse parses remote path to get its metadata according to github convention
-func Parse(remotePath string) (*exd.RemoteMetadata, error) {
+func Parse(remotePath string) (*exd.Metadata, error) {
 	if err := validate(remotePath); err != nil {
 		return nil, fmt.Errorf("error validating remote path: %w", err)
 	}
@@ -21,10 +21,10 @@ func Parse(remotePath string) (*exd.RemoteMetadata, error) {
 	repoName := extractRepoName(cleanedRemotePath)
 	tagName := extractTag(cleanedRemotePath)
 
-	return &exd.RemoteMetadata{
+	return &exd.Metadata{
 		ProviderName:   provider,
 		OwnerName:      ownerName,
-		RepoName:       repoName,
+		ProjectName:    repoName,
 		TagName:        tagName,
 		CurrentAPIPath: composeCurrentAPIPath(ownerName, repoName, tagName),
 		UpgradeAPIPath: composeUpgradeAPIPath(ownerName, repoName),
