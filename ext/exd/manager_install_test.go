@@ -409,7 +409,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		installer := &mock.Installer{}
 		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
+		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -453,7 +453,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		installer := &mock.Installer{}
 		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything).Return(nil)
+		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
@@ -497,7 +497,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		installer := &mock.Installer{}
 		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything).Return(nil)
+		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}

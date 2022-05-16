@@ -13,7 +13,7 @@ func (m *Manager) Activate(commandName, tagName string) error {
 		return formatError("error loading manifest: %w", err)
 	}
 
-	project := m.getProjectByCommandName(manifest, commandName)
+	project := m.findProjectByCommandName(manifest, commandName)
 	if project == nil {
 		return formatError("command name [%s] is not found", commandName)
 	}

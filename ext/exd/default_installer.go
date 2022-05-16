@@ -24,24 +24,17 @@ func NewDefaultInstaller() Installer {
 }
 
 // Prepare prepares installation based on the remote metadata
-func (*defaultInstaller) Prepare(remoteMetadata *RemoteMetadata) error {
-	if remoteMetadata == nil {
-		return ErrNilRemoteMetadata
-	}
+func (*defaultInstaller) Prepare(dirPath string) error {
 	directoryPermission := 0o750
-	return InstallerFS.MkdirAll(remoteMetadata.LocalDirPath, fs.FileMode(directoryPermission))
+	return InstallerFS.MkdirAll(dirPath, fs.FileMode(directoryPermission))
 }
 
 // Install installs asset based on the remote metadata
-func (*defaultInstaller) Install(asset []byte, remoteMetadata *RemoteMetadata) error {
+func (*defaultInstaller) Install(asset []byte, dirPath, fileName string) error {
 	if asset == nil {
 		return ErrNilAsset
 	}
-	if remoteMetadata == nil {
-		return ErrNilRemoteMetadata
-	}
-	fileName := remoteMetadata.TagName
-	filePath := path.Join(remoteMetadata.LocalDirPath, fileName)
+	filePath := path.Join(dirPath, fileName)
 	f, err := InstallerFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)

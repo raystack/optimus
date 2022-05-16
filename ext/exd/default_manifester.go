@@ -27,7 +27,7 @@ func NewDefaultManifester() Manifester {
 }
 
 // Load loads manifest from local machine
-func (*defaultManifester) Load(dirPath string) (*Manifest, error) {
+func (d *defaultManifester) Load(dirPath string) (*Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &Manifest{}
 	if _, err := ManifesterFS.Stat(manifestPath); err == nil {
@@ -44,8 +44,20 @@ func (*defaultManifester) Load(dirPath string) (*Manifest, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshalling manifest content: %w", err)
 		}
+		d.enrichManifest(manifest)
 	}
 	return manifest, nil
+}
+
+func (*defaultManifester) enrichManifest(manifest *Manifest) {
+	for _, owner := range manifest.RepositoryOwners {
+		for _, project := range owner.Projects {
+			project.Owner = owner
+			for _, release := range project.Releases {
+				release.Project = project
+			}
+		}
+	}
 }
 
 // Flush flushes manifest into a file in local machine

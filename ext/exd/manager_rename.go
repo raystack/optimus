@@ -16,12 +16,12 @@ func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
 		return formatError("error loading manifest: %w", err)
 	}
 
-	sourceProject := m.getProjectByCommandName(manifest, sourceCommandName)
+	sourceProject := m.findProjectByCommandName(manifest, sourceCommandName)
 	if sourceProject == nil {
 		return fmt.Errorf("source command name [%s] is not found", sourceCommandName)
 	}
 
-	targetProject := m.getProjectByCommandName(manifest, targetCommandName)
+	targetProject := m.findProjectByCommandName(manifest, targetCommandName)
 	if targetProject != nil {
 		return fmt.Errorf("target command name [%s] is already used", targetCommandName)
 	}

@@ -27,6 +27,8 @@ type RepositoryProject struct {
 	ActiveTagName string               `yaml:"active_tag_name"`
 	LocalDirPath  string               `yaml:"local_dir_path"`
 	Releases      []*RepositoryRelease `yaml:"releases"`
+
+	Owner *RepositoryOwner `yaml:"-"`
 }
 
 // RepositoryRelease defines the release version of a repository release
@@ -39,6 +41,8 @@ type RepositoryRelease struct {
 	// and its value according to its own requirements.
 	Metadata map[string]interface{} `yaml:"metadata"`
 	Assets   []*RepositoryAsset     `yaml:"assets"`
+
+	Project *RepositoryProject `yaml:"-"`
 }
 
 // RepositoryAsset defines a specific asset for a release
@@ -90,8 +94,17 @@ type NewClient func(ctx context.Context, httpDoer HTTPDoer) (Client, error)
 // Installer is a contract to install extension based on
 // remote metadata and its asset
 type Installer interface {
-	Prepare(remoteMetadata *RemoteMetadata) error
-	Install(asset []byte, remoteMetadata *RemoteMetadata) error
+	// Preprae does preparation before installation.
+	// Such preparation can be in the form of, but not limited to,
+	// creating local directory. On this example, the argument
+	// can (again, not limited to) be directory path.
+	Prepare(string) error
+	// Install install an asset to a targeted path.
+	// The first argument should be an asset.
+	// The second and third argument can be any strings. If it's related
+	// to a plain local installation, then the strings
+	// can be a dir path and file name.
+	Install([]byte, string, string) error
 }
 
 // Manifester is a contract to operate on manifest file

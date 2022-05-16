@@ -21,23 +21,11 @@ func (d *DefaultInstallerTestSuite) TestPrepare() {
 	defer func() { exd.InstallerFS = defaultFS }()
 	exd.InstallerFS = afero.NewMemMapFs()
 
-	d.Run("should return error if remote metadata is nil", func() {
-		var remoteMetadata *exd.RemoteMetadata
-		installer := exd.NewDefaultInstaller()
-
-		actualPrepareErr := installer.Prepare(remoteMetadata)
-
-		d.Error(actualPrepareErr)
-	})
-
 	d.Run("should create directory", func() {
 		dirPath := "./extension"
-		remoteMetadata := &exd.RemoteMetadata{
-			LocalDirPath: dirPath,
-		}
 		installer := exd.NewDefaultInstaller()
 
-		actualPrepareErr := installer.Prepare(remoteMetadata)
+		actualPrepareErr := installer.Prepare(dirPath)
 		actualInfo, actualStatErr := exd.InstallerFS.Stat(dirPath)
 
 		d.NoError(actualPrepareErr)
@@ -52,26 +40,13 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	exd.InstallerFS = afero.NewMemMapFs()
 
 	d.Run("should return error if asset is nil", func() {
-		remoteMetadata := &exd.RemoteMetadata{
-			LocalDirPath: "./extension",
-			TagName:      "valor",
-		}
+		dirPath := "./extension"
+		tagName := "v1.0.0"
 		installer := exd.NewDefaultInstaller()
 
 		var asset []byte
 
-		actualInstallErr := installer.Install(asset, remoteMetadata)
-
-		d.Error(actualInstallErr)
-	})
-
-	d.Run("should return error if remote metadata is nil", func() {
-		var remoteMetadata *exd.RemoteMetadata
-		installer := exd.NewDefaultInstaller()
-
-		asset := []byte("lorem ipsum")
-
-		actualInstallErr := installer.Install(asset, remoteMetadata)
+		actualInstallErr := installer.Install(asset, dirPath, tagName)
 
 		d.Error(actualInstallErr)
 	})
@@ -79,17 +54,13 @@ func (d *DefaultInstallerTestSuite) TestInstall() {
 	d.Run("should write asset to the targeted path", func() {
 		dirPath := "./extension"
 		tagName := "valor"
-		remoteMetadata := &exd.RemoteMetadata{
-			LocalDirPath: dirPath,
-			TagName:      tagName,
-		}
 		installer := exd.NewDefaultInstaller()
 		filePath := path.Join(dirPath, tagName)
 
 		message := "lorem ipsum"
 		asset := []byte(message)
 
-		actualInstallErr := installer.Install(asset, remoteMetadata)
+		actualInstallErr := installer.Install(asset, dirPath, tagName)
 		defer d.removeDir(dirPath)
 		actualFile, actualOpenErr := exd.InstallerFS.OpenFile(filePath, os.O_RDONLY, 0o755)
 		actualContent, actualReadErr := io.ReadAll(actualFile)
