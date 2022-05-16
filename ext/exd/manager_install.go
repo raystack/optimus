@@ -15,28 +15,28 @@ type installResource struct {
 // Install installs extension based on the remote path
 func (m *Manager) Install(remotePath, commandName string) error {
 	if err := m.validateInstallInput(remotePath, commandName); err != nil {
-		return formatError("error validating installation: %w", err)
+		return formatError(m.verbose, err, "error validating install input")
 	}
 
 	resource, err := m.setupInstallResource(remotePath, commandName)
 	if err != nil {
-		return formatError("error preparing installation: %w", err)
+		return formatError(m.verbose, err, "error setting up installation")
 	}
 
 	if err := m.validateInstallResource(resource); err != nil {
-		return formatError("error validating metadata for [%s/%s@%s]: %w",
-			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName, err,
+		return formatError(m.verbose, err, "error validating metadata for [%s/%s@%s]",
+			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
 	}
 
 	if err := m.install(resource.client, resource.metadata); err != nil {
-		return formatError("error encountered during installing [%s/%s@%s]: %w",
-			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName, err,
+		return formatError(m.verbose, err, "error encountered when installing [%s/%s@%s]",
+			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
 	}
 
 	if err := m.updateManifest(resource.manifest, resource.metadata, resource.release); err != nil {
-		return formatError("error updating manifest: %w", err)
+		return formatError(m.verbose, err, "error updating manifest")
 	}
 	return nil
 }
@@ -74,19 +74,19 @@ func (*Manager) validateCommandName(manifest *Manifest, metadata *Metadata) erro
 func (m *Manager) setupInstallResource(remotePath, commandName string) (*installResource, error) {
 	metadata, err := m.extractMetadata(remotePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error extracting metadata: %w", err)
 	}
 	manifest, err := m.manifester.Load(ExtensionDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error loading manifest: %w", err)
 	}
 	client, err := m.findClientProvider(metadata.ProviderName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error finding client for provider [%s]: %w", metadata.ProviderName, err)
 	}
 	release, err := m.downloadRelease(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error downloading release: %w", err)
 	}
 	metadata.TagName = release.TagName
 	metadata.CurrentAPIPath = release.CurrentAPIPath
@@ -110,7 +110,7 @@ func (*Manager) extractMetadata(remotePath string) (*Metadata, error) {
 			continue
 		}
 		if err != nil {
-			return nil, fmt.Errorf("errors parsing [%s]: %w", remotePath, err)
+			return nil, fmt.Errorf("error parsing remote path [%s]: %w", remotePath, err)
 		}
 		if mtdt != nil {
 			remoteMetadata = mtdt
@@ -118,7 +118,7 @@ func (*Manager) extractMetadata(remotePath string) (*Metadata, error) {
 		}
 	}
 	if remoteMetadata == nil {
-		return nil, fmt.Errorf("[%s] is not recognized", remotePath)
+		return nil, fmt.Errorf("remote path [%s] is not recognized", remotePath)
 	}
 	return remoteMetadata, nil
 }

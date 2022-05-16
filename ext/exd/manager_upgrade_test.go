@@ -3,24 +3,22 @@ package exd_test
 import (
 	"context"
 	"errors"
-	"testing"
 
 	tMock "github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/ext/exd"
 	"github.com/odpf/optimus/mock"
 )
-
-type ManagerTestSuite struct {
-	suite.Suite
-}
 
 func (m *ManagerTestSuite) TestUpgrade() {
 	defaultParser := exd.ParseRegistry
 	defer func() { exd.ParseRegistry = defaultParser }()
 	defaultNewClient := exd.NewClientRegistry
 	defer func() { exd.NewClientRegistry = defaultNewClient }()
+
+	ctx := context.Background()
+	httpDoer := &mock.HTTPDoer{}
+	verbose := true
 
 	m.Run("should return error if one or more required fields are empty", func() {
 		manager := &exd.Manager{}
@@ -32,12 +30,10 @@ func (m *ManagerTestSuite) TestUpgrade() {
 	})
 
 	m.Run("should return error if command name is empty", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -50,14 +46,12 @@ func (m *ManagerTestSuite) TestUpgrade() {
 	})
 
 	m.Run("should return error if error loading manifest", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -70,14 +64,12 @@ func (m *ManagerTestSuite) TestUpgrade() {
 	})
 
 	m.Run("should return error if command name is not found", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -111,11 +103,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		newClientFactory := &exd.NewClientFactory{}
 		exd.NewClientRegistry = newClientFactory
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -158,11 +148,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		})
 		exd.NewClientRegistry = newClientFactory
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -207,11 +195,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		})
 		exd.NewClientRegistry = newClientFactory
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -257,11 +243,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -307,11 +291,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -359,11 +341,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -413,10 +393,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		installer := &mock.Installer{}
 		installer.On("Prepare", tMock.Anything).Return(errors.New("random error"))
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -467,10 +444,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		installer.On("Prepare", tMock.Anything).Return(nil)
 		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -522,10 +496,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		installer.On("Prepare", tMock.Anything).Return(nil)
 		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -577,10 +548,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		installer.On("Prepare", tMock.Anything).Return(nil)
 		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -591,8 +559,4 @@ func (m *ManagerTestSuite) TestUpgrade() {
 
 		m.NoError(actualErr)
 	})
-}
-
-func TestManager(t *testing.T) {
-	suite.Run(t, &ManagerTestSuite{})
 }

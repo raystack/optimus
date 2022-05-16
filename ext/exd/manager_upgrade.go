@@ -13,29 +13,29 @@ type upgradeResource struct {
 // Upgrade upgrades an extension specified by the command name
 func (m *Manager) Upgrade(commandName string) error {
 	if err := m.validateUpgradeInput(commandName); err != nil {
-		return formatError("error validating upgrade: %w", err)
+		return formatError(m.verbose, err, "error validating upgrade input")
 	}
 
 	resource, err := m.setupUpgradeResource(commandName)
 	if err != nil {
-		return formatError("error preparing upgrade: %w", err)
+		return formatError(m.verbose, err, "error preparing upgrade")
 	}
 
 	if m.isInstalled(resource.manifest, resource.metadata) {
 		if err := m.updateManifest(resource.manifest, resource.metadata, resource.upgradeRelease); err != nil {
-			return formatError("error updating manifest: %w", err)
+			return formatError(m.verbose, err, "error updating manifest")
 		}
 		return nil
 	}
 
 	if err := m.install(resource.client, resource.metadata); err != nil {
-		return formatError("error encountered during installing [%s/%s@%s]: %w",
-			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName, err,
+		return formatError(m.verbose, err, "error encountered during installing [%s/%s@%s]",
+			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
 	}
 
 	if err := m.updateManifest(resource.manifest, resource.metadata, resource.upgradeRelease); err != nil {
-		return formatError("error updating manifest: %w", err)
+		return formatError(m.verbose, err, "error updating manifest")
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func (m *Manager) Upgrade(commandName string) error {
 func (m *Manager) setupUpgradeResource(commandName string) (*upgradeResource, error) {
 	manifest, err := m.manifester.Load(ExtensionDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error loading manifest: %w", err)
 	}
 	project := m.findProjectByCommandName(manifest, commandName)
 	if project == nil {
@@ -51,7 +51,7 @@ func (m *Manager) setupUpgradeResource(commandName string) (*upgradeResource, er
 	}
 	client, err := m.findClientProvider(project.Owner.Provider)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error finding client for provider [%s]: %w", project.Owner.Provider, err)
 	}
 	currentRelease := m.getCurrentRelease(project)
 	if currentRelease == nil {
@@ -59,7 +59,7 @@ func (m *Manager) setupUpgradeResource(commandName string) (*upgradeResource, er
 	}
 	upgradeRelease, err := m.downloadRelease(client, "", currentRelease.UpgradeAPIPath)
 	if err != nil {
-		return nil, fmt.Errorf("error getting release for [%s/%s@latest]: %w",
+		return nil, fmt.Errorf("error downloading release for [%s/%s@latest]: %w",
 			project.Owner.Name, project.Name, err,
 		)
 	}

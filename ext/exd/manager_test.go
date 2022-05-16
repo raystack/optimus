@@ -5,23 +5,26 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/ext/exd"
 	"github.com/odpf/optimus/mock"
 )
 
-// type ManagerTestSuite struct {
-// 	suite.Suite
-// }
+type ManagerTestSuite struct {
+	suite.Suite
+}
 
 func TestNewManager(t *testing.T) {
+	verbose := true
+
 	t.Run("should return nil and error if context is nil", func(t *testing.T) {
 		var ctx context.Context
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -33,7 +36,7 @@ func TestNewManager(t *testing.T) {
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -45,7 +48,7 @@ func TestNewManager(t *testing.T) {
 		var manifester exd.Manifester
 		installer := &mock.Installer{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -57,7 +60,7 @@ func TestNewManager(t *testing.T) {
 		manifester := &mock.Manifester{}
 		var installer exd.Installer
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -69,13 +72,13 @@ func TestNewManager(t *testing.T) {
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)
 	})
 }
 
-// func TestManager(t *testing.T) {
-// 	suite.Run(t, &ManagerTestSuite{})
-// }
+func TestManager(t *testing.T) {
+	suite.Run(t, &ManagerTestSuite{})
+}

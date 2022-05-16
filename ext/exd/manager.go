@@ -17,10 +17,18 @@ type Manager struct {
 	httpDoer   HTTPDoer
 	manifester Manifester
 	installer  Installer
+
+	verbose bool
 }
 
 // NewManager initializes new manager
-func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) (*Manager, error) {
+func NewManager(
+	ctx context.Context,
+	httpDoer HTTPDoer,
+	manifester Manifester,
+	installer Installer,
+	verbose bool,
+) (*Manager, error) {
 	if err := validate(ctx, httpDoer, manifester, installer); err != nil {
 		return nil, fmt.Errorf("error validating parameter: %w", err)
 	}
@@ -29,18 +37,17 @@ func NewManager(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, i
 		httpDoer:   httpDoer,
 		manifester: manifester,
 		installer:  installer,
+		verbose:    verbose,
 	}, nil
 }
 
 func (m *Manager) install(client Client, metadata *Metadata) error {
 	asset, err := m.downloadAsset(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("error downloading asset: %w", err)
 	}
 	if err := m.installAsset(asset, metadata.LocalDirPath, metadata.TagName); err != nil {
-		return formatError("error installing asset for [%s/%s@%s]: %w",
-			metadata.OwnerName, metadata.ProjectName, metadata.TagName, err,
-		)
+		return fmt.Errorf("error installing asset: %w", err)
 	}
 	return nil
 }
@@ -49,7 +56,10 @@ func (m *Manager) installAsset(asset []byte, dirPath, fileName string) error {
 	if err := m.installer.Prepare(dirPath); err != nil {
 		return fmt.Errorf("error preparing installation: %w", err)
 	}
-	return m.installer.Install(asset, dirPath, fileName)
+	if err := m.installer.Install(asset, dirPath, fileName); err != nil {
+		return fmt.Errorf("error during installation: %w", err)
+	}
+	return nil
 }
 
 func (*Manager) downloadAsset(client Client, currentAPIPath, upgradeAPIPath string) ([]byte, error) {
@@ -65,7 +75,10 @@ func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata, release
 		m.addNewProjectToManifest(manifest, metadata, release)
 	}
 	manifest.UpdatedAt = time.Now()
-	return m.manifester.Flush(manifest, ExtensionDir)
+	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
+		return fmt.Errorf("error flushing manifest: %w", err)
+	}
+	return nil
 }
 
 func (*Manager) addNewProjectToManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) {
@@ -137,7 +150,7 @@ func (*Manager) downloadRelease(client Client, currentAPIPath, upgradeAPIPath st
 func (m *Manager) findClientProvider(provider string) (Client, error) {
 	newClient, err := NewClientRegistry.Get(provider)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting client initializer: %w", err)
 	}
 	return newClient(m.ctx, m.httpDoer)
 }

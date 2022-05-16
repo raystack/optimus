@@ -11,6 +11,11 @@ import (
 )
 
 func (m *ManagerTestSuite) TestRename() {
+	ctx := context.Background()
+	httpDoer := &mock.HTTPDoer{}
+	installer := &mock.Installer{}
+	verbose := true
+
 	m.Run("should return error if one or more required fields are empty", func() {
 		manager := &exd.Manager{}
 		source := "valor"
@@ -22,12 +27,9 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return error if source command is empty", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -41,12 +43,9 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return error if target command is empty", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -60,12 +59,9 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return nil if source and target is the same", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -79,14 +75,10 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return error if error when loading manifest", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -100,30 +92,27 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return error if target command is alread used by other project", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-
+		project1 := &exd.RepositoryProject{
+			Name:        "extension1",
+			CommandName: "valor",
+		}
+		project2 := &exd.RepositoryProject{
+			Name:        "extension2",
+			CommandName: "valor2",
+		}
+		owner := &exd.RepositoryOwner{
+			Name:     "owner",
+			Projects: []*exd.RepositoryProject{project1, project2},
+		}
+		project1.Owner = owner
+		project2.Owner = owner
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{owner},
+		}
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			RepositoryOwners: []*exd.RepositoryOwner{
-				{
-					Name: "project1",
-					Projects: []*exd.RepositoryProject{
-						{
-							Name:        "extension1",
-							CommandName: "valor",
-						},
-						{
-							Name:        "extension2",
-							CommandName: "valor2",
-						},
-					},
-				},
-			},
-		}, nil)
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -137,27 +126,23 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return error if error encountered during updating manifest", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-
+		project := &exd.RepositoryProject{
+			Name:        "extension1",
+			CommandName: "valor",
+		}
+		owner := &exd.RepositoryOwner{
+			Name:     "owner",
+			Projects: []*exd.RepositoryProject{project},
+		}
+		project.Owner = owner
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{owner},
+		}
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			RepositoryOwners: []*exd.RepositoryOwner{
-				{
-					Name: "project1",
-					Projects: []*exd.RepositoryProject{
-						{
-							Name:        "extension1",
-							CommandName: "valor",
-						},
-					},
-				},
-			},
-		}, nil)
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -171,27 +156,23 @@ func (m *ManagerTestSuite) TestRename() {
 	})
 
 	m.Run("should return error if error encountered during updating manifest", func() {
-		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-
+		project := &exd.RepositoryProject{
+			Name:        "extension1",
+			CommandName: "valor",
+		}
+		owner := &exd.RepositoryOwner{
+			Name:     "owner",
+			Projects: []*exd.RepositoryProject{project},
+		}
+		project.Owner = owner
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{owner},
+		}
 		manifester := &mock.Manifester{}
-		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{
-			RepositoryOwners: []*exd.RepositoryOwner{
-				{
-					Name: "project1",
-					Projects: []*exd.RepositoryProject{
-						{
-							Name:        "extension1",
-							CommandName: "valor",
-						},
-					},
-				},
-			},
-		}, nil)
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}

@@ -16,6 +16,8 @@ func (m *ManagerTestSuite) TestInstall() {
 	defaultNewClient := exd.NewClientRegistry
 	defer func() { exd.NewClientRegistry = defaultNewClient }()
 
+	verbose := true
+
 	m.Run("should return error if one or more required fields are empty", func() {
 		manager := &exd.Manager{}
 		remotePath := "gojek/optimus-extension-valor"
@@ -32,7 +34,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -56,7 +58,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -80,7 +82,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -106,7 +108,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -139,7 +141,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -177,7 +179,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -238,7 +240,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -298,7 +300,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -339,7 +341,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -383,7 +385,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -428,7 +430,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -474,7 +476,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -520,7 +522,7 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
 		if err != nil {
 			panic(err)
 		}

@@ -32,13 +32,18 @@ var (
 	ErrEmptyTagName = errors.New("tag name is empty")
 )
 
-func formatError(format string, a ...interface{}) error {
-	for i := 0; i < len(a); i++ {
-		if e, ok := a[i].(error); ok {
-			if u := errors.Unwrap(e); u != nil {
-				a[i] = u
-			}
-		}
+func formatError(verbose bool, cause error, format string, a ...interface{}) error {
+	if verbose {
+		return formatVerboseErr(cause, format, a...)
 	}
+	return formatSimpleErr(format, a...)
+}
+
+func formatSimpleErr(format string, a ...interface{}) error {
 	return fmt.Errorf(format, a...)
+}
+
+func formatVerboseErr(cause error, format string, a ...interface{}) error {
+	message := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s [caused by] %w", message, cause)
 }

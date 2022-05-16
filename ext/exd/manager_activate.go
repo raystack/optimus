@@ -5,25 +5,25 @@ import "fmt"
 // Activate activates the tag for an extension specified by the command name
 func (m *Manager) Activate(commandName, tagName string) error {
 	if err := m.validateActivateInput(commandName, tagName); err != nil {
-		return formatError("error validating activate: %w", err)
+		return formatError(m.verbose, err, "error validating tag activation input")
 	}
 
 	manifest, err := m.manifester.Load(ExtensionDir)
 	if err != nil {
-		return formatError("error loading manifest: %w", err)
+		return formatError(m.verbose, err, "error loading manifest")
 	}
 
 	project := m.findProjectByCommandName(manifest, commandName)
 	if project == nil {
-		return formatError("command name [%s] is not found", commandName)
+		return formatError(m.verbose, err, "command name [%s] is not found", commandName)
 	}
 
 	if err := m.activateTagInProject(project, tagName); err != nil {
-		return formatError("error updating tag [%s]: %w", tagName, err)
+		return formatError(m.verbose, err, "error activating tag [%s]", tagName)
 	}
 
 	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
-		return formatError("error flushing manifest: %w", err)
+		return formatError(m.verbose, err, "error applying manifest")
 	}
 	return nil
 }

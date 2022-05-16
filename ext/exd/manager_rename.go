@@ -5,7 +5,7 @@ import "fmt"
 // Rename renames an existing command name into a targeted command name
 func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
 	if err := m.validateRenameInput(sourceCommandName, targetCommandName); err != nil {
-		return formatError("error validating rename command: %w", err)
+		return formatError(m.verbose, err, "error validating rename command input")
 	}
 	if sourceCommandName == targetCommandName {
 		return nil
@@ -13,7 +13,7 @@ func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
 
 	manifest, err := m.manifester.Load(ExtensionDir)
 	if err != nil {
-		return formatError("error loading manifest: %w", err)
+		return formatError(m.verbose, err, "error loading manifest")
 	}
 
 	sourceProject := m.findProjectByCommandName(manifest, sourceCommandName)
@@ -23,12 +23,14 @@ func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
 
 	targetProject := m.findProjectByCommandName(manifest, targetCommandName)
 	if targetProject != nil {
-		return fmt.Errorf("target command name [%s] is already used", targetCommandName)
+		return fmt.Errorf("target command name [%s] is already used by [%s/%s@%s]",
+			targetCommandName, targetProject.Owner.Name, targetProject.Name, targetProject.ActiveTagName,
+		)
 	}
 
 	sourceProject.CommandName = targetCommandName
 	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
-		return formatError("error flushing manifest: %w", err)
+		return formatError(m.verbose, err, "error applying manifest")
 	}
 	return nil
 }
