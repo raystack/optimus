@@ -12,6 +12,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/logger"
+	nameSpcCmd "github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
@@ -112,7 +113,7 @@ func (c *createCommand) runBackupRequest(namespace *config.Namespace) error {
 		ResourceName:                c.resourceName,
 		DatastoreName:               c.storerName,
 		Description:                 c.description,
-		AllowedDownstreamNamespaces: c.getAllowedDownstreamNamespaces(namespace.Name),
+		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(namespace.Name, c.allDownstream),
 	}
 	for _, ds := range namespace.Datastore {
 		if ds.Type == c.storerName {
@@ -139,16 +140,6 @@ func (c *createCommand) printBackupResponse(backupResponse *pb.CreateBackupRespo
 	}
 }
 
-func (c *createCommand) getAllowedDownstreamNamespaces(namespaceName string) []string {
-	var allowedDownstreamNamespaces []string
-	if c.allDownstream {
-		allowedDownstreamNamespaces = []string{"*"}
-	} else {
-		allowedDownstreamNamespaces = []string{namespaceName}
-	}
-	return allowedDownstreamNamespaces
-}
-
 func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, backupTimeout)
 	if err != nil {
@@ -164,7 +155,7 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 		ResourceName:                c.resourceName,
 		DatastoreName:               c.storerName,
 		Description:                 c.description,
-		AllowedDownstreamNamespaces: c.getAllowedDownstreamNamespaces(namespaceName),
+		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(namespaceName, c.allDownstream),
 	}
 	backup := pb.NewBackupServiceClient(conn.GetConnection())
 	backupDryRunResponse, err := backup.BackupDryRun(conn.GetContext(), request)

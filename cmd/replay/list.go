@@ -92,11 +92,16 @@ func (l *listCommand) printReplayListResponse(replayListResponse *pb.ListReplays
 	})
 
 	for _, replaySpec := range replayListResponse.ReplayList {
-		table.Append([]string{
-			replaySpec.Id, replaySpec.JobName, replaySpec.StartDate.AsTime().Format(models.JobDatetimeLayout),
-			replaySpec.EndDate.AsTime().Format(models.JobDatetimeLayout), replaySpec.Config[models.ConfigIgnoreDownstream],
-			replaySpec.CreatedAt.AsTime().Format(time.RFC3339), replaySpec.State,
-		})
+		row := []string{
+			replaySpec.Id,
+			replaySpec.JobName,
+			replaySpec.StartDate.AsTime().Format(models.JobDatetimeLayout),
+			replaySpec.EndDate.AsTime().Format(models.JobDatetimeLayout),
+			replaySpec.Config[models.ConfigIgnoreDownstream],
+			replaySpec.CreatedAt.AsTime().Format(time.RFC3339),
+			replaySpec.State,
+		}
+		table.Append(row)
 	}
 
 	table.Render()

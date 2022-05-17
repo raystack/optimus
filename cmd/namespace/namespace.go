@@ -20,3 +20,11 @@ func NewNamespaceCommand() *cobra.Command {
 	cmd.AddCommand(NewListCommand(logger))
 	return cmd
 }
+
+// GetAllowedDownstreamNamespaces gets all downstream namespace names
+func GetAllowedDownstreamNamespaces(namespaceName string, allDownstream bool) []string {
+	if allDownstream {
+		return []string{"*"}
+	}
+	return []string{namespaceName}
+}

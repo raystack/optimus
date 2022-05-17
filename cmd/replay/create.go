@@ -15,6 +15,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
@@ -124,11 +125,7 @@ func (c *createCommand) RunE(_ *cobra.Command, args []string) error {
 func (c *createCommand) getAllowedDownstreamNamespaces() []string {
 	var allowedDownstreamNamespaces []string
 	if !c.ignoreDownstream {
-		if c.allDownstream {
-			allowedDownstreamNamespaces = []string{"*"}
-		} else {
-			allowedDownstreamNamespaces = []string{c.namespaceName}
-		}
+		allowedDownstreamNamespaces = namespace.GetAllowedDownstreamNamespaces(c.namespaceName, c.allDownstream)
 	}
 	return allowedDownstreamNamespaces
 }

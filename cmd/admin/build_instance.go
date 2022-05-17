@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,7 +102,7 @@ func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {
 // for the Job Run which is saved into output files.
 func (b *buildInstanceCommand) writeInstanceResponse(jobResponse *pb.RegisterInstanceResponse) (err error) {
 	dirPath := filepath.Join(b.assetOutputDir, taskInputDirectory)
-	if err := b.writeJobResponseMapToFiles(jobResponse, dirPath); err != nil {
+	if err := b.writeJobAssetsToFiles(jobResponse, dirPath); err != nil {
 		return fmt.Errorf("error writing response map to file: %w", err)
 	}
 
@@ -158,10 +159,11 @@ func (b *buildInstanceCommand) writeJobResponseEnvToFile(
 	return nil
 }
 
-func (b *buildInstanceCommand) writeJobResponseMapToFiles(
+func (b *buildInstanceCommand) writeJobAssetsToFiles(
 	jobResponse *pb.RegisterInstanceResponse, dirPath string,
 ) error {
-	if err := os.MkdirAll(dirPath, 0o777); err != nil {
+	permission := 600
+	if err := os.MkdirAll(dirPath, fs.FileMode(permission)); err != nil {
 		return fmt.Errorf("failed to create directory at %s: %w", dirPath, err)
 	}
 
