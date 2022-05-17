@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -267,6 +268,22 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 
 	// delete from batch scheduler
 	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
+}
+
+func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) error {
+	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
+
+	for _, jobSpec := range jobSpecs {
+		if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
+			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name})
+			continue
+		}
+		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
@@ -840,19 +857,22 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 		return err
 	}
 
-	// Get modified jobs (including job added and job updated)
-	modifiedJobs, err := srv.GetModifiedJobs(ctx, jobSpecs)
+	// Get modified jobs (including job added and job updated) return deleted jobs
+	modifiedJobs, deletedJobs, err := srv.GetModifiedJobs(ctx, namespaceSpec, jobSpecs)
 	if err != nil {
 		return err
 	}
 
-	// Save modified jobs
+	// Save modified jobs //
 	if err := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs); err != nil {
 		return err
 	}
 
-	// Delete unnecessary jobs
-	if err := srv.KeepOnly(ctx, namespaceSpec, modifiedJobs, observers); err != nil {
+	// Delete unnecessary jobs // BulkDelete
+	if err := srv.BulkDelete(ctx, namespaceSpec, deletedJobs, observers); err != nil {
+		return err
+	}
+	if err := srv.KeepOnly(ctx, namespaceSpec, jobSpecs, observers); err != nil {
 		return err
 	}
 
@@ -862,9 +882,59 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	return nil
 }
 
-func (srv *Service) GetModifiedJobs(ctx context.Context, jobNames []models.JobSpec) ([]models.JobSpec, error) {
-	// TODO: implement here
-	return nil, nil
+// GetModifiedJobs gets modified (new and edited) jobs as well as deleted jobs
+func (srv *Service) GetModifiedJobs(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, error) {
+	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
+	existingJobSpecs, err := jobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	existingJobSpecMap := map[string]models.JobSpec{}
+	for _, jobSpec := range existingJobSpecs {
+		existingJobSpecMap[jobSpec.Name] = jobSpec
+	}
+
+	requestedJobSpecMap := map[string]models.JobSpec{}
+	for _, jobSpec := range requestedJobSpecs {
+		requestedJobSpecMap[jobSpec.Name] = jobSpec
+	}
+
+	modifiedJobSpecs := srv.getModifiedJobs(existingJobSpecMap, requestedJobSpecMap)
+	deletedJobSpecs := srv.getDeletedJobs(existingJobSpecMap, requestedJobSpecMap)
+
+	return modifiedJobSpecs, deletedJobSpecs, nil
+}
+
+func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	modifiedJobSpecs := []models.JobSpec{}
+
+	for jobName, requestedJobSpec := range requestedJobSpecs {
+		if existingJobSpec, ok := existingJobSpecs[jobName]; !ok {
+			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
+		} else if !srv.jobSpecEqual(requestedJobSpec, existingJobSpec) {
+			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
+		}
+	}
+
+	return modifiedJobSpecs
+}
+
+func (srv *Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	deletedJobSpecs := []models.JobSpec{}
+
+	for jobName, existingJobSpec := range existingJobSpecs {
+		if _, ok := requestedJobSpecs[jobName]; !ok {
+			deletedJobSpecs = append(deletedJobSpecs, existingJobSpec)
+		}
+	}
+
+	return deletedJobSpecs
+}
+
+func (srv *Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
+	js1.ID = js2.ID // id is not required for comparison
+	return reflect.DeepEqual(js1, js2)
 }
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {

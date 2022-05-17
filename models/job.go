@@ -362,7 +362,7 @@ type JobService interface {
 	// Deploy the requested jobs per namespace
 	Deploy(context.Context, string, string, []JobSpec, progress.Observer) error
 	// GetModifiedJobs from requested jobSpecs against persistent jobSpecs
-	GetModifiedJobs(context.Context, []JobSpec) ([]JobSpec, error)
+	GetModifiedJobs(context.Context, NamespaceSpec, []JobSpec) ([]JobSpec, []JobSpec, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 }
