@@ -18,7 +18,7 @@ func (m *Manager) Upgrade(commandName string) error {
 
 	resource, err := m.setupUpgradeResource(commandName)
 	if err != nil {
-		return formatError(m.verbose, err, "error preparing upgrade")
+		return formatError(m.verbose, err, "error setting up upgrade")
 	}
 
 	if m.isInstalled(resource.manifest, resource.metadata) {
