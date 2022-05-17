@@ -14,9 +14,18 @@ import (
 )
 
 const (
-	manifestFileName       = "manifest.yaml"
-	manifestDirName        = "./valid-extension"
-	manifestValidContent   = "updated_at: 2021-11-02T17:06:58.624013+07:00"
+	manifestFileName     = "manifest.yaml"
+	manifestDirName      = "./valid-extension"
+	manifestValidContent = `
+updated_at: 2022-05-17T16:18:05.448219+07:00
+repository_owners:
+  - name: gojek
+    projects:
+    - name: optimus-extension-valor
+      command_name: valor
+      releases:
+      - tag_name: v0.0.1
+`
 	manifestInvalidContent = "updated_at: invalid"
 )
 

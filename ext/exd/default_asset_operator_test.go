@@ -19,10 +19,10 @@ type DefaultAssetOperatorTestSuite struct {
 
 func (d *DefaultAssetOperatorTestSuite) TestPrepare() {
 	d.Run("should return no error", func() {
-		dirPath := "./extension"
+		localDirPath := "./extension"
 		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
 
-		actualErr := assetOperator.Prepare(dirPath)
+		actualErr := assetOperator.Prepare(localDirPath)
 
 		d.NoError(actualErr)
 	})
@@ -33,11 +33,11 @@ func (d *DefaultAssetOperatorTestSuite) TestInstall() {
 	defer func() { exd.AssetOperatorFS = defaultFS }()
 	exd.AssetOperatorFS = afero.NewMemMapFs()
 
-	dirPath := "./extension"
+	localDirPath := "./extension"
 	d.Run("should return error if asset is nil", func() {
 		tagName := "v1.0.0"
 		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
-		assetOperator.Prepare(dirPath)
+		assetOperator.Prepare(localDirPath)
 
 		var asset []byte
 
@@ -49,14 +49,14 @@ func (d *DefaultAssetOperatorTestSuite) TestInstall() {
 	d.Run("should write asset to the targeted path", func() {
 		tagName := "valor"
 		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
-		assetOperator.Prepare(dirPath)
-		filePath := path.Join(dirPath, tagName)
+		assetOperator.Prepare(localDirPath)
+		filePath := path.Join(localDirPath, tagName)
 
 		message := "lorem ipsum"
 		asset := []byte(message)
 
 		actualInstallErr := assetOperator.Install(asset, tagName)
-		defer d.removeDir(dirPath)
+		defer d.removeDir(localDirPath)
 		actualFile, actualOpenErr := exd.AssetOperatorFS.OpenFile(filePath, os.O_RDONLY, 0o755)
 		actualContent, actualReadErr := io.ReadAll(actualFile)
 
@@ -72,17 +72,17 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 	defer func() { exd.AssetOperatorFS = defaultFS }()
 	exd.AssetOperatorFS = afero.NewMemMapFs()
 
-	dirPath := "./extension"
+	localDirPath := "./extension"
 	d.Run("should delete directory if no file names specified and return nil", func() {
 		directoryPermission := 0o750
-		if err := exd.AssetOperatorFS.MkdirAll(dirPath, fs.FileMode(directoryPermission)); err != nil {
+		if err := exd.AssetOperatorFS.MkdirAll(localDirPath, fs.FileMode(directoryPermission)); err != nil {
 			panic(err)
 		}
 		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
-		assetOperator.Prepare(dirPath)
+		assetOperator.Prepare(localDirPath)
 
 		actualErr := assetOperator.Uninstall()
-		_, statErr := exd.AssetOperatorFS.Stat(dirPath)
+		_, statErr := exd.AssetOperatorFS.Stat(localDirPath)
 
 		d.NoError(actualErr)
 		d.ErrorIs(statErr, os.ErrNotExist)
@@ -90,13 +90,13 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 
 	d.Run("should delete files only if specified and return nil", func() {
 		directoryPermission := 0o750
-		if err := exd.AssetOperatorFS.MkdirAll(dirPath, fs.FileMode(directoryPermission)); err != nil {
+		if err := exd.AssetOperatorFS.MkdirAll(localDirPath, fs.FileMode(directoryPermission)); err != nil {
 			panic(err)
 		}
 		message := "lorem ipsum"
 		asset := []byte(message)
 		fileName := "asset"
-		filePath := path.Join(dirPath, fileName)
+		filePath := path.Join(localDirPath, fileName)
 		filePermission := 0o755
 		file, err := exd.AssetOperatorFS.OpenFile(filePath, os.O_CREATE, fs.FileMode(filePermission))
 		if err != nil {
@@ -107,16 +107,33 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 		}
 
 		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
-		assetOperator.Prepare(dirPath)
+		assetOperator.Prepare(localDirPath)
 
 		actualErr := assetOperator.Uninstall(fileName)
-		dirStat, dirStatErr := exd.AssetOperatorFS.Stat(dirPath)
+		dirStat, dirStatErr := exd.AssetOperatorFS.Stat(localDirPath)
 		_, fileStatErr := exd.AssetOperatorFS.Stat(filePath)
 
 		d.NoError(actualErr)
 		d.True(dirStat.IsDir())
 		d.NoError(dirStatErr)
 		d.ErrorIs(fileStatErr, os.ErrNotExist)
+	})
+}
+
+func (d *DefaultAssetOperatorTestSuite) TestRun() {
+	defaultFS := exd.AssetOperatorFS
+	defer func() { exd.AssetOperatorFS = defaultFS }()
+	exd.AssetOperatorFS = afero.NewMemMapFs()
+
+	d.Run("should return the result from executing run", func() {
+		dirPath := "./extension"
+		tagName := "v1.0"
+		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
+		assetOperator.Prepare(dirPath)
+
+		actualResult := assetOperator.Run(tagName)
+
+		d.Error(actualResult)
 	})
 }
 
