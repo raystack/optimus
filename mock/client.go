@@ -35,8 +35,8 @@ func (_m *Client) DownloadAsset(_a0 string) ([]byte, error) {
 	return r0, r1
 }
 
-// GetRelease provides a mock function with given fields: _a0
-func (_m *Client) GetRelease(_a0 string) (*exd.RepositoryRelease, error) {
+// DownloadRelease provides a mock function with given fields: _a0
+func (_m *Client) DownloadRelease(_a0 string) (*exd.RepositoryRelease, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *exd.RepositoryRelease

@@ -24,7 +24,7 @@ type ClientTestSuite struct {
 	suite.Suite
 }
 
-func (c *ClientTestSuite) TestGetRelease() {
+func (c *ClientTestSuite) TestDownloadRelease() {
 	var ctx = context.Background()
 	var httpDoer = &mock.HTTPDoer{}
 	client, err := github.NewClient(ctx, httpDoer)
@@ -35,7 +35,7 @@ func (c *ClientTestSuite) TestGetRelease() {
 	c.Run("should return nil and error if asset api path is empty", func() {
 		var apiPath string
 
-		actualRelease, actualErr := client.GetRelease(apiPath)
+		actualRelease, actualErr := client.DownloadRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -44,7 +44,7 @@ func (c *ClientTestSuite) TestGetRelease() {
 	c.Run("should return nil and error if error when creating request to API path", func() {
 		apiPath := ":invalid-url"
 
-		actualRelease, actualErr := client.GetRelease(apiPath)
+		actualRelease, actualErr := client.DownloadRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -60,7 +60,7 @@ func (c *ClientTestSuite) TestGetRelease() {
 		}
 		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.GetRelease(apiPath)
+		actualRelease, actualErr := client.DownloadRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -83,7 +83,7 @@ func (c *ClientTestSuite) TestGetRelease() {
 		}
 		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.GetRelease(apiPath)
+		actualRelease, actualErr := client.DownloadRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -104,7 +104,7 @@ func (c *ClientTestSuite) TestGetRelease() {
 		}
 		apiPath := "http://github.com/odpf/optimus"
 
-		actualRelease, actualErr := client.GetRelease(apiPath)
+		actualRelease, actualErr := client.DownloadRelease(apiPath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
@@ -127,7 +127,7 @@ func (c *ClientTestSuite) TestGetRelease() {
 		}
 		apiPath := "http://github.com/odpf/optimus/tags/latest"
 
-		actualRelease, actualErr := client.GetRelease(apiPath)
+		actualRelease, actualErr := client.DownloadRelease(apiPath)
 
 		c.NotNil(actualRelease)
 		c.NoError(actualErr)

@@ -166,7 +166,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		}
 
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadRelease", tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -210,7 +210,7 @@ func (m *ManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -270,7 +270,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		release := &exd.RepositoryRelease{
 			TagName: "v1.0",
 		}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
 			return client, nil
@@ -327,7 +327,7 @@ func (m *ManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -369,7 +369,7 @@ func (m *ManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -413,7 +413,7 @@ func (m *ManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -458,7 +458,7 @@ func (m *ManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
@@ -504,7 +504,7 @@ func (m *ManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("GetRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &exd.NewClientFactory{}
 		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {

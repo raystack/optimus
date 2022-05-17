@@ -144,7 +144,7 @@ func (*Manager) downloadRelease(client Client, currentAPIPath, upgradeAPIPath st
 	if apiPath == "" {
 		apiPath = upgradeAPIPath
 	}
-	return client.GetRelease(apiPath)
+	return client.DownloadRelease(apiPath)
 }
 
 func (m *Manager) findClientProvider(provider string) (Client, error) {

@@ -34,8 +34,8 @@ func NewClient(ctx context.Context, httpDoer exd.HTTPDoer) (*Client, error) {
 	}, nil
 }
 
-// GetRelease gets a release based on the API path
-func (c *Client) GetRelease(apiPath string) (*exd.RepositoryRelease, error) {
+// DownloadRelease downloads a release based on the API path
+func (c *Client) DownloadRelease(apiPath string) (*exd.RepositoryRelease, error) {
 	if apiPath == "" {
 		return nil, exd.ErrEmptyAPIPath
 	}
@@ -71,7 +71,7 @@ func (c *Client) DownloadAsset(apiPath string) ([]byte, error) {
 	if apiPath == "" {
 		return nil, exd.ErrEmptyAPIPath
 	}
-	release, err := c.GetRelease(apiPath)
+	release, err := c.DownloadRelease(apiPath)
 	if err != nil {
 		return nil, fmt.Errorf("error getting repository release: %w", err)
 	}
