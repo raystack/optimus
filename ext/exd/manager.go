@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"time"
 )
 
 // ExtensionDir is directory path where to store the extensions
@@ -41,6 +40,24 @@ func NewManager(
 	}, nil
 }
 
+func (*Manager) buildOwner(metadata *Metadata, project *RepositoryProject) *RepositoryOwner {
+	return &RepositoryOwner{
+		Name:     metadata.OwnerName,
+		Provider: metadata.ProviderName,
+		Projects: []*RepositoryProject{project},
+	}
+}
+
+func (*Manager) buildProject(metadata *Metadata, release *RepositoryRelease) *RepositoryProject {
+	return &RepositoryProject{
+		Name:          metadata.ProjectName,
+		CommandName:   metadata.CommandName,
+		LocalDirPath:  metadata.LocalDirPath,
+		ActiveTagName: metadata.TagName,
+		Releases:      []*RepositoryRelease{release},
+	}
+}
+
 func (m *Manager) install(client Client, metadata *Metadata) error {
 	asset, err := m.downloadAsset(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
 	if err != nil {
@@ -68,56 +85,6 @@ func (*Manager) downloadAsset(client Client, currentAPIPath, upgradeAPIPath stri
 		apiPath = upgradeAPIPath
 	}
 	return client.DownloadAsset(apiPath)
-}
-
-func (m *Manager) updateManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) error {
-	if updated := m.updateExistingProjectInManifest(manifest, metadata, release); !updated {
-		m.addNewProjectToManifest(manifest, metadata, release)
-	}
-	manifest.UpdatedAt = time.Now()
-	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
-		return fmt.Errorf("error flushing manifest: %w", err)
-	}
-	return nil
-}
-
-func (*Manager) addNewProjectToManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) {
-	manifest.RepositoryOwners = append(manifest.RepositoryOwners, &RepositoryOwner{
-		Name:     metadata.OwnerName,
-		Provider: metadata.ProviderName,
-		Projects: []*RepositoryProject{
-			{
-				Name:          metadata.ProjectName,
-				CommandName:   metadata.CommandName,
-				ActiveTagName: metadata.TagName,
-				LocalDirPath:  metadata.LocalDirPath,
-				Releases:      []*RepositoryRelease{release},
-			},
-		},
-	})
-}
-
-func (*Manager) updateExistingProjectInManifest(manifest *Manifest, metadata *Metadata, release *RepositoryRelease) bool {
-	for _, owner := range manifest.RepositoryOwners {
-		if owner.Name == metadata.OwnerName {
-			for _, project := range owner.Projects {
-				if project.Name == metadata.ProjectName {
-					project.ActiveTagName = metadata.TagName
-					project.LocalDirPath = metadata.LocalDirPath
-					project.CommandName = metadata.CommandName
-					for _, r := range project.Releases {
-						if r.TagName == project.ActiveTagName {
-							return true
-						}
-					}
-					project.Releases = append(project.Releases, release)
-					return true
-				}
-			}
-			break
-		}
-	}
-	return false
 }
 
 func (*Manager) isInstalled(manifest *Manifest, metadata *Metadata) bool {

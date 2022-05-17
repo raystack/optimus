@@ -1,6 +1,9 @@
 package exd
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type upgradeResource struct {
 	client         Client
@@ -22,7 +25,8 @@ func (m *Manager) Upgrade(commandName string) error {
 	}
 
 	if m.isInstalled(resource.manifest, resource.metadata) {
-		if err := m.updateManifest(resource.manifest, resource.metadata, resource.upgradeRelease); err != nil {
+		manifest := m.rebuildManifestForUpgrade(resource)
+		if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
 			return formatError(m.verbose, err, "error updating manifest")
 		}
 		return nil
@@ -34,10 +38,56 @@ func (m *Manager) Upgrade(commandName string) error {
 		)
 	}
 
-	if err := m.updateManifest(resource.manifest, resource.metadata, resource.upgradeRelease); err != nil {
+	manifest := m.rebuildManifestForUpgrade(resource)
+	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
 		return formatError(m.verbose, err, "error updating manifest")
 	}
 	return nil
+}
+
+func (m *Manager) rebuildManifestForUpgrade(resource *upgradeResource) *Manifest {
+	manifest := resource.manifest
+	metadata := resource.metadata
+	upgradeRelease := resource.upgradeRelease
+
+	var updatedOnOwner bool
+	for _, owner := range manifest.RepositoryOwners {
+		if owner.Name == metadata.OwnerName {
+			var updatedOnProject bool
+			for _, project := range owner.Projects {
+				if project.Name == metadata.ProjectName {
+					if project.ActiveTagName != metadata.TagName {
+						var updatedOnRelease bool
+						for _, release := range project.Releases {
+							if release.TagName == metadata.TagName {
+								updatedOnRelease = true
+								break
+							}
+						}
+						if !updatedOnRelease {
+							project.Releases = append(project.Releases, upgradeRelease)
+						}
+						project.ActiveTagName = metadata.TagName
+					}
+					updatedOnProject = true
+				}
+			}
+			if !updatedOnProject {
+				project := m.buildProject(metadata, upgradeRelease)
+				project.Owner = owner
+				owner.Projects = append(owner.Projects, project)
+			}
+			updatedOnOwner = true
+		}
+	}
+	if !updatedOnOwner {
+		project := m.buildProject(metadata, upgradeRelease)
+		owner := m.buildOwner(metadata, project)
+		project.Owner = owner
+		manifest.RepositoryOwners = append(manifest.RepositoryOwners, owner)
+	}
+	manifest.UpdatedAt = time.Now()
+	return manifest
 }
 
 func (m *Manager) setupUpgradeResource(commandName string) (*upgradeResource, error) {

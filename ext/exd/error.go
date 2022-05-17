@@ -45,5 +45,5 @@ func formatSimpleErr(format string, a ...interface{}) error {
 
 func formatVerboseErr(cause error, format string, a ...interface{}) error {
 	message := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s [caused by] %w", message, cause)
+	return fmt.Errorf("%s (caused by) %w", message, cause)
 }

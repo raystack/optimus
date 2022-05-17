@@ -3,6 +3,7 @@ package exd
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 type installResource struct {
@@ -35,10 +36,45 @@ func (m *Manager) Install(remotePath, commandName string) error {
 		)
 	}
 
-	if err := m.updateManifest(resource.manifest, resource.metadata, resource.release); err != nil {
+	manifest := m.rebuildManifestForInstall(resource)
+	if err := m.manifester.Flush(manifest, ExtensionDir); err != nil {
 		return formatError(m.verbose, err, "error updating manifest")
 	}
 	return nil
+}
+
+func (m *Manager) rebuildManifestForInstall(resource *installResource) *Manifest {
+	manifest := resource.manifest
+	metadata := resource.metadata
+	release := resource.release
+
+	var updatedOnOwner bool
+	for _, owner := range manifest.RepositoryOwners {
+		if owner.Name == metadata.OwnerName {
+			var updatedOnProject bool
+			for _, project := range owner.Projects {
+				if project.Name == metadata.ProjectName {
+					project.ActiveTagName = metadata.TagName
+					project.Releases = append(project.Releases, release)
+					updatedOnProject = true
+				}
+			}
+			if !updatedOnProject {
+				project := m.buildProject(metadata, release)
+				project.Owner = owner
+				owner.Projects = append(owner.Projects, project)
+			}
+			updatedOnOwner = true
+		}
+	}
+	if !updatedOnOwner {
+		project := m.buildProject(metadata, release)
+		owner := m.buildOwner(metadata, project)
+		project.Owner = owner
+		manifest.RepositoryOwners = append(manifest.RepositoryOwners, owner)
+	}
+	manifest.UpdatedAt = time.Now()
+	return manifest
 }
 
 func (m *Manager) validateInstallResource(resource *installResource) error {

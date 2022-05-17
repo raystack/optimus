@@ -40,30 +40,27 @@ func (m *Manager) rebuildManifstForUninstall(resource *uninstallResource) *Manif
 	oldManifest := resource.manifest
 	oldProject := resource.project
 	oldReleasesToRemove := resource.releases
+	isOldProjectToBeRemoved := len(oldReleasesToRemove) == 0
 
-	newOwners := make([]*RepositoryOwner, len(oldManifest.RepositoryOwners))
-	for i, o := range oldManifest.RepositoryOwners {
+	var newOwners []*RepositoryOwner
+	for _, owner := range oldManifest.RepositoryOwners {
 		var newProjects []*RepositoryProject
-		for _, p := range o.Projects {
-			if p.Name == oldProject.Name {
-				if m.isProjectToBeRemoved(oldReleasesToRemove) {
+		for _, project := range owner.Projects {
+			if project.Name == oldProject.Name {
+				if isOldProjectToBeRemoved {
 					continue
 				}
-
-				newReleases := m.removeReleases(p.Releases, oldReleasesToRemove)
-				if len(newReleases) == 0 {
-					newReleases = nil
-				}
-				p.Releases = newReleases
+				newReleases := m.removeReleases(project.Releases, oldReleasesToRemove)
+				project.Releases = newReleases
 			}
-			newProjects = append(newProjects, p)
+			if len(project.Releases) > 0 {
+				newProjects = append(newProjects, project)
+			}
 		}
-
-		if len(newProjects) == 0 {
-			newProjects = nil
+		owner.Projects = newProjects
+		if len(owner.Projects) > 0 {
+			newOwners = append(newOwners, owner)
 		}
-		o.Projects = newProjects
-		newOwners[i] = o
 	}
 
 	if len(newOwners) == 0 {
@@ -75,7 +72,7 @@ func (m *Manager) rebuildManifstForUninstall(resource *uninstallResource) *Manif
 	}
 }
 
-func (m *Manager) removeReleases(sourceReleases, releasesToBeRemoved []*RepositoryRelease) []*RepositoryRelease {
+func (*Manager) removeReleases(sourceReleases, releasesToBeRemoved []*RepositoryRelease) []*RepositoryRelease {
 	tagNameToReleaseToBeRemoved := make(map[string]*RepositoryRelease)
 	for _, r := range releasesToBeRemoved {
 		tagNameToReleaseToBeRemoved[r.TagName] = r
@@ -87,10 +84,6 @@ func (m *Manager) removeReleases(sourceReleases, releasesToBeRemoved []*Reposito
 		}
 	}
 	return newReleases
-}
-
-func (m *Manager) isProjectToBeRemoved(releases []*RepositoryRelease) bool {
-	return len(releases) == 0
 }
 
 func (m *Manager) uninstall(resource *uninstallResource) error {
@@ -129,7 +122,7 @@ func (m *Manager) setupUninstallResource(commandName, tagName string) (*uninstal
 	}, nil
 }
 
-func (m *Manager) findReleasesFromProject(project *RepositoryProject, tagName string) ([]*RepositoryRelease, error) {
+func (*Manager) findReleasesFromProject(project *RepositoryProject, tagName string) ([]*RepositoryRelease, error) {
 	if tagName == "" {
 		return project.Releases, nil
 	}
@@ -141,7 +134,7 @@ func (m *Manager) findReleasesFromProject(project *RepositoryProject, tagName st
 	return nil, fmt.Errorf("tag [%s] is not installed", tagName)
 }
 
-func (m *Manager) validateUninstallInput(commandName, tagName string) error {
+func (m *Manager) validateUninstallInput(commandName, _ string) error {
 	if err := validate(m.ctx, m.httpDoer, m.manifester, m.assetOperator); err != nil {
 		return err
 	}
