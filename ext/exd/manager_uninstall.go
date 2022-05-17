@@ -10,8 +10,8 @@ type uninstallResource struct {
 	project  *RepositoryProject
 	releases []*RepositoryRelease
 
-	dirPath  string
-	tagNames []string
+	localDirPath string
+	tagNames     []string
 }
 
 // Uninstall uninstalls extension based on the command name and the tag
@@ -87,7 +87,7 @@ func (*Manager) removeReleases(sourceReleases, releasesToBeRemoved []*Repository
 }
 
 func (m *Manager) uninstall(resource *uninstallResource) error {
-	if err := m.assetOperator.Prepare(resource.dirPath); err != nil {
+	if err := m.assetOperator.Prepare(resource.localDirPath); err != nil {
 		return fmt.Errorf("error preparing uninstallation: %w", err)
 	}
 	if err := m.assetOperator.Uninstall(resource.tagNames...); err != nil {
@@ -114,11 +114,11 @@ func (m *Manager) setupUninstallResource(commandName, tagName string) (*uninstal
 		tagNames[i] = release.TagName
 	}
 	return &uninstallResource{
-		manifest: manifest,
-		project:  project,
-		releases: releases,
-		dirPath:  project.LocalDirPath,
-		tagNames: tagNames,
+		manifest:     manifest,
+		project:      project,
+		releases:     releases,
+		localDirPath: project.LocalDirPath,
+		tagNames:     tagNames,
 	}, nil
 }
 

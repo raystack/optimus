@@ -72,11 +72,11 @@ func (m *Manager) install(client Client, metadata *Metadata) error {
 	return nil
 }
 
-func (m *Manager) installAsset(asset []byte, dirPath, fileName string) error {
-	if err := m.assetOperator.Prepare(dirPath); err != nil {
+func (m *Manager) installAsset(asset []byte, localDirPath, tagName string) error {
+	if err := m.assetOperator.Prepare(localDirPath); err != nil {
 		return fmt.Errorf("error preparing installation: %w", err)
 	}
-	if err := m.assetOperator.Install(asset, fileName); err != nil {
+	if err := m.assetOperator.Install(asset, tagName); err != nil {
 		return fmt.Errorf("error during installation: %w", err)
 	}
 	return nil

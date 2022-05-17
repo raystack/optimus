@@ -20,7 +20,7 @@ type DefaultAssetOperatorTestSuite struct {
 func (d *DefaultAssetOperatorTestSuite) TestPrepare() {
 	d.Run("should return no error", func() {
 		dirPath := "./extension"
-		assetOperator := exd.NewDefaultAssetOperator()
+		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
 
 		actualErr := assetOperator.Prepare(dirPath)
 
@@ -36,7 +36,7 @@ func (d *DefaultAssetOperatorTestSuite) TestInstall() {
 	dirPath := "./extension"
 	d.Run("should return error if asset is nil", func() {
 		tagName := "v1.0.0"
-		assetOperator := exd.NewDefaultAssetOperator()
+		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
 		assetOperator.Prepare(dirPath)
 
 		var asset []byte
@@ -48,7 +48,7 @@ func (d *DefaultAssetOperatorTestSuite) TestInstall() {
 
 	d.Run("should write asset to the targeted path", func() {
 		tagName := "valor"
-		assetOperator := exd.NewDefaultAssetOperator()
+		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
 		assetOperator.Prepare(dirPath)
 		filePath := path.Join(dirPath, tagName)
 
@@ -78,7 +78,7 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 		if err := exd.AssetOperatorFS.MkdirAll(dirPath, fs.FileMode(directoryPermission)); err != nil {
 			panic(err)
 		}
-		assetOperator := exd.NewDefaultAssetOperator()
+		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
 		assetOperator.Prepare(dirPath)
 
 		actualErr := assetOperator.Uninstall()
@@ -106,7 +106,7 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 			panic(err)
 		}
 
-		assetOperator := exd.NewDefaultAssetOperator()
+		assetOperator := exd.NewDefaultAssetOperator(nil, nil, nil)
 		assetOperator.Prepare(dirPath)
 
 		actualErr := assetOperator.Uninstall(fileName)

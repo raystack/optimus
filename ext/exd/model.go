@@ -94,21 +94,15 @@ type NewClient func(ctx context.Context, httpDoer HTTPDoer) (Client, error)
 // AssetOperator is a contract to operate on extension asset
 type AssetOperator interface {
 	// Prepare does preparation before any operation.
-	// Such preparation can be in the form of, but not limited to,
-	// creating local directory. On this example, the argument
-	// can be directory path.
-	Prepare(string) error
-	// Install installs an asset to a targeted path.
-	// The first argument should be an asset.
-	// The second argument can be any string. If it's related
-	// to a plain local installation, then the string
-	// can be file name.
-	Install([]byte, string) error
-	// Uninstall uninstalls asset specified by the paths.
-	// The paths can be zero or more strings.
-	// These paths can be in the form of, but not limited to,
-	// file paths.
-	Uninstall(...string) error
+	// Such preparation can be in the form of, but not limited to, creating local directory.
+	Prepare(localDirPath string) error
+	// Install installs an asset according to the specified tag name.
+	Install(asset []byte, tagName string) error
+	// Uninstall uninstalls asset specified by the tag names.
+	Uninstall(tagNames ...string) error
+	// Run runs extension specified by the tag name.
+	// Arguments can be sent to the extension through the args parameter.
+	Run(tagName string, args ...string) error
 }
 
 // Manifester is a contract to operate on manifest file

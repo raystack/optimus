@@ -2,8 +2,10 @@ package exd
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 
 	"github.com/spf13/afero"
@@ -16,28 +18,36 @@ import (
 var AssetOperatorFS = afero.NewOsFs()
 
 type defaultAssetOperator struct {
-	dirPath string
+	localDirPath string
+
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
 }
 
 // NewDefaultAssetOperator initializes default asset operator
-func NewDefaultAssetOperator() AssetOperator {
-	return &defaultAssetOperator{}
+func NewDefaultAssetOperator(stdin io.Reader, stdout io.Writer, stderr io.Writer) AssetOperator {
+	return &defaultAssetOperator{
+		stdin:  stdin,
+		stdout: stdout,
+		stderr: stderr,
+	}
 }
 
-func (d *defaultAssetOperator) Prepare(dirPath string) error {
-	d.dirPath = dirPath
+func (d *defaultAssetOperator) Prepare(localDirPath string) error {
+	d.localDirPath = localDirPath
 	return nil
 }
 
-func (d *defaultAssetOperator) Install(asset []byte, fileName string) error {
+func (d *defaultAssetOperator) Install(asset []byte, tagName string) error {
 	if asset == nil {
 		return ErrNilAsset
 	}
 	directoryPermission := 0o750
-	if err := AssetOperatorFS.MkdirAll(d.dirPath, fs.FileMode(directoryPermission)); err != nil {
+	if err := AssetOperatorFS.MkdirAll(d.localDirPath, fs.FileMode(directoryPermission)); err != nil {
 		return fmt.Errorf("error making directory: %w", err)
 	}
-	filePath := path.Join(d.dirPath, fileName)
+	filePath := path.Join(d.localDirPath, tagName)
 	filePermission := 0o755
 	f, err := AssetOperatorFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fs.FileMode(filePermission))
 	if err != nil {
@@ -48,18 +58,27 @@ func (d *defaultAssetOperator) Install(asset []byte, fileName string) error {
 	return err
 }
 
-func (d *defaultAssetOperator) Uninstall(fileNames ...string) error {
-	if len(fileNames) == 0 {
-		if err := AssetOperatorFS.RemoveAll(d.dirPath); err != nil {
+func (d *defaultAssetOperator) Uninstall(tagNames ...string) error {
+	if len(tagNames) == 0 {
+		if err := AssetOperatorFS.RemoveAll(d.localDirPath); err != nil {
 			return fmt.Errorf("error removing directory: %w", err)
 		}
 		return nil
 	}
-	for _, name := range fileNames {
-		filePath := path.Join(d.dirPath, name)
+	for _, name := range tagNames {
+		filePath := path.Join(d.localDirPath, name)
 		if err := AssetOperatorFS.RemoveAll(filePath); err != nil {
 			return fmt.Errorf("error removing file: %w", err)
 		}
 	}
 	return nil
+}
+
+func (d *defaultAssetOperator) Run(tagName string, args ...string) error {
+	filePath := path.Join(d.localDirPath, tagName)
+	cmd := exec.Command(filePath, args...)
+	cmd.Stdin = d.stdin
+	cmd.Stdout = d.stdout
+	cmd.Stderr = d.stderr
+	return cmd.Run()
 }
