@@ -17,7 +17,8 @@ type Manager struct {
 	manifester    Manifester
 	assetOperator AssetOperator
 
-	verbose bool
+	verbose              bool
+	reservedCommandNames []string
 }
 
 // NewManager initializes new manager
@@ -27,16 +28,18 @@ func NewManager(
 	manifester Manifester,
 	assetOperator AssetOperator,
 	verbose bool,
+	reservedCommandNames ...string,
 ) (*Manager, error) {
 	if err := validate(ctx, httpDoer, manifester, assetOperator); err != nil {
 		return nil, fmt.Errorf("error validating parameter: %w", err)
 	}
 	return &Manager{
-		ctx:           ctx,
-		httpDoer:      httpDoer,
-		manifester:    manifester,
-		assetOperator: assetOperator,
-		verbose:       verbose,
+		ctx:                  ctx,
+		httpDoer:             httpDoer,
+		manifester:           manifester,
+		assetOperator:        assetOperator,
+		verbose:              verbose,
+		reservedCommandNames: reservedCommandNames,
 	}, nil
 }
 

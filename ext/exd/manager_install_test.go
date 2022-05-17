@@ -192,6 +192,66 @@ func (m *ManagerTestSuite) TestInstall() {
 		m.Error(actualErr)
 	})
 
+	m.Run("should return error if command name part of reserved command", func() {
+		provider := "testing"
+		metadata := &exd.Metadata{
+			ProviderName: provider,
+			OwnerName:    "odpf",
+			ProjectName:  "optimus-extension-valor",
+		}
+		exd.ParseRegistry = []exd.Parser{
+			func(remotePath string) (*exd.Metadata, error) {
+				return metadata, nil
+			},
+		}
+
+		release := &exd.RepositoryRelease{
+			TagName: "v1.0",
+		}
+		client := &mock.Client{}
+		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
+		newClientFactory := &exd.NewClientFactory{}
+		newClientFactory.Add(provider, func(ctx context.Context, httpDoer exd.HTTPDoer) (exd.Client, error) {
+			return client, nil
+		})
+		exd.NewClientRegistry = newClientFactory
+
+		commandName := "valor"
+		manifest := &exd.Manifest{
+			RepositoryOwners: []*exd.RepositoryOwner{
+				{
+					Name:     "odpf",
+					Provider: provider,
+					Projects: []*exd.RepositoryProject{
+						{
+							Name:          "optimus-extension-valor",
+							CommandName:   commandName,
+							ActiveTagName: "v1.0",
+							Releases:      []*exd.RepositoryRelease{release},
+						},
+					},
+				},
+			},
+		}
+		manifester := &mock.Manifester{}
+		manifester.On("Load", tMock.Anything).Return(manifest, nil)
+
+		ctx := context.Background()
+		httpDoer := &mock.HTTPDoer{}
+		assetOperator := &mock.AssetOperator{}
+		reservedCommands := []string{"valor"}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose, reservedCommands...)
+		if err != nil {
+			panic(err)
+		}
+
+		remotePath := "gojek/optimus-extension-valor"
+
+		actualErr := manager.Install(remotePath, commandName)
+
+		m.Error(actualErr)
+	})
+
 	m.Run("should return error if command name is already used by different owner project", func() {
 		provider := "testing"
 		metadata := &exd.Metadata{

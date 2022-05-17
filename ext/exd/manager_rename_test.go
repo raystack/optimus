@@ -58,6 +58,23 @@ func (m *ManagerTestSuite) TestRename() {
 		m.Error(actualErr)
 	})
 
+	m.Run("should return error if target command is already reserved", func() {
+		manifester := &mock.Manifester{}
+
+		reservedCommands := []string{"valor2"}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose, reservedCommands...)
+		if err != nil {
+			panic(err)
+		}
+
+		source := "valor"
+		target := "valor2"
+
+		actualErr := manager.Rename(source, target)
+
+		m.Error(actualErr)
+	})
+
 	m.Run("should return nil if source and target is the same", func() {
 		manifester := &mock.Manifester{}
 

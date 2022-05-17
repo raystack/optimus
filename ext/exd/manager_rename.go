@@ -45,5 +45,10 @@ func (m *Manager) validateRenameInput(sourceCommandName, targetCommandName strin
 	if targetCommandName == "" {
 		return fmt.Errorf("target command: %w", ErrEmptyCommandName)
 	}
+	for _, reserved := range m.reservedCommandNames {
+		if reserved == targetCommandName {
+			return fmt.Errorf("target command name [%s] is reserved", targetCommandName)
+		}
+	}
 	return nil
 }

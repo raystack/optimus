@@ -78,9 +78,12 @@ func (m *Manager) rebuildManifestForInstall(resource *installResource) *Manifest
 }
 
 func (m *Manager) validateInstallResource(resource *installResource) error {
-	manifest := resource.manifest
 	metadata := resource.metadata
-	if err := m.validateCommandName(manifest, metadata); err != nil {
+	if err := m.validateCommandNameOnReserved(metadata); err != nil {
+		return err
+	}
+	manifest := resource.manifest
+	if err := m.validateCommandNameOnManifest(manifest, metadata); err != nil {
 		return err
 	}
 	if m.isInstalled(manifest, metadata) {
@@ -91,7 +94,7 @@ func (m *Manager) validateInstallResource(resource *installResource) error {
 	return nil
 }
 
-func (*Manager) validateCommandName(manifest *Manifest, metadata *Metadata) error {
+func (*Manager) validateCommandNameOnManifest(manifest *Manifest, metadata *Metadata) error {
 	for _, owner := range manifest.RepositoryOwners {
 		for _, project := range owner.Projects {
 			if project.CommandName == metadata.CommandName {
@@ -102,6 +105,15 @@ func (*Manager) validateCommandName(manifest *Manifest, metadata *Metadata) erro
 					metadata.CommandName, owner.Name, project.Name, project.ActiveTagName,
 				)
 			}
+		}
+	}
+	return nil
+}
+
+func (m *Manager) validateCommandNameOnReserved(metadata *Metadata) error {
+	for _, reserved := range m.reservedCommandNames {
+		if reserved == metadata.CommandName {
+			return fmt.Errorf("command [%s] is reserved, try changin command name", metadata.CommandName)
 		}
 	}
 	return nil
