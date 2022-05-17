@@ -275,12 +275,14 @@ func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSp
 
 	for _, jobSpec := range jobSpecs {
 		if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
-			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name})
+			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name, Err: err})
 			continue
 		}
 		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
+			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name, Err: err})
 			return err
 		}
+		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name})
 	}
 
 	return nil
@@ -876,8 +878,16 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 		return err
 	}
 
-	// TODO: Resolve dependency
-	// TODO: Deploy through deploy manager
+	// Resolve dependency
+	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, modifiedJobs, observers)
+
+	// Deploy through deploy manager
+	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
+	if err != nil {
+		return err
+	}
+
+	srv.notifyProgress(observers, &models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
 
 	return nil
 }

@@ -7,6 +7,7 @@ const (
 	ProgressTypeJobDependencyResolution      = "dependency resolution"
 	ProgressTypeJobUpload                    = "job upload"
 	ProgressTypeJobDeploymentRequestCreated  = "job deployment request created"
+	ProgressTypeJobDelete                    = "job delete"
 )
 
 type (
@@ -40,7 +41,10 @@ type (
 
 	// ProgressSavedJobDelete signifies that a raw
 	// job from a repository is being deleted
-	ProgressSavedJobDelete struct{ Name string }
+	ProgressSavedJobDelete struct {
+		Name string
+		Err  error
+	}
 
 	// ProgressJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
@@ -98,6 +102,10 @@ func (*ProgressJobSpecFetch) String() string {
 
 func (e *ProgressSavedJobDelete) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
+}
+
+func (*ProgressSavedJobDelete) Type() string {
+	return ProgressTypeJobDelete
 }
 
 func (*ProgressJobPriorityWeightAssign) String() string {

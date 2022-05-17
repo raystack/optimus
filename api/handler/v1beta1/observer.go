@@ -11,12 +11,14 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+//TODO: delete this
 type jobSyncObserver struct {
 	stream pb.JobSpecificationService_DeployJobSpecificationServer
 	log    log.Logger
 	mu     *sync.Mutex
 }
 
+//TODO: delete this
 func (obs *jobSyncObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
@@ -167,6 +169,65 @@ func (obs *jobRefreshObserver) Notify(e progress.Event) {
 		}
 	case *models.ProgressJobDeploymentRequestCreated:
 		resp := &pb.RefreshJobsResponse{
+			Value:   evt.ID().UUID().String(),
+			Success: true,
+			Type:    evt.Type(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send job deployment request created", "evt", evt.String(), "error", err)
+		}
+	}
+}
+
+type jobDeploymentObserver struct {
+	stream pb.JobSpecificationService_DeployJobSpecificationServer
+	log    log.Logger
+	mu     *sync.Mutex
+}
+
+func (obs *jobDeploymentObserver) Notify(e progress.Event) {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
+	switch evt := e.(type) {
+	case *models.ProgressJobUpload:
+		resp := &pb.DeployJobSpecificationResponse{
+			Success: true,
+			Type:    evt.Type(),
+			JobName: evt.Name,
+		}
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send deploy spec ack", "evt", evt.String(), "error", err)
+		}
+	case *models.ProgressSavedJobDelete:
+		resp := &pb.DeployJobSpecificationResponse{
+			JobName: evt.Name,
+			Value:   evt.String(),
+			Type:    evt.Type(),
+		}
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send delete notification", "evt", evt.String(), "error", err)
+		}
+	case *models.ProgressJobSpecUnknownDependencyUsed:
+		resp := &pb.DeployJobSpecificationResponse{
+			JobName: evt.Job,
+			Value:   evt.String(),
+			Type:    evt.Type(),
+		}
+		if err := obs.stream.Send(resp); err != nil {
+			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
+		}
+	case *models.ProgressJobDeploymentRequestCreated:
+		resp := &pb.DeployJobSpecificationResponse{
 			Value:   evt.ID().UUID().String(),
 			Success: true,
 			Type:    evt.Type(),
