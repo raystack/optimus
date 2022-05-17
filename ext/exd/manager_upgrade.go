@@ -102,7 +102,7 @@ func (*Manager) findProjectByCommandName(manifest *Manifest, commandName string)
 }
 
 func (m *Manager) validateUpgradeInput(commandName string) error {
-	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
+	if err := validate(m.ctx, m.httpDoer, m.manifester, m.assetOperator); err != nil {
 		return err
 	}
 	if commandName == "" {

@@ -22,9 +22,9 @@ func TestNewManager(t *testing.T) {
 		var ctx context.Context
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -34,9 +34,9 @@ func TestNewManager(t *testing.T) {
 		ctx := context.Background()
 		var httpDoer exd.HTTPDoer
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -46,21 +46,21 @@ func TestNewManager(t *testing.T) {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		var manifester exd.Manifester
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
-	t.Run("should return nil and error if installer is nil", func(t *testing.T) {
+	t.Run("should return nil and error if asset operator is nil", func(t *testing.T) {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		var installer exd.Installer
+		var assetOperator exd.AssetOperator
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
@@ -70,9 +70,9 @@ func TestNewManager(t *testing.T) {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		actualManager, actualErr := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)

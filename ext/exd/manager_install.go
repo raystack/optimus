@@ -124,7 +124,7 @@ func (*Manager) extractMetadata(remotePath string) (*Metadata, error) {
 }
 
 func (m *Manager) validateInstallInput(remotePath, _ string) error {
-	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
+	if err := validate(m.ctx, m.httpDoer, m.manifester, m.assetOperator); err != nil {
 		return err
 	}
 	if remotePath == "" {

@@ -32,9 +32,9 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -57,8 +57,8 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -81,8 +81,8 @@ func (m *ManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -107,8 +107,8 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -140,8 +140,8 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -178,8 +178,8 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -239,8 +239,8 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -299,8 +299,8 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -340,8 +340,8 @@ func (m *ManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		installer := &mock.Installer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		assetOperator := &mock.AssetOperator{}
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -380,12 +380,12 @@ func (m *ManagerTestSuite) TestInstall() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(errors.New("random error"))
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(errors.New("random error"))
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -424,13 +424,13 @@ func (m *ManagerTestSuite) TestInstall() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(nil)
+		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -470,13 +470,13 @@ func (m *ManagerTestSuite) TestInstall() {
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(nil)
+		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -516,13 +516,13 @@ func (m *ManagerTestSuite) TestInstall() {
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(nil)
+		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}

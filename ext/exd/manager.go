@@ -13,10 +13,10 @@ var ExtensionDir string
 
 // Manager defines the extension management
 type Manager struct {
-	ctx        context.Context //nolint:containedctx
-	httpDoer   HTTPDoer
-	manifester Manifester
-	installer  Installer
+	ctx           context.Context //nolint:containedctx
+	httpDoer      HTTPDoer
+	manifester    Manifester
+	assetOperator AssetOperator
 
 	verbose bool
 }
@@ -26,18 +26,18 @@ func NewManager(
 	ctx context.Context,
 	httpDoer HTTPDoer,
 	manifester Manifester,
-	installer Installer,
+	assetOperator AssetOperator,
 	verbose bool,
 ) (*Manager, error) {
-	if err := validate(ctx, httpDoer, manifester, installer); err != nil {
+	if err := validate(ctx, httpDoer, manifester, assetOperator); err != nil {
 		return nil, fmt.Errorf("error validating parameter: %w", err)
 	}
 	return &Manager{
-		ctx:        ctx,
-		httpDoer:   httpDoer,
-		manifester: manifester,
-		installer:  installer,
-		verbose:    verbose,
+		ctx:           ctx,
+		httpDoer:      httpDoer,
+		manifester:    manifester,
+		assetOperator: assetOperator,
+		verbose:       verbose,
 	}, nil
 }
 
@@ -53,10 +53,10 @@ func (m *Manager) install(client Client, metadata *Metadata) error {
 }
 
 func (m *Manager) installAsset(asset []byte, dirPath, fileName string) error {
-	if err := m.installer.Prepare(dirPath); err != nil {
+	if err := m.assetOperator.Prepare(dirPath); err != nil {
 		return fmt.Errorf("error preparing installation: %w", err)
 	}
-	if err := m.installer.Install(asset, dirPath, fileName); err != nil {
+	if err := m.assetOperator.Install(asset, fileName); err != nil {
 		return fmt.Errorf("error during installation: %w", err)
 	}
 	return nil
@@ -155,7 +155,7 @@ func (m *Manager) findClientProvider(provider string) (Client, error) {
 	return newClient(m.ctx, m.httpDoer)
 }
 
-func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, installer Installer) error {
+func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, assetOperator AssetOperator) error {
 	if ctx == nil {
 		return ErrNilContext
 	}
@@ -165,8 +165,8 @@ func validate(ctx context.Context, httpDoer HTTPDoer, manifester Manifester, ins
 	if manifester == nil {
 		return ErrNilManifester
 	}
-	if installer == nil {
-		return ErrNilInstaller
+	if assetOperator == nil {
+		return ErrNilAssetOperator
 	}
 	return nil
 }

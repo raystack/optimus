@@ -31,9 +31,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 
 	m.Run("should return error if command name is empty", func() {
 		manifester := &mock.Manifester{}
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -46,12 +46,12 @@ func (m *ManagerTestSuite) TestUpgrade() {
 	})
 
 	m.Run("should return error if error loading manifest", func() {
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -64,12 +64,12 @@ func (m *ManagerTestSuite) TestUpgrade() {
 	})
 
 	m.Run("should return error if command name is not found", func() {
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&exd.Manifest{}, nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -103,9 +103,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		newClientFactory := &exd.NewClientFactory{}
 		exd.NewClientRegistry = newClientFactory
 
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -148,9 +148,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		})
 		exd.NewClientRegistry = newClientFactory
 
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -195,9 +195,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		})
 		exd.NewClientRegistry = newClientFactory
 
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -243,9 +243,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -291,9 +291,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -341,9 +341,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
-		installer := &mock.Installer{}
+		assetOperator := &mock.AssetOperator{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -390,10 +390,10 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			RepositoryOwners: []*exd.RepositoryOwner{owner},
 		}, nil)
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(errors.New("random error"))
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -440,11 +440,11 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			RepositoryOwners: []*exd.RepositoryOwner{owner},
 		}, nil)
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(nil)
+		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -492,11 +492,11 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(nil)
+		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -544,11 +544,11 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		installer := &mock.Installer{}
-		installer.On("Prepare", tMock.Anything).Return(nil)
-		installer.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
+		assetOperator := &mock.AssetOperator{}
+		assetOperator.On("Prepare", tMock.Anything).Return(nil)
+		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}

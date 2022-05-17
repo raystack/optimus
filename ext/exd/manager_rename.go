@@ -36,7 +36,7 @@ func (m *Manager) Rename(sourceCommandName, targetCommandName string) error {
 }
 
 func (m *Manager) validateRenameInput(sourceCommandName, targetCommandName string) error {
-	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
+	if err := validate(m.ctx, m.httpDoer, m.manifester, m.assetOperator); err != nil {
 		return err
 	}
 	if sourceCommandName == "" {

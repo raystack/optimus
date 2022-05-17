@@ -91,20 +91,24 @@ type HTTPDoer interface {
 // to initialize client related to that provider
 type NewClient func(ctx context.Context, httpDoer HTTPDoer) (Client, error)
 
-// Installer is a contract to install extension based on
-// remote metadata and its asset
-type Installer interface {
-	// Preprae does preparation before installation.
+// AssetOperator is a contract to operate on extension asset
+type AssetOperator interface {
+	// Prepare does preparation before any operation.
 	// Such preparation can be in the form of, but not limited to,
 	// creating local directory. On this example, the argument
-	// can (again, not limited to) be directory path.
+	// can be directory path.
 	Prepare(string) error
-	// Install install an asset to a targeted path.
+	// Install installs an asset to a targeted path.
 	// The first argument should be an asset.
-	// The second and third argument can be any strings. If it's related
-	// to a plain local installation, then the strings
-	// can be a dir path and file name.
-	Install([]byte, string, string) error
+	// The second argument can be any string. If it's related
+	// to a plain local installation, then the string
+	// can be file name.
+	Install([]byte, string) error
+	// Uninstall uninstalls asset specified by the paths.
+	// The paths can be zero or more strings.
+	// These paths can be in the form of, but not limited to,
+	// file paths.
+	Uninstall(...string) error
 }
 
 // Manifester is a contract to operate on manifest file

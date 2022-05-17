@@ -20,8 +20,8 @@ var (
 	ErrNilHTTPDoer = errors.New("http doer is nil")
 	// ErrNilManifester is error when manifester is nil
 	ErrNilManifester = errors.New("manifester is nil")
-	// ErrNilInstaller is error when installer is nil
-	ErrNilInstaller = errors.New("installer is nil")
+	// ErrNilAssetOperator is error when asset operator is nil
+	ErrNilAssetOperator = errors.New("asset operator is nil")
 	// ErrEmptyRemotePath is error when remote path is empty
 	ErrEmptyRemotePath = errors.New("remote path is empty")
 	// ErrEmptyAPIPath is error when api path is empty

@@ -39,7 +39,7 @@ func (*Manager) activateTagInProject(project *RepositoryProject, tagName string)
 }
 
 func (m *Manager) validateActivateInput(commandName, tagName string) error {
-	if err := validate(m.ctx, m.httpDoer, m.manifester, m.installer); err != nil {
+	if err := validate(m.ctx, m.httpDoer, m.manifester, m.assetOperator); err != nil {
 		return err
 	}
 	if commandName == "" {

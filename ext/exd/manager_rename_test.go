@@ -13,7 +13,7 @@ import (
 func (m *ManagerTestSuite) TestRename() {
 	ctx := context.Background()
 	httpDoer := &mock.HTTPDoer{}
-	installer := &mock.Installer{}
+	assetOperator := &mock.AssetOperator{}
 	verbose := true
 
 	m.Run("should return error if one or more required fields are empty", func() {
@@ -29,7 +29,7 @@ func (m *ManagerTestSuite) TestRename() {
 	m.Run("should return error if source command is empty", func() {
 		manifester := &mock.Manifester{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -45,7 +45,7 @@ func (m *ManagerTestSuite) TestRename() {
 	m.Run("should return error if target command is empty", func() {
 		manifester := &mock.Manifester{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -61,7 +61,7 @@ func (m *ManagerTestSuite) TestRename() {
 	m.Run("should return nil if source and target is the same", func() {
 		manifester := &mock.Manifester{}
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -78,7 +78,7 @@ func (m *ManagerTestSuite) TestRename() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -112,7 +112,7 @@ func (m *ManagerTestSuite) TestRename() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -142,7 +142,7 @@ func (m *ManagerTestSuite) TestRename() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -172,7 +172,7 @@ func (m *ManagerTestSuite) TestRename() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := exd.NewManager(ctx, httpDoer, manifester, installer, verbose)
+		manager, err := exd.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
