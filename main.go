@@ -9,6 +9,7 @@ import (
 
 	"github.com/odpf/optimus/cmd"
 	_ "github.com/odpf/optimus/ext/datastore"
+	_ "github.com/odpf/optimus/extension/provider"
 )
 
 var errRequestFail = errors.New("🔥 unable to complete request successfully")
