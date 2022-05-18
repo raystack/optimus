@@ -408,3 +408,112 @@ func (d *deployCommand) getResourceStreamClient(
 	}
 	return stream, nil
 }
+
+func (d *deployCommand) requestJobDeployment(
+	l log.Logger,
+	stream pb.JobSpecificationService_DeployJobSpecificationClient,
+	verbose bool,
+) (string, error) {
+	l.Info("> Receiving responses:")
+
+	var resolveDependencyErrors []string
+	resolveDependencySuccess, resolveDependencyFailed := 0, 0
+
+	var jobDeletionErrors []string
+	jobDeletionSuccess, jobDeletionFailed := 0, 0
+
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return "", err
+		}
+
+		/*
+			deprecate ack
+			use type instead to differentiate messages
+
+			DeployJobResponse -> Stream
+			type of messages:
+			- Modified Jobs -> Dependency Resolution message -> Info, Failed
+			- Deleted Jobs
+			- Job Deployment ID
+
+			GetDeployJobResponse -> Not Stream
+			Response: #succeed, #failed, which jobs are failed to be deployed
+		*/
+
+		switch resp.Type {
+		case models.ProgressTypeJobDependencyResolution:
+			if !resp.GetSuccess() {
+				resolveDependencyFailed++
+				failedMessage := fmt.Sprintf("error '%s': failed to resolve dependency, %s", resp.GetJobName(), resp.GetValue())
+				if verbose {
+					l.Warn(coloredError(failedMessage))
+				}
+				resolveDependencyErrors = append(resolveDependencyErrors, failedMessage)
+			} else {
+				resolveDependencySuccess++
+				if verbose {
+					l.Info(fmt.Sprintf("info '%s': dependency is successfully resolved", resp.GetJobName()))
+				}
+			}
+
+		case models.ProgressTypeJobDelete:
+			if !resp.GetSuccess() {
+				jobDeletionFailed++
+				failedMessage := fmt.Sprintf("error '%s': failed to delete job, %s", resp.GetJobName(), resp.GetValue())
+				if verbose {
+					l.Warn(coloredError(failedMessage))
+				}
+				jobDeletionErrors = append(jobDeletionErrors, failedMessage)
+			} else {
+				jobDeletionSuccess++
+				if verbose {
+					l.Info(fmt.Sprintf("info '%s': job deleted", resp.GetJobName()))
+				}
+			}
+
+		case models.ProgressTypeJobDeploymentRequestCreated:
+			// give summary of resolve dependency
+			if len(resolveDependencyErrors) > 0 {
+				l.Error(coloredError(fmt.Sprintf("Resolved dependencies of %d/%d modified jobs.", resolveDependencySuccess, resolveDependencySuccess+resolveDependencyFailed)))
+				for _, reqErr := range resolveDependencyErrors {
+					l.Error(coloredError(reqErr))
+				}
+			} else {
+				l.Info(coloredSuccess("Resolved dependency of %d modified jobs.", resolveDependencySuccess))
+			}
+
+			// give summary of job deletion
+			totalJobDeletionAttempt := jobDeletionSuccess + jobDeletionFailed
+			if totalJobDeletionAttempt > 0 {
+				if len(jobDeletionErrors) > 0 {
+					l.Error(coloredError(fmt.Sprintf("Deleted %d/%d jobs.", jobDeletionSuccess, totalJobDeletionAttempt)))
+					for _, reqErr := range jobDeletionErrors {
+						l.Error(coloredError(reqErr))
+					}
+				} else {
+					l.Info(coloredSuccess("Deleted % jobs", jobDeletionSuccess))
+				}
+			}
+
+			if !resp.GetSuccess() {
+				l.Warn(coloredError("Unable to request job deployment"))
+			} else {
+				l.Info(coloredNotice(fmt.Sprintf("Deployment request created with ID: %s", resp.GetValue())))
+			}
+
+			return resp.Value, nil
+
+		default:
+			if verbose {
+				// ordinary progress event
+				l.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetValue()))
+			}
+		}
+	}
+	return "", nil
+}
