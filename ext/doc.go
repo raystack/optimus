@@ -9,9 +9,6 @@ implementations:
   bigquery table.
 * Executor
   Contains implementation on executor.
-* Extension
-  Contains implementation for extension related
-  operation.
 * Notify
   Contains implementation for notification.
 * Scheduler
