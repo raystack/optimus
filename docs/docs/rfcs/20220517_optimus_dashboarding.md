@@ -13,13 +13,13 @@ The proposal here is to capture job related events and state information via air
 
 ## Job Metrics dashboard (aka. Job sumaries page):
 - Monitor jobs performance stats :
-    - Duaration per airflow entity task/sensor/hook.
-    - Sla misses trend.
+    - Duaration per optimus job task/sensor/hook.
+    - Job completion Sla misses trend.
     - Job summaries.
 - Jobs groupings into namespaces and projects.
   - TODO: add Views and expectation from this page
 - Check failues :
-    - Failues per airflow entity.
+    - Failues per Optimus entity.
     - With links to the actual airflow webserver pages , explaining those failures further.
 
 ---
@@ -37,8 +37,6 @@ The proposal here is to capture job related events and state information via air
       * `sla_miss_callback` Invoked when a task misses its defined SLA ( SLA here is scheduling delay not to be concused with job completion delay )
       * `on_retry_callback` Invoked when the task is up for retry
     * Events fired by our Custom logic added into Sensors Class
-    * Events fired by plugins :
-      * it is expected that even transformers and hooks shall independently be able to emit events to optimus events api.
 
 2. Information from these events is then relayed to the optimus server. Optimus then writes this into
   * `Prometheus` : for summaries dashboarding 
@@ -54,7 +52,12 @@ The proposal here is to capture job related events and state information via air
   * Kubernetes Sidecar
     * SideCar lifecycle hooks start/end 
     * sideCar to pull details from scheduler/plugin containers and push same to optimus server
-  * `Callbacks -> statsD to power job sumaries page` and `access airflow API directly from Optimus to power job details view`
+  * Pull Approach
+    * Callbacks -> statsD to power job sumaries page
+    * access airflow API directly from Optimus to power job details view
+* Future considerations 
+  * Support for Events fired by Executor :
+      * it is expected that even optimus-task and hooks shall independently be able to emit events to optimus notify api. this should help with improved executor observability.
 
 ## Terminology: 
 * `Task` Airflow task operator
