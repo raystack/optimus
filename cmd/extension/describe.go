@@ -30,7 +30,7 @@ func newDescribeCommand(logger log.Logger, project *extension.RepositoryProject)
 	return cmd
 }
 
-func (d *describeCommand) RunE(cmd *cobra.Command, args []string) error {
+func (d *describeCommand) RunE(cmd *cobra.Command, _ []string) error {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
 	header := d.buildHeader()
