@@ -61,7 +61,7 @@ func (repo *jobDependencyRepository) Save(ctx context.Context, projectID models.
 
 func (repo *jobDependencyRepository) GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error) {
 	var jobDependencies []JobDependency
-	if err := repo.db.WithContext(ctx).Preload("Project").Where("project_id = ?", projectID.UUID()).Find(&jobDependencies).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("DependentProject").Where("project_id = ?", projectID.UUID()).Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
 
