@@ -6,19 +6,21 @@ import (
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/extension"
 )
 
 type renameCommand struct {
 	logger log.Logger
 
-	commandName          string
+	project              *extension.RepositoryProject
 	reservedCommandNames []string
 }
 
-func newRenameCommand(logger log.Logger, commandName string, reservedCommandNames []string) *cobra.Command {
+func newRenameCommand(logger log.Logger, project *extension.RepositoryProject, reservedCommandNames []string) *cobra.Command {
 	rename := &renameCommand{
 		logger:               logger,
-		commandName:          commandName,
+		project:              project,
 		reservedCommandNames: reservedCommandNames,
 	}
 
@@ -42,8 +44,8 @@ func (r *renameCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.logger.Info(fmt.Sprintf("Ranaming command [%s] to [%s] ...", r.commandName, targetCommandName))
-	if err := manager.Rename(r.commandName, targetCommandName); err != nil {
+	r.logger.Info(fmt.Sprintf("Ranaming command [%s] to [%s] ...", r.project.CommandName, targetCommandName))
+	if err := manager.Rename(r.project.CommandName, targetCommandName); err != nil {
 		r.logger.Error("... finished with error")
 		return err
 	}

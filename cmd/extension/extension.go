@@ -16,7 +16,7 @@ import (
 // UpdateWithExtension updates input command with the available extensions
 func UpdateWithExtension(cmd *cobra.Command) {
 	logger := logger.NewDefaultLogger()
-	reservedCommandNames := getUsedCommands(cmd)
+	reservedCommandNames := getReservedCommandNames(cmd)
 
 	cmd.AddCommand(extensionCommand(logger, reservedCommandNames))
 
@@ -26,7 +26,7 @@ func UpdateWithExtension(cmd *cobra.Command) {
 	}
 }
 
-func getUsedCommands(cmd *cobra.Command) []string {
+func getReservedCommandNames(cmd *cobra.Command) []string {
 	custom := []string{"optimus", "extension"}
 	var output []string
 	for _, c := range cmd.Commands() {
@@ -67,10 +67,11 @@ func generateManagementCommands(logger log.Logger, reservedCommandNames []string
 					owner.Name, project.Name, project.ActiveTagName,
 				),
 			}
-			cmd.AddCommand(newActivateCommand(logger, project.CommandName, reservedCommandNames))
-			cmd.AddCommand(newRenameCommand(logger, project.CommandName, reservedCommandNames))
-			cmd.AddCommand(newUninstallCommand(logger, project.CommandName, reservedCommandNames))
-			cmd.AddCommand(newUpgradeCommand(logger, project.CommandName, reservedCommandNames))
+			cmd.AddCommand(newActivateCommand(logger, project, reservedCommandNames))
+			cmd.AddCommand(newDescribeCommand(logger, project))
+			cmd.AddCommand(newRenameCommand(logger, project, reservedCommandNames))
+			cmd.AddCommand(newUninstallCommand(logger, project, reservedCommandNames))
+			cmd.AddCommand(newUpgradeCommand(logger, project, reservedCommandNames))
 
 			output = append(output, cmd)
 		}

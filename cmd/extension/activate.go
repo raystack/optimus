@@ -6,19 +6,21 @@ import (
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/extension"
 )
 
 type activateCommand struct {
 	logger log.Logger
 
-	commandName          string
+	project              *extension.RepositoryProject
 	reservedCommandNames []string
 }
 
-func newActivateCommand(logger log.Logger, commandName string, reservedCommandNames []string) *cobra.Command {
+func newActivateCommand(logger log.Logger, project *extension.RepositoryProject, reservedCommandNames []string) *cobra.Command {
 	activate := &activateCommand{
 		logger:               logger,
-		commandName:          commandName,
+		project:              project,
 		reservedCommandNames: reservedCommandNames,
 	}
 
@@ -43,7 +45,7 @@ func (a *activateCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	a.logger.Info(fmt.Sprintf("Activating tag [%s] ...", tagName))
-	if err := manager.Activate(a.commandName, tagName); err != nil {
+	if err := manager.Activate(a.project.CommandName, tagName); err != nil {
 		a.logger.Error("... finished with error")
 		return err
 	}

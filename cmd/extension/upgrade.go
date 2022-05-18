@@ -5,19 +5,21 @@ import (
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/extension"
 )
 
 type upgradeCommand struct {
 	logger log.Logger
 
-	commandName          string
+	project              *extension.RepositoryProject
 	reservedCommandNames []string
 }
 
-func newUpgradeCommand(logger log.Logger, commandName string, reservedCommandNames []string) *cobra.Command {
+func newUpgradeCommand(logger log.Logger, project *extension.RepositoryProject, reservedCommandNames []string) *cobra.Command {
 	upgrade := &upgradeCommand{
 		logger:               logger,
-		commandName:          commandName,
+		project:              project,
 		reservedCommandNames: reservedCommandNames,
 	}
 
@@ -37,8 +39,8 @@ func (u *upgradeCommand) RunE(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	u.logger.Info(fmt.Sprintf("Upgrading [%s] ...", u.commandName))
-	if err := manager.Upgrade(u.commandName); err != nil {
+	u.logger.Info(fmt.Sprintf("Upgrading [%s] ...", u.project.CommandName))
+	if err := manager.Upgrade(u.project.CommandName); err != nil {
 		u.logger.Error("... finished with error")
 		return err
 	}

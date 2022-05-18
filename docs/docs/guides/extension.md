@@ -142,6 +142,7 @@ USAGE
 
 CORE COMMANDS
   activate    activate is a sub command to allow user to activate an installed tag
+  describe    describe is a sub command to allow user to describe extension
   rename      rename is a sub command to allow user to rename an extension command
   uninstall   uninstall is a sub command to allow user to uninstall a specified tag of an extension
   upgrade     upgrade is a sub command to allow user to upgrade an extension command
@@ -160,6 +161,18 @@ Example:
 
 ```zsh
 optimus extension valor activate v0.0.1
+```
+
+#### Describe
+
+Describes general information about an extension, such information includes all
+available releases of an extension in the local, which release is active,
+and more.
+
+Example:
+
+```zsh
+optimus extension valor describe
 ```
 
 #### Rename

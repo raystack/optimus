@@ -5,19 +5,21 @@ import (
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/extension"
 )
 
 type uninstallCommand struct {
 	logger log.Logger
 
-	commandName          string
+	project              *extension.RepositoryProject
 	reservedCommandNames []string
 }
 
-func newUninstallCommand(logger log.Logger, commandName string, reservedCommandNames []string) *cobra.Command {
+func newUninstallCommand(logger log.Logger, project *extension.RepositoryProject, reservedCommandNames []string) *cobra.Command {
 	uninstall := &uninstallCommand{
 		logger:               logger,
-		commandName:          commandName,
+		project:              project,
 		reservedCommandNames: reservedCommandNames,
 	}
 
@@ -40,11 +42,11 @@ func (r *uninstallCommand) RunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if tagName == "" {
-		r.logger.Info(fmt.Sprintf("Uninstalling [%s] ...", r.commandName))
+		r.logger.Info(fmt.Sprintf("Uninstalling [%s] ...", r.project.CommandName))
 	} else {
-		r.logger.Info(fmt.Sprintf("Uninstalling [%s@%s] ...", r.commandName, tagName))
+		r.logger.Info(fmt.Sprintf("Uninstalling [%s@%s] ...", r.project.CommandName, tagName))
 	}
-	if err := manager.Uninstall(r.commandName, tagName); err != nil {
+	if err := manager.Uninstall(r.project.CommandName, tagName); err != nil {
 		r.logger.Error("... finished with error")
 		return err
 	}
