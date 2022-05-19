@@ -11,6 +11,7 @@ import (
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {
@@ -62,74 +63,125 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("CreateResource", func(t *testing.T) {
-		t.Run("should successfully call datastore create resource individually for reach resource and save in persistent repository", func(t *testing.T) {
+		t.Run("should return error if encountered unknown error when getting existing spec", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
-			dsRepo := new(mock.SupportedDatastoreRepo)
-			defer dsRepo.AssertExpectations(t)
-
-			resourceSpec1 := models.ResourceSpec{
+			resourceSpec := models.ResourceSpec{
 				Version:   1,
 				Name:      "proj.datas",
 				Type:      models.ResourceTypeDataset,
 				Datastore: datastorer,
 			}
-			resourceSpec2 := models.ResourceSpec{
-				Version:   1,
-				Name:      "proj.batas",
-				Type:      models.ResourceTypeDataset,
-				Datastore: datastorer,
-			}
-			datastorer.On("CreateResource", ctx, models.CreateResourceRequest{
-				Project:  projectSpec,
-				Resource: resourceSpec1,
-			}).Return(nil)
-			datastorer.On("CreateResource", ctx, models.CreateResourceRequest{
-				Project:  projectSpec,
-				Resource: resourceSpec2,
-			}).Return(nil)
 
 			resourceRepo := new(mock.ResourceSpecRepository)
-			resourceRepo.On("Save", ctx, resourceSpec1).Return(nil)
-			resourceRepo.On("Save", ctx, resourceSpec2).Return(nil)
+			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(models.ResourceSpec{}, errors.New("random error"))
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
-			assert.Nil(t, err)
+			service := datastore.NewService(resourceRepoFac, nil)
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
+			assert.Error(t, err)
 		})
+
+		t.Run("should not proceed with store and deployment if incoming spec is the same as existing spec", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			resourceSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+			datastorer.AssertNotCalled(t, "CreateResource", ctx, models.CreateResourceRequest{
+				Resource: resourceSpec,
+				Project:  namespaceSpec.ProjectSpec,
+			})
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(resourceSpec, nil)
+			resourceRepo.AssertNotCalled(t, "Save", ctx, resourceSpec)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, nil)
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
+			assert.NoError(t, err)
+		})
+
 		t.Run("should not call create in datastore if failed to save in repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
-			dsRepo := new(mock.SupportedDatastoreRepo)
-			defer dsRepo.AssertExpectations(t)
-
-			resourceSpec1 := models.ResourceSpec{
+			existingSpec := models.ResourceSpec{
 				Version:   1,
 				Name:      "proj.datas",
 				Type:      models.ResourceTypeDataset,
+				Labels:    map[string]string{},
 				Datastore: datastorer,
 			}
-			resourceSpec2 := models.ResourceSpec{
-				Version:   1,
-				Name:      "proj.batas",
-				Type:      models.ResourceTypeDataset,
+			incomingSpec := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+				Labels: map[string]string{
+					"created_by": "test",
+				},
+				Datastore: datastorer,
+			}
+			datastorer.AssertNotCalled(t, "CreateResource", ctx, models.CreateResourceRequest{
+				Resource: incomingSpec,
+				Project:  namespaceSpec.ProjectSpec,
+			})
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
+			resourceRepo.On("Save", ctx, incomingSpec).Return(errors.New("random error"))
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, nil)
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			assert.Error(t, err)
+		})
+
+		t.Run("should successfully call datastore create and save in persistent repository if no existing spec available", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			incomingSpec := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+				Labels: map[string]string{
+					"created_by": "test",
+				},
 				Datastore: datastorer,
 			}
 			datastorer.On("CreateResource", ctx, models.CreateResourceRequest{
+				Resource: incomingSpec,
 				Project:  projectSpec,
-				Resource: resourceSpec2,
 			}).Return(nil)
 
 			resourceRepo := new(mock.ResourceSpecRepository)
-			resourceRepo.On("Save", ctx, resourceSpec1).Return(errors.New("cant save, too busy"))
-			resourceRepo.On("Save", ctx, resourceSpec2).Return(nil)
+			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(models.ResourceSpec{}, store.ErrResourceNotFound)
+			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
@@ -137,79 +189,176 @@ func TestService(t *testing.T) {
 			defer resourceRepoFac.AssertExpectations(t)
 
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
-			assert.NotNil(t, err)
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			assert.NoError(t, err)
+		})
+
+		t.Run("should successfully call datastore create resource individually for each resource and save in persistent repository", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			existingSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Labels:    map[string]string{},
+				Datastore: datastorer,
+			}
+			incomingSpec := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+				Labels: map[string]string{
+					"created_by": "test",
+				},
+				Datastore: datastorer,
+			}
+			datastorer.On("CreateResource", ctx, models.CreateResourceRequest{
+				Resource: incomingSpec,
+				Project:  projectSpec,
+			}).Return(nil)
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
+			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			assert.NoError(t, err)
 		})
 	})
+
 	t.Run("UpdateResource", func(t *testing.T) {
-		t.Run("should successfully call datastore update resource individually for reach resource and save in persistent repository", func(t *testing.T) {
+		t.Run("should return error if encountered unknown error when getting existing spec", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
-			dsRepo := new(mock.SupportedDatastoreRepo)
-			defer dsRepo.AssertExpectations(t)
-
-			resourceSpec1 := models.ResourceSpec{
+			resourceSpec := models.ResourceSpec{
 				Version:   1,
 				Name:      "proj.datas",
 				Type:      models.ResourceTypeDataset,
 				Datastore: datastorer,
 			}
-			resourceSpec2 := models.ResourceSpec{
-				Version:   1,
-				Name:      "proj.batas",
-				Type:      models.ResourceTypeDataset,
-				Datastore: datastorer,
-			}
-			datastorer.On("UpdateResource", ctx, models.UpdateResourceRequest{
-				Project:  projectSpec,
-				Resource: resourceSpec1,
-			}).Return(nil)
-			datastorer.On("UpdateResource", ctx, models.UpdateResourceRequest{
-				Project:  projectSpec,
-				Resource: resourceSpec2,
-			}).Return(nil)
 
 			resourceRepo := new(mock.ResourceSpecRepository)
-			resourceRepo.On("Save", ctx, resourceSpec1).Return(nil)
-			resourceRepo.On("Save", ctx, resourceSpec2).Return(nil)
+			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(models.ResourceSpec{}, errors.New("random error"))
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
-			assert.Nil(t, err)
+			service := datastore.NewService(resourceRepoFac, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
+			assert.Error(t, err)
 		})
-		t.Run("should not call update in datastore if failed to save in repository", func(t *testing.T) {
+
+		t.Run("should not proceed with store and deployment if incoming spec is the same as existing spec", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			resourceSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+			datastorer.AssertNotCalled(t, "UpdateResource", ctx, models.UpdateResourceRequest{
+				Resource: resourceSpec,
+				Project:  namespaceSpec.ProjectSpec,
+			})
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(resourceSpec, nil)
+			resourceRepo.AssertNotCalled(t, "Save", ctx, resourceSpec)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
+			assert.NoError(t, err)
+		})
+
+		t.Run("should not call create in datastore if failed to save in repository", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			existingSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Labels:    map[string]string{},
+				Datastore: datastorer,
+			}
+			incomingSpec := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+				Labels: map[string]string{
+					"created_by": "test",
+				},
+				Datastore: datastorer,
+			}
+			datastorer.AssertNotCalled(t, "UpdateResource", ctx, models.UpdateResourceRequest{
+				Resource: incomingSpec,
+				Project:  namespaceSpec.ProjectSpec,
+			})
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
+			resourceRepo.On("Save", ctx, incomingSpec).Return(errors.New("random error"))
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			assert.Error(t, err)
+		})
+
+		t.Run("should successfully call datastore create and save in persistent repository if no existing spec available", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
 			dsRepo := new(mock.SupportedDatastoreRepo)
 			defer dsRepo.AssertExpectations(t)
 
-			resourceSpec1 := models.ResourceSpec{
-				Version:   1,
-				Name:      "proj.datas",
-				Type:      models.ResourceTypeDataset,
-				Datastore: datastorer,
-			}
-			resourceSpec2 := models.ResourceSpec{
-				Version:   1,
-				Name:      "proj.batas",
-				Type:      models.ResourceTypeDataset,
+			incomingSpec := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+				Labels: map[string]string{
+					"created_by": "test",
+				},
 				Datastore: datastorer,
 			}
 			datastorer.On("UpdateResource", ctx, models.UpdateResourceRequest{
+				Resource: incomingSpec,
 				Project:  projectSpec,
-				Resource: resourceSpec2,
 			}).Return(nil)
 
 			resourceRepo := new(mock.ResourceSpecRepository)
-			resourceRepo.On("Save", ctx, resourceSpec1).Return(errors.New("cant save, too busy"))
-			resourceRepo.On("Save", ctx, resourceSpec2).Return(nil)
+			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(models.ResourceSpec{}, store.ErrResourceNotFound)
+			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
 			defer resourceRepo.AssertExpectations(t)
 
 			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
@@ -217,10 +366,56 @@ func TestService(t *testing.T) {
 			defer resourceRepoFac.AssertExpectations(t)
 
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec1, resourceSpec2}, nil)
-			assert.NotNil(t, err)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			assert.NoError(t, err)
+		})
+
+		t.Run("should successfully call datastore create resource individually for each resource and save in persistent repository", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			defer dsRepo.AssertExpectations(t)
+
+			existingSpec := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Labels:    map[string]string{},
+				Datastore: datastorer,
+			}
+			incomingSpec := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+				Labels: map[string]string{
+					"created_by": "test",
+				},
+				Datastore: datastorer,
+			}
+			datastorer.On("UpdateResource", ctx, models.UpdateResourceRequest{
+				Resource: incomingSpec,
+				Project:  projectSpec,
+			}).Return(nil)
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
+			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
+			defer projectResourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			assert.NoError(t, err)
 		})
 	})
+
 	t.Run("ReadResource", func(t *testing.T) {
 		t.Run("should successfully call datastore read operation by reading from persistent repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
@@ -282,6 +477,7 @@ func TestService(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	})
+
 	t.Run("DeleteResource", func(t *testing.T) {
 		t.Run("should successfully call datastore delete operation and then from persistent repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)

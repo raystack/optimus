@@ -2,6 +2,8 @@ package datastore
 
 import (
 	"context"
+	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -37,19 +39,35 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, resourceSpec := range resourceSpecs {
-		currentSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
+		incomingSpec := resourceSpec
+		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			if err := repo.Save(ctx, currentSpec); err != nil {
-				return nil, err
+			var proceed bool
+			if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
+				if !errors.Is(err, store.ErrResourceNotFound) {
+					return nil, err
+				}
+				proceed = true
+			} else {
+				proceed = !srv.isSameHash(existingSpec, incomingSpec)
 			}
 
-			err := currentSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
-				Resource: currentSpec,
+			if !proceed {
+				srv.notifyProgress(obs, &EventResourceCreated{
+					Spec: incomingSpec,
+				})
+				return nil, nil // nolint:nilnil
+			}
+
+			if err := repo.Save(ctx, incomingSpec); err != nil {
+				return nil, err
+			}
+			err := incomingSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
+				Resource: incomingSpec,
 				Project:  namespace.ProjectSpec,
 			})
 			srv.notifyProgress(obs, &EventResourceCreated{
-				Spec: currentSpec,
+				Spec: incomingSpec,
 				Err:  err,
 			})
 			return nil, err
@@ -68,19 +86,35 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, resourceSpec := range resourceSpecs {
-		currentSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
+		incomingSpec := resourceSpec
+		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			if err := repo.Save(ctx, currentSpec); err != nil {
-				return nil, err
+			var proceed bool
+			if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
+				if !errors.Is(err, store.ErrResourceNotFound) {
+					return nil, err
+				}
+				proceed = true
+			} else {
+				proceed = !srv.isSameHash(existingSpec, incomingSpec)
 			}
 
-			err := currentSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
-				Resource: currentSpec,
+			if !proceed {
+				srv.notifyProgress(obs, &EventResourceUpdated{
+					Spec: incomingSpec,
+				})
+				return nil, nil // nolint:nilnil
+			}
+
+			if err := repo.Save(ctx, incomingSpec); err != nil {
+				return nil, err
+			}
+			err := incomingSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
+				Resource: incomingSpec,
 				Project:  namespace.ProjectSpec,
 			})
 			srv.notifyProgress(obs, &EventResourceUpdated{
-				Spec: currentSpec,
+				Spec: incomingSpec,
 				Err:  err,
 			})
 			return nil, err
@@ -137,6 +171,25 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	}
 
 	return repo.Delete(ctx, name)
+}
+
+func (srv Service) isSameHash(rsc1, rsc2 models.ResourceSpec) bool {
+	hash1, err := srv.calculateHash(rsc1)
+	if err != nil {
+		return false
+	}
+	hash2, err := srv.calculateHash(rsc2)
+	if err != nil {
+		return false
+	}
+	return hash1 == hash2
+}
+
+func (Service) calculateHash(rsc models.ResourceSpec) (string, error) {
+	h := sha256.New()
+	rep := fmt.Sprintf("%+v", rsc)
+	_, err := h.Write([]byte(rep))
+	return fmt.Sprintf("%x", h.Sum(nil)), err
 }
 
 func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
