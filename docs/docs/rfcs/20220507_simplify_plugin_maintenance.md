@@ -7,7 +7,7 @@
 
 The scope of this rfc is to simplify the release and deployment operations w.r.t the optimus plugin ecosystem.
 
-The proposal here is to resolve:
+The proposal here is to remove:
 1. `Executor and Task Dependency` :   
 Decouple the *executor_boot_process* and the executor as separate containers where the airflow worker launches a pod with `init-container` (for boot process) adjacent to executor container.
 2. `Plugin and Server Dependency` :   
@@ -60,14 +60,12 @@ The `optimus-bin` and `entrypoint.sh` are baked into the `task_image` and is bei
 * The executor_image and version are hard-coded into plugin binary. So, any change in executor version triggers additional release. (plugin-executor dependency)
 * Any change in plugin code demands re-creation of optimus image with new plugin binary, inturn demanding redeployment of optimus server. (in kubernetes setup)
 
-<br>
-
 ## Approach :
 ### 1. <u>Removing dependency between `Executor and Task Image` releases</u> :
 * Decouple the lifecycle of the executor and the boot process as seperate containers/images.
 
 <!-- ![Architecture](images/simplify_plugins.png) -->
-<img src="images/simplify_plugins_executor.png" alt="Simplify Plugins Executor" width="700" />
+<img src="images/simplify_plugins_executor.png" alt="Simplify Plugins Executor" width="800" />
 
 **Task Boot Sequence**:
 1. KubernetesPodOperator spawns init-container and executor-container, mounted with shared volume (type emptyDir) for assets.
@@ -160,10 +158,8 @@ spec:
 * As per the above mentioned sample plugin config, the values for the executor dependent variables in plugin binary can be infered from the plugin config itself.
 * This decouples the release dependency between plugin binary and executor.
 
-<br>
-
 ## Result:
-<img src="images/simplify_plugins.png" alt="Simplify Plugins" width="700" />
+<img src="images/simplify_plugins.png" alt="Simplify Plugins" width="800" />
 
 * Below are the implications of the proposed design, assuming the setup is in kubernetes :
   * **On Executor Release** : Change plugin config in the configmap and restart the optimus pod.
