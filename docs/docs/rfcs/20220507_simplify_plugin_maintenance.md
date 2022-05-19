@@ -7,13 +7,13 @@
 
 The scope of this rfc is to simplify the release and deployment operations w.r.t the optimus plugin ecosystem.
 
-The proposal here is to remove:
-1. `Executor and Task Dependency` :   
-Decouple the *executor_boot_process* and the executor as separate containers where the airflow worker launches a pod with `init-container` (for boot process) adjacent to executor container.
-2. `Plugin and Server Dependency` :   
-Install plugins `on-demand` instead of manually baking them into the optimus server image.
-3. `Plugin and Executor Dependency` :   
-Extract out executor related variables from plugin code (Executor version , Image etc..) as `plugin config`.
+The proposal here is to remove :
+1. **Executor and Task Dependency** :   
+Decouple the *executor_boot_process* and the executor as separate containers where the airflow worker launches a pod with *init-container* (for boot process) adjacent to executor container.
+2. **Plugin and Server Dependency** :   
+Install plugins on-demand declaratively instead of manually baking them into the optimus server image (in kubernetes setup).
+3. **Plugin and Executor Dependency** :   
+Extract out executor related variables from plugin code (Executor version , Image etc..) as *plugin config*.
 
 # Technical Design
 
@@ -56,7 +56,7 @@ task_image
 The `optimus-bin` and `entrypoint.sh` are baked into the `task_image` and is being maintained by task/plugin developers.
 
 ### 2. <u>Dependency between `Plugin and Server`, also  `Plugin and Executor`</u> : 
-* Plugin binaries are manually baked into optimus image.
+* Plugin binaries are manually installed (baked into optimus image in kubernetes setup).
 * The executor_image and version are hard-coded into plugin binary. So, any change in executor version triggers additional release. (plugin-executor dependency)
 * Any change in plugin code demands re-creation of optimus image with new plugin binary, inturn demanding redeployment of optimus server. (in kubernetes setup)
 
