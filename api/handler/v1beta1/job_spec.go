@@ -44,7 +44,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 	for {
 		observers := new(progress.ObserverChain)
 		observers.Join(sv.progressObserver)
-		observers.Join(&jobSyncObserver{
+		observers.Join(&jobDeploymentObserver{
 			stream: stream,
 			log:    sv.l,
 			mu:     new(sync.Mutex),
@@ -58,7 +58,6 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: err.Error(),
 			})
 			return err // immediate error returned (grpc error level)
 		}
@@ -70,27 +69,16 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			stream.Send(&pb.DeployJobSpecificationResponse{
 				Success: false,
 				Ack:     true,
-				Message: fmt.Sprintf("failed to deploy jobs: \n%s", err.Error()),
+				Value:   fmt.Sprintf("failed to deploy jobs: \n%s", err.Error()),
 			})
 			errNamespaces = append(errNamespaces, req.NamespaceName)
 			continue
 		}
 
-		// TODO: will be deleted
-		// if err := sv.jobSvc.Sync(stream.Context(), namespaceSpec, observers); err != nil {
-		// 	stream.Send(&pb.DeployJobSpecificationResponse{
-		// 		Success: false,
-		// 		Ack:     true,
-		// 		Message: fmt.Sprintf("failed to sync jobs: \n%s", err.Error()),
-		// 	})
-		// 	errNamespaces = append(errNamespaces, req.NamespaceName)
-		// 	continue
-		// }
-		// runtimeDeployJobSpecificationCounter.Add(float64(len(req.Jobs)))
 		stream.Send(&pb.DeployJobSpecificationResponse{
 			Success: true,
 			Ack:     true,
-			Message: fmt.Sprintf("jobs with namespace [%s] are deployed successfully", req.NamespaceName),
+			Value:   fmt.Sprintf("jobs with namespace [%s] are deployed successfully", req.NamespaceName),
 		})
 	}
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))
@@ -204,7 +192,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
 	}
 
-	err = sv.jobSvc.Create(ctx, namespaceSpec, jobSpec)
+	_, err = sv.jobSvc.Create(ctx, namespaceSpec, jobSpec)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to save job %s", err.Error(), jobSpec.Name)
 	}

@@ -65,7 +65,7 @@ func TestService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
-			err := svc.Create(ctx, namespaceSpec, jobSpec)
+			_, err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
 
@@ -107,7 +107,7 @@ func TestService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(&models.GenerateDestinationResponse{}, service.ErrDependencyModNotFound)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
-			err := svc.Create(ctx, namespaceSpec, jobSpec)
+			_, err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
 
@@ -148,7 +148,7 @@ func TestService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, nil, nil, nil, nil, nil, pluginService)
-			err := svc.Create(ctx, namespaceSpec, jobSpec)
+			_, err := svc.Create(ctx, namespaceSpec, jobSpec)
 			assert.NotNil(t, err)
 		})
 	})

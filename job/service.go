@@ -114,12 +114,12 @@ type Service struct {
 }
 
 // Create constructs a Job for a namespace and commits it to the store
-func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) error {
+func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) (*models.JobSpec, error) {
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
 	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
-			return fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+			return nil, fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
 		}
 	}
 	var jobDestination string
@@ -127,24 +127,37 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 		jobDestination = jobDestinationResponse.URN()
 	}
 	if err := jobRepo.Save(ctx, spec, jobDestination); err != nil {
-		return fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
+		return nil, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
-	return nil
+
+	result, err := jobRepo.GetByName(ctx, spec.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch job on create: %s: %w", spec.Name, err)
+	}
+
+	return &result, nil
 }
-func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec) error {
+func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
 	var e error
+	result := []models.JobSpec{}
 	for _, jobSpec := range jobSpecs {
-		if err := srv.Create(ctx, namespace, jobSpec); err != nil {
+		if jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec); err != nil {
 			if e == nil {
 				e = err
 			} else {
 				e = fmt.Errorf("%w; %s", e, err.Error())
 			}
 			continue
+		} else {
+			result = append(result, *jobSpecCreated)
 		}
 	}
 
-	return e
+	if e != nil {
+		return nil, e
+	}
+
+	return result, nil
 }
 
 // GetByName fetches a Job by name for a specific namespace
@@ -860,13 +873,14 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	}
 
 	// Get modified jobs (including job added and job updated) return deleted jobs
-	modifiedJobs, deletedJobs, err := srv.GetModifiedJobs(ctx, namespaceSpec, jobSpecs)
+	modifiedJobs, deletedJobs, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
 	if err != nil {
 		return err
 	}
 
 	// Save modified jobs //
-	if err := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs); err != nil {
+	createdModifiedJobs, err := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs)
+	if err != nil {
 		return err
 	}
 
@@ -874,12 +888,9 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	if err := srv.BulkDelete(ctx, namespaceSpec, deletedJobs, observers); err != nil {
 		return err
 	}
-	if err := srv.KeepOnly(ctx, namespaceSpec, jobSpecs, observers); err != nil {
-		return err
-	}
 
 	// Resolve dependency
-	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, modifiedJobs, observers)
+	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, createdModifiedJobs, observers)
 
 	// Deploy through deploy manager
 	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
@@ -892,8 +903,7 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	return nil
 }
 
-// GetModifiedJobs gets modified (new and edited) jobs as well as deleted jobs
-func (srv *Service) GetModifiedJobs(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, error) {
+func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 	existingJobSpecs, err := jobSpecRepo.GetAll(ctx)
 	if err != nil {
@@ -923,6 +933,7 @@ func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[stri
 		if existingJobSpec, ok := existingJobSpecs[jobName]; !ok {
 			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
 		} else if !srv.jobSpecEqual(requestedJobSpec, existingJobSpec) {
+			requestedJobSpec.ID = existingJobSpec.ID
 			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
 		}
 	}
@@ -943,8 +954,18 @@ func (srv *Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[strin
 }
 
 func (srv *Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
-	js1.ID = js2.ID // id is not required for comparison
-	return reflect.DeepEqual(js1, js2)
+	isLabelSame := reflect.DeepEqual(js1.Labels, js2.Labels)
+	isOwnerSame := reflect.DeepEqual(js1.Owner, js2.Owner)
+	isScheduleSame := reflect.DeepEqual(js1.Schedule, js2.Schedule)
+	isBehaviourSame := reflect.DeepEqual(js1.Behavior, js2.Behavior)
+	isTaskSame := reflect.DeepEqual(js1.Task, js2.Task)
+	isDependencySame := reflect.DeepEqual(js1.Dependencies, js2.Dependencies)
+	isAssetSame := reflect.DeepEqual(js1.Assets, js2.Assets)
+	isHookSame := reflect.DeepEqual(js1.Hooks, js2.Hooks)
+	isMetadataSame := reflect.DeepEqual(js1.Metadata, js2.Metadata)
+	isExternalDependencySame := reflect.DeepEqual(js1.ExternalDependencies, js2.ExternalDependencies)
+
+	return isLabelSame && isOwnerSame && isScheduleSame && isBehaviourSame && isTaskSame && isDependencySame && isAssetSame && isHookSame && isMetadataSame && isExternalDependencySame
 }
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
