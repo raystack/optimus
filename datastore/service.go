@@ -49,6 +49,8 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 				}
 				proceed = true
 			} else {
+				incomingSpec.ID = existingSpec.ID
+				incomingSpec.URN = existingSpec.URN
 				proceed = !srv.isSameHash(existingSpec, incomingSpec)
 			}
 
@@ -96,6 +98,8 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 				}
 				proceed = true
 			} else {
+				incomingSpec.ID = existingSpec.ID
+				incomingSpec.URN = existingSpec.URN
 				proceed = !srv.isSameHash(existingSpec, incomingSpec)
 			}
 
