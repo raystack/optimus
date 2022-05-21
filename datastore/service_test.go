@@ -1263,9 +1263,6 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
 			defer resourceRepo.AssertExpectations(t)
 
@@ -1318,10 +1315,9 @@ func TestService(t *testing.T) {
 			datastorer.On("BackupResource", ctx, backupResourceReq).
 				Return(models.BackupResourceResponse{ResultURN: resultURN, ResultSpec: resultSpec}, nil)
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac, pluginService)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepo, pluginService)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobSpec})
 			assert.Nil(t, err)
 			assert.Equal(t, []string{resultURN}, resp.Resources)
@@ -1351,9 +1347,6 @@ func TestService(t *testing.T) {
 
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
-
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
 
 			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
 			defer resourceRepo.AssertExpectations(t)
@@ -1463,10 +1456,9 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac, pluginService)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepo, pluginService)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -1497,9 +1489,6 @@ func TestService(t *testing.T) {
 
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
-
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
 
 			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
 			defer resourceRepo.AssertExpectations(t)
@@ -1598,10 +1587,9 @@ func TestService(t *testing.T) {
 			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, otherNamespaceSpec, nil).Once()
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac, pluginService)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepo, pluginService)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -1920,9 +1908,6 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
 			defer resourceRepo.AssertExpectations(t)
 
@@ -2006,10 +1991,9 @@ func TestService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, jobDownstream, namespaceSpec).Return(destinationDownstream, nil).Once()
 			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(models.ResourceSpec{}, models.NamespaceSpec{}, store.ErrResourceNotFound).Once()
 
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac, pluginService)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepo, pluginService)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -2040,9 +2024,6 @@ func TestService(t *testing.T) {
 
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
-
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
 
 			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
 			defer resourceRepo.AssertExpectations(t)
@@ -2137,10 +2118,9 @@ func TestService(t *testing.T) {
 			projectResourceRepo.On("GetByURN", ctx, destinationDownstream.URN()).Return(resourceDownstream, namespaceSpec, nil).Once()
 			datastorer.On("BackupResource", ctx, backupResourceReqDownstream).Return(models.BackupResourceResponse{}, models.ErrUnsupportedResource).Once()
 
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac, pluginService)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepo, pluginService)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -2171,9 +2151,6 @@ func TestService(t *testing.T) {
 
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
-
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
 
 			projectResourceRepo := new(mock.ProjectResourceSpecRepository)
 			defer resourceRepo.AssertExpectations(t)
@@ -2267,10 +2244,9 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac.On("New", projectSpec, datastorer).Return(projectResourceRepo)
 
 			uuidProvider.On("NewUUID").Return(backupUUID, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 			backupRepo.On("Save", ctx, backupSpec).Return(nil)
 
-			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepoFac, pluginService)
+			service := datastore.NewService(resourceRepoFac, projectResourceRepoFac, dsRepo, uuidProvider, backupRepo, pluginService)
 			resp, err := service.BackupResource(ctx, backupReq, []models.JobSpec{jobRoot, jobDownstream})
 
 			assert.Nil(t, err)
@@ -2304,14 +2280,10 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
-			backupRepo.On("GetAll", ctx).Return(backupSpecs, nil)
+			backupRepo.On("GetAll", ctx, projectSpec, datastorer).Return(backupSpecs, nil)
 
-			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepo, nil)
 			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
@@ -2343,16 +2315,12 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 
 			errorMsg := "unable to get backups"
-			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{}, errors.New(errorMsg))
+			backupRepo.On("GetAll", ctx, projectSpec, datastorer).Return([]models.BackupSpec{}, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepo, nil)
 			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -2368,14 +2336,10 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
-			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{}, store.ErrResourceNotFound)
+			backupRepo.On("GetAll", ctx, projectSpec, datastorer).Return([]models.BackupSpec{}, store.ErrResourceNotFound)
 
-			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepo, nil)
 			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
@@ -2391,14 +2355,10 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
-			backupRepo.On("GetAll", ctx).Return([]models.BackupSpec{backupSpecs[2]}, nil)
+			backupRepo.On("GetAll", ctx, projectSpec, datastorer).Return([]models.BackupSpec{backupSpecs[2]}, nil)
 
-			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepo, nil)
 			resp, err := service.ListResourceBackups(ctx, projectSpec, datastoreName)
 
 			assert.Nil(t, err)
@@ -2423,14 +2383,10 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
-			backupRepo.On("GetByID", ctx, backupID).Return(backupSpec, nil)
+			backupRepo.On("GetByID", ctx, backupID, datastorer).Return(backupSpec, nil)
 
-			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepo, nil)
 			resp, err := service.GetResourceBackup(ctx, projectSpec, datastoreName, backupID)
 
 			assert.Nil(t, err)
@@ -2462,16 +2418,12 @@ func TestService(t *testing.T) {
 			backupRepo := new(mock.BackupRepo)
 			defer backupRepo.AssertExpectations(t)
 
-			backupRepoFac := new(mock.BackupRepoFactory)
-			defer backupRepoFac.AssertExpectations(t)
-
 			dsRepo.On("GetByName", datastoreName).Return(datastorer, nil)
-			backupRepoFac.On("New", projectSpec, datastorer).Return(backupRepo)
 
 			errorMsg := "unable to get backup"
-			backupRepo.On("GetByID", ctx, backupID).Return(models.BackupSpec{}, errors.New(errorMsg))
+			backupRepo.On("GetByID", ctx, backupID, datastorer).Return(models.BackupSpec{}, errors.New(errorMsg))
 
-			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepoFac, nil)
+			service := datastore.NewService(nil, nil, dsRepo, nil, backupRepo, nil)
 			resp, err := service.GetResourceBackup(ctx, projectSpec, datastoreName, backupID)
 
 			assert.Equal(t, errorMsg, err.Error())

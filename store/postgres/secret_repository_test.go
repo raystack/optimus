@@ -45,9 +45,9 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
 
-		namespaceRepo := postgres.NewNamespaceRepository(dbConn, projectSpec, hash)
-		assert.Nil(t, namespaceRepo.Save(ctx, namespaceSpec))
-		assert.Nil(t, namespaceRepo.Save(ctx, otherNamespaceSpec))
+		namespaceRepo := postgres.NewNamespaceRepository(dbConn, hash)
+		assert.Nil(t, namespaceRepo.Save(ctx, projectSpec, namespaceSpec))
+		assert.Nil(t, namespaceRepo.Save(ctx, projectSpec, otherNamespaceSpec))
 		return dbConn
 	}
 

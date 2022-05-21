@@ -211,11 +211,9 @@ func (s *OptimusServer) setupHandlers() error {
 		hash: s.appKey,
 	}
 
+	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
-	namespaceSpecRepoFac := &namespaceRepoFactory{
-		db:   s.dbConn,
-		hash: s.appKey,
-	}
+
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: s.dbConn,
 	}
@@ -229,7 +227,7 @@ func (s *OptimusServer) setupHandlers() error {
 	engine := jobRunCompiler.NewGoEngine()
 	// services
 	projectService := service.NewProjectService(projectRepoFac)
-	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
+	namespaceService := service.NewNamespaceService(projectService, namespaceRepository)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
 
@@ -327,10 +325,8 @@ func (s *OptimusServer) setupHandlers() error {
 		db:                         s.dbConn,
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
-	backupRepoFac := backupRepoFactory{
-		db: s.dbConn,
-	}
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac, pluginService)
+	backupRepo := postgres.NewBackupRepository(s.dbConn)
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
 	// adapter service
 	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
 

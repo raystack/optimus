@@ -100,11 +100,11 @@ func TestIntegrationBackupRepository(t *testing.T) {
 		err := resourceRepo.Insert(ctx, resourceSpec)
 		assert.Nil(t, err)
 
-		backupRepo := postgres.NewBackupRepository(db, projectSpec, datastorer)
+		backupRepo := postgres.NewBackupRepository(db)
 		err = backupRepo.Save(ctx, backupSpec)
 		assert.Nil(t, err)
 
-		backups, err := backupRepo.GetAll(ctx)
+		backups, err := backupRepo.GetAll(ctx, projectSpec, datastorer)
 		assert.Nil(t, err)
 
 		assert.Equal(t, backupSpec.ID, backups[0].ID)
@@ -113,7 +113,7 @@ func TestIntegrationBackupRepository(t *testing.T) {
 		assert.Equal(t, backupSpec.Config, backups[0].Config)
 		assert.Equal(t, backupSpec.Result, backups[0].Result)
 
-		backup, err := backupRepo.GetByID(ctx, backupUUID)
+		backup, err := backupRepo.GetByID(ctx, backupUUID, datastorer)
 		assert.Nil(t, err)
 
 		assert.Equal(t, backupSpec.ID, backup.ID)
