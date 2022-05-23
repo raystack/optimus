@@ -278,8 +278,12 @@ class SuperExternalTaskSensor(BaseSensorOperator):
     # TODO the api will be updated with getJobRuns even though the field here refers to scheduledAt
     #  it points to execution_date
     def _are_all_job_runs_successful(self, schedule_time_window_start, schedule_time_window_end) -> bool:
-        api_response = self._optimus_client.get_job_run(self.optimus_project, self.optimus_job, schedule_time_window_start, schedule_time_window_end)
-        self.log.info("job_run api response :: {}".format(api_response))
+        try:
+            api_response = self._optimus_client.get_job_run(self.optimus_project, self.optimus_job, schedule_time_window_start, schedule_time_window_end)
+            self.log.info("job_run api response :: {}".format(api_response))
+        except Exception as e:
+            self.log.warning("error while fetching job runs :: {}".format(e))
+            return False
         for job_run in api_response['jobRuns']:
             if job_run['state'] != 'success':
                 self.log.info("failed for run :: {}".format(job_run))

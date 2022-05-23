@@ -23,6 +23,13 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 			"bucket": "gs://some_folder",
 		},
 	}
+	externalProjectSpec := models.ProjectSpec{
+		ID:   models.ProjectID(uuid.New()),
+		Name: "t-optimus-project-2",
+		Config: map[string]string{
+			"bucket": "gs://some_folder",
+		},
+	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	ctx := context.Background()
 
@@ -32,6 +39,7 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
+		assert.Nil(t, projRepo.Save(ctx, externalProjectSpec))
 		return dbConn
 	}
 
@@ -41,6 +49,7 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 		jobID1 := uuid.New()
 		jobID2 := uuid.New()
 		jobID3 := uuid.New()
+		jobID4 := uuid.New()
 		jobDependencies := []models.JobSpecDependency{
 			{
 				Job:     &models.JobSpec{ID: jobID2},
@@ -52,6 +61,11 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 				Project: &projectSpec,
 				Type:    models.JobSpecDependencyTypeIntra,
 			},
+			{
+				Job:     &models.JobSpec{ID: jobID4},
+				Project: &externalProjectSpec,
+				Type:    models.JobSpecDependencyTypeInter,
+			},
 		}
 		repo := postgres.NewJobDependencyRepository(db)
 
@@ -61,11 +75,34 @@ func TestIntegrationJobDependencyRepository(t *testing.T) {
 		err = repo.Save(ctx, projectSpec.ID, jobID2, jobDependencies[1])
 		assert.Nil(t, err)
 
+		err = repo.Save(ctx, projectSpec.ID, jobID1, jobDependencies[2])
+		assert.Nil(t, err)
+
 		var storedJobDependencies []models.JobIDDependenciesPair
 		storedJobDependencies, err = repo.GetAll(ctx, projectSpec.ID)
 		assert.Nil(t, err)
-		assert.EqualValues(t, []uuid.UUID{jobID1, jobID2}, []uuid.UUID{storedJobDependencies[0].JobID, storedJobDependencies[1].JobID})
-		assert.EqualValues(t, []uuid.UUID{jobDependencies[0].Job.ID, jobDependencies[1].Job.ID}, []uuid.UUID{storedJobDependencies[0].DependentJobID, storedJobDependencies[1].DependentJobID})
+
+		expectedJobDependencies := []models.JobIDDependenciesPair{
+			{
+				JobID:            jobID1,
+				DependentProject: *jobDependencies[0].Project,
+				DependentJobID:   jobDependencies[0].Job.ID,
+				Type:             jobDependencies[0].Type,
+			},
+			{
+				JobID:            jobID2,
+				DependentProject: *jobDependencies[1].Project,
+				DependentJobID:   jobDependencies[1].Job.ID,
+				Type:             jobDependencies[1].Type,
+			},
+			{
+				JobID:            jobID1,
+				DependentProject: *jobDependencies[2].Project,
+				DependentJobID:   jobDependencies[2].Job.ID,
+				Type:             jobDependencies[2].Type,
+			},
+		}
+		assert.EqualValues(t, expectedJobDependencies, storedJobDependencies)
 
 		err = repo.DeleteByJobID(ctx, jobID1)
 		assert.Nil(t, err)
