@@ -7,11 +7,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/factory"
+	"github.com/odpf/optimus/extension/model"
 )
 
 // Parse parses remote path to get its metadata according to github convention
-func Parse(remotePath string) (*extension.Metadata, error) {
+func Parse(remotePath string) (*model.Metadata, error) {
 	if err := validate(remotePath); err != nil {
 		return nil, fmt.Errorf("error validating remote path: %w", err)
 	}
@@ -21,7 +22,7 @@ func Parse(remotePath string) (*extension.Metadata, error) {
 	repoName := extractRepoName(cleanedRemotePath)
 	tagName := extractTag(cleanedRemotePath)
 
-	return &extension.Metadata{
+	return &model.Metadata{
 		ProviderName:   provider,
 		OwnerName:      ownerName,
 		ProjectName:    repoName,
@@ -40,7 +41,7 @@ func extractCommandName(repoName string) string {
 
 func composeLocalDirPath(ownerName, repoName string) string {
 	hostName := provider + ".com"
-	return path.Join(extension.ExtensionDir, hostName, ownerName, repoName)
+	return path.Join(model.ExtensionDir, hostName, ownerName, repoName)
 }
 
 func composeUpgradeAPIPath(ownerName, repoName string) string {
@@ -80,16 +81,16 @@ func removeURLPrefix(remotePath string) string {
 
 func validate(remotePath string) error {
 	if remotePath == "" {
-		return extension.ErrEmptyRemotePath
+		return model.ErrEmptyRemotePath
 	}
 	detectGithub := regexp.MustCompile(`^((https?:\/\/)?(www\.)?github\.com/)?([a-zA-Z0-9\-]+/optimus-extension-[a-zA-Z0-9\-]+(@\S+)?)$`)
 	if result := detectGithub.FindString(remotePath); result == "" {
-		return fmt.Errorf("%s can't recognize remote path: %w", provider, extension.ErrUnrecognizedRemotePath)
+		return fmt.Errorf("%s can't recognize remote path: %w", provider, model.ErrUnrecognizedRemotePath)
 	}
 	_, err := os.UserHomeDir()
 	return err
 }
 
 func init() { //nolint:gochecknoinits
-	extension.ParseRegistry = append(extension.ParseRegistry, Parse)
+	factory.ParseRegistry = append(factory.ParseRegistry, Parse)
 }

@@ -15,7 +15,7 @@ import (
 	tMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 	"github.com/odpf/optimus/extension/provider/github"
 	"github.com/odpf/optimus/mock"
 )
@@ -328,7 +328,7 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
 		ctx := context.Background()
-		var httpDoer extension.HTTPDoer
+		var httpDoer model.HTTPDoer
 
 		actualGithub, actualErr := github.NewClient(ctx, httpDoer)
 

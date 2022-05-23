@@ -3,7 +3,7 @@
 package mock
 
 import (
-	extension "github.com/odpf/optimus/extension"
+	model "github.com/odpf/optimus/extension/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,11 +13,11 @@ type Manifester struct {
 }
 
 // Flush provides a mock function with given fields: manifest, dirPath
-func (_m *Manifester) Flush(manifest *extension.Manifest, dirPath string) error {
+func (_m *Manifester) Flush(manifest *model.Manifest, dirPath string) error {
 	ret := _m.Called(manifest, dirPath)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*extension.Manifest, string) error); ok {
+	if rf, ok := ret.Get(0).(func(*model.Manifest, string) error); ok {
 		r0 = rf(manifest, dirPath)
 	} else {
 		r0 = ret.Error(0)
@@ -27,15 +27,15 @@ func (_m *Manifester) Flush(manifest *extension.Manifest, dirPath string) error 
 }
 
 // Load provides a mock function with given fields: dirPath
-func (_m *Manifester) Load(dirPath string) (*extension.Manifest, error) {
+func (_m *Manifester) Load(dirPath string) (*model.Manifest, error) {
 	ret := _m.Called(dirPath)
 
-	var r0 *extension.Manifest
-	if rf, ok := ret.Get(0).(func(string) *extension.Manifest); ok {
+	var r0 *model.Manifest
+	if rf, ok := ret.Get(0).(func(string) *model.Manifest); ok {
 		r0 = rf(dirPath)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*extension.Manifest)
+			r0 = ret.Get(0).(*model.Manifest)
 		}
 	}
 

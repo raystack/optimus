@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 	"github.com/odpf/optimus/extension/provider/github"
 )
 
@@ -27,7 +27,7 @@ func TestParse(t *testing.T) {
 		actualMetadata, actualErr := github.Parse(remotePath)
 
 		assert.Nil(t, actualMetadata)
-		assert.ErrorIs(t, actualErr, extension.ErrUnrecognizedRemotePath)
+		assert.ErrorIs(t, actualErr, model.ErrUnrecognizedRemotePath)
 	})
 
 	t.Run("should return remote metadata with provider github", func(t *testing.T) {

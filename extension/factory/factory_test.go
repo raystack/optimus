@@ -1,4 +1,4 @@
-package extension_test
+package factory_test
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/factory"
+	"github.com/odpf/optimus/extension/model"
 )
 
 type NewClientFactoryTestSuite struct {
@@ -16,8 +17,8 @@ type NewClientFactoryTestSuite struct {
 func (n *NewClientFactoryTestSuite) TestAdd() {
 	n.Run("should return error if provider is empty", func() {
 		var provider string
-		newClientFactory := &extension.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer extension.HTTPDoer) (extension.Client, error) {
+		newClientFactory := &factory.NewClientFactory{}
+		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 
@@ -28,8 +29,8 @@ func (n *NewClientFactoryTestSuite) TestAdd() {
 
 	n.Run("should return error if client initializer is nil", func() {
 		provider := "test_provider"
-		newClientFactory := &extension.NewClientFactory{}
-		var newClient extension.NewClient
+		newClientFactory := &factory.NewClientFactory{}
+		var newClient model.NewClient
 
 		actualErr := newClientFactory.Add(provider, newClient)
 
@@ -38,8 +39,8 @@ func (n *NewClientFactoryTestSuite) TestAdd() {
 
 	n.Run("should return error if client initializer is already registered", func() {
 		provider := "test_provider"
-		newClientFactory := &extension.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer extension.HTTPDoer) (extension.Client, error) {
+		newClientFactory := &factory.NewClientFactory{}
+		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 
@@ -54,8 +55,8 @@ func (n *NewClientFactoryTestSuite) TestAdd() {
 func (n *NewClientFactoryTestSuite) TestGet() {
 	n.Run("should return nil and error if provider is empty", func() {
 		registeredProvider := "test_provider"
-		newClientFactory := &extension.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer extension.HTTPDoer) (extension.Client, error) {
+		newClientFactory := &factory.NewClientFactory{}
+		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {
@@ -71,7 +72,7 @@ func (n *NewClientFactoryTestSuite) TestGet() {
 	})
 
 	n.Run("should return nil and error if provider is not registered", func() {
-		newClientFactory := &extension.NewClientFactory{}
+		newClientFactory := &factory.NewClientFactory{}
 
 		testProvider := "test_provider"
 
@@ -83,8 +84,8 @@ func (n *NewClientFactoryTestSuite) TestGet() {
 
 	n.Run("should return client initializer and nil if no error is encountered", func() {
 		registeredProvider := "test_provider"
-		newClientFactory := &extension.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer extension.HTTPDoer) (extension.Client, error) {
+		newClientFactory := &factory.NewClientFactory{}
+		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {

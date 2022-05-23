@@ -8,15 +8,15 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 )
 
 type describeCommand struct {
 	logger  log.Logger
-	project *extension.RepositoryProject
+	project *model.RepositoryProject
 }
 
-func newDescribeCommand(logger log.Logger, project *extension.RepositoryProject) *cobra.Command {
+func newDescribeCommand(logger log.Logger, project *model.RepositoryProject) *cobra.Command {
 	describe := &describeCommand{
 		logger:  logger,
 		project: project,

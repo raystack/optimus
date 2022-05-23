@@ -5,15 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 	"github.com/odpf/optimus/mock"
 )
-
-type ManagerTestSuite struct {
-	suite.Suite
-}
 
 func TestNewManager(t *testing.T) {
 	verbose := true
@@ -32,7 +28,7 @@ func TestNewManager(t *testing.T) {
 
 	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
 		ctx := context.Background()
-		var httpDoer extension.HTTPDoer
+		var httpDoer model.HTTPDoer
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
@@ -45,7 +41,7 @@ func TestNewManager(t *testing.T) {
 	t.Run("should return nil and error if manifester is nil", func(t *testing.T) {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		var manifester extension.Manifester
+		var manifester model.Manifester
 		assetOperator := &mock.AssetOperator{}
 
 		actualManager, actualErr := extension.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
@@ -58,7 +54,7 @@ func TestNewManager(t *testing.T) {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
-		var assetOperator extension.AssetOperator
+		var assetOperator model.AssetOperator
 
 		actualManager, actualErr := extension.NewManager(ctx, httpDoer, manifester, assetOperator, verbose)
 
@@ -77,8 +73,4 @@ func TestNewManager(t *testing.T) {
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)
 	})
-}
-
-func TestManager(t *testing.T) {
-	suite.Run(t, &ManagerTestSuite{})
 }

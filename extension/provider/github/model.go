@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 )
 
 const apiPrefix = "https://api.github.com/repos"
@@ -17,12 +17,12 @@ type Release struct {
 	Assets     []*Asset `json:"assets"`
 }
 
-func (r *Release) toRepositoryRelease(apiPath string) *extension.RepositoryRelease {
-	assets := make([]*extension.RepositoryAsset, len(r.Assets))
+func (r *Release) toRepositoryRelease(apiPath string) *model.RepositoryRelease {
+	assets := make([]*model.RepositoryAsset, len(r.Assets))
 	for i, a := range r.Assets {
 		assets[i] = a.toRepositoryAsset()
 	}
-	return &extension.RepositoryRelease{
+	return &model.RepositoryRelease{
 		TagName: r.TagName,
 		Metadata: map[string]interface{}{
 			"draft":      r.Draft,
@@ -57,8 +57,8 @@ type Asset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
-func (a *Asset) toRepositoryAsset() *extension.RepositoryAsset {
-	return &extension.RepositoryAsset{
+func (a *Asset) toRepositoryAsset() *model.RepositoryAsset {
+	return &model.RepositoryAsset{
 		Name: a.Name,
 		URL:  a.BrowserDownloadURL,
 	}

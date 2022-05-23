@@ -9,7 +9,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/factory"
+	"github.com/odpf/optimus/extension/model"
 )
 
 const provider = "github"
@@ -17,16 +18,16 @@ const provider = "github"
 // Client defines github client
 type Client struct {
 	ctx      context.Context //nolint:containedctx
-	httpdoer extension.HTTPDoer
+	httpdoer model.HTTPDoer
 }
 
 // NewClient initializes github client
-func NewClient(ctx context.Context, httpDoer extension.HTTPDoer) (*Client, error) {
+func NewClient(ctx context.Context, httpDoer model.HTTPDoer) (*Client, error) {
 	if ctx == nil {
-		return nil, extension.ErrNilContext
+		return nil, model.ErrNilContext
 	}
 	if httpDoer == nil {
-		return nil, extension.ErrNilHTTPDoer
+		return nil, model.ErrNilHTTPDoer
 	}
 	return &Client{
 		ctx:      ctx,
@@ -35,9 +36,9 @@ func NewClient(ctx context.Context, httpDoer extension.HTTPDoer) (*Client, error
 }
 
 // DownloadRelease downloads a release based on the API path
-func (c *Client) DownloadRelease(apiPath string) (*extension.RepositoryRelease, error) {
+func (c *Client) DownloadRelease(apiPath string) (*model.RepositoryRelease, error) {
 	if apiPath == "" {
-		return nil, extension.ErrEmptyAPIPath
+		return nil, model.ErrEmptyAPIPath
 	}
 	request, err := http.NewRequestWithContext(c.ctx, "GET", apiPath, http.NoBody)
 	if err != nil {
@@ -69,7 +70,7 @@ func (c *Client) DownloadRelease(apiPath string) (*extension.RepositoryRelease, 
 // check [this](https://docs.github.com/en/rest/releases/releases) documentation.
 func (c *Client) DownloadAsset(apiPath string) ([]byte, error) {
 	if apiPath == "" {
-		return nil, extension.ErrEmptyAPIPath
+		return nil, model.ErrEmptyAPIPath
 	}
 	release, err := c.DownloadRelease(apiPath)
 	if err != nil {
@@ -98,7 +99,7 @@ func (c *Client) downloadAsset(url string) ([]byte, error) {
 	return io.ReadAll(response.Body)
 }
 
-func (c *Client) getAssetURL(release *extension.RepositoryRelease) (string, error) {
+func (c *Client) getAssetURL(release *model.RepositoryRelease) (string, error) {
 	suffix := c.getDistSuffix()
 	for _, asset := range release.Assets {
 		if strings.HasSuffix(asset.Name, suffix) {
@@ -113,8 +114,8 @@ func (*Client) getDistSuffix() string {
 }
 
 func init() { //nolint:gochecknoinits
-	if err := extension.NewClientRegistry.Add(provider,
-		func(ctx context.Context, httpDoer extension.HTTPDoer) (extension.Client, error) {
+	if err := factory.NewClientRegistry.Add(provider,
+		func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
 			return NewClient(ctx, httpDoer)
 		},
 	); err != nil {

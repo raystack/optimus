@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 )
 
 const (
@@ -82,7 +83,7 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 	extension.ManifesterFS = afero.NewMemMapFs()
 
 	d.Run("should return error if manifest is nil", func() {
-		var manifest *extension.Manifest
+		var manifest *model.Manifest
 		dirPath := "./extension"
 		manifester := extension.NewDefaultManifester()
 
@@ -93,7 +94,7 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 
 	d.Run("should return nil and create file", func() {
 		now := time.Now()
-		manifest := &extension.Manifest{
+		manifest := &model.Manifest{
 			UpdatedAt: now,
 		}
 		dirPath := "./extension"
@@ -101,12 +102,12 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 
 		actualErr := manifester.Flush(manifest, dirPath)
 		filepath := path.Join(dirPath, "manifest.yaml")
-		file, openErr := extension.ManifesterFS.OpenFile(filepath, os.O_RDONLY, 0o755)
+		file, openErr := extension.ManifesterFS.OpenFile(filepath, os.O_RDONLY, 0o600)
 		if openErr != nil {
 			panic(openErr)
 		}
 		decoder := yaml.NewDecoder(file)
-		var actualManifest extension.Manifest
+		var actualManifest model.Manifest
 		unmarshallErr := decoder.Decode(&actualManifest)
 
 		d.NoError(actualErr)
@@ -116,11 +117,11 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 }
 
 func (*DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string) {
-	if err := extension.ManifesterFS.MkdirAll(dirPath, 0o755); err != nil {
+	if err := extension.ManifesterFS.MkdirAll(dirPath, 0o600); err != nil {
 		panic(err)
 	}
 	filePath := path.Join(dirPath, fileName)
-	file, err := extension.ManifesterFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	file, err := extension.ManifesterFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		panic(err)
 	}

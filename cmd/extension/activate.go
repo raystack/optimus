@@ -7,17 +7,17 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 )
 
 type activateCommand struct {
 	logger log.Logger
 
-	project              *extension.RepositoryProject
+	project              *model.RepositoryProject
 	reservedCommandNames []string
 }
 
-func newActivateCommand(logger log.Logger, project *extension.RepositoryProject, reservedCommandNames []string) *cobra.Command {
+func newActivateCommand(logger log.Logger, project *model.RepositoryProject, reservedCommandNames []string) *cobra.Command {
 	activate := &activateCommand{
 		logger:               logger,
 		project:              project,

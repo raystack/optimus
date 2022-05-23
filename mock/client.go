@@ -3,7 +3,7 @@
 package mock
 
 import (
-	extension "github.com/odpf/optimus/extension"
+	model "github.com/odpf/optimus/extension/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -36,15 +36,15 @@ func (_m *Client) DownloadAsset(_a0 string) ([]byte, error) {
 }
 
 // DownloadRelease provides a mock function with given fields: _a0
-func (_m *Client) DownloadRelease(_a0 string) (*extension.RepositoryRelease, error) {
+func (_m *Client) DownloadRelease(_a0 string) (*model.RepositoryRelease, error) {
 	ret := _m.Called(_a0)
 
-	var r0 *extension.RepositoryRelease
-	if rf, ok := ret.Get(0).(func(string) *extension.RepositoryRelease); ok {
+	var r0 *model.RepositoryRelease
+	if rf, ok := ret.Get(0).(func(string) *model.RepositoryRelease); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*extension.RepositoryRelease)
+			r0 = ret.Get(0).(*model.RepositoryRelease)
 		}
 	}
 

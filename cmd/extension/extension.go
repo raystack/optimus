@@ -11,6 +11,7 @@ import (
 
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 )
 
 // UpdateWithExtension updates input command with the available extensions
@@ -53,7 +54,7 @@ func extensionCommand(logger log.Logger, reservedCommandNames []string) *cobra.C
 
 func generateManagementCommands(logger log.Logger, reservedCommandNames []string) []*cobra.Command {
 	manifester := extension.NewDefaultManifester()
-	manifest, err := manifester.Load(extension.ExtensionDir)
+	manifest, err := manifester.Load(model.ExtensionDir)
 	if err != nil {
 		panic(err)
 	}

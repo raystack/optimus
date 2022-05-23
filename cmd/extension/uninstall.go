@@ -7,18 +7,18 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/cmd/survey"
-	"github.com/odpf/optimus/extension"
+	"github.com/odpf/optimus/extension/model"
 )
 
 type uninstallCommand struct {
 	logger log.Logger
 	survey *survey.ExtensionSurvey
 
-	project              *extension.RepositoryProject
+	project              *model.RepositoryProject
 	reservedCommandNames []string
 }
 
-func newUninstallCommand(logger log.Logger, project *extension.RepositoryProject, reservedCommandNames []string) *cobra.Command {
+func newUninstallCommand(logger log.Logger, project *model.RepositoryProject, reservedCommandNames []string) *cobra.Command {
 	uninstall := &uninstallCommand{
 		logger:               logger,
 		survey:               survey.NewExtensionSurvey(),
