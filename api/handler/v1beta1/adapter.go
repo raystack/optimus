@@ -360,8 +360,7 @@ func FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
 	var data []models.InstanceSpecData
 	for _, asset := range conf.GetData() {
 		assetType := models.InstanceDataTypeEnv
-		switch asset.Type {
-		case pb.InstanceSpecData_TYPE_FILE:
+		if asset.Type == pb.InstanceSpecData_TYPE_FILE {
 			assetType = models.InstanceDataTypeFile
 		}
 		data = append(data, models.InstanceSpecData{

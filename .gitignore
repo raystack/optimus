@@ -10,7 +10,6 @@ vendor
 .vscode
 *.pem
 TODO
-version
 temp
 coverage.out
 jobs

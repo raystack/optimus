@@ -16,7 +16,9 @@ behavior:
       duration : 2h45m
     channels:
     - slack://#slack-channel or @team-group or user&gmail.com
+    - pagerduty://#pagerduty_service_name
 ``` 
 
 * sla_miss expects a duration config expect users to provide the duration as string.
 * slack alerting is supported now which users can configure to channel or team handle or a specific user.
+* for pagerduty alerts to work, ```notify_<pagerduty_service_name>``` secret with pagerduty integration key/routing key needs to be registered with optimus.

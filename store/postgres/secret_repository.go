@@ -165,18 +165,6 @@ func (repo *secretRepository) GetByName(ctx context.Context, project models.Proj
 	return r.ToSpec(repo.hash)
 }
 
-func (repo *secretRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ProjectSecretItem, error) {
-	var r Secret
-	// TODO: Should this query be scoped to project?
-	if err := repo.db.WithContext(ctx).Where("id = ?", id).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ProjectSecretItem{}, store.ErrResourceNotFound
-		}
-		return models.ProjectSecretItem{}, err
-	}
-	return r.ToSpec(repo.hash)
-}
-
 func (repo *secretRepository) GetAll(ctx context.Context, project models.ProjectSpec) ([]models.SecretItemInfo, error) {
 	var secretItems []models.SecretItemInfo
 	var resources []Secret
@@ -220,7 +208,7 @@ func (repo secretRepository) GetSecrets(ctx context.Context, project models.Proj
 }
 
 func (repo *secretRepository) Delete(ctx context.Context, project models.ProjectSpec, namespace models.NamespaceSpec, secretName string) error {
-	query := repo.db.WithContext(ctx).
+	query := repo.db.Unscoped().WithContext(ctx).
 		Where("project_id = ?", project.ID.UUID()).
 		Where("name = ?", secretName)
 

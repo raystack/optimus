@@ -1,37 +1,38 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/salt/cmdx"
 	"github.com/odpf/salt/term"
 	cli "github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/cmd/admin"
+	"github.com/odpf/optimus/cmd/backup"
+	"github.com/odpf/optimus/cmd/deploy"
+	"github.com/odpf/optimus/cmd/extension"
+	"github.com/odpf/optimus/cmd/initialize"
+	"github.com/odpf/optimus/cmd/job"
+	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/namespace"
+	"github.com/odpf/optimus/cmd/project"
+	"github.com/odpf/optimus/cmd/replay"
+	"github.com/odpf/optimus/cmd/resource"
+	"github.com/odpf/optimus/cmd/secret"
+	"github.com/odpf/optimus/cmd/serve"
+	"github.com/odpf/optimus/cmd/version"
+	"github.com/odpf/optimus/utils"
 )
 
-var (
-	disableColoredOut = false
-	// colored print
-	coloredNotice  = fmt.Sprintf
-	coloredError   = fmt.Sprintf
-	coloredSuccess = fmt.Sprintf
-
-	ErrServerNotReachable = func(host string) error {
-		return errors.New(heredoc.Docf(`Unable to reach optimus server at %s, this can happen due to following reasons:
-			1. Check if you are connected to internet
-			2. Is the host correctly configured in optimus config
-			3. Is Optimus server currently unreachable`, host))
-	}
-)
+var disableColoredOut = false
 
 // New constructs the 'root' command. It houses all other sub commands
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New() *cli.Command {
-	disableColoredOut = !isTerminal(os.Stdout)
+	disableColoredOut = !utils.IsTerminal(os.Stdout)
 
 	cmd := &cli.Command{
 		Use: "optimus <command> <subcommand> [flags]",
@@ -64,13 +65,13 @@ func New() *cli.Command {
 			// initialise color if not requested to be disabled
 			cs := term.NewColorScheme()
 			if !disableColoredOut {
-				coloredNotice = func(s string, a ...interface{}) string {
+				logger.ColoredNotice = func(s string, a ...interface{}) string {
 					return cs.Yellowf(s, a...)
 				}
-				coloredError = func(s string, a ...interface{}) string {
+				logger.ColoredError = func(s string, a ...interface{}) string {
 					return cs.Redf(s, a...)
 				}
-				coloredSuccess = func(s string, a ...interface{}) string {
+				logger.ColoredSuccess = func(s string, a ...interface{}) string {
 					return cs.Greenf(s, a...)
 				}
 			}
@@ -80,20 +81,20 @@ func New() *cli.Command {
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	cmd.AddCommand(adminCommand())
-	cmd.AddCommand(backupCommand())
-	cmd.AddCommand(deployCommand())
-	cmd.AddCommand(initCommand())
-	cmd.AddCommand(jobCommand(cmd))
-	cmd.AddCommand(namespaceCommand())
-	cmd.AddCommand(projectCommand())
-	cmd.AddCommand(replayCommand())
-	cmd.AddCommand(resourceCommand())
-	cmd.AddCommand(secretCommand())
-	cmd.AddCommand(versionCommand())
+	cmd.AddCommand(admin.NewAdminCommand())
+	cmd.AddCommand(backup.NewBackupCommand())
+	cmd.AddCommand(deploy.NewDeployCommand())
+	cmd.AddCommand(initialize.NewInitializeCommand())
+	cmd.AddCommand(job.NewJobCommand())
+	cmd.AddCommand(namespace.NewNamespaceCommand())
+	cmd.AddCommand(project.NewProjectCommand())
+	cmd.AddCommand(replay.NewReplayCommand())
+	cmd.AddCommand(resource.NewResourceCommand())
+	cmd.AddCommand(secret.NewSecretCommand())
+	cmd.AddCommand(version.NewVersionCommand())
 
-	cmd.AddCommand(serveCommand())
+	cmd.AddCommand(serve.NewServeCommand())
 
-	addExtensionCommand(cmd)
+	extension.UpdateWithExtension(cmd)
 	return cmd
 }

@@ -5,7 +5,6 @@ package postgres_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -123,7 +122,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 		err = repo.Insert(ctx, testModels[1])
 		assert.NotNil(t, err)
 
-		checkModel, err := repo.GetByID(ctx, testModels[0].ID)
+		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 	})
@@ -144,7 +143,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.datas.test", checkModel.Name)
 
@@ -152,7 +151,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelB.ID)
+			checkModel, err = repo.GetByName(ctx, testModelB.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 			assert.Equal(t, "table", checkModel.Type.String())
@@ -171,7 +170,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			err := repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "proj.ttt.test2", checkModel.Name)
 
@@ -183,7 +182,7 @@ func TestIntegrationResourceSpecRepository(t *testing.T) {
 			err = repo.Save(ctx, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelA.ID)
+			checkModel, err = repo.GetByName(ctx, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, 6, checkModel.Version)
 		})
@@ -293,24 +292,8 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 	datastorer.On("Name").Return("DS")
 
 	DBSetup := func() *gorm.DB {
-		dbURL, ok := os.LookupEnv("TEST_OPTIMUS_DB_URL")
-		if !ok {
-			panic("unable to find TEST_OPTIMUS_DB_URL env var")
-		}
-		dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
-		if err != nil {
-			panic(err)
-		}
-		m, err := postgres.NewHTTPFSMigrator(dbURL)
-		if err != nil {
-			panic(err)
-		}
-		if err := m.Drop(); err != nil {
-			panic(err)
-		}
-		if err := postgres.Migrate(dbURL); err != nil {
-			panic(err)
-		}
+		dbConn := setupDB()
+		truncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, projRepo.Save(ctx, projectSpec))
@@ -410,32 +393,5 @@ func TestIntegrationProjectResourceSpecRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, "proj.datas.test", checkModel.Name)
 		assert.Equal(t, namespaceSpec.Name, checkClient.Name)
-	})
-
-	t.Run("GetAll", func(t *testing.T) {
-		db := DBSetup()
-
-		testModels := []models.ResourceSpec{}
-		testModels = append(testModels, testConfigs...)
-
-		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, projectSpec, datastorer)
-		repo := postgres.NewResourceSpecRepository(db, namespaceSpec, datastorer, projectResourceSpecRepo)
-
-		dsTypeTableController.On("GenerateURN", testMock.Anything).Return(testModels[0].URN, nil).Once()
-
-		err := repo.Insert(ctx, testModels[0])
-		assert.Nil(t, err)
-
-		// validate at project level
-		checkModels, err := projectResourceSpecRepo.GetAll(ctx)
-		assert.Nil(t, err)
-		assert.Equal(t, "proj.datas.test", checkModels[0].Name)
-		assert.Equal(t, 1, len(checkModels))
-
-		// validate at client level
-		checkModels, err = repo.GetAll(ctx)
-		assert.Nil(t, err)
-		assert.Equal(t, "proj.datas.test", checkModels[0].Name)
-		assert.Equal(t, 1, len(checkModels))
 	})
 }
