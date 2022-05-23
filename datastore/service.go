@@ -316,7 +316,7 @@ func (srv Service) ListResourceBackups(ctx context.Context, projectSpec models.P
 	return recentBackups, nil
 }
 
-func (srv Service) GetResourceBackup(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string,
+func (srv Service) GetResourceBackup(ctx context.Context, _ models.ProjectSpec, datastoreName string,
 	id uuid.UUID) (models.BackupSpec, error) {
 	datastorer, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
