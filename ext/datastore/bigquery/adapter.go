@@ -73,13 +73,14 @@ type fieldMode struct {
 
 func bqFieldModeTo(field BQField) (fieldMode, error) {
 	var fm fieldMode
-	if strings.EqualFold(field.Mode, "required") {
+	switch strings.ToLower(field.Mode) {
+	case "required":
 		fm.required = true
-	} else if strings.EqualFold(field.Mode, "repeated") {
+	case "repeated":
 		fm.repeated = true
-	} else if field.Mode == "" || strings.EqualFold(field.Mode, "nullable") {
+	case "", "nullable":
 		fm.required = false
-	} else {
+	default:
 		return fm, fmt.Errorf("field %v mode should be required,repeated or nullable ", field.Name)
 	}
 	return fm, nil

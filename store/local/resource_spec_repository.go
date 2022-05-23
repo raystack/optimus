@@ -63,7 +63,7 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 	// save assets
 	for assetName, assetValue := range resourceSpec.Assets {
 		if err := afero.WriteFile(repo.fs, repo.assetFilePath(rootDir, assetName), []byte(assetValue), os.FileMode(0o755)); err != nil {
-			return fmt.Errorf("WriteFile.Asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
+			return fmt.Errorf("error in writing asset: %s: %w", repo.assetFilePath(rootDir, assetName), err)
 		}
 	}
 

@@ -98,12 +98,12 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err = repo.Insert(ctx, projectSpec, models.NamespaceSpec{}, testModels[3])
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModels[0].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 			assert.Equal(t, models.SecretTypeUserDefined, checkModel.Type)
 
-			checkModel, err = repo.GetByID(ctx, testModels[3].ID)
+			checkModel, err = repo.GetByName(ctx, projectSpec, testModels[3].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "_OPTIMUS_sample_secret", checkModel.Name)
 			assert.Equal(t, models.SecretTypeSystemDefined, checkModel.Type)
@@ -124,12 +124,12 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err = repo.Insert(ctx, projectSpec, namespaceSpec, testModels[3])
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModels[0].ID)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModels[0].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 			assert.Equal(t, models.SecretTypeUserDefined, checkModel.Type)
 
-			checkModel, err = repo.GetByID(ctx, testModels[3].ID)
+			checkModel, err = repo.GetByName(ctx, projectSpec, testModels[3].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "_OPTIMUS_sample_secret", checkModel.Name)
 			assert.Equal(t, models.SecretTypeSystemDefined, checkModel.Type)
@@ -147,7 +147,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
@@ -155,7 +155,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, projectSpec, namespaceSpec, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelB.ID)
+			checkModel, err = repo.GetByName(ctx, projectSpec, testModelB.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 			assert.Equal(t, "super-secret", checkModel.Value)
@@ -171,7 +171,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
@@ -193,7 +193,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err := repo.Save(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByID(ctx, testModelA.ID)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
@@ -202,7 +202,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 			err = repo.Update(ctx, projectSpec, namespaceSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByID(ctx, testModelA.ID)
+			checkModel, err = repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://another_folder", checkModel.Value)
 		})
