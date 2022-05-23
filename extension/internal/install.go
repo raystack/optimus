@@ -19,7 +19,6 @@ type installResource struct {
 
 // InstallManager is an extension manager to manage installation process
 type InstallManager struct {
-	ctx           context.Context // nolint:containedctx
 	httpDoer      model.HTTPDoer
 	manifester    model.Manifester
 	assetOperator model.AssetOperator
@@ -30,16 +29,12 @@ type InstallManager struct {
 
 // NewInstallManager initializes install manager
 func NewInstallManager(
-	ctx context.Context,
 	httpDoer model.HTTPDoer,
 	manifester model.Manifester,
 	assetOperator model.AssetOperator,
 	verbose bool,
 	reservedCommandNames ...string,
 ) (*InstallManager, error) {
-	if ctx == nil {
-		return nil, model.ErrNilContext
-	}
 	if httpDoer == nil {
 		return nil, model.ErrNilHTTPDoer
 	}
@@ -50,7 +45,6 @@ func NewInstallManager(
 		return nil, model.ErrNilAssetOperator
 	}
 	return &InstallManager{
-		ctx:                  ctx,
 		httpDoer:             httpDoer,
 		manifester:           manifester,
 		assetOperator:        assetOperator,
@@ -60,12 +54,12 @@ func NewInstallManager(
 }
 
 // Install installs extension
-func (i *InstallManager) Install(remotePath, commandName string) error {
+func (i *InstallManager) Install(ctx context.Context, remotePath, commandName string) error {
 	if err := i.validateInput(remotePath); err != nil {
 		return formatError(i.verbose, err, "error validating install input")
 	}
 
-	resource, err := i.setupInstallResource(remotePath, commandName)
+	resource, err := i.setupInstallResource(ctx, remotePath, commandName)
 	if err != nil {
 		return formatError(i.verbose, err, "error setting up installation")
 	}
@@ -76,7 +70,7 @@ func (i *InstallManager) Install(remotePath, commandName string) error {
 		)
 	}
 
-	if err := install(resource.client, i.assetOperator, resource.metadata); err != nil {
+	if err := install(ctx, resource.client, i.assetOperator, resource.metadata); err != nil {
 		return formatError(i.verbose, err, "error encountered when installing [%s/%s@%s]",
 			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
@@ -156,7 +150,7 @@ func (*InstallManager) validateCommandNameOnManifest(manifest *model.Manifest, m
 	return nil
 }
 
-func (i *InstallManager) setupInstallResource(remotePath, commandName string) (*installResource, error) {
+func (i *InstallManager) setupInstallResource(ctx context.Context, remotePath, commandName string) (*installResource, error) {
 	metadata, err := i.extractMetadata(remotePath)
 	if err != nil {
 		return nil, fmt.Errorf("error extracting metadata: %w", err)
@@ -165,11 +159,11 @@ func (i *InstallManager) setupInstallResource(remotePath, commandName string) (*
 	if err != nil {
 		return nil, fmt.Errorf("error loading manifest: %w", err)
 	}
-	client, err := findClientProvider(i.ctx, i.httpDoer, metadata.ProviderName)
+	client, err := findClientProvider(i.httpDoer, metadata.ProviderName)
 	if err != nil {
 		return nil, fmt.Errorf("error finding client for provider [%s]: %w", metadata.ProviderName, err)
 	}
-	release, err := downloadRelease(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
+	release, err := downloadRelease(ctx, client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
 	if err != nil {
 		return nil, fmt.Errorf("error downloading release: %w", err)
 	}

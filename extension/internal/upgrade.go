@@ -18,7 +18,6 @@ type upgradeResource struct {
 
 // UpgradeManager is an extension manager to manage upgrade process
 type UpgradeManager struct {
-	ctx           context.Context // nolint:containedctx
 	httpDoer      model.HTTPDoer
 	manifester    model.Manifester
 	assetOperator model.AssetOperator
@@ -28,15 +27,11 @@ type UpgradeManager struct {
 
 // NewUpgradeManager initializes upgrade manager
 func NewUpgradeManager(
-	ctx context.Context,
 	httpDoer model.HTTPDoer,
 	manifester model.Manifester,
 	assetOperator model.AssetOperator,
 	verbose bool,
 ) (*UpgradeManager, error) {
-	if ctx == nil {
-		return nil, model.ErrNilContext
-	}
 	if httpDoer == nil {
 		return nil, model.ErrNilHTTPDoer
 	}
@@ -47,7 +42,6 @@ func NewUpgradeManager(
 		return nil, model.ErrNilAssetOperator
 	}
 	return &UpgradeManager{
-		ctx:           ctx,
 		httpDoer:      httpDoer,
 		manifester:    manifester,
 		assetOperator: assetOperator,
@@ -56,12 +50,12 @@ func NewUpgradeManager(
 }
 
 // Upgrade upgrades extension specified by the command name
-func (u *UpgradeManager) Upgrade(commandName string) error {
+func (u *UpgradeManager) Upgrade(ctx context.Context, commandName string) error {
 	if err := u.validateInput(commandName); err != nil {
 		return formatError(u.verbose, err, "error validating upgrade input")
 	}
 
-	resource, err := u.setupResource(commandName)
+	resource, err := u.setupResource(ctx, commandName)
 	if err != nil {
 		return formatError(u.verbose, err, "error setting up upgrade")
 	}
@@ -74,7 +68,7 @@ func (u *UpgradeManager) Upgrade(commandName string) error {
 		return nil
 	}
 
-	if err := install(resource.client, u.assetOperator, resource.metadata); err != nil {
+	if err := install(ctx, resource.client, u.assetOperator, resource.metadata); err != nil {
 		return formatError(u.verbose, err, "error encountered during installing [%s/%s@%s]",
 			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
@@ -132,7 +126,7 @@ func (*UpgradeManager) rebuildManifest(resource *upgradeResource) *model.Manifes
 	return manifest
 }
 
-func (u *UpgradeManager) setupResource(commandName string) (*upgradeResource, error) {
+func (u *UpgradeManager) setupResource(ctx context.Context, commandName string) (*upgradeResource, error) {
 	manifest, err := u.manifester.Load(model.ExtensionDir)
 	if err != nil {
 		return nil, fmt.Errorf("error loading manifest: %w", err)
@@ -141,7 +135,7 @@ func (u *UpgradeManager) setupResource(commandName string) (*upgradeResource, er
 	if project == nil {
 		return nil, fmt.Errorf("extension with command name [%s] is not installed", commandName)
 	}
-	client, err := findClientProvider(u.ctx, u.httpDoer, project.Owner.Provider)
+	client, err := findClientProvider(u.httpDoer, project.Owner.Provider)
 	if err != nil {
 		return nil, fmt.Errorf("error finding client for provider [%s]: %w", project.Owner.Provider, err)
 	}
@@ -149,7 +143,7 @@ func (u *UpgradeManager) setupResource(commandName string) (*upgradeResource, er
 	if currentRelease == nil {
 		return nil, fmt.Errorf("manifest file is corrupted based on [%s]", commandName)
 	}
-	upgradeRelease, err := downloadRelease(client, "", currentRelease.UpgradeAPIPath)
+	upgradeRelease, err := downloadRelease(ctx, client, "", currentRelease.UpgradeAPIPath)
 	if err != nil {
 		return nil, fmt.Errorf("error downloading release for [%s/%s@latest]: %w",
 			project.Owner.Name, project.Name, err,

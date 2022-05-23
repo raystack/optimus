@@ -33,14 +33,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		var commandName string
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -51,14 +51,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -69,14 +69,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -105,14 +105,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -143,21 +143,21 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		})
 		factory.NewClientRegistry = newClientFactory
 
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -188,23 +188,23 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
 
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -232,9 +232,9 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		}
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -245,14 +245,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -280,9 +280,9 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		}
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -293,14 +293,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.NoError(actualErr)
 	})
@@ -328,12 +328,12 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		}
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(&model.RepositoryRelease{
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(&model.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -343,14 +343,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -375,12 +375,12 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		project.Owner = owner
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(&model.RepositoryRelease{
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(&model.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -393,14 +393,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		assetOperator := &mock.AssetOperator{}
 		assetOperator.On("Prepare", tMock.Anything).Return(errors.New("random error"))
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -425,12 +425,12 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		project.Owner = owner
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(&model.RepositoryRelease{
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(&model.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -444,14 +444,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -476,12 +476,12 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		project.Owner = owner
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(&model.RepositoryRelease{
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(&model.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -497,14 +497,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		verbose := false
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.Error(actualErr)
 	})
@@ -529,12 +529,12 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		project.Owner = owner
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(&model.RepositoryRelease{
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(&model.RepositoryRelease{
 			TagName: "v1.0.1",
 		}, nil)
-		client.On("DownloadAsset", tMock.Anything).Return(nil, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return(nil, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -550,14 +550,14 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		verbose := false
-		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		commandName := "valor"
 
-		actualErr := manager.Upgrade(commandName)
+		actualErr := manager.Upgrade(ctx, commandName)
 
 		u.NoError(actualErr)
 	})
@@ -566,61 +566,45 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 func TestNewUpgradeManager(t *testing.T) {
 	verbose := true
 
-	t.Run("should return nil and error if context is nil", func(t *testing.T) {
-		var ctx context.Context
-		httpDoer := &mock.HTTPDoer{}
-		manifester := &mock.Manifester{}
-		assetOperator := &mock.AssetOperator{}
-
-		actualManager, actualErr := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
-
-		assert.Nil(t, actualManager)
-		assert.Error(t, actualErr)
-	})
-
 	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
-		ctx := context.Background()
 		var httpDoer model.HTTPDoer
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return nil and error if manifester is nil", func(t *testing.T) {
-		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		var manifester model.Manifester
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return nil and error if asset operator is nil", func(t *testing.T) {
-		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		var assetOperator model.AssetOperator
 
-		actualManager, actualErr := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return manager and nil if no error encountered", func(t *testing.T) {
-		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewUpgradeManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)

@@ -1,7 +1,6 @@
 package factory_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -18,7 +17,7 @@ func (n *NewClientFactoryTestSuite) TestAdd() {
 	n.Run("should return error if provider is empty", func() {
 		var provider string
 		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 
@@ -40,7 +39,7 @@ func (n *NewClientFactoryTestSuite) TestAdd() {
 	n.Run("should return error if client initializer is already registered", func() {
 		provider := "test_provider"
 		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 
@@ -56,7 +55,7 @@ func (n *NewClientFactoryTestSuite) TestGet() {
 	n.Run("should return nil and error if provider is empty", func() {
 		registeredProvider := "test_provider"
 		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {
@@ -85,7 +84,7 @@ func (n *NewClientFactoryTestSuite) TestGet() {
 	n.Run("should return client initializer and nil if no error is encountered", func() {
 		registeredProvider := "test_provider"
 		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return nil, nil
 		}
 		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {

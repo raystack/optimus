@@ -26,8 +26,8 @@ func buildProject(metadata *model.Metadata, release *model.RepositoryRelease) *m
 	}
 }
 
-func install(client model.Client, assetOperator model.AssetOperator, metadata *model.Metadata) error {
-	asset, err := downloadAsset(client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
+func install(ctx context.Context, client model.Client, assetOperator model.AssetOperator, metadata *model.Metadata) error {
+	asset, err := downloadAsset(ctx, client, metadata.CurrentAPIPath, metadata.UpgradeAPIPath)
 	if err != nil {
 		return fmt.Errorf("error downloading asset: %w", err)
 	}
@@ -47,12 +47,12 @@ func installAsset(assetOperator model.AssetOperator, asset []byte, localDirPath,
 	return nil
 }
 
-func downloadAsset(client model.Client, currentAPIPath, upgradeAPIPath string) ([]byte, error) {
+func downloadAsset(ctx context.Context, client model.Client, currentAPIPath, upgradeAPIPath string) ([]byte, error) {
 	apiPath := currentAPIPath
 	if apiPath == "" {
 		apiPath = upgradeAPIPath
 	}
-	return client.DownloadAsset(apiPath)
+	return client.DownloadAsset(ctx, apiPath)
 }
 
 func isInstalled(manifest *model.Manifest, metadata *model.Metadata) bool {
@@ -83,20 +83,20 @@ func validateCommandNameOnReserved(commandName string, reservedCommandNames []st
 	return nil
 }
 
-func downloadRelease(client model.Client, currentAPIPath, upgradeAPIPath string) (*model.RepositoryRelease, error) {
+func downloadRelease(ctx context.Context, client model.Client, currentAPIPath, upgradeAPIPath string) (*model.RepositoryRelease, error) {
 	apiPath := currentAPIPath
 	if apiPath == "" {
 		apiPath = upgradeAPIPath
 	}
-	return client.DownloadRelease(apiPath)
+	return client.DownloadRelease(ctx, apiPath)
 }
 
-func findClientProvider(ctx context.Context, httpDoer model.HTTPDoer, provider string) (model.Client, error) {
+func findClientProvider(httpDoer model.HTTPDoer, provider string) (model.Client, error) {
 	newClient, err := factory.NewClientRegistry.Get(provider)
 	if err != nil {
 		return nil, fmt.Errorf("error getting client initializer: %w", err)
 	}
-	return newClient(ctx, httpDoer)
+	return newClient(httpDoer)
 }
 
 func findProjectByCommandName(manifest *model.Manifest, commandName string) *model.RepositoryProject {

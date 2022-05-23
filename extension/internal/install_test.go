@@ -33,7 +33,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -41,7 +41,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		var remotePath string
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -57,7 +57,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -65,7 +65,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -81,7 +81,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -89,7 +89,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -107,7 +107,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -115,7 +115,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -140,7 +140,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -148,7 +148,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -165,9 +165,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		}
 
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -178,7 +178,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -186,7 +186,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -208,9 +208,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -239,14 +239,14 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
 		reservedCommands := []string{"valor"}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose, reservedCommands...)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose, reservedCommands...)
 		if err != nil {
 			panic(err)
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -269,9 +269,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -299,14 +299,14 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -329,9 +329,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		release := &model.RepositoryRelease{
 			TagName: "v1.0",
 		}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -359,14 +359,14 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
 
 		remotePath := "gojek/optimus-extension-valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -386,10 +386,10 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
-		client.On("DownloadAsset", tMock.Anything).Return(nil, errors.New("random error"))
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return(nil, errors.New("random error"))
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -400,7 +400,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -408,7 +408,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -428,10 +428,10 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -444,7 +444,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -452,7 +452,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -472,10 +472,10 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -489,7 +489,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -497,7 +497,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -517,10 +517,10 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -536,7 +536,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		verbose := false
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -544,7 +544,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.Error(actualErr)
 	})
@@ -564,10 +564,10 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client := &mock.Client{}
-		client.On("DownloadRelease", tMock.Anything).Return(release, nil)
-		client.On("DownloadAsset", tMock.Anything).Return([]byte{}, nil)
+		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
+		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
 		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(ctx context.Context, httpDoer model.HTTPDoer) (model.Client, error) {
+		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
 			return client, nil
 		})
 		factory.NewClientRegistry = newClientFactory
@@ -583,7 +583,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		verbose := false
-		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -591,7 +591,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		remotePath := "gojek/optimus-extension-valor"
 		commandName := "valor"
 
-		actualErr := manager.Install(remotePath, commandName)
+		actualErr := manager.Install(ctx, remotePath, commandName)
 
 		i.NoError(actualErr)
 	})
@@ -600,61 +600,45 @@ func (i *InstallManagerTestSuite) TestInstall() {
 func TestNewInstallManager(t *testing.T) {
 	verbose := true
 
-	t.Run("should return nil and error if context is nil", func(t *testing.T) {
-		var ctx context.Context
-		httpDoer := &mock.HTTPDoer{}
-		manifester := &mock.Manifester{}
-		assetOperator := &mock.AssetOperator{}
-
-		actualManager, actualErr := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
-
-		assert.Nil(t, actualManager)
-		assert.Error(t, actualErr)
-	})
-
 	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
-		ctx := context.Background()
 		var httpDoer model.HTTPDoer
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return nil and error if manifester is nil", func(t *testing.T) {
-		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		var manifester model.Manifester
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return nil and error if asset operator is nil", func(t *testing.T) {
-		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		var assetOperator model.AssetOperator
 
-		actualManager, actualErr := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return manager and nil if no error encountered", func(t *testing.T) {
-		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
 
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)

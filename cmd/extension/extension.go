@@ -1,7 +1,6 @@
 package extension
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -81,9 +80,8 @@ func generateManagementCommands(logger log.Logger, reservedCommandNames []string
 }
 
 func getExtensionManager(verbose bool, reservedCommandNames ...string) (*extension.Manager, error) {
-	ctx := context.Background()
 	httpClient := http.DefaultClient
 	manifester := extension.NewDefaultManifester()
 	assetOperator := extension.NewDefaultAssetOperator(os.Stdin, os.Stdout, os.Stderr)
-	return extension.NewManager(ctx, httpClient, manifester, assetOperator, verbose, reservedCommandNames...)
+	return extension.NewManager(httpClient, manifester, assetOperator, verbose, reservedCommandNames...)
 }

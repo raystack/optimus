@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/odpf/salt/log"
@@ -44,7 +45,8 @@ func (i *installCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	i.logger.Info(fmt.Sprintf("Installing [%s] ...", remotePath))
-	if err := manager.Install(remotePath, commandName); err != nil {
+	ctx := context.Background()
+	if err := manager.Install(ctx, remotePath, commandName); err != nil {
 		i.logger.Error("... finished with error")
 		return err
 	}

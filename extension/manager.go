@@ -9,7 +9,6 @@ import (
 
 // Manager defines the extension management
 type Manager struct {
-	ctx           context.Context //nolint:containedctx
 	httpDoer      model.HTTPDoer
 	manifester    model.Manifester
 	assetOperator model.AssetOperator
@@ -20,16 +19,12 @@ type Manager struct {
 
 // NewManager initializes new manager
 func NewManager(
-	ctx context.Context,
 	httpDoer model.HTTPDoer,
 	manifester model.Manifester,
 	assetOperator model.AssetOperator,
 	verbose bool,
 	reservedCommandNames ...string,
 ) (*Manager, error) {
-	if ctx == nil {
-		return nil, model.ErrNilContext
-	}
 	if httpDoer == nil {
 		return nil, model.ErrNilHTTPDoer
 	}
@@ -40,7 +35,6 @@ func NewManager(
 		return nil, model.ErrNilAssetOperator
 	}
 	return &Manager{
-		ctx:                  ctx,
 		httpDoer:             httpDoer,
 		manifester:           manifester,
 		assetOperator:        assetOperator,
@@ -101,9 +95,8 @@ func (m *Manager) Uninstall(commandName, tagName string) error {
 }
 
 // Upgrade runs an extension upgrade process
-func (m *Manager) Upgrade(commandName string) error {
+func (m *Manager) Upgrade(ctx context.Context, commandName string) error {
 	manager, err := internal.NewUpgradeManager(
-		m.ctx,
 		m.httpDoer,
 		m.manifester,
 		m.assetOperator,
@@ -112,13 +105,12 @@ func (m *Manager) Upgrade(commandName string) error {
 	if err != nil {
 		return err
 	}
-	return manager.Upgrade(commandName)
+	return manager.Upgrade(ctx, commandName)
 }
 
 // Install runs an extension installation process
-func (m *Manager) Install(remotePath, commandName string) error {
+func (m *Manager) Install(ctx context.Context, remotePath, commandName string) error {
 	manager, err := internal.NewInstallManager(
-		m.ctx,
 		m.httpDoer,
 		m.manifester,
 		m.assetOperator,
@@ -128,5 +120,5 @@ func (m *Manager) Install(remotePath, commandName string) error {
 	if err != nil {
 		return err
 	}
-	return manager.Install(remotePath, commandName)
+	return manager.Install(ctx, remotePath, commandName)
 }

@@ -3,6 +3,8 @@
 package mock
 
 import (
+	context "context"
+
 	model "github.com/odpf/optimus/extension/model"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,13 +14,13 @@ type Client struct {
 	mock.Mock
 }
 
-// DownloadAsset provides a mock function with given fields: _a0
-func (_m *Client) DownloadAsset(_a0 string) ([]byte, error) {
-	ret := _m.Called(_a0)
+// DownloadAsset provides a mock function with given fields: _a0, _a1
+func (_m *Client) DownloadAsset(_a0 context.Context, _a1 string) ([]byte, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 []byte
-	if rf, ok := ret.Get(0).(func(string) []byte); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, string) []byte); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
@@ -26,8 +28,8 @@ func (_m *Client) DownloadAsset(_a0 string) ([]byte, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -35,13 +37,13 @@ func (_m *Client) DownloadAsset(_a0 string) ([]byte, error) {
 	return r0, r1
 }
 
-// DownloadRelease provides a mock function with given fields: _a0
-func (_m *Client) DownloadRelease(_a0 string) (*model.RepositoryRelease, error) {
-	ret := _m.Called(_a0)
+// DownloadRelease provides a mock function with given fields: _a0, _a1
+func (_m *Client) DownloadRelease(_a0 context.Context, _a1 string) (*model.RepositoryRelease, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *model.RepositoryRelease
-	if rf, ok := ret.Get(0).(func(string) *model.RepositoryRelease); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.RepositoryRelease); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.RepositoryRelease)
@@ -49,8 +51,8 @@ func (_m *Client) DownloadRelease(_a0 string) (*model.RepositoryRelease, error) 
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
