@@ -496,6 +496,7 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
@@ -548,6 +549,7 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewUpgradeManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)

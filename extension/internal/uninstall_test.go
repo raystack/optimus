@@ -224,6 +224,7 @@ func (u *UninstallManagerTestSuite) TestUninstall() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Uninstall", tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewUninstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
@@ -238,15 +239,19 @@ func (u *UninstallManagerTestSuite) TestUninstall() {
 	})
 
 	u.Run("should return nil if no error encountered during the whole process", func() {
-		release := &model.RepositoryRelease{
+		release1 := &model.RepositoryRelease{
 			TagName: "v1.0",
+		}
+		release2 := &model.RepositoryRelease{
+			TagName: "v1.1",
 		}
 		project := &model.RepositoryProject{
 			CommandName:   "valor",
 			ActiveTagName: "v1.0",
-			Releases:      []*model.RepositoryRelease{release},
+			Releases:      []*model.RepositoryRelease{release1, release2},
 		}
-		release.Project = project
+		release1.Project = project
+		release2.Project = project
 		owner := &model.RepositoryOwner{
 			Projects: []*model.RepositoryProject{project},
 		}
@@ -262,6 +267,7 @@ func (u *UninstallManagerTestSuite) TestUninstall() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Uninstall", tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewUninstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)

@@ -127,6 +127,7 @@ func (r *ActivateManagerTestSuite) TestActivate() {
 		}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
+		verbose := false
 		manager, err := internal.NewActivateManager(manifester, verbose)
 		if err != nil {
 			panic(err)
@@ -164,6 +165,7 @@ func (r *ActivateManagerTestSuite) TestActivate() {
 		}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewActivateManager(manifester, verbose)
 		if err != nil {
 			panic(err)

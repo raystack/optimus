@@ -24,7 +24,7 @@ func (m *ManagerTestSuite) TestInstall() {
 	defaultNewClient := factory.NewClientRegistry
 	defer func() { factory.NewClientRegistry = defaultNewClient }()
 
-	verbose := true
+	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
 		remotePath := "gojek/optimus-extension-valor"
@@ -91,7 +91,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 
 	ctx := context.Background()
 	httpDoer := &mock.HTTPDoer{}
-	verbose := true
+	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
 		commandName := "valor"
@@ -156,6 +156,8 @@ func (m *ManagerTestSuite) TestUpgrade() {
 }
 
 func (m *ManagerTestSuite) TestUninstall() {
+	verbose := false
+
 	m.Run("should return error if encountered error during execution", func() {
 		commandName := "valor"
 		tagName := "v1.0"
@@ -169,7 +171,6 @@ func (m *ManagerTestSuite) TestUninstall() {
 	m.Run("should return nil if no error encountered during the whole process", func() {
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
-		verbose := true
 
 		release := &model.RepositoryRelease{
 			TagName: "v1.0",
@@ -212,7 +213,7 @@ func (m *ManagerTestSuite) TestUninstall() {
 func (m *ManagerTestSuite) TestRun() {
 	ctx := context.Background()
 	httpDoer := &mock.HTTPDoer{}
-	verbose := true
+	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
 		commandName := "valor"
@@ -259,7 +260,7 @@ func (m *ManagerTestSuite) TestRename() {
 	ctx := context.Background()
 	httpDoer := &mock.HTTPDoer{}
 	assetOperator := &mock.AssetOperator{}
-	verbose := true
+	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
 		source := "valor"
@@ -306,7 +307,7 @@ func (m *ManagerTestSuite) TestActivate() {
 	ctx := context.Background()
 	httpDoer := &mock.HTTPDoer{}
 	assetOperator := &mock.AssetOperator{}
-	verbose := true
+	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
 		commandName := "valor"
@@ -357,7 +358,7 @@ func (m *ManagerTestSuite) TestActivate() {
 }
 
 func TestNewManager(t *testing.T) {
-	verbose := true
+	verbose := false
 
 	t.Run("should return nil and error if context is nil", func(t *testing.T) {
 		var ctx context.Context

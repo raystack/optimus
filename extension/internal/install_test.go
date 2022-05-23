@@ -535,6 +535,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
+		verbose := false
 		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
@@ -581,6 +582,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 
 		ctx := context.Background()
 		httpDoer := &mock.HTTPDoer{}
+		verbose := false
 		manager, err := internal.NewInstallManager(ctx, httpDoer, manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)

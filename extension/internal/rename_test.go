@@ -153,6 +153,7 @@ func (r *RenameManagerTestSuite) TestRename() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
+		verbose := false
 		manager, err := internal.NewRenameManager(manifester, verbose)
 		if err != nil {
 			panic(err)
@@ -183,6 +184,7 @@ func (r *RenameManagerTestSuite) TestRename() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewRenameManager(manifester, verbose)
 		if err != nil {
 			panic(err)

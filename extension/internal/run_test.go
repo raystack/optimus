@@ -121,6 +121,7 @@ func (r *RunManagerTestSuite) TestRun() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Run", tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
+		verbose := false
 		manager, err := internal.NewRunManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
@@ -152,6 +153,7 @@ func (r *RunManagerTestSuite) TestRun() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Run", tMock.Anything, tMock.Anything).Return(nil)
 
+		verbose := false
 		manager, err := internal.NewRunManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
