@@ -82,7 +82,7 @@ func (i *initializeCommand) initClientConfig(clientConfig *config.ClientConfig) 
 		return err
 	}
 	filePath := i.getClientConfigPath()
-	filePermission := 0o660
+	filePermission := 0o600
 	return os.WriteFile(filePath, marshalledClientConfig, fs.FileMode(filePermission))
 }
 
