@@ -18,12 +18,15 @@ const (
 type backCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
+
+	rootCommand *cobra.Command
 }
 
 // NewBackupCommand initializes
-func NewBackupCommand() *cobra.Command {
+func NewBackupCommand(rootCmd *cobra.Command) *cobra.Command {
 	backup := &backCommand{
 		clientConfig: &config.ClientConfig{},
+		rootCommand:  rootCmd,
 	}
 
 	cmd := &cobra.Command{
@@ -46,7 +49,9 @@ func NewBackupCommand() *cobra.Command {
 	return cmd
 }
 
-func (b *backCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (b *backCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+	b.rootCommand.PersistentPreRun(cmd, args)
+
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(b.configFilePath, cmd.Flags())
 	if err != nil {

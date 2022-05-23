@@ -9,12 +9,15 @@ import (
 type adminCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
+
+	rootCommand *cobra.Command
 }
 
 // NewAdminCommand initializes command for admin
-func NewAdminCommand() *cobra.Command {
+func NewAdminCommand(rootCmd *cobra.Command) *cobra.Command {
 	admin := &adminCommand{
 		clientConfig: &config.ClientConfig{},
+		rootCommand:  rootCmd,
 	}
 
 	cmd := &cobra.Command{
@@ -29,7 +32,9 @@ func NewAdminCommand() *cobra.Command {
 	return cmd
 }
 
-func (a *adminCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (a *adminCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+	a.rootCommand.PersistentPreRun(cmd, args)
+
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(a.configFilePath, cmd.Flags())
 	if err != nil {

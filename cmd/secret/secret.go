@@ -22,12 +22,15 @@ const (
 type secretCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
+
+	rootCommand *cobra.Command
 }
 
 // NewSecretCommand initializes command for secret
-func NewSecretCommand() *cobra.Command {
+func NewSecretCommand(rootCmd *cobra.Command) *cobra.Command {
 	secret := &secretCommand{
 		clientConfig: &config.ClientConfig{},
+		rootCommand:  rootCmd,
 	}
 
 	cmd := &cobra.Command{
@@ -43,7 +46,9 @@ func NewSecretCommand() *cobra.Command {
 	return cmd
 }
 
-func (s *secretCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (s *secretCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+	s.rootCommand.PersistentPreRun(cmd, args)
+
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(s.configFilePath, cmd.Flags())
 	if err != nil {

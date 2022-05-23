@@ -16,12 +16,15 @@ const (
 type replayCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
+
+	rootCommand *cobra.Command
 }
 
 // NewReplayCommand initializes replay command
-func NewReplayCommand() *cobra.Command {
+func NewReplayCommand(rootCmd *cobra.Command) *cobra.Command {
 	replay := &replayCommand{
 		clientConfig: &config.ClientConfig{},
+		rootCommand:  rootCmd,
 	}
 
 	cmd := &cobra.Command{
@@ -41,7 +44,9 @@ func NewReplayCommand() *cobra.Command {
 	return cmd
 }
 
-func (r *replayCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (r *replayCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
+	r.rootCommand.PersistentPreRun(cmd, args)
+
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(r.configFilePath, cmd.Flags())
 	if err != nil {
