@@ -3,8 +3,6 @@ package job
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -40,8 +38,6 @@ type deployManager struct {
 	requestQ chan models.JobDeployment
 
 	assignerScheduler *cron.Cron
-
-	wg sync.WaitGroup
 }
 
 func (m *deployManager) Deploy(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
@@ -86,15 +82,6 @@ func (m *deployManager) GetStatus(ctx context.Context, deployID models.Deploymen
 }
 
 func (m *deployManager) Init() {
-	m.l.Info("starting deployers", "count", m.config.NumWorkers)
-	for i := 0; i < m.config.NumWorkers; i++ {
-		m.wg.Add(1)
-		go m.spawnDeployer(m.deployer)
-	}
-
-	// wait until all deployers are ready
-	m.wg.Wait()
-
 	if m.assignerScheduler != nil {
 		_, err := m.assignerScheduler.AddFunc(deployAssignInterval, m.Assign)
 		if err != nil {
@@ -105,23 +92,15 @@ func (m *deployManager) Init() {
 }
 
 // start a deployer goroutine that runs the deployment in background
-func (m *deployManager) spawnDeployer(deployer Deployer) {
+func (m *deployManager) spawnDeployer(deployer Deployer, deployRequest models.JobDeployment) {
 	// deployer has spawned
-	atomic.AddInt32(&m.deployerCapacity, 1)
-	m.wg.Done()
+	defer atomic.AddInt32(&m.deployerCapacity, 1)
 
-	// TODO: avoid having multiple query
-	for deployRequest := range m.requestQ {
-		atomic.AddInt32(&m.deployerCapacity, -1)
-
-		m.l.Info("deployer start processing a request", "request id", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name)
-		ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
-		if err := deployer.Deploy(ctx, deployRequest); err != nil {
-			m.l.Error("deployer failed to process", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name, "error", err.Error())
-		}
-		cancelCtx()
-
-		atomic.AddInt32(&m.deployerCapacity, 1)
+	m.l.Info("deployer start processing a request", "request id", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
+	defer cancelCtx()
+	if err := deployer.Deploy(ctx, deployRequest); err != nil {
+		m.l.Error("deployer failed to process", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name, "error", err.Error())
 	}
 }
 
@@ -131,33 +110,24 @@ func (m *deployManager) Assign() {
 	m.cancelTimedOutDeployments(ctx)
 
 	if int(atomic.LoadInt32(&m.deployerCapacity)) <= 0 {
-		m.l.Debug("deployers are all occupied.")
+		m.l.Info("deployers are all occupied.")
 		return
 	}
 
-	capacity := int(atomic.LoadInt32(&m.deployerCapacity))
-	m.l.Debug("attempting to assign deployment request...", "capacity", capacity)
-	for i := 0; i < capacity; i++ {
+	for int(atomic.LoadInt32(&m.deployerCapacity)) > 0 {
+		// TODO: avoid having multiple query
 		jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
-				m.l.Debug(fmt.Sprintf("no deployment request found to assign deployer %d", i+1))
+				m.l.Debug("no deployment request found to assign deployer")
 				return
 			}
-			m.l.Error(fmt.Sprintf("failed to fetch executable deployment request to assign deployer %d", i+1), "error", err.Error())
+			m.l.Error("failed to fetch executable deployment request to assign deployer", "error", err.Error())
 			return
 		}
-
-		select {
-		case m.requestQ <- jobDeployment:
-			m.l.Info(fmt.Sprintf("deployer %d taking a request", i+1), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
-		default:
-			m.l.Error(fmt.Sprintf("unable to assign deployer %d to take the request", i+1), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
-			jobDeployment.Status = models.JobDeploymentStatusCancelled
-			if err := m.deployRepository.Update(ctx, jobDeployment); err != nil {
-				m.l.Error(fmt.Sprintf("unable to mark job deployment %s as cancelled", jobDeployment.ID.UUID()), "project name", jobDeployment.Project.Name, "error", err.Error())
-			}
-		}
+		m.l.Info("deployer taking a request", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
+		atomic.AddInt32(&m.deployerCapacity, -1)
+		go m.spawnDeployer(m.deployer, jobDeployment)
 	}
 }
 
@@ -186,7 +156,7 @@ func NewDeployManager(l log.Logger, deployerConfig config.Deployer, deployer Dep
 		requestQ:          make(chan models.JobDeployment),
 		l:                 l,
 		config:            deployerConfig,
-		deployerCapacity:  0,
+		deployerCapacity:  int32(deployerConfig.NumWorkers),
 		deployer:          deployer,
 		uuidProvider:      uuidProvider,
 		deployRepository:  deployRepository,

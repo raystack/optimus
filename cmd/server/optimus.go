@@ -22,6 +22,7 @@ import (
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/datastore"
+	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
@@ -277,6 +278,14 @@ func (s *OptimusServer) setupHandlers() error {
 			func(err error) {
 				s.logger.Error("slack error accumulator", "error", err)
 			},
+		),
+		"pagerduty": pagerduty.NewNotifier(
+			notificationContext,
+			pagerduty.DefaultEventBatchInterval,
+			func(err error) {
+				s.logger.Error("pagerduty error accumulator", "error", err)
+			},
+			new(pagerduty.PagerDutyServiceImpl),
 		),
 	})
 
