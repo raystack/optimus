@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -163,11 +162,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 	for {
 		response, err := stream.Recv()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			streamError = err
-			return
+			return "", err
 		}
 
 		switch response.Type {
@@ -176,7 +171,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			if !response.GetSuccess() {
 				r.refreshFailedCounter++
 				if r.verbose {
-					r.logger.Warn(logger.ColoredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue())))
+					r.logger.Warn(logger.ColoredError("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue()))
 				}
 				refreshErrors = append(refreshErrors, fmt.Errorf("failed to refresh: %s, %s", response.GetJobName(), response.GetValue()))
 			} else {
@@ -187,7 +182,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			}
 		case models.ProgressTypeJobDeploymentRequestCreated:
 			if len(refreshErrors) > 0 {
-				r.logger.Error(logger.ColoredError(fmt.Sprintf("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter)))
+				r.logger.Error(logger.ColoredError("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter))
 				for _, reqErr := range refreshErrors {
 					r.logger.Error(logger.ColoredError(reqErr.Error()))
 				}
@@ -198,7 +193,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			if !response.GetSuccess() {
 				r.logger.Warn(logger.ColoredError("Unable to request job deployment"))
 			} else {
-				r.logger.Info(logger.ColoredNotice(fmt.Sprintf("Deployment request created with ID: %s", response.GetValue())))
+				r.logger.Info(logger.ColoredNotice("Deployment request created with ID: %s", response.GetValue()))
 			}
 			deployID = response.Value
 			return
@@ -209,7 +204,6 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			}
 		}
 	}
-	return // nolint:nakedret
 }
 
 func (r *refreshCommand) resetCounters() {
