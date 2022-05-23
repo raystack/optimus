@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -139,11 +140,15 @@ func (m *deployManager) cancelTimedOutDeployments(ctx context.Context) {
 	}
 
 	for _, deployment := range inProgressDeployments {
+		m.l.Info(fmt.Sprintf("%s job deployment is in progress.", deployment.Project.Name), "time taken", time.Since(deployment.UpdatedAt).Round(time.Second))
+
 		// check state / timed out deployment, mark as cancelled
 		if time.Since(deployment.UpdatedAt).Minutes() > m.config.WorkerTimeout.Minutes() {
 			deployment.Status = models.JobDeploymentStatusCancelled
 			if err := m.deployRepository.Update(ctx, deployment); err != nil {
-				m.l.Error("failed to mark timed out deployment as cancelled", "error", err.Error())
+				m.l.Error("failed to mark timed out deployment as cancelled", "project name", deployment.Project.Name, "error", err.Error())
+			} else {
+				m.l.Info("marked timed out deployment as cancelled", "project name", deployment.Project.Name)
 			}
 		}
 	}
