@@ -59,15 +59,6 @@ func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepos
 	)
 }
 
-type namespaceRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
-	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
-}
-
 // projectResourceSpecRepoFactory stores raw resource specifications at a project level
 type projectResourceSpecRepoFactory struct {
 	db *gorm.DB
@@ -85,15 +76,6 @@ type resourceSpecRepoFactory struct {
 
 func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds models.Datastorer) store.ResourceSpecRepository {
 	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
-}
-
-// backupRepoFactory stores backup specifications
-type backupRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *backupRepoFactory) New(projectSpec models.ProjectSpec, storer models.Datastorer) store.BackupRepository {
-	return postgres.NewBackupRepository(fac.db, projectSpec, storer)
 }
 
 type airflowBucketFactory struct{}

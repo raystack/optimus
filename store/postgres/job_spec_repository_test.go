@@ -173,8 +173,8 @@ func TestIntegrationJobRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-			err := namespaceRepo.Insert(ctx, namespaceSpec)
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
 			repo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)

@@ -45,12 +45,12 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 	b.Run("Save", func(b *testing.B) {
 		db := dbSetup()
 
-		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, proj, hash)
+		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			namespace := getNamespace(i, proj)
-			err := nsRepo.Save(ctx, namespace)
+			err := nsRepo.Save(ctx, proj, namespace)
 			if err != nil {
 				panic(err)
 			}
@@ -59,10 +59,10 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 	b.Run("GetByName", func(b *testing.B) {
 		db := dbSetup()
 
-		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, proj, hash)
+		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 20; i++ {
 			namespace := getNamespace(i, proj)
-			err := nsRepo.Save(ctx, namespace)
+			err := nsRepo.Save(ctx, proj, namespace)
 			assert.Nil(b, err)
 		}
 		b.ResetTimer()
@@ -70,7 +70,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			num := i % 20
 			nsName := fmt.Sprintf("ns-optimus-%d", num)
-			namespace, err := nsRepo.GetByName(ctx, nsName)
+			namespace, err := nsRepo.GetByName(ctx, proj, nsName)
 			if err != nil {
 				panic(err)
 			}
@@ -81,16 +81,16 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 	})
 	b.Run("GetAll", func(b *testing.B) {
 		db := dbSetup()
-		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, proj, hash)
+		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 10; i++ {
 			namespace := getNamespace(i, proj)
-			err := repo.Save(ctx, namespace)
+			err := repo.Save(ctx, proj, namespace)
 			assert.Nil(b, err)
 		}
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			namespaces, err := repo.GetAll(ctx)
+			namespaces, err := repo.GetAll(ctx, proj)
 			if err != nil {
 				panic(err)
 			}
@@ -101,10 +101,10 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 	})
 	b.Run("Get", func(b *testing.B) {
 		db := dbSetup()
-		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, proj, hash)
+		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 20; i++ {
 			namespace := getNamespace(i, proj)
-			err := repo.Save(ctx, namespace)
+			err := repo.Save(ctx, proj, namespace)
 			assert.Nil(b, err)
 		}
 		b.ResetTimer()

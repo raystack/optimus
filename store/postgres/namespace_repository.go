@@ -85,13 +85,12 @@ func (p Namespace) ToSpecWithProjectSecrets(hash models.ApplicationKey) (models.
 }
 
 type namespaceRepository struct {
-	db      *gorm.DB
-	project models.ProjectSpec
-	hash    models.ApplicationKey
+	db   *gorm.DB
+	hash models.ApplicationKey
 }
 
-func (repo *namespaceRepository) Insert(ctx context.Context, resource models.NamespaceSpec) error {
-	c := Namespace{}.FromSpecWithProject(resource, repo.project)
+func (repo *namespaceRepository) Insert(ctx context.Context, project models.ProjectSpec, resource models.NamespaceSpec) error {
+	c := Namespace{}.FromSpecWithProject(resource, project)
 
 	if c.Name == "" {
 		return errors.New("name cannot be empty")
@@ -99,10 +98,10 @@ func (repo *namespaceRepository) Insert(ctx context.Context, resource models.Nam
 	return repo.db.WithContext(ctx).Create(&c).Error
 }
 
-func (repo *namespaceRepository) Save(ctx context.Context, spec models.NamespaceSpec) error {
-	existingResource, err := repo.GetByName(ctx, spec.Name)
+func (repo *namespaceRepository) Save(ctx context.Context, project models.ProjectSpec, spec models.NamespaceSpec) error {
+	existingResource, err := repo.GetByName(ctx, project, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, spec)
+		return repo.Insert(ctx, project, spec)
 	} else if err != nil {
 		return fmt.Errorf("unable to find namespace by name: %w", err)
 	}
@@ -115,9 +114,11 @@ func (repo *namespaceRepository) Save(ctx context.Context, spec models.Namespace
 	return repo.db.WithContext(ctx).Model(resource).Updates(resource).Error
 }
 
-func (repo *namespaceRepository) GetByName(ctx context.Context, name string) (models.NamespaceSpec, error) {
+func (repo *namespaceRepository) GetByName(ctx context.Context, project models.ProjectSpec, name string) (models.NamespaceSpec, error) {
 	var r Namespace
-	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").Where("name = ? AND project_id = ?", name, repo.project.ID.UUID()).First(&r).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").
+		Where("name = ? AND project_id = ?", name, project.ID.UUID()).
+		First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
@@ -128,12 +129,13 @@ func (repo *namespaceRepository) GetByName(ctx context.Context, name string) (mo
 
 func (repo *namespaceRepository) Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error) {
 	var r Namespace
-	if err := repo.db.WithContext(ctx).
+	err := repo.db.WithContext(ctx).
 		Preload("Project").
 		Preload("Project.Secrets").
 		Joins("join project on namespace.project_id = project.id").
 		Where("namespace.name = ? AND project.name = ?", namespaceName, projectName).
-		First(&r).Error; err != nil {
+		First(&r).Error
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.NamespaceSpec{}, store.ErrResourceNotFound
 		}
@@ -142,10 +144,13 @@ func (repo *namespaceRepository) Get(ctx context.Context, projectName, namespace
 	return r.ToSpecWithProjectSecrets(repo.hash)
 }
 
-func (repo *namespaceRepository) GetAll(ctx context.Context) ([]models.NamespaceSpec, error) {
+func (repo *namespaceRepository) GetAll(ctx context.Context, project models.ProjectSpec) ([]models.NamespaceSpec, error) {
 	var specs []models.NamespaceSpec
 	var namespaces []Namespace
-	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").Where("project_id = ?", repo.project.ID.UUID()).Find(&namespaces).Error; err != nil {
+	err := repo.db.WithContext(ctx).Preload("Project").Preload("Project.Secrets").
+		Where("project_id = ?", project.ID.UUID()).
+		Find(&namespaces).Error
+	if err != nil {
 		return specs, err
 	}
 
@@ -159,10 +164,9 @@ func (repo *namespaceRepository) GetAll(ctx context.Context) ([]models.Namespace
 	return specs, nil
 }
 
-func NewNamespaceRepository(db *gorm.DB, project models.ProjectSpec, hash models.ApplicationKey) *namespaceRepository {
+func NewNamespaceRepository(db *gorm.DB, hash models.ApplicationKey) *namespaceRepository {
 	return &namespaceRepository{
-		db:      db,
-		project: project,
-		hash:    hash,
+		db:   db,
+		hash: hash,
 	}
 }

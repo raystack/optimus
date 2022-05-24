@@ -165,8 +165,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
 		testConfigs[0].Job = jobConfigs[0]
 
-		namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-		err := namespaceRepo.Insert(ctx, namespaceSpec)
+		namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+		err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 		assert.Nil(t, err)
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
@@ -207,8 +207,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
 		testConfigs[0].Job = jobConfigs[0]
 
-		namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-		err := namespaceRepo.Insert(ctx, namespaceSpec)
+		namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+		err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 		assert.Nil(t, err)
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
@@ -258,8 +258,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-			err := namespaceRepo.Insert(ctx, namespaceSpec)
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
@@ -311,8 +311,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-			err := namespaceRepo.Insert(ctx, namespaceSpec)
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
@@ -366,8 +366,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err := projectRepo.Insert(ctx, projectSpec)
 			assert.Nil(t, err)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-			err = namespaceRepo.Insert(ctx, namespaceSpec)
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err = namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
@@ -422,8 +422,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err := projectRepo.Insert(ctx, projectSpec)
 			assert.Nil(t, err)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-			err = namespaceRepo.Insert(ctx, namespaceSpec)
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err = namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
@@ -473,8 +473,8 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err := projectRepo.Insert(ctx, projectSpec)
 			assert.Nil(t, err)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-			err = namespaceRepo.Insert(ctx, namespaceSpec)
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err = namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)

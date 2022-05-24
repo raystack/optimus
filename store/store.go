@@ -57,9 +57,9 @@ type SecretRepository interface {
 
 // NamespaceRepository represents a storage interface for registered namespaces
 type NamespaceRepository interface {
-	Save(context.Context, models.NamespaceSpec) error
-	GetByName(context.Context, string) (models.NamespaceSpec, error)
-	GetAll(context.Context) ([]models.NamespaceSpec, error)
+	Save(context.Context, models.ProjectSpec, models.NamespaceSpec) error
+	GetByName(context.Context, models.ProjectSpec, string) (models.NamespaceSpec, error)
+	GetAll(context.Context, models.ProjectSpec) ([]models.NamespaceSpec, error)
 	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
 }
 
@@ -115,8 +115,8 @@ type ReplaySpecRepository interface {
 // BackupRepository represents a storage interface for backup objects
 type BackupRepository interface {
 	Save(ctx context.Context, spec models.BackupSpec) error
-	GetAll(context.Context) ([]models.BackupSpec, error)
-	GetByID(context.Context, uuid.UUID) (models.BackupSpec, error)
+	GetAll(context.Context, models.ProjectSpec, models.Datastorer) ([]models.BackupSpec, error)
+	GetByID(context.Context, uuid.UUID, models.Datastorer) (models.BackupSpec, error)
 }
 
 // JobDependencyRepository represents a storage interface for job dependencies

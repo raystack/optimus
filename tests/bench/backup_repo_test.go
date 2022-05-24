@@ -40,8 +40,8 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
 
-		nsRepo := postgres.NewNamespaceRepository(dbConn, project, hash)
-		assert.Nil(b, nsRepo.Save(ctx, namespace))
+		nsRepo := postgres.NewNamespaceRepository(dbConn, hash)
+		assert.Nil(b, nsRepo.Save(ctx, project, namespace))
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {
@@ -59,7 +59,7 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 	b.Run("Save", func(b *testing.B) {
 		db := DBSetup()
 
-		var repo store.BackupRepository = postgres.NewBackupRepository(db, project, bigqueryStore)
+		var repo store.BackupRepository = postgres.NewBackupRepository(db)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -73,7 +73,7 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 	b.Run("GetAll", func(b *testing.B) {
 		db := DBSetup()
 
-		var repo store.BackupRepository = postgres.NewBackupRepository(db, project, bigqueryStore)
+		var repo store.BackupRepository = postgres.NewBackupRepository(db)
 		for i := 0; i < 100; i++ {
 			backup := getBackupSpec(i, resource)
 			err := repo.Save(ctx, backup)
@@ -84,7 +84,7 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			bkp, err := repo.GetAll(ctx)
+			bkp, err := repo.GetAll(ctx, project, bigqueryStore)
 			if err != nil {
 				panic(err)
 			}
@@ -96,7 +96,7 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 	b.Run("GetByID", func(b *testing.B) {
 		db := DBSetup()
 
-		var repo store.BackupRepository = postgres.NewBackupRepository(db, project, bigqueryStore)
+		var repo store.BackupRepository = postgres.NewBackupRepository(db)
 		var ids []uuid.UUID
 		for i := 0; i < 10; i++ {
 			backup := getBackupSpec(i, resource)
@@ -114,7 +114,7 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			num := i % 10
 			id := ids[num]
-			bk, err := repo.GetByID(ctx, id)
+			bk, err := repo.GetByID(ctx, id, bigqueryStore)
 			if err != nil {
 				panic(err)
 			}

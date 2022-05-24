@@ -34,19 +34,11 @@ type ProjectResourceSpecRepoFactory interface {
 	New(spec models.ProjectSpec, storer models.Datastorer) store.ProjectResourceSpecRepository
 }
 
-type BackupRepoFactory interface {
-	New(spec models.ProjectSpec, storer models.Datastorer) store.BackupRepository
-}
-
-type NamespaceRepoFactory interface {
-	New(spec models.ProjectSpec) store.NamespaceRepository
-}
-
 type Service struct {
 	resourceRepoFactory        ResourceSpecRepoFactory
 	projectResourceRepoFactory ProjectResourceSpecRepoFactory
 	dsRepo                     models.DatastoreRepo
-	backupRepoFactory          BackupRepoFactory
+	backupRepo                 store.BackupRepository
 	uuidProvider               utils.UUIDProvider
 	pluginService              service.PluginService
 }
@@ -291,8 +283,7 @@ func (srv Service) BackupResource(ctx context.Context, backupRequest models.Back
 	}
 
 	// save the backup
-	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
-	if err := backupRepo.Save(ctx, backupSpec); err != nil {
+	if err := srv.backupRepo.Save(ctx, backupSpec); err != nil {
 		return models.BackupResult{}, err
 	}
 
@@ -308,8 +299,7 @@ func (srv Service) ListResourceBackups(ctx context.Context, projectSpec models.P
 		return []models.BackupSpec{}, err
 	}
 
-	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
-	backupSpecs, err := backupRepo.GetAll(ctx)
+	backupSpecs, err := srv.backupRepo.GetAll(ctx, projectSpec, datastorer)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return []models.BackupSpec{}, nil
@@ -326,15 +316,14 @@ func (srv Service) ListResourceBackups(ctx context.Context, projectSpec models.P
 	return recentBackups, nil
 }
 
-func (srv Service) GetResourceBackup(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string,
+func (srv Service) GetResourceBackup(ctx context.Context, _ models.ProjectSpec, datastoreName string,
 	id uuid.UUID) (models.BackupSpec, error) {
 	datastorer, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return models.BackupSpec{}, err
 	}
 
-	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
-	return backupRepo.GetByID(ctx, id)
+	return srv.backupRepo.GetByID(ctx, id, datastorer)
 }
 
 func (srv Service) prepareBackupSpec(backupRequest models.BackupRequest) (models.BackupSpec, error) {
@@ -372,12 +361,12 @@ func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func NewService(resourceRepoFactory ResourceSpecRepoFactory, projectResourceRepoFactory ProjectResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepoFactory BackupRepoFactory, pluginService service.PluginService) *Service {
+func NewService(resourceRepoFactory ResourceSpecRepoFactory, projectResourceRepoFactory ProjectResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepo store.BackupRepository, pluginService service.PluginService) *Service {
 	return &Service{
 		resourceRepoFactory:        resourceRepoFactory,
 		projectResourceRepoFactory: projectResourceRepoFactory,
 		dsRepo:                     dsRepo,
-		backupRepoFactory:          backupRepoFactory,
+		backupRepo:                 backupRepo,
 		uuidProvider:               uuidProvider,
 		pluginService:              pluginService,
 	}
