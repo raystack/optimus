@@ -11,13 +11,12 @@ import (
 
 type NamespaceServiceServer struct {
 	l                log.Logger
-	adapter          ProtoAdapter
 	namespaceService service.NamespaceService
 	pb.UnimplementedNamespaceServiceServer
 }
 
 func (sv *NamespaceServiceServer) RegisterProjectNamespace(ctx context.Context, req *pb.RegisterProjectNamespaceRequest) (*pb.RegisterProjectNamespaceResponse, error) {
-	namespaceSpec := sv.adapter.FromNamespaceProto(req.GetNamespace())
+	namespaceSpec := FromNamespaceProto(req.GetNamespace())
 	err := sv.namespaceService.Save(ctx, req.GetProjectName(), namespaceSpec)
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to store namespace")
@@ -37,7 +36,7 @@ func (sv *NamespaceServiceServer) ListProjectNamespaces(ctx context.Context, req
 
 	namespaceSpecsProto := []*pb.NamespaceSpecification{}
 	for _, namespace := range namespaceSpecs {
-		namespaceSpecsProto = append(namespaceSpecsProto, sv.adapter.ToNamespaceProto(namespace))
+		namespaceSpecsProto = append(namespaceSpecsProto, ToNamespaceProto(namespace))
 	}
 
 	return &pb.ListProjectNamespacesResponse{
@@ -51,14 +50,13 @@ func (sv *NamespaceServiceServer) GetNamespace(ctx context.Context, request *pb.
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 	return &pb.GetNamespaceResponse{
-		Namespace: sv.adapter.ToNamespaceProto(namespace),
+		Namespace: ToNamespaceProto(namespace),
 	}, nil
 }
 
-func NewNamespaceServiceServer(l log.Logger, adapter ProtoAdapter, namespaceService service.NamespaceService) *NamespaceServiceServer {
+func NewNamespaceServiceServer(l log.Logger, namespaceService service.NamespaceService) *NamespaceServiceServer {
 	return &NamespaceServiceServer{
 		l:                l,
-		adapter:          adapter,
 		namespaceService: namespaceService,
 	}
 }

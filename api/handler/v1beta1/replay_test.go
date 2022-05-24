@@ -90,11 +90,9 @@ func TestReplayOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -108,7 +106,7 @@ func TestReplayOnServer(t *testing.T) {
 			replayResponse, err := replayServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
-			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
+			expectedReplayResponse, err := v1.ToReplayExecutionTreeNode(dagNode)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.ExecutionTree.JobName)
 			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.ExecutionTree.Dependents)
@@ -140,11 +138,9 @@ func TestReplayOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -158,7 +154,7 @@ func TestReplayOnServer(t *testing.T) {
 			replayResponse, err := replayServiceServer.ReplayDryRun(ctx, &replayRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, true, replayResponse.Success)
-			expectedReplayResponse, err := adapter.ToReplayExecutionTreeNode(dagNode)
+			expectedReplayResponse, err := v1.ToReplayExecutionTreeNode(dagNode)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedReplayResponse.JobName, replayResponse.ExecutionTree.JobName)
 			assert.Equal(t, expectedReplayResponse.Dependents, replayResponse.ExecutionTree.Dependents)
@@ -176,11 +172,9 @@ func TestReplayOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -214,11 +208,9 @@ func TestReplayOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			defer namespaceService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayDryRunRequest{
@@ -294,11 +286,9 @@ func TestReplayOnServer(t *testing.T) {
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -332,11 +322,9 @@ func TestReplayOnServer(t *testing.T) {
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{ID: randomUUID}, nil)
 			defer jobService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -357,11 +345,9 @@ func TestReplayOnServer(t *testing.T) {
 				Return(models.NamespaceSpec{}, errors.New("Namespace not found"))
 			defer namespaceService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				nil, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -395,11 +381,9 @@ func TestReplayOnServer(t *testing.T) {
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -423,11 +407,9 @@ func TestReplayOnServer(t *testing.T) {
 				Return(models.NamespaceSpec{}, errors.New(errMessage))
 			defer namespaceService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				nil, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -453,11 +435,9 @@ func TestReplayOnServer(t *testing.T) {
 			jobService.On("GetByName", ctx, jobName, namespaceSpec).Return(models.JobSpec{}, errors.New(errMessage))
 			defer jobService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -491,11 +471,9 @@ func TestReplayOnServer(t *testing.T) {
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrConflictedJobRun)
 			defer jobService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -530,11 +508,9 @@ func TestReplayOnServer(t *testing.T) {
 			jobService.On("Replay", ctx, replayWorkerRequest).Return(models.ReplayResult{}, job.ErrRequestQueueFull)
 			defer jobService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, namespaceService,
-				adapter,
 				nil,
 			)
 			replayRequest := pb.ReplayRequest{
@@ -615,15 +591,12 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetReplayStatus", ctx, replayRequest).Return(replayState, nil)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, nil,
-				adapter,
 				projectService,
 			)
-			expectedReplayStatusNodeResponse, err := adapter.ToReplayStatusTreeNode(replayState.Node)
+			expectedReplayStatusNodeResponse, err := v1.ToReplayStatusTreeNode(replayState.Node)
 			assert.Nil(t, err)
 
 			replayRequestPb := pb.GetReplayStatusRequest{
@@ -646,12 +619,9 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetReplayStatus", ctx, replayRequest).Return(models.ReplayState{}, errors.New(errMessage))
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, nil,
-				adapter,
 				projectService,
 			)
 
@@ -743,12 +713,9 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetReplayList", ctx, projectSpec.ID).Return(replaySpecs, nil)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, nil,
-				adapter,
 				projectService,
 			)
 
@@ -770,12 +737,9 @@ func TestReplayOnServer(t *testing.T) {
 			defer jobService.AssertExpectations(t)
 			jobService.On("GetReplayList", ctx, projectSpec.ID).Return([]models.ReplaySpec{}, errors.New(errMessage))
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			replayServiceServer := v1.NewReplayServiceServer(
 				log,
 				jobService, nil,
-				adapter,
 				projectService,
 			)
 

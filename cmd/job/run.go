@@ -80,9 +80,7 @@ func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
 	}
 	defer conn.Close()
 
-	pluginRepo := models.PluginRegistry
-	adapt := v1handler.NewAdapter(pluginRepo, nil)
-	adaptedSpec := adapt.ToJobProto(jobSpec)
+	adaptedSpec := v1handler.ToJobProto(jobSpec)
 
 	r.logger.Info("please wait...")
 	jobRun := pb.NewJobRunServiceClient(conn.GetConnection())

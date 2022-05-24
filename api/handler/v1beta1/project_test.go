@@ -28,7 +28,6 @@ func TestProjectOnServer(t *testing.T) {
 					"BUCKET": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(nil, nil)
 
 			projectService := new(mock.ProjectService)
 			projectService.On("Save", ctx, projectSpec).Return(errors.New("random error"))
@@ -39,11 +38,10 @@ func TestProjectOnServer(t *testing.T) {
 
 			projectServiceServer := v1.NewProjectServiceServer(
 				log,
-				v1.NewAdapter(nil, nil),
 				projectService,
 			)
 
-			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
+			projectRequest := pb.RegisterProjectRequest{Project: v1.ToProjectProto(projectSpec)}
 			resp, err := projectServiceServer.RegisterProject(ctx, &projectRequest)
 			assert.Equal(t, "rpc error: code = Internal desc = random error: not able to register project a-data-project", err.Error())
 			assert.Nil(t, resp)
@@ -57,7 +55,6 @@ func TestProjectOnServer(t *testing.T) {
 					"BUCKET": "gs://some_folder",
 				},
 			}
-			adapter := v1.NewAdapter(nil, nil)
 
 			projectService := new(mock.ProjectService)
 			projectService.On("Save", ctx, projectSpec).Return(nil)
@@ -68,11 +65,10 @@ func TestProjectOnServer(t *testing.T) {
 
 			projectServiceServer := v1.NewProjectServiceServer(
 				log,
-				v1.NewAdapter(nil, nil),
 				projectService,
 			)
 
-			projectRequest := pb.RegisterProjectRequest{Project: adapter.ToProjectProto(projectSpec)}
+			projectRequest := pb.RegisterProjectRequest{Project: v1.ToProjectProto(projectSpec)}
 			resp, err := projectServiceServer.RegisterProject(ctx, &projectRequest)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.RegisterProjectResponse{
@@ -83,7 +79,6 @@ func TestProjectOnServer(t *testing.T) {
 	})
 
 	t.Run("GetProject", func(t *testing.T) {
-		adapter := v1.NewAdapter(nil, nil)
 		projectName := "a-data-project"
 
 		t.Run("should return nil and error if there's error when getting project", func(t *testing.T) {
@@ -91,7 +86,6 @@ func TestProjectOnServer(t *testing.T) {
 			projectService.On("Get", ctx, projectName).Return(models.ProjectSpec{}, errors.New("random error"))
 			projectServiceServer := v1.NewProjectServiceServer(
 				log,
-				adapter,
 				projectService,
 			)
 
@@ -109,7 +103,6 @@ func TestProjectOnServer(t *testing.T) {
 			projectService.On("Get", ctx, projectName).Return(models.ProjectSpec{}, nil)
 			projectServiceServer := v1.NewProjectServiceServer(
 				log,
-				adapter,
 				projectService,
 			)
 

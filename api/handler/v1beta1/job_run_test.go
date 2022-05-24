@@ -162,7 +162,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				log,
 				jobService,
 				projectService, nil, secretService,
-				v1.NewAdapter(nil, nil),
+				nil,
 				jobRunService,
 				jobRunInputCompiler,
 				nil,
@@ -178,10 +178,9 @@ func TestJobRunServiceServer(t *testing.T) {
 			resp, err := JobRunServiceServer.RegisterInstance(ctx, &registerInstanceRequest)
 			assert.Nil(t, err)
 
-			adapter := v1.NewAdapter(nil, nil)
-			projectSpecProto := adapter.ToProjectProto(projectSpec)
-			jobSpecProto := adapter.ToJobProto(jobSpec)
-			instanceSpecProto := adapter.ToInstanceProto(instanceSpec)
+			projectSpecProto := v1.ToProjectProto(projectSpec)
+			jobSpecProto := v1.ToJobProto(jobSpec)
+			instanceSpecProto := v1.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
@@ -195,7 +194,7 @@ func TestJobRunServiceServer(t *testing.T) {
 						"query.sql": "select * from 1",
 					},
 				},
-				Namespace: adapter.ToNamespaceProto(namespaceSpec),
+				Namespace: v1.ToNamespaceProto(namespaceSpec),
 			}
 
 			assert.Equal(t, expectedResponse, resp)
@@ -234,7 +233,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				projectService,
 				nil,
 				secretService,
-				v1.NewAdapter(nil, nil),
+				nil,
 				instanceService,
 				jobRunInputCompiler,
 				nil,
@@ -249,10 +248,9 @@ func TestJobRunServiceServer(t *testing.T) {
 			resp, err := JobRunServiceServer.RegisterInstance(ctx, &versionRequest)
 			assert.Nil(t, err)
 
-			adapter := v1.NewAdapter(nil, nil)
-			projectSpecProto := adapter.ToProjectProto(projectSpec)
-			jobSpecProto := adapter.ToJobProto(jobSpec)
-			instanceSpecProto := adapter.ToInstanceProto(instanceSpec)
+			projectSpecProto := v1.ToProjectProto(projectSpec)
+			jobSpecProto := v1.ToJobProto(jobSpec)
+			instanceSpecProto := v1.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
@@ -266,7 +264,7 @@ func TestJobRunServiceServer(t *testing.T) {
 						"query.sql": "select * from 1",
 					},
 				},
-				Namespace: adapter.ToNamespaceProto(namespaceSpec),
+				Namespace: v1.ToNamespaceProto(namespaceSpec),
 			}
 
 			assert.Equal(t, expectedResponse, resp)
@@ -332,7 +330,6 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			allTasksRepo := new(mock.SupportedPluginRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
-			adapter := v1.NewAdapter(allTasksRepo, nil)
 
 			nsService := new(mock.NamespaceService)
 			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
@@ -353,7 +350,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nsService,
 				nil,
-				adapter,
+				allTasksRepo,
 				nil,
 				nil,
 				nil,
@@ -434,7 +431,6 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			allTasksRepo := new(mock.SupportedPluginRepo)
 			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
-			adapter := v1.NewAdapter(allTasksRepo, nil)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
@@ -452,7 +448,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				namespaceService,
 				nil,
-				adapter,
+				allTasksRepo,
 				nil,
 				nil,
 				nil,
@@ -493,8 +489,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
@@ -516,7 +510,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				jobService, projectService, nil, nil,
-				adapter,
+				nil,
 				nil,
 				nil,
 				scheduler,
@@ -617,8 +611,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
@@ -641,7 +633,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil, adapter,
+				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
 				nil,
@@ -756,15 +748,13 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil, adapter,
+				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -799,15 +789,13 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil, adapter,
+				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
 				nil,
@@ -845,7 +833,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
-			adapter := v1.NewAdapter(nil, nil)
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
@@ -862,7 +849,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil, adapter,
+				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
 				nil,
@@ -900,7 +887,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService := new(mock.ProjectService)
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
-			adapter := v1.NewAdapter(nil, nil)
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
@@ -917,7 +903,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil, adapter,
+				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
 				nil,
@@ -958,8 +944,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			projectService.On("Get", ctx, projectSpec.Name).Return(projectSpec, nil)
 			defer projectService.AssertExpectations(t)
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			jobService := new(mock.JobService)
 			jobService.On("GetByNameForProject", ctx, jobSpec.Name, projectSpec).Return(jobSpec, namespaceSpec, nil)
 			defer jobService.AssertExpectations(t)
@@ -980,7 +964,7 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			runtimeServiceServer := v1.NewJobRunServiceServer(
 				log,
-				jobService, projectService, nil, nil, adapter,
+				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
 				nil,
