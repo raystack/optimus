@@ -7,99 +7,97 @@ import (
 
 	"github.com/odpf/optimus/extension/factory"
 	"github.com/odpf/optimus/extension/model"
+	"github.com/odpf/optimus/mock"
 )
 
-type NewClientFactoryTestSuite struct {
+type ClientFactoryTestSuite struct {
 	suite.Suite
 }
 
-func (n *NewClientFactoryTestSuite) TestAdd() {
+func (n *ClientFactoryTestSuite) TestAdd() {
 	n.Run("should return error if provider is empty", func() {
 		var provider string
-		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return nil, nil
-		}
+		clientFactory := &factory.ClientFactory{}
+		client := &mock.Client{}
 
-		actualErr := newClientFactory.Add(provider, newClient)
+		actualErr := clientFactory.Add(provider, client)
 
 		n.Error(actualErr)
 	})
 
-	n.Run("should return error if client initializer is nil", func() {
+	n.Run("should return error if client is nil", func() {
 		provider := "test_provider"
-		newClientFactory := &factory.NewClientFactory{}
-		var newClient model.NewClient
+		clientFactory := &factory.ClientFactory{}
+		var client model.Client
 
-		actualErr := newClientFactory.Add(provider, newClient)
+		actualErr := clientFactory.Add(provider, client)
 
 		n.Error(actualErr)
 	})
 
-	n.Run("should return error if client initializer is already registered", func() {
+	n.Run("should return error if client is already registered", func() {
 		provider := "test_provider"
-		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return nil, nil
-		}
+		clientFactory := &factory.ClientFactory{}
+		client := &mock.Client{}
 
-		actualFirstErr := newClientFactory.Add(provider, newClient)
-		actualSecondErr := newClientFactory.Add(provider, newClient)
+		actualFirstErr := clientFactory.Add(provider, client)
+		actualSecondErr := clientFactory.Add(provider, client)
 
 		n.NoError(actualFirstErr)
 		n.Error(actualSecondErr)
 	})
+
+	n.Run("should return nil if no error is encountered", func() {
+		provider := "test_provider"
+		clientFactory := &factory.ClientFactory{}
+		client := &mock.Client{}
+
+		actualErr := clientFactory.Add(provider, client)
+
+		n.NoError(actualErr)
+	})
 }
 
-func (n *NewClientFactoryTestSuite) TestGet() {
+func (n *ClientFactoryTestSuite) TestGet() {
 	n.Run("should return nil and error if provider is empty", func() {
-		registeredProvider := "test_provider"
-		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return nil, nil
-		}
-		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {
-			panic(err)
-		}
+		clientFactory := &factory.ClientFactory{}
 
 		var testProvider string
 
-		actualNewClient, actualErr := newClientFactory.Get(testProvider)
+		actualNewClient, actualErr := clientFactory.Get(testProvider)
 
 		n.Nil(actualNewClient)
 		n.Error(actualErr)
 	})
 
 	n.Run("should return nil and error if provider is not registered", func() {
-		newClientFactory := &factory.NewClientFactory{}
+		clientFactory := &factory.ClientFactory{}
 
 		testProvider := "test_provider"
 
-		actualNewClient, actualErr := newClientFactory.Get(testProvider)
+		actualNewClient, actualErr := clientFactory.Get(testProvider)
 
 		n.Nil(actualNewClient)
 		n.Error(actualErr)
 	})
 
-	n.Run("should return client initializer and nil if no error is encountered", func() {
+	n.Run("should return client and nil if no error is encountered", func() {
 		registeredProvider := "test_provider"
-		newClientFactory := &factory.NewClientFactory{}
-		newClient := func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return nil, nil
-		}
-		if err := newClientFactory.Add(registeredProvider, newClient); err != nil {
+		clientFactory := &factory.ClientFactory{}
+		client := &mock.Client{}
+		if err := clientFactory.Add(registeredProvider, client); err != nil {
 			panic(err)
 		}
 
 		testProvider := "test_provider"
 
-		actualNewClient, actualErr := newClientFactory.Get(testProvider)
+		actualNewClient, actualErr := clientFactory.Get(testProvider)
 
 		n.NotNil(actualNewClient)
 		n.NoError(actualErr)
 	})
 }
 
-func TestNewClientFactory(t *testing.T) {
-	suite.Run(t, &NewClientFactoryTestSuite{})
+func TestClientFactory(t *testing.T) {
+	suite.Run(t, &ClientFactoryTestSuite{})
 }

@@ -9,16 +9,16 @@ import (
 // ParseRegistry is the registry for all parsers defined by each provider
 var ParseRegistry []model.Parser
 
-// NewClientRegistry stores all client initializer defined by each provider
-var NewClientRegistry = &NewClientFactory{}
+// ClientRegistry stores all clients defined by each provider
+var ClientRegistry = &ClientFactory{}
 
-// NewClientFactory is a factory to store client initializer
-type NewClientFactory struct {
-	registry map[string]model.NewClient
+// ClientFactory is a factory to store client
+type ClientFactory struct {
+	registry map[string]model.Client
 }
 
-// Add adds client initializer based on provider
-func (c *NewClientFactory) Add(provider string, newClient model.NewClient) error {
+// Add adds client based on provider
+func (c *ClientFactory) Add(provider string, newClient model.Client) error {
 	if provider == "" {
 		return model.ErrEmptyProvider
 	}
@@ -26,7 +26,7 @@ func (c *NewClientFactory) Add(provider string, newClient model.NewClient) error
 		return fmt.Errorf("[%s] newClient is nil", provider)
 	}
 	if c.registry == nil {
-		c.registry = make(map[string]model.NewClient)
+		c.registry = make(map[string]model.Client)
 	}
 	if c.registry[provider] != nil {
 		return fmt.Errorf("[%s] is already registered", provider)
@@ -35,13 +35,13 @@ func (c *NewClientFactory) Add(provider string, newClient model.NewClient) error
 	return nil
 }
 
-// Get gets client initializer for a specified provider
-func (c *NewClientFactory) Get(provider string) (model.NewClient, error) {
+// Get gets client for a specified provider
+func (c *ClientFactory) Get(provider string) (model.Client, error) {
 	if provider == "" {
 		return nil, model.ErrEmptyProvider
 	}
 	if c.registry == nil {
-		c.registry = make(map[string]model.NewClient)
+		c.registry = make(map[string]model.Client)
 	}
 	if c.registry[provider] == nil {
 		return nil, fmt.Errorf("[%s] is not registered", provider)

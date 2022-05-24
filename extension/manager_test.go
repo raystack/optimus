@@ -21,8 +21,8 @@ type ManagerTestSuite struct {
 func (m *ManagerTestSuite) TestInstall() {
 	defaultParser := factory.ParseRegistry
 	defer func() { factory.ParseRegistry = defaultParser }()
-	defaultNewClient := factory.NewClientRegistry
-	defer func() { factory.NewClientRegistry = defaultNewClient }()
+	defaultClient := factory.ClientRegistry
+	defer func() { factory.ClientRegistry = defaultClient }()
 
 	verbose := false
 
@@ -54,11 +54,9 @@ func (m *ManagerTestSuite) TestInstall() {
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
@@ -69,8 +67,7 @@ func (m *ManagerTestSuite) TestInstall() {
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		manager, err := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := extension.NewManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -87,11 +84,10 @@ func (m *ManagerTestSuite) TestInstall() {
 func (m *ManagerTestSuite) TestUpgrade() {
 	defaultParser := factory.ParseRegistry
 	defer func() { factory.ParseRegistry = defaultParser }()
-	defaultNewClient := factory.NewClientRegistry
-	defer func() { factory.NewClientRegistry = defaultNewClient }()
+	defaultNewClient := factory.ClientRegistry
+	defer func() { factory.ClientRegistry = defaultNewClient }()
 
 	ctx := context.Background()
-	httpDoer := &mock.HTTPDoer{}
 	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
@@ -127,11 +123,9 @@ func (m *ManagerTestSuite) TestUpgrade() {
 			TagName: "v1.0.1",
 		}, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return(nil, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{
@@ -143,7 +137,7 @@ func (m *ManagerTestSuite) TestUpgrade() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := extension.NewManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -170,7 +164,6 @@ func (m *ManagerTestSuite) TestUninstall() {
 	})
 
 	m.Run("should return nil if no error encountered during the whole process", func() {
-		httpDoer := &mock.HTTPDoer{}
 
 		release := &model.RepositoryRelease{
 			TagName: "v1.0",
@@ -196,7 +189,7 @@ func (m *ManagerTestSuite) TestUninstall() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Uninstall", tMock.Anything).Return(nil)
 
-		manager, err := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := extension.NewManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -211,7 +204,6 @@ func (m *ManagerTestSuite) TestUninstall() {
 }
 
 func (m *ManagerTestSuite) TestRun() {
-	httpDoer := &mock.HTTPDoer{}
 	verbose := false
 
 	m.Run("should return error if encountered error during execution", func() {
@@ -242,7 +234,7 @@ func (m *ManagerTestSuite) TestRun() {
 		assetOperator.On("Prepare", tMock.Anything).Return(nil)
 		assetOperator.On("Run", tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := extension.NewManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -256,7 +248,6 @@ func (m *ManagerTestSuite) TestRun() {
 }
 
 func (m *ManagerTestSuite) TestRename() {
-	httpDoer := &mock.HTTPDoer{}
 	assetOperator := &mock.AssetOperator{}
 	verbose := false
 
@@ -287,7 +278,7 @@ func (m *ManagerTestSuite) TestRename() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := extension.NewManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -302,7 +293,6 @@ func (m *ManagerTestSuite) TestRename() {
 }
 
 func (m *ManagerTestSuite) TestActivate() {
-	httpDoer := &mock.HTTPDoer{}
 	assetOperator := &mock.AssetOperator{}
 	verbose := false
 
@@ -340,7 +330,7 @@ func (m *ManagerTestSuite) TestActivate() {
 		}, nil)
 		manifester.On("Flush", tMock.Anything, tMock.Anything).Return(nil)
 
-		manager, err := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := extension.NewManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -357,45 +347,31 @@ func (m *ManagerTestSuite) TestActivate() {
 func TestNewManager(t *testing.T) {
 	verbose := false
 
-	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
-		var httpDoer model.HTTPDoer
-		manifester := &mock.Manifester{}
-		assetOperator := &mock.AssetOperator{}
-
-		actualManager, actualErr := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
-
-		assert.Nil(t, actualManager)
-		assert.Error(t, actualErr)
-	})
-
 	t.Run("should return nil and error if manifester is nil", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
 		var manifester model.Manifester
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := extension.NewManager(manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return nil and error if asset operator is nil", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		var assetOperator model.AssetOperator
 
-		actualManager, actualErr := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := extension.NewManager(manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return manager and nil if no error encountered", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := extension.NewManager(httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := extension.NewManager(manifester, assetOperator, verbose)
 
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)

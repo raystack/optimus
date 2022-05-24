@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/extension/factory"
 	"github.com/odpf/optimus/extension/model"
 )
 
@@ -89,14 +88,6 @@ func downloadRelease(ctx context.Context, client model.Client, currentAPIPath, u
 		apiPath = upgradeAPIPath
 	}
 	return client.DownloadRelease(ctx, apiPath)
-}
-
-func findClientProvider(httpDoer model.HTTPDoer, provider string) (model.Client, error) {
-	newClient, err := factory.NewClientRegistry.Get(provider)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client initializer: %w", err)
-	}
-	return newClient(httpDoer)
 }
 
 func findProjectByCommandName(manifest *model.Manifest, commandName string) *model.RepositoryProject {

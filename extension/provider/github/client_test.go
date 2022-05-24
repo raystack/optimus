@@ -1,23 +1,17 @@
 package github_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
+	"net/http/httptest"
 	"runtime"
-	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	tMock "github.com/stretchr/testify/mock"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/extension/model"
 	"github.com/odpf/optimus/extension/provider/github"
-	"github.com/odpf/optimus/mock"
 )
 
 type ClientTestSuite struct {
@@ -26,11 +20,7 @@ type ClientTestSuite struct {
 
 func (c *ClientTestSuite) TestDownloadRelease() {
 	var ctx = context.Background()
-	var httpDoer = &mock.HTTPDoer{}
-	client, err := github.NewClient(httpDoer)
-	if err != nil {
-		panic(err)
-	}
+	client := &github.Client{}
 
 	c.Run("should return nil and error if asset api path is empty", func() {
 		var apiPath string
@@ -51,14 +41,7 @@ func (c *ClientTestSuite) TestDownloadRelease() {
 	})
 
 	c.Run("should return nil and error if encountered error when doing request", func() {
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(nil, errors.New("random error"))
-
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		apiPath := "/gojek/optimus-extension-valor"
 
 		actualRelease, actualErr := client.DownloadRelease(ctx, apiPath)
 
@@ -67,22 +50,16 @@ func (c *ClientTestSuite) TestDownloadRelease() {
 	})
 
 	c.Run("should return nil and error if response status is not ok", func() {
-		release := github.Release{}
-		marshalled, _ := json.Marshal(release)
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusNotFound),
-			StatusCode: http.StatusNotFound,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+		testPath := "/gojek/optimus-extension-valor"
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+		})
+		server := httptest.NewServer(handler)
+		defer server.Close()
 
+		apiPath := server.URL + testPath
 		actualRelease, actualErr := client.DownloadRelease(ctx, apiPath)
 
 		c.Nil(actualRelease)
@@ -90,20 +67,20 @@ func (c *ClientTestSuite) TestDownloadRelease() {
 	})
 
 	c.Run("should return nil and error if encountered error when decoding response", func() {
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(strings.NewReader("invalid-body")),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+		testPath := "/gojek/optimus-extension-valor"
+		message := "invalid-content"
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			content := []byte(message)
 
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(content)
+		})
+		server := httptest.NewServer(handler)
+		defer server.Close()
+
+		apiPath := server.URL + testPath
 		actualRelease, actualErr := client.DownloadRelease(ctx, apiPath)
 
 		c.Nil(actualRelease)
@@ -111,22 +88,20 @@ func (c *ClientTestSuite) TestDownloadRelease() {
 	})
 
 	c.Run("should return release and nil if no error is encountered", func() {
-		release := github.Release{}
-		marshalled, _ := json.Marshal(release)
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+		testPath := "/gojek/optimus-extension-valor"
+		release := &github.Release{}
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus/tags/latest"
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			content, _ := json.Marshal(release)
 
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(content)
+		})
+		server := httptest.NewServer(handler)
+		defer server.Close()
+
+		apiPath := server.URL + testPath
 		actualRelease, actualErr := client.DownloadRelease(ctx, apiPath)
 
 		c.NotNil(actualRelease)
@@ -136,11 +111,7 @@ func (c *ClientTestSuite) TestDownloadRelease() {
 
 func (c *ClientTestSuite) TestDownloadAsset() {
 	var ctx = context.Background()
-	var httpDoer = &mock.HTTPDoer{}
-	client, err := github.NewClient(httpDoer)
-	if err != nil {
-		panic(err)
-	}
+	client := &github.Client{}
 
 	c.Run("should return nil and error if asset api path is empty", func() {
 		var apiPath string
@@ -152,51 +123,53 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 	})
 
 	c.Run("should return nil and error if encountered error when getting release", func() {
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(strings.NewReader("invalid-body")),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+		testReleasePath := "/gojek/optimus-extension-valor"
+		message := "invalid-content"
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		router := mux.NewRouter()
+		server := httptest.NewServer(router)
+		defer server.Close()
 
-		actualRelease, actualErr := client.DownloadAsset(ctx, apiPath)
+		router.HandleFunc(testReleasePath, func(w http.ResponseWriter, r *http.Request) {
+			content := []byte(message)
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(content)
+		})
+
+		actualRelease, actualErr := client.DownloadAsset(ctx, testReleasePath)
 
 		c.Nil(actualRelease)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return nil and error if cannot find asset with the specified suffix", func() {
-		release := github.Release{}
-		marshalled, _ := json.Marshal(release)
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil)
+		testReleasePath := "/gojek/optimus-extension-valor"
+		release := &github.Release{}
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		router := mux.NewRouter()
+		server := httptest.NewServer(router)
+		defer server.Close()
 
-		actualAsset, actualErr := client.DownloadAsset(ctx, apiPath)
+		releaseAPIPath := server.URL + testReleasePath
+		router.HandleFunc(testReleasePath, func(w http.ResponseWriter, r *http.Request) {
+			content, _ := json.Marshal(release)
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(content))
+		})
+
+		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
 	})
 
-	c.Run("should return nil and error if error when creating request to download url", func() {
-		release := github.Release{
+	c.Run("should return nil and error if error when creating request to download asset", func() {
+		testReleasePath := "/gojek/optimus-extension-valor"
+		release := &github.Release{
 			Assets: []*github.Asset{
 				{
 					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
@@ -204,134 +177,102 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 				},
 			},
 		}
-		marshalled, _ := json.Marshal(release)
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil)
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		router := mux.NewRouter()
+		server := httptest.NewServer(router)
+		defer server.Close()
 
-		actualAsset, actualErr := client.DownloadAsset(ctx, apiPath)
+		releaseAPIPath := server.URL + testReleasePath
+		router.HandleFunc(testReleasePath, func(w http.ResponseWriter, r *http.Request) {
+			content, _ := json.Marshal(release)
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(content))
+		})
+
+		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
 	})
 
-	c.Run("should return nil and error if error when sending download request", func() {
-		release := github.Release{
+	c.Run("should return nil and error if download asset status is not ok", func() {
+		testReleasePath := "/gojek/optimus-extension-valor"
+		release := &github.Release{
 			Assets: []*github.Asset{
 				{
 					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
-					BrowserDownloadURL: "http://github.com/odpf/optimus",
+					BrowserDownloadURL: "/optimus/releases",
 				},
 			},
 		}
-		marshalled, _ := json.Marshal(release)
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
-		httpDoer.On("Do", tMock.Anything).Return(nil, errors.New("random error")).Once()
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		router := mux.NewRouter()
+		server := httptest.NewServer(router)
+		defer server.Close()
 
-		actualAsset, actualErr := client.DownloadAsset(ctx, apiPath)
+		releaseAPIPath := server.URL + testReleasePath
+		router.HandleFunc(testReleasePath, func(w http.ResponseWriter, r *http.Request) {
+			content, _ := json.Marshal(release)
 
-		c.Nil(actualAsset)
-		c.Error(actualErr)
-	})
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(content))
+		})
+		testAssetPath := release.Assets[0].BrowserDownloadURL
+		assetAPIPath := server.URL + testAssetPath
+		release.Assets[0].BrowserDownloadURL = assetAPIPath
+		router.HandleFunc(testAssetPath, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+		})
 
-	c.Run("should return nil and error if error when decoding response", func() {
-		marshalled := []byte("unknown message")
-		response := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
-		httpDoer.On("Do", tMock.Anything).Return(response, nil).Once()
-
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
-
-		actualAsset, actualErr := client.DownloadAsset(ctx, apiPath)
+		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)
 
 		c.Nil(actualAsset)
 		c.Error(actualErr)
 	})
 
 	c.Run("should return bytes and nil if no error is encountered", func() {
-		release := github.Release{
+		testReleasePath := "/gojek/optimus-extension-valor"
+		release := &github.Release{
 			Assets: []*github.Asset{
 				{
-					Name:               "asset-" + runtime.GOOS + "-" + runtime.GOARCH,
-					BrowserDownloadURL: "http://github.com/odpf/optimus",
+					Name:               "asset" + runtime.GOOS + "-" + runtime.GOARCH,
+					BrowserDownloadURL: "/optimus/releases",
 				},
 			},
 		}
-		marshalled, _ := json.Marshal(release)
-		releaseResponse := &http.Response{
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewReader(marshalled)),
-		}
-		downloadResponse := &http.Response{
-			Body: io.NopCloser(strings.NewReader("random payload")),
-		}
+		assetPayload := "valid random payload"
 
-		httpDoer := &mock.HTTPDoer{}
-		httpDoer.On("Do", tMock.Anything).Return(releaseResponse, nil).Once()
-		httpDoer.On("Do", tMock.Anything).Return(downloadResponse, nil).Once()
+		router := mux.NewRouter()
+		server := httptest.NewServer(router)
+		defer server.Close()
 
-		client, err := github.NewClient(httpDoer)
-		if err != nil {
-			panic(err)
-		}
-		apiPath := "http://github.com/odpf/optimus"
+		releaseAPIPath := server.URL + testReleasePath
+		router.HandleFunc(testReleasePath, func(w http.ResponseWriter, r *http.Request) {
+			content, _ := json.Marshal(release)
 
-		actualAsset, actualErr := client.DownloadAsset(ctx, apiPath)
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(content))
+		})
+		testAssetPath := release.Assets[0].BrowserDownloadURL
+		assetAPIPath := server.URL + testAssetPath
+		release.Assets[0].BrowserDownloadURL = assetAPIPath
+		router.HandleFunc(testAssetPath, func(w http.ResponseWriter, r *http.Request) {
+			content := []byte(assetPayload)
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(content))
+		})
+
+		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)
 
 		c.NotNil(actualAsset)
 		c.NoError(actualErr)
-	})
-}
-
-func TestNewClient(t *testing.T) {
-	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
-		var httpDoer model.HTTPDoer
-
-		actualGithub, actualErr := github.NewClient(httpDoer)
-
-		assert.Nil(t, actualGithub)
-		assert.Error(t, actualErr)
-	})
-
-	t.Run("should return github and nil if no error encountered", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
-
-		actualGithub, actualErr := github.NewClient(httpDoer)
-
-		assert.NotNil(t, actualGithub)
-		assert.NoError(t, actualErr)
 	})
 }
 

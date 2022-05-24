@@ -19,7 +19,6 @@ type installResource struct {
 
 // InstallManager is an extension manager to manage installation process
 type InstallManager struct {
-	httpDoer      model.HTTPDoer
 	manifester    model.Manifester
 	assetOperator model.AssetOperator
 
@@ -29,15 +28,11 @@ type InstallManager struct {
 
 // NewInstallManager initializes install manager
 func NewInstallManager(
-	httpDoer model.HTTPDoer,
 	manifester model.Manifester,
 	assetOperator model.AssetOperator,
 	verbose bool,
 	reservedCommandNames ...string,
 ) (*InstallManager, error) {
-	if httpDoer == nil {
-		return nil, model.ErrNilHTTPDoer
-	}
 	if manifester == nil {
 		return nil, model.ErrNilManifester
 	}
@@ -45,7 +40,6 @@ func NewInstallManager(
 		return nil, model.ErrNilAssetOperator
 	}
 	return &InstallManager{
-		httpDoer:             httpDoer,
 		manifester:           manifester,
 		assetOperator:        assetOperator,
 		verbose:              verbose,
@@ -159,7 +153,7 @@ func (i *InstallManager) setupInstallResource(ctx context.Context, remotePath, c
 	if err != nil {
 		return nil, fmt.Errorf("error loading manifest: %w", err)
 	}
-	client, err := findClientProvider(i.httpDoer, metadata.ProviderName)
+	client, err := factory.ClientRegistry.Get(metadata.ProviderName)
 	if err != nil {
 		return nil, fmt.Errorf("error finding client for provider [%s]: %w", metadata.ProviderName, err)
 	}

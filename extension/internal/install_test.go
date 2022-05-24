@@ -22,18 +22,17 @@ type InstallManagerTestSuite struct {
 func (i *InstallManagerTestSuite) TestInstall() {
 	defaultParser := factory.ParseRegistry
 	defer func() { factory.ParseRegistry = defaultParser }()
-	defaultNewClient := factory.NewClientRegistry
-	defer func() { factory.NewClientRegistry = defaultNewClient }()
+	defaultClient := factory.ClientRegistry
+	defer func() { factory.ClientRegistry = defaultClient }()
 
 	verbose := true
 
 	i.Run("should return error if remote path is empty", func() {
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -54,10 +53,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		}
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -78,10 +76,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		}
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -105,9 +102,8 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifester.On("Load", tMock.Anything).Return(nil, errors.New("random error"))
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -120,7 +116,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		i.Error(actualErr)
 	})
 
-	i.Run("should return error if error getting new client", func() {
+	i.Run("should return error if error getting client", func() {
 		provider := "testing"
 		metadata := &model.Metadata{
 			ProviderName: provider,
@@ -131,16 +127,14 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			},
 		}
 
-		newClientFactory := &factory.NewClientFactory{}
-		factory.NewClientRegistry = newClientFactory
+		factory.ClientRegistry = &factory.ClientFactory{}
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -166,19 +160,16 @@ func (i *InstallManagerTestSuite) TestInstall() {
 
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(nil, errors.New("random error"))
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -209,11 +200,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		}
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		commandName := "valor"
 		manifest := &model.Manifest{
@@ -236,10 +225,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
 		reservedCommands := []string{"valor"}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose, reservedCommands...)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose, reservedCommands...)
 		if err != nil {
 			panic(err)
 		}
@@ -270,11 +258,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		}
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		commandName := "valor"
 		manifest := &model.Manifest{
@@ -297,9 +283,8 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -330,11 +315,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 			TagName: "v1.0",
 		}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		commandName := "valor"
 		manifest := &model.Manifest{
@@ -357,9 +340,8 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifester.On("Load", tMock.Anything).Return(manifest, nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -388,19 +370,16 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return(nil, errors.New("random error"))
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		assetOperator := &mock.AssetOperator{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -430,11 +409,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
@@ -443,8 +420,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		assetOperator.On("Prepare", tMock.Anything).Return(errors.New("random error"))
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -474,11 +450,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
@@ -488,8 +462,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(errors.New("random error"))
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -519,11 +492,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
@@ -534,9 +505,8 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		verbose := false
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -566,11 +536,9 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		client := &mock.Client{}
 		client.On("DownloadRelease", tMock.Anything, tMock.Anything).Return(release, nil)
 		client.On("DownloadAsset", tMock.Anything, tMock.Anything).Return([]byte{}, nil)
-		newClientFactory := &factory.NewClientFactory{}
-		newClientFactory.Add(provider, func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return client, nil
-		})
-		factory.NewClientRegistry = newClientFactory
+		clientFactory := &factory.ClientFactory{}
+		clientFactory.Add(provider, client)
+		factory.ClientRegistry = clientFactory
 
 		manifester := &mock.Manifester{}
 		manifester.On("Load", tMock.Anything).Return(&model.Manifest{}, nil)
@@ -581,9 +549,8 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		assetOperator.On("Install", tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
 
 		ctx := context.Background()
-		httpDoer := &mock.HTTPDoer{}
 		verbose := false
-		manager, err := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		manager, err := internal.NewInstallManager(manifester, assetOperator, verbose)
 		if err != nil {
 			panic(err)
 		}
@@ -600,45 +567,31 @@ func (i *InstallManagerTestSuite) TestInstall() {
 func TestNewInstallManager(t *testing.T) {
 	verbose := true
 
-	t.Run("should return nil and error if http doer is nil", func(t *testing.T) {
-		var httpDoer model.HTTPDoer
-		manifester := &mock.Manifester{}
-		assetOperator := &mock.AssetOperator{}
-
-		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
-
-		assert.Nil(t, actualManager)
-		assert.Error(t, actualErr)
-	})
-
 	t.Run("should return nil and error if manifester is nil", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
 		var manifester model.Manifester
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return nil and error if asset operator is nil", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		var assetOperator model.AssetOperator
 
-		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(manifester, assetOperator, verbose)
 
 		assert.Nil(t, actualManager)
 		assert.Error(t, actualErr)
 	})
 
 	t.Run("should return manager and nil if no error encountered", func(t *testing.T) {
-		httpDoer := &mock.HTTPDoer{}
 		manifester := &mock.Manifester{}
 		assetOperator := &mock.AssetOperator{}
 
-		actualManager, actualErr := internal.NewInstallManager(httpDoer, manifester, assetOperator, verbose)
+		actualManager, actualErr := internal.NewInstallManager(manifester, assetOperator, verbose)
 
 		assert.NotNil(t, actualManager)
 		assert.NoError(t, actualErr)

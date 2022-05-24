@@ -13,8 +13,6 @@ var (
 	ErrEmptyProvider = errors.New("provider is empty")
 	// ErrNilContext is error when context is nil
 	ErrNilContext = errors.New("context is nil")
-	// ErrNilHTTPDoer is error when http doer is nil
-	ErrNilHTTPDoer = errors.New("http doer is nil")
 	// ErrNilManifester is error when manifester is nil
 	ErrNilManifester = errors.New("manifester is nil")
 	// ErrNilAssetOperator is error when asset operator is nil

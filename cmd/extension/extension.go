@@ -2,7 +2,6 @@ package extension
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/odpf/salt/log"
@@ -80,8 +79,7 @@ func generateManagementCommands(logger log.Logger, reservedCommandNames []string
 }
 
 func getExtensionManager(verbose bool, reservedCommandNames ...string) (*extension.Manager, error) {
-	httpClient := http.DefaultClient
 	manifester := extension.NewDefaultManifester()
 	assetOperator := extension.NewDefaultAssetOperator(os.Stdin, os.Stdout, os.Stderr)
-	return extension.NewManager(httpClient, manifester, assetOperator, verbose, reservedCommandNames...)
+	return extension.NewManager(manifester, assetOperator, verbose, reservedCommandNames...)
 }

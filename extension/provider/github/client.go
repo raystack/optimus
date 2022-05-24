@@ -17,17 +17,6 @@ const provider = "github"
 
 // Client defines github client
 type Client struct {
-	httpdoer model.HTTPDoer
-}
-
-// NewClient initializes github client
-func NewClient(httpDoer model.HTTPDoer) (*Client, error) {
-	if httpDoer == nil {
-		return nil, model.ErrNilHTTPDoer
-	}
-	return &Client{
-		httpdoer: httpDoer,
-	}, nil
 }
 
 // DownloadRelease downloads a release based on the API path
@@ -41,7 +30,8 @@ func (c *Client) DownloadRelease(ctx context.Context, apiPath string) (*model.Re
 	}
 	request.Header.Set("Accept", "application/json")
 
-	response, err := c.httpdoer.Do(request)
+	httpClient := http.DefaultClient
+	response, err := httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("error sending request: %w", err)
 	}
@@ -85,11 +75,15 @@ func (c *Client) downloadAsset(ctx context.Context, url string) ([]byte, error) 
 	}
 	request.Header.Set("Accept", "application/octet-stream")
 
-	response, err := c.httpdoer.Do(request)
+	httpClient := http.DefaultClient
+	response, err := httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("error getting release asset: %w", err)
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status response: %s", response.Status)
+	}
 
 	return io.ReadAll(response.Body)
 }
@@ -109,11 +103,7 @@ func (*Client) getDistSuffix() string {
 }
 
 func init() { //nolint:gochecknoinits
-	if err := factory.NewClientRegistry.Add(provider,
-		func(httpDoer model.HTTPDoer) (model.Client, error) {
-			return NewClient(httpDoer)
-		},
-	); err != nil {
+	if err := factory.ClientRegistry.Add(provider, &Client{}); err != nil {
 		panic(err)
 	}
 }

@@ -9,7 +9,6 @@ import (
 
 // Manager defines the extension management
 type Manager struct {
-	httpDoer      model.HTTPDoer
 	manifester    model.Manifester
 	assetOperator model.AssetOperator
 
@@ -19,15 +18,11 @@ type Manager struct {
 
 // NewManager initializes new manager
 func NewManager(
-	httpDoer model.HTTPDoer,
 	manifester model.Manifester,
 	assetOperator model.AssetOperator,
 	verbose bool,
 	reservedCommandNames ...string,
 ) (*Manager, error) {
-	if httpDoer == nil {
-		return nil, model.ErrNilHTTPDoer
-	}
 	if manifester == nil {
 		return nil, model.ErrNilManifester
 	}
@@ -35,7 +30,6 @@ func NewManager(
 		return nil, model.ErrNilAssetOperator
 	}
 	return &Manager{
-		httpDoer:             httpDoer,
 		manifester:           manifester,
 		assetOperator:        assetOperator,
 		verbose:              verbose,
@@ -97,7 +91,6 @@ func (m *Manager) Uninstall(commandName, tagName string) error {
 // Upgrade runs an extension upgrade process
 func (m *Manager) Upgrade(ctx context.Context, commandName string) error {
 	manager, err := internal.NewUpgradeManager(
-		m.httpDoer,
 		m.manifester,
 		m.assetOperator,
 		m.verbose,
@@ -111,7 +104,6 @@ func (m *Manager) Upgrade(ctx context.Context, commandName string) error {
 // Install runs an extension installation process
 func (m *Manager) Install(ctx context.Context, remotePath, commandName string) error {
 	manager, err := internal.NewInstallManager(
-		m.httpDoer,
 		m.manifester,
 		m.assetOperator,
 		m.verbose,

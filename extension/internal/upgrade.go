@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/extension/factory"
 	"github.com/odpf/optimus/extension/model"
 )
 
@@ -18,7 +19,6 @@ type upgradeResource struct {
 
 // UpgradeManager is an extension manager to manage upgrade process
 type UpgradeManager struct {
-	httpDoer      model.HTTPDoer
 	manifester    model.Manifester
 	assetOperator model.AssetOperator
 
@@ -27,14 +27,10 @@ type UpgradeManager struct {
 
 // NewUpgradeManager initializes upgrade manager
 func NewUpgradeManager(
-	httpDoer model.HTTPDoer,
 	manifester model.Manifester,
 	assetOperator model.AssetOperator,
 	verbose bool,
 ) (*UpgradeManager, error) {
-	if httpDoer == nil {
-		return nil, model.ErrNilHTTPDoer
-	}
 	if manifester == nil {
 		return nil, model.ErrNilManifester
 	}
@@ -42,7 +38,6 @@ func NewUpgradeManager(
 		return nil, model.ErrNilAssetOperator
 	}
 	return &UpgradeManager{
-		httpDoer:      httpDoer,
 		manifester:    manifester,
 		assetOperator: assetOperator,
 		verbose:       verbose,
@@ -135,7 +130,7 @@ func (u *UpgradeManager) setupResource(ctx context.Context, commandName string) 
 	if project == nil {
 		return nil, fmt.Errorf("extension with command name [%s] is not installed", commandName)
 	}
-	client, err := findClientProvider(u.httpDoer, project.Owner.Provider)
+	client, err := factory.ClientRegistry.Get(project.Owner.Provider)
 	if err != nil {
 		return nil, fmt.Errorf("error finding client for provider [%s]: %w", project.Owner.Provider, err)
 	}
