@@ -8,7 +8,6 @@ import (
 
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 type ProjectRepository struct {
@@ -32,15 +31,6 @@ func (pr *ProjectRepository) GetByID(ctx context.Context, projectID uuid.UUID) (
 func (pr *ProjectRepository) GetAll(ctx context.Context) ([]models.ProjectSpec, error) {
 	args := pr.Called(ctx)
 	return args.Get(0).([]models.ProjectSpec), args.Error(1)
-}
-
-type ProjectRepoFactory struct {
-	mock.Mock
-}
-
-func (fac *ProjectRepoFactory) New() store.ProjectRepository {
-	args := fac.Called()
-	return args.Get(0).(store.ProjectRepository)
 }
 
 type PipelineLogObserver struct {

@@ -9,7 +9,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/utils"
@@ -17,20 +16,6 @@ import (
 
 type JobEventService interface {
 	Register(context.Context, models.NamespaceSpec, models.JobSpec, models.JobEvent) error
-}
-
-type ProtoAdapter interface {
-	FromJobProto(*pb.JobSpecification) (models.JobSpec, error)
-	ToJobProto(models.JobSpec) *pb.JobSpecification
-	FromProjectProto(*pb.ProjectSpecification) models.ProjectSpec
-	ToProjectProto(models.ProjectSpec) *pb.ProjectSpecification
-	FromNamespaceProto(specification *pb.NamespaceSpecification) models.NamespaceSpec
-	ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification
-	ToInstanceProto(models.InstanceSpec) *pb.InstanceSpec
-	FromResourceProto(res *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error)
-	ToResourceProto(res models.ResourceSpec) (*pb.ResourceSpecification, error)
-	ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error)
-	ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error)
 }
 
 type RuntimeServiceServer struct {

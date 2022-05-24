@@ -207,12 +207,14 @@ func (s *OptimusServer) Shutdown() {
 }
 
 func (s *OptimusServer) setupHandlers() error {
-	projectRepoFac := &projectRepoFactory{
-		db:   s.dbConn,
-		hash: s.appKey,
-	}
-
+	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
+
+	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
+	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
+	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
+	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
+
 	namespaceSpecRepoFac := &namespaceRepoFactory{
 		db:   s.dbConn,
 		hash: s.appKey,
@@ -229,7 +231,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	engine := jobRunCompiler.NewGoEngine()
 	// services
-	projectService := service.NewProjectService(projectRepoFac)
+	projectService := service.NewProjectService(projectRepo)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
@@ -244,27 +246,23 @@ func (s *OptimusServer) setupHandlers() error {
 	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
 	priorityResolver := job.NewPriorityResolver()
 
-	replaySpecRepoFac := &replaySpecRepoRepository{
-		db:             s.dbConn,
-		jobSpecRepoFac: jobSpecRepoFac,
-	}
 	replayWorkerFactory := &replayWorkerFact{
-		replaySpecRepoFac: replaySpecRepoFac,
+		replaySpecRepoFac: replaySpecRepo,
 		scheduler:         scheduler,
 		logger:            s.logger,
 	}
 	replayValidator := job.NewReplayValidator(scheduler)
 	replaySyncer := job.NewReplaySyncer(
 		s.logger,
-		replaySpecRepoFac,
-		projectRepoFac,
+		replaySpecRepo,
+		projectRepo,
 		scheduler,
 		func() time.Time {
 			return time.Now().UTC()
 		},
 	)
 
-	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepo, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    s.conf.Serve.Replay.NumWorkers,
 		WorkerTimeout: s.conf.Serve.Replay.WorkerTimeout,
 		RunTimeout:    s.conf.Serve.Replay.RunTimeout,
@@ -311,13 +309,9 @@ func (s *OptimusServer) setupHandlers() error {
 		pluginService,
 	)
 
-	jobrunRepoFac := &jobRunRepoFactory{
-		db: s.dbConn,
-	}
-
 	// job run service
 	jobRunService := service.NewJobRunService(
-		jobrunRepoFac,
+		jobRunRepo,
 		func() time.Time {
 			return time.Now().UTC()
 		},
@@ -341,10 +335,11 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), &backupRepoFac, pluginService)
 	// adapter service
-	adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
+	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
+	pluginRepo := models.PluginRegistry
 
 	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
-	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, models.PluginRegistry)
+	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
 	// secret service
@@ -353,26 +348,23 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
 		dataStoreService,
 		namespaceService,
-		adapterService,
+		models.DatastoreRegistry,
 		progressObs))
 	// replay service
 	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
 		jobService,
 		namespaceService,
-		adapterService,
 		projectService))
 	// project service
 	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
-		adapterService,
 		projectService))
 	// namespace service
 	pb.RegisterNamespaceServiceServer(s.grpcServer, v1handler.NewNamespaceServiceServer(s.logger,
-		adapterService,
 		namespaceService))
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
-		adapterService,
+		pluginRepo,
 		projectService,
 		namespaceService,
 		progressObs))
@@ -382,7 +374,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectService,
 		namespaceService,
 		secretService,
-		adapterService,
+		pluginRepo,
 		jobRunService,
 		runInputCompiler,
 		models.BatchScheduler))
@@ -401,7 +393,7 @@ func (s *OptimusServer) setupHandlers() error {
 		namespaceService,
 	))
 
-	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobrunRepoFac, s.dbConn)
+	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobRunRepo, instanceRepo)
 	if err != nil {
 		return err
 	}

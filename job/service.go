@@ -79,16 +79,6 @@ type NamespaceRepoFactory interface {
 	New(spec models.ProjectSpec) store.NamespaceRepository
 }
 
-// ReplaySpecRepoFactory is used to manage replay spec objects from store
-type ReplaySpecRepoFactory interface {
-	New() store.ReplaySpecRepository
-}
-
-// ProjectRepoFactory is used to manage projects from store
-type ProjectRepoFactory interface {
-	New() store.ProjectRepository
-}
-
 type ReplayManager interface {
 	Init()
 	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)

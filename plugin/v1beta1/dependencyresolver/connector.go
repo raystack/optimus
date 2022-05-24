@@ -7,8 +7,6 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
@@ -17,33 +15,25 @@ import (
 
 var _ plugin.GRPCPlugin = &Connector{}
 
-type ProjectSpecAdapter interface {
-	FromProjectProtoWithSecrets(*pb.ProjectSpecification) models.ProjectSpec
-	ToProjectProtoWithSecret(models.ProjectSpec, models.InstanceType, string) *pb.ProjectSpecification
-}
-
 type Connector struct {
 	plugin.NetRPCUnsupportedPlugin
 	plugin.GRPCPlugin
 
-	impl               models.DependencyResolverMod
-	projectSpecAdapter ProjectSpecAdapter
+	impl models.DependencyResolverMod
 
 	logger hclog.Logger
 }
 
 func (p *Connector) GRPCServer(_ *plugin.GRPCBroker, s *grpc.Server) error {
 	pbp.RegisterDependencyResolverModServiceServer(s, &GRPCServer{
-		Impl:               p.impl,
-		projectSpecAdapter: p.projectSpecAdapter,
+		Impl: p.impl,
 	})
 	return nil
 }
 
 func (p *Connector) GRPCClient(_ context.Context, _ *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClient{
-		client:             pbp.NewDependencyResolverModServiceClient(c),
-		projectSpecAdapter: p.projectSpecAdapter,
+		client: pbp.NewDependencyResolverModServiceClient(c),
 		baseClient: &base.GRPCClient{
 			Client: pbp.NewBaseServiceClient(c),
 			Logger: p.logger,
@@ -53,24 +43,21 @@ func (p *Connector) GRPCClient(_ context.Context, _ *plugin.GRPCBroker, c *grpc.
 
 func NewPlugin(impl models.DependencyResolverMod, logger hclog.Logger) *Connector {
 	return &Connector{
-		impl:               impl,
-		projectSpecAdapter: v1.NewAdapter(nil, nil),
-		logger:             logger,
+		impl:   impl,
+		logger: logger,
 	}
 }
 
-func NewPluginWithAdapter(impl models.DependencyResolverMod, logger hclog.Logger, projAdapt ProjectSpecAdapter) *Connector {
+func NewPluginWithAdapter(impl models.DependencyResolverMod, logger hclog.Logger) *Connector {
 	return &Connector{
-		impl:               impl,
-		logger:             logger,
-		projectSpecAdapter: projAdapt,
+		impl:   impl,
+		logger: logger,
 	}
 }
 
 func NewPluginClient(logger hclog.Logger) *Connector {
 	return &Connector{
-		projectSpecAdapter: v1.NewAdapter(nil, nil),
-		logger:             logger,
+		logger: logger,
 	}
 }
 

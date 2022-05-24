@@ -8,17 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
-
-type JobRunRepoFactory struct {
-	mock.Mock
-}
-
-func (repo *JobRunRepoFactory) New() store.JobRunRepository {
-	args := repo.Called()
-	return args.Get(0).(store.JobRunRepository)
-}
 
 type JobRunRepository struct {
 	mock.Mock
@@ -72,15 +62,6 @@ func (r *JobRunRepository) Clear(ctx context.Context, runID uuid.UUID) error {
 func (r *JobRunRepository) ClearInstance(ctx context.Context, runID uuid.UUID, instanceType models.InstanceType, instanceName string) error {
 	args := r.Called(ctx, runID, instanceType, instanceName)
 	return args.Error(0)
-}
-
-type InstanceSpecRepoFactory struct {
-	mock.Mock
-}
-
-func (repo *InstanceSpecRepoFactory) New() store.InstanceRepository {
-	args := repo.Called()
-	return args.Get(0).(store.InstanceRepository)
 }
 
 // InstanceSpecRepository to store mock instance specs

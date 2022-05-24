@@ -24,8 +24,7 @@ func TestAdapter(t *testing.T) {
 		treeNode.Dependents = append(treeNode.Dependents, nestedTreeNode)
 		timeRun := time.Date(2021, 11, 8, 0, 0, 0, 0, time.UTC)
 		treeNode.Runs.Add(timeRun)
-		adap := v1.Adapter{}
-		replayExecutionTreeNode, err := adap.ToReplayExecutionTreeNode(treeNode)
+		replayExecutionTreeNode, err := v1.ToReplayExecutionTreeNode(treeNode)
 		assert.Nil(t, err)
 		assert.Equal(t, replayExecutionTreeNode.JobName, "job-name")
 		assert.Equal(t, 1, len(replayExecutionTreeNode.Dependents))
@@ -42,8 +41,7 @@ func TestAdapter(t *testing.T) {
 		}
 		treeNode.Runs = set.NewTreeSetWith(job.TimeOfJobStatusComparator)
 		treeNode.Runs.Add(jobStatus)
-		adap := v1.Adapter{}
-		replayExecutionTreeNode, err := adap.ToReplayStatusTreeNode(treeNode)
+		replayExecutionTreeNode, err := v1.ToReplayStatusTreeNode(treeNode)
 		assert.Nil(t, err)
 		assert.Equal(t, "job-name", replayExecutionTreeNode.JobName)
 		assert.Equal(t, 1, len(replayExecutionTreeNode.Dependents))
@@ -61,7 +59,6 @@ func TestAdapter(t *testing.T) {
 		pluginRepo.On("GetByName", "sample-task").Return(&models.Plugin{
 			Base: execUnit1,
 		}, nil)
-		adapter := v1.NewAdapter(pluginRepo, nil)
 
 		jobSpec := models.JobSpec{
 			Name: "test-job",
@@ -137,8 +134,8 @@ func TestAdapter(t *testing.T) {
 			},
 		}
 
-		inProto := adapter.ToJobProto(jobSpec)
-		original, err := adapter.FromJobProto(inProto)
+		inProto := v1.ToJobProto(jobSpec)
+		original, err := v1.FromJobProto(inProto, pluginRepo)
 		assert.Equal(t, jobSpec, original)
 		assert.Nil(t, err)
 	})
@@ -194,8 +191,7 @@ func TestAdapter_FromInstanceProto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			adapt := &v1.Adapter{}
-			got, err := adapt.FromInstanceProto(tt.args.conf)
+			got, err := v1.FromInstanceProto(tt.args.conf)
 			assert.Nil(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromInstanceProto() = %v, want %v", got, tt.want)
@@ -247,8 +243,7 @@ func TestAdapter_ToInstanceProto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			adapt := &v1.Adapter{}
-			got := adapt.ToInstanceProto(tt.args.conf)
+			got := v1.ToInstanceProto(tt.args.conf)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ToInstanceProto() = %v, want %v", got, tt.want)
 			}
@@ -304,8 +299,7 @@ func TestAdapter_FromProjectProtoWithSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			adapt := &v1.Adapter{}
-			if got := adapt.FromProjectProtoWithSecrets(tt.args.conf); !reflect.DeepEqual(got, tt.want) {
+			if got := v1.FromProjectProtoWithSecrets(tt.args.conf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromProjectProtoWithSecrets() = %v, want %v", got, tt.want)
 			}
 		})

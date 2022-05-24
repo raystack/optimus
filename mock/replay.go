@@ -58,14 +58,6 @@ func (repo *ReplayRepository) GetByProjectID(ctx context.Context, projectID mode
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-type ReplaySpecRepoFactory struct {
-	mock.Mock
-}
-
-func (fac *ReplaySpecRepoFactory) New() store.ReplaySpecRepository {
-	return fac.Called().Get(0).(store.ReplaySpecRepository)
-}
-
 type ReplayManager struct {
 	mock.Mock
 }

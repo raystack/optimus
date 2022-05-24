@@ -15,15 +15,9 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-// Note: all config keys will be converted to upper case automatically
-type Adapter struct {
-	pluginRepo             models.PluginRepository
-	supportedDatastoreRepo models.DatastoreRepo
-}
-
 const HoursInDay = time.Hour * 24
 
-func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, error) {
+func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository) (models.JobSpec, error) {
 	startDate, err := time.Parse(models.JobDatetimeLayout, spec.StartDate)
 	if err != nil {
 		return models.JobSpec{}, err
@@ -62,13 +56,13 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 		return models.JobSpec{}, err
 	}
 
-	execUnit, err := adapt.pluginRepo.GetByName(spec.TaskName)
+	execUnit, err := pluginRepo.GetByName(spec.TaskName)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
 
 	// adapt hooks
-	hooks, err := adapt.FromHookProto(spec.Hooks)
+	hooks, err := FromHookProto(spec.Hooks, pluginRepo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -105,8 +99,8 @@ func (adapt *Adapter) FromJobProto(spec *pb.JobSpecification) (models.JobSpec, e
 
 	metadata := models.JobSpecMetadata{}
 	if spec.Metadata != nil {
-		metadata.Resource = adapt.FromJobSpecMetadataResourceProto(spec.Metadata.Resource)
-		metadata.Airflow = adapt.FromJobSpecMetadataAirflowProto(spec.Metadata.Airflow)
+		metadata.Resource = FromJobSpecMetadataResourceProto(spec.Metadata.Resource)
+		metadata.Airflow = FromJobSpecMetadataAirflowProto(spec.Metadata.Airflow)
 	}
 	return models.JobSpec{
 		Version:     int(spec.Version),
@@ -167,8 +161,8 @@ func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecT
 	return window, nil
 }
 
-func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
-	adaptedHook := adapt.ToHookProto(spec.Hooks)
+func ToJobProto(spec models.JobSpec) *pb.JobSpecification {
+	adaptedHook := ToHookProto(spec.Hooks)
 
 	var notifyProto []*pb.JobSpecification_Behavior_Notifiers
 	for _, notify := range spec.Behavior.Notify {
@@ -205,8 +199,8 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
 			Notify: notifyProto,
 		},
 		Metadata: &pb.JobMetadata{
-			Resource: adapt.ToJobSpecMetadataResourceProto(spec.Metadata.Resource),
-			Airflow:  adapt.ToJobSpecMetadataAirflowProto(spec.Metadata.Airflow),
+			Resource: ToJobSpecMetadataResourceProto(spec.Metadata.Resource),
+			Airflow:  ToJobSpecMetadataAirflowProto(spec.Metadata.Airflow),
 		},
 	}
 	if spec.Schedule.EndDate != nil {
@@ -243,14 +237,14 @@ func (adapt *Adapter) ToJobProto(spec models.JobSpec) *pb.JobSpecification {
 	return conf
 }
 
-func (*Adapter) ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
+func ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
 	return &pb.ProjectSpecification{
 		Name:   spec.Name,
 		Config: spec.Config,
 	}
 }
 
-func (*Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
+func FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
 	pConf := map[string]string{}
 	for key, val := range conf.GetConfig() {
 		pConf[strings.ToUpper(key)] = val
@@ -262,7 +256,7 @@ func (*Adapter) FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSp
 }
 
 // ToProjectProtoWithSecrets is unused, TODO: delete
-func (*Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
+func ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
 		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{
@@ -277,7 +271,7 @@ func (*Adapter) ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSp
 	}
 }
 
-func (*Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
+func FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
 	if conf == nil {
 		return models.ProjectSpec{}
 	}
@@ -303,7 +297,7 @@ func (*Adapter) FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) model
 	}
 }
 
-func (*Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType models.InstanceType, pluginName string) *pb.ProjectSpecification {
+func ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType models.InstanceType, pluginName string) *pb.ProjectSpecification {
 	pluginSecretName := models.PluginSecretString(pluginType, pluginName)
 	secrets := []*pb.ProjectSpecification_ProjectSecret{}
 	for _, s := range spec.Secret {
@@ -322,14 +316,14 @@ func (*Adapter) ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType mod
 	}
 }
 
-func (*Adapter) ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
+func ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
 	return &pb.NamespaceSpecification{
 		Name:   spec.Name,
 		Config: spec.Config,
 	}
 }
 
-func (*Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models.NamespaceSpec {
+func FromNamespaceProto(conf *pb.NamespaceSpecification) models.NamespaceSpec {
 	namespaceConf := map[string]string{}
 	for key, val := range conf.GetConfig() {
 		namespaceConf[strings.ToUpper(key)] = val
@@ -341,7 +335,7 @@ func (*Adapter) FromNamespaceProto(conf *pb.NamespaceSpecification) models.Names
 	}
 }
 
-func (*Adapter) ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec {
+func ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec {
 	var data []*pb.InstanceSpecData
 	for _, asset := range spec.Data {
 		data = append(data, &pb.InstanceSpecData{
@@ -359,7 +353,7 @@ func (*Adapter) ToInstanceProto(spec models.InstanceSpec) *pb.InstanceSpec {
 	}
 }
 
-func (*Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
+func FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
 	if conf == nil {
 		return models.InstanceSpec{}, nil
 	}
@@ -388,10 +382,10 @@ func (*Adapter) FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, e
 	}, nil
 }
 
-func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobSpecHook, error) {
+func FromHookProto(hooksProto []*pb.JobSpecHook, pluginRepo models.PluginRepository) ([]models.JobSpecHook, error) {
 	var hooks []models.JobSpecHook
 	for _, hook := range hooksProto {
-		hookUnit, err := adapt.pluginRepo.GetByName(hook.Name)
+		hookUnit, err := pluginRepo.GetByName(hook.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -412,7 +406,7 @@ func (adapt *Adapter) FromHookProto(hooksProto []*pb.JobSpecHook) ([]models.JobS
 	return hooks, nil
 }
 
-func (*Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
+func ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpecHook) {
 	for _, hook := range hooks {
 		hookConfigs := []*pb.JobConfigItem{}
 		for _, c := range hook.Config {
@@ -430,7 +424,7 @@ func (*Adapter) ToHookProto(hooks []models.JobSpecHook) (protoHooks []*pb.JobSpe
 	return
 }
 
-func (*Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
+func ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error) {
 	typeController, ok := spec.Datastore.Types()[spec.Type]
 	if !ok {
 		return nil, fmt.Errorf("unsupported type %s for datastore %s", spec.Type, spec.Datastore.Name())
@@ -447,8 +441,8 @@ func (*Adapter) ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecifica
 	return protoSpec, nil
 }
 
-func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeName string) (models.ResourceSpec, error) {
-	storer, err := adapt.supportedDatastoreRepo.GetByName(storeName)
+func FromResourceProto(spec *pb.ResourceSpecification, storeName string, datastoreRepo models.DatastoreRepo) (models.ResourceSpec, error) {
+	storer, err := datastoreRepo.GetByName(storeName)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
@@ -464,7 +458,7 @@ func (adapt *Adapter) FromResourceProto(spec *pb.ResourceSpecification, storeNam
 	return typeController.Adapter().FromProtobuf(buf)
 }
 
-func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error) {
+func ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayExecutionTreeNode, error) {
 	response := &pb.ReplayExecutionTreeNode{
 		JobName: res.GetName(),
 	}
@@ -474,7 +468,7 @@ func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayE
 		response.Runs = append(response.Runs, timestampPb)
 	}
 	for _, dep := range res.Dependents {
-		parsedDep, err := adapt.ToReplayExecutionTreeNode(dep)
+		parsedDep, err := ToReplayExecutionTreeNode(dep)
 		if err != nil {
 			return nil, err
 		}
@@ -483,7 +477,7 @@ func (adapt *Adapter) ToReplayExecutionTreeNode(res *tree.TreeNode) (*pb.ReplayE
 	return response, nil
 }
 
-func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error) {
+func ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStatusTreeNode, error) {
 	response := &pb.ReplayStatusTreeNode{
 		JobName: res.GetName(),
 	}
@@ -496,7 +490,7 @@ func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStat
 		response.Runs = append(response.Runs, runStatusPb)
 	}
 	for _, dep := range res.Dependents {
-		parsedDep, err := adapt.ToReplayStatusTreeNode(dep)
+		parsedDep, err := ToReplayStatusTreeNode(dep)
 		if err != nil {
 			return nil, err
 		}
@@ -505,7 +499,7 @@ func (adapt *Adapter) ToReplayStatusTreeNode(res *tree.TreeNode) (*pb.ReplayStat
 	return response, nil
 }
 
-func (*Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) *pb.JobSpecMetadataResource {
+func ToJobSpecMetadataResourceProto(resource models.JobSpecResource) *pb.JobSpecMetadataResource {
 	if resource.Request.CPU == "" && resource.Request.Memory == "" &&
 		resource.Limit.CPU == "" && resource.Limit.Memory == "" {
 		return nil
@@ -536,7 +530,7 @@ func (*Adapter) ToJobSpecMetadataResourceProto(resource models.JobSpecResource) 
 	return output
 }
 
-func (*Adapter) ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflow) *pb.JobSpecMetadataAirflow {
+func ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflow) *pb.JobSpecMetadataAirflow {
 	var output *pb.JobSpecMetadataAirflow
 	if airflow.Pool != "" || airflow.Queue != "" {
 		output = &pb.JobSpecMetadataAirflow{
@@ -547,7 +541,7 @@ func (*Adapter) ToJobSpecMetadataAirflowProto(airflow models.JobSpecAirflow) *pb
 	return output
 }
 
-func (*Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
+func FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataResource) models.JobSpecResource {
 	var output models.JobSpecResource
 	if resource != nil {
 		if resource.Request != nil {
@@ -562,18 +556,11 @@ func (*Adapter) FromJobSpecMetadataResourceProto(resource *pb.JobSpecMetadataRes
 	return output
 }
 
-func (*Adapter) FromJobSpecMetadataAirflowProto(airflow *pb.JobSpecMetadataAirflow) models.JobSpecAirflow {
+func FromJobSpecMetadataAirflowProto(airflow *pb.JobSpecMetadataAirflow) models.JobSpecAirflow {
 	var output models.JobSpecAirflow
 	if airflow != nil {
 		output.Pool = airflow.Pool
 		output.Queue = airflow.Queue
 	}
 	return output
-}
-
-func NewAdapter(pluginRepo models.PluginRepository, datastoreRepo models.DatastoreRepo) *Adapter {
-	return &Adapter{
-		pluginRepo:             pluginRepo,
-		supportedDatastoreRepo: datastoreRepo,
-	}
 }

@@ -24,7 +24,7 @@ type ResourceServiceServerTestSuite struct {
 	ctx              context.Context //nolint:containedctx
 	namespaceService *mock.NamespaceService
 	resourceService  *mock.DatastoreService // TODO: refactor to service package
-	adapter          *mock.ProtoAdapter
+	datastoreRepo    *mock.SupportedDatastoreRepo
 	log              log.Logger
 	progressObserver progress.Observer
 
@@ -37,7 +37,7 @@ type ResourceServiceServerTestSuite struct {
 func (s *ResourceServiceServerTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.namespaceService = new(mock.NamespaceService)
-	s.adapter = new(mock.ProtoAdapter)
+	s.datastoreRepo = new(mock.SupportedDatastoreRepo)
 	s.resourceService = new(mock.DatastoreService)
 	s.log = log.NewNoop()
 
@@ -64,7 +64,7 @@ func (s *ResourceServiceServerTestSuite) newResourceServiceServer() *v1.Resource
 		s.log,
 		s.resourceService,
 		s.namespaceService,
-		s.adapter,
+		s.datastoreRepo,
 		s.progressObserver,
 	)
 }
@@ -95,8 +95,8 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success
 
 func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success_TwoResourceSpec() {
 	resourceSpecs := []*pb.ResourceSpecification{}
-	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-1"})
-	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-2"})
+	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-1", Type: "table"})
+	resourceSpecs = append(resourceSpecs, &pb.ResourceSpecification{Name: "resource-2", Type: "table"})
 	s.resourceReq.Resources = resourceSpecs
 	adaptedResources := []models.ResourceSpec{}
 	adaptedResources = append(adaptedResources, models.ResourceSpec{Name: "resource-1"})
@@ -107,10 +107,26 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success
 	stream.On("Recv").Return(s.resourceReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	for i := range resourceSpecs {
-		s.adapter.On("FromResourceProto", resourceSpecs[i], s.resourceReq.DatastoreName).Return(adaptedResources[i], nil).Once()
+	// prepare mocked datastore
+	dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
+	dsTypeTableAdapter.On("FromProtobuf", mock2.Anything).Return(adaptedResources[0], nil).Once()
+	dsTypeTableAdapter.On("FromProtobuf", mock2.Anything).Return(adaptedResources[1], nil).Once()
+
+	dsTypeTableController := new(mock.DatastoreTypeController)
+	dsTypeTableController.On("Adapter").Return(dsTypeTableAdapter)
+
+	dsTypeDatasetController := new(mock.DatastoreTypeController)
+	dsTypeDatasetController.On("Adapter").Return(dsTypeTableAdapter)
+
+	dsController := map[models.ResourceType]models.DatastoreTypeController{
+		models.ResourceTypeTable: dsTypeTableController,
 	}
+	datastorer := new(mock.Datastorer)
+	datastorer.On("Types").Return(dsController)
+	datastorer.On("Name").Return("datastore-1")
+
+	s.datastoreRepo.On("GetByName", "datastore-1").Return(datastorer, nil)
+	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
 	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
@@ -119,7 +135,6 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
-	s.adapter.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
 	s.resourceService.AssertExpectations(s.T())
 }
@@ -163,8 +178,24 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_Ad
 	stream.On("Recv").Return(s.resourceReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
+	// prepare mocked datastore
+	dsTypeTableAdapter := new(mock.DatastoreTypeAdapter)
+
+	dsTypeTableController := new(mock.DatastoreTypeController)
+	dsTypeTableController.On("Adapter").Return(dsTypeTableAdapter)
+
+	dsTypeDatasetController := new(mock.DatastoreTypeController)
+	dsTypeDatasetController.On("Adapter").Return(dsTypeTableAdapter)
+
+	dsController := map[models.ResourceType]models.DatastoreTypeController{
+		models.ResourceTypeDataset: dsTypeTableController,
+	}
+	datastorer := new(mock.Datastorer)
+	datastorer.On("Types").Return(dsController)
+	datastorer.On("Name").Return("bq")
+
+	s.datastoreRepo.On("GetByName", "datastore-1").Return(datastorer, nil)
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.adapter.On("FromResourceProto", resourceSpecs[0], s.resourceReq.DatastoreName).Return(models.ResourceSpec{}, errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
@@ -173,7 +204,6 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_Ad
 	s.Assert().Error(err)
 	stream.AssertExpectations(s.T())
 	s.namespaceService.AssertExpectations(s.T())
-	s.adapter.AssertExpectations(s.T())
 }
 
 func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_ResourceServiceUpdateResourceError() {
@@ -270,7 +300,7 @@ func TestResourcesOnServer(t *testing.T) {
 			resourceServiceServer := v1.NewResourceServiceServer(
 				log,
 				resourceSvc,
-				namespaceService, v1.NewAdapter(nil, dsRepo),
+				namespaceService, dsRepo,
 				nil,
 			)
 
@@ -350,7 +380,7 @@ func TestResourcesOnServer(t *testing.T) {
 			resourceServiceServer := v1.NewResourceServiceServer(
 				log,
 				resourceSvc,
-				namespaceService, v1.NewAdapter(nil, dsRepo),
+				namespaceService, dsRepo,
 				nil,
 			)
 

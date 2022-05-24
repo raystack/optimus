@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/gossip"
@@ -16,6 +15,7 @@ import (
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/ext/scheduler/prime"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -37,9 +37,9 @@ func initScheduler(conf config.ServerConfig) (models.SchedulerUnit, error) {
 	return scheduler, nil
 }
 
-func initPrimeCluster(l log.Logger, conf config.ServerConfig, jobrunRepoFac *jobRunRepoFactory, dbConn *gorm.DB) (context.CancelFunc, error) {
+func initPrimeCluster(l log.Logger, conf config.ServerConfig, jobrunRepo store.JobRunRepository, instanceRepo store.InstanceRepository) (context.CancelFunc, error) {
 	models.ManualScheduler = prime.NewScheduler( // careful global variable
-		jobrunRepoFac,
+		jobrunRepo,
 		func() time.Time {
 			return time.Now().UTC()
 		},
@@ -49,9 +49,7 @@ func initPrimeCluster(l log.Logger, conf config.ServerConfig, jobrunRepoFac *job
 	clusterServer := gossip.NewServer(l)
 	clusterPlanner := prime.NewPlanner(
 		l,
-		clusterServer, jobrunRepoFac, &instanceRepoFactory{
-			db: dbConn,
-		},
+		clusterServer, jobrunRepo, instanceRepo,
 		utils.NewUUIDProvider(), noop.NewExecutor(), func() time.Time {
 			return time.Now().UTC()
 		},
