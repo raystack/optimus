@@ -181,8 +181,4 @@ type DatastoreService interface {
 	CreateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
 	ReadResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) (ResourceSpec, error)
-	BackupResourceDryRun(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupPlan, error)
-	BackupResource(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupResult, error)
-	ListResourceBackups(ctx context.Context, projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
-	GetResourceBackup(ctx context.Context, projectSpec ProjectSpec, datastoreName string, id uuid.UUID) (BackupSpec, error)
 }

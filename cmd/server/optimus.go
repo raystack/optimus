@@ -328,7 +328,8 @@ func (s *OptimusServer) setupHandlers() error {
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
 	backupRepo := postgres.NewBackupRepository(s.dbConn)
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, &projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry)
+	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
 	// adapter service
 	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
 	pluginRepo := models.PluginRegistry
@@ -349,7 +350,8 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
 		jobService,
 		namespaceService,
-		projectService))
+		projectService,
+		jobService)) // TODO: Replace with replayService after extracting
 	// project service
 	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
 		projectService))
@@ -378,7 +380,8 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		dataStoreService,
 		namespaceService,
-		projectService))
+		projectService,
+		backupService))
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
 		s.logger,

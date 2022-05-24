@@ -177,26 +177,6 @@ func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, jobSp
 	return args.Error(0)
 }
 
-func (srv *JobService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
-	args := srv.Called(ctx, replayRequest)
-	return args.Get(0).(models.ReplayPlan), args.Error(1)
-}
-
-func (srv *JobService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
-	args := srv.Called(ctx, replayRequest)
-	return args.Get(0).(models.ReplayResult), args.Error(1)
-}
-
-func (srv *JobService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
-	args := srv.Called(ctx, replayRequest)
-	return args.Get(0).(models.ReplayState), args.Error(1)
-}
-
-func (srv *JobService) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
-	args := srv.Called(ctx, projectUUID)
-	return args.Get(0).([]models.ReplaySpec), args.Error(1)
-}
-
 func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {
 	args := srv.Called(ctx, ns, js, obs)
 	return args.Error(0)
