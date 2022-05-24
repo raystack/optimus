@@ -11,52 +11,6 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-//TODO: delete this
-type jobSyncObserver struct {
-	stream pb.JobSpecificationService_DeployJobSpecificationServer
-	log    log.Logger
-	mu     *sync.Mutex
-}
-
-//TODO: delete this
-func (obs *jobSyncObserver) Notify(e progress.Event) {
-	obs.mu.Lock()
-	defer obs.mu.Unlock()
-
-	switch evt := e.(type) {
-	case *models.ProgressJobUpload:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			Ack:     true,
-			JobName: evt.Name,
-		}
-		if evt.Err != nil {
-			resp.Success = false
-			resp.Message = evt.Err.Error()
-		}
-
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobRemoteDelete:
-		resp := &pb.DeployJobSpecificationResponse{
-			JobName: evt.Name,
-			Message: evt.String(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send delete notification", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobSpecUnknownDependencyUsed:
-		resp := &pb.DeployJobSpecificationResponse{
-			JobName: evt.Job,
-			Message: evt.String(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
-		}
-	}
-}
-
 type resourceObserver struct {
 	stream pb.ResourceService_DeployResourceSpecificationServer
 	log    log.Logger

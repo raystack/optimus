@@ -141,16 +141,16 @@ func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSp
 	var e error
 	result := []models.JobSpec{}
 	for _, jobSpec := range jobSpecs {
-		if jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec); err != nil {
+		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
+		if err != nil {
 			if e == nil {
 				e = err
 			} else {
 				e = fmt.Errorf("%w; %s", e, err.Error())
 			}
 			continue
-		} else {
-			result = append(result, *jobSpecCreated)
 		}
+		result = append(result, *jobSpecCreated)
 	}
 
 	if e != nil {
@@ -941,7 +941,7 @@ func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[stri
 	return modifiedJobSpecs
 }
 
-func (srv *Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+func (*Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
 	deletedJobSpecs := []models.JobSpec{}
 
 	for jobName, existingJobSpec := range existingJobSpecs {
@@ -953,7 +953,7 @@ func (srv *Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[strin
 	return deletedJobSpecs
 }
 
-func (srv *Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
+func (*Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
 	isLabelSame := reflect.DeepEqual(js1.Labels, js2.Labels)
 	isOwnerSame := reflect.DeepEqual(js1.Owner, js2.Owner)
 	isScheduleSame := reflect.DeepEqual(js1.Schedule, js2.Schedule)
