@@ -164,7 +164,6 @@ func (m *ManagerTestSuite) TestUninstall() {
 	})
 
 	m.Run("should return nil if no error encountered during the whole process", func() {
-
 		release := &model.RepositoryRelease{
 			TagName: "v1.0",
 		}

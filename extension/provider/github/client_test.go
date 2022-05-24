@@ -158,7 +158,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(content))
+			w.Write(content)
 		})
 
 		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)
@@ -188,7 +188,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(content))
+			w.Write(content)
 		})
 
 		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)
@@ -218,7 +218,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(content))
+			w.Write(content)
 		})
 		testAssetPath := release.Assets[0].BrowserDownloadURL
 		assetAPIPath := server.URL + testAssetPath
@@ -256,7 +256,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(content))
+			w.Write(content)
 		})
 		testAssetPath := release.Assets[0].BrowserDownloadURL
 		assetAPIPath := server.URL + testAssetPath
@@ -266,7 +266,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(content))
+			w.Write(content)
 		})
 
 		actualAsset, actualErr := client.DownloadAsset(ctx, releaseAPIPath)

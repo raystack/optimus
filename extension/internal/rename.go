@@ -70,8 +70,5 @@ func (r *RenameManager) validateInput(sourceCommandName, targetCommandName strin
 	if targetCommandName == "" {
 		return fmt.Errorf("target command: %w", model.ErrEmptyCommandName)
 	}
-	if err := validateCommandNameOnReserved(targetCommandName, r.reservedCommandNames); err != nil {
-		return err
-	}
-	return nil
+	return validateCommandNameOnReserved(targetCommandName, r.reservedCommandNames)
 }

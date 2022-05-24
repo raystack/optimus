@@ -20,7 +20,7 @@ type Client struct {
 }
 
 // DownloadRelease downloads a release based on the API path
-func (c *Client) DownloadRelease(ctx context.Context, apiPath string) (*model.RepositoryRelease, error) {
+func (*Client) DownloadRelease(ctx context.Context, apiPath string) (*model.RepositoryRelease, error) {
 	if apiPath == "" {
 		return nil, model.ErrEmptyAPIPath
 	}
@@ -68,7 +68,7 @@ func (c *Client) DownloadAsset(ctx context.Context, apiPath string) ([]byte, err
 	return c.downloadAsset(ctx, assetURL)
 }
 
-func (c *Client) downloadAsset(ctx context.Context, url string) ([]byte, error) {
+func (*Client) downloadAsset(ctx context.Context, url string) ([]byte, error) {
 	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
