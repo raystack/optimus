@@ -17,7 +17,7 @@ import (
 
 var (
 	validProjectName = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
-	validDatasetName = regexp.MustCompile(`^[\w]{3,1000}`) // golang's regex engine only let's you restrict maximum repetitions to 1000 ¯\_(ツ)_/¯
+	validDatasetName = regexp.MustCompile(`^\w{3,1000}`) // golang's regex engine only let's you restrict maximum repetitions to 1000 ¯\_(ツ)_/¯
 	validTableName   = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
 
@@ -356,7 +356,7 @@ func (tableSpec) Validator() models.DatastoreSpecValidator {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
 		}
 		parsedNames := tableNameParseRegex.FindStringSubmatch(spec.Name)
-		if len(parsedNames) < 3 || len(parsedNames[1]) == 0 || len(parsedNames[2]) == 0 || len(parsedNames[3]) == 0 {
+		if len(parsedNames) < 3 || parsedNames[1] == "" || parsedNames[2] == "" || parsedNames[3] == "" {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
 		}
 		return nil

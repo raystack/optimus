@@ -173,7 +173,7 @@ func (datasetSpec) Validator() models.DatastoreSpecValidator {
 			return fmt.Errorf("for example 'project_name.dataset_name'")
 		}
 		parsedNames := datasetNameParseRegex.FindStringSubmatch(spec.Name)
-		if len(parsedNames) < 3 || len(parsedNames[1]) == 0 || len(parsedNames[2]) == 0 {
+		if len(parsedNames) < 3 || parsedNames[1] == "" || parsedNames[2] == "" {
 			return fmt.Errorf("for example 'project_name.dataset_name'")
 		}
 		return nil

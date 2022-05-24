@@ -23,7 +23,7 @@ func createStandardView(ctx context.Context, spec models.ResourceSpec, client bq
 
 	// view query could be in an external asset
 	if query, ok := spec.Assets.GetByName(ViewQueryFile); ok &&
-		len(strings.TrimSpace(bqResource.Metadata.ViewQuery)) == 0 {
+		strings.TrimSpace(bqResource.Metadata.ViewQuery) == "" {
 		bqResource.Metadata.ViewQuery = query
 	}
 

@@ -100,13 +100,13 @@ func (sv *ReplayServiceServer) parseReplayStatusRequest(ctx context.Context, req
 		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
-	uuid, err := uuid.Parse(req.Id)
+	id, err := uuid.Parse(req.Id)
 	if err != nil {
 		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "error while parsing replay ID: %v", err)
 	}
 
 	replayRequest := models.ReplayRequest{
-		ID:      uuid,
+		ID:      id,
 		Project: projSpec,
 	}
 	return replayRequest, nil
