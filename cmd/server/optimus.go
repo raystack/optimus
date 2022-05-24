@@ -207,12 +207,14 @@ func (s *OptimusServer) Shutdown() {
 }
 
 func (s *OptimusServer) setupHandlers() error {
-	projectRepoFac := &projectRepoFactory{
-		db:   s.dbConn,
-		hash: s.appKey,
-	}
-
+	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
+
+	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
+	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
+	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
+	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
+
 	namespaceSpecRepoFac := &namespaceRepoFactory{
 		db:   s.dbConn,
 		hash: s.appKey,
@@ -229,7 +231,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	engine := jobRunCompiler.NewGoEngine()
 	// services
-	projectService := service.NewProjectService(projectRepoFac)
+	projectService := service.NewProjectService(projectRepo)
 	namespaceService := service.NewNamespaceService(projectService, namespaceSpecRepoFac)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
@@ -244,27 +246,23 @@ func (s *OptimusServer) setupHandlers() error {
 	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
 	priorityResolver := job.NewPriorityResolver()
 
-	replaySpecRepoFac := &replaySpecRepoRepository{
-		db:             s.dbConn,
-		jobSpecRepoFac: jobSpecRepoFac,
-	}
 	replayWorkerFactory := &replayWorkerFact{
-		replaySpecRepoFac: replaySpecRepoFac,
+		replaySpecRepoFac: replaySpecRepo,
 		scheduler:         scheduler,
 		logger:            s.logger,
 	}
 	replayValidator := job.NewReplayValidator(scheduler)
 	replaySyncer := job.NewReplaySyncer(
 		s.logger,
-		replaySpecRepoFac,
-		projectRepoFac,
+		replaySpecRepo,
+		projectRepo,
 		scheduler,
 		func() time.Time {
 			return time.Now().UTC()
 		},
 	)
 
-	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepoFac, utils.NewUUIDProvider(), job.ReplayManagerConfig{
+	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepo, utils.NewUUIDProvider(), job.ReplayManagerConfig{
 		NumWorkers:    s.conf.Serve.Replay.NumWorkers,
 		WorkerTimeout: s.conf.Serve.Replay.WorkerTimeout,
 		RunTimeout:    s.conf.Serve.Replay.RunTimeout,
@@ -311,13 +309,9 @@ func (s *OptimusServer) setupHandlers() error {
 		pluginService,
 	)
 
-	jobrunRepoFac := &jobRunRepoFactory{
-		db: s.dbConn,
-	}
-
 	// job run service
 	jobRunService := service.NewJobRunService(
-		jobrunRepoFac,
+		jobRunRepo,
 		func() time.Time {
 			return time.Now().UTC()
 		},
@@ -399,7 +393,7 @@ func (s *OptimusServer) setupHandlers() error {
 		namespaceService,
 	))
 
-	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobrunRepoFac, s.dbConn)
+	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobRunRepo, instanceRepo)
 	if err != nil {
 		return err
 	}

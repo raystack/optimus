@@ -34,17 +34,8 @@ func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.Proj
 	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.PluginRegistry))
 }
 
-type replaySpecRepoRepository struct {
-	db             *gorm.DB
-	jobSpecRepoFac jobSpecRepoFactory
-}
-
-func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
 type replayWorkerFact struct {
-	replaySpecRepoFac job.ReplaySpecRepoFactory
+	replaySpecRepoFac store.ReplaySpecRepository
 	scheduler         models.SchedulerUnit
 	logger            log.Logger
 }
@@ -68,15 +59,6 @@ func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepos
 	)
 }
 
-type projectRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *projectRepoFactory) New() store.ProjectRepository {
-	return postgres.NewProjectRepository(fac.db, fac.hash)
-}
-
 type namespaceRepoFactory struct {
 	db   *gorm.DB
 	hash models.ApplicationKey
@@ -84,22 +66,6 @@ type namespaceRepoFactory struct {
 
 func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
 	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
-}
-
-type jobRunRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *jobRunRepoFactory) New() store.JobRunRepository {
-	return postgres.NewJobRunRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
-type instanceRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *instanceRepoFactory) New() store.InstanceRepository {
-	return postgres.NewInstanceRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
 }
 
 // projectResourceSpecRepoFactory stores raw resource specifications at a project level
