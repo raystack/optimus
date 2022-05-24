@@ -27,11 +27,10 @@ var runtimeDeployJobSpecificationCounter = promauto.NewCounter(prometheus.Counte
 	Help: "Number of jobs requested for deployment by runtime",
 })
 
-// JobSpecServiceServer
 type JobSpecServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
-	adapter          ProtoAdapter
+	pluginRepo       models.PluginRepository
 	projectService   service.ProjectService
 	namespaceService service.NamespaceService
 	progressObserver progress.Observer
@@ -127,7 +126,7 @@ func (sv *JobSpecServiceServer) getJobsToKeep(ctx context.Context, namespaceSpec
 
 	var jobsToKeep []models.JobSpec
 	for _, reqJob := range jobs {
-		adaptJob, err := sv.adapter.FromJobProto(reqJob)
+		adaptJob, err := FromJobProto(reqJob, sv.pluginRepo)
 		if err != nil {
 			sv.l.Error(fmt.Sprintf("%s: cannot adapt job %s", err.Error(), reqJob.GetName()))
 			continue
@@ -161,7 +160,7 @@ func (sv *JobSpecServiceServer) ListJobSpecification(ctx context.Context, req *p
 
 	jobProtos := []*pb.JobSpecification{}
 	for _, jobSpec := range jobSpecs {
-		jobProto := sv.adapter.ToJobProto(jobSpec)
+		jobProto := ToJobProto(jobSpec)
 
 		jobProtos = append(jobProtos, jobProto)
 	}
@@ -176,7 +175,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecification(ctx context.Context, req *
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	j, err := sv.adapter.FromJobProto(req.GetJob())
+	j, err := FromJobProto(req.GetJob(), sv.pluginRepo)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to adapt job %s", err.Error(), req.GetJob().Name)
 	}
@@ -204,7 +203,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 
 	var reqJobs []models.JobSpec
 	for _, jobProto := range req.GetJobs() {
-		j, err := sv.adapter.FromJobProto(jobProto)
+		j, err := FromJobProto(jobProto, sv.pluginRepo)
 		if err != nil {
 			return status.Errorf(codes.Internal, "%s: failed to adapt job %s", err.Error(), jobProto.Name)
 		}
@@ -223,7 +222,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	jobSpec, err := sv.adapter.FromJobProto(req.GetSpec())
+	jobSpec, err := FromJobProto(req.GetSpec(), sv.pluginRepo)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
 	}
@@ -260,7 +259,7 @@ func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb
 		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
 	}
 
-	jobSpecAdapt := sv.adapter.ToJobProto(jobSpec)
+	jobSpecAdapt := ToJobProto(jobSpec)
 
 	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,
@@ -344,12 +343,12 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 	}
 }
 
-func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, adapter ProtoAdapter,
+func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, pluginRepo models.PluginRepository,
 	projectService service.ProjectService, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
 	return &JobSpecServiceServer{
 		l:                l,
 		jobSvc:           jobService,
-		adapter:          adapter,
+		pluginRepo:       pluginRepo,
 		projectService:   projectService,
 		namespaceService: namespaceService,
 		progressObserver: progressObserver,

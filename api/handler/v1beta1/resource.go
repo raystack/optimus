@@ -30,7 +30,7 @@ type ResourceServiceServer struct {
 	l                log.Logger
 	resourceSvc      models.DatastoreService
 	namespaceService service.NamespaceService
-	adapter          ProtoAdapter
+	datastoreRepo    models.DatastoreRepo
 	progressObserver progress.Observer
 	pb.UnimplementedResourceServiceServer
 }
@@ -41,7 +41,7 @@ func (sv *ResourceServiceServer) CreateResource(ctx context.Context, req *pb.Cre
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
+	optResource, err := FromResourceProto(req.Resource, req.DatastoreName, sv.datastoreRepo)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse resource %s", err.Error(), req.Resource.GetName())
 	}
@@ -61,7 +61,7 @@ func (sv *ResourceServiceServer) UpdateResource(ctx context.Context, req *pb.Upd
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	optResource, err := sv.adapter.FromResourceProto(req.Resource, req.DatastoreName)
+	optResource, err := FromResourceProto(req.Resource, req.DatastoreName, sv.datastoreRepo)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse resource %s", err.Error(), req.Resource.GetName())
 	}
@@ -86,7 +86,7 @@ func (sv *ResourceServiceServer) ReadResource(ctx context.Context, req *pb.ReadR
 		return nil, status.Errorf(codes.Internal, "%s: failed to read resource %s", err.Error(), req.ResourceName)
 	}
 
-	protoResource, err := sv.adapter.ToResourceProto(response)
+	protoResource, err := ToResourceProto(response)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to adapt resource %s", err.Error(), req.ResourceName)
 	}
@@ -127,7 +127,7 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 		var resourceSpecs []models.ResourceSpec
 		var errMsgs string
 		for _, resourceProto := range request.GetResources() {
-			adapted, err := sv.adapter.FromResourceProto(resourceProto, request.DatastoreName)
+			adapted, err := FromResourceProto(resourceProto, request.DatastoreName, sv.datastoreRepo)
 			if err != nil {
 				currentMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
 				sv.l.Error(currentMsg)
@@ -192,7 +192,7 @@ func (sv *ResourceServiceServer) ListResourceSpecification(ctx context.Context, 
 
 	resourceProtos := []*pb.ResourceSpecification{}
 	for _, resourceSpec := range resourceSpecs {
-		resourceProto, err := sv.adapter.ToResourceProto(resourceSpec)
+		resourceProto, err := ToResourceProto(resourceSpec)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "%s: failed to parse resource spec %s", err.Error(), resourceSpec.Name)
 		}
@@ -203,11 +203,11 @@ func (sv *ResourceServiceServer) ListResourceSpecification(ctx context.Context, 
 	}, nil
 }
 
-func NewResourceServiceServer(l log.Logger, datastoreSvc models.DatastoreService, namespaceService service.NamespaceService, adapter ProtoAdapter, progressObserver progress.Observer) *ResourceServiceServer {
+func NewResourceServiceServer(l log.Logger, datastoreSvc models.DatastoreService, namespaceService service.NamespaceService, datastoreRepo models.DatastoreRepo, progressObserver progress.Observer) *ResourceServiceServer {
 	return &ResourceServiceServer{
 		l:                l,
 		resourceSvc:      datastoreSvc,
-		adapter:          adapter,
+		datastoreRepo:    datastoreRepo,
 		namespaceService: namespaceService,
 		progressObserver: progressObserver,
 	}

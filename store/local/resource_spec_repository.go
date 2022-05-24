@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +40,7 @@ type resourceRepository struct {
 }
 
 func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir string) error {
-	if len(resourceSpec.Name) == 0 || len(resourceSpec.Type) == 0 {
+	if resourceSpec.Name == "" || resourceSpec.Type == "" {
 		return fmt.Errorf("resource is missing required fields")
 	}
 
@@ -68,7 +68,8 @@ func (repo *resourceRepository) SaveAt(resourceSpec models.ResourceSpec, rootDir
 	}
 
 	// save resource
-	if afero.WriteFile(repo.fs, repo.resourceFilePath(rootDir), specBytes, os.FileMode(0o755)); err != nil {
+	err = afero.WriteFile(repo.fs, repo.resourceFilePath(rootDir), specBytes, os.FileMode(0o755))
+	if err != nil {
 		return err
 	}
 
@@ -189,7 +190,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 	}
 
 	// need to parse type of the resource before it can proceed and pass on to datastore
-	resourceBytes, err := ioutil.ReadAll(resourceFD)
+	resourceBytes, err := io.ReadAll(resourceFD)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
@@ -237,7 +238,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 				return resourceSpec, err
 			}
 
-			fileContent, err := ioutil.ReadAll(assetFd)
+			fileContent, err := io.ReadAll(assetFd)
 			if err != nil {
 				return resourceSpec, err
 			}

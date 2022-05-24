@@ -1,7 +1,6 @@
 package extension_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -50,11 +49,11 @@ func TestLoadManifest(t *testing.T) {
 }
 
 func writeFile(dirPath, fileName, content string) {
-	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil { // TODO: Dangerous 0777 permissions
 		panic(err)
 	}
 	filePath := path.Join(dirPath, fileName)
-	if err := ioutil.WriteFile(filePath, []byte(content), os.ModePerm); err != nil {
+	if err := os.WriteFile(filePath, []byte(content), os.ModePerm); err != nil { // TODO: Dangerous 0777
 		panic(err)
 	}
 }

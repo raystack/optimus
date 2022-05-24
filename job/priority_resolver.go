@@ -111,9 +111,9 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 
 	// build a multi root tree and assign dependencies
 	// ignore any other dependency apart from intra-tenant
-	tree := tree.NewMultiRootTree()
+	multiRootTree := tree.NewMultiRootTree()
 	for _, childSpec := range jobSpecMap {
-		childNode := a.findOrCreateDAGNode(tree, childSpec)
+		childNode := a.findOrCreateDAGNode(multiRootTree, childSpec)
 		for _, depDAG := range childSpec.Dependencies {
 			missingParent := false
 			parentSpec, ok := jobSpecMap[depDAG.Job.Name]
@@ -131,26 +131,26 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 				parentSpec = models.JobSpec{Name: depDAG.Job.Name, Dependencies: make(map[string]models.JobSpecDependency)}
 				missingParent = true
 			}
-			parentNode := a.findOrCreateDAGNode(tree, parentSpec)
+			parentNode := a.findOrCreateDAGNode(multiRootTree, parentSpec)
 			parentNode.AddDependent(childNode)
-			tree.AddNode(parentNode)
+			multiRootTree.AddNode(parentNode)
 			if missingParent {
 				// dependency that are outside current project will be considered as root because
 				// optimus don't know dependencies of those external parents
-				tree.MarkRoot(parentNode)
+				multiRootTree.MarkRoot(parentNode)
 			}
 		}
 
 		// the DAGs with no dependencies are root nodes for the tree
 		if len(childSpec.Dependencies) == 0 {
-			tree.MarkRoot(childNode)
+			multiRootTree.MarkRoot(childNode)
 		}
 	}
 
-	if err := tree.IsCyclic(); err != nil {
+	if err := multiRootTree.IsCyclic(); err != nil {
 		return nil, err
 	}
-	return tree, nil
+	return multiRootTree, nil
 }
 
 func (*priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *tree.TreeNode {

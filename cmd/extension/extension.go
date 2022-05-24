@@ -26,7 +26,7 @@ func UpdateWithExtension(cmd *cobra.Command) {
 
 	reservedCommands := getUsedCommands(cmd)
 
-	extension, err := extension.NewExtension(
+	ext, err := extension.NewExtension(
 		manifest,
 		githubClient.Repositories, httpClient,
 		extensionDir,
@@ -36,20 +36,20 @@ func UpdateWithExtension(cmd *cobra.Command) {
 		panic(err)
 	}
 
-	cmd.AddCommand(newExtensionCommand(extension))
-	commands := generateCommands(manifest, extension.Run)
+	cmd.AddCommand(newExtensionCommand(ext))
+	commands := generateCommands(manifest, ext.Run)
 	for _, c := range commands {
 		cmd.AddCommand(c)
 	}
 }
 
-func newExtensionCommand(extension *extension.Extension) *cobra.Command {
+func newExtensionCommand(ext *extension.Extension) *cobra.Command {
 	c := &cobra.Command{
 		Use:     "extension SUBCOMMAND",
 		Aliases: []string{"ext"},
 		Short:   "Operate with extension",
 	}
-	c.AddCommand(newInstallCommand(extension))
+	c.AddCommand(newInstallCommand(ext))
 	return c
 }
 

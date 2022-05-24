@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -375,7 +374,7 @@ func TestAirflow2(t *testing.T) {
 "total_entries": 0
 }`
 			// create a new reader with JSON
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -405,7 +404,7 @@ func TestAirflow2(t *testing.T) {
 		})
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -452,7 +451,7 @@ func TestAirflow2(t *testing.T) {
 
 		t.Run("should clear dagrun state successfully", func(t *testing.T) {
 			// create a new reader with JSON
-			r := ioutil.NopCloser(bytes.NewReader([]byte("")))
+			r := io.NopCloser(bytes.NewReader([]byte("")))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -480,7 +479,7 @@ func TestAirflow2(t *testing.T) {
 		})
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -578,7 +577,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -654,8 +653,8 @@ func TestAirflow2(t *testing.T) {
 			}
 
 			dagRunResp := []io.ReadCloser{
-				ioutil.NopCloser(bytes.NewReader([]byte(respStringFirst))),
-				ioutil.NopCloser(bytes.NewReader([]byte(respStringSecond))),
+				io.NopCloser(bytes.NewReader([]byte(respStringFirst))),
+				io.NopCloser(bytes.NewReader([]byte(respStringSecond))),
 			}
 			countDagRunReq := -1
 			client := &MockHTTPClient{
@@ -676,7 +675,7 @@ func TestAirflow2(t *testing.T) {
 		})
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := `INTERNAL ERROR`
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -741,7 +740,7 @@ func TestAirflow2(t *testing.T) {
 
 		t.Run("should return job runs with valid args", func(t *testing.T) {
 			// create a new reader with JSON
-			r := ioutil.NopCloser(bytes.NewReader(resp))
+			r := io.NopCloser(bytes.NewReader(resp))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -771,7 +770,7 @@ func TestAirflow2(t *testing.T) {
 		})
 		t.Run("should fail if response has more entries than limit", func(t *testing.T) {
 			// create a new reader with JSON
-			r := ioutil.NopCloser(bytes.NewReader(invalidResp))
+			r := io.NopCloser(bytes.NewReader(invalidResp))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -801,7 +800,7 @@ func TestAirflow2(t *testing.T) {
 		})
 		t.Run("should return job runs when LastRunOnly is true", func(t *testing.T) {
 			// create a new reader with JSON
-			r := ioutil.NopCloser(bytes.NewReader(resp))
+			r := io.NopCloser(bytes.NewReader(resp))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -831,7 +830,7 @@ func TestAirflow2(t *testing.T) {
 		})
 		t.Run("should fail if host fails to return OK", func(t *testing.T) {
 			respString := "INTERNAL ERROR"
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
@@ -861,7 +860,7 @@ func TestAirflow2(t *testing.T) {
 
 		t.Run("should fail if host faulty json response", func(t *testing.T) {
 			respString := "INTERNAL ERROR"
-			r := ioutil.NopCloser(bytes.NewReader([]byte(respString)))
+			r := io.NopCloser(bytes.NewReader([]byte(respString)))
 			client := &MockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{

@@ -92,7 +92,7 @@ type namespaceRepository struct {
 func (repo *namespaceRepository) Insert(ctx context.Context, project models.ProjectSpec, resource models.NamespaceSpec) error {
 	c := Namespace{}.FromSpecWithProject(resource, project)
 
-	if len(c.Name) == 0 {
+	if c.Name == "" {
 		return errors.New("name cannot be empty")
 	}
 	return repo.db.WithContext(ctx).Create(&c).Error

@@ -3,7 +3,7 @@ package local
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -215,7 +215,7 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.
 				return jobSpec, err
 			}
 
-			raw, err := ioutil.ReadAll(assetFd)
+			raw, err := io.ReadAll(assetFd)
 			if err != nil {
 				return jobSpec, err
 			}

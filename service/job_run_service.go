@@ -13,10 +13,6 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-type SpecRepoFactory interface {
-	New() store.JobRunRepository
-}
-
 type JobRunService interface {
 	// GetScheduledRun find if already present or create a new scheduled run
 	GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, JobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error)
@@ -32,7 +28,7 @@ type JobRunService interface {
 }
 
 type jobRunService struct {
-	repoFac       SpecRepoFactory
+	jobRunRepo    store.JobRunRepository
 	scheduler     models.SchedulerUnit
 	Now           func() time.Time
 	pluginService PluginService
@@ -48,8 +44,7 @@ func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.Na
 		ExecutedAt:  s.Now(),
 	}
 
-	repo := s.repoFac.New()
-	jobRun, _, err := repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
+	jobRun, _, err := s.jobRunRepo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
 	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 		// When err exists and is not "NotFound"
 		return models.JobRun{}, err
@@ -75,11 +70,11 @@ func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.Na
 	if jobDestinationResponse != nil {
 		jobDestination = jobDestinationResponse.URN()
 	}
-	if err := repo.Save(ctx, namespace, newJobRun, jobDestination); err != nil {
+	if err := s.jobRunRepo.Save(ctx, namespace, newJobRun, jobDestination); err != nil {
 		return models.JobRun{}, err
 	}
 
-	jobRun, _, err = repo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
+	jobRun, _, err = s.jobRunRepo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
 	return jobRun, err
 }
 
@@ -123,12 +118,10 @@ func (s *jobRunService) GetJobRunList(ctx context.Context, projectSpec models.Pr
 
 func (s *jobRunService) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
 	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
-	jobRunRepo := s.repoFac.New()
-
 	// clear old run
 	for _, instance := range jobRun.Instances {
 		if instance.Name == instanceName && instance.Type == instanceType {
-			if err := jobRunRepo.ClearInstance(ctx, jobRun.ID, instance.Type, instance.Name); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+			if err := s.jobRunRepo.ClearInstance(ctx, jobRun.ID, instance.Type, instance.Name); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 				return models.InstanceSpec{}, fmt.Errorf("Register: failed to clear instance of job %s: %w", jobRun, err)
 			}
 			break
@@ -139,12 +132,12 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
 	}
-	if err := jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
+	if err := s.jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
 		return models.InstanceSpec{}, err
 	}
 
 	// get whatever is saved, querying again ensures it was saved correctly
-	if jobRun, _, err = jobRunRepo.GetByID(ctx, jobRun.ID); err != nil {
+	if jobRun, _, err = s.jobRunRepo.GetByID(ctx, jobRun.ID); err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("failed to save instance for %s of %s:%s: %w",
 			jobRun, instanceName, instanceType, err)
 	}
@@ -195,12 +188,12 @@ func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, 
 }
 
 func (s *jobRunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	return s.repoFac.New().GetByID(ctx, jobRunID)
+	return s.jobRunRepo.GetByID(ctx, jobRunID)
 }
 
-func NewJobRunService(repoFac SpecRepoFactory, timeFunc func() time.Time, scheduler models.SchedulerUnit, pluginService PluginService) *jobRunService {
+func NewJobRunService(jobRunRepo store.JobRunRepository, timeFunc func() time.Time, scheduler models.SchedulerUnit, pluginService PluginService) *jobRunService {
 	return &jobRunService{
-		repoFac:       repoFac,
+		jobRunRepo:    jobRunRepo,
 		Now:           timeFunc,
 		scheduler:     scheduler,
 		pluginService: pluginService,

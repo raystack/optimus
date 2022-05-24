@@ -79,7 +79,7 @@ func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment mode
 	return d.deployRepository.Update(ctx, jobDeployment)
 }
 
-func (d *deployer) deployPerNamespace(ctx context.Context, projectName string, namespaceName string, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+func (d *deployer) deployPerNamespace(ctx context.Context, projectName, namespaceName string, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	// fetch the namespace spec with secrets
 	namespaceSpec, err := d.namespaceService.Get(ctx, projectName, namespaceName)
 	if err != nil {
