@@ -158,3 +158,27 @@ func (rs *ReplaySyncer) Sync(context context.Context, runTimeout time.Duration) 
 	args := rs.Called(context, runTimeout)
 	return args.Error(0)
 }
+
+type ReplayService struct {
+	mock.Mock
+}
+
+func (srv *ReplayService) ReplayDryRun(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayPlan, error) {
+	args := srv.Called(ctx, replayRequest)
+	return args.Get(0).(models.ReplayPlan), args.Error(1)
+}
+
+func (srv *ReplayService) Replay(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayResult, error) {
+	args := srv.Called(ctx, replayRequest)
+	return args.Get(0).(models.ReplayResult), args.Error(1)
+}
+
+func (srv *ReplayService) GetReplayStatus(ctx context.Context, replayRequest models.ReplayRequest) (models.ReplayState, error) {
+	args := srv.Called(ctx, replayRequest)
+	return args.Get(0).(models.ReplayState), args.Error(1)
+}
+
+func (srv *ReplayService) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
+	args := srv.Called(ctx, projectUUID)
+	return args.Get(0).([]models.ReplaySpec), args.Error(1)
+}

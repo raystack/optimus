@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,4 +65,11 @@ type BackupSpec struct {
 type BackupResult struct {
 	Resources        []string
 	IgnoredResources []string
+}
+
+type BackupService interface {
+	BackupResourceDryRun(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupPlan, error)
+	BackupResource(ctx context.Context, backupRequest BackupRequest, jobSpecs []JobSpec) (BackupResult, error)
+	ListResourceBackups(ctx context.Context, projectSpec ProjectSpec, datastoreName string) ([]BackupSpec, error)
+	GetResourceBackup(ctx context.Context, projectSpec ProjectSpec, datastoreName string, id uuid.UUID) (BackupSpec, error)
 }

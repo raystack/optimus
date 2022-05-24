@@ -24,6 +24,7 @@ type BackupServiceServer struct {
 	resourceSvc      models.DatastoreService
 	namespaceService service.NamespaceService
 	projectService   service.ProjectService
+	backupService    models.BackupService
 	pb.UnimplementedBackupServiceServer
 }
 
@@ -60,7 +61,7 @@ func (sv *BackupServiceServer) BackupDryRun(ctx context.Context, req *pb.BackupD
 		AllowedDownstreamNamespaces: req.AllowedDownstreamNamespaces,
 		DryRun:                      true,
 	}
-	backupPlan, err := sv.resourceSvc.BackupResourceDryRun(ctx, backupRequest, jobSpecs)
+	backupPlan, err := sv.backupService.BackupResourceDryRun(ctx, backupRequest, jobSpecs)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while doing backup dry run: %v", err)
 	}
@@ -106,7 +107,7 @@ func (sv *BackupServiceServer) CreateBackup(ctx context.Context, req *pb.CreateB
 		DryRun:                      false,
 		Config:                      req.Config,
 	}
-	result, err := sv.resourceSvc.BackupResource(ctx, backupRequest, jobSpecs)
+	result, err := sv.backupService.BackupResource(ctx, backupRequest, jobSpecs)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while doing backup: %v", err)
 	}
@@ -123,7 +124,7 @@ func (sv *BackupServiceServer) ListBackups(ctx context.Context, req *pb.ListBack
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
-	results, err := sv.resourceSvc.ListResourceBackups(ctx, projectSpec, req.DatastoreName)
+	results, err := sv.backupService.ListResourceBackups(ctx, projectSpec, req.DatastoreName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting backup list: %v", err)
 	}
@@ -154,7 +155,7 @@ func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupR
 		return nil, status.Errorf(codes.InvalidArgument, "error while parsing backup ID: %v", err)
 	}
 
-	backupDetail, err := sv.resourceSvc.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
+	backupDetail, err := sv.backupService.GetResourceBackup(ctx, projectSpec, req.DatastoreName, uuid)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return nil, status.Errorf(codes.NotFound, "%s: backup with ID %s not found", err.Error(), uuid.String())
@@ -194,13 +195,13 @@ func (sv *BackupServiceServer) GetBackup(ctx context.Context, req *pb.GetBackupR
 	}, nil
 }
 
-// BackupServiceServer
-func NewBackupServiceServer(l log.Logger, jobService models.JobService, resourceSvc models.DatastoreService, namespaceService service.NamespaceService, projectService service.ProjectService) *BackupServiceServer {
+func NewBackupServiceServer(l log.Logger, jobService models.JobService, resourceSvc models.DatastoreService, namespaceService service.NamespaceService, projectService service.ProjectService, backupService models.BackupService) *BackupServiceServer {
 	return &BackupServiceServer{
 		l:                l,
 		jobSvc:           jobService,
 		resourceSvc:      resourceSvc,
 		namespaceService: namespaceService,
 		projectService:   projectService,
+		backupService:    backupService,
 	}
 }

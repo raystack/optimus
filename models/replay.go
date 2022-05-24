@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,4 +63,15 @@ type ReplayState struct {
 type ReplayResult struct {
 	ID          uuid.UUID
 	IgnoredJobs []string
+}
+
+type ReplayService interface {
+	// ReplayDryRun returns the execution tree of jobSpec and its dependencies between start and endDate, and the ignored jobs
+	ReplayDryRun(context.Context, ReplayRequest) (ReplayPlan, error)
+	// Replay replays the jobSpec and its dependencies between start and endDate
+	Replay(context.Context, ReplayRequest) (ReplayResult, error)
+	// GetReplayStatus of a replay using its ID
+	GetReplayStatus(context.Context, ReplayRequest) (ReplayState, error)
+	// GetReplayList of a project
+	GetReplayList(ctx context.Context, projectID ProjectID) ([]ReplaySpec, error)
 }
