@@ -166,22 +166,6 @@ func (repo *projectResourceSpecRepository) GetByName(ctx context.Context, name s
 	return resourceSpec, namespaceSpec, nil
 }
 
-func (repo *projectResourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
-	specs := []models.ResourceSpec{}
-	resources := []Resource{}
-	if err := repo.db.WithContext(ctx).Where("project_id = ? AND datastore = ?", repo.project.ID.UUID(), repo.datastore.Name()).Find(&resources).Error; err != nil {
-		return specs, err
-	}
-	for _, r := range resources {
-		adapted, err := r.ToSpec(repo.datastore)
-		if err != nil {
-			return specs, fmt.Errorf("failed to adapt resource: %w", err)
-		}
-		specs = append(specs, adapted)
-	}
-	return specs, nil
-}
-
 func (repo *projectResourceSpecRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, models.NamespaceSpec, error) {
 	var r Resource
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND datastore = ? AND urn = ?",
@@ -221,7 +205,7 @@ type resourceSpecRepository struct {
 }
 
 func (repo *resourceSpecRepository) Insert(ctx context.Context, resource models.ResourceSpec) error {
-	if len(resource.Name) == 0 {
+	if resource.Name == "" {
 		return errors.New("name cannot be empty")
 	}
 	p, err := Resource{}.FromSpecWithNamespace(resource, repo.namespace)
@@ -260,18 +244,6 @@ func (repo *resourceSpecRepository) GetByName(ctx context.Context, name string) 
 	var r Resource
 	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND datastore = ? AND name = ?",
 		repo.namespace.ID, repo.datastore.Name(), name).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.ResourceSpec{}, store.ErrResourceNotFound
-		}
-		return models.ResourceSpec{}, err
-	}
-	return r.ToSpec(repo.datastore)
-}
-
-func (repo *resourceSpecRepository) GetByID(ctx context.Context, id uuid.UUID) (models.ResourceSpec, error) {
-	var r Resource
-	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND id = ?",
-		repo.namespace.ID, id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.ResourceSpec{}, store.ErrResourceNotFound
 		}

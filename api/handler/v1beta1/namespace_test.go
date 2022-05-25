@@ -36,8 +36,6 @@ func TestNamespaceOnServer(t *testing.T) {
 				Config: map[string]string{},
 			}
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			jobSvc := new(mock.JobService)
 			defer jobSvc.AssertExpectations(t)
 
@@ -47,13 +45,12 @@ func TestNamespaceOnServer(t *testing.T) {
 
 			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				v1.NewAdapter(nil, nil),
 				namespaceService,
 			)
 
 			namespaceRequest := pb.RegisterProjectNamespaceRequest{
 				ProjectName: projectName,
-				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
+				Namespace:   v1.ToNamespaceProto(namespaceSpec),
 			}
 			resp, err := namespaceServiceServer.RegisterProjectNamespace(ctx, &namespaceRequest)
 			assert.Nil(t, err)
@@ -72,8 +69,6 @@ func TestNamespaceOnServer(t *testing.T) {
 				},
 			}
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Save", ctx, projectName, namespaceSpec).
 				Return(service.NewError("namespace", service.ErrNotFound, "project does not exist"))
@@ -81,13 +76,12 @@ func TestNamespaceOnServer(t *testing.T) {
 
 			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				adapter,
 				namespaceService,
 			)
 
 			namespaceRequest := pb.RegisterProjectNamespaceRequest{
 				ProjectName: projectName,
-				Namespace:   adapter.ToNamespaceProto(namespaceSpec),
+				Namespace:   v1.ToNamespaceProto(namespaceSpec),
 			}
 			_, err := namespaceServiceServer.RegisterProjectNamespace(ctx, &namespaceRequest)
 			assert.NotNil(t, err)
@@ -116,8 +110,6 @@ func TestNamespaceOnServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			adapter := v1.NewAdapter(nil, nil)
-
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("GetAll", ctx, projectName).Return([]models.NamespaceSpec{namespaceSpec}, nil)
 			defer namespaceService.AssertExpectations(t)
@@ -127,11 +119,10 @@ func TestNamespaceOnServer(t *testing.T) {
 
 			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				adapter,
 				namespaceService,
 			)
 
-			namespaceAdapted := adapter.ToNamespaceProto(namespaceSpec)
+			namespaceAdapted := v1.ToNamespaceProto(namespaceSpec)
 			request := pb.ListProjectNamespacesRequest{ProjectName: projectName}
 			resp, err := namespaceServiceServer.ListProjectNamespaces(ctx, &request)
 			assert.Nil(t, err)
@@ -144,12 +135,10 @@ func TestNamespaceOnServer(t *testing.T) {
 		namespaceName := "namespace1"
 
 		t.Run("should return nil and error if error is found during getting namespace", func(t *testing.T) {
-			adapter := v1.NewAdapter(nil, nil)
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectName, namespaceName).Return(models.NamespaceSpec{}, errors.New("random error"))
 			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				adapter,
 				namespaceService,
 			)
 
@@ -164,12 +153,10 @@ func TestNamespaceOnServer(t *testing.T) {
 		})
 
 		t.Run("should return value and nil if error is found during getting namespace", func(t *testing.T) {
-			adapter := v1.NewAdapter(nil, nil)
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectName, namespaceName).Return(models.NamespaceSpec{}, nil)
 			namespaceServiceServer := v1.NewNamespaceServiceServer(
 				log,
-				adapter,
 				namespaceService,
 			)
 

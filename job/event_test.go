@@ -16,7 +16,7 @@ import (
 )
 
 func TestEventService(t *testing.T) {
-	log := log.NewNoop()
+	l := log.NewNoop()
 	eventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url": "https://example.io",
@@ -60,7 +60,7 @@ func TestEventService(t *testing.T) {
 		}).Return(nil)
 		defer notifier.AssertExpectations(t)
 
-		evtService := job.NewEventService(log, map[string]models.Notifier{
+		evtService := job.NewEventService(l, map[string]models.Notifier{
 			"slacker": notifier,
 		})
 		err := evtService.Register(context.Background(), namespaceSpec, jobSpec, je)
@@ -98,7 +98,7 @@ func TestEventService(t *testing.T) {
 		notifier := new(mock.Notifier)
 		defer notifier.AssertExpectations(t)
 
-		evtService := job.NewEventService(log, map[string]models.Notifier{
+		evtService := job.NewEventService(l, map[string]models.Notifier{
 			"slacker": notifier,
 		})
 		err := evtService.Register(context.Background(), namespaceSpec, jobSpec, je)
@@ -142,7 +142,7 @@ func TestEventService(t *testing.T) {
 		}).Return(errors.New("failed to notify"))
 		defer notifier.AssertExpectations(t)
 
-		evtService := job.NewEventService(log, map[string]models.Notifier{
+		evtService := job.NewEventService(l, map[string]models.Notifier{
 			"slacker": notifier,
 		})
 		err := evtService.Register(context.Background(), namespaceSpec, jobSpec, je)

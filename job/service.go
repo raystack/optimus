@@ -79,16 +79,6 @@ type NamespaceRepoFactory interface {
 	New(spec models.ProjectSpec) store.NamespaceRepository
 }
 
-// ReplaySpecRepoFactory is used to manage replay spec objects from store
-type ReplaySpecRepoFactory interface {
-	New() store.ReplaySpecRepository
-}
-
-// ProjectRepoFactory is used to manage projects from store
-type ProjectRepoFactory interface {
-	New() store.ProjectRepository
-}
-
 type ReplayManager interface {
 	Init()
 	Replay(context.Context, models.ReplayRequest) (models.ReplayResult, error)
@@ -277,21 +267,20 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		// different namespace then the current, on which this operation is being performed,
 		// then don't treat this as error
 		var merrs *multierror.Error
-		if errors.As(err, &merrs) {
-			var newErr error
-			for _, cerr := range merrs.Errors {
-				if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
-					if !strings.Contains(cerr.Error(), namespace.Name) {
-						continue
-					}
-				}
-				newErr = multierror.Append(newErr, cerr)
-			}
-			if newErr != nil {
-				return newErr
-			}
-		} else {
+		if !errors.As(err, &merrs) {
 			return err
+		}
+		var newErr error
+		for _, cerr := range merrs.Errors {
+			if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
+				if !strings.Contains(cerr.Error(), namespace.Name) {
+					continue
+				}
+			}
+			newErr = multierror.Append(newErr, cerr)
+		}
+		if newErr != nil {
+			return newErr
 		}
 	}
 	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})

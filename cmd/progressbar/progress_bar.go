@@ -57,6 +57,7 @@ func (p *ProgressBar) Start(label string) {
 		}
 		return
 	}
+
 	sp := spinner.New(spinner.CharSets[11], progressBarRefreshDuration,
 		spinner.WithWriter(p.writer), spinner.WithColor("fgCyan"))
 	if label != "" {

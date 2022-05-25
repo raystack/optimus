@@ -39,7 +39,7 @@ func (externalTableSpec) Validator() models.DatastoreSpecValidator {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
 		}
 		parsedNames := tableNameParseRegex.FindStringSubmatch(spec.Name)
-		if len(parsedNames) < 3 || len(parsedNames[1]) == 0 || len(parsedNames[2]) == 0 || len(parsedNames[3]) == 0 {
+		if len(parsedNames) < 3 || parsedNames[1] == "" || parsedNames[2] == "" || parsedNames[3] == "" {
 			return fmt.Errorf("for example 'project_name.dataset_name.table_name'")
 		}
 		return nil

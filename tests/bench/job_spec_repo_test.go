@@ -39,8 +39,8 @@ func BenchmarkJobRepository(b *testing.B) {
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
 
-		nsRepo := postgres.NewNamespaceRepository(dbConn, project, hash)
-		assert.Nil(b, nsRepo.Save(ctx, namespace))
+		nsRepo := postgres.NewNamespaceRepository(dbConn, hash)
+		assert.Nil(b, nsRepo.Save(ctx, project, namespace))
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {
@@ -144,8 +144,8 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
 
-		nsRepo := postgres.NewNamespaceRepository(dbConn, project, hash)
-		assert.Nil(b, nsRepo.Save(ctx, namespace))
+		nsRepo := postgres.NewNamespaceRepository(dbConn, hash)
+		assert.Nil(b, nsRepo.Save(ctx, project, namespace))
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {

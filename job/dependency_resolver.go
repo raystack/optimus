@@ -134,7 +134,7 @@ func enrichSingleJobSpecWithDependencies(dependencies []models.JobIDDependencies
 	return jobSpec
 }
 
-func createJobSpecMap(jobSpecs []models.JobSpec, externalProjectJobSpecs []models.JobSpec) map[uuid.UUID]models.JobSpec {
+func createJobSpecMap(jobSpecs, externalProjectJobSpecs []models.JobSpec) map[uuid.UUID]models.JobSpec {
 	jobSpecMap := make(map[uuid.UUID]models.JobSpec)
 	for _, jobSpec := range append(externalProjectJobSpecs, jobSpecs...) {
 		jobSpecMap[jobSpec.ID] = jobSpec
@@ -256,32 +256,28 @@ func (*dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpe
 		if depSpec.Job == nil {
 			switch depSpec.Type {
 			case models.JobSpecDependencyTypeIntra:
-				{
-					job, _, err := projectJobSpecRepo.GetByName(ctx, depName)
-					if err != nil {
-						return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
-					}
-					depSpec.Job = &job
-					depSpec.Project = &projectSpec
-					jobSpec.Dependencies[depName] = depSpec
+				job, _, err := projectJobSpecRepo.GetByName(ctx, depName)
+				if err != nil {
+					return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
 				}
+				depSpec.Job = &job
+				depSpec.Project = &projectSpec
+				jobSpec.Dependencies[depName] = depSpec
 			case models.JobSpecDependencyTypeInter:
-				{
-					// extract project name
-					depParts := strings.SplitN(depName, "/", InterJobDependencyNameSections)
-					if len(depParts) != InterJobDependencyNameSections {
-						return models.JobSpec{}, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
-					}
-					projectName := depParts[0]
-					jobName := depParts[1]
-					job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
-					if err != nil {
-						return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
-					}
-					depSpec.Job = &job
-					depSpec.Project = &proj
-					jobSpec.Dependencies[depName] = depSpec
+				// extract project name
+				depParts := strings.SplitN(depName, "/", InterJobDependencyNameSections)
+				if len(depParts) != InterJobDependencyNameSections {
+					return models.JobSpec{}, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
 				}
+				projectName := depParts[0]
+				jobName := depParts[1]
+				job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
+				if err != nil {
+					return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
+				}
+				depSpec.Job = &job
+				depSpec.Project = &proj
+				jobSpec.Dependencies[depName] = depSpec
 			default:
 				return models.JobSpec{}, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
 			}

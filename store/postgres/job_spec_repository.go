@@ -188,7 +188,7 @@ func (repo *JobSpecRepository) Insert(ctx context.Context, spec models.JobSpec, 
 	if err != nil {
 		return err
 	}
-	if len(resource.Name) == 0 {
+	if resource.Name == "" {
 		return errors.New("name cannot be empty")
 	}
 	// if soft deleted earlier
@@ -217,18 +217,6 @@ func (repo *JobSpecRepository) Save(ctx context.Context, spec models.JobSpec, jo
 	}
 	resource.ID = existingJobSpec.ID
 	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
-}
-
-func (repo *JobSpecRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobSpec, error) {
-	var r Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("namespace_id = ? AND id = ?", repo.namespace.ID, id).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, store.ErrResourceNotFound
-		}
-		return models.JobSpec{}, err
-	}
-
-	return repo.adapter.ToSpec(r)
 }
 
 func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {

@@ -84,9 +84,6 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobSpec) error {
-	pluginRepo := models.PluginRegistry
-	adapter := v1handler.NewAdapter(pluginRepo, models.DatastoreRegistry)
-
 	conn, err := connectivity.NewConnectivity(v.clientConfig.Host, validateTimeout)
 	if err != nil {
 		return err
@@ -95,8 +92,8 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobS
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
-		adaptedJob := adapter.ToJobProto(spec)
-		adaptedJobSpecs = append(adaptedJobSpecs, adaptedJob)
+		adaptedSpec := v1handler.ToJobProto(spec)
+		adaptedJobSpecs = append(adaptedJobSpecs, adaptedSpec)
 	}
 
 	checkJobSpecRequest := &pb.CheckJobSpecificationsRequest{

@@ -10,18 +10,9 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-// RunRepoFactory manages execution instances of a job runs
-type RunRepoFactory interface {
-	New() store.JobRunRepository
-}
-
-type InstanceRepoFactory interface {
-	New() store.InstanceRepository
-}
-
 type Scheduler struct {
-	jobRunRepoFac RunRepoFactory
-	Now           func() time.Time
+	jobRunRepo store.JobRunRepository
+	Now        func() time.Time
 }
 
 func (*Scheduler) GetName() string {
@@ -46,10 +37,9 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 		})
 	}
 
-	repo := s.jobRunRepoFac.New()
 	jobDestination := "" // fetch job destination from plugin service
 	for _, runs := range jobRuns {
-		if err := repo.Save(ctx, namespace, runs, jobDestination); err != nil {
+		if err := s.jobRunRepo.Save(ctx, namespace, runs, jobDestination); err != nil {
 			return err
 		}
 	}
@@ -66,10 +56,9 @@ func (s *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.Name
 		})
 	}
 
-	repo := s.jobRunRepoFac.New()
 	jobDestination := "" // fetch job destination from plugin service
 	for _, runs := range jobRuns {
-		if err := repo.Save(ctx, namespace, runs, jobDestination); err != nil {
+		if err := s.jobRunRepo.Save(ctx, namespace, runs, jobDestination); err != nil {
 			return models.JobDeploymentDetail{}, err
 		}
 	}
@@ -96,9 +85,9 @@ func (*Scheduler) GetJobRuns(context.Context, models.ProjectSpec, *models.JobQue
 	return []models.JobRun{}, nil
 }
 
-func NewScheduler(jobRunRepoFac RunRepoFactory, nowFn func() time.Time) *Scheduler {
+func NewScheduler(jobRunRepo store.JobRunRepository, nowFn func() time.Time) *Scheduler {
 	return &Scheduler{
-		jobRunRepoFac: jobRunRepoFac,
-		Now:           nowFn,
+		jobRunRepo: jobRunRepo,
+		Now:        nowFn,
 	}
 }

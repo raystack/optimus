@@ -13,6 +13,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/cluster/v1beta1"
 	"github.com/odpf/optimus/core/gossip"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -41,16 +42,16 @@ type ClusterManager interface {
 	GetLocalMember() serf.Member
 }
 
-// Planners creates an execution plan by monitoring
+// Planner creates an execution plan by monitoring
 // all the connected peers and assigning
 type Planner struct {
 	l log.Logger
 
-	clusterManager  ClusterManager
-	jobRunRepoFac   RunRepoFactory
-	instanceRepoFac InstanceRepoFactory
-	executor        models.ExecutorUnit
-	uuidProvider    utils.UUIDProvider
+	clusterManager ClusterManager
+	jobRunRepo     store.JobRunRepository
+	instanceRepo   store.InstanceRepository
+	executor       models.ExecutorUnit
+	uuidProvider   utils.UUIDProvider
 
 	wg      *sync.WaitGroup
 	errChan chan error
@@ -115,7 +116,7 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 			// once the command is committed to raft log, we need to update the job state
 			// from pending to accepted
 			for _, runID := range allocRunIDs {
-				if err := p.jobRunRepoFac.New().UpdateStatus(ctx, runID, models.RunStateAccepted); err != nil {
+				if err := p.jobRunRepo.UpdateStatus(ctx, runID, models.RunStateAccepted); err != nil {
 					p.errChan <- err
 					return
 				}
@@ -140,7 +141,7 @@ func (p *Planner) leaderJobAllocation(ctx context.Context) {
 // temporary approach and ideally we should timeout jobs which are assigned
 // to jobs which went down and move them back to the pending state list.
 func (p *Planner) getJobAllocations(ctx context.Context) (string, []uuid.UUID, error) {
-	pendingJobRuns, err := p.jobRunRepoFac.New().GetByTrigger(ctx, models.TriggerManual, models.RunStatePending)
+	pendingJobRuns, err := p.jobRunRepo.GetByTrigger(ctx, models.TriggerManual, models.RunStatePending)
 	if err != nil {
 		return "", nil, err
 	}
@@ -198,9 +199,8 @@ func (p *Planner) leaderJobReconcile(ctx context.Context) {
 			continue
 		}
 
-		runRepo := p.jobRunRepoFac.New()
 		// check for non assignment, non terminating states
-		waitingJobs, err := runRepo.GetByTrigger(ctx, models.TriggerManual, models.RunStateAccepted, models.RunStateRunning)
+		waitingJobs, err := p.jobRunRepo.GetByTrigger(ctx, models.TriggerManual, models.RunStateAccepted, models.RunStateRunning)
 		if err != nil {
 			p.errChan <- err
 			continue
@@ -224,7 +224,7 @@ func (p *Planner) leaderJobReconcile(ctx context.Context) {
 			}
 			if allocatedNode == "" {
 				// move it back to assignment
-				if err := runRepo.Clear(ctx, currentRun.ID); err != nil {
+				if err := p.jobRunRepo.Clear(ctx, currentRun.ID); err != nil {
 					p.errChan <- err
 				}
 				p.l.Debug("cleared orphaned run for reassignment", "run id", currentRun.ID)
@@ -270,7 +270,7 @@ func (p *Planner) leaderJobReconcile(ctx context.Context) {
 					p.errChan <- err
 					continue
 				}
-				if err := runRepo.UpdateStatus(ctx, currentRun.ID, finalState); err != nil {
+				if err := p.jobRunRepo.UpdateStatus(ctx, currentRun.ID, finalState); err != nil {
 					p.errChan <- err
 					continue
 				}
@@ -293,8 +293,6 @@ func (p *Planner) peerJobExecution(ctx context.Context) {
 	defer p.wg.Done()
 	loopIdx := 0
 	for {
-		runRepo := p.jobRunRepoFac.New()
-
 		// find what we need to execute
 		localNodeID := p.clusterManager.GetLocalMember().Name
 		currentAllocations, ok := p.clusterManager.GetState().Allocation[localNodeID]
@@ -308,7 +306,7 @@ func (p *Planner) peerJobExecution(ctx context.Context) {
 						p.errChan <- err
 						return
 					}
-					jobRun, namespaceSpec, err := runRepo.GetByID(ctx, runUUID)
+					jobRun, namespaceSpec, err := p.jobRunRepo.GetByID(ctx, runUUID)
 					if err != nil {
 						p.errChan <- err
 						return
@@ -343,8 +341,6 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 	// for now we will only support executing each task of a job and ignore
 	// all attached hooks
 
-	instanceRepo := p.instanceRepoFac.New()
-
 	// first check if this task is already in terminating state
 	for _, instance := range jobRun.Instances {
 		if instance.Type == models.InstanceTypeTask &&
@@ -360,7 +356,7 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 				p.l.Warn("found a zombie instance", "job name", jobRun.Spec.Name, "task name", jobRun.Spec.Task.Unit.Info().Name)
 
 				// cancel task and move back state to accepted
-				if err := instanceRepo.UpdateStatus(ctx, instance.ID, models.RunStateAccepted); err != nil {
+				if err := p.instanceRepo.UpdateStatus(ctx, instance.ID, models.RunStateAccepted); err != nil {
 					return err
 				}
 
@@ -383,7 +379,7 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 		Type:   models.InstanceTypeTask,
 		Status: models.RunStateAccepted,
 	}
-	if err := p.jobRunRepoFac.New().AddInstance(ctx, namespace, jobRun, newInstance); err != nil {
+	if err := p.jobRunRepo.AddInstance(ctx, namespace, jobRun, newInstance); err != nil {
 		return err
 	}
 
@@ -395,7 +391,7 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 		Namespace: namespace,
 	})
 
-	if err := p.instanceRepoFac.New().UpdateStatus(ctx, instanceID, models.RunStateRunning); err != nil {
+	if err := p.instanceRepo.UpdateStatus(ctx, instanceID, models.RunStateRunning); err != nil {
 		return err
 	}
 
@@ -409,31 +405,31 @@ func (p *Planner) executeRun(ctx context.Context, namespace models.NamespaceSpec
 		p.l.Warn("job finished with non zero code", "code", finishCode, "job name", jobRun.Spec.Name)
 
 		// mark instance failed
-		if err := instanceRepo.UpdateStatus(ctx, newInstance.ID, models.RunStateFailed); err != nil {
+		if err := p.instanceRepo.UpdateStatus(ctx, newInstance.ID, models.RunStateFailed); err != nil {
 			return err
 		}
 	}
 
 	// mark instance success
-	if err := instanceRepo.UpdateStatus(ctx, newInstance.ID, models.RunStateSuccess); err != nil {
+	if err := p.instanceRepo.UpdateStatus(ctx, newInstance.ID, models.RunStateSuccess); err != nil {
 		return err
 	}
 	p.l.Info("finished executing job spec", "job name", jobRun.Spec.Name)
 	return nil
 }
 
-func NewPlanner(l log.Logger, sv ClusterManager, jobRunRepoFac RunRepoFactory,
-	instanceRepoFactory InstanceRepoFactory, uuidProvider utils.UUIDProvider,
+func NewPlanner(l log.Logger, sv ClusterManager, jobRunRepo store.JobRunRepository,
+	instanceRepo store.InstanceRepository, uuidProvider utils.UUIDProvider,
 	executor models.ExecutorUnit, now func() time.Time) *Planner {
 	return &Planner{
-		l:               l,
-		clusterManager:  sv,
-		jobRunRepoFac:   jobRunRepoFac,
-		instanceRepoFac: instanceRepoFactory,
-		executor:        executor,
-		uuidProvider:    uuidProvider,
-		now:             now,
-		wg:              new(sync.WaitGroup),
-		errChan:         make(chan error),
+		l:              l,
+		clusterManager: sv,
+		jobRunRepo:     jobRunRepo,
+		instanceRepo:   instanceRepo,
+		executor:       executor,
+		uuidProvider:   uuidProvider,
+		now:            now,
+		wg:             new(sync.WaitGroup),
+		errChan:        make(chan error),
 	}
 }

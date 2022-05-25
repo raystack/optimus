@@ -38,8 +38,8 @@ func BenchmarkJobDependencyRepository(b *testing.B) {
 		err := projRepo.Save(ctx, proj)
 		assert.Nil(b, err)
 
-		nsRepo := postgres.NewNamespaceRepository(dbConn, proj, hash)
-		err = nsRepo.Save(ctx, namespace)
+		nsRepo := postgres.NewNamespaceRepository(dbConn, hash)
+		err = nsRepo.Save(ctx, proj, namespace)
 		assert.Nil(b, err)
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)

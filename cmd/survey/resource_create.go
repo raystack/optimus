@@ -66,17 +66,15 @@ func (r *ResourceCreateSurvey) AskResourceName(
 // isResourceNameUnique return a validator that checks if the resource already exists with the same name
 func (*ResourceCreateSurvey) isResourceNameUnique(repository store.ResourceSpecRepository) survey.Validator {
 	return func(val interface{}) error {
-		if str, ok := val.(string); ok {
-			if _, err := repository.GetByName(context.Background(), str); err == nil {
-				return fmt.Errorf("resource with the provided name already exists")
-			} else if !errors.Is(err, models.ErrNoSuchSpec) && !errors.Is(err, models.ErrNoResources) {
-				return err
-			}
-		} else {
-			// otherwise we cannot convert the value into a string and cannot find a resource name
+		str, ok := val.(string)
+		if !ok {
 			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
 		}
-		// the input is fine
+		if _, err := repository.GetByName(context.Background(), str); err == nil {
+			return fmt.Errorf("resource with the provided name already exists")
+		} else if !errors.Is(err, models.ErrNoSuchSpec) && !errors.Is(err, models.ErrNoResources) {
+			return err
+		}
 		return nil
 	}
 }
@@ -84,17 +82,10 @@ func (*ResourceCreateSurvey) isResourceNameUnique(repository store.ResourceSpecR
 // isValidDatastoreSpec tries to adapt provided resource with datastore
 func (*ResourceCreateSurvey) isValidDatastoreSpec(valiFn models.DatastoreSpecValidator) survey.Validator {
 	return func(val interface{}) error {
-		if str, ok := val.(string); ok {
-			if err := valiFn(models.ResourceSpec{
-				Name: str,
-			}); err != nil {
-				return err
-			}
-		} else {
-			// otherwise we cannot convert the value into a string and cannot find a resource name
+		str, ok := val.(string)
+		if !ok {
 			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
 		}
-		// the input is fine
-		return nil
+		return valiFn(models.ResourceSpec{Name: str})
 	}
 }

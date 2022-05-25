@@ -21,14 +21,10 @@ type ProjectResourceSpecRepoFactory interface {
 	New(spec models.ProjectSpec, storer models.Datastorer) store.ProjectResourceSpecRepository
 }
 
-type BackupRepoFactory interface {
-	New(spec models.ProjectSpec, storer models.Datastorer) store.BackupRepository
-}
-
 type BackupService struct {
 	projectResourceRepoFactory ProjectResourceSpecRepoFactory
 	dsRepo                     models.DatastoreRepo
-	backupRepoFactory          BackupRepoFactory
+	backupRepo                 store.BackupRepository
 	uuidProvider               utils.UUIDProvider
 	pluginService              service.PluginService
 }
@@ -160,8 +156,7 @@ func (srv BackupService) BackupResource(ctx context.Context, backupRequest model
 	}
 
 	// save the backup
-	backupRepo := srv.backupRepoFactory.New(backupRequest.Project, backupSpec.Resource.Datastore)
-	if err := backupRepo.Save(ctx, backupSpec); err != nil {
+	if err := srv.backupRepo.Save(ctx, backupSpec); err != nil {
 		return models.BackupResult{}, err
 	}
 
@@ -177,8 +172,7 @@ func (srv BackupService) ListResourceBackups(ctx context.Context, projectSpec mo
 		return []models.BackupSpec{}, err
 	}
 
-	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
-	backupSpecs, err := backupRepo.GetAll(ctx)
+	backupSpecs, err := srv.backupRepo.GetAll(ctx, projectSpec, datastorer)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return []models.BackupSpec{}, nil
@@ -195,15 +189,14 @@ func (srv BackupService) ListResourceBackups(ctx context.Context, projectSpec mo
 	return recentBackups, nil
 }
 
-func (srv BackupService) GetResourceBackup(ctx context.Context, projectSpec models.ProjectSpec, datastoreName string,
+func (srv BackupService) GetResourceBackup(ctx context.Context, _ models.ProjectSpec, datastoreName string,
 	id uuid.UUID) (models.BackupSpec, error) {
 	datastorer, err := srv.dsRepo.GetByName(datastoreName)
 	if err != nil {
 		return models.BackupSpec{}, err
 	}
 
-	backupRepo := srv.backupRepoFactory.New(projectSpec, datastorer)
-	return backupRepo.GetByID(ctx, id)
+	return srv.backupRepo.GetByID(ctx, id, datastorer)
 }
 
 func (srv BackupService) prepareBackupSpec(backupRequest models.BackupRequest) (models.BackupSpec, error) {
@@ -234,11 +227,11 @@ func addIgnoreDownstreamConfig(config map[string]string, allowedDownstreamNamesp
 	return config
 }
 
-func NewBackupService(projectResourceRepoFactory ProjectResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepoFactory BackupRepoFactory, pluginService service.PluginService) *BackupService {
+func NewBackupService(projectResourceRepoFactory ProjectResourceSpecRepoFactory, dsRepo models.DatastoreRepo, uuidProvider utils.UUIDProvider, backupRepo store.BackupRepository, pluginService service.PluginService) *BackupService {
 	return &BackupService{
 		projectResourceRepoFactory: projectResourceRepoFactory,
 		dsRepo:                     dsRepo,
-		backupRepoFactory:          backupRepoFactory,
+		backupRepo:                 backupRepo,
 		uuidProvider:               uuidProvider,
 		pluginService:              pluginService,
 	}

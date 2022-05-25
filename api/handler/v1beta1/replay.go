@@ -22,7 +22,6 @@ type ReplayServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
 	namespaceService service.NamespaceService
-	adapter          ProtoAdapter
 	projectService   service.ProjectService
 	replayService    models.ReplayService
 	pb.UnimplementedReplayServiceServer
@@ -40,7 +39,7 @@ func (sv *ReplayServiceServer) ReplayDryRun(ctx context.Context, req *pb.ReplayD
 		return nil, status.Errorf(codes.Internal, "error while processing replay dry run: %v", err)
 	}
 
-	node, err := sv.adapter.ToReplayExecutionTreeNode(replayPlan.ExecutionTree)
+	node, err := ToReplayExecutionTreeNode(replayPlan.ExecutionTree)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while preparing replay dry run response: %v", err)
 	}
@@ -85,7 +84,7 @@ func (sv *ReplayServiceServer) GetReplayStatus(ctx context.Context, req *pb.GetR
 		return nil, status.Errorf(codes.Internal, "error while getting replay: %v", err)
 	}
 
-	node, err := sv.adapter.ToReplayStatusTreeNode(replayState.Node)
+	node, err := ToReplayStatusTreeNode(replayState.Node)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error while getting replay status tree: %v", err)
 	}
@@ -102,13 +101,13 @@ func (sv *ReplayServiceServer) parseReplayStatusRequest(ctx context.Context, req
 		return models.ReplayRequest{}, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to find project %s", req.GetProjectName()))
 	}
 
-	uuid, err := uuid.Parse(req.Id)
+	id, err := uuid.Parse(req.Id)
 	if err != nil {
 		return models.ReplayRequest{}, status.Errorf(codes.InvalidArgument, "error while parsing replay ID: %v", err)
 	}
 
 	replayRequest := models.ReplayRequest{
-		ID:      uuid,
+		ID:      id,
 		Project: projSpec,
 	}
 	return replayRequest, nil
@@ -182,11 +181,10 @@ func (sv *ReplayServiceServer) parseReplayRequest(ctx context.Context, projectNa
 	return replayRequest, nil
 }
 
-func NewReplayServiceServer(l log.Logger, jobService models.JobService, namespaceService service.NamespaceService, adapter ProtoAdapter, projectService service.ProjectService, replayService models.ReplayService) *ReplayServiceServer {
+func NewReplayServiceServer(l log.Logger, jobService models.JobService, namespaceService service.NamespaceService, projectService service.ProjectService, replayService models.ReplayService) *ReplayServiceServer {
 	return &ReplayServiceServer{
 		l:                l,
 		jobSvc:           jobService,
-		adapter:          adapter,
 		namespaceService: namespaceService,
 		projectService:   projectService,
 		replayService:    replayService,

@@ -20,14 +20,14 @@ type NamespaceService interface {
 }
 
 type namespaceService struct {
-	projectService   ProjectService
-	namespaceRepoFac NamespaceRepoFactory
+	projectService ProjectService
+	namespaceRepo  store.NamespaceRepository
 }
 
-func NewNamespaceService(projectService ProjectService, factory NamespaceRepoFactory) NamespaceService {
+func NewNamespaceService(projectService ProjectService, nsRepo store.NamespaceRepository) NamespaceService {
 	return &namespaceService{
-		projectService:   projectService,
-		namespaceRepoFac: factory,
+		projectService: projectService,
+		namespaceRepo:  nsRepo,
 	}
 }
 
@@ -41,8 +41,7 @@ func (s namespaceService) Get(ctx context.Context, projectName, namespaceName st
 			NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
-	nsRepo := s.namespaceRepoFac.New(models.ProjectSpec{}) // Intentional empty object
-	nsSpec, err := nsRepo.Get(ctx, projectName, namespaceName)
+	nsSpec, err := s.namespaceRepo.Get(ctx, projectName, namespaceName)
 	if err != nil {
 		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
@@ -56,8 +55,7 @@ func (s namespaceService) GetByName(ctx context.Context, project models.ProjectS
 			NewError(models.NamespaceEntity, ErrInvalidArgument, "namespace name cannot be empty")
 	}
 
-	nsRepo := s.namespaceRepoFac.New(project)
-	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
+	nsSpec, err := s.namespaceRepo.GetByName(ctx, project, namespaceName)
 	if err != nil {
 		return models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
@@ -76,8 +74,7 @@ func (s namespaceService) GetNamespaceOptionally(ctx context.Context, projectNam
 		return projectSpec, models.NamespaceSpec{}, nil
 	}
 
-	nsRepo := s.namespaceRepoFac.New(projectSpec)
-	nsSpec, err := nsRepo.GetByName(ctx, namespaceName)
+	nsSpec, err := s.namespaceRepo.GetByName(ctx, projectSpec, namespaceName)
 	if err != nil {
 		return models.ProjectSpec{}, models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}
@@ -95,8 +92,7 @@ func (s namespaceService) Save(ctx context.Context, projName string, namespace m
 		return err
 	}
 
-	nsRepo := s.namespaceRepoFac.New(projectSpec)
-	err = nsRepo.Save(ctx, namespace)
+	err = s.namespaceRepo.Save(ctx, projectSpec, namespace)
 	if err != nil {
 		return FromError(err, models.NamespaceEntity, "")
 	}
@@ -109,8 +105,7 @@ func (s namespaceService) GetAll(ctx context.Context, projName string) ([]models
 		return []models.NamespaceSpec{}, err
 	}
 
-	namespaceRepo := s.namespaceRepoFac.New(projectSpec)
-	namespaces, err := namespaceRepo.GetAll(ctx)
+	namespaces, err := s.namespaceRepo.GetAll(ctx, projectSpec)
 	if err != nil {
 		return []models.NamespaceSpec{}, FromError(err, models.NamespaceEntity, "")
 	}

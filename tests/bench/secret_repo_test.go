@@ -34,9 +34,9 @@ func BenchmarkSecretRepo(b *testing.B) {
 		projRepo := postgres.NewProjectRepository(dbConn, key)
 		assert.Nil(b, projRepo.Save(ctx, project))
 
-		namespaceRepo := postgres.NewNamespaceRepository(dbConn, project, key)
-		assert.Nil(b, namespaceRepo.Save(ctx, namespace))
-		assert.Nil(b, namespaceRepo.Save(ctx, otherNamespace))
+		namespaceRepo := postgres.NewNamespaceRepository(dbConn, key)
+		assert.Nil(b, namespaceRepo.Save(ctx, project, namespace))
+		assert.Nil(b, namespaceRepo.Save(ctx, project, otherNamespace))
 		return dbConn
 	}
 

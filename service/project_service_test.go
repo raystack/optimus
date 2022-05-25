@@ -35,11 +35,7 @@ func TestProjectService(t *testing.T) {
 				Return(models.ProjectSpec{}, store.ErrResourceNotFound)
 			defer projectRepository.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			svc := service.NewProjectService(projectRepoFactory)
+			svc := service.NewProjectService(projectRepository)
 
 			_, err := svc.Get(ctx, "nonexistent")
 			assert.NotNil(t, err)
@@ -50,10 +46,7 @@ func TestProjectService(t *testing.T) {
 			projectRepository.On("GetByName", ctx, project.Name).Return(project, nil)
 			defer projectRepository.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			svc := service.NewProjectService(projectRepoFactory)
+			svc := service.NewProjectService(projectRepository)
 
 			actualProject, err := svc.Get(ctx, project.Name)
 			assert.Nil(t, err)
@@ -86,10 +79,7 @@ func TestProjectService(t *testing.T) {
 			projectRepository.On("Save", ctx, project2).Return(nil)
 			defer projectRepository.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			svc := service.NewProjectService(projectRepoFactory)
+			svc := service.NewProjectService(projectRepository)
 
 			err := svc.Save(ctx, project2)
 			assert.Nil(t, err)
@@ -102,11 +92,7 @@ func TestProjectService(t *testing.T) {
 				Return([]models.ProjectSpec{}, errors.New("random error"))
 			defer projectRepository.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-			defer projectRepoFactory.AssertExpectations(t)
-
-			svc := service.NewProjectService(projectRepoFactory)
+			svc := service.NewProjectService(projectRepository)
 
 			_, err := svc.GetAll(ctx)
 			assert.NotNil(t, err)
@@ -117,10 +103,7 @@ func TestProjectService(t *testing.T) {
 			projectRepository.On("GetAll", ctx).Return([]models.ProjectSpec{project}, nil)
 			defer projectRepository.AssertExpectations(t)
 
-			projectRepoFactory := new(mock.ProjectRepoFactory)
-			projectRepoFactory.On("New").Return(projectRepository)
-
-			svc := service.NewProjectService(projectRepoFactory)
+			svc := service.NewProjectService(projectRepository)
 
 			prjs, err := svc.GetAll(ctx)
 			assert.Nil(t, err)

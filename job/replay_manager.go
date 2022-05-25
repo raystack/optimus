@@ -73,7 +73,7 @@ type Manager struct {
 	requestQ chan models.ReplayRequest
 
 	replayWorkerFactory ReplayWorkerFactory
-	replaySpecRepoFac   ReplaySpecRepoFactory
+	replaySpecRepo      store.ReplaySpecRepository
 	scheduler           models.SchedulerUnit
 	replayValidator     ReplayValidator
 	replaySyncer        ReplaySyncer
@@ -86,13 +86,11 @@ type Manager struct {
 // Replay a request asynchronously, returns a replay id that can
 // can be used to query its status
 func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (models.ReplayResult, error) {
-	replaySpecRepo := m.replaySpecRepoFac.New()
-
 	replayPlan, err := prepareReplayPlan(reqInput)
 	if err != nil {
 		return models.ReplayResult{}, err
 	}
-	if err := m.replayValidator.Validate(ctx, replaySpecRepo, reqInput, replayPlan.ExecutionTree); err != nil {
+	if err := m.replayValidator.Validate(ctx, m.replaySpecRepo, reqInput, replayPlan.ExecutionTree); err != nil {
 		return models.ReplayResult{}, err
 	}
 	if reqInput.ID, err = m.uuidProvider.NewUUID(); err != nil {
@@ -111,7 +109,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 	}
 
 	// could get cancelled later if queue is full
-	if err := replaySpecRepo.Insert(ctx, &replay); err != nil {
+	if err := m.replaySpecRepo.Insert(ctx, &replay); err != nil {
 		return models.ReplayResult{}, err
 	}
 
@@ -123,7 +121,7 @@ func (m *Manager) Replay(ctx context.Context, reqInput models.ReplayRequest) (mo
 		}, nil
 	default:
 		// all workers busy, mark the inserted request as cancelled
-		_ = replaySpecRepo.UpdateStatus(ctx, reqInput.ID, models.ReplayStatusCancelled, models.ReplayMessage{
+		_ = m.replaySpecRepo.UpdateStatus(ctx, reqInput.ID, models.ReplayStatusCancelled, models.ReplayMessage{
 			Type:    models.ReplayStatusCancelled,
 			Message: ErrRequestQueueFull.Error(),
 		})
@@ -173,12 +171,12 @@ func (m *Manager) SchedulerSyncer() {
 
 // GetReplay using UUID
 func (m *Manager) GetReplay(ctx context.Context, replayUUID uuid.UUID) (models.ReplaySpec, error) {
-	return m.replaySpecRepoFac.New().GetByID(ctx, replayUUID)
+	return m.replaySpecRepo.GetByID(ctx, replayUUID)
 }
 
 // GetReplayList using Project ID
 func (m *Manager) GetReplayList(ctx context.Context, projectUUID models.ProjectID) ([]models.ReplaySpec, error) {
-	replays, err := m.replaySpecRepoFac.New().GetByProjectID(ctx, projectUUID)
+	replays, err := m.replaySpecRepo.GetByProjectID(ctx, projectUUID)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return []models.ReplaySpec{}, nil
@@ -244,14 +242,14 @@ func (m *Manager) Init() {
 }
 
 // NewManager constructs a new instance of Manager
-func NewManager(l log.Logger, workerFact ReplayWorkerFactory, replaySpecRepoFac ReplaySpecRepoFactory, uuidProvider utils.UUIDProvider,
+func NewManager(l log.Logger, workerFact ReplayWorkerFactory, replaySpecRepo store.ReplaySpecRepository, uuidProvider utils.UUIDProvider,
 	config ReplayManagerConfig, scheduler models.SchedulerUnit, validator ReplayValidator, syncer ReplaySyncer) *Manager {
 	mgr := &Manager{
 		l:                   l,
 		replayWorkerFactory: workerFact,
 		config:              config,
 		requestQ:            make(chan models.ReplayRequest),
-		replaySpecRepoFac:   replaySpecRepoFac,
+		replaySpecRepo:      replaySpecRepo,
 		uuidProvider:        uuidProvider,
 		scheduler:           scheduler,
 		replayValidator:     validator,

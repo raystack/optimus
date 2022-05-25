@@ -6,6 +6,7 @@ import (
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
@@ -19,8 +20,7 @@ const (
 
 // GRPCClient will be used by core to talk over grpc with plugins
 type GRPCClient struct {
-	client             pbp.DependencyResolverModServiceClient
-	projectSpecAdapter ProjectSpecAdapter
+	client pbp.DependencyResolverModServiceClient
 
 	baseClient *base.GRPCClient
 
@@ -42,7 +42,7 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 	resp, err := m.client.GenerateDestination(spanCtx, &pbp.GenerateDestinationRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
-		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
+		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
@@ -62,7 +62,7 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 	resp, err := m.client.GenerateDependencies(spanCtx, &pbp.GenerateDependenciesRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
-		Project: m.projectSpecAdapter.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
+		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))

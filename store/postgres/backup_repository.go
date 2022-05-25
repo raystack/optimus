@@ -34,9 +34,7 @@ type Backup struct {
 }
 
 type backupRepository struct {
-	db         *gorm.DB
-	project    models.ProjectSpec
-	datastorer models.Datastorer
+	db *gorm.DB
 }
 
 func (Backup) FromSpec(backupSpec models.BackupSpec) (Backup, error) {
@@ -94,15 +92,15 @@ func (b Backup) ToSpec(ds models.Datastorer) (models.BackupSpec, error) {
 	}, nil
 }
 
-func (repo *backupRepository) GetAll(ctx context.Context) ([]models.BackupSpec, error) {
+func (repo *backupRepository) GetAll(ctx context.Context, project models.ProjectSpec, ds models.Datastorer) ([]models.BackupSpec, error) {
 	var specs []models.BackupSpec
 	var backups []Backup
 	if err := repo.db.WithContext(ctx).Preload("Resource").Joins("JOIN resource ON backup.resource_id = resource.id").
-		Where("resource.project_id = ?", repo.project.ID.UUID()).Find(&backups).Error; err != nil {
+		Where("resource.project_id = ?", project.ID.UUID()).Find(&backups).Error; err != nil {
 		return specs, err
 	}
 	for _, b := range backups {
-		adapted, err := b.ToSpec(repo.datastorer)
+		adapted, err := b.ToSpec(ds)
 		if err != nil {
 			return specs, fmt.Errorf("failed to adapt backup: %w", err)
 		}
@@ -111,7 +109,7 @@ func (repo *backupRepository) GetAll(ctx context.Context) ([]models.BackupSpec, 
 	return specs, nil
 }
 
-func (repo *backupRepository) GetByID(ctx context.Context, id uuid.UUID) (models.BackupSpec, error) {
+func (repo *backupRepository) GetByID(ctx context.Context, id uuid.UUID, ds models.Datastorer) (models.BackupSpec, error) {
 	var b Backup
 	if err := repo.db.WithContext(ctx).Preload("Resource").Joins("JOIN resource ON backup.resource_id = resource.id").
 		Where("backup.id = ?", id).First(&b).Error; err != nil {
@@ -120,13 +118,11 @@ func (repo *backupRepository) GetByID(ctx context.Context, id uuid.UUID) (models
 		}
 		return models.BackupSpec{}, err
 	}
-	return b.ToSpec(repo.datastorer)
+	return b.ToSpec(ds)
 }
 
-func NewBackupRepository(db *gorm.DB, projectSpec models.ProjectSpec, ds models.Datastorer) *backupRepository {
+func NewBackupRepository(db *gorm.DB) *backupRepository {
 	return &backupRepository{
-		db:         db,
-		project:    projectSpec,
-		datastorer: ds,
+		db: db,
 	}
 }

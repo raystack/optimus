@@ -34,17 +34,8 @@ func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.Proj
 	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.PluginRegistry))
 }
 
-type replaySpecRepoRepository struct {
-	db             *gorm.DB
-	jobSpecRepoFac jobSpecRepoFactory
-}
-
-func (fac *replaySpecRepoRepository) New() store.ReplaySpecRepository {
-	return postgres.NewReplayRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
 type replayWorkerFact struct {
-	replaySpecRepoFac job.ReplaySpecRepoFactory
+	replaySpecRepoFac store.ReplaySpecRepository
 	scheduler         models.SchedulerUnit
 	logger            log.Logger
 }
@@ -68,40 +59,6 @@ func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepos
 	)
 }
 
-type projectRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *projectRepoFactory) New() store.ProjectRepository {
-	return postgres.NewProjectRepository(fac.db, fac.hash)
-}
-
-type namespaceRepoFactory struct {
-	db   *gorm.DB
-	hash models.ApplicationKey
-}
-
-func (fac *namespaceRepoFactory) New(projectSpec models.ProjectSpec) store.NamespaceRepository {
-	return postgres.NewNamespaceRepository(fac.db, projectSpec, fac.hash)
-}
-
-type jobRunRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *jobRunRepoFactory) New() store.JobRunRepository {
-	return postgres.NewJobRunRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
-type instanceRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *instanceRepoFactory) New() store.InstanceRepository {
-	return postgres.NewInstanceRepository(fac.db, postgres.NewAdapter(models.PluginRegistry))
-}
-
 // projectResourceSpecRepoFactory stores raw resource specifications at a project level
 type projectResourceSpecRepoFactory struct {
 	db *gorm.DB
@@ -119,15 +76,6 @@ type resourceSpecRepoFactory struct {
 
 func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds models.Datastorer) store.ResourceSpecRepository {
 	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
-}
-
-// backupRepoFactory stores backup specifications
-type backupRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *backupRepoFactory) New(projectSpec models.ProjectSpec, storer models.Datastorer) store.BackupRepository {
-	return postgres.NewBackupRepository(fac.db, projectSpec, storer)
 }
 
 type airflowBucketFactory struct{}

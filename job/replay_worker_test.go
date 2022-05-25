@@ -17,7 +17,7 @@ import (
 )
 
 func TestReplayWorker(t *testing.T) {
-	log := log.NewNoop()
+	l := log.NewNoop()
 	dagStartTime, _ := time.Parse(job.ReplayDateFormat, "2020-04-05")
 	startDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-22")
 	endDate, _ := time.Parse(job.ReplayDateFormat, "2020-08-26")
@@ -64,11 +64,7 @@ func TestReplayWorker(t *testing.T) {
 			errMessage := "replay repo error"
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(errors.New(errMessage))
 
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New").Return(replayRepository)
-
-			worker := job.NewReplayWorker(log, replaySpecRepoFac, nil)
+			worker := job.NewReplayWorker(l, replayRepository, nil)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Equal(t, errMessage, err.Error())
@@ -84,10 +80,6 @@ func TestReplayWorker(t *testing.T) {
 				Message: errMessage,
 			}
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New").Return(replayRepository)
 			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
@@ -95,7 +87,7 @@ func TestReplayWorker(t *testing.T) {
 			errorMessage := "batchScheduler clear error"
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
 
-			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(l, replayRepository, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), errorMessage)
@@ -112,10 +104,6 @@ func TestReplayWorker(t *testing.T) {
 			}
 			updateStatusErr := errors.New("error while updating status to failed")
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusFailed, failedReplayMessage).Return(updateStatusErr)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New").Return(replayRepository)
 			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
@@ -123,7 +111,7 @@ func TestReplayWorker(t *testing.T) {
 			errorMessage := "batchScheduler clear error"
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(errors.New(errorMessage))
 
-			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(l, replayRepository, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), updateStatusErr.Error())
@@ -135,17 +123,13 @@ func TestReplayWorker(t *testing.T) {
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			updateSuccessStatusErr := errors.New("error while updating replay request")
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(updateSuccessStatusErr)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New").Return(replayRepository)
 			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(nil)
 
-			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(l, replayRepository, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.NotNil(t, err)
 			assert.Contains(t, err.Error(), updateSuccessStatusErr.Error())
@@ -155,17 +139,13 @@ func TestReplayWorker(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusReplayed, models.ReplayMessage{}).Return(nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New").Return(replayRepository)
 			replayRepository.On("GetByID", ctx, currUUID).Return(replaySpec, nil)
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 			scheduler.On("Clear", ctx, projectSpec, "job-name", dagRunStartTime, dagRunEndTime).Return(nil)
 
-			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(l, replayRepository, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.Nil(t, err)
 		})
@@ -174,17 +154,13 @@ func TestReplayWorker(t *testing.T) {
 			replayRepository := new(mock.ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 			replayRepository.On("UpdateStatus", ctx, currUUID, models.ReplayStatusInProgress, models.ReplayMessage{}).Return(nil)
-
-			replaySpecRepoFac := new(mock.ReplaySpecRepoFactory)
-			defer replaySpecRepoFac.AssertExpectations(t)
-			replaySpecRepoFac.On("New").Return(replayRepository)
 			errMessage := "fetch replay failed"
 			replayRepository.On("GetByID", ctx, currUUID).Return(models.ReplaySpec{}, errors.New(errMessage))
 
 			scheduler := new(mock.Scheduler)
 			defer scheduler.AssertExpectations(t)
 
-			worker := job.NewReplayWorker(log, replaySpecRepoFac, scheduler)
+			worker := job.NewReplayWorker(l, replayRepository, scheduler)
 			err := worker.Process(ctx, replayRequest)
 			assert.Equal(t, errMessage, err.Error())
 		})

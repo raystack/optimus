@@ -2,7 +2,6 @@ package extension
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"time"
@@ -32,7 +31,7 @@ func LoadManifest(dirPath string) (*Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &Manifest{}
 	if _, err := os.Stat(manifestPath); err == nil {
-		content, err := ioutil.ReadFile(manifestPath)
+		content, err := os.ReadFile(manifestPath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading file: %w", err)
 		}
@@ -50,7 +49,7 @@ func FlushManifest(manifest *Manifest, dirPath string) error {
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
-	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil { // TODO: Dangerous 0777 permissions
 		return fmt.Errorf("error creating dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)

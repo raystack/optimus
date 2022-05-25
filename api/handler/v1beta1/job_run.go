@@ -19,7 +19,7 @@ import (
 
 type JobRunServiceServer struct {
 	jobSvc              models.JobService
-	adapter             ProtoAdapter
+	pluginRepo          models.PluginRepository
 	projectService      service.ProjectService
 	namespaceService    service.NamespaceService
 	secretService       service.SecretService
@@ -131,15 +131,15 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
 
-	jobProto := sv.adapter.ToJobProto(jobRun.Spec)
+	jobProto := ToJobProto(jobRun.Spec)
 
-	instanceProto := sv.adapter.ToInstanceProto(instance)
+	instanceProto := ToInstanceProto(instance)
 
 	return &pb.RegisterInstanceResponse{
-		Project:   sv.adapter.ToProjectProto(projSpec),
+		Project:   ToProjectProto(projSpec),
 		Job:       jobProto,
 		Instance:  instanceProto,
-		Namespace: sv.adapter.ToNamespaceProto(namespaceSpec),
+		Namespace: ToNamespaceProto(namespaceSpec),
 		Context: &pb.InstanceContext{
 			Envs:    jobRunInput.ConfigMap,
 			Secrets: jobRunInput.SecretsMap,
@@ -250,7 +250,7 @@ func (sv *JobRunServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest
 
 	var jobSpecs []models.JobSpec
 	for _, jobSpecProto := range req.Specifications {
-		jobSpec, err := sv.adapter.FromJobProto(jobSpecProto)
+		jobSpec, err := FromJobProto(jobSpecProto, sv.pluginRepo)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "%s: cannot adapt job %s", err.Error(), jobSpecProto.GetName())
 		}
@@ -263,11 +263,11 @@ func (sv *JobRunServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest
 	return &pb.RunJobResponse{}, nil
 }
 
-func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, secretService service.SecretService, adapter ProtoAdapter, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, scheduler models.SchedulerUnit) *JobRunServiceServer {
+func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, secretService service.SecretService, pluginRepo models.PluginRepository, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, scheduler models.SchedulerUnit) *JobRunServiceServer {
 	return &JobRunServiceServer{
 		l:                   l,
 		jobSvc:              jobSvc,
-		adapter:             adapter,
+		pluginRepo:          pluginRepo,
 		runSvc:              instSvc,
 		jobRunInputCompiler: jobRunInputCompiler,
 		scheduler:           scheduler,

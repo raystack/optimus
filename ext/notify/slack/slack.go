@@ -261,7 +261,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 					ev.authToken = "*redacted*"
 					cleanedEvents = append(cleanedEvents, ev)
 				}
-				s.workerErrChan <- fmt.Errorf("Worker_SendMessageContext: %v: %w", cleanedEvents, err)
+				s.workerErrChan <- fmt.Errorf("worker_sendMessageContext: %v: %w", cleanedEvents, err)
 			}
 
 			// clear events from map as they are processed

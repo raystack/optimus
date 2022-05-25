@@ -58,14 +58,6 @@ func (repo *ReplayRepository) GetByProjectID(ctx context.Context, projectID mode
 	return args.Get(0).([]models.ReplaySpec), args.Error(1)
 }
 
-type ReplaySpecRepoFactory struct {
-	mock.Mock
-}
-
-func (fac *ReplaySpecRepoFactory) New() store.ReplaySpecRepository {
-	return fac.Called().Get(0).(store.ReplaySpecRepository)
-}
-
 type ReplayManager struct {
 	mock.Mock
 }
@@ -79,8 +71,8 @@ func (rm *ReplayManager) Init() {
 	rm.Called()
 }
 
-func (rm *ReplayManager) GetReplay(ctx context.Context, uuid uuid.UUID) (models.ReplaySpec, error) {
-	args := rm.Called(ctx, uuid)
+func (rm *ReplayManager) GetReplay(ctx context.Context, id uuid.UUID) (models.ReplaySpec, error) {
+	args := rm.Called(ctx, id)
 	return args.Get(0).(models.ReplaySpec), args.Error(1)
 }
 
@@ -154,8 +146,8 @@ type ReplaySyncer struct {
 	mock.Mock
 }
 
-func (rs *ReplaySyncer) Sync(context context.Context, runTimeout time.Duration) error {
-	args := rs.Called(context, runTimeout)
+func (rs *ReplaySyncer) Sync(ctx context.Context, runTimeout time.Duration) error {
+	args := rs.Called(ctx, runTimeout)
 	return args.Error(0)
 }
 

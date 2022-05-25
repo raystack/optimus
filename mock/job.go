@@ -40,8 +40,8 @@ func (repo *ProjectJobSpecRepository) GetByIDs(ctx context.Context, jobIDs []uui
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, job, project string) (models.JobSpec, models.ProjectSpec, error) {
-	args := repo.Called(ctx, job, project)
+func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, jobName, project string) (models.JobSpec, models.ProjectSpec, error) {
+	args := repo.Called(ctx, jobName, project)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)
 	}
@@ -172,8 +172,8 @@ func (srv *JobService) Check(ctx context.Context, namespaceSpec models.Namespace
 	return args.Error(0)
 }
 
-func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, job models.JobSpec) error {
-	args := srv.Called(ctx, c, job)
+func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, jobSpec models.JobSpec) error {
+	args := srv.Called(ctx, c, jobSpec)
 	return args.Error(0)
 }
 
@@ -192,7 +192,7 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error {
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, observer progress.Observer) error {
 	args := srv.Called(ctx, projectName, namespaceNames, jobNames, observer)
 	return args.Error(0)
 }

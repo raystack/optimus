@@ -92,10 +92,10 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		err := projRepo.Save(ctx, projectSpec)
 		assert.Nil(t, err)
 
-		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-		err = repo.Insert(ctx, testModels[0])
+		repo := postgres.NewNamespaceRepository(db, hash)
+		err = repo.Insert(ctx, projectSpec, testModels[0])
 		assert.Nil(t, err)
-		err = repo.Insert(ctx, testModels[1])
+		err = repo.Insert(ctx, projectSpec, testModels[1])
 		assert.NotNil(t, err)
 
 		// Secrets depend on namespace
@@ -105,7 +105,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		err = secretRepo.Insert(ctx, projectSpec, namespaceSpecs[0], secrets[1])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, projectSpec, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 		assert.Equal(t, projectSpec.Name, checkModel.ProjectSpec.Name)
@@ -118,21 +118,21 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			testModelA := namespaceSpecs[0]
 			testModelB := namespaceSpecs[2]
 
-			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, hash)
 
 			// try for create
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, projectSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(ctx, testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 
 			// try for update
-			err = repo.Save(ctx, testModelB)
+			err = repo.Save(ctx, projectSpec, testModelB)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByName(ctx, testModelB.Name)
+			checkModel, err = repo.GetByName(ctx, projectSpec, testModelB.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 			assert.Equal(t, "10.12.12.12:6668,10.12.12.13:6668", checkModel.Config[transporterKafkaBrokerKey])
@@ -141,23 +141,23 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			db := DBSetup()
 			testModelA := namespaceSpecs[2]
 
-			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, hash)
 
 			// try for create
 			testModelA.Config["bucket"] = "gs://some_folder"
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, projectSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(ctx, testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", checkModel.Name)
 
 			// try for update
 			testModelA.Config["bucket"] = "gs://another_folder"
-			err = repo.Save(ctx, testModelA)
+			err = repo.Save(ctx, projectSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err = repo.GetByName(ctx, testModelA.Name)
+			checkModel, err = repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://another_folder", checkModel.Config["bucket"])
 		})
@@ -166,13 +166,13 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 			testModelA := namespaceSpecs[0]
 			testModelA.ID = uuid.Nil
 
-			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, hash)
 
 			// try for create
-			err := repo.Save(ctx, testModelA)
+			err := repo.Save(ctx, projectSpec, testModelA)
 			assert.Nil(t, err)
 
-			checkModel, err := repo.GetByName(ctx, testModelA.Name)
+			checkModel, err := repo.GetByName(ctx, projectSpec, testModelA.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "g-optimus", checkModel.Name)
 			assert.Equal(t, 36, len(checkModel.ID.String()))
@@ -180,15 +180,15 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		t.Run("should not update empty config", func(t *testing.T) {
 			db := DBSetup()
 
-			repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+			repo := postgres.NewNamespaceRepository(db, hash)
 
-			err := repo.Insert(ctx, namespaceSpecs[4])
+			err := repo.Insert(ctx, projectSpec, namespaceSpecs[4])
 			assert.Nil(t, err)
 
-			err = repo.Save(ctx, namespaceSpecs[4])
+			err = repo.Save(ctx, projectSpec, namespaceSpecs[4])
 			assert.Equal(t, store.ErrEmptyConfig, err)
 
-			checkModel, err := repo.GetByName(ctx, namespaceSpecs[4].Name)
+			checkModel, err := repo.GetByName(ctx, projectSpec, namespaceSpecs[4].Name)
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus-3", checkModel.Name)
 			assert.Equal(t, 36, len(checkModel.ID.String()))
@@ -200,12 +200,12 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
-		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+		repo := postgres.NewNamespaceRepository(db, hash)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, projectSpec, testModels[0])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetByName(ctx, testModels[0].Name)
+		checkModel, err := repo.GetByName(ctx, projectSpec, testModels[0].Name)
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
@@ -215,8 +215,8 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
-		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
-		err := repo.Insert(ctx, testModels[0])
+		repo := postgres.NewNamespaceRepository(db, hash)
+		err := repo.Insert(ctx, projectSpec, testModels[0])
 		assert.Nil(t, err)
 
 		secretRepo := postgres.NewSecretRepository(db, hash)
@@ -235,14 +235,14 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)
 
-		repo := postgres.NewNamespaceRepository(db, projectSpec, hash)
+		repo := postgres.NewNamespaceRepository(db, hash)
 
-		err := repo.Insert(ctx, testModels[0])
+		err := repo.Insert(ctx, projectSpec, testModels[0])
 		assert.Nil(t, err)
-		err = repo.Insert(ctx, testModels[2])
+		err = repo.Insert(ctx, projectSpec, testModels[2])
 		assert.Nil(t, err)
 
-		checkModel, err := repo.GetAll(ctx)
+		checkModel, err := repo.GetAll(ctx, projectSpec)
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModel))
 	})

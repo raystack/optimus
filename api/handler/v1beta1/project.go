@@ -12,13 +12,12 @@ import (
 
 type ProjectServiceServer struct {
 	l              log.Logger
-	adapter        ProtoAdapter
 	projectService service.ProjectService
 	pb.UnimplementedProjectServiceServer
 }
 
 func (sv *ProjectServiceServer) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
-	projectSpec := sv.adapter.FromProjectProto(req.GetProject())
+	projectSpec := FromProjectProto(req.GetProject())
 	if err := sv.projectService.Save(ctx, projectSpec); err != nil {
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
@@ -41,7 +40,7 @@ func (sv *ProjectServiceServer) ListProjects(ctx context.Context, _ *pb.ListProj
 
 	projSpecsProto := []*pb.ProjectSpecification{}
 	for _, project := range projects {
-		projSpecsProto = append(projSpecsProto, sv.adapter.ToProjectProto(project))
+		projSpecsProto = append(projSpecsProto, ToProjectProto(project))
 	}
 
 	return &pb.ListProjectsResponse{
@@ -55,14 +54,13 @@ func (sv *ProjectServiceServer) GetProject(ctx context.Context, req *pb.GetProje
 		return nil, mapToGRPCErr(sv.l, err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
 	return &pb.GetProjectResponse{
-		Project: sv.adapter.ToProjectProto(projectSpec),
+		Project: ToProjectProto(projectSpec),
 	}, nil
 }
 
-func NewProjectServiceServer(l log.Logger, adapter ProtoAdapter, projectService service.ProjectService) *ProjectServiceServer {
+func NewProjectServiceServer(l log.Logger, projectService service.ProjectService) *ProjectServiceServer {
 	return &ProjectServiceServer{
 		l:              l,
-		adapter:        adapter,
 		projectService: projectService,
 	}
 }
