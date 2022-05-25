@@ -42,16 +42,9 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 		incomingSpec := resourceSpec
 		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			var proceed bool
-			if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
-				if !errors.Is(err, store.ErrResourceNotFound) {
-					return nil, err
-				}
-				proceed = true
-			} else {
-				incomingSpec.ID = existingSpec.ID
-				incomingSpec.URN = existingSpec.URN
-				proceed = !srv.isSameHash(existingSpec, incomingSpec)
+			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
+			if err != nil {
+				return nil, err
 			}
 
 			if !proceed {
@@ -64,7 +57,7 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 			if err := repo.Save(ctx, incomingSpec); err != nil {
 				return nil, err
 			}
-			err := incomingSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
+			err = incomingSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
 				Resource: incomingSpec,
 				Project:  namespace.ProjectSpec,
 			})
@@ -91,16 +84,9 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 		incomingSpec := resourceSpec
 		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			var proceed bool
-			if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
-				if !errors.Is(err, store.ErrResourceNotFound) {
-					return nil, err
-				}
-				proceed = true
-			} else {
-				incomingSpec.ID = existingSpec.ID
-				incomingSpec.URN = existingSpec.URN
-				proceed = !srv.isSameHash(existingSpec, incomingSpec)
+			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
+			if err != nil {
+				return nil, err
 			}
 
 			if !proceed {
@@ -113,7 +99,7 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 			if err := repo.Save(ctx, incomingSpec); err != nil {
 				return nil, err
 			}
-			err := incomingSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
+			err = incomingSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
 				Resource: incomingSpec,
 				Project:  namespace.ProjectSpec,
 			})
@@ -175,6 +161,21 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	}
 
 	return repo.Delete(ctx, name)
+}
+
+func (srv Service) isProceedToSave(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
+	var proceed bool
+	if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
+		if !errors.Is(err, store.ErrResourceNotFound) {
+			return proceed, err
+		}
+		proceed = true
+	} else {
+		incomingSpec.ID = existingSpec.ID
+		incomingSpec.URN = existingSpec.URN
+		proceed = !srv.isSameHash(existingSpec, incomingSpec)
+	}
+	return proceed, nil
 }
 
 func (srv Service) isSameHash(rsc1, rsc2 models.ResourceSpec) bool {
