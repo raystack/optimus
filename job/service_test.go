@@ -202,6 +202,105 @@ func TestService(t *testing.T) {
 		})
 	})
 
+	t.Run("BulkCreate", func(t *testing.T) {
+
+		createJobSpecDummy := func(N int) []models.JobSpec {
+			jobSpecs := []models.JobSpec{}
+			for i := 0; i < N; i++ {
+				jobSpec := models.JobSpec{
+					Version: 1,
+					Name:    fmt.Sprintf("test-%d", i),
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+				}
+				jobSpecs = append(jobSpecs, jobSpec)
+			}
+			return jobSpecs
+		}
+
+		t.Run("should create a new jobspecs and store in repository", func(t *testing.T) {
+			jobSpecs := createJobSpecDummy(10)
+			projSpec := models.ProjectSpec{Name: "proj"}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+			destination := &models.GenerateDestinationResponse{
+				Destination: "project.dataset.table",
+				Type:        models.DestinationTypeBigquery,
+			}
+
+			repo := new(mock.JobSpecRepository)
+			pluginService := new(mock.DependencyResolverPluginService)
+			repoFac := new(mock.JobSpecRepoFactory)
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+
+			for _, jobSpec := range jobSpecs {
+				enrichedJobSpec := jobSpec
+				enrichedJobSpec.ID = uuid.New()
+				repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(nil)
+				repo.On("GetByName", ctx, jobSpec.Name).Return(enrichedJobSpec, nil)
+				pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			}
+			repoFac.On("New", namespaceSpec).Return(repo)
+
+			defer repo.AssertExpectations(t)
+			defer repoFac.AssertExpectations(t)
+			defer pluginService.AssertExpectations(t)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
+			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs)
+			assert.Nil(t, err)
+		})
+		t.Run("should fail if there's one jobSpec fail to save", func(t *testing.T) {
+			jobSpecs := createJobSpecDummy(10)
+			projSpec := models.ProjectSpec{Name: "proj"}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+			destination := &models.GenerateDestinationResponse{
+				Destination: "project.dataset.table",
+				Type:        models.DestinationTypeBigquery,
+			}
+
+			repo := new(mock.JobSpecRepository)
+			pluginService := new(mock.DependencyResolverPluginService)
+			repoFac := new(mock.JobSpecRepoFactory)
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+
+			for i, jobSpec := range jobSpecs {
+				enrichedJobSpec := jobSpec
+				enrichedJobSpec.ID = uuid.New()
+				if i < len(jobSpecs)-3 {
+					repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(nil)
+					repo.On("GetByName", ctx, jobSpec.Name).Return(enrichedJobSpec, nil)
+				} else {
+					// fail to save
+					repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(errors.New("unknown error"))
+				}
+				pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			}
+			repoFac.On("New", namespaceSpec).Return(repo)
+
+			defer repo.AssertExpectations(t)
+			defer repoFac.AssertExpectations(t)
+			defer pluginService.AssertExpectations(t)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
+			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs)
+			assert.NotNil(t, err)
+		})
+
+	})
+
 	t.Run("Check", func(t *testing.T) {
 		projSpec := models.ProjectSpec{
 			Name: "proj",
