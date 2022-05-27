@@ -278,7 +278,7 @@ func TestService(t *testing.T) {
 			for i, jobSpec := range jobSpecs {
 				enrichedJobSpec := jobSpec
 				enrichedJobSpec.ID = uuid.New()
-				if i < len(jobSpecs)-3 {
+				if i < len(jobSpecs)-1 {
 					repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(nil)
 					repo.On("GetByName", ctx, jobSpec.Name).Return(enrichedJobSpec, nil)
 				} else {
@@ -299,6 +299,78 @@ func TestService(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 
+	})
+
+	t.Run("GetByName", func(t *testing.T) {
+		t.Run("should get jobSpec by the name", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				ID:      uuid.Must(uuid.NewUUID()),
+				Version: 1,
+				Name:    "test",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+			}
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+			repo := new(mock.JobSpecRepository)
+			repo.On("GetByName", ctx, jobSpec.Name).Return(jobSpec, nil)
+			defer repo.AssertExpectations(t)
+
+			repoFac := new(mock.JobSpecRepoFactory)
+			repoFac.On("New", namespaceSpec).Return(repo)
+			defer repoFac.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			_, err := svc.GetByName(ctx, jobSpec.Name, namespaceSpec)
+			assert.Nil(t, err)
+		})
+
+		t.Run("should fail if repo fail", func(t *testing.T) {
+			jobSpec := models.JobSpec{
+				ID:      uuid.Must(uuid.NewUUID()),
+				Version: 1,
+				Name:    "test",
+				Owner:   "optimus",
+				Schedule: models.JobSpecSchedule{
+					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+					Interval:  "@daily",
+				},
+			}
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+			repo := new(mock.JobSpecRepository)
+			repo.On("GetByName", ctx, jobSpec.Name).Return(nil, errors.New("unknown error"))
+			defer repo.AssertExpectations(t)
+
+			repoFac := new(mock.JobSpecRepoFactory)
+			repoFac.On("New", namespaceSpec).Return(repo)
+			defer repoFac.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			_, err := svc.GetByName(ctx, jobSpec.Name, namespaceSpec)
+			assert.NotNil(t, err)
+		})
 	})
 
 	t.Run("Check", func(t *testing.T) {
