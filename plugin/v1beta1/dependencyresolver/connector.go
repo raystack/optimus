@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
@@ -80,7 +81,13 @@ func startServe(mp map[string]plugin.Plugin, logger hclog.Logger) {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: base.Handshake,
 		Plugins:         mp,
-		GRPCServer:      plugin.DefaultGRPCServer,
-		Logger:          logger,
+		GRPCServer: func(options []grpc.ServerOption) *grpc.Server {
+			traceOpt := []grpc.ServerOption{
+				grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+				grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+			}
+			return plugin.DefaultGRPCServer(append(traceOpt, options...))
+		},
+		Logger: logger,
 	})
 }

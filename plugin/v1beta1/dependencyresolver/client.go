@@ -5,6 +5,8 @@ import (
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc/metadata"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
@@ -39,7 +41,9 @@ func (m *GRPCClient) SetName(n string) {
 func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
 	spanCtx, span := base.Tracer.Start(ctx, "GenerateDestination")
 	defer span.End()
-	resp, err := m.client.GenerateDestination(spanCtx, &pbp.GenerateDestinationRequest{
+
+	outCtx := propagateMetadata(spanCtx)
+	resp, err := m.client.GenerateDestination(outCtx, &pbp.GenerateDestinationRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
@@ -59,7 +63,9 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
 	spanCtx, span := base.Tracer.Start(ctx, "GenerateDependencies")
 	defer span.End()
-	resp, err := m.client.GenerateDependencies(spanCtx, &pbp.GenerateDependenciesRequest{
+
+	outCtx := propagateMetadata(spanCtx)
+	resp, err := m.client.GenerateDependencies(outCtx, &pbp.GenerateDependenciesRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
@@ -73,4 +79,17 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 	return &models.GenerateDependenciesResponse{
 		Dependencies: resp.Dependencies,
 	}, nil
+}
+
+// propogateMetadata is based on UnaryClientInterceptor, here we cannot use interceptor as it is not
+// available as a callOption for the grpc call. We need to manually inject the metadata to context
+// https://github.com/open-telemetry/opentelemetry-go-contrib/blob/main/instrumentation/google.golang.org/grpc/otelgrpc/interceptor.go#L67
+func propagateMetadata(ctx context.Context) context.Context {
+	requestMetadata, _ := metadata.FromOutgoingContext(ctx)
+	metadataCopy := requestMetadata.Copy()
+
+	otelgrpc.Inject(ctx, &metadataCopy)
+	outgoingCtx := metadata.NewOutgoingContext(ctx, metadataCopy)
+
+	return outgoingCtx
 }
