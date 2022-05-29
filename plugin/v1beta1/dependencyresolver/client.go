@@ -81,7 +81,7 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 	}, nil
 }
 
-// propogateMetadata is based on UnaryClientInterceptor, here we cannot use interceptor as it is not
+// propagateMetadata is based on UnaryClientInterceptor, here we cannot use interceptor as it is not
 // available as a callOption for the grpc call. We need to manually inject the metadata to context
 // https://github.com/open-telemetry/opentelemetry-go-contrib/blob/main/instrumentation/google.golang.org/grpc/otelgrpc/interceptor.go#L67
 func propagateMetadata(ctx context.Context) context.Context {
