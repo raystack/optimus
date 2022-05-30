@@ -91,7 +91,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
@@ -176,7 +176,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
@@ -269,7 +269,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupRequest := models.BackupRequest{
@@ -418,7 +418,7 @@ func TestBackupOnServer(t *testing.T) {
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
 			errorMsg := "unable to get jobspec"
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -478,7 +478,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			errorMsg := "unable to get jobspec downstream"
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
@@ -540,7 +540,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			jobService := new(mock.JobService)
 			defer jobService.AssertExpectations(t)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 
 			backupRequest := models.BackupRequest{
@@ -660,7 +660,7 @@ func TestBackupOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 
 			backupService := new(mock.BackupService)
 			backupService.On("BackupResource", ctx, backupReq, []models.JobSpec{jobSpec}).Return(backupResult, nil)
@@ -755,7 +755,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupService := new(mock.BackupService)
@@ -851,7 +851,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return(jobSpecDownstreams, nil)
 
 			backupService := new(mock.BackupService)
@@ -990,7 +990,7 @@ func TestBackupOnServer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
 			errorMsg := "unable to get jobspec"
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			backupServiceServer := v1.NewBackupServiceServer(
 				log,
@@ -1050,7 +1050,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			errorMsg := "unable to get jobspec downstream"
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
@@ -1125,7 +1125,7 @@ func TestBackupOnServer(t *testing.T) {
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 			resourceSvc.On("ReadResource", ctx, namespaceSpec, models.DestinationTypeBigquery.String(), resourceName).Return(resourceSpec, nil)
-			jobService.On("GetByDestination", projectSpec, resourceUrn).Return(jobSpec, nil)
+			jobService.On("GetByDestination", ctx, projectSpec, resourceUrn).Return(jobSpec, nil)
 			jobService.On("GetDownstream", ctx, projectSpec, jobSpec.Name).Return([]models.JobSpec{}, nil)
 			errorMsg := "unable to get jobspec"
 

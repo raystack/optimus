@@ -182,9 +182,24 @@ func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []mo
 	return args.Error(0)
 }
 
-func (srv *JobService) GetByDestination(_ context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
-	args := srv.Called(projectSpec, destination)
-	return args.Get(0).(models.JobSpec), args.Error(1)
+func (srv *JobService) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
+	ret := srv.Called(ctx, projectSpec, destination)
+
+	var r0 models.JobSpec
+	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectSpec, string) models.JobSpec); ok {
+		r0 = rf(ctx, projectSpec, destination)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(models.JobSpec)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectSpec, string) error); ok {
+		r1 = rf(ctx, projectSpec, destination)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.ProjectSpec, jobName string) ([]models.JobSpec, error) {

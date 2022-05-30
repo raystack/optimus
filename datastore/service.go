@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
@@ -26,6 +27,8 @@ type ResourceSpecRepoFactory interface {
 type Service struct {
 	resourceRepoFactory ResourceSpecRepoFactory
 	dsRepo              models.DatastoreRepo
+
+	jobService models.JobService
 }
 
 func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, datastoreName string) ([]models.ResourceSpec, error) {
@@ -38,15 +41,13 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 
 func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, resourceSpec := range resourceSpecs {
-		incomingSpec := resourceSpec
+	for _, incomingSpec := range resourceSpecs {
 		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
 			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
 			if err != nil {
 				return nil, err
 			}
-
 			if !proceed {
 				srv.notifyProgress(obs, &EventResourceSkipped{
 					Spec:    incomingSpec,
@@ -59,10 +60,12 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 			if err := repo.Save(ctx, incomingSpec); err != nil {
 				return nil, err
 			}
-			err = incomingSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
+
+			request := models.CreateResourceRequest{
 				Resource: incomingSpec,
 				Project:  namespace.ProjectSpec,
-			})
+			}
+			err = incomingSpec.Datastore.CreateResource(ctx, request)
 			srv.notifyProgress(obs, &EventResourceCreated{
 				Spec: incomingSpec,
 				Err:  err,
@@ -82,15 +85,13 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 
 func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, resourceSpec := range resourceSpecs {
-		incomingSpec := resourceSpec
+	for _, incomingSpec := range resourceSpecs {
 		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
 			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
 			if err != nil {
 				return nil, err
 			}
-
 			if !proceed {
 				srv.notifyProgress(obs, &EventResourceSkipped{
 					Spec:    incomingSpec,
@@ -103,23 +104,36 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 			if err := repo.Save(ctx, incomingSpec); err != nil {
 				return nil, err
 			}
-			err = incomingSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
+
+			request := models.UpdateResourceRequest{
 				Resource: incomingSpec,
 				Project:  namespace.ProjectSpec,
-			})
+			}
+			if err := incomingSpec.Datastore.UpdateResource(ctx, request); err != nil {
+				srv.notifyProgress(obs, &EventResourceUpdated{
+					Spec: incomingSpec,
+					Err:  err,
+				})
+				return nil, err
+			}
 			srv.notifyProgress(obs, &EventResourceUpdated{
 				Spec: incomingSpec,
-				Err:  err,
 			})
-			return nil, err
+			return incomingSpec, nil
 		})
 	}
 
+	var updatedSpec []models.ResourceSpec
 	var errorSet error
 	for _, result := range runner.Run() {
 		if result.Err != nil {
 			errorSet = multierror.Append(errorSet, result.Err)
+		} else if result.Val != nil {
+			updatedSpec = append(updatedSpec, result.Val.(models.ResourceSpec))
 		}
+	}
+	if errorSet == nil {
+		srv.refreshImpactedJobs(ctx, namespace, updatedSpec, obs)
 	}
 	return errorSet
 }
@@ -167,6 +181,49 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	return repo.Delete(ctx, name)
 }
 
+func (srv Service) refreshImpactedJobs(ctx context.Context, namespace models.NamespaceSpec, specs []models.ResourceSpec, obs progress.Observer) {
+	projectNameToJobNames := srv.buildProjectToJobNamesForRefresh(ctx, namespace, specs, obs)
+	srv.refreshJobsInProject(ctx, projectNameToJobNames, obs)
+}
+
+func (srv Service) refreshJobsInProject(ctx context.Context, projectNameToJobNames map[string][]string, obs progress.Observer) {
+	for projectName, jobNames := range projectNameToJobNames {
+		err := srv.jobService.Refresh(ctx, projectName, []string{}, jobNames, obs)
+		srv.notifyProgress(obs, &EventJobRefreshed{
+			ProjectName: projectName,
+			JobNames:    jobNames,
+			Err:         err,
+		})
+	}
+}
+
+func (srv Service) buildProjectToJobNamesForRefresh(ctx context.Context, namespace models.NamespaceSpec, specs []models.ResourceSpec, obs progress.Observer) map[string][]string {
+	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
+	for _, incomingSpec := range specs {
+		runner.Add(func() (interface{}, error) {
+			jobSpec, err := srv.jobService.GetByDestination(ctx, namespace.ProjectSpec, incomingSpec.Name)
+			if err != nil {
+				srv.notifyProgress(obs, &EventJobRefreshed{
+					ProjectName: namespace.ProjectSpec.Name,
+					Err:         err,
+				})
+				return models.JobSpec{}, err
+			}
+			return jobSpec, nil
+		})
+	}
+
+	projectNameToJobNames := make(map[string][]string)
+	for _, result := range runner.Run() {
+		if result.Err == nil {
+			jobSpec := result.Val.(models.JobSpec)
+			projectSpec := jobSpec.GetProjectSpec()
+			projectNameToJobNames[projectSpec.Name] = append(projectNameToJobNames[projectSpec.Name], jobSpec.Name)
+		}
+	}
+	return projectNameToJobNames
+}
+
 func (srv Service) isProceedToSave(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
 	var proceed bool
 	if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
@@ -208,10 +265,11 @@ func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	po.Notify(event)
 }
 
-func NewService(resourceRepoFactory ResourceSpecRepoFactory, dsRepo models.DatastoreRepo) *Service {
+func NewService(resourceRepoFactory ResourceSpecRepoFactory, dsRepo models.DatastoreRepo, jobService models.JobService) *Service {
 	return &Service{
 		resourceRepoFactory: resourceRepoFactory,
 		dsRepo:              dsRepo,
+		jobService:          jobService,
 	}
 }
 
@@ -234,7 +292,25 @@ type (
 		Process string
 		Reason  string
 	}
+
+	// EventJobRefreshed represents the jobs impacted by resource being refreshed
+	EventJobRefreshed struct {
+		ProjectName string
+		JobNames    []string
+		Err         error
+	}
 )
+
+func (e *EventJobRefreshed) String() string {
+	message := fmt.Sprintf("refreshing project [%s]", e.ProjectName)
+	if len(e.JobNames) > 0 {
+		message = fmt.Sprintf("%s with job names [%s]", message, strings.Join(e.JobNames, ", "))
+	}
+	if e.Err != nil {
+		message = fmt.Sprintf("%s encountered error: %s", message, e.Err.Error())
+	}
+	return message
+}
 
 func (e *EventResourceSkipped) String() string {
 	return fmt.Sprintf("process [%s] on resource [%s] is skipped because %s", e.Process, e.Spec.Name, e.Reason)

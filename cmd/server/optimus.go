@@ -328,7 +328,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
 	backupRepo := postgres.NewBackupRepository(s.dbConn)
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry)
+	dataStoreService := datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry, jobService)
 	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
 	// adapter service
 	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)

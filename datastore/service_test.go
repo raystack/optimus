@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	tMock "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/mock"
@@ -47,6 +48,8 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetAll", ctx).Return([]models.ResourceSpec{resourceSpec1}, nil)
 			defer resourceRepo.AssertExpectations(t)
@@ -55,7 +58,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, jobService)
 			res, err := service.GetAll(ctx, namespaceSpec, "bq")
 			assert.Nil(t, err)
 			assert.Equal(t, []models.ResourceSpec{resourceSpec1}, res)
@@ -74,6 +77,8 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(models.ResourceSpec{}, errors.New("random error"))
 			defer resourceRepo.AssertExpectations(t)
@@ -82,7 +87,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, nil)
+			service := datastore.NewService(resourceRepoFac, nil, jobService)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
 			assert.Error(t, err)
 		})
@@ -102,6 +107,8 @@ func TestService(t *testing.T) {
 				Project:  namespaceSpec.ProjectSpec,
 			})
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(resourceSpec, nil)
 			resourceRepo.AssertNotCalled(t, "Save", ctx, resourceSpec)
@@ -114,7 +121,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, nil)
+			service := datastore.NewService(resourceRepoFac, nil, jobService)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
 			assert.NoError(t, err)
 		})
@@ -144,6 +151,8 @@ func TestService(t *testing.T) {
 				Project:  namespaceSpec.ProjectSpec,
 			})
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
 			resourceRepo.On("Save", ctx, incomingSpec).Return(errors.New("random error"))
@@ -153,7 +162,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, nil)
+			service := datastore.NewService(resourceRepoFac, nil, jobService)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
 			assert.Error(t, err)
 		})
@@ -179,6 +188,8 @@ func TestService(t *testing.T) {
 				Project:  projectSpec,
 			}).Return(nil)
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(models.ResourceSpec{}, store.ErrResourceNotFound)
 			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
@@ -188,7 +199,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, jobService)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
 			assert.NoError(t, err)
 		})
@@ -221,6 +232,8 @@ func TestService(t *testing.T) {
 				Project:  projectSpec,
 			}).Return(nil)
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
 			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
@@ -233,7 +246,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, jobService)
 			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
 			assert.NoError(t, err)
 		})
@@ -251,6 +264,8 @@ func TestService(t *testing.T) {
 				Datastore: datastorer,
 			}
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(models.ResourceSpec{}, errors.New("random error"))
 			defer resourceRepo.AssertExpectations(t)
@@ -259,7 +274,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, nil)
+			service := datastore.NewService(resourceRepoFac, nil, jobService)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
 			assert.Error(t, err)
 		})
@@ -279,6 +294,8 @@ func TestService(t *testing.T) {
 				Project:  namespaceSpec.ProjectSpec,
 			})
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(resourceSpec, nil)
 			resourceRepo.AssertNotCalled(t, "Save", ctx, resourceSpec)
@@ -291,12 +308,12 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, nil)
+			service := datastore.NewService(resourceRepoFac, nil, jobService)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil)
 			assert.NoError(t, err)
 		})
 
-		t.Run("should not call create in datastore if failed to save in repository", func(t *testing.T) {
+		t.Run("should not call update in datastore if failed to save in repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -321,6 +338,8 @@ func TestService(t *testing.T) {
 				Project:  namespaceSpec.ProjectSpec,
 			})
 
+			jobService := &mock.JobService{}
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
 			resourceRepo.On("Save", ctx, incomingSpec).Return(errors.New("random error"))
@@ -330,12 +349,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, nil)
+			service := datastore.NewService(resourceRepoFac, nil, jobService)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
 			assert.Error(t, err)
 		})
 
-		t.Run("should successfully call datastore create and save in persistent repository if no existing spec available", func(t *testing.T) {
+		t.Run("should successfully call datastore update and save in persistent repository if no same spec available", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -356,6 +375,14 @@ func TestService(t *testing.T) {
 				Project:  projectSpec,
 			}).Return(nil)
 
+			jobSpec := models.JobSpec{
+				NamespaceSpec: namespaceSpec,
+			}
+			jobService := &mock.JobService{}
+			jobService.On("GetByDestination", ctx, tMock.Anything, tMock.Anything).Return(jobSpec, nil)
+			jobService.On("Refresh", ctx, namespaceSpec.ProjectSpec.Name, tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
+			defer jobService.AssertExpectations(t)
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(models.ResourceSpec{}, store.ErrResourceNotFound)
 			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
@@ -365,12 +392,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, jobService)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
 			assert.NoError(t, err)
 		})
 
-		t.Run("should successfully call datastore create resource individually for each resource and save in persistent repository", func(t *testing.T) {
+		t.Run("should successfully save resource in repository, deploy it, and then recompile affected jobs", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -398,6 +425,14 @@ func TestService(t *testing.T) {
 				Project:  projectSpec,
 			}).Return(nil)
 
+			jobSpec := models.JobSpec{
+				NamespaceSpec: namespaceSpec,
+			}
+			jobService := &mock.JobService{}
+			jobService.On("GetByDestination", ctx, tMock.Anything, tMock.Anything).Return(jobSpec, nil)
+			jobService.On("Refresh", ctx, namespaceSpec.ProjectSpec.Name, tMock.Anything, tMock.Anything, tMock.Anything).Return(nil)
+			defer jobService.AssertExpectations(t)
+
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
 			resourceRepo.On("Save", ctx, incomingSpec).Return(nil)
@@ -410,7 +445,7 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, jobService)
 			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
 			assert.NoError(t, err)
 		})
@@ -444,7 +479,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, nil)
 			resp, err := service.ReadResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 			assert.Equal(t, resourceSpec1, resp)
@@ -472,7 +507,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, nil)
 			_, err := service.ReadResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.NotNil(t, err)
 		})
@@ -507,7 +542,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, nil)
 			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 		})
@@ -538,7 +573,7 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
-			service := datastore.NewService(resourceRepoFac, dsRepo)
+			service := datastore.NewService(resourceRepoFac, dsRepo, nil)
 			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.NotNil(t, err)
 		})
