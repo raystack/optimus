@@ -16,6 +16,6 @@ CREATE TABLE IF NOT EXISTS job_run (
 
     Updated_at    TIMESTAMP WITH TIME ZONE NOT NULL,
 
-    UNIQUE (job_id, project_id, namespace_id, schedule_time, attempt),
+    UNIQUE (job_id, project_id, namespace_id, scheduled_at, attempt)
 );
-CREATE INDEX IF NOT EXISTS job_run_idx ON job_run(job_id, project_id, namespace_id, schedule_time);
+CREATE INDEX IF NOT EXISTS job_run_idx ON job_run(job_id, project_id, namespace_id, scheduled_at);

@@ -282,7 +282,7 @@ func (s *OptimusServer) setupHandlers() error {
 			},
 			new(pagerduty.PagerDutyServiceImpl),
 		),
-	})
+	}, nil)
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
 	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
