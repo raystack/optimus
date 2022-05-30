@@ -33,6 +33,9 @@ var disableColoredOut = false
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New() *cli.Command {
 	disableColoredOut = !utils.IsTerminal(os.Stdout)
+	if !disableColoredOut {
+		initializeColor()
+	}
 
 	cmd := &cli.Command{
 		Use: "optimus <command> <subcommand> [flags]",
@@ -61,40 +64,38 @@ func New() *cli.Command {
 				Open an issue here https://github.com/odpf/optimus/issues
 			`),
 		},
-		PersistentPreRun: func(cmd *cli.Command, args []string) {
-			// initialise color if not requested to be disabled
-			cs := term.NewColorScheme()
-			if !disableColoredOut {
-				logger.ColoredNotice = func(s string, a ...interface{}) string {
-					return cs.Yellowf(s, a...)
-				}
-				logger.ColoredError = func(s string, a ...interface{}) string {
-					return cs.Redf(s, a...)
-				}
-				logger.ColoredSuccess = func(s string, a ...interface{}) string {
-					return cs.Greenf(s, a...)
-				}
-			}
-		},
 	}
 
 	cmdx.SetHelp(cmd)
 	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
-	cmd.AddCommand(admin.NewAdminCommand(cmd))
-	cmd.AddCommand(backup.NewBackupCommand(cmd))
+	cmd.AddCommand(admin.NewAdminCommand())
+	cmd.AddCommand(backup.NewBackupCommand())
 	cmd.AddCommand(deploy.NewDeployCommand())
 	cmd.AddCommand(initialize.NewInitializeCommand())
-	cmd.AddCommand(job.NewJobCommand(cmd))
+	cmd.AddCommand(job.NewJobCommand())
 	cmd.AddCommand(namespace.NewNamespaceCommand())
 	cmd.AddCommand(project.NewProjectCommand())
-	cmd.AddCommand(replay.NewReplayCommand(cmd))
-	cmd.AddCommand(resource.NewResourceCommand(cmd))
-	cmd.AddCommand(secret.NewSecretCommand(cmd))
+	cmd.AddCommand(replay.NewReplayCommand())
+	cmd.AddCommand(resource.NewResourceCommand())
+	cmd.AddCommand(secret.NewSecretCommand())
 	cmd.AddCommand(version.NewVersionCommand())
 
 	cmd.AddCommand(serve.NewServeCommand())
 
 	extension.UpdateWithExtension(cmd)
 	return cmd
+}
+
+func initializeColor() {
+	cs := term.NewColorScheme()
+	logger.ColoredNotice = func(s string, a ...interface{}) string {
+		return cs.Yellowf(s, a...)
+	}
+	logger.ColoredError = func(s string, a ...interface{}) string {
+		return cs.Redf(s, a...)
+	}
+	logger.ColoredSuccess = func(s string, a ...interface{}) string {
+		return cs.Greenf(s, a...)
+	}
 }

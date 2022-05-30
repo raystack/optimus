@@ -16,16 +16,13 @@ type jobCommand struct {
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
-	rootCommand *cobra.Command
-
 	pluginCleanFn func()
 }
 
 // NewJobCommand initializes command for job
-func NewJobCommand(rootCmd *cobra.Command) *cobra.Command {
+func NewJobCommand() *cobra.Command {
 	job := jobCommand{
 		clientConfig: &config.ClientConfig{},
-		rootCommand:  rootCmd,
 	}
 
 	cmd := &cobra.Command{
@@ -49,9 +46,7 @@ func NewJobCommand(rootCmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, args []string) error {
-	j.rootCommand.PersistentPreRun(cmd, args)
-
+func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
 	c, err := config.LoadClientConfig(j.configFilePath, cmd.Flags())
 	if err != nil {
