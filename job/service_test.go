@@ -1246,6 +1246,159 @@ func TestService(t *testing.T) {
 		})
 	})
 
+	t.Run("BulkDelete", func(t *testing.T) {
+
+		createJobSpecDummy := func(N int) []models.JobSpec {
+			jobSpecs := []models.JobSpec{}
+			for i := 0; i < N; i++ {
+				jobSpec := models.JobSpec{
+					Version: 1,
+					Name:    fmt.Sprintf("test-%d", i),
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+				}
+				jobSpecs = append(jobSpecs, jobSpec)
+			}
+			return jobSpecs
+		}
+
+		t.Run("should delete the jobSpecs", func(t *testing.T) {
+			jobSpecs := createJobSpecDummy(2)
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			jobSpecRepo.On("Delete", ctx, jobSpecs[0].Name).Return(nil)
+			jobSpecRepo.On("Delete", ctx, jobSpecs[1].Name).Return(nil)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			jobSpecNames := []string{}
+			for _, jobSpec := range jobSpecs {
+				jobSpecNames = append(jobSpecNames, jobSpec.Name)
+			}
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+				namespaceSpec.Name: jobSpecNames,
+			}, nil)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
+			defer depenResolver.AssertExpectations(t)
+
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
+			assert.Nil(t, err)
+		})
+
+		t.Run("should not delete if job spec is not deletable", func(t *testing.T) {
+			jobSpecs := createJobSpecDummy(2)
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			jobSpecNames := []string{}
+			for _, jobSpec := range jobSpecs {
+				jobSpecNames = append(jobSpecNames, jobSpec.Name)
+			}
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(nil, errors.New("unknown error"))
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
+			assert.Nil(t, err)
+
+		})
+
+		t.Run("should fail if delete on job repo fail", func(t *testing.T) {
+			jobSpecs := createJobSpecDummy(2)
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			jobSpecRepo.On("Delete", ctx, jobSpecs[0].Name).Return(errors.New("unknown error"))
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			jobSpecNames := []string{}
+			for _, jobSpec := range jobSpecs {
+				jobSpecNames = append(jobSpecNames, jobSpec.Name)
+			}
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+				namespaceSpec.Name: jobSpecNames,
+			}, nil)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
+			defer depenResolver.AssertExpectations(t)
+
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
+			assert.NotNil(t, err)
+
+		})
+	})
+
 	t.Run("GetByDestination", func(t *testing.T) {
 		t.Run("should return job spec given a destination", func(t *testing.T) {
 			projSpec := models.ProjectSpec{
