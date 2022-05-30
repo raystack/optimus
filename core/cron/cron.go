@@ -36,9 +36,46 @@ func ParseCronSchedule(interval string) (*ScheduleSpec, error) {
 	}, nil
 }
 
-// Interval accepts the time and returns
+// Interval accepts the time and returns duration between
+// prev schedule time and current schedule time
 func (s *ScheduleSpec) Interval(t time.Time) time.Duration {
-	start := s.Next(t)
-	next := s.Next(start)
-	return next.Sub(start)
+	const numberOfIteration = 5
+
+	// Slice to store previous scheduled time from the given parameter time.
+	var scheduleArr []time.Time
+
+	// Calculate sum of duration between two job runs.
+	var sumDurationBetweenTwoJobs time.Duration
+	tempTime := t
+	for i := 0; i < numberOfIteration; i++ {
+		start := s.Next(tempTime)
+		next := s.Next(start)
+		sumDurationBetweenTwoJobs += next.Sub(start)
+		tempTime = next
+	}
+
+	// Average out the duration between two jobs.
+	averageDurationBetweenTwoRuns := sumDurationBetweenTwoJobs / numberOfIteration
+
+	// Calculate some point in history from as compare to time in parameter.
+	historyStartDate := t.Add(-averageDurationBetweenTwoRuns * numberOfIteration)
+
+	for historyStartDate.Before(t.Add(time.Second * 1)) {
+		historyStartDate = s.Next(historyStartDate)
+		scheduleArr = append(scheduleArr, historyStartDate)
+	}
+
+	// the previous schedule time for parameter t
+	var prevStartDate time.Time
+
+	// keep traversing the scheduleArr list till we get the t
+	// and then we can get prev schedule based on index.
+	for index, scheduleTime := range scheduleArr {
+		if scheduleTime.Equal(t) {
+			prevStartDate = scheduleArr[index-1]
+		}
+	}
+	duration := t.Sub(prevStartDate)
+
+	return duration
 }
