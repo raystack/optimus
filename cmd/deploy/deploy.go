@@ -26,7 +26,11 @@ import (
 	"github.com/odpf/optimus/store/local"
 )
 
-const deploymentTimeout = time.Minute * 15
+const (
+	deploymentTimeout = time.Minute * 15
+	deployTimeout     = time.Minute * 30
+	pollInterval      = time.Second * 15
+)
 
 type deployCommand struct {
 	logger       log.Logger
@@ -171,7 +175,14 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		d.logger.Warn("no job specs are found from all the namespaces")
 		return nil
 	}
-	return d.processJobDeploymentResponse(stream, totalSpecsCount)
+
+	deployID, err := d.requestJobDeployment(stream)
+	if err != nil {
+		return err
+	}
+
+	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	return d.pollJobDeployment(conn.GetContext(), jobSpecService, deployID)
 }
 
 func (d *deployCommand) processJobDeploymentResponse(
@@ -409,12 +420,8 @@ func (d *deployCommand) getResourceStreamClient(
 	return stream, nil
 }
 
-func (d *deployCommand) requestJobDeployment(
-	l log.Logger,
-	stream pb.JobSpecificationService_DeployJobSpecificationClient,
-	verbose bool,
-) (string, error) {
-	l.Info("> Receiving responses:")
+func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_DeployJobSpecificationClient) (string, error) {
+	d.logger.Info("> Receiving responses:")
 
 	var resolveDependencyErrors []string
 	resolveDependencySuccess, resolveDependencyFailed := 0, 0
@@ -431,33 +438,19 @@ func (d *deployCommand) requestJobDeployment(
 			return "", err
 		}
 
-		/*
-			deprecate ack
-			use type instead to differentiate messages
-
-			DeployJobResponse -> Stream
-			type of messages:
-			- Modified Jobs -> Dependency Resolution message -> Info, Failed
-			- Deleted Jobs
-			- Job Deployment ID
-
-			GetDeployJobResponse -> Not Stream
-			Response: #succeed, #failed, which jobs are failed to be deployed
-		*/
-
 		switch resp.Type {
 		case models.ProgressTypeJobDependencyResolution:
 			if !resp.GetSuccess() {
 				resolveDependencyFailed++
 				failedMessage := fmt.Sprintf("error '%s': failed to resolve dependency, %s", resp.GetJobName(), resp.GetValue())
-				if verbose {
+				if d.verbose {
 					d.logger.Warn(failedMessage)
 				}
 				resolveDependencyErrors = append(resolveDependencyErrors, failedMessage)
 			} else {
 				resolveDependencySuccess++
-				if verbose {
-					l.Info(fmt.Sprintf("info '%s': dependency is successfully resolved", resp.GetJobName()))
+				if d.verbose {
+					d.logger.Info(fmt.Sprintf("info '%s': dependency is successfully resolved", resp.GetJobName()))
 				}
 			}
 
@@ -465,13 +458,13 @@ func (d *deployCommand) requestJobDeployment(
 			if !resp.GetSuccess() {
 				jobDeletionFailed++
 				failedMessage := fmt.Sprintf("error '%s': failed to delete job, %s", resp.GetJobName(), resp.GetValue())
-				if verbose {
+				if d.verbose {
 					d.logger.Warn(failedMessage)
 				}
 				jobDeletionErrors = append(jobDeletionErrors, failedMessage)
 			} else {
 				jobDeletionSuccess++
-				if verbose {
+				if d.verbose {
 					d.logger.Info(fmt.Sprintf("info '%s': job deleted", resp.GetJobName()))
 				}
 			}
@@ -509,11 +502,56 @@ func (d *deployCommand) requestJobDeployment(
 			return resp.Value, nil
 
 		default:
-			if verbose {
+			if d.verbose {
 				// ordinary progress event
 				d.logger.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetValue()))
 			}
 		}
 	}
 	return "", nil
+}
+
+func (d *deployCommand) pollJobDeployment(ctx context.Context, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
+	for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
+		resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
+			DeployId: deployID,
+		})
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				d.logger.Error(logger.ColoredError("Get deployment process took too long, timing out"))
+			}
+			return fmt.Errorf("getting deployment status failed: %w", err)
+		}
+
+		switch resp.Status {
+		case models.JobDeploymentStatusInProgress.String():
+			d.logger.Info("Deployment is in progress...")
+		case models.JobDeploymentStatusInQueue.String():
+			d.logger.Info("Deployment request is in queue...")
+		case models.JobDeploymentStatusCancelled.String():
+			d.logger.Error("Deployment request is cancelled.")
+			return nil
+		case models.JobDeploymentStatusSucceed.String():
+			d.logger.Info(logger.ColoredSuccess("Deployed %d jobs", resp.SuccessCount))
+			return nil
+		case models.JobDeploymentStatusFailed.String():
+			if resp.FailureCount > 0 {
+				d.logger.Error(logger.ColoredError("Unable to deploy below jobs:"))
+				for i, failedJob := range resp.Failures {
+					d.logger.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+				}
+			}
+			d.logger.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
+			return nil
+		}
+
+		time.Sleep(pollInterval)
+
+		select {
+		case <-timeout:
+			keepPolling = false
+		default:
+		}
+	}
+	return nil
 }
