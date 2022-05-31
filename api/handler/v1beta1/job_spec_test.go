@@ -3,7 +3,9 @@ package v1beta1_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,46 +97,70 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 }
 
 func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJobSpecs() {
-	startTime := time.Now()
-	jobSpecs := []*pb.JobSpecification{
-		{Name: "job-1", StartDate: startTime.Format("2006-01-02 15:04:05.0000")},
-		{Name: "job-2", StartDate: startTime.Format("2006-01-02 15:04:05.0000")},
-	}
-	s.jobReq.Jobs = jobSpecs
-
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	execUnit1 := new(mock.BasePlugin)
-	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	adaptedJobs := []models.JobSpec{
-		{Name: jobSpecs[0].Name, Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}},
-		{Name: jobSpecs[1].Name, Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}},
+	startTime := time.Date(2022, 05, 01, 0, 0, 0, 0, time.UTC)
+	jobConfig := models.JobSpecConfigs{
+		{
+			Name:  "DO",
+			Value: "THIS",
+		},
 	}
+	jobWindow := models.JobSpecTaskWindow{
+		Size:       time.Hour,
+		Offset:     0,
+		TruncateTo: "d",
+	}
+	jobAsset := *models.JobAssets{}.New(
+		[]models.JobSpecAsset{
+			{
+				Name:  "query.sql",
+				Value: "select * from 1",
+			},
+		})
+
+	taskName := "bq2bq"
+	execUnit1 := new(mock.BasePlugin)
+	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+		Name:  taskName,
+		Image: "random-image",
+	}, nil)
+	defer execUnit1.AssertExpectations(s.T())
+
+	s.pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+		Base: execUnit1,
+	}, nil)
+	jobTask := models.JobSpecTask{
+		Unit: &models.Plugin{
+			Base: execUnit1,
+		},
+		Config: jobConfig,
+		Window: jobWindow,
+	}
+	adaptedJobs := []models.JobSpec{
+		{Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+	}
+
+	var jobsInProto []*pb.JobSpecification
+	for _, jobSpec := range adaptedJobs {
+		jobProto := v1.ToJobProto(jobSpec)
+		jobsInProto = append(jobsInProto, jobProto)
+	}
+
+	s.jobReq.Jobs = jobsInProto
 
 	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
-
-	// s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.pluginRepo.On("GetByName", mock2.Anything).Return(&models.Plugin{}, nil)
-	// s.jobService.On("Create", s.ctx, s.namespaceSpec, mock2.MatchedBy(func(j models.JobSpec) bool {
-	// 	return strings.Contains(j.Name, "job-")
-	// })).Return(nil)
-
-	// s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.MatchedBy(func(l []models.JobSpec) bool {
-	// 	return len(l) == 2
-	// }), mock2.Anything).Return(nil).Once()
-	// s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(nil).Once()
-	// stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
-	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
 
@@ -151,18 +177,62 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRe
 }
 
 func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_AdapterFromJobProtoError() {
-	jobSpecs := []*pb.JobSpecification{
-		{Name: "job-1"},
-		{Name: "job-2"},
-	}
-	s.jobReq.Jobs = jobSpecs
-
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
+	startTime := time.Date(2022, 05, 01, 0, 0, 0, 0, time.UTC)
+	jobConfig := models.JobSpecConfigs{
+		{
+			Name:  "DO",
+			Value: "THIS",
+		},
+	}
+	jobWindow := models.JobSpecTaskWindow{
+		Size:       time.Hour,
+		Offset:     0,
+		TruncateTo: "d",
+	}
+	jobAsset := *models.JobAssets{}.New(
+		[]models.JobSpecAsset{
+			{
+				Name:  "query.sql",
+				Value: "select * from 1",
+			},
+		})
+
+	taskName := "bq2bq"
+	execUnit1 := new(mock.BasePlugin)
+	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+		Name:  taskName,
+		Image: "random-image",
+	}, nil)
+	defer execUnit1.AssertExpectations(s.T())
+
+	s.pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+		Base: execUnit1,
+	}, nil)
+	jobTask := models.JobSpecTask{
+		Unit: &models.Plugin{
+			Base: execUnit1,
+		},
+		Config: jobConfig,
+		Window: jobWindow,
+	}
+	adaptedJobs := []models.JobSpec{
+		{Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+	}
+
+	var jobsInProto []*pb.JobSpecification
+	for _, jobSpec := range adaptedJobs {
+		jobProto := v1.ToJobProto(jobSpec)
+		jobsInProto = append(jobsInProto, jobProto)
+	}
+	s.jobReq.Jobs = jobsInProto
+
+	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	jobSpecServiceServer := s.newJobSpecServiceServer()
@@ -170,71 +240,76 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
-	s.namespaceService.AssertExpectations(s.T())
 }
 
-func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceCreateError() {
-	jobSpecs := []*pb.JobSpecification{}
-	jobSpecs = append(jobSpecs, &pb.JobSpecification{Name: "job-1", StartDate: "2022-02-10"})
-	s.jobReq.Jobs = jobSpecs
-
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_DeployError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.pluginRepo.On("GetByName", mock2.Anything).Return(&models.Plugin{}, nil)
-	s.jobService.On("Create", s.ctx, s.namespaceSpec, mock2.MatchedBy(func(j models.JobSpec) bool {
-		return j.Name == "job-1"
-	})).Return(errors.New("any error")).Once()
+	startTime := time.Date(2022, 05, 01, 0, 0, 0, 0, time.UTC)
+	jobConfig := models.JobSpecConfigs{
+		{
+			Name:  "DO",
+			Value: "THIS",
+		},
+	}
+	jobWindow := models.JobSpecTaskWindow{
+		Size:       time.Hour,
+		Offset:     0,
+		TruncateTo: "d",
+	}
+	jobAsset := *models.JobAssets{}.New(
+		[]models.JobSpecAsset{
+			{
+				Name:  "query.sql",
+				Value: "select * from 1",
+			},
+		})
+
+	taskName := "bq2bq"
+	execUnit1 := new(mock.BasePlugin)
+	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+		Name:  taskName,
+		Image: "random-image",
+	}, nil)
+	defer execUnit1.AssertExpectations(s.T())
+
+	s.pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+		Base: execUnit1,
+	}, nil)
+	jobTask := models.JobSpecTask{
+		Unit: &models.Plugin{
+			Base: execUnit1,
+		},
+		Config: jobConfig,
+		Window: jobWindow,
+	}
+	adaptedJobs := []models.JobSpec{
+		{Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+	}
+
+	var jobsInProto []*pb.JobSpecification
+	for _, jobSpec := range adaptedJobs {
+		jobProto := v1.ToJobProto(jobSpec)
+		jobsInProto = append(jobsInProto, jobProto)
+	}
+
+	s.jobReq.Jobs = jobsInProto
+
+	deployErrorMsg := "internal error"
+	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(errors.New(deployErrorMsg)).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
-	s.Assert().Error(err)
+	expectedError := fmt.Sprintf("error when deploying: [%s]", strings.Join([]string{deployErrorMsg}, ", "))
+
+	s.Assert().Error(err, expectedError)
 	stream.AssertExpectations(s.T())
-	s.namespaceService.AssertExpectations(s.T())
-	s.jobService.AssertExpectations(s.T())
-}
-
-func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceKeepOnlyError() {
-	stream := new(mock.DeployJobSpecificationServer)
-	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.jobReq, nil).Once()
-	stream.On("Recv").Return(nil, io.EOF).Once()
-
-	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
-
-	runtimeServiceServer := s.newJobSpecServiceServer()
-	err := runtimeServiceServer.DeployJobSpecification(stream)
-
-	s.Assert().Error(err)
-	stream.AssertExpectations(s.T())
-	s.namespaceService.AssertExpectations(s.T())
-	s.jobService.AssertExpectations(s.T())
-}
-
-func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_JobServiceSyncError() {
-	stream := new(mock.DeployJobSpecificationServer)
-	stream.On("Context").Return(s.ctx)
-	stream.On("Recv").Return(s.jobReq, nil).Once()
-	stream.On("Recv").Return(nil, io.EOF).Once()
-
-	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.jobService.On("KeepOnly", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
-	s.jobService.On("Sync", s.ctx, s.namespaceSpec, mock2.Anything).Return(errors.New("any error")).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
-
-	runtimeServiceServer := s.newJobSpecServiceServer()
-	err := runtimeServiceServer.DeployJobSpecification(stream)
-
-	s.Assert().Error(err)
-	stream.AssertExpectations(s.T())
-	s.namespaceService.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }
 
