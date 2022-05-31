@@ -32,7 +32,10 @@ const (
 	defaultBackupTTL     = "720h"
 )
 
-func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
+func createTable(ctxA context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
+	spanCtx, span := startChildSpan(ctxA, "CreateTable")
+	defer span.End()
+
 	bqResource, ok := spec.Spec.(BQTable)
 	if !ok {
 		return errors.New(errorReadTableSpec)
@@ -42,7 +45,7 @@ func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.C
 	bqResource.Metadata.Labels = spec.Labels
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	if err := ensureDataset(ctx, dataset, BQDataset{
+	if err := ensureDataset(spanCtx, dataset, BQDataset{
 		Project:  bqResource.Project,
 		Dataset:  bqResource.Dataset,
 		Metadata: BQDatasetMetadata{},
@@ -50,12 +53,15 @@ func createTable(ctx context.Context, spec models.ResourceSpec, client bqiface.C
 		return err
 	}
 	table := dataset.Table(bqResource.Table)
-	return ensureTable(ctx, table, bqResource, upsert)
+	return ensureTable(spanCtx, table, bqResource, upsert)
 }
 
 // ensureTable make sures table exists with provided config and update if required
 func ensureTable(ctx context.Context, tableHandle bqiface.Table, t BQTable, upsert bool) error {
-	meta, err := tableHandle.Metadata(ctx)
+	spanCtx, span := startChildSpan(ctx, "EnsureTable")
+	defer span.End()
+
+	meta, err := tableHandle.Metadata(spanCtx)
 	if err != nil {
 		var metaErr *googleapi.Error
 		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
@@ -65,7 +71,7 @@ func ensureTable(ctx context.Context, tableHandle bqiface.Table, t BQTable, upse
 		if err != nil {
 			return err
 		}
-		return tableHandle.Create(ctx, m)
+		return tableHandle.Create(spanCtx, m)
 	}
 	if !upsert {
 		return nil
@@ -76,12 +82,15 @@ func ensureTable(ctx context.Context, tableHandle bqiface.Table, t BQTable, upse
 	if err != nil {
 		return err
 	}
-	_, err = tableHandle.Update(ctx, m, meta.ETag)
+	_, err = tableHandle.Update(spanCtx, m, meta.ETag)
 	return err
 }
 
 // getTable retrieves bq table information
 func getTable(ctx context.Context, resourceSpec models.ResourceSpec, client bqiface.Client) (models.ResourceSpec, error) {
+	spanCtx, span := startChildSpan(ctx, "GetTable")
+	defer span.End()
+
 	var bqResource BQTable
 	bqResource, ok := resourceSpec.Spec.(BQTable)
 	if !ok {
@@ -89,12 +98,12 @@ func getTable(ctx context.Context, resourceSpec models.ResourceSpec, client bqif
 	}
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	if _, err := dataset.Metadata(ctx); err != nil {
+	if _, err := dataset.Metadata(spanCtx); err != nil {
 		return models.ResourceSpec{}, err
 	}
 
 	table := dataset.Table(bqResource.Table)
-	tableMeta, err := table.Metadata(ctx)
+	tableMeta, err := table.Metadata(spanCtx)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
@@ -130,20 +139,26 @@ func getTable(ctx context.Context, resourceSpec models.ResourceSpec, client bqif
 }
 
 func deleteTable(ctx context.Context, resourceSpec models.ResourceSpec, client bqiface.Client) error {
+	spanCtx, span := startChildSpan(ctx, "DeleteTable")
+	defer span.End()
+
 	bqTable, ok := resourceSpec.Spec.(BQTable)
 	if !ok {
 		return errors.New(errorReadTableSpec)
 	}
 	dataset := client.DatasetInProject(bqTable.Project, bqTable.Dataset)
-	if _, err := dataset.Metadata(ctx); err != nil {
+	if _, err := dataset.Metadata(spanCtx); err != nil {
 		return err
 	}
 
 	table := dataset.Table(bqTable.Table)
-	return table.Delete(ctx)
+	return table.Delete(spanCtx)
 }
 
 func backupTable(ctx context.Context, request models.BackupResourceRequest, client bqiface.Client) (models.BackupResourceResponse, error) {
+	spanCtx, span := startChildSpan(ctx, "BackupTable")
+	defer span.End()
+
 	bqResourceSrc, ok := request.Resource.Spec.(BQTable)
 	if !ok {
 		return models.BackupResourceResponse{}, errors.New(errorReadTableSpec)
@@ -151,17 +166,17 @@ func backupTable(ctx context.Context, request models.BackupResourceRequest, clie
 
 	bqResourceDst := prepareBQResourceDst(bqResourceSrc, request.BackupSpec, request.BackupTime)
 
-	tableDst, err := duplicateTable(ctx, client, bqResourceSrc, bqResourceDst)
+	tableDst, err := duplicateTable(spanCtx, client, bqResourceSrc, bqResourceDst)
 	if err != nil {
 		return models.BackupResourceResponse{}, err
 	}
 
-	tableDst, err = updateExpiry(ctx, tableDst, request)
+	tableDst, err = updateExpiry(spanCtx, tableDst, request)
 	if err != nil {
 		return models.BackupResourceResponse{}, err
 	}
 
-	if err := ensureTable(ctx, tableDst, bqResourceDst, false); err != nil {
+	if err := ensureTable(spanCtx, tableDst, bqResourceDst, false); err != nil {
 		return models.BackupResourceResponse{}, err
 	}
 
@@ -198,9 +213,12 @@ func prepareBQResourceDst(bqResourceSrc BQTable, backupSpec models.BackupRequest
 }
 
 func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc, bqResourceDst BQTable) (bqiface.Table, error) {
+	spanCtx, span := startChildSpan(ctx, "DuplicateTable")
+	defer span.End()
+
 	// make sure dataset is present
 	datasetDst := client.DatasetInProject(bqResourceDst.Project, bqResourceDst.Dataset)
-	if err := ensureDataset(ctx, datasetDst, BQDataset{
+	if err := ensureDataset(spanCtx, datasetDst, BQDataset{
 		Project:  bqResourceSrc.Project,
 		Dataset:  bqResourceSrc.Dataset,
 		Metadata: BQDatasetMetadata{},
@@ -209,7 +227,7 @@ func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc, b
 	}
 
 	datasetSrc := client.DatasetInProject(bqResourceSrc.Project, bqResourceSrc.Dataset)
-	if _, err := datasetSrc.Metadata(ctx); err != nil {
+	if _, err := datasetSrc.Metadata(spanCtx); err != nil {
 		return nil, err
 	}
 
@@ -218,11 +236,11 @@ func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc, b
 	tableDst := datasetDst.Table(bqResourceDst.Table)
 
 	copier := tableDst.CopierFrom(tableSrc)
-	job, err := copier.Run(ctx)
+	job, err := copier.Run(spanCtx)
 	if err != nil {
 		return nil, err
 	}
-	status, err := job.Wait(ctx)
+	status, err := job.Wait(spanCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +251,10 @@ func duplicateTable(ctx context.Context, client bqiface.Client, bqResourceSrc, b
 }
 
 func updateExpiry(ctx context.Context, tableDst bqiface.Table, req models.BackupResourceRequest) (bqiface.Table, error) {
-	meta, err := tableDst.Metadata(ctx)
+	spanCtx, span := startChildSpan(ctx, "UpdateExpiry")
+	defer span.End()
+
+	meta, err := tableDst.Metadata(spanCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +273,7 @@ func updateExpiry(ctx context.Context, tableDst bqiface.Table, req models.Backup
 	update := bigquery.TableMetadataToUpdate{
 		ExpirationTime: req.BackupTime.Add(ttlDuration),
 	}
-	if _, err = tableDst.Update(ctx, update, meta.ETag); err != nil {
+	if _, err = tableDst.Update(spanCtx, update, meta.ETag); err != nil {
 		return nil, err
 	}
 	return tableDst, nil

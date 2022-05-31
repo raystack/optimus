@@ -17,6 +17,9 @@ import (
 var datasetMutex sync.Mutex
 
 func createDataset(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
+	spanCtx, span := startChildSpan(ctx, "CreateDataset")
+	defer span.End()
+
 	bqResource, ok := spec.Spec.(BQDataset)
 	if !ok {
 		return errors.New("failed to read dataset spec for bigquery")
@@ -26,15 +29,18 @@ func createDataset(ctx context.Context, spec models.ResourceSpec, client bqiface
 	bqResource.Metadata.Labels = spec.Labels
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	return ensureDataset(ctx, dataset, bqResource, upsert)
+	return ensureDataset(spanCtx, dataset, bqResource, upsert)
 }
 
 func ensureDataset(ctx context.Context, datasetHandle bqiface.Dataset, bqResource BQDataset, upsert bool) error {
+	spanCtx, span := startChildSpan(ctx, "EnsureDataset")
+	defer span.End()
+
 	// this is needed if dataset is getting updated & tables are created at the same time
 	datasetMutex.Lock()
 	defer datasetMutex.Unlock()
 
-	meta, err := datasetHandle.Metadata(ctx)
+	meta, err := datasetHandle.Metadata(spanCtx)
 	if err != nil {
 		var metaErr *googleapi.Error
 		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
@@ -47,7 +53,7 @@ func ensureDataset(ctx context.Context, datasetHandle bqiface.Dataset, bqResourc
 		if bqResource.Metadata.DefaultTableExpiration > 0 {
 			meta.DefaultTableExpiration = time.Hour * time.Duration(bqResource.Metadata.DefaultTableExpiration)
 		}
-		return datasetHandle.Create(ctx, &bqiface.DatasetMetadata{
+		return datasetHandle.Create(spanCtx, &bqiface.DatasetMetadata{
 			DatasetMetadata: meta,
 		})
 	}
@@ -74,6 +80,9 @@ func ensureDataset(ctx context.Context, datasetHandle bqiface.Dataset, bqResourc
 
 // getDataset retrieves bq dataset information
 func getDataset(ctx context.Context, resourceSpec models.ResourceSpec, client bqiface.Client) (models.ResourceSpec, error) {
+	spanCtx, span := startChildSpan(ctx, "GetDataset")
+	defer span.End()
+
 	var bqResource BQDataset
 	bqResource, ok := resourceSpec.Spec.(BQDataset)
 	if !ok {
@@ -81,7 +90,7 @@ func getDataset(ctx context.Context, resourceSpec models.ResourceSpec, client bq
 	}
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	datasetMeta, err := dataset.Metadata(ctx)
+	datasetMeta, err := dataset.Metadata(spanCtx)
 	if err != nil {
 		return models.ResourceSpec{}, err
 	}
@@ -97,10 +106,13 @@ func getDataset(ctx context.Context, resourceSpec models.ResourceSpec, client bq
 }
 
 func deleteDataset(ctx context.Context, resourceSpec models.ResourceSpec, client bqiface.Client) error {
+	spanCtx, span := startChildSpan(ctx, "DeleteDataset")
+	defer span.End()
+
 	bqResource, ok := resourceSpec.Spec.(BQDataset)
 	if !ok {
 		return errors.New("failed to read dataset spec for bigquery")
 	}
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	return dataset.Delete(ctx)
+	return dataset.Delete(spanCtx)
 }

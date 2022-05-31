@@ -15,6 +15,9 @@ import (
 )
 
 func createExternalTable(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
+	spanCtx, span := startChildSpan(ctx, "CreateExternalTable")
+	defer span.End()
+
 	bqResource, ok := spec.Spec.(BQTable)
 
 	if !ok {
@@ -25,7 +28,7 @@ func createExternalTable(ctx context.Context, spec models.ResourceSpec, client b
 	bqResource.Metadata.Labels = spec.Labels
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	if err := ensureDataset(ctx, dataset, BQDataset{
+	if err := ensureDataset(spanCtx, dataset, BQDataset{
 		Project:  bqResource.Project,
 		Dataset:  bqResource.Dataset,
 		Metadata: BQDatasetMetadata{},
@@ -33,11 +36,14 @@ func createExternalTable(ctx context.Context, spec models.ResourceSpec, client b
 		return err
 	}
 	table := dataset.Table(bqResource.Table)
-	return ensureExternalTable(ctx, table, bqResource, upsert)
+	return ensureExternalTable(spanCtx, table, bqResource, upsert)
 }
 
 func ensureExternalTable(ctx context.Context, tableHandle bqiface.Table, t BQTable, upsert bool) error {
-	meta, err := tableHandle.Metadata(ctx)
+	spanCtx, span := startChildSpan(ctx, "EnsureExternalTable")
+	defer span.End()
+
+	meta, err := tableHandle.Metadata(spanCtx)
 	if err != nil {
 		var metaErr *googleapi.Error
 		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
@@ -55,7 +61,7 @@ func ensureExternalTable(ctx context.Context, tableHandle bqiface.Table, t BQTab
 			}
 			meta.ExpirationTime = expiryTime
 		}
-		return tableHandle.Create(ctx, meta)
+		return tableHandle.Create(spanCtx, meta)
 	}
 	if !upsert {
 		return nil
@@ -75,7 +81,7 @@ func ensureExternalTable(ctx context.Context, tableHandle bqiface.Table, t BQTab
 	for k, v := range t.Metadata.Labels {
 		m.SetLabel(k, v)
 	}
-	if _, err := tableHandle.Update(ctx, m, meta.ETag); err != nil {
+	if _, err := tableHandle.Update(spanCtx, m, meta.ETag); err != nil {
 		return err
 	}
 	return nil

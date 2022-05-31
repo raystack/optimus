@@ -48,67 +48,76 @@ func (BigQuery) Types() map[models.ResourceType]models.DatastoreTypeController {
 }
 
 func (b *BigQuery) CreateResource(ctx context.Context, request models.CreateResourceRequest) error {
+	spanCtx, span := startChildSpan(ctx, "CreateResource")
+	defer span.End()
+
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || svcAcc == "" {
 		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
-	client, err := b.ClientFac.New(ctx, svcAcc)
+	client, err := b.ClientFac.New(spanCtx, svcAcc)
 	if err != nil {
 		return err
 	}
 
 	switch request.Resource.Type {
 	case models.ResourceTypeTable:
-		return createTable(ctx, request.Resource, client, false)
+		return createTable(spanCtx, request.Resource, client, false)
 	case models.ResourceTypeView:
-		return createStandardView(ctx, request.Resource, client, false)
+		return createStandardView(spanCtx, request.Resource, client, false)
 	case models.ResourceTypeDataset:
-		return createDataset(ctx, request.Resource, client, false)
+		return createDataset(spanCtx, request.Resource, client, false)
 	case models.ResourceTypeExternalTable:
-		return createExternalTable(ctx, request.Resource, client, false)
+		return createExternalTable(spanCtx, request.Resource, client, false)
 	}
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
 
 func (b *BigQuery) UpdateResource(ctx context.Context, request models.UpdateResourceRequest) error {
+	spanCtx, span := startChildSpan(ctx, "UpdateResource")
+	defer span.End()
+
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || svcAcc == "" {
 		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
-	client, err := b.ClientFac.New(ctx, svcAcc)
+	client, err := b.ClientFac.New(spanCtx, svcAcc)
 	if err != nil {
 		return err
 	}
 
 	switch request.Resource.Type {
 	case models.ResourceTypeTable:
-		return createTable(ctx, request.Resource, client, true)
+		return createTable(spanCtx, request.Resource, client, true)
 	case models.ResourceTypeView:
-		return createStandardView(ctx, request.Resource, client, true)
+		return createStandardView(spanCtx, request.Resource, client, true)
 	case models.ResourceTypeDataset:
-		return createDataset(ctx, request.Resource, client, true)
+		return createDataset(spanCtx, request.Resource, client, true)
 	case models.ResourceTypeExternalTable:
-		return createExternalTable(ctx, request.Resource, client, true)
+		return createExternalTable(spanCtx, request.Resource, client, true)
 	}
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
 
 func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResourceRequest) (models.ReadResourceResponse, error) {
+	spanCtx, span := startChildSpan(ctx, "ReadResource")
+	defer span.End()
+
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || svcAcc == "" {
 		return models.ReadResourceResponse{}, fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
-	client, err := b.ClientFac.New(ctx, svcAcc)
+	client, err := b.ClientFac.New(spanCtx, svcAcc)
 	if err != nil {
 		return models.ReadResourceResponse{}, err
 	}
 
 	switch request.Resource.Type {
 	case models.ResourceTypeTable:
-		info, err := getTable(ctx, request.Resource, client)
+		info, err := getTable(spanCtx, request.Resource, client)
 		if err != nil {
 			return models.ReadResourceResponse{}, err
 		}
@@ -116,7 +125,7 @@ func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResource
 			Resource: info,
 		}, nil
 	case models.ResourceTypeView:
-		info, err := getTable(ctx, request.Resource, client)
+		info, err := getTable(spanCtx, request.Resource, client)
 		if err != nil {
 			return models.ReadResourceResponse{}, err
 		}
@@ -124,7 +133,7 @@ func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResource
 			Resource: info,
 		}, nil
 	case models.ResourceTypeDataset:
-		info, err := getDataset(ctx, request.Resource, client)
+		info, err := getDataset(spanCtx, request.Resource, client)
 		if err != nil {
 			return models.ReadResourceResponse{}, err
 		}
@@ -136,28 +145,34 @@ func (b *BigQuery) ReadResource(ctx context.Context, request models.ReadResource
 }
 
 func (b *BigQuery) DeleteResource(ctx context.Context, request models.DeleteResourceRequest) error {
+	spanCtx, span := startChildSpan(ctx, "DeleteResource")
+	defer span.End()
+
 	svcAcc, ok := request.Project.Secret.GetByName(SecretName)
 	if !ok || svcAcc == "" {
 		return fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
-	client, err := b.ClientFac.New(ctx, svcAcc)
+	client, err := b.ClientFac.New(spanCtx, svcAcc)
 	if err != nil {
 		return err
 	}
 
 	switch request.Resource.Type {
 	case models.ResourceTypeTable:
-		return deleteTable(ctx, request.Resource, client)
+		return deleteTable(spanCtx, request.Resource, client)
 	case models.ResourceTypeView:
-		return deleteTable(ctx, request.Resource, client)
+		return deleteTable(spanCtx, request.Resource, client)
 	case models.ResourceTypeDataset:
-		return deleteDataset(ctx, request.Resource, client)
+		return deleteDataset(spanCtx, request.Resource, client)
 	}
 	return fmt.Errorf("unsupported resource type %s", request.Resource.Type)
 }
 
 func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupResourceRequest) (models.BackupResourceResponse, error) {
+	spanCtx, span := startChildSpan(ctx, "BackupResource")
+	defer span.End()
+
 	if request.Resource.Type != models.ResourceTypeTable {
 		return models.BackupResourceResponse{}, models.ErrUnsupportedResource
 	}
@@ -171,12 +186,12 @@ func (b *BigQuery) BackupResource(ctx context.Context, request models.BackupReso
 		return models.BackupResourceResponse{}, fmt.Errorf(errSecretNotFoundStr, SecretName, b.Name())
 	}
 
-	client, err := b.ClientFac.New(ctx, svcAcc)
+	client, err := b.ClientFac.New(spanCtx, svcAcc)
 	if err != nil {
 		return models.BackupResourceResponse{}, err
 	}
 
-	return backupTable(ctx, request, client)
+	return backupTable(spanCtx, request, client)
 }
 
 func init() { //nolint:gochecknoinits
