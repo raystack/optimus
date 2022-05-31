@@ -203,7 +203,6 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("BulkCreate", func(t *testing.T) {
-
 		createJobSpecDummy := func(N int) []models.JobSpec {
 			jobSpecs := []models.JobSpec{}
 			for i := 0; i < N; i++ {
@@ -298,7 +297,6 @@ func TestService(t *testing.T) {
 			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs)
 			assert.NotNil(t, err)
 		})
-
 	})
 
 	t.Run("GetByName", func(t *testing.T) {
@@ -1247,7 +1245,6 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("BulkDelete", func(t *testing.T) {
-
 		createJobSpecDummy := func(N int) []models.JobSpec {
 			jobSpecs := []models.JobSpec{}
 			for i := 0; i < N; i++ {
@@ -1329,10 +1326,6 @@ func TestService(t *testing.T) {
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			defer jobSpecRepoFac.AssertExpectations(t)
 
-			jobSpecNames := []string{}
-			for _, jobSpec := range jobSpecs {
-				jobSpecNames = append(jobSpecNames, jobSpec.Name)
-			}
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
 			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(nil, errors.New("unknown error"))
@@ -1349,7 +1342,6 @@ func TestService(t *testing.T) {
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
 			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
 			assert.Nil(t, err)
-
 		})
 
 		t.Run("should fail if delete on job repo fail", func(t *testing.T) {
@@ -1395,12 +1387,10 @@ func TestService(t *testing.T) {
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
 			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
 			assert.NotNil(t, err)
-
 		})
 	})
 
 	t.Run("Deploy", func(t *testing.T) {
-
 		createJobSpecDummy := func(N int) []models.JobSpec {
 			jobSpecs := []models.JobSpec{}
 			for i := 0; i < N; i++ {
