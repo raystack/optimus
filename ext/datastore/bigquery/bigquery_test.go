@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/ext/datastore/bigquery"
 	"github.com/odpf/optimus/models"
@@ -89,7 +90,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, errors.New("some error"))
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -124,7 +125,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, nil)
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -195,7 +196,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, errors.New("some error"))
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -230,7 +231,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, nil)
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -302,7 +303,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, errors.New("some error"))
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -338,7 +339,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, nil)
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -410,7 +411,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New("some error"))
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, errors.New("some error"))
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -445,7 +446,7 @@ func TestBigquery(t *testing.T) {
 			bQClientFactory := new(bigquery.BQClientFactoryMock)
 			defer bQClientFactory.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, nil)
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
@@ -544,24 +545,24 @@ func TestBigquery(t *testing.T) {
 			bQJob := new(bigquery.BqJobMock)
 			defer bQJob.AssertExpectations(t)
 
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, nil)
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, nil)
 
 			// duplicate table
 			bQClient.On("DatasetInProject", spec.Project, spec.Dataset).Return(bQDatasetHandle).Once()
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 			bQDatasetHandle.On("Table", spec.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bqapi.JobStatus{}, nil)
+			bQCopier.On("Run", mock.Anything).Return(bQJob, nil)
+			bQJob.On("Wait", mock.Anything).Return(&bqapi.JobStatus{}, nil)
 
 			// update expiry
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
-			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", mock.Anything, toUpdate, eTag).Return(tableMetadata, nil)
 
 			// verify
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, nil).Once()
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,
 			}
@@ -649,7 +650,7 @@ func TestBigquery(t *testing.T) {
 			defer bQClientFactory.AssertExpectations(t)
 
 			errorMsg := "bq client failed"
-			bQClientFactory.On("New", testingContext, secret).Return(bQClient, errors.New(errorMsg))
+			bQClientFactory.On("New", mock.Anything, secret).Return(bQClient, errors.New(errorMsg))
 
 			bq := bigquery.BigQuery{
 				ClientFac: bQClientFactory,

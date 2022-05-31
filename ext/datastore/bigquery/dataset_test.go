@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/googleapi"
 
 	"github.com/odpf/optimus/models"
@@ -38,8 +39,8 @@ func TestDataset(t *testing.T) {
 			bQDatasetHandle := new(BqDatasetMock)
 			defer bQDatasetHandle.AssertExpectations(t)
 
-			bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), errNotFound)
-			bQDatasetHandle.On("Create", testingContext, &bqiface.DatasetMetadata{
+			bQDatasetHandle.On("Metadata", mock.Anything).Return((*bqiface.DatasetMetadata)(nil), errNotFound)
+			bQDatasetHandle.On("Create", mock.Anything, &bqiface.DatasetMetadata{
 				DatasetMetadata: bigquery.DatasetMetadata{
 					Labels: datasetLabels,
 				},
@@ -61,7 +62,7 @@ func TestDataset(t *testing.T) {
 			bQDatasetHandle := new(BqDatasetMock)
 			defer bQDatasetHandle.AssertExpectations(t)
 
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 
 			err := ensureDataset(testingContext, bQDatasetHandle, bQResource, upsert)
 			assert.Nil(t, err)
@@ -75,7 +76,7 @@ func TestDataset(t *testing.T) {
 			for _, e := range otherErrors {
 				bQDatasetHandle := new(BqDatasetMock)
 
-				bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), e)
+				bQDatasetHandle.On("Metadata", mock.Anything).Return((*bqiface.DatasetMetadata)(nil), e)
 
 				err := ensureDataset(testingContext, bQDatasetHandle, bQResource, upsert)
 				assert.Equal(t, e, err)
@@ -95,7 +96,7 @@ func TestDataset(t *testing.T) {
 			bQDatasetHandle := new(BqDatasetMock)
 			defer bQDatasetHandle.AssertExpectations(t)
 
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 
 			datasetMetadataToUpdate := bqiface.DatasetMetadataToUpdate{}
 			datasetMetadataToUpdate.Description = bQResource.Metadata.Description
@@ -118,7 +119,7 @@ func TestDataset(t *testing.T) {
 			bQDatasetHandle := new(BqDatasetMock)
 			defer bQDatasetHandle.AssertExpectations(t)
 
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 
 			datasetMetadataToUpdate := bqiface.DatasetMetadataToUpdate{}
 			datasetMetadataToUpdate.Description = bQResource.Metadata.Description
@@ -150,7 +151,7 @@ func TestDataset(t *testing.T) {
 			defer bQClient.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 
 			err := createDataset(testingContext, resourceSpec, bQClient, upsert)
 			assert.Nil(t, err)
@@ -168,7 +169,7 @@ func TestDataset(t *testing.T) {
 			defer bQClient.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
+			bQDatasetHandle.On("Metadata", mock.Anything).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
 
 			err := createDataset(testingContext, resourceSpec, bQClient, upsert)
 			assert.NotNil(t, err)
@@ -204,7 +205,7 @@ func TestDataset(t *testing.T) {
 			defer bQDatasetHandle.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 
 			bQResource.Metadata.Labels = datasetLabels
 			expectedResourceSpec := models.ResourceSpec{
@@ -239,7 +240,7 @@ func TestDataset(t *testing.T) {
 			defer bQDatasetHandle.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
+			bQDatasetHandle.On("Metadata", mock.Anything).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
 
 			actualResourceSpec, err := getDataset(testingContext, resourceSpec, bQClient)
 			assert.Equal(t, models.ResourceSpec{}, actualResourceSpec)
@@ -259,7 +260,7 @@ func TestDataset(t *testing.T) {
 			defer bQDatasetHandle.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Delete", testingContext).Return(nil)
+			bQDatasetHandle.On("Delete", mock.Anything).Return(nil)
 
 			err := deleteDataset(testingContext, resourceSpec, bQClient)
 			assert.Nil(t, err)

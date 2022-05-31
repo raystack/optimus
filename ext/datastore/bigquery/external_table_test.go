@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/googleapi"
 
 	"github.com/odpf/optimus/models"
@@ -53,8 +54,8 @@ func TestExternalTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), errNotFound)
-			bQTable.On("Create", testingContext, createTableMeta).Return(nil)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), errNotFound)
+			bQTable.On("Create", mock.Anything, createTableMeta).Return(nil)
 
 			err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
@@ -65,7 +66,7 @@ func TestExternalTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), nil)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), nil)
 
 			err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
@@ -79,7 +80,7 @@ func TestExternalTable(t *testing.T) {
 			for _, e := range otherErrors {
 				bQTable := new(BqTableMock)
 
-				bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), e)
+				bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), e)
 
 				err := ensureExternalTable(testingContext, bQTable, bQResource, upsert)
 				assert.Equal(t, e, err)
@@ -108,8 +109,8 @@ func TestExternalTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return(tableMeta, nil)
-			bQTable.On("Update", testingContext, updateTableMeta, tableMeta.ETag).Return((*bigquery.TableMetadata)(nil), nil)
+			bQTable.On("Metadata", mock.Anything).Return(tableMeta, nil)
+			bQTable.On("Update", mock.Anything, updateTableMeta, tableMeta.ETag).Return((*bigquery.TableMetadata)(nil), nil)
 
 			err := ensureExternalTable(testingContext, bQTable, updateBQResource, upsert)
 			assert.Nil(t, err)
@@ -135,10 +136,10 @@ func TestExternalTable(t *testing.T) {
 			datasetMetadata := bqiface.DatasetMetadata{
 				DatasetMetadata: bigquery.DatasetMetadata{},
 			}
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), errNotFound)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), errNotFound)
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable, nil)
-			bQTable.On("Create", testingContext, createTableMeta).Return(nil)
+			bQTable.On("Create", mock.Anything, createTableMeta).Return(nil)
 
 			err := createExternalTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.Nil(t, err)
@@ -171,7 +172,7 @@ func TestExternalTable(t *testing.T) {
 			defer bQTable.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
+			bQDatasetHandle.On("Metadata", mock.Anything).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
 
 			err := createExternalTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.NotNil(t, err)
