@@ -39,6 +39,14 @@ type ProjectJobSpecRepository interface {
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
 
+// JobSpecRepository represents a storage interface for Job specifications at a namespace level
+type JobSpecRepository interface {
+	Save(context.Context, models.JobSpec, string) error
+	GetByName(context.Context, string) (models.JobSpec, error)
+	GetAll(context.Context) ([]models.JobSpec, error)
+	Delete(context.Context, string) error
+}
+
 // ProjectRepository represents a storage interface for registered projects
 type ProjectRepository interface {
 	Save(context.Context, models.ProjectSpec) error

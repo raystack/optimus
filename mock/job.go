@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -77,8 +76,8 @@ type JobSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
-	return repo.Called(namespace).Get(0).(job.SpecRepository)
+func (repo *JobSpecRepoFactory) New(namespace models.NamespaceSpec) store.JobSpecRepository {
+	return repo.Called(namespace).Get(0).(store.JobSpecRepository)
 }
 
 // JobSpecRepoFactory to store raw specs

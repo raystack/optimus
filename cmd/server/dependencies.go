@@ -50,7 +50,7 @@ type jobSpecRepoFactory struct {
 	projectJobSpecRepoFac projectJobSpecRepoFactory
 }
 
-func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
+func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) store.JobSpecRepository {
 	return postgres.NewJobSpecRepository(
 		fac.db,
 		namespace,

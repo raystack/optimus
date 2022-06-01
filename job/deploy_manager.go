@@ -26,6 +26,10 @@ type DeployManager interface {
 	GetStatus(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error)
 }
 
+type Deployer interface {
+	Deploy(context.Context, models.JobDeployment) error
+}
+
 type deployManager struct {
 	l      log.Logger
 	config config.Deployer

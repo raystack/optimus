@@ -60,23 +60,14 @@ type DependencyResolver interface {
 	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
 }
 
-type Deployer interface {
-	Deploy(context.Context, models.JobDeployment) error
-}
-
 // SpecRepoFactory is used to manage job specs at namespace level
 type SpecRepoFactory interface {
-	New(spec models.NamespaceSpec) SpecRepository
+	New(spec models.NamespaceSpec) store.JobSpecRepository
 }
 
 // ProjectJobSpecRepoFactory is used to manage job specs at project level
 type ProjectJobSpecRepoFactory interface {
 	New(proj models.ProjectSpec) store.ProjectJobSpecRepository
-}
-
-// NamespaceRepoFactory is used to store job specs
-type NamespaceRepoFactory interface {
-	New(spec models.ProjectSpec) store.NamespaceRepository
 }
 
 type ReplayManager interface {
