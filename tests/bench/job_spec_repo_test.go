@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
@@ -54,7 +53,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		var repo store.JobSpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -71,7 +70,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		var repo store.JobSpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -100,7 +99,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		var repo store.JobSpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
