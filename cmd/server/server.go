@@ -11,6 +11,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -21,7 +22,9 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
@@ -73,16 +76,21 @@ func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 	// Make sure that log statements internal to gRPC library are logged using the logrus logger as well.
 	grpc_logrus.ReplaceGrpcLogger(grpcLogrusEntry)
 
+	recoverPanic := func(p interface{}) (err error) {
+		return status.Error(codes.Unknown, fmt.Sprintf("panic is triggered: %v", p))
+	}
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			grpctags.UnaryServerInterceptor(grpctags.WithFieldExtractor(grpctags.CodeGenRequestFieldExtractor)),
 			grpc_logrus.UnaryServerInterceptor(grpcLogrusEntry, opts...),
 			otelgrpc.UnaryServerInterceptor(),
 			grpc_prometheus.UnaryServerInterceptor,
+			grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(recoverPanic)),
 		),
 		grpc_middleware.WithStreamServerChain(
 			otelgrpc.StreamServerInterceptor(),
 			grpc_prometheus.StreamServerInterceptor,
+			grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(recoverPanic)),
 		),
 		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
 		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
