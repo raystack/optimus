@@ -65,20 +65,45 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
 
-	evt, ok := e.(*datastore.EventResourceUpdated)
-	if ok {
-		resp := &pb.DeployResourceSpecificationResponse{
-			Success:      true,
-			Ack:          true,
-			ResourceName: evt.Spec.Name,
-		}
-		if evt.Err != nil {
-			resp.Success = false
-			resp.Message = evt.Err.Error()
-		}
+	var (
+		success               = true
+		resourceName, message string
+	)
 
+	var isEventRecognized bool
+	switch evt := e.(type) {
+	case *datastore.EventResourceCreated:
+		isEventRecognized = true
+		resourceName = evt.Spec.Name
+		if evt.Err != nil {
+			success = false
+			message = evt.Err.Error()
+		} else {
+			message = evt.String()
+		}
+	case *datastore.EventResourceUpdated:
+		isEventRecognized = true
+		resourceName = evt.Spec.Name
+		if evt.Err != nil {
+			success = false
+			message = evt.Err.Error()
+		} else {
+			message = evt.String()
+		}
+	case *datastore.EventResourceSkipped:
+		isEventRecognized = true
+		message = evt.String()
+	}
+
+	if isEventRecognized {
+		resp := &pb.DeployResourceSpecificationResponse{
+			Success:      success,
+			Ack:          true,
+			ResourceName: resourceName,
+			Message:      message,
+		}
 		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "spec name", evt.Spec.Name, "error", err)
+			obs.log.Error("failed to send deploy spec ack", "spec name", resourceName, "error", err)
 		}
 	}
 }
