@@ -185,44 +185,6 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 	return d.pollJobDeployment(conn.GetContext(), jobSpecService, deployID)
 }
 
-func (d *deployCommand) processJobDeploymentResponse(
-	stream pb.JobSpecificationService_DeployJobSpecificationClient,
-	totalSpecsCount int,
-) error {
-	d.logger.Info("> Receiving responses:")
-	var counter int
-	spinner := progressbar.NewProgressBar()
-	defer spinner.Stop()
-
-	if !d.verbose {
-		spinner.StartProgress(totalSpecsCount, "please wait")
-	}
-	for {
-		resp, err := stream.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return err
-		}
-		if resp.GetAck() {
-			if !resp.GetSuccess() {
-				d.logger.Error(resp.GetMessage())
-			}
-			if resp.GetJobName() != "" {
-				counter++
-				spinner.SetProgress(counter)
-				if d.verbose {
-					d.logger.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetJobName()))
-				}
-			} else if d.verbose {
-				d.logger.Info(resp.Message)
-			}
-		}
-	}
-	return nil
-}
-
 func (d *deployCommand) sendNamespaceJobRequest(
 	stream pb.JobSpecificationService_DeployJobSpecificationClient,
 	namespace *config.Namespace,
