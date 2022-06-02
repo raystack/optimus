@@ -2,57 +2,54 @@ package extension
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
-
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/extension"
 )
 
 type installCommand struct {
-	logger    log.Logger
-	installer extension.Installer
+	logger log.Logger
 
-	alias string
+	reservedCommandNames []string
 }
 
-func newInstallCommand(installer extension.Installer) *cobra.Command {
+func newInstallCommand(logger log.Logger, reservedCommandNames []string) *cobra.Command {
 	install := &installCommand{
-		logger:    logger.NewDefaultLogger(),
-		installer: installer,
+		logger:               logger,
+		reservedCommandNames: reservedCommandNames,
 	}
 
 	cmd := &cobra.Command{
-		Use:   "install OWNER/REPO",
-		Short: "Install an extension",
+		Use:   "install REMOTE",
+		Short: "install extension based on remote path",
 		RunE:  install.RunE,
 	}
-	cmd.Flags().StringVarP(&install.alias, "alias", "a", "", "alias to be set for the extension")
+	cmd.Flags().String("alias", "", "override the command name with the alias")
+
 	return cmd
 }
 
-func (i *installCommand) RunE(_ *cobra.Command, args []string) error {
+func (i *installCommand) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return errors.New("one argument for [owner/repo] is required")
+		return fmt.Errorf("one argument for REMOTE path is required")
 	}
-	splitArg := strings.Split(args[0], "/")
-	if len(splitArg) != 2 || splitArg[0] == "" || splitArg[1] == "" {
-		return errors.New("argument should follow pattern [owner/repo]")
-	}
+	remotePath := args[0]
 
-	owner := splitArg[0]
-	repo := splitArg[1]
+	commandName, _ := cmd.Flags().GetString("alias")
+	verbose, _ := cmd.Flags().GetBool("verbose")
 
-	i.logger.Info(fmt.Sprintf("Installing %s/%s ...", owner, repo))
-	ctx := context.Background()
-	err := i.installer.Install(ctx, owner, repo, i.alias)
+	manager, err := getExtensionManager(verbose, i.reservedCommandNames...)
 	if err != nil {
 		return err
 	}
-	i.logger.Info("... success")
+
+	i.logger.Info(fmt.Sprintf("Installing [%s] ...", remotePath))
+	ctx := context.Background()
+	if err := manager.Install(ctx, remotePath, commandName); err != nil {
+		i.logger.Error("... finished with error")
+		return err
+	}
+	i.logger.Info("... finished successfully")
 	return nil
 }
