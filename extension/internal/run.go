@@ -43,16 +43,16 @@ func NewRunManager(
 // Run executes an installed extension
 func (r *RunManager) Run(commandName string, args ...string) error {
 	if err := r.validateInput(commandName, args...); err != nil {
-		return formatError(r.verbose, err, "error validating run input")
+		return FormatError(r.verbose, err, "error validating run input")
 	}
 
 	resource, err := r.setupResource(commandName, args...)
 	if err != nil {
-		return formatError(r.verbose, err, "error setting up run")
+		return FormatError(r.verbose, err, "error setting up run")
 	}
 
 	if err := r.run(resource); err != nil {
-		return formatError(r.verbose, err, "error running extension")
+		return FormatError(r.verbose, err, "error running extension")
 	}
 	return nil
 }

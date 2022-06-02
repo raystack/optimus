@@ -45,12 +45,12 @@ func (d *defaultAssetOperator) Install(asset []byte, tagName string) error {
 	if asset == nil {
 		return model.ErrNilAsset
 	}
-	directoryPermission := 600
+	directoryPermission := 0744
 	if err := AssetOperatorFS.MkdirAll(d.localDirPath, fs.FileMode(directoryPermission)); err != nil {
 		return fmt.Errorf("error making directory: %w", err)
 	}
 	filePath := path.Join(d.localDirPath, tagName)
-	filePermission := 755
+	filePermission := 0755
 	f, err := AssetOperatorFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fs.FileMode(filePermission))
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)

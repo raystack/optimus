@@ -50,29 +50,29 @@ func NewInstallManager(
 // Install installs extension
 func (i *InstallManager) Install(ctx context.Context, remotePath, commandName string) error {
 	if err := i.validateInput(remotePath); err != nil {
-		return formatError(i.verbose, err, "error validating install input")
+		return FormatError(i.verbose, err, "error validating install input")
 	}
 
 	resource, err := i.setupInstallResource(ctx, remotePath, commandName)
 	if err != nil {
-		return formatError(i.verbose, err, "error setting up installation")
+		return FormatError(i.verbose, err, "error setting up installation")
 	}
 
 	if err := i.validateResource(resource); err != nil {
-		return formatError(i.verbose, err, "error validating metadata for [%s/%s@%s]",
+		return FormatError(i.verbose, err, "error validating metadata for [%s/%s@%s]",
 			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
 	}
 
 	if err := install(ctx, resource.client, i.assetOperator, resource.metadata); err != nil {
-		return formatError(i.verbose, err, "error encountered when installing [%s/%s@%s]",
+		return FormatError(i.verbose, err, "error encountered when installing [%s/%s@%s]",
 			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
 	}
 
 	manifest := i.rebuildManifest(resource)
 	if err := i.manifester.Flush(manifest, model.ExtensionDir); err != nil {
-		return formatError(i.verbose, err, "error updating manifest")
+		return FormatError(i.verbose, err, "error updating manifest")
 	}
 	return nil
 }

@@ -33,7 +33,7 @@ func NewRenameManager(
 // Rename renames an existing command name into a targeted command name
 func (r *RenameManager) Rename(sourceCommandName, targetCommandName string) error {
 	if err := r.validateInput(sourceCommandName, targetCommandName); err != nil {
-		return formatError(r.verbose, err, "error validating rename command input")
+		return FormatError(r.verbose, err, "error validating rename command input")
 	}
 	if sourceCommandName == targetCommandName {
 		return nil
@@ -41,7 +41,7 @@ func (r *RenameManager) Rename(sourceCommandName, targetCommandName string) erro
 
 	manifest, err := r.manifester.Load(model.ExtensionDir)
 	if err != nil {
-		return formatError(r.verbose, err, "error loading manifest")
+		return FormatError(r.verbose, err, "error loading manifest")
 	}
 
 	sourceProject := findProjectByCommandName(manifest, sourceCommandName)
@@ -58,7 +58,7 @@ func (r *RenameManager) Rename(sourceCommandName, targetCommandName string) erro
 
 	sourceProject.CommandName = targetCommandName
 	if err := r.manifester.Flush(manifest, model.ExtensionDir); err != nil {
-		return formatError(r.verbose, err, "error applying manifest")
+		return FormatError(r.verbose, err, "error applying manifest")
 	}
 	return nil
 }

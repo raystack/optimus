@@ -27,25 +27,25 @@ func NewActivateManager(manifester model.Manifester, verbose bool) (*ActivateMan
 // Activate activates the tag for an extension specified by the command name
 func (a *ActivateManager) Activate(commandName, tagName string) error {
 	if err := a.validateActivateInput(commandName, tagName); err != nil {
-		return formatError(a.verbose, err, "error validating tag activation input")
+		return FormatError(a.verbose, err, "error validating tag activation input")
 	}
 
 	manifest, err := a.manifester.Load(model.ExtensionDir)
 	if err != nil {
-		return formatError(a.verbose, err, "error loading manifest")
+		return FormatError(a.verbose, err, "error loading manifest")
 	}
 
 	project := findProjectByCommandName(manifest, commandName)
 	if project == nil {
-		return formatError(a.verbose, err, "command name [%s] is not found", commandName)
+		return FormatError(a.verbose, err, "command name [%s] is not found", commandName)
 	}
 
 	if err := a.activateTagInProject(project, tagName); err != nil {
-		return formatError(a.verbose, err, "error activating tag [%s]", tagName)
+		return FormatError(a.verbose, err, "error activating tag [%s]", tagName)
 	}
 
 	if err := a.manifester.Flush(manifest, model.ExtensionDir); err != nil {
-		return formatError(a.verbose, err, "error applying manifest")
+		return FormatError(a.verbose, err, "error applying manifest")
 	}
 	return nil
 }

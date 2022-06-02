@@ -34,7 +34,7 @@ func (d *defaultManifester) Load(dirPath string) (*model.Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &model.Manifest{}
 	if _, err := ManifesterFS.Stat(manifestPath); err == nil {
-		filePermission := 600
+		filePermission := 0644
 		f, err := ManifesterFS.OpenFile(manifestPath, os.O_RDONLY, fs.FileMode(filePermission))
 		if err != nil {
 			return nil, fmt.Errorf("error opening manifest file: %w", err)
@@ -73,11 +73,12 @@ func (*defaultManifester) Flush(manifest *model.Manifest, dirPath string) error 
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
-	if err := ManifesterFS.MkdirAll(dirPath, 0o600); err != nil {
+	directoryPermission := 0744
+	if err := ManifesterFS.MkdirAll(dirPath, fs.FileMode(directoryPermission)); err != nil {
 		return fmt.Errorf("error creating manifest dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
-	filePermission := 600
+	filePermission := 0644
 	f, err := ManifesterFS.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fs.FileMode(filePermission))
 	if err != nil {
 		return fmt.Errorf("error opening manifest file: %w", err)

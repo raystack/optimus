@@ -14,6 +14,19 @@ func NewExtensionSurvey() *ExtensionSurvey {
 	return nil
 }
 
+// AskConfirmClean asks the user to confirm clean
+func (*ExtensionSurvey) AskConfirmClean() (bool, error) {
+	var output bool
+	prompt := &survey.Confirm{
+		Message: "Do you want to clean all extensions from local?",
+		Help:    "This operation removes all extensions and its manifest from local.",
+	}
+	if err := survey.AskOne(prompt, &output); err != nil {
+		return output, err
+	}
+	return output, nil
+}
+
 // AskConfirmUninstall asks the user to confirm uninstallation
 func (*ExtensionSurvey) AskConfirmUninstall(commandName string) (bool, error) {
 	var output bool

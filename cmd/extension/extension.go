@@ -26,7 +26,7 @@ func UpdateWithExtension(cmd *cobra.Command) {
 }
 
 func getReservedCommandNames(cmd *cobra.Command) []string {
-	custom := []string{"optimus", "extension"}
+	custom := []string{"optimus", "extension", "install", "clean"}
 	var output []string
 	for _, c := range cmd.Commands() {
 		output = append(output, c.Name())
@@ -42,6 +42,8 @@ func extensionCommand(logger log.Logger, reservedCommandNames []string) *cobra.C
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "if true, then more message will be provided if error encountered")
 
 	cmd.AddCommand(newInstallCommand(logger, reservedCommandNames))
+	cmd.AddCommand(newCleanCommand(logger))
+
 	managementCommands := generateManagementCommands(logger, reservedCommandNames)
 	for _, c := range managementCommands {
 		cmd.AddCommand(c)
@@ -51,11 +53,7 @@ func extensionCommand(logger log.Logger, reservedCommandNames []string) *cobra.C
 }
 
 func generateManagementCommands(logger log.Logger, reservedCommandNames []string) []*cobra.Command {
-	manifester := extension.NewDefaultManifester()
-	manifest, err := manifester.Load(model.ExtensionDir)
-	if err != nil {
-		panic(err)
-	}
+	manifest := loadManifest()
 
 	var output []*cobra.Command
 	for _, owner := range manifest.RepositoryOwners {
@@ -76,6 +74,15 @@ func generateManagementCommands(logger log.Logger, reservedCommandNames []string
 		}
 	}
 	return output
+}
+
+func loadManifest() *model.Manifest {
+	manifester := extension.NewDefaultManifester()
+	manifest, err := manifester.Load(model.ExtensionDir)
+	if err != nil {
+		panic(fmt.Errorf("error loading manifest, try running `optimus extension clean` to fix: %w", err))
+	}
+	return manifest
 }
 
 func getExtensionManager(verbose bool, reservedCommandNames ...string) (*extension.Manager, error) {

@@ -2,7 +2,8 @@ package internal
 
 import "fmt"
 
-func formatError(verbose bool, cause error, format string, a ...interface{}) error {
+// FormatError formats error according to its verbosity
+func FormatError(verbose bool, cause error, format string, a ...interface{}) error {
 	if verbose {
 		return formatVerboseErr(cause, format, a...)
 	}

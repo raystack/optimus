@@ -46,16 +46,16 @@ func NewUninstallManager(
 // Uninstall uninstalls extension based on the command name and the tag
 func (u *UninstallManager) Uninstall(commandName, tagName string) error {
 	if err := u.validateInput(commandName, tagName); err != nil {
-		return formatError(u.verbose, err, "error validating uninstall input")
+		return FormatError(u.verbose, err, "error validating uninstall input")
 	}
 
 	resource, err := u.setupResource(commandName, tagName)
 	if err != nil {
-		return formatError(u.verbose, err, "error setting up uninstall")
+		return FormatError(u.verbose, err, "error setting up uninstall")
 	}
 
 	if err := u.uninstall(resource); err != nil {
-		return formatError(u.verbose, err, "error encountered during uninstallation")
+		return FormatError(u.verbose, err, "error encountered during uninstallation")
 	}
 
 	newManifest := u.rebuildManifest(resource)

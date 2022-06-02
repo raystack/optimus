@@ -47,31 +47,31 @@ func NewUpgradeManager(
 // Upgrade upgrades extension specified by the command name
 func (u *UpgradeManager) Upgrade(ctx context.Context, commandName string) error {
 	if err := u.validateInput(commandName); err != nil {
-		return formatError(u.verbose, err, "error validating upgrade input")
+		return FormatError(u.verbose, err, "error validating upgrade input")
 	}
 
 	resource, err := u.setupResource(ctx, commandName)
 	if err != nil {
-		return formatError(u.verbose, err, "error setting up upgrade")
+		return FormatError(u.verbose, err, "error setting up upgrade")
 	}
 
 	if isInstalled(resource.manifest, resource.metadata) {
 		manifest := u.rebuildManifest(resource)
 		if err := u.manifester.Flush(manifest, model.ExtensionDir); err != nil {
-			return formatError(u.verbose, err, "error updating manifest")
+			return FormatError(u.verbose, err, "error updating manifest")
 		}
 		return nil
 	}
 
 	if err := install(ctx, resource.client, u.assetOperator, resource.metadata); err != nil {
-		return formatError(u.verbose, err, "error encountered during installing [%s/%s@%s]",
+		return FormatError(u.verbose, err, "error encountered during installing [%s/%s@%s]",
 			resource.metadata.OwnerName, resource.metadata.ProjectName, resource.metadata.TagName,
 		)
 	}
 
 	manifest := u.rebuildManifest(resource)
 	if err := u.manifester.Flush(manifest, model.ExtensionDir); err != nil {
-		return formatError(u.verbose, err, "error updating manifest")
+		return FormatError(u.verbose, err, "error updating manifest")
 	}
 	return nil
 }

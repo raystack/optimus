@@ -4,17 +4,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/odpf/optimus/extension"
-	"github.com/odpf/optimus/extension/model"
 )
 
 func generateRunCommands(reservedCommandNames []string) []*cobra.Command {
-	manifester := extension.NewDefaultManifester()
-	manifest, err := manifester.Load(model.ExtensionDir)
-	if err != nil {
-		panic(err)
-	}
+	manifest := loadManifest()
 
 	var output []*cobra.Command
 	for _, owner := range manifest.RepositoryOwners {
