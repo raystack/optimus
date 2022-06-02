@@ -439,7 +439,7 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 					d.logger.Error(reqErr)
 				}
 			} else {
-				d.logger.Info("Resolved dependency of %d modified jobs.", resolveDependencySuccess)
+				d.logger.Info(fmt.Sprintf("Resolved dependency of %d modified jobs.", resolveDependencySuccess))
 			}
 
 			// give summary of job deletion
@@ -451,7 +451,7 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 						d.logger.Error(reqErr)
 					}
 				} else {
-					d.logger.Info("Deleted % jobs", jobDeletionSuccess)
+					d.logger.Info(fmt.Sprintf("Deleted %d jobs", jobDeletionSuccess))
 				}
 			}
 

@@ -2,9 +2,9 @@ package job
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -954,18 +954,19 @@ func (*Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]mo
 }
 
 func (*Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
-	isLabelSame := reflect.DeepEqual(js1.Labels, js2.Labels)
-	isOwnerSame := reflect.DeepEqual(js1.Owner, js2.Owner)
-	isScheduleSame := reflect.DeepEqual(js1.Schedule, js2.Schedule)
-	isBehaviourSame := reflect.DeepEqual(js1.Behavior, js2.Behavior)
-	isTaskSame := reflect.DeepEqual(js1.Task, js2.Task)
-	isDependencySame := reflect.DeepEqual(js1.Dependencies, js2.Dependencies)
-	isAssetSame := reflect.DeepEqual(js1.Assets, js2.Assets)
-	isHookSame := reflect.DeepEqual(js1.Hooks, js2.Hooks)
-	isMetadataSame := reflect.DeepEqual(js1.Metadata, js2.Metadata)
-	isExternalDependencySame := reflect.DeepEqual(js1.ExternalDependencies, js2.ExternalDependencies)
+	js2.ID = js1.ID
+	js2.NamespaceSpec = js1.NamespaceSpec
 
-	return isLabelSame && isOwnerSame && isScheduleSame && isBehaviourSame && isTaskSame && isDependencySame && isAssetSame && isHookSame && isMetadataSame && isExternalDependencySame
+	jobSpecHash1 := getHash(fmt.Sprintf("%v", js1))
+	jobSpecHash2 := getHash(fmt.Sprintf("%v", js2))
+
+	return jobSpecHash1 == jobSpecHash2
+}
+
+func getHash(val string) string {
+	h := sha256.New()
+	h.Write([]byte(val))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {

@@ -160,6 +160,7 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 		}
 	case *models.ProgressSavedJobDelete:
 		resp := &pb.DeployJobSpecificationResponse{
+			Success: true,
 			JobName: evt.Name,
 			Value:   evt.String(),
 			Type:    evt.Type(),
@@ -173,6 +174,7 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 		}
 	case *models.ProgressJobSpecUnknownDependencyUsed:
 		resp := &pb.DeployJobSpecificationResponse{
+			Success: true,
 			JobName: evt.Job,
 			Value:   evt.String(),
 			Type:    evt.Type(),
@@ -182,8 +184,8 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 		}
 	case *models.ProgressJobDeploymentRequestCreated:
 		resp := &pb.DeployJobSpecificationResponse{
-			Value:   evt.ID().UUID().String(),
 			Success: true,
+			Value:   evt.ID().UUID().String(),
 			Type:    evt.Type(),
 		}
 		if err := obs.stream.Send(resp); err != nil {
