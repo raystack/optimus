@@ -76,49 +76,44 @@ func (u *UpgradeManager) Upgrade(ctx context.Context, commandName string) error 
 	return nil
 }
 
-func (*UpgradeManager) rebuildManifest(resource *upgradeResource) *model.Manifest {
+func (u *UpgradeManager) rebuildManifest(resource *upgradeResource) *model.Manifest {
 	manifest := resource.manifest
 	metadata := resource.metadata
-	upgradeRelease := resource.upgradeRelease
 
-	var updatedOnOwner bool
 	for _, owner := range manifest.RepositoryOwners {
 		if owner.Name == metadata.OwnerName {
-			var updatedOnProject bool
-			for _, project := range owner.Projects {
-				if project.Name == metadata.ProjectName {
-					if project.ActiveTagName != metadata.TagName {
-						var updatedOnRelease bool
-						for _, release := range project.Releases {
-							if release.TagName == metadata.TagName {
-								updatedOnRelease = true
-								break
-							}
-						}
-						if !updatedOnRelease {
-							project.Releases = append(project.Releases, upgradeRelease)
-						}
-						project.ActiveTagName = metadata.TagName
-					}
-					updatedOnProject = true
-				}
-			}
-			if !updatedOnProject {
-				project := buildProject(metadata, upgradeRelease)
-				project.Owner = owner
-				owner.Projects = append(owner.Projects, project)
-			}
-			updatedOnOwner = true
+			u.upgradeOwnerWithResource(owner, resource)
+			break
 		}
-	}
-	if !updatedOnOwner {
-		project := buildProject(metadata, upgradeRelease)
-		owner := buildOwner(metadata, project)
-		project.Owner = owner
-		manifest.RepositoryOwners = append(manifest.RepositoryOwners, owner)
 	}
 	manifest.UpdatedAt = time.Now()
 	return manifest
+}
+
+func (u *UpgradeManager) upgradeOwnerWithResource(owner *model.RepositoryOwner, resource *upgradeResource) {
+	metadata := resource.metadata
+	upgradeRelease := resource.upgradeRelease
+
+	for _, project := range owner.Projects {
+		if project.Name == metadata.ProjectName {
+			u.upgradeProjectWithRelease(project, upgradeRelease)
+			break
+		}
+	}
+}
+
+func (*UpgradeManager) upgradeProjectWithRelease(project *model.RepositoryProject, upgradeRelease *model.RepositoryRelease) {
+	var isReleaseFound bool
+	for _, release := range project.Releases {
+		if release.TagName == upgradeRelease.TagName {
+			isReleaseFound = true
+			break
+		}
+	}
+	if !isReleaseFound {
+		project.Releases = append(project.Releases, upgradeRelease)
+	}
+	project.ActiveTagName = upgradeRelease.TagName
 }
 
 func (u *UpgradeManager) setupResource(ctx context.Context, commandName string) (*upgradeResource, error) {

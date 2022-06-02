@@ -210,21 +210,40 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		release := &model.RepositoryRelease{
 			TagName: "v1.0.0",
 		}
-		project := &model.RepositoryProject{
-			Name:          "optimus-extension-valor",
-			CommandName:   "valor",
+		project1 := &model.RepositoryProject{
+			Name:          "optimus-extension-valor1",
+			CommandName:   "valor1",
 			ActiveTagName: "v1.0.0",
 			Releases:      []*model.RepositoryRelease{release},
 		}
-		release.Project = project
-		owner := &model.RepositoryOwner{
+		project2 := &model.RepositoryProject{
+			Name:          "optimus-extension-valor2",
+			CommandName:   "valor2",
+			ActiveTagName: "v1.0.0",
+			Releases:      []*model.RepositoryRelease{release},
+		}
+		project3 := &model.RepositoryProject{
+			Name:          "optimus-extension-valor3",
+			CommandName:   "valor3",
+			ActiveTagName: "v1.0.0",
+			Releases:      []*model.RepositoryRelease{release},
+		}
+		release.Project = project3
+		owner1 := &model.RepositoryOwner{
+			Name:     "odpf",
+			Provider: provider,
+			Projects: []*model.RepositoryProject{project1},
+		}
+		project1.Owner = owner1
+		owner2 := &model.RepositoryOwner{
 			Name:     "gojek",
 			Provider: provider,
-			Projects: []*model.RepositoryProject{project},
+			Projects: []*model.RepositoryProject{project2, project3},
 		}
-		project.Owner = owner
+		project2.Owner = owner2
+		project3.Owner = owner2
 		manifest := &model.Manifest{
-			RepositoryOwners: []*model.RepositoryOwner{owner},
+			RepositoryOwners: []*model.RepositoryOwner{owner1, owner2},
 		}
 
 		client := &mock.Client{}
@@ -244,7 +263,7 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 			panic(err)
 		}
 
-		commandName := "valor"
+		commandName := "valor3"
 
 		actualErr := manager.Upgrade(ctx, commandName)
 

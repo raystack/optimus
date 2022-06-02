@@ -59,15 +59,19 @@ func isInstalled(manifest *model.Manifest, metadata *model.Metadata) bool {
 		if owner.Name == metadata.OwnerName {
 			for _, project := range owner.Projects {
 				if project.Name == metadata.ProjectName {
-					for _, release := range project.Releases {
-						if release.TagName == metadata.TagName {
-							return true
-						}
-					}
-					return false
+					return isTagNameInProject(project, metadata.TagName)
 				}
 			}
 			return false
+		}
+	}
+	return false
+}
+
+func isTagNameInProject(project *model.RepositoryProject, tagName string) bool {
+	for _, release := range project.Releases {
+		if release.TagName == tagName {
+			return true
 		}
 	}
 	return false
