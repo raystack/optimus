@@ -48,8 +48,10 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 			}
 
 			if !proceed {
-				srv.notifyProgress(obs, &EventResourceCreated{
-					Spec: incomingSpec,
+				srv.notifyProgress(obs, &EventResourceSkipped{
+					Spec:    incomingSpec,
+					Process: "create",
+					Reason:  "incoming resource is the same as existing",
 				})
 				return nil, nil // nolint:nilnil
 			}
@@ -90,8 +92,10 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 			}
 
 			if !proceed {
-				srv.notifyProgress(obs, &EventResourceUpdated{
-					Spec: incomingSpec,
+				srv.notifyProgress(obs, &EventResourceSkipped{
+					Spec:    incomingSpec,
+					Process: "update",
+					Reason:  "incoming resource is the same as existing",
 				})
 				return nil, nil // nolint:nilnil
 			}
@@ -223,7 +227,18 @@ type (
 		Spec models.ResourceSpec
 		Err  error
 	}
+
+	// EventResourceSkipped represents the resource being skipped in datastore
+	EventResourceSkipped struct {
+		Spec    models.ResourceSpec
+		Process string
+		Reason  string
+	}
 )
+
+func (e *EventResourceSkipped) String() string {
+	return fmt.Sprintf("process [%s] on resource [%s] is skipped because %s", e.Process, e.Spec.Name, e.Reason)
+}
 
 func (e *EventResourceUpdated) String() string {
 	if e.Err != nil {
