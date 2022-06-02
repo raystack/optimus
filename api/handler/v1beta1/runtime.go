@@ -19,11 +19,12 @@ type JobEventService interface {
 }
 
 type RuntimeServiceServer struct {
-	version          string
-	jobSvc           models.JobService
-	jobEventSvc      JobEventService
-	namespaceService service.NamespaceService
-	l                log.Logger
+	version           string
+	jobSvc            models.JobService
+	jobEventSvc       JobEventService
+	namespaceService  service.NamespaceService
+	monitoringService service.MonitoringService
+	l                 log.Logger
 	pb.UnimplementedRuntimeServiceServer
 }
 
@@ -55,10 +56,15 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 	if req.GetEvent().Value != nil {
 		eventValues = req.GetEvent().Value.GetFields()
 	}
-	if err := sv.jobEventSvc.Register(ctx, namespaceSpec, jobSpec, models.JobEvent{
+
+	jobEvent := models.JobEvent{
 		Type:  models.JobEventType(utils.FromEnumProto(req.GetEvent().Type.String(), "TYPE")),
 		Value: eventValues,
-	}); err != nil {
+	}
+
+	sv.monitoringService.ProcessEvent(ctx, jobEvent, namespaceSpec, jobSpec)
+
+	if err := sv.jobEventSvc.Register(ctx, namespaceSpec, jobSpec, jobEvent); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to register event: \n%s", err.Error())
 	}
 
@@ -71,12 +77,14 @@ func NewRuntimeServiceServer(
 	jobSvc models.JobService,
 	jobEventService JobEventService,
 	namespaceService service.NamespaceService,
+	monitoringService service.MonitoringService,
 ) *RuntimeServiceServer {
 	return &RuntimeServiceServer{
-		l:                l,
-		version:          version,
-		jobSvc:           jobSvc,
-		jobEventSvc:      jobEventService,
-		namespaceService: namespaceService,
+		l:                 l,
+		version:           version,
+		jobSvc:            jobSvc,
+		jobEventSvc:       jobEventService,
+		namespaceService:  namespaceService,
+		monitoringService: monitoringService,
 	}
 }

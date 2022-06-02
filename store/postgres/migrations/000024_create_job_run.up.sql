@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS job_run (
     sla_miss_delay  INT,
     duration        INT,
 
-    Updated_at    TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
 
     UNIQUE (job_id, project_id, namespace_id, scheduled_at, attempt)
 );

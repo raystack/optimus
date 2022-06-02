@@ -6,12 +6,12 @@ from datetime import datetime, timedelta, timezone
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
 from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
+from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
-
-from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor, ExternalHttpSensor
+from __lib import optimus_log_event_failure ,optimus_log_event_retry, optimus_log_event_success  , optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+    SuperExternalTaskSensor, ExternalHttpSensor, optimus_log_job_start
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -40,7 +40,9 @@ default_args = {
     "priority_weight": {{.Job.Task.Priority}},
     "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02T15:04:05" | quote }}, "%Y-%m-%dT%H:%M:%S"),
     {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}},"%Y-%m-%dT%H:%M:%S"),{{- else -}}{{- end}}
-    "on_failure_callback": optimus_failure_notify,
+    "on_failure_callback": optimus_log_event_failure,
+    "on_retry_callback": optimus_log_event_retry,
+    "on_success_callback": optimus_log_event_success,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -57,6 +59,12 @@ dag = DAG(
             {{- end}}
            ]
 )
+
+publish_job_start_event = PythonOperator(
+        task_id = "publish_job_start_event",
+        python_callable = optimus_log_job_start,
+        dag=dag
+    )
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
 {{ if ne $baseTaskSchema.SecretPath "" -}}
@@ -100,7 +108,7 @@ resources = k8s.V1ResourceRequirements (
 {{- end }}
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
     cmds=[],
@@ -124,7 +132,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
     ],
 {{- if gt .SLAMissDurationInSec 0 }}
-    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+    sla=timedelta(seconds=1),
 {{- end }}
 {{- if $setResourceConfig }}
     resources = resources,
@@ -146,7 +154,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 {{- end }}
 
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
     cmds=[],

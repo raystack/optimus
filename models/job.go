@@ -37,8 +37,9 @@ const (
 	// JobSpecDependencyTypeExtra represents dependency outside optimus
 	JobSpecDependencyTypeExtra JobSpecDependencyType = "extra"
 
-	JobEventTypeSLAMiss JobEventType = "sla_miss"
-	JobEventTypeFailure JobEventType = "failure"
+	SLAMissEvent    JobEventType = "sla_miss"
+	JobFailureEvent JobEventType = "failure"
+	JobStartEvent   JobEventType = "job_start"
 )
 
 // JobSpec represents a job

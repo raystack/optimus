@@ -210,6 +210,7 @@ func (s *OptimusServer) setupHandlers() error {
 	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
 	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
+	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn, s.logger)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
@@ -282,7 +283,7 @@ func (s *OptimusServer) setupHandlers() error {
 			},
 			new(pagerduty.PagerDutyServiceImpl),
 		),
-	}, nil)
+	})
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
 	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
@@ -338,6 +339,8 @@ func (s *OptimusServer) setupHandlers() error {
 	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
+	monitoringService := service.NewMonitoringService(s.logger, jobRunService, jobRunMetricsRepository)
+
 	// secret service
 	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
 	// resource service
@@ -389,6 +392,7 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		eventService,
 		namespaceService,
+		monitoringService,
 	))
 
 	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobRunRepo, instanceRepo)

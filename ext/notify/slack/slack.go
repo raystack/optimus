@@ -151,7 +151,7 @@ func buildMessageBlocks(events []event) []api.Block {
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
 
 		switch evt.meta.Type {
-		case models.JobEventTypeSLAMiss:
+		case models.SLAMissEvent:
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] SLA Breached | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
@@ -179,7 +179,7 @@ func buildMessageBlocks(events []event) []api.Block {
 					}
 				}
 			}
-		case models.JobEventTypeFailure:
+		case models.JobFailureEvent:
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] Failure | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))

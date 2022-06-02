@@ -81,6 +81,11 @@ type JobRunRepository interface {
 	ClearInstance(ctx context.Context, runID uuid.UUID, instanceType models.InstanceType, instanceName string) error
 }
 
+// JobRunMetricsRepository represents a storage interface for Job runs generated to
+type JobRunMetricsRepository interface {
+	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
+}
+
 // JobRunSpecRepository represents a storage interface for Job run instances created
 // during execution
 type InstanceRepository interface {

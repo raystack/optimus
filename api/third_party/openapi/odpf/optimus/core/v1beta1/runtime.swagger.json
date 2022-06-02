@@ -167,7 +167,9 @@
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
         "TYPE_FAILURE",
-        "TYPE_SUCCESS"
+        "TYPE_SUCCESS",
+        "TYPE_RETRY",
+        "TYPE_JOB_START"
       ],
       "default": "TYPE_UNSPECIFIED"
     },
