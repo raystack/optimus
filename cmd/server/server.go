@@ -154,9 +154,9 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 
 	// base router
 	baseMux := http.NewServeMux()
-	baseMux.HandleFunc("/ping", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	baseMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
-	}), "Ping").ServeHTTP)
+	})
 	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
 
 	//nolint: gomnd

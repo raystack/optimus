@@ -118,7 +118,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			compiler := new(MockedCompiler)
@@ -130,8 +130,8 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
-			mockBucket.On("WriteAll", ctx, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
-			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 			err := air.DeployJobs(ctx, ns, jobSpecs, nil)
 			assert.Nil(t, err)
 
@@ -154,7 +154,7 @@ func TestAirflow2(t *testing.T) {
 			compiler := new(MockedCompiler)
 			defer compiler.AssertExpectations(t)
 
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
 			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{
@@ -190,7 +190,7 @@ func TestAirflow2(t *testing.T) {
 			defer compiler.AssertExpectations(t)
 
 			errorMsg := "internal error"
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, errors.New(errorMsg))
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, errors.New(errorMsg))
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
 			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
@@ -211,7 +211,7 @@ func TestAirflow2(t *testing.T) {
 			compiler := new(MockedCompiler)
 			defer compiler.AssertExpectations(t)
 
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 
 			errorMsg := "internal error"
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
@@ -243,11 +243,11 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -263,11 +263,11 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -290,7 +290,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -312,7 +312,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -330,12 +330,12 @@ func TestAirflow2(t *testing.T) {
 			mockBucket.On("List", &blob.ListOptions{
 				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()),
 			})
-			mockBucket.On("ReadAll", ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension))
-			mockBucket.On("ReadAll", ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension))
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)

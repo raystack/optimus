@@ -86,13 +86,16 @@ func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec,
 func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec,
 	progressObserver progress.Observer,
 ) error {
-	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	spanCtx, span := startChildSpan(ctx, "DeployJobs")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
 	if err != nil {
 		return err
 	}
 	defer bucket.Close()
 
-	bucket.WriteAll(ctx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
+	bucket.WriteAll(spanCtx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, j := range jobs {
@@ -134,7 +137,10 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 // This is being used by refresh command to deploy jobs after dependencies refreshed
 // TODO: Deprecate the other DeployJobs and rename this.
 func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
-	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	spanCtx, span := startChildSpan(ctx, "DeployJobsVerbose")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
 	if err != nil {
 		return models.JobDeploymentDetail{}, err
 	}
@@ -183,7 +189,10 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 }
 
 func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, progressObserver progress.Observer) error {
-	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	spanCtx, span := startChildSpan(ctx, "DeleteJobs")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
 	if err != nil {
 		return err
 	}
@@ -192,7 +201,7 @@ func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSp
 			return ErrEmptyJobName
 		}
 		blobKey := PathFromJobName(JobsDir, namespace.ID.String(), jobName, JobsExtension)
-		if err := bucket.Delete(ctx, blobKey); err != nil {
+		if err := bucket.Delete(spanCtx, blobKey); err != nil {
 			// ignore missing files
 			if gcerrors.Code(err) != gcerrors.NotFound {
 				return err
@@ -207,7 +216,10 @@ func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSp
 
 // TODO list jobs should not refer from the scheduler, rather should list from db and it has notthing to do with scheduler.
 func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
-	bucket, err := s.bucketFac.New(ctx, namespace.ProjectSpec)
+	spanCtx, span := startChildSpan(ctx, "ListJobs")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +232,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 		Prefix: PathForJobDirectory(JobsDir, namespaceID),
 	})
 	for {
-		obj, err := it.Next(ctx)
+		obj, err := it.Next(spanCtx)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -239,7 +251,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 		return jobs, nil
 	}
 	for idx, job := range jobs {
-		jobs[idx].Contents, err = bucket.ReadAll(ctx, PathFromJobName(JobsDir, namespaceID, job.Name, JobsExtension))
+		jobs[idx].Contents, err = bucket.ReadAll(spanCtx, PathFromJobName(JobsDir, namespaceID, job.Name, JobsExtension))
 		if err != nil {
 			return nil, err
 		}
@@ -248,6 +260,9 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 }
 
 func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus, error) {
+	spanCtx, span := startChildSpan(ctx, "GetJobStatus")
+	defer span.End()
+
 	var jobStatus []models.JobStatus
 	var list DagRunListResponse
 	req := airflowRequest{
@@ -256,7 +271,7 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 		param:  jobName,
 		body:   nil,
 	}
-	resp, err := s.client.invoke(ctx, req, projSpec)
+	resp, err := s.client.invoke(spanCtx, req, projSpec)
 	if err != nil {
 		return jobStatus, fmt.Errorf("failure reason for fetching airflow latest dag run: %w", err)
 	}
@@ -268,6 +283,9 @@ func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpe
 }
 
 func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobName string, startDate, endDate time.Time) error {
+	spanCtx, span := startChildSpan(ctx, "Clear")
+	defer span.End()
+
 	data := []byte(fmt.Sprintf(`{"start_date": %q, "end_date": %q, "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
 		startDate.UTC().Format(airflowDateFormat),
 		endDate.UTC().Format(airflowDateFormat)))
@@ -277,7 +295,7 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 		param:  jobName,
 		body:   data,
 	}
-	_, err := s.client.invoke(ctx, req, projSpec)
+	_, err := s.client.invoke(spanCtx, req, projSpec)
 	if err != nil {
 		return fmt.Errorf("failure reason for clearing airflow dag runs: %w", err)
 	}
@@ -285,6 +303,9 @@ func (s *scheduler) Clear(ctx context.Context, projSpec models.ProjectSpec, jobN
 }
 
 func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.ProjectSpec, jobName string, startDate, endDate time.Time, batchSize int) ([]models.JobStatus, error) {
+	spanCtx, span := startChildSpan(ctx, "GetJobRunStatus")
+	defer span.End()
+
 	var jobStatus []models.JobStatus
 	var list DagRunListResponse
 	pageOffset := 0
@@ -303,7 +324,7 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 		"execution_date_lte": "%s"
 		}`, pageOffset, batchSize, jobName, startDate.UTC().Format(airflowDateFormat), endDate.UTC().Format(airflowDateFormat))
 		req.body = []byte(dagRunBatchReq)
-		resp, err := s.client.invoke(ctx, req, projectSpec)
+		resp, err := s.client.invoke(spanCtx, req, projectSpec)
 		if err != nil {
 			return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
 		}
@@ -327,6 +348,9 @@ func (s *scheduler) GetJobRunStatus(ctx context.Context, projectSpec models.Proj
 }
 
 func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSpec, jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) ([]models.JobRun, error) {
+	spanCtx, span := startChildSpan(ctx, "GetJobRuns")
+	defer span.End()
+
 	var jobRuns []models.JobRun
 	var dagRunList DagRunListResponse
 	var dagRunRequest DagRunRequest
@@ -345,7 +369,7 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 		method: http.MethodPost,
 		body:   reqBody,
 	}
-	resp, err := s.client.invoke(ctx, req, projectSpec)
+	resp, err := s.client.invoke(spanCtx, req, projectSpec)
 	if err != nil {
 		return jobRuns, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
+	"go.opentelemetry.io/otel"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
@@ -81,6 +82,9 @@ func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds model
 type airflowBucketFactory struct{}
 
 func (*airflowBucketFactory) New(ctx context.Context, projectSpec models.ProjectSpec) (airflow2.Bucket, error) {
+	spanCtx, span := otel.Tracer("server/bucketFactory").Start(ctx, "NewBucketFactory")
+	defer span.End()
+
 	storagePath, ok := projectSpec.Config[models.ProjectStoragePathKey]
 	if !ok {
 		return nil, fmt.Errorf("%s config not configured for project %s", models.ProjectStoragePathKey, projectSpec.Name)
@@ -92,11 +96,12 @@ func (*airflowBucketFactory) New(ctx context.Context, projectSpec models.Project
 
 	switch parsedURL.Scheme {
 	case "gs":
+		span.AddEvent("Init bucket for GCS")
 		storageSecret, ok := projectSpec.Secret.GetByName(models.ProjectSecretStorageKey)
 		if !ok {
 			return nil, fmt.Errorf("%s secret not configured for project %s", models.ProjectSecretStorageKey, projectSpec.Name)
 		}
-		creds, err := google.CredentialsFromJSON(ctx, []byte(storageSecret), "https://www.googleapis.com/auth/cloud-platform")
+		creds, err := google.CredentialsFromJSON(spanCtx, []byte(storageSecret), "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +112,7 @@ func (*airflowBucketFactory) New(ctx context.Context, projectSpec models.Project
 			return nil, err
 		}
 
-		gcsBucket, err := gcsblob.OpenBucket(ctx, client, parsedURL.Host, nil)
+		gcsBucket, err := gcsblob.OpenBucket(spanCtx, client, parsedURL.Host, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -118,6 +123,7 @@ func (*airflowBucketFactory) New(ctx context.Context, projectSpec models.Project
 		prefix := fmt.Sprintf("%s/", strings.Trim(parsedURL.Path, "/\\"))
 		return blob.PrefixedBucket(gcsBucket, prefix), nil
 	case "file":
+		span.AddEvent("Init bucket for File")
 		return fileblob.OpenBucket(parsedURL.Path, &fileblob.Options{
 			CreateDir: true,
 			Metadata:  fileblob.MetadataDontWrite,

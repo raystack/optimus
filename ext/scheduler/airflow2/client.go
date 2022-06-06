@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/models"
 )
@@ -170,4 +173,10 @@ func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRu
 		}
 	}
 	return jobRunList, nil
+}
+
+func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	tracer := otel.Tracer("scheduler/airflow")
+
+	return tracer.Start(ctx, name)
 }

@@ -8,6 +8,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 )
@@ -48,4 +50,10 @@ func (fac *defaultBQClientFactory) New(ctx context.Context, svcAccount string) (
 	fac.cachedClient = bqiface.AdaptClient(client)
 	fac.timesUsed = 1
 	return fac.cachedClient, nil
+}
+
+func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	tracer := otel.Tracer("datastore/bigquery")
+
+	return tracer.Start(ctx, name)
 }
