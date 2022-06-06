@@ -127,8 +127,23 @@ type SupportedDatastoreRepo struct {
 }
 
 func (repo *SupportedDatastoreRepo) GetByName(name string) (models.Datastorer, error) {
-	args := repo.Called(name)
-	return args.Get(0).(models.Datastorer), args.Error(1)
+	ret := repo.Called(name)
+
+	var r0 models.Datastorer
+	if rf, ok := ret.Get(0).(func(string) models.Datastorer); ok {
+		r0 = rf(name)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(models.Datastorer)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(name)
+	} else if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
 }
 
 func (repo *SupportedDatastoreRepo) GetAll() []models.Datastorer {

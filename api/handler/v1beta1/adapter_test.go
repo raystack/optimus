@@ -1,11 +1,13 @@
 package v1beta1_test
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	tMock "github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
@@ -138,6 +140,93 @@ func TestAdapter(t *testing.T) {
 		original, err := v1.FromJobProto(inProto, pluginRepo)
 		assert.Equal(t, jobSpec, original)
 		assert.Nil(t, err)
+	})
+}
+
+func TestAdapter_FromResourceProto(t *testing.T) {
+	t.Run("should return empty result and error if spec is nil", func(t *testing.T) {
+		var spec *pb.ResourceSpecification
+		storeName := "table"
+		datastoreRepo := &mock.SupportedDatastoreRepo{}
+
+		actualResource, actualError := v1.FromResourceProto(spec, storeName, datastoreRepo)
+
+		assert.Empty(t, actualResource)
+		assert.Error(t, actualError)
+	})
+
+	t.Run("should return empty result and error if store name is empty", func(t *testing.T) {
+		spec := &pb.ResourceSpecification{}
+		var storeName string
+		datastoreRepo := &mock.SupportedDatastoreRepo{}
+
+		actualResource, actualError := v1.FromResourceProto(spec, storeName, datastoreRepo)
+
+		assert.Empty(t, actualResource)
+		assert.Error(t, actualError)
+	})
+
+	t.Run("should return empty result and error if datastore repo is nil", func(t *testing.T) {
+		spec := &pb.ResourceSpecification{}
+		storeName := "table"
+		var datastoreRepo models.DatastoreRepo
+
+		actualResource, actualError := v1.FromResourceProto(spec, storeName, datastoreRepo)
+
+		assert.Empty(t, actualResource)
+		assert.Error(t, actualError)
+	})
+
+	t.Run("should return empty result and error if error encountered when getting storer", func(t *testing.T) {
+		spec := &pb.ResourceSpecification{}
+		storeName := "table"
+		datastoreRepo := &mock.SupportedDatastoreRepo{}
+		datastoreRepo.On("GetByName", tMock.Anything).Return(nil, errors.New("random error"))
+
+		actualResource, actualError := v1.FromResourceProto(spec, storeName, datastoreRepo)
+
+		assert.Empty(t, actualResource)
+		assert.Error(t, actualError)
+	})
+
+	t.Run("should return empty result and error if cannot find spec type from storer", func(t *testing.T) {
+		spec := &pb.ResourceSpecification{}
+		storeName := "table"
+		types := map[models.ResourceType]models.DatastoreTypeController{}
+		datastorer := &mock.Datastorer{}
+		datastorer.On("Types").Return(types)
+		datastoreRepo := &mock.SupportedDatastoreRepo{}
+		datastoreRepo.On("GetByName", tMock.Anything).Return(datastorer, nil)
+
+		actualResource, actualError := v1.FromResourceProto(spec, storeName, datastoreRepo)
+
+		assert.Empty(t, actualResource)
+		assert.Error(t, actualError)
+	})
+
+	t.Run("should return spec and nil if no error is encountered", func(t *testing.T) {
+		spec := &pb.ResourceSpecification{
+			Type: "table",
+		}
+		storeName := "table"
+		specAdapter := &mock.DatastoreTypeAdapter{}
+		specAdapter.On("FromProtobuf", tMock.Anything).Return(models.ResourceSpec{
+			Version: 1,
+		}, nil)
+		typeController := &mock.DatastoreTypeController{}
+		typeController.On("Adapter").Return(specAdapter)
+		types := map[models.ResourceType]models.DatastoreTypeController{
+			"table": typeController,
+		}
+		datastorer := &mock.Datastorer{}
+		datastorer.On("Types").Return(types)
+		datastoreRepo := &mock.SupportedDatastoreRepo{}
+		datastoreRepo.On("GetByName", tMock.Anything).Return(datastorer, nil)
+
+		actualResource, actualError := v1.FromResourceProto(spec, storeName, datastoreRepo)
+
+		assert.NotEmpty(t, actualResource)
+		assert.NoError(t, actualError)
 	})
 }
 
