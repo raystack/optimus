@@ -25,15 +25,12 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-var disableColoredOut = false
-
 // New constructs the 'root' command. It houses all other sub commands
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New() *cli.Command {
-	disableColoredOut = !utils.IsTerminal(os.Stdout)
-	if !disableColoredOut {
+	if utils.IsTerminal(os.Stdout) {
 		initializeColor()
 	}
 
@@ -67,7 +64,6 @@ func New() *cli.Command {
 	}
 
 	cmdx.SetHelp(cmd)
-	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
 	cmd.AddCommand(admin.NewAdminCommand())
 	cmd.AddCommand(backup.NewBackupCommand())
