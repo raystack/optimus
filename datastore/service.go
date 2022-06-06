@@ -2,9 +2,9 @@ package datastore
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
@@ -37,91 +37,35 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 }
 
 func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, resourceSpec := range resourceSpecs {
-		incomingSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
-		runner.Add(func() (interface{}, error) {
-			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
-			if err != nil {
-				return nil, err
-			}
-
-			if !proceed {
-				srv.notifyProgress(obs, &EventResourceSkipped{
-					Spec:    incomingSpec,
-					Process: "create",
-					Reason:  "incoming resource is the same as existing",
-				})
-				return nil, nil // nolint:nilnil
-			}
-
-			if err := repo.Save(ctx, incomingSpec); err != nil {
-				return nil, err
-			}
-			err = incomingSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
-				Resource: incomingSpec,
-				Project:  namespace.ProjectSpec,
-			})
-			srv.notifyProgress(obs, &EventResourceCreated{
-				Spec: incomingSpec,
-				Err:  err,
-			})
-			return nil, err
-		})
-	}
-
-	var errorSet error
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			errorSet = multierror.Append(errorSet, result.Err)
+	execDatastore := func(rs models.ResourceSpec) error {
+		request := models.CreateResourceRequest{
+			Resource: rs,
+			Project:  namespace.ProjectSpec,
 		}
+		err := rs.Datastore.CreateResource(ctx, request)
+		srv.notifyProgress(obs, &EventResourceCreated{
+			Spec: rs,
+			Err:  err,
+		})
+		return err
 	}
-	return errorSet
+	return srv.saveResource(ctx, namespace, resourceSpecs, obs, execDatastore)
 }
 
 func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, resourceSpec := range resourceSpecs {
-		incomingSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
-		runner.Add(func() (interface{}, error) {
-			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
-			if err != nil {
-				return nil, err
-			}
-
-			if !proceed {
-				srv.notifyProgress(obs, &EventResourceSkipped{
-					Spec:    incomingSpec,
-					Process: "update",
-					Reason:  "incoming resource is the same as existing",
-				})
-				return nil, nil // nolint:nilnil
-			}
-
-			if err := repo.Save(ctx, incomingSpec); err != nil {
-				return nil, err
-			}
-			err = incomingSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
-				Resource: incomingSpec,
-				Project:  namespace.ProjectSpec,
-			})
-			srv.notifyProgress(obs, &EventResourceUpdated{
-				Spec: incomingSpec,
-				Err:  err,
-			})
-			return nil, err
-		})
-	}
-
-	var errorSet error
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			errorSet = multierror.Append(errorSet, result.Err)
+	execDatastore := func(rs models.ResourceSpec) error {
+		request := models.UpdateResourceRequest{
+			Resource: rs,
+			Project:  namespace.ProjectSpec,
 		}
+		err := rs.Datastore.UpdateResource(ctx, request)
+		srv.notifyProgress(obs, &EventResourceUpdated{
+			Spec: rs,
+			Err:  err,
+		})
+		return err
 	}
-	return errorSet
+	return srv.saveResource(ctx, namespace, resourceSpecs, obs, execDatastore)
 }
 
 func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
@@ -167,7 +111,47 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	return repo.Delete(ctx, name)
 }
 
-func (srv Service) isProceedToSave(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
+func (srv Service) saveResource(
+	ctx context.Context,
+	namespace models.NamespaceSpec,
+	resourceSpecs []models.ResourceSpec,
+	obs progress.Observer,
+	execDatastore func(models.ResourceSpec) error,
+) error {
+	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
+	for _, incomingSpec := range resourceSpecs {
+		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
+		runner.Add(func() (interface{}, error) {
+			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
+			if err != nil {
+				return nil, err
+			}
+
+			if !proceed {
+				srv.notifyProgress(obs, &EventResourceSkipped{
+					Spec:   incomingSpec,
+					Reason: "incoming resource is the same as existing",
+				})
+				return nil, nil // nolint:nilnil
+			}
+
+			if err := repo.Save(ctx, incomingSpec); err != nil {
+				return nil, err
+			}
+			return nil, execDatastore(incomingSpec)
+		})
+	}
+
+	var errorSet error
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			errorSet = multierror.Append(errorSet, result.Err)
+		}
+	}
+	return errorSet
+}
+
+func (Service) isProceedToSave(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
 	var proceed bool
 	if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
 		if !errors.Is(err, store.ErrResourceNotFound) {
@@ -177,28 +161,9 @@ func (srv Service) isProceedToSave(ctx context.Context, repo store.ResourceSpecR
 	} else {
 		incomingSpec.ID = existingSpec.ID
 		incomingSpec.URN = existingSpec.URN
-		proceed = !srv.isSameHash(existingSpec, incomingSpec)
+		proceed = !reflect.DeepEqual(existingSpec, incomingSpec)
 	}
 	return proceed, nil
-}
-
-func (srv Service) isSameHash(rsc1, rsc2 models.ResourceSpec) bool {
-	hash1, err := srv.calculateHash(rsc1)
-	if err != nil {
-		return false
-	}
-	hash2, err := srv.calculateHash(rsc2)
-	if err != nil {
-		return false
-	}
-	return hash1 == hash2
-}
-
-func (Service) calculateHash(rsc models.ResourceSpec) (string, error) {
-	h := sha256.New()
-	rep := fmt.Sprintf("%+v", rsc)
-	_, err := h.Write([]byte(rep))
-	return fmt.Sprintf("%x", h.Sum(nil)), err
 }
 
 func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
@@ -230,14 +195,13 @@ type (
 
 	// EventResourceSkipped represents the resource being skipped in datastore
 	EventResourceSkipped struct {
-		Spec    models.ResourceSpec
-		Process string
-		Reason  string
+		Spec   models.ResourceSpec
+		Reason string
 	}
 )
 
 func (e *EventResourceSkipped) String() string {
-	return fmt.Sprintf("process [%s] on resource [%s] is skipped because %s", e.Process, e.Spec.Name, e.Reason)
+	return fmt.Sprintf("resource [%s] is skipped because %s", e.Spec.Name, e.Reason)
 }
 
 func (e *EventResourceUpdated) String() string {
