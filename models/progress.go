@@ -8,6 +8,8 @@ const (
 	ProgressTypeJobUpload                    = "job upload"
 	ProgressTypeJobDeploymentRequestCreated  = "job deployment request created"
 	ProgressTypeJobDelete                    = "job delete"
+	ProgressTypeJobCreate                    = "job create"
+	ProgressTypeJobModify                    = "job modify"
 )
 
 type (
@@ -42,6 +44,20 @@ type (
 	// ProgressSavedJobDelete signifies that a raw
 	// job from a repository is being deleted
 	ProgressSavedJobDelete struct {
+		Name string
+		Err  error
+	}
+
+	// ProgressSavedJobCreate signifies that a raw
+	// job from a repository is being created
+	ProgressSavedJobCreate struct {
+		Name string
+		Err  error
+	}
+
+	// ProgressSavedJobModify signifies that a raw
+	// job from a repository is being modified
+	ProgressSavedJobModify struct {
 		Name string
 		Err  error
 	}
@@ -106,6 +122,22 @@ func (e *ProgressSavedJobDelete) String() string {
 
 func (*ProgressSavedJobDelete) Type() string {
 	return ProgressTypeJobDelete
+}
+
+func (e *ProgressSavedJobCreate) String() string {
+	return fmt.Sprintf("creating: %s", e.Name)
+}
+
+func (*ProgressSavedJobCreate) Type() string {
+	return ProgressTypeJobCreate
+}
+
+func (e *ProgressSavedJobModify) String() string {
+	return fmt.Sprintf("updating: %s", e.Name)
+}
+
+func (*ProgressSavedJobModify) Type() string {
+	return ProgressTypeJobModify
 }
 
 func (*ProgressJobPriorityWeightAssign) String() string {

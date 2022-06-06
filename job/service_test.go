@@ -253,7 +253,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
-			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs)
+			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs, nil)
 			assert.Nil(t, err)
 		})
 		t.Run("should fail if there's one jobSpec fail to save", func(t *testing.T) {
@@ -294,7 +294,7 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
-			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs)
+			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs, nil)
 			assert.NotNil(t, err)
 		})
 	})

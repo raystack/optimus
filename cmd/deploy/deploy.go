@@ -391,6 +391,12 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 	var jobDeletionErrors []string
 	jobDeletionSuccess, jobDeletionFailed := 0, 0
 
+	var jobCreationErrors []string
+	jobCreationSuccess, jobCreationFailed := 0, 0
+
+	var jobModificationErrors []string
+	jobModificationSuccess, jobModificationFailed := 0, 0
+
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
@@ -430,28 +436,72 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 					d.logger.Info(fmt.Sprintf("info '%s': job deleted", resp.GetJobName()))
 				}
 			}
-
-		case models.ProgressTypeJobDeploymentRequestCreated:
-			// give summary of resolve dependency
-			if len(resolveDependencyErrors) > 0 {
-				d.logger.Error(fmt.Sprintf("Resolved dependencies of %d/%d modified jobs.", resolveDependencySuccess, resolveDependencySuccess+resolveDependencyFailed))
-				for _, reqErr := range resolveDependencyErrors {
-					d.logger.Error(reqErr)
+		case models.ProgressTypeJobCreate:
+			if !resp.GetSuccess() {
+				jobCreationFailed++
+				failedMessage := fmt.Sprintf("error '%s': failed to create job, %s", resp.GetJobName(), resp.GetValue())
+				if d.verbose {
+					d.logger.Warn(failedMessage)
 				}
+				jobCreationErrors = append(jobCreationErrors, failedMessage)
 			} else {
-				d.logger.Info(fmt.Sprintf("Resolved dependency of %d modified jobs.", resolveDependencySuccess))
+				jobCreationSuccess++
+				if d.verbose {
+					d.logger.Info(fmt.Sprintf("info '%s': job created", resp.GetJobName()))
+				}
+			}
+		case models.ProgressTypeJobModify:
+			if !resp.GetSuccess() {
+				jobModificationFailed++
+				failedMessage := fmt.Sprintf("error '%s': failed to modify job, %s", resp.GetJobName(), resp.GetValue())
+				if d.verbose {
+					d.logger.Warn(failedMessage)
+				}
+				jobModificationErrors = append(jobModificationErrors, failedMessage)
+			} else {
+				jobModificationSuccess++
+				if d.verbose {
+					d.logger.Info(fmt.Sprintf("info '%s': job modified", resp.GetJobName()))
+				}
 			}
 
+		case models.ProgressTypeJobDeploymentRequestCreated:
 			// give summary of job deletion
 			totalJobDeletionAttempt := jobDeletionSuccess + jobDeletionFailed
 			if totalJobDeletionAttempt > 0 {
 				if len(jobDeletionErrors) > 0 {
-					d.logger.Error(fmt.Sprintf("Deleted %d/%d jobs.", jobDeletionSuccess, totalJobDeletionAttempt))
+					d.logger.Error(logger.ColoredError("Deleted %d/%d jobs.", jobDeletionSuccess, totalJobDeletionAttempt))
 					for _, reqErr := range jobDeletionErrors {
 						d.logger.Error(reqErr)
 					}
 				} else {
-					d.logger.Info(fmt.Sprintf("Deleted %d jobs", jobDeletionSuccess))
+					d.logger.Info(logger.ColoredSuccess("Deleted %d jobs", jobDeletionSuccess))
+				}
+			}
+
+			// give summary of job creation
+			totalJobCreationAttempt := jobCreationSuccess + jobCreationFailed
+			if totalJobCreationAttempt > 0 {
+				if len(jobCreationErrors) > 0 {
+					d.logger.Error(logger.ColoredError("Created %d/%d jobs.", jobCreationSuccess, totalJobCreationAttempt))
+					for _, reqErr := range jobCreationErrors {
+						d.logger.Error(reqErr)
+					}
+				} else {
+					d.logger.Info(logger.ColoredSuccess("Created %d jobs", jobCreationSuccess))
+				}
+			}
+
+			// give summary of job modification
+			totalJobModificationAttempt := jobModificationSuccess + jobModificationFailed
+			if totalJobModificationAttempt > 0 {
+				if len(jobModificationErrors) > 0 {
+					d.logger.Error(logger.ColoredError("Modified %d/%d jobs.", jobModificationSuccess, totalJobModificationAttempt))
+					for _, reqErr := range jobModificationErrors {
+						d.logger.Error(reqErr)
+					}
+				} else {
+					d.logger.Info(logger.ColoredSuccess("Modified %d jobs", jobModificationSuccess))
 				}
 			}
 

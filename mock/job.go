@@ -136,8 +136,8 @@ func (srv *JobService) Create(ctx context.Context, namespaceSpec models.Namespac
 	return args.Get(0).(*models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) BulkCreate(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec) ([]models.JobSpec, error) {
-	args := srv.Called(ctx, namespaceSpec, jobSpecs)
+func (srv *JobService) BulkCreate(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, namespaceSpec, jobSpecs, observers)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
