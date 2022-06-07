@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	tMock "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/mock"
@@ -32,6 +33,23 @@ func TestService(t *testing.T) {
 	}
 
 	t.Run("GetAll", func(t *testing.T) {
+		t.Run("should return nil and error if encountered error from persistent repository", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(nil, errors.New("random error"))
+			defer dsRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			res, err := service.GetAll(ctx, namespaceSpec, "bq")
+
+			assert.Error(t, err)
+			assert.Nil(t, res)
+		})
+
 		t.Run("should successfully read resources from persistent repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
@@ -296,7 +314,7 @@ func TestService(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		t.Run("should not call create in datastore if failed to save in repository", func(t *testing.T) {
+		t.Run("should not call update in datastore if failed to save in repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -335,7 +353,7 @@ func TestService(t *testing.T) {
 			assert.Error(t, err)
 		})
 
-		t.Run("should successfully call datastore create and save in persistent repository if no existing spec available", func(t *testing.T) {
+		t.Run("should successfully call datastore update and save in persistent repository if no existing spec available", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -370,7 +388,7 @@ func TestService(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		t.Run("should successfully call datastore create resource individually for each resource and save in persistent repository", func(t *testing.T) {
+		t.Run("should successfully call datastore update resource individually for each resource and save in persistent repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
 
@@ -410,13 +428,69 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
+			obs := &mock.PipelineLogObserver{}
+			obs.On("Notify", tMock.Anything).Return()
+
 			service := datastore.NewService(resourceRepoFac, dsRepo)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, obs)
 			assert.NoError(t, err)
 		})
 	})
 
 	t.Run("ReadResource", func(t *testing.T) {
+		t.Run("should return empty and error when encountered error from persistent repository", func(t *testing.T) {
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(nil, errors.New("random error"))
+
+			resourceSpec1 := models.ResourceSpec{
+				Version: 1,
+				Name:    "proj.datas",
+				Type:    models.ResourceTypeDataset,
+			}
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			resp, err := service.ReadResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
+
+			assert.Error(t, err)
+			assert.Empty(t, resp)
+		})
+
+		t.Run("should return empty and error if encountered error when reading frm datastore", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(datastorer, nil)
+			defer dsRepo.AssertExpectations(t)
+
+			resourceSpec1 := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+			datastorer.On("ReadResource", ctx, models.ReadResourceRequest{
+				Project:  projectSpec,
+				Resource: resourceSpec1,
+			}).Return(models.ReadResourceResponse{}, errors.New("random error"))
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, resourceSpec1.Name).Return(resourceSpec1, nil)
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			resp, err := service.ReadResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
+
+			assert.Error(t, err)
+			assert.Empty(t, resp)
+		})
+
 		t.Run("should successfully call datastore read operation by reading from persistent repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
@@ -449,6 +523,7 @@ func TestService(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, resourceSpec1, resp)
 		})
+
 		t.Run("should not call read in datastore if failed to read from repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
@@ -479,6 +554,57 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("DeleteResource", func(t *testing.T) {
+		t.Run("should return error if encountered error when reading from persistent datastore repository", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(nil, errors.New("random error"))
+			defer dsRepo.AssertExpectations(t)
+
+			resourceSpec1 := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
+
+			assert.Error(t, err)
+		})
+
+		t.Run("should return error if encountered error when reading from resource spec repository", func(t *testing.T) {
+			datastorer := new(mock.Datastorer)
+			defer datastorer.AssertExpectations(t)
+
+			dsRepo := new(mock.SupportedDatastoreRepo)
+			dsRepo.On("GetByName", "bq").Return(datastorer, nil)
+			defer dsRepo.AssertExpectations(t)
+
+			resourceSpec1 := models.ResourceSpec{
+				Version:   1,
+				Name:      "proj.datas",
+				Type:      models.ResourceTypeDataset,
+				Datastore: datastorer,
+			}
+
+			resourceRepo := new(mock.ResourceSpecRepository)
+			resourceRepo.On("GetByName", ctx, resourceSpec1.Name).Return(models.ResourceSpec{}, errors.New("random error"))
+			defer resourceRepo.AssertExpectations(t)
+
+			resourceRepoFac := new(mock.ResourceSpecRepoFactory)
+			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
+			defer resourceRepoFac.AssertExpectations(t)
+
+			service := datastore.NewService(resourceRepoFac, dsRepo)
+			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
+
+			assert.Error(t, err)
+		})
+
 		t.Run("should successfully call datastore delete operation and then from persistent repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
@@ -511,6 +637,7 @@ func TestService(t *testing.T) {
 			err := service.DeleteResource(ctx, namespaceSpec, "bq", resourceSpec1.Name)
 			assert.Nil(t, err)
 		})
+
 		t.Run("should not call delete in datastore if failed to delete from repository", func(t *testing.T) {
 			datastorer := new(mock.Datastorer)
 			defer datastorer.AssertExpectations(t)
