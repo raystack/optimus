@@ -20,7 +20,7 @@ import (
 func TestService(t *testing.T) {
 	ctx := context.Background()
 
-	var dumpAssets job.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
+	var dumpAssets job.AssetCompiler = func(_ context.Context, jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 

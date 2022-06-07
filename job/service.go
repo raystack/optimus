@@ -49,7 +49,7 @@ var (
 	})
 )
 
-type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
+type AssetCompiler func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
@@ -161,7 +161,7 @@ func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) 
 func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
 	for i, jSpec := range jobSpecs {
 		// compile assets
-		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
+		if jobSpecs[i].Assets, err = srv.assetCompiler(ctx, jSpec, srv.Now()); err != nil {
 			return fmt.Errorf("asset compilation: %w", err)
 		}
 
@@ -223,7 +223,7 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 	}
 
 	// compile assets before generating dependencies
-	if jobSpec.Assets, err = srv.assetCompiler(jobSpec, srv.Now()); err != nil {
+	if jobSpec.Assets, err = srv.assetCompiler(ctx, jobSpec, srv.Now()); err != nil {
 		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
 	}
 
@@ -384,7 +384,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 
 	// compile assets first
 	for i, jSpec := range jobSpecs {
-		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
+		if jobSpecs[i].Assets, err = srv.assetCompiler(ctx, jSpec, srv.Now()); err != nil {
 			return nil, fmt.Errorf("asset compilation: %w", err)
 		}
 	}
@@ -804,7 +804,7 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 
 func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec, progressObserver progress.Observer) (interface{}, error) {
 	var err error
-	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
+	if currentSpec.Assets, err = srv.assetCompiler(ctx, currentSpec, srv.Now()); err != nil {
 		return currentSpec.Name, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
 	}
 	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, projectSpec, currentSpec, progressObserver)
