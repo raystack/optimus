@@ -250,6 +250,12 @@ func (srv *DependencyResolver) Resolve(ctx context.Context, projectSpec models.P
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
+func (srv *DependencyResolver) ResolveInferredDependencies(ctx context.Context, projectSpec models.ProjectSpec,
+	jobSpec models.JobSpec) ([]string, error) {
+	args := srv.Called(ctx, projectSpec, jobSpec)
+	return args.Get(0).([]string), args.Error(1)
+}
+
 func (srv *DependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec) error {
 	args := srv.Called(ctx, jobSpec)
 	return args.Error(0)

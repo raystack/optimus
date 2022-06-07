@@ -55,6 +55,7 @@ type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.J
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
+	ResolveInferredDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) ([]string, error)
 	Persist(ctx context.Context, jobSpec models.JobSpec) error
 
 	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error)

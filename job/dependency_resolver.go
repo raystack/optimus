@@ -57,6 +57,23 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	return jobSpec, nil
 }
 
+func (r *dependencyResolver) ResolveInferredDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) ([]string, error) {
+	var jobDependencies []string
+	namespace := jobSpec.NamespaceSpec
+	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
+	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
+	if err != nil {
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
+			return nil, err
+		}
+	}
+	if resp != nil {
+		jobDependencies = resp.Dependencies
+	}
+
+	return jobDependencies, nil
+}
+
 // Persist resolve inter/intra dependencies inferred by optimus and persist
 func (r *dependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec) error {
 	if ctx.Err() != nil {
