@@ -25,14 +25,14 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-var disableColoredOut = false
-
 // New constructs the 'root' command. It houses all other sub commands
 // default output of logging should go to stdout
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New() *cli.Command {
-	disableColoredOut = !utils.IsTerminal(os.Stdout)
+	if utils.IsTerminal(os.Stdout) {
+		initializeColor()
+	}
 
 	cmd := &cli.Command{
 		Use: "optimus <command> <subcommand> [flags]",
@@ -61,25 +61,9 @@ func New() *cli.Command {
 				Open an issue here https://github.com/odpf/optimus/issues
 			`),
 		},
-		PersistentPreRun: func(cmd *cli.Command, args []string) {
-			// initialise color if not requested to be disabled
-			cs := term.NewColorScheme()
-			if !disableColoredOut {
-				logger.ColoredNotice = func(s string, a ...interface{}) string {
-					return cs.Yellowf(s, a...)
-				}
-				logger.ColoredError = func(s string, a ...interface{}) string {
-					return cs.Redf(s, a...)
-				}
-				logger.ColoredSuccess = func(s string, a ...interface{}) string {
-					return cs.Greenf(s, a...)
-				}
-			}
-		},
 	}
 
 	cmdx.SetHelp(cmd)
-	cmd.PersistentFlags().BoolVar(&disableColoredOut, "no-color", disableColoredOut, "Disable colored output")
 
 	cmd.AddCommand(admin.NewAdminCommand())
 	cmd.AddCommand(backup.NewBackupCommand())
@@ -97,4 +81,17 @@ func New() *cli.Command {
 
 	extension.UpdateWithExtension(cmd)
 	return cmd
+}
+
+func initializeColor() {
+	cs := term.NewColorScheme()
+	logger.ColoredNotice = func(s string, a ...interface{}) string {
+		return cs.Yellowf(s, a...)
+	}
+	logger.ColoredError = func(s string, a ...interface{}) string {
+		return cs.Redf(s, a...)
+	}
+	logger.ColoredSuccess = func(s string, a ...interface{}) string {
+		return cs.Greenf(s, a...)
+	}
 }
