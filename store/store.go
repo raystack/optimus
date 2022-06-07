@@ -140,3 +140,10 @@ type JobDeploymentRepository interface {
 	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
 	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
 }
+
+// JobSourceRepository represents a storage interface for job sources
+type JobSourceRepository interface {
+	Save(context.Context, models.JobSource) error
+	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
+	DeleteByJobID(context.Context, uuid.UUID) error
+}

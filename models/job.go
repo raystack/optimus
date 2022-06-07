@@ -506,3 +506,9 @@ type JobDeploymentFailure struct {
 	JobName string
 	Message string
 }
+
+type JobSource struct {
+	JobID       uuid.UUID
+	ProjectID   ProjectID
+	ResourceURN string
+}
