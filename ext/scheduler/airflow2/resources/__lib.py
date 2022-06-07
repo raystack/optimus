@@ -2,6 +2,7 @@ from ast import excepthandler
 from gc import callbacks
 import json
 import logging
+from multiprocessing import context
 import os
 from datetime import datetime, timedelta
 from time import sleep
@@ -34,6 +35,9 @@ utc = pendulum.timezone('UTC')
 
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
+JOB_START_EVENT_NAME =  "job_start_event"
+JOB_END_EVENT_NAME =  "job_end_event"
 
 
 def lookup_non_standard_cron_expression(expr: str) -> str:
@@ -75,6 +79,10 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.config_file = kwargs.get('config_file')
 
     def execute(self, context):
+        
+        log_task_start_event(context)
+        # to be done async
+
         log.info('Task image version: %s', self.image)
         try:
             if self.in_cluster is not None:
@@ -242,6 +250,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
     def poke(self, context):
         try:
+            sendSensorStartEnvent(context)
             schedule_time = context['next_execution_date']
 
             # parse relevant metadata from the job metadata to build the task window
@@ -347,8 +356,16 @@ def optimus_failure_notify(context, event_meta):
         "duration": str(context.get('task_instance').duration),
         "message": failure_message,
         "exception": str(context.get('exception')) or "",
-        "scheduled_at": current_execution_date.strftime(TIMESTAMP_FORMAT)
+
+        "scheduled_at"          : current_execution_date.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"       : datetime.timestamp(context.get('execution_date')),
+        "job_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
+        
+        "attempt"   :context['task_instance'].try_number,
     }
+    if event_meta.get("status") != None :
+        message.status = event_meta.status
+    
     event = {
         "type": event_meta["event_type"],
         "value": message,
@@ -359,13 +376,68 @@ def optimus_failure_notify(context, event_meta):
     print("posted event ", params, event, resp)
     return
 
-def optimus_log_event_failure(context):
-    log.info("failure callback")
+def optimus_notify(context, event_meta):
+    params = context.get("params")
+    optimus_client = OptimusAPIClient(params["optimus_hostname"])
+
+    log.info("context")
     log.info(context)
-    meta = {
-        "event_type": "TYPE_FAILURE"
+
+    current_dag_id = context.get('task_instance').dag_id
+    current_dag_run_id = context.get('dag_run').run_id
+    current_execution_date = context.get('execution_date')
+
+    message = {
+        "job_run_id": current_dag_run_id,
+        "task_id": context.get('task_instance').task_id,
+        "log_url": context.get('task_instance').log_url,
+        "task_run_id": context.get('run_id'),
+        
+        "duration": str(context.get('task_instance').duration),
+        "job_duration"  :get_job_run_duration(context),
+        
+        "exception": str(context.get('exception')) or "",
+
+        "scheduled_at"          : current_execution_date.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"       : datetime.timestamp(context.get('execution_date')),
+        "job_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
+        
+        "attempt"       :context['task_instance'].try_number,
     }
-    optimus_failure_notify(context, meta)
+    message.update(event_meta)
+    
+    event = {
+        "type": event_meta["event_type"],
+        "value": message,
+    }
+    # post event
+    log.info(event)
+    resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
+    print("posted event ", params, event, resp)
+    return
+
+## utils
+
+# time elapsed since job run started
+def get_job_run_duration(context):
+    dag_start_time = datetime.timestamp(context.get('dag_run').get_task_instance(JOB_START_EVENT_NAME).start_date)
+    current_time = datetime.now().timestamp()
+    return current_time - dag_start_time 
+
+
+# job level events 
+def optimus_log_job_end(ds=None, **kwargs):
+    log.info("end event callback")
+    context = kwargs
+    # upstream_task_ids = context.get('task_instance').task.upstream_task_ids
+    # log.info("upstream_task_ids")
+    # log.info(upstream_task_ids)
+    # https://airflow.apache.org/docs/apache-airflow/1.10.3/_modules/airflow/ti_deps/deps/trigger_rule_dep.html
+    meta = {
+        "event_type": "TYPE_JOB_SUCCESS", # later determine the status based on task statuses 
+        "status": "FINISHED",
+    }
+    optimus_notify(context, meta)
 
 def optimus_log_job_start(ds=None, **kwargs):
     log.info("start event callback")
@@ -375,26 +447,42 @@ def optimus_log_job_start(ds=None, **kwargs):
     }
     optimus_failure_notify(context, meta)
 
-def optimus_log_event_retry(context):
+
+
+# task level events 
+def log_start_event(context):
+    log.info("task start callback")
+    meta = {
+        "event_type": "TYPE_TASK_START",
+        "status": "STARTED"
+    }
+    optimus_notify(context, meta)
+
+def log_success_event(context):
+    log.info("task success callback")
+    meta = {
+        "event_type": "TYPE_TASK_SUCCESS"
+    }
+    optimus_notify(context, meta)
+    return
+
+def log_retry_event(context):
     log.info("retry callback")
     log.info(context)
     meta = {
-        "event_type": "TYPE_RETRY"
+        "event_type": "TYPE_TASK_RETRY"
     }
     optimus_failure_notify(context, meta)
     return
 
-def optimus_log_event_success(context):
-    log.info("success callback")
+def log_failure_event(context):
+    log.info("failure callback")
     log.info(context)
-    log.info(context.get('task_instance').duration)
-    log.info(context.get('task_instance').task.retries)
-    log.info(context.get('task_instance').try_number)
     meta = {
-        "event_type": "TYPE_SUCCESS"
+        "event_type": "TYPE_TASK_FAILURE"
     }
-    optimus_failure_notify(context, meta)
-    return
+    optimus_notify(context, meta)
+
 
 def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_tis):
     log.info("in optimus_sla_miss_notify ")

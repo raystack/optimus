@@ -211,6 +211,7 @@ func (s *OptimusServer) setupHandlers() error {
 	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
 	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn, s.logger)
+	taskRunRepository := postgres.NewTaskRunRepository(s.dbConn, s.logger)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
@@ -339,7 +340,11 @@ func (s *OptimusServer) setupHandlers() error {
 	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
-	monitoringService := service.NewMonitoringService(s.logger, jobRunService, jobRunMetricsRepository)
+	monitoringService := service.NewMonitoringService(
+		s.logger,
+		jobRunService,
+		jobRunMetricsRepository,
+		taskRunRepository)
 
 	// secret service
 	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))

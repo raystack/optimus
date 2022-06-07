@@ -84,6 +84,26 @@ type JobRunRepository interface {
 // JobRunMetricsRepository represents a storage interface for Job runs generated to
 type JobRunMetricsRepository interface {
 	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
+	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
+	Get(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
+	GetActiveJobRun(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
+}
+
+// TaskRunRepository represents a storage interface for Job runs generated to
+type TaskRunRepository interface {
+	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+	GetTaskRunIfExists(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) (models.TaskRunSpec, error)
+}
+
+type SensorRunRepository interface {
+	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+}
+
+type HookRunRepository interface {
+	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
 }
 
 // JobRunSpecRepository represents a storage interface for Job run instances created

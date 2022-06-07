@@ -39,7 +39,27 @@ const (
 
 	SLAMissEvent    JobEventType = "sla_miss"
 	JobFailureEvent JobEventType = "failure"
+
 	JobStartEvent   JobEventType = "job_start"
+	JobFailEvent    JobEventType = "job_fail"
+	JobSuccessEvent JobEventType = "job_success"
+
+	TaskStartEvent   JobEventType = "task_start"
+	TaskRetryEvent   JobEventType = "task_retry"
+	TaskFailEvent    JobEventType = "task_fail"
+	TaskSuccessEvent JobEventType = "task_success"
+
+	HookStartEvent   JobEventType = "hook_start"
+	HookRetryEvent   JobEventType = "hook_retry"
+	HookFailEvent    JobEventType = "hook_fail"
+	HookSuccessEvent JobEventType = "hook_success"
+
+	SensorStartEvent   JobEventType = "sensor_start"
+	SensorRetryEvent   JobEventType = "sensor_retry"
+	SensorFailEvent    JobEventType = "sensor_fail"
+	SensorSuccessEvent JobEventType = "sensor_success"
+
+	JobRetryEvent JobEventType = "retry"
 )
 
 // JobSpec represents a job
@@ -495,4 +515,33 @@ type JobDeploymentDetail struct {
 type JobDeploymentFailure struct {
 	JobName string
 	Message string
+}
+
+type JobRunSpec struct {
+	JobRunId     uuid.UUID
+	JobID        uuid.UUID
+	NamespaceID  uuid.UUID
+	ProjectID    uuid.UUID
+	ScheduledAt  time.Time
+	StartTime    time.Time
+	EndTime      time.Time
+	Status       string
+	Attempt      int
+	SlaMissDelay int
+	Duration     int
+}
+
+type TaskRunSpec struct {
+	TaskRunId    uuid.UUID
+	JobID        uuid.UUID
+	JobRunID     uuid.UUID
+	NamespaceID  uuid.UUID
+	ProjectID    uuid.UUID
+	ScheduledAt  time.Time
+	StartTime    time.Time
+	EndTime      time.Time
+	Status       string
+	Attempt      int
+	SlaMissDelay int
+	Duration     int
 }

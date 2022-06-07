@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,31 +22,34 @@ type JobRunMetrics struct {
 	NamespaceID uuid.UUID
 	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
-	ProjectId uuid.UUID
+	ProjectID uuid.UUID
 
 	ScheduledAt time.Time `gorm:"not null"`
 
 	StartTime time.Time `gorm:"not null"`
 	EndTime   time.Time
 
-	Status         string
-	Attempt        int
-	sla_miss_delay int
-	duration       int
+	Status       string
+	Attempt      int
+	SlaMissDelay int
+	Duration     int
+	//TODO: job run page link get from dag context
+	//TODO: get task /  hook / sensors durations
+	// to be implimented when task tables and events are registered
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
 
 const (
-	airflowDateFormat = "2006-01-02T15:04:05+00:00"
+	airflowDateFormat   = "2006-01-02T15:04:05Z"
+	jobRunStatusRunning = "STARTED"
 )
 
 type JobRunMetricsRepository struct {
-	db           *gorm.DB
-	adapter      *JobSpecAdapter
-	logger       log.Logger
-	instanceRepo *InstanceRepository
+	db      *gorm.DB
+	adapter *JobSpecAdapter
+	logger  log.Logger
 }
 
 // TableName overrides the table name used by User to `profiles`
@@ -53,32 +57,123 @@ func (JobRunMetrics) TableName() string {
 	return "job_run"
 }
 
-func (repo *JobRunMetricsRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
-	resource, err := repo.adapter.FromJobRun(spec, namespace, jobDestination)
+// func (repo *JobRunMetricsRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
+// 	resource, err := repo.adapter.FromJobRun(spec, namespace, jobDestination)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
+// }
+
+func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
+	eventPayload := event.Value
+	eventPayloadString, _ := json.Marshal(eventPayload)
+	repo.logger.Info(string(eventPayloadString))
+
+	jobRunMetrics := JobRunMetrics{}
+
+	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
+	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
+
 	if err != nil {
-		return err
+		repo.logger.Info(" time eparsing error  ")
+		repo.logger.Info(err.Error())
 	}
-	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
+	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).Find(&jobRunMetrics).Error; err != nil {
+		return errors.New("could not update existing job run, Error :: " + err.Error())
+	}
+	jobRunMetrics.Status = eventPayload["status"].GetStringValue()
+	jobRunMetrics.Duration = int(eventPayload["job_duration"].GetNumberValue())
+
+	return repo.db.WithContext(ctx).Save(&jobRunMetrics).Error
+}
+
+// get the latest jobRun instance for a given schedule time
+func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, ScheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, ScheduledAt)
+	if err != nil {
+		return models.JobRunSpec{}, err
+	}
+
+	jobRunMetrics := JobRunMetrics{}
+	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? ORDER BY attempt", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp).Last(&jobRunMetrics).Error; err != nil {
+		return models.JobRunSpec{}, errors.New("could not update existing job run, Error :: " + err.Error())
+	}
+	jobRunSpec := models.JobRunSpec{
+		JobRunId:     jobRunMetrics.JobRunId,
+		JobID:        jobRunMetrics.JobID,
+		NamespaceID:  jobRunMetrics.NamespaceID,
+		ProjectID:    jobRunMetrics.ProjectID,
+		ScheduledAt:  jobRunMetrics.ScheduledAt,
+		StartTime:    jobRunMetrics.StartTime,
+		EndTime:      jobRunMetrics.EndTime,
+		Status:       jobRunMetrics.Status,
+		Attempt:      jobRunMetrics.Attempt,
+		SlaMissDelay: jobRunMetrics.SlaMissDelay,
+		Duration:     jobRunMetrics.Duration,
+	}
+
+	return jobRunSpec, err
+}
+
+func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+	eventPayload := event.Value
+	eventPayloadString, _ := json.Marshal(eventPayload)
+	repo.logger.Info(string(eventPayloadString))
+
+	jobRunMetrics := JobRunMetrics{}
+
+	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
+	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
+
+	if err != nil {
+		return models.JobRunSpec{}, err
+	}
+	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).Find(&jobRunMetrics).Error; err != nil {
+		return models.JobRunSpec{}, errors.New("could not update existing job run, Error :: " + err.Error())
+	}
+	jobRunSpec := models.JobRunSpec{
+		JobRunId:     jobRunMetrics.JobRunId,
+		JobID:        jobRunMetrics.JobID,
+		NamespaceID:  jobRunMetrics.NamespaceID,
+		ProjectID:    jobRunMetrics.ProjectID,
+		ScheduledAt:  jobRunMetrics.ScheduledAt,
+		StartTime:    jobRunMetrics.StartTime,
+		EndTime:      jobRunMetrics.EndTime,
+		Status:       jobRunMetrics.Status,
+		Attempt:      jobRunMetrics.Attempt,
+		SlaMissDelay: jobRunMetrics.SlaMissDelay,
+		Duration:     jobRunMetrics.Duration,
+	}
+
+	return jobRunSpec, err
 }
 
 func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
-
 	eventPayload := event.Value
 	eventPayloadString, _ := json.Marshal(eventPayload)
-
 	repo.logger.Info(string(eventPayloadString))
+
 	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
+	startedAtTimeStamp := time.Unix(int64(eventPayload["job_start_timestamp"].GetNumberValue()), 0)
+
 	if err != nil {
 		repo.logger.Info(err.Error())
 	}
 	resource := JobRunMetrics{
-		JobID: jobSpec.ID,
-
+		JobRunId:    uuid.New(),
+		JobID:       jobSpec.ID,
 		NamespaceID: namespaceSpec.ID,
-		ProjectId:   uuid.UUID(namespaceSpec.ProjectSpec.ID),
+		ProjectID:   uuid.UUID(namespaceSpec.ProjectSpec.ID),
 
 		ScheduledAt: scheduledAtTimeStamp,
+		StartTime:   startedAtTimeStamp,
+
+		Status:  jobRunStatusRunning,
+		Attempt: int(eventPayload["attempt"].GetNumberValue()),
 	}
+	resourceString, _ := json.Marshal(resource)
+	repo.logger.Info(string(resourceString))
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
 }
 
