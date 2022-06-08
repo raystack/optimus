@@ -876,34 +876,34 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 }
 
 // Deploy only the modified jobs (created or updated)
-func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) error {
+func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
 	// Get namespace spec
 	namespaceSpec, err := srv.namespaceService.Get(ctx, projectName, namespaceName)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
-	// Get modified jobs (including job added and job updated) return deleted jobs
+	// Get created, modified, and deleted jobs
 	createdJobs, modifiedJobs, deletedJobs, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// Save added jobs
 	savedCreatedJobs, err := srv.BulkCreate(ctx, namespaceSpec, createdJobs, observers)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// Save modified jobs
 	savedModifiedJobs, err := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// Delete unnecessary jobs
 	if err := srv.BulkDelete(ctx, namespaceSpec, deletedJobs, observers); err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// Resolve dependency
@@ -913,12 +913,10 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	// Deploy through deploy manager
 	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
-	srv.notifyProgress(observers, &models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
-
-	return nil
+	return deployID, nil
 }
 
 func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {

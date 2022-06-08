@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"time"
 
@@ -39,17 +38,16 @@ type JobSpecServiceServer struct {
 
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
-	errNamespaces := []string{}
+
+	observers := new(progress.ObserverChain)
+	observers.Join(sv.progressObserver)
+	observers.Join(&jobDeploymentObserver{
+		stream: stream,
+		log:    sv.l,
+		mu:     new(sync.Mutex),
+	})
 
 	for {
-		observers := new(progress.ObserverChain)
-		observers.Join(sv.progressObserver)
-		observers.Join(&jobDeploymentObserver{
-			stream: stream,
-			log:    sv.l,
-			mu:     new(sync.Mutex),
-		})
-
 		req, err := stream.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -65,27 +63,19 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		jobSpecs := sv.convertProtoToJobSpec(req.GetJobs())
 
 		// Deploying only the modified jobs
-		if err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, observers); err != nil {
-			stream.Send(&pb.DeployJobSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Value:   fmt.Sprintf("failed to deploy jobs: \n%s", err.Error()),
-			})
-			errNamespaces = append(errNamespaces, req.NamespaceName)
+		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, observers)
+		if err != nil {
+			observers.Notify(&models.ProgressJobDeploymentRequestCreated{Err: err})
+			sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", req.NamespaceName))
 			continue
 		}
 
-		stream.Send(&pb.DeployJobSpecificationResponse{
-			Success: true,
-			Ack:     true,
-			Value:   fmt.Sprintf("jobs with namespace [%s] are deployed successfully", req.NamespaceName),
-		})
+		sv.l.Info(fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName))
+		observers.Notify(&models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
 	}
+
 	sv.l.Info("finished job deployment", "time", time.Since(startTime))
-	if len(errNamespaces) > 0 {
-		sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", strings.Join(errNamespaces, ", ")))
-		return fmt.Errorf("error when deploying: [%s]", strings.Join(errNamespaces, ", "))
-	}
+
 	return nil
 }
 

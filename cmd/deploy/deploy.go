@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"go.uber.org/multierr"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -137,7 +140,11 @@ func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
 	}
 
 	if !d.ignoreJobDeployment {
-		d.logger.Info(logger.ColoredNotice("> Deploying all jobs"))
+		namespaceNames := []string{}
+		for _, namespace := range selectedNamespaces {
+			namespaceNames = append(namespaceNames, namespace.Name)
+		}
+		d.logger.Info(logger.ColoredNotice("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
 		if err := d.deployJobs(conn, selectedNamespaces); err != nil {
 			return err
 		}
@@ -176,13 +183,41 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		return nil
 	}
 
-	deployID, err := d.requestJobDeployment(stream)
-	if err != nil {
-		return err
+	deployIDs := map[string]bool{}
+	for _, namespace := range selectedNamespaces {
+		deployID, err := d.processJobDeploymentResponses(namespace.Name, stream)
+		if err != nil {
+			return err
+		}
+		if deployID != "" {
+			deployIDs[deployID] = true
+		}
 	}
 
+	d.logger.Info(logger.ColoredNotice("> Polling deployment results:"))
+
+	var pollErrs error
+	var wg sync.WaitGroup
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	return d.pollJobDeployment(conn.GetContext(), jobSpecService, deployID)
+	for deployID := range deployIDs {
+		wg.Add(1)
+		e := make(chan error)
+		go func(deployID string, e chan error) {
+			defer wg.Done()
+			if err := d.pollJobDeployment(conn.GetContext(), jobSpecService, deployID); err != nil {
+				e <- err
+				return
+			}
+			e <- nil
+		}(deployID, e)
+
+		if err = <-e; err != nil {
+			pollErrs = multierr.Append(pollErrs, err)
+		}
+	}
+	wg.Wait()
+
+	return pollErrs
 }
 
 func (d *deployCommand) sendNamespaceJobRequest(
@@ -382,8 +417,8 @@ func (d *deployCommand) getResourceStreamClient(
 	return stream, nil
 }
 
-func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_DeployJobSpecificationClient) (string, error) {
-	d.logger.Info("> Receiving responses:")
+func (d *deployCommand) processJobDeploymentResponses(namespaceName string, stream pb.JobSpecificationService_DeployJobSpecificationClient) (string, error) {
+	d.logger.Info(logger.ColoredNotice("> Receiving responses for namespace: %s", namespaceName))
 
 	var resolveDependencyErrors []string
 	resolveDependencySuccess, resolveDependencyFailed := 0, 0
@@ -410,7 +445,7 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 		case models.ProgressTypeJobDependencyResolution:
 			if !resp.GetSuccess() {
 				resolveDependencyFailed++
-				failedMessage := fmt.Sprintf("error '%s': failed to resolve dependency, %s", resp.GetJobName(), resp.GetValue())
+				failedMessage := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, resp.GetJobName(), resp.GetValue())
 				if d.verbose {
 					d.logger.Warn(failedMessage)
 				}
@@ -418,14 +453,13 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 			} else {
 				resolveDependencySuccess++
 				if d.verbose {
-					d.logger.Info(fmt.Sprintf("info '%s': dependency is successfully resolved", resp.GetJobName()))
+					d.logger.Info(fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, resp.GetJobName()))
 				}
 			}
-
 		case models.ProgressTypeJobDelete:
 			if !resp.GetSuccess() {
 				jobDeletionFailed++
-				failedMessage := fmt.Sprintf("error '%s': failed to delete job, %s", resp.GetJobName(), resp.GetValue())
+				failedMessage := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
 				if d.verbose {
 					d.logger.Warn(failedMessage)
 				}
@@ -433,13 +467,13 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 			} else {
 				jobDeletionSuccess++
 				if d.verbose {
-					d.logger.Info(fmt.Sprintf("info '%s': job deleted", resp.GetJobName()))
+					d.logger.Info(fmt.Sprintf("[%s] info '%s': job deleted", namespaceName, resp.GetJobName()))
 				}
 			}
 		case models.ProgressTypeJobCreate:
 			if !resp.GetSuccess() {
 				jobCreationFailed++
-				failedMessage := fmt.Sprintf("error '%s': failed to create job, %s", resp.GetJobName(), resp.GetValue())
+				failedMessage := fmt.Sprintf("[%s] error '%s': failed to create job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
 				if d.verbose {
 					d.logger.Warn(failedMessage)
 				}
@@ -447,13 +481,13 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 			} else {
 				jobCreationSuccess++
 				if d.verbose {
-					d.logger.Info(fmt.Sprintf("info '%s': job created", resp.GetJobName()))
+					d.logger.Info(fmt.Sprintf("[%s] info '%s': job created", namespaceName, resp.GetJobName()))
 				}
 			}
 		case models.ProgressTypeJobModify:
 			if !resp.GetSuccess() {
 				jobModificationFailed++
-				failedMessage := fmt.Sprintf("error '%s': failed to modify job, %s", resp.GetJobName(), resp.GetValue())
+				failedMessage := fmt.Sprintf("[%s] error '%s': failed to modify job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
 				if d.verbose {
 					d.logger.Warn(failedMessage)
 				}
@@ -461,21 +495,31 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 			} else {
 				jobModificationSuccess++
 				if d.verbose {
-					d.logger.Info(fmt.Sprintf("info '%s': job modified", resp.GetJobName()))
+					d.logger.Info(fmt.Sprintf("[%s] info '%s': job modified", namespaceName, resp.GetJobName()))
 				}
 			}
 
 		case models.ProgressTypeJobDeploymentRequestCreated:
+			// give summary of resolve dependency
+			if len(resolveDependencyErrors) > 0 {
+				d.logger.Error(fmt.Sprintf("[%s] Resolved dependencies of %d/%d modified jobs.", namespaceName, resolveDependencySuccess, resolveDependencySuccess+resolveDependencyFailed))
+				for _, reqErr := range resolveDependencyErrors {
+					d.logger.Error(reqErr)
+				}
+			} else {
+				d.logger.Info(fmt.Sprintf("[%s] Resolved dependency of %d modified jobs.", namespaceName, resolveDependencySuccess))
+			}
+
 			// give summary of job deletion
 			totalJobDeletionAttempt := jobDeletionSuccess + jobDeletionFailed
 			if totalJobDeletionAttempt > 0 {
 				if len(jobDeletionErrors) > 0 {
-					d.logger.Error(logger.ColoredError("Deleted %d/%d jobs.", jobDeletionSuccess, totalJobDeletionAttempt))
+					d.logger.Error(logger.ColoredError("[%s] Deleted %d/%d jobs.", namespaceName, jobDeletionSuccess, totalJobDeletionAttempt))
 					for _, reqErr := range jobDeletionErrors {
 						d.logger.Error(reqErr)
 					}
 				} else {
-					d.logger.Info(logger.ColoredSuccess("Deleted %d jobs", jobDeletionSuccess))
+					d.logger.Info(fmt.Sprintf("[%s] Deleted %d jobs", namespaceName, jobDeletionSuccess))
 				}
 			}
 
@@ -483,12 +527,12 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 			totalJobCreationAttempt := jobCreationSuccess + jobCreationFailed
 			if totalJobCreationAttempt > 0 {
 				if len(jobCreationErrors) > 0 {
-					d.logger.Error(logger.ColoredError("Created %d/%d jobs.", jobCreationSuccess, totalJobCreationAttempt))
+					d.logger.Error(logger.ColoredError("[%s] Created %d/%d jobs.", namespaceName, jobCreationSuccess, totalJobCreationAttempt))
 					for _, reqErr := range jobCreationErrors {
 						d.logger.Error(reqErr)
 					}
 				} else {
-					d.logger.Info(logger.ColoredSuccess("Created %d jobs", jobCreationSuccess))
+					d.logger.Info(fmt.Sprintf("[%s] Created %d jobs", namespaceName, jobCreationSuccess))
 				}
 			}
 
@@ -496,27 +540,28 @@ func (d *deployCommand) requestJobDeployment(stream pb.JobSpecificationService_D
 			totalJobModificationAttempt := jobModificationSuccess + jobModificationFailed
 			if totalJobModificationAttempt > 0 {
 				if len(jobModificationErrors) > 0 {
-					d.logger.Error(logger.ColoredError("Modified %d/%d jobs.", jobModificationSuccess, totalJobModificationAttempt))
+					d.logger.Error(logger.ColoredError("[%s] Modified %d/%d jobs.", namespaceName, jobModificationSuccess, totalJobModificationAttempt))
 					for _, reqErr := range jobModificationErrors {
 						d.logger.Error(reqErr)
 					}
 				} else {
-					d.logger.Info(logger.ColoredSuccess("Modified %d jobs", jobModificationSuccess))
+					d.logger.Info(fmt.Sprintf("[%s] Modified %d jobs", namespaceName, jobModificationSuccess))
 				}
 			}
 
 			if !resp.GetSuccess() {
-				d.logger.Warn("Unable to request job deployment")
-			} else {
-				d.logger.Info(fmt.Sprintf("Deployment request created with ID: %s", resp.GetValue()))
+				d.logger.Warn(fmt.Sprintf("[%s] Unable to request job deployment", namespaceName))
+				return "", nil
 			}
+
+			d.logger.Info(fmt.Sprintf("[%s] Deployment request created with ID: %s", namespaceName, resp.GetValue()))
 
 			return resp.Value, nil
 
 		default:
 			if d.verbose {
 				// ordinary progress event
-				d.logger.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetValue()))
+				d.logger.Info(fmt.Sprintf("[%s] info '%s': %s", namespaceName, resp.GetJobName(), resp.GetValue()))
 			}
 		}
 	}
@@ -537,14 +582,14 @@ func (d *deployCommand) pollJobDeployment(ctx context.Context, jobSpecService pb
 
 		switch resp.Status {
 		case models.JobDeploymentStatusInProgress.String():
-			d.logger.Info("Deployment is in progress...")
+			d.logger.Info(fmt.Sprintf("Deployment request for deployID %s is in progress...", deployID))
 		case models.JobDeploymentStatusInQueue.String():
-			d.logger.Info("Deployment request is in queue...")
+			d.logger.Info(fmt.Sprintf("Deployment request for deployID %s is in queue...", deployID))
 		case models.JobDeploymentStatusCancelled.String():
-			d.logger.Error("Deployment request is cancelled.")
+			d.logger.Error(fmt.Sprintf("Deployment request for deployID %s  is cancelled.", deployID))
 			return nil
 		case models.JobDeploymentStatusSucceed.String():
-			d.logger.Info(logger.ColoredSuccess("Deployed %d jobs", resp.SuccessCount))
+			d.logger.Info(logger.ColoredSuccess("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID))
 			return nil
 		case models.JobDeploymentStatusFailed.String():
 			if resp.FailureCount > 0 {

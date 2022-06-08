@@ -105,6 +105,7 @@ type (
 	// ProgressJobDeploymentRequestCreated represents a job deployment has been requested
 	ProgressJobDeploymentRequestCreated struct {
 		DeployID DeploymentID
+		Err      error
 	}
 
 	ProgressJobDeploymentWorkersBusy struct{}

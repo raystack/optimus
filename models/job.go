@@ -360,7 +360,7 @@ type JobService interface {
 	// Refresh Redeploy current persisted state of jobs
 	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
 	// Deploy the requested jobs per namespace
-	Deploy(context.Context, string, string, []JobSpec, progress.Observer) error
+	Deploy(context.Context, string, string, []JobSpec, progress.Observer) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 }

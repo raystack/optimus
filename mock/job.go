@@ -202,9 +202,9 @@ func (srv *JobService) Refresh(ctx context.Context, projectName string, namespac
 	return args.Error(0)
 }
 
-func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) error {
+func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
 	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, observers)
-	return args.Error(0)
+	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
 func (srv *JobService) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {

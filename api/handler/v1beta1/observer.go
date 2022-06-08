@@ -230,6 +230,10 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 			Value:   evt.ID().UUID().String(),
 			Type:    evt.Type(),
 		}
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error("failed to send job deployment request created", "evt", evt.String(), "error", err)
 		}
