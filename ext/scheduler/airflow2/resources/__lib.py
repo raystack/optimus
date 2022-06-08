@@ -89,6 +89,8 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         job_meta = self._optimus_client.get_job_metadata(scheduled_at, self.optimus_projectname, self.optimus_jobname)
         return [ 
             k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["envs"].items()
+        ] + [
+            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["secrets"].items()
         ]
 
     def execute(self, context):

@@ -116,7 +116,8 @@ asset_volume_mounts = [
 ]
 executor_env_vars = [
     k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
-    k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR)
+    k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
+    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"),
 ]
 
 init_env_vars = [
@@ -144,7 +145,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
     optimus_jobname="{{.Job.Name}}",
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
     cmds=[],
@@ -167,7 +168,6 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container],
-    # startup_timeout_seconds=60*5
 )
 
 # hooks loop start
@@ -184,7 +184,10 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 {{- end }}
 
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    optimus_hostname="{{$.Hostname}}",
+    optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
+    optimus_jobname="{{.Job.Name}}",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
     cmds=[],
@@ -196,25 +199,17 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     is_delete_operator_pod=True,
     do_xcom_push=False,
     secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{$.Hostname}}'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
-        k8s.V1EnvVar(name="NAMESPACE",value='{{$.Namespace.Name}}'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    env_vars=executor_env_vars,
 {{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
 {{- end }}
 {{- if $setResourceConfig }}
     resources = resources,
 {{- end }}
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container],
 )
 {{- end }}
 # hooks loop ends
