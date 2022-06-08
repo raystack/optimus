@@ -1,10 +1,12 @@
 package cron_test
 
 import (
-	"github.com/odpf/optimus/core/cron"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/core/cron"
 )
 
 func TestScheduleSpec(t *testing.T) {
