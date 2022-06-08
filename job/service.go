@@ -113,6 +113,8 @@ type Service struct {
 	Now           func() time.Time
 	assetCompiler AssetCompiler
 	pluginService service.PluginService
+
+	jobSourceRepo store.JobSourceRepository
 }
 
 // Create constructs a Job for a namespace and commits it to the store
@@ -717,7 +719,9 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
-	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService, interProjectJobSpecRepository store.InterProjectJobSpecRepository,
+	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
+	interProjectJobSpecRepository store.InterProjectJobSpecRepository,
+	jobSourceRepository store.JobSourceRepository,
 ) *Service {
 	return &Service{
 		jobSpecRepoFactory:            jobSpecRepoFactory,
@@ -729,8 +733,9 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 		replayManager:                 replayManager,
 		namespaceService:              namespaceService,
 		projectService:                projectService,
-		interProjectJobSpecRepository: interProjectJobSpecRepository,
 		deployManager:                 deployManager,
+		interProjectJobSpecRepository: interProjectJobSpecRepository,
+		jobSourceRepo:                 jobSourceRepository,
 
 		assetCompiler: assetCompiler,
 		pluginService: pluginService,
@@ -796,7 +801,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// resolve dependency and persist
-	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
+	srv.resolveAndPersistDependency(ctx, projectSpec, jobSpecs, progressObserver)
 
 	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
 	if err != nil {
@@ -857,7 +862,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.ProjectSpec,
+func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpecs []models.JobSpec, progressObserver progress.Observer) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
@@ -867,7 +872,12 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				return srv.resolveAndPersist(ctx, currentSpec, projectSpec, progressObserver)
+				jobSourceURNs, err := srv.resolve(ctx, currentSpec, projectSpec)
+				if err != nil {
+					return currentSpec.Name, err
+				}
+				err = srv.persist(ctx, currentSpec, projectSpec.ID, jobSourceURNs)
+				return currentSpec.Name, err
 			}
 		}(jobSpec))
 	}
@@ -888,19 +898,30 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 }
 
-func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec, progressObserver progress.Observer) (interface{}, error) {
+func (srv *Service) resolve(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec) ([]string, error) {
 	var err error
 	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
-		return currentSpec.Name, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
+		return nil, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
 	}
-	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, projectSpec, currentSpec, progressObserver)
+	jobSourceURNs, err := srv.dependencyResolver.ResolveInferredDependencies(ctx, projectSpec, currentSpec)
 	if err != nil {
-		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+		return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 	}
-	if err := srv.dependencyResolver.Persist(ctx, resolvedSpec); err != nil {
-		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+	return jobSourceURNs, nil
+}
+
+func (srv *Service) persist(ctx context.Context, currentSpec models.JobSpec, projectID models.ProjectID, jobSourceURNs []string) error {
+	for _, urn := range jobSourceURNs {
+		jobSource := models.JobSource{
+			JobID:       currentSpec.ID,
+			ProjectID:   projectID,
+			ResourceURN: urn,
+		}
+		if err := srv.jobSourceRepo.Save(ctx, jobSource); err != nil {
+			return fmt.Errorf("error persisting %s as job source of %s: %w", urn, currentSpec.Name, err)
+		}
 	}
-	return currentSpec.Name, nil
+	return nil
 }
 
 // Deploy only the modified jobs (created or updated)
@@ -925,8 +946,8 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
 
 	// Resolve dependency
-	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
-	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, savedModifiedJobs, observers)
+	srv.resolveAndPersistDependency(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
+	srv.resolveAndPersistDependency(ctx, namespaceSpec.ProjectSpec, savedModifiedJobs, observers)
 
 	// Deploy through deploy manager
 	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)

@@ -382,3 +382,23 @@ func (repo *JobDeploymentRepository) GetByStatus(ctx context.Context, status mod
 	args := repo.Called(ctx, status)
 	return args.Get(0).([]models.JobDeployment), args.Error(1)
 }
+
+// JobSourceRepository to store job sources
+type JobSourceRepository struct {
+	mock.Mock
+}
+
+func (repo *JobSourceRepository) Save(ctx context.Context, jobSourceSpec models.JobSource) error {
+	args := repo.Called(ctx, jobSourceSpec)
+	return args.Error(0)
+}
+
+func (repo *JobSourceRepository) GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobSource, error) {
+	args := repo.Called(ctx, projectID)
+	return args.Get(0).([]models.JobSource), args.Error(1)
+}
+
+func (repo *JobSourceRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
+	args := repo.Called(ctx, jobID)
+	return args.Error(0)
+}
