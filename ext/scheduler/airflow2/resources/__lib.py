@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+from kubernetes.client import models as k8s
 
 import pendulum
 import requests
@@ -55,21 +56,46 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
     .. note: keep this up to date if there is any change in KubernetesPodOperator execute method
     """
     template_fields = ('image', 'cmds', 'arguments', 'env_vars', 'config_file', 'pod_template_file')
-
+    
     @apply_defaults
     def __init__(self,
+                 optimus_hostname,
+                 optimus_projectname,
+                 optimus_jobname,
                  *args,
                  **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
-
         self.do_xcom_push = kwargs.get('do_xcom_push')
         self.namespace = kwargs.get('namespace')
         self.in_cluster = kwargs.get('in_cluster')
         self.cluster_context = kwargs.get('cluster_context')
         self.reattach_on_restart = kwargs.get('reattach_on_restart')
         self.config_file = kwargs.get('config_file')
+        
+        # used to fetch job env from optimus for adding to k8s pod
+        self.optimus_hostname = optimus_hostname
+        self.optimus_jobname  = optimus_jobname
+        self.optimus_projectname = optimus_projectname
+        self._optimus_client = OptimusAPIClient(optimus_hostname)
+
+    def render_init_containers(self, context):
+        for ic in self.init_containers:
+            env = getattr(ic, 'env')
+            if env:
+                self.render_template(env, context)
+
+    def fetch_env_from_optimus(self, context):
+        scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
+        job_meta = self._optimus_client.get_job_metadata(scheduled_at, self.optimus_projectname, self.optimus_jobname)
+        return [ 
+            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["envs"].items()
+        ]
 
     def execute(self, context):
+        self.env_vars += self.fetch_env_from_optimus(context)
+        # init-container is not considered for rendering in airflow
+        self.render_init_containers(context)
+
         log.info('Task image version: %s', self.image)
         try:
             if self.in_cluster is not None:
@@ -81,6 +107,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                                                      config_file=self.config_file)
 
             self.pod = self.create_pod_request_obj()
+
             self.namespace = self.pod.metadata.namespace
             self.client = client
 
