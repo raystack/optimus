@@ -353,13 +353,7 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 
 	var jobRuns []models.JobRun
 	var dagRunList DagRunListResponse
-	var dagRunRequest DagRunRequest
-	if jobQuery.OnlyLastRun {
-		dagRunRequest = getDagRunRequest(jobQuery)
-	} else {
-		jobQueryWithExecDate := covertToExecDate(jobQuery, jobCron)
-		dagRunRequest = getDagRunRequest(jobQueryWithExecDate)
-	}
+	dagRunRequest := s.GetDagRunRequest(jobQuery, jobCron)
 	reqBody, err := json.Marshal(dagRunRequest)
 	if err != nil {
 		return jobRuns, err
@@ -379,22 +373,38 @@ func (s *scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectSp
 	return getJobRuns(dagRunList, jobCron)
 }
 
-func covertToExecDate(jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) *models.JobQuery {
-	givenStartDate := jobQuery.StartDate
-	givenEndDate := jobQuery.EndDate
-
-	duration := jobCron.Interval(givenStartDate)
-	jobQuery.StartDate = givenStartDate.Add(-duration)
-	jobQuery.EndDate = givenEndDate.Add(-duration)
-
-	modifiedJobQuery := &models.JobQuery{
-		Name:        jobQuery.Name,
-		StartDate:   jobQuery.StartDate,
-		EndDate:     jobQuery.EndDate,
-		Filter:      jobQuery.Filter,
-		OnlyLastRun: false,
+func (s *scheduler) GetDagRunRequest(jobQuery *models.JobQuery, jobCron *cron.ScheduleSpec) DagRunRequest {
+	if jobQuery.OnlyLastRun {
+		return DagRunRequest{
+			OrderBy:    "-execution_date",
+			PageOffset: 0,
+			PageLimit:  1,
+			DagIds:     []string{jobQuery.Name},
+		}
 	}
-	return modifiedJobQuery
+	startDate := s.getExecutionStartDate(jobQuery.StartDate, jobCron)
+	endDate := s.getExecutionEndDate(jobQuery.EndDate, jobCron)
+	return DagRunRequest{
+		OrderBy:          "execution_date",
+		PageOffset:       0,
+		PageLimit:        pageLimit,
+		DagIds:           []string{jobQuery.Name},
+		ExecutionDateGte: startDate.Format(airflowDateFormat),
+		ExecutionDateLte: endDate.Format(airflowDateFormat),
+	}
+}
+
+func (*scheduler) getExecutionStartDate(scheduleStartTime time.Time, jobCron *cron.ScheduleSpec) time.Time {
+	return jobCron.Prev(scheduleStartTime)
+}
+
+func (*scheduler) getExecutionEndDate(scheduleEndTime time.Time, jobCron *cron.ScheduleSpec) time.Time {
+	// when the current time matches one of the schedule times execution time means previous schedule.
+	if jobCron.Next(scheduleEndTime.Add(-time.Second * 1)).Equal(scheduleEndTime) {
+		return jobCron.Prev(scheduleEndTime)
+	}
+	// else it is previous to previous schedule.
+	return jobCron.Prev(jobCron.Prev(scheduleEndTime))
 }
 
 func (*scheduler) notifyProgress(po progress.Observer, event progress.Event) {
