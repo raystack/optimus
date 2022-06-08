@@ -135,25 +135,6 @@ func toJobStatus(list DagRunListResponse) ([]models.JobStatus, error) {
 	return jobStatus, nil
 }
 
-func getDagRunRequest(param *models.JobQuery) DagRunRequest {
-	if param.OnlyLastRun {
-		return DagRunRequest{
-			OrderBy:    "-execution_date",
-			PageOffset: 0,
-			PageLimit:  1,
-			DagIds:     []string{param.Name},
-		}
-	}
-	return DagRunRequest{
-		OrderBy:          "execution_date",
-		PageOffset:       0,
-		PageLimit:        pageLimit,
-		DagIds:           []string{param.Name},
-		ExecutionDateGte: param.StartDate.Format(airflowDateFormat),
-		ExecutionDateLte: param.EndDate.Format(airflowDateFormat),
-	}
-}
-
 func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRunList []models.JobRun
 	if res.TotalEntries > pageLimit {

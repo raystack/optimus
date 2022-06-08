@@ -926,3 +926,78 @@ func TestAirflow2(t *testing.T) {
 		})
 	})
 }
+
+func TestAirflow_GetDagRunsRequest(t *testing.T) {
+	t.Run("only last runs", func(t *testing.T) {
+		inputQuery := models.JobQuery{OnlyLastRun: true, Name: "dag1"}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("@midnight")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{OrderBy: "-execution_date",
+			PageOffset: 0,
+			PageLimit:  1,
+			DagIds:     []string{"dag1"}}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+	t.Run("when input times doesn't fall exactly on schedule times", func(t *testing.T) {
+		scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-25T00:00:00+00:00")
+		scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-29T00:00:00+00:00")
+		expectedExecutionStartDate, _ := time.Parse(time.RFC3339, "2022-03-24T00:00:00+00:00")
+		expectedExecutionEndDate, _ := time.Parse(time.RFC3339, "2022-03-28T00:00:00+00:00")
+		inputQuery := models.JobQuery{Name: "dag1", StartDate: scheduleStartTime, EndDate: scheduleEndTime}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("@midnight")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{
+			OrderBy:          "execution_date",
+			PageOffset:       0,
+			PageLimit:        99999,
+			DagIds:           []string{"dag1"},
+			ExecutionDateLte: expectedExecutionEndDate.Format("2006-01-02T15:04:05+00:00"),
+			ExecutionDateGte: expectedExecutionStartDate.Format("2006-01-02T15:04:05+00:00"),
+		}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+	t.Run("when input times fall exactly on schedule times", func(t *testing.T) {
+		scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+		scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-29T02:00:00+00:00")
+		expectedExecutionStartDate, _ := time.Parse(time.RFC3339, "2022-03-25T00:00:00+00:00")
+		expectedExecutionEndDate, _ := time.Parse(time.RFC3339, "2022-03-28T00:00:00+00:00")
+		inputQuery := models.JobQuery{Name: "dag1", StartDate: scheduleStartTime, EndDate: scheduleEndTime}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("@midnight")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{
+			OrderBy:          "execution_date",
+			PageOffset:       0,
+			PageLimit:        99999,
+			DagIds:           []string{"dag1"},
+			ExecutionDateLte: expectedExecutionEndDate.Format("2006-01-02T15:04:05+00:00"),
+			ExecutionDateGte: expectedExecutionStartDate.Format("2006-01-02T15:04:05+00:00"),
+		}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+	t.Run("with varying schedule intervals", func(t *testing.T) {
+		scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-17T00:00:00+00:00")
+		scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-27T00:00:00+00:00")
+		expectedExecutionStartDate, _ := time.Parse(time.RFC3339, "2022-03-11T02:00:00+00:00")
+		expectedExecutionEndDate, _ := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+		inputQuery := models.JobQuery{Name: "dag1", StartDate: scheduleStartTime, EndDate: scheduleEndTime}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("0 2 2,11,17,19,25,26,27 * *")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{
+			OrderBy:          "execution_date",
+			PageOffset:       0,
+			PageLimit:        99999,
+			DagIds:           []string{"dag1"},
+			ExecutionDateLte: expectedExecutionEndDate.Format("2006-01-02T15:04:05+00:00"),
+			ExecutionDateGte: expectedExecutionStartDate.Format("2006-01-02T15:04:05+00:00"),
+		}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+}
