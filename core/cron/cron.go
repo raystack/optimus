@@ -36,12 +36,6 @@ func ParseCronSchedule(interval string) (*ScheduleSpec, error) {
 	}, nil
 }
 
-func (s *ScheduleSpec) Interval(t time.Time) time.Duration {
-	start := s.Next(t)
-	next := s.Next(start)
-	return next.Sub(start)
-}
-
 func (s *ScheduleSpec) Prev(currTime time.Time) time.Time {
 	startTime := s.getEarliestTimeToStartCron(currTime)
 	return s.getPreviousSchedule(currTime, startTime)
