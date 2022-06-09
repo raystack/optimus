@@ -256,6 +256,26 @@ func (srv *DependencyResolver) ResolveInferredDependencies(ctx context.Context, 
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (srv *DependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
+	ret := srv.Called(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+
+	var r0 models.JobSpec
+	if rf, ok := ret.Get(0).(func(context.Context, models.JobSpec, models.ProjectSpec, store.ProjectJobSpecRepository) models.JobSpec); ok {
+		r0 = rf(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(models.JobSpec)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, models.JobSpec, models.ProjectSpec, store.ProjectJobSpecRepository) error); ok {
+		r1 = rf(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
 func (srv *DependencyResolver) Persist(ctx context.Context, jobSpec models.JobSpec) error {
 	args := srv.Called(ctx, jobSpec)
 	return args.Error(0)

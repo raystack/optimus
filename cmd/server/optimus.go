@@ -290,10 +290,19 @@ func (s *OptimusServer) setupHandlers() error {
 	})
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
-	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
+	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
+	deployer := job.NewDeployer(
+		s.logger,
+		dependencyResolver,
+		priorityResolver,
+		namespaceService,
+		jobDeploymentRepository,
+		projectJobSpecRepoFac,
+		jobSourceRepository,
+		scheduler,
+	)
 	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
 	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
-	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
 
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler

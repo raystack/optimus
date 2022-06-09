@@ -46,7 +46,7 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	}
 
 	// resolve statically defined dependencies
-	jobSpec, err = r.resolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+	jobSpec, err = r.ResolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -58,7 +58,6 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 }
 
 func (r *dependencyResolver) ResolveInferredDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) ([]string, error) {
-	var jobDependencies []string
 	namespace := jobSpec.NamespaceSpec
 	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
 	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
@@ -67,11 +66,7 @@ func (r *dependencyResolver) ResolveInferredDependencies(ctx context.Context, pr
 			return nil, err
 		}
 	}
-	if resp != nil {
-		jobDependencies = resp.Dependencies
-	}
-
-	return jobDependencies, nil
+	return resp.Dependencies, nil
 }
 
 // Persist resolve inter/intra dependencies inferred by optimus and persist
@@ -264,9 +259,9 @@ func extractDependency(projectJobPairs []store.ProjectJobPair, projectSpec model
 	}
 }
 
-// update named (explicit/static) dependencies if unresolved with its spec model
+// ResolveStaticDependencies update named (explicit/static) dependencies if unresolved with its spec model
 // this can normally happen when reading specs from a store[local/postgres]
-func (*dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model
 	for depName, depSpec := range jobSpec.Dependencies {
