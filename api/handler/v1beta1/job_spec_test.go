@@ -3,9 +3,7 @@ package v1beta1_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"strings"
 	"testing"
 	"time"
 
@@ -85,7 +83,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 	stream.On("Recv").Return(s.jobReq, nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
-	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, []models.JobSpec{}, mock2.Anything).Return(nil).Once()
+	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, []models.JobSpec{}, mock2.Anything).Return(models.DeploymentID(uuid.New()), nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -153,7 +151,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 
 	s.jobReq.Jobs = jobsInProto
 
-	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(nil).Once()
+	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(models.DeploymentID(uuid.New()), nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -232,7 +230,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 	}
 	s.jobReq.Jobs = jobsInProto
 
-	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(nil).Once()
+	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(models.DeploymentID(uuid.New()), nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	jobSpecServiceServer := s.newJobSpecServiceServer()
@@ -242,7 +240,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 	stream.AssertExpectations(s.T())
 }
 
-func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_DeployError() {
+func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_DeployError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Context").Return(s.ctx)
 	stream.On("Recv").Return(s.jobReq, nil).Once()
@@ -300,15 +298,13 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_DeployEr
 	s.jobReq.Jobs = jobsInProto
 
 	deployErrorMsg := "internal error"
-	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(errors.New(deployErrorMsg)).Once()
+	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(models.DeploymentID(uuid.Nil), errors.New(deployErrorMsg)).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
 
-	expectedError := fmt.Sprintf("error when deploying: [%s]", strings.Join([]string{deployErrorMsg}, ", "))
-
-	s.Assert().Error(err, expectedError)
+	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
 	s.jobService.AssertExpectations(s.T())
 }

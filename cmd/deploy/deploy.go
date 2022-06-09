@@ -550,7 +550,7 @@ func (d *deployCommand) processJobDeploymentResponses(namespaceName string, stre
 			}
 
 			if !resp.GetSuccess() {
-				d.logger.Warn(fmt.Sprintf("[%s] Unable to request job deployment", namespaceName))
+				d.logger.Error(logger.ColoredError("[%s] Unable to request job deployment: %s", namespaceName, resp.GetValue()))
 				return "", nil
 			}
 

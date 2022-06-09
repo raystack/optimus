@@ -39,8 +39,7 @@ type JobSpecServiceServer struct {
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
 
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
+	observers := sv.newObserverChain()
 	observers.Join(&jobDeploymentObserver{
 		stream: stream,
 		log:    sv.l,
@@ -143,8 +142,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 		return mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
+	observers := sv.newObserverChain()
 	observers.Join(&jobCheckObserver{
 		stream: respStream,
 		log:    sv.l,
@@ -240,8 +238,7 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.JobSpecificationService_RefreshJobsServer) error {
 	startTime := time.Now()
 
-	observers := new(progress.ObserverChain)
-	observers.Join(sv.progressObserver)
+	observers := sv.newObserverChain()
 	observers.Join(&jobRefreshObserver{
 		stream: respStream,
 		log:    sv.l,
@@ -291,6 +288,14 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 			Status: jobDeployment.Status.String(),
 		}, nil
 	}
+}
+
+func (sv *JobSpecServiceServer) newObserverChain() *progress.ObserverChain {
+	observers := new(progress.ObserverChain)
+	if sv.progressObserver != nil {
+		observers.Join(sv.progressObserver)
+	}
+	return observers
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, pluginRepo models.PluginRepository,
