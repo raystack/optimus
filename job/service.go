@@ -138,17 +138,11 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	return &result, nil
 }
 
-func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) ([]models.JobSpec, error) {
-	var e error
+func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
 	result := []models.JobSpec{}
 	for _, jobSpec := range jobSpecs {
 		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
 		if err != nil {
-			if e == nil {
-				e = err
-			} else {
-				e = fmt.Errorf("%w; %s", e, err.Error())
-			}
 			if jobSpec.ID == uuid.Nil {
 				srv.notifyProgress(observers, &models.ProgressSavedJobCreate{Name: jobSpec.Name, Err: err})
 			} else {
@@ -164,11 +158,7 @@ func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSp
 		result = append(result, *jobSpecCreated)
 	}
 
-	if e != nil {
-		return nil, e
-	}
-
-	return result, nil
+	return result
 }
 
 // GetByName fetches a Job by name for a specific namespace
@@ -294,7 +284,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
 }
 
-func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) error {
+func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
 	for _, jobSpec := range jobSpecs {
@@ -304,12 +294,10 @@ func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSp
 		}
 		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
 			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name, Err: err})
-			return err
+			continue
 		}
 		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name})
 	}
-
-	return nil
 }
 
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
@@ -890,21 +878,11 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	}
 
 	// Save added jobs
-	savedCreatedJobs, err := srv.BulkCreate(ctx, namespaceSpec, createdJobs, observers)
-	if err != nil {
-		return models.DeploymentID(uuid.Nil), err
-	}
-
+	savedCreatedJobs := srv.BulkCreate(ctx, namespaceSpec, createdJobs, observers)
 	// Save modified jobs
-	savedModifiedJobs, err := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
-	if err != nil {
-		return models.DeploymentID(uuid.Nil), err
-	}
-
+	savedModifiedJobs := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
 	// Delete unnecessary jobs
-	if err := srv.BulkDelete(ctx, namespaceSpec, deletedJobs, observers); err != nil {
-		return models.DeploymentID(uuid.Nil), err
-	}
+	srv.BulkDelete(ctx, namespaceSpec, deletedJobs, observers)
 
 	// Resolve dependency
 	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)

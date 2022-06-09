@@ -253,10 +253,10 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
-			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs, nil)
-			assert.Nil(t, err)
+			saved := svc.BulkCreate(ctx, namespaceSpec, jobSpecs, nil)
+			assert.Len(t, saved, len(jobSpecs))
 		})
-		t.Run("should fail if there's one jobSpec fail to save", func(t *testing.T) {
+		t.Run("should not fail if there's one jobSpec fail to save", func(t *testing.T) {
 			jobSpecs := createJobSpecDummy(10)
 			projSpec := models.ProjectSpec{Name: "proj"}
 			namespaceSpec := models.NamespaceSpec{
@@ -294,8 +294,8 @@ func TestService(t *testing.T) {
 			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			svc := job.NewService(repoFac, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, pluginService)
-			_, err := svc.BulkCreate(ctx, namespaceSpec, jobSpecs, nil)
-			assert.NotNil(t, err)
+			saved := svc.BulkCreate(ctx, namespaceSpec, jobSpecs, nil)
+			assert.Len(t, saved, len(jobSpecs)-1)
 		})
 	})
 
@@ -1304,8 +1304,7 @@ func TestService(t *testing.T) {
 			defer depenResolver.AssertExpectations(t)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
-			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
-			assert.Nil(t, err)
+			svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
 		})
 
 		t.Run("should not delete if job spec is not deletable", func(t *testing.T) {
@@ -1324,6 +1323,8 @@ func TestService(t *testing.T) {
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
+			jobSpecRepo.AssertNotCalled(t, "Delete", ctx, jobSpecs[0].Name)
+			jobSpecRepo.AssertNotCalled(t, "Delete", ctx, jobSpecs[1].Name)
 			defer jobSpecRepoFac.AssertExpectations(t)
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -1340,11 +1341,10 @@ func TestService(t *testing.T) {
 			defer depenResolver.AssertExpectations(t)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
-			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
-			assert.Nil(t, err)
+			svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
 		})
 
-		t.Run("should fail if delete on job repo fail", func(t *testing.T) {
+		t.Run("should not deleted if delete on job repo fail", func(t *testing.T) {
 			jobSpecs := createJobSpecDummy(2)
 			projSpec := models.ProjectSpec{
 				Name: "proj",
@@ -1357,6 +1357,7 @@ func TestService(t *testing.T) {
 
 			jobSpecRepo := new(mock.JobSpecRepository)
 			jobSpecRepo.On("Delete", ctx, jobSpecs[0].Name).Return(errors.New("unknown error"))
+			jobSpecRepo.On("Delete", ctx, jobSpecs[1].Name).Return(nil)
 			defer jobSpecRepo.AssertExpectations(t)
 
 			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
@@ -1385,8 +1386,7 @@ func TestService(t *testing.T) {
 			defer depenResolver.AssertExpectations(t)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
-			err := svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
-			assert.NotNil(t, err)
+			svc.BulkDelete(ctx, namespaceSpec, jobSpecs, nil)
 		})
 	})
 
