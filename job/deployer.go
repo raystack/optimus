@@ -64,14 +64,13 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 		return err
 	}
 
-	for _, jobSpec := range jobSpecs {
-		if jobSpec.Dependencies == nil {
-			jobSpec.Dependencies = make(map[string]models.JobSpecDependency)
-		}
-		projectJobPairs := mappedProjectJobPairsByJobID[jobSpec.ID]
-		if err := d.enrichJobSpec(ctx, jobSpec, jobDeployment.Project, projectJobPairs); err != nil {
+	for i, spec := range jobSpecs {
+		projectJobPairs := mappedProjectJobPairsByJobID[spec.ID]
+		jobSpec := spec
+		if err := d.enrichJobSpec(ctx, &jobSpec, jobDeployment.Project, projectJobPairs); err != nil {
 			return err
 		}
+		jobSpecs[i] = jobSpec
 	}
 
 	jobSpecs, err = d.priorityResolver.Resolve(ctx, jobSpecs, nil)
@@ -151,7 +150,7 @@ func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.N
 	return nil
 }
 
-func (d *deployer) enrichJobSpec(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobPairs []store.ProjectJobPair) error {
+func (d *deployer) enrichJobSpec(ctx context.Context, jobSpec *models.JobSpec, projectSpec models.ProjectSpec, projectJobPairs []store.ProjectJobPair) error {
 	if err := d.enrichWithStaticDependencies(ctx, jobSpec, projectSpec); err != nil {
 		return fmt.Errorf("error while enriching jobspec %d with static dependencies: %w", jobSpec.ID, err)
 	}
@@ -160,13 +159,14 @@ func (d *deployer) enrichJobSpec(ctx context.Context, jobSpec models.JobSpec, pr
 	return nil
 }
 
-func (d *deployer) enrichWithStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) error {
+func (d *deployer) enrichWithStaticDependencies(ctx context.Context, jobSpec *models.JobSpec, projectSpec models.ProjectSpec) error {
 	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(projectSpec)
-	_, err := d.dependencyResolver.ResolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+	staticDependencies, err := d.dependencyResolver.ResolveStaticDependencies(ctx, *jobSpec, projectSpec, projectJobSpecRepo)
+	jobSpec.Dependencies = staticDependencies
 	return err
 }
 
-func (*deployer) enrichWithResourceDependencies(jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobPairs []store.ProjectJobPair) {
+func (*deployer) enrichWithResourceDependencies(jobSpec *models.JobSpec, projectSpec models.ProjectSpec, projectJobPairs []store.ProjectJobPair) {
 	for _, pair := range projectJobPairs {
 		jobName := pair.Job.Name
 		dependencyType := models.JobSpecDependencyTypeIntra
@@ -183,9 +183,9 @@ func (*deployer) enrichWithResourceDependencies(jobSpec models.JobSpec, projectS
 	}
 }
 
-func (d *deployer) enrichWithHookDependencies(jobSpec models.JobSpec) {
-	hooks := d.dependencyResolver.FetchHookWithDependencies(jobSpec)
-	jobSpec.Hooks = append(jobSpec.Hooks, hooks...)
+func (d *deployer) enrichWithHookDependencies(jobSpec *models.JobSpec) {
+	hooks := d.dependencyResolver.FetchHookWithDependencies(*jobSpec)
+	jobSpec.Hooks = hooks
 }
 
 func (d *deployer) getMappedProjectJobPairsByJobID(ctx context.Context, projectSpec models.ProjectSpec) (map[uuid.UUID][]store.ProjectJobPair, error) {

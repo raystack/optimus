@@ -257,14 +257,14 @@ func (srv *DependencyResolver) ResolveInferredDependencies(ctx context.Context, 
 }
 
 func (srv *DependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
-	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
+	projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error) {
 	ret := srv.Called(ctx, jobSpec, projectSpec, projectJobSpecRepo)
 
-	var r0 models.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, models.JobSpec, models.ProjectSpec, store.ProjectJobSpecRepository) models.JobSpec); ok {
+	var r0 map[string]models.JobSpecDependency
+	if rf, ok := ret.Get(0).(func(context.Context, models.JobSpec, models.ProjectSpec, store.ProjectJobSpecRepository) map[string]models.JobSpecDependency); ok {
 		r0 = rf(ctx, jobSpec, projectSpec, projectJobSpecRepo)
 	} else if ret.Get(0) != nil {
-		r0 = ret.Get(0).(models.JobSpec)
+		r0 = ret.Get(0).(map[string]models.JobSpecDependency)
 	}
 
 	var r1 error

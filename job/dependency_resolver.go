@@ -46,7 +46,7 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	}
 
 	// resolve statically defined dependencies
-	jobSpec, err = r.ResolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+	jobSpec, err = r.resolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -67,6 +67,46 @@ func (r *dependencyResolver) ResolveInferredDependencies(ctx context.Context, pr
 		}
 	}
 	return resp.Dependencies, nil
+}
+
+// ResolveStaticDependencies return named (explicit/static) dependencies that unresolved with its spec model
+// this is normally happen when reading specs from a store[local/postgres]
+// unresolved dependencies will no longer exist in the map
+func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+	projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error) {
+	resolvedJobSpecDependencies := make(map[string]models.JobSpecDependency)
+	for depName, depSpec := range jobSpec.Dependencies {
+		if depSpec.Job == nil {
+			switch depSpec.Type {
+			case models.JobSpecDependencyTypeIntra:
+				job, _, err := projectJobSpecRepo.GetByName(ctx, depName)
+				if err != nil {
+					return resolvedJobSpecDependencies, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
+				}
+				depSpec.Job = &job
+				depSpec.Project = &projectSpec
+				resolvedJobSpecDependencies[depName] = depSpec
+			case models.JobSpecDependencyTypeInter:
+				// extract project name
+				depParts := strings.SplitN(depName, "/", InterJobDependencyNameSections)
+				if len(depParts) != InterJobDependencyNameSections {
+					return resolvedJobSpecDependencies, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
+				}
+				projectName := depParts[0]
+				jobName := depParts[1]
+				job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
+				if err != nil {
+					return resolvedJobSpecDependencies, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
+				}
+				depSpec.Job = &job
+				depSpec.Project = &proj
+				resolvedJobSpecDependencies[depName] = depSpec
+			default:
+				return resolvedJobSpecDependencies, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
+			}
+		}
+	}
+	return resolvedJobSpecDependencies, nil
 }
 
 // Persist resolve inter/intra dependencies inferred by optimus and persist
@@ -259,9 +299,8 @@ func extractDependency(projectJobPairs []store.ProjectJobPair, projectSpec model
 	}
 }
 
-// ResolveStaticDependencies update named (explicit/static) dependencies if unresolved with its spec model
-// this can normally happen when reading specs from a store[local/postgres]
-func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+// TODO: delete after rebase
+func (*dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model
 	for depName, depSpec := range jobSpec.Dependencies {
@@ -295,7 +334,6 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 			}
 		}
 	}
-
 	return jobSpec, nil
 }
 
