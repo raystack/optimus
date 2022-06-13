@@ -64,6 +64,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		// Deploying only the modified jobs
 		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, observers)
 		if err != nil {
+			err = fmt.Errorf("error while deploying namespace %s: %w", req.NamespaceName, err)
 			observers.Notify(&models.ProgressJobDeploymentRequestCreated{Err: err})
 			sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", req.NamespaceName))
 			continue
