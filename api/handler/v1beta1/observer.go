@@ -143,99 +143,78 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
 
+	var resp *pb.DeployJobSpecificationResponse
 	switch evt := e.(type) {
 	case *models.ProgressJobUpload:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			Type:    evt.Type(),
-			JobName: evt.Name,
-		}
+		resp.Success = true
+		resp.Type = evt.Type()
+		resp.JobName = evt.Name
+
 		if evt.Err != nil {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
-		}
-
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "evt", evt.String(), "error", err)
 		}
 	case *models.ProgressSavedJobDelete:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			JobName: evt.Name,
-			Value:   evt.String(),
-			Type:    evt.Type(),
-		}
+		resp.Success = true
+		resp.JobName = evt.Name
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
 		if evt.Err != nil {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send delete notification", "evt", evt.String(), "error", err)
 		}
 	case *models.ProgressSavedJobCreate:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			JobName: evt.Name,
-			Value:   evt.String(),
-			Type:    evt.Type(),
-		}
+		resp.Success = true
+		resp.JobName = evt.Name
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
 		if evt.Err != nil {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send create notification", "evt", evt.String(), "error", err)
 		}
 	case *models.ProgressSavedJobModify:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			JobName: evt.Name,
-			Value:   evt.String(),
-			Type:    evt.Type(),
-		}
+		resp.Success = true
+		resp.JobName = evt.Name
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
 		if evt.Err != nil {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send modify notification", "evt", evt.String(), "error", err)
 		}
 	case *models.ProgressJobDependencyResolution:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			JobName: evt.Job,
-			Value:   evt.String(),
-			Type:    evt.Type(),
-		}
+		resp.Success = true
+		resp.JobName = evt.Job
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
 		if evt.Err != nil {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send dependency resolution notification", "evt", evt.String(), "error", err)
 		}
 	case *models.ProgressJobSpecUnknownDependencyUsed:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			JobName: evt.Job,
-			Value:   evt.String(),
-			Type:    evt.Type(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
-		}
+		resp.Success = true
+		resp.JobName = evt.Job
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
 	case *models.ProgressJobDeploymentRequestCreated:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			Value:   evt.ID().UUID().String(),
-			Type:    evt.Type(),
-		}
+		resp.Success = true
+		resp.Value = evt.ID().UUID().String()
+		resp.Type = evt.Type()
+
 		if evt.Err != nil {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
 		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send job deployment request created", "evt", evt.String(), "error", err)
-		}
+	default:
+		obs.log.Error("event type is invalid")
+		return
+	}
+
+	if err := obs.stream.Send(resp); err != nil {
+		obs.log.Error("failed to send", resp.GetType(), "evt", e.String(), "error", err)
 	}
 }
