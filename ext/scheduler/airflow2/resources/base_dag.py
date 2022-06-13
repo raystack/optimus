@@ -186,7 +186,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
-    optimus_jobname="{{.Job.Name}}",
+    optimus_jobname="{{$.Job.Name}}",
     image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
