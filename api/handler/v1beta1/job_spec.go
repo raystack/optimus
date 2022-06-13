@@ -37,8 +37,6 @@ type JobSpecServiceServer struct {
 }
 
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
-	startTime := time.Now()
-
 	observers := sv.newObserverChain()
 	observers.Join(&jobDeploymentObserver{
 		stream: stream,
@@ -74,7 +72,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		observers.Notify(&models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
 	}
 
-	sv.l.Info("finished job deployment", "time", time.Since(startTime))
+	sv.l.Info("job deployment is sucessfuly submitted")
 
 	return nil
 }
