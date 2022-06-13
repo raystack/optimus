@@ -27,10 +27,10 @@ type ProjectJobSpecRepository interface {
 	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.JobSpec, error)
 
-	// GetByDestination returns all the jobs matches with this destination
+	// GetByDestination returns the job with the pointed destination
 	// it can be from current project or from different projects
 	// note: be warned to handle this carefully in multi tenant situations
-	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
+	GetByDestination(context.Context, string) (models.JobSpec, error)
 
 	// GetByIDs returns all the jobs as requested by its ID
 	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)

@@ -219,12 +219,13 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	}
 
 	job := models.JobSpec{
-		ID:          conf.ID,
-		Version:     conf.Version,
-		Name:        conf.Name,
-		Owner:       conf.Owner,
-		Description: conf.Description,
-		Labels:      labels,
+		ID:                  conf.ID,
+		Version:             conf.Version,
+		Name:                conf.Name,
+		Owner:               conf.Owner,
+		ResourceDestination: conf.Destination,
+		Description:         conf.Description,
+		Labels:              labels,
 		Schedule: models.JobSpecSchedule{
 			StartDate: conf.StartDate,
 			EndDate:   conf.EndDate,
@@ -260,7 +261,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromJobSpec converts the optimus representation of JobSpec to postgres' Job
-func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (Job, error) {
+func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination string) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
@@ -358,7 +359,7 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (J
 		EndDate:              spec.Schedule.EndDate,
 		Interval:             &spec.Schedule.Interval,
 		Behavior:             behaviorJSON,
-		Destination:          jobDestination,
+		Destination:          resourceDestination,
 		Dependencies:         dependenciesJSON,
 		TaskName:             spec.Task.Unit.Info().Name,
 		TaskConfig:           taskConfigJSON,

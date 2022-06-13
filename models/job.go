@@ -50,6 +50,7 @@ type JobSpec struct {
 	Description          string
 	Labels               map[string]string
 	Owner                string
+	ResourceDestination  string
 	Schedule             JobSpecSchedule
 	Behavior             JobSpecBehavior
 	Task                 JobSpecTask
@@ -94,6 +95,14 @@ func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
 		jobsGroup[jobSpec.NamespaceSpec.Name] = append(jobsGroup[jobSpec.NamespaceSpec.Name], jobSpec)
 	}
 	return jobsGroup
+}
+
+func (js JobSpecs) GroupJobsByDestination() map[string]JobSpec {
+	output := make(map[string]JobSpec)
+	for _, spec := range js {
+		output[spec.ResourceDestination] = spec
+	}
+	return output
 }
 
 type JobSpecSchedule struct {
