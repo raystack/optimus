@@ -36,9 +36,30 @@ func ParseCronSchedule(interval string) (*ScheduleSpec, error) {
 	}, nil
 }
 
-// Interval accepts the time and returns
-func (s *ScheduleSpec) Interval(t time.Time) time.Duration {
-	start := s.Next(t)
-	next := s.Next(start)
-	return next.Sub(start)
+func (s *ScheduleSpec) Prev(currTime time.Time) time.Time {
+	startTime := s.getEarliestTimeToStartCron(currTime)
+	return s.getPreviousSchedule(currTime, startTime)
+}
+
+func (s *ScheduleSpec) getPreviousSchedule(currTime time.Time, startTime time.Time) time.Time {
+	previousSchedule := startTime
+	for {
+		nextSchedule := s.Next(previousSchedule)
+		if nextSchedule.After(currTime) || nextSchedule.Equal(currTime) {
+			return previousSchedule
+		}
+		previousSchedule = nextSchedule
+	}
+}
+
+func (s *ScheduleSpec) getEarliestTimeToStartCron(currTime time.Time) time.Time {
+	initialDelay := -time.Hour * 24 * 7 //nolint:gomnd
+	startTime := currTime
+	for {
+		startTime = startTime.Add(initialDelay)
+		if s.Next(startTime).Before(currTime) {
+			break
+		}
+	}
+	return startTime
 }
