@@ -114,12 +114,12 @@ type Service struct {
 }
 
 // Create constructs a Job for a namespace and commits it to the store
-func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) (*models.JobSpec, error) {
+func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) (models.JobSpec, error) {
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
 	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
-			return nil, fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+			return models.JobSpec{}, fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
 		}
 	}
 	var jobDestination string
@@ -127,15 +127,15 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 		jobDestination = jobDestinationResponse.URN()
 	}
 	if err := jobRepo.Save(ctx, spec, jobDestination); err != nil {
-		return nil, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
+		return models.JobSpec{}, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
 
 	result, err := jobRepo.GetByName(ctx, spec.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch job on create: %s: %w", spec.Name, err)
+		return models.JobSpec{}, fmt.Errorf("failed to fetch job on create: %s: %w", spec.Name, err)
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
@@ -155,7 +155,7 @@ func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSp
 		} else {
 			srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name})
 		}
-		result = append(result, *jobSpecCreated)
+		result = append(result, jobSpecCreated)
 	}
 
 	return result

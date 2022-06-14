@@ -131,9 +131,9 @@ type JobService struct {
 	mock.Mock
 }
 
-func (srv *JobService) Create(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (*models.JobSpec, error) {
+func (srv *JobService) Create(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpec, error) {
 	args := srv.Called(ctx, namespaceSpec, jobSpec)
-	return args.Get(0).(*models.JobSpec), args.Error(1)
+	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
 func (srv *JobService) GetByName(ctx context.Context, s string, spec models.NamespaceSpec) (models.JobSpec, error) {

@@ -329,7 +329,7 @@ type HTTPDependency struct {
 // JobService provides a high-level operations on DAGs
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
-	Create(context.Context, NamespaceSpec, JobSpec) (*JobSpec, error)
+	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace

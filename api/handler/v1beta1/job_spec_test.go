@@ -423,7 +423,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 
 			jobSvc := new(mock.JobService)
-			jobSvc.On("Create", ctx, namespaceSpec, jobSpec).Return(&jobSpec, nil)
+			jobSvc.On("Create", ctx, namespaceSpec, jobSpec).Return(jobSpec, nil)
 			jobSvc.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
 			jobSvc.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
 			defer jobSvc.AssertExpectations(t)
