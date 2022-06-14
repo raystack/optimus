@@ -711,10 +711,10 @@ func TestIntegrationProjectJobRepository(t *testing.T) {
 		err := jobRepo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
 
-		pairs, err := projectJobSpecRepo.GetByDestination(ctx, jobDestination)
+		spec, err := projectJobSpecRepo.GetByDestination(ctx, jobDestination)
 		assert.Nil(t, err)
-		assert.Equal(t, testConfigs[0].Name, pairs[0].Job.Name)
-		assert.Equal(t, projectSpec.Name, pairs[0].Project.Name)
+		assert.Equal(t, testConfigs[0].Name, spec.Name)
+		assert.Equal(t, projectSpec.Name, spec.NamespaceSpec.ProjectSpec.Name)
 	})
 
 	t.Run("GetByNameForProject", func(t *testing.T) {

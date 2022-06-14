@@ -229,12 +229,9 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 			num := i % 1000
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", num)
 
-			pairs, err := repo.GetByDestination(ctx, dest)
+			_, err := repo.GetByDestination(ctx, dest)
 			if err != nil {
 				panic(err)
-			}
-			if len(pairs) < 1 {
-				panic("Job pair not found")
 			}
 		}
 	})

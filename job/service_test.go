@@ -14,7 +14,6 @@ import (
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {
@@ -1252,17 +1251,16 @@ func TestService(t *testing.T) {
 			projSpec := models.ProjectSpec{
 				Name: "proj",
 			}
+			namespaceSpec := models.NamespaceSpec{
+				Name:        "namespace",
+				ProjectSpec: projSpec,
+			}
 			destination := "resource-urn"
-			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}}
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}, NamespaceSpec: namespaceSpec}
 
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
-			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return([]store.ProjectJobPair{
-				{
-					Project: projSpec,
-					Job:     jobSpec1,
-				},
-			}, nil)
+			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(jobSpec1, nil)
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)

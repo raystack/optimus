@@ -240,17 +240,17 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
-		if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+		dependencyJobSpec, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
+		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				// should not fail for unknown dependency, its okay to not have a upstream job
+				// registered in optimus project and still refer to them in our job
+				r.notifyProgress(observer, &models.ProgressJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
+				continue
+			}
 			return jobSpec, fmt.Errorf("runtime dependency evaluation failed: %w", err)
 		}
-		if len(projectJobPairs) == 0 {
-			// should not fail for unknown dependency, its okay to not have a upstream job
-			// registered in optimus project and still refer to them in our job
-			r.notifyProgress(observer, &models.ProgressJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
-			continue
-		}
-		dep := extractDependency(projectJobPairs, projectSpec)
+		dep := extractDependency(dependencyJobSpec, projectSpec)
 		jobSpec.Dependencies[dep.Job.Name] = dep
 	}
 
@@ -262,41 +262,18 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 // Note(kushsharma): correct way to do this is by creating a unique destination for each job
 // this will require us to either change the database schema or add some kind of
 // unique literal convention
-func extractDependency(projectJobPairs []store.ProjectJobPair, projectSpec models.ProjectSpec) models.JobSpecDependency {
-	var dep models.JobSpecDependency
-	if len(projectJobPairs) == 1 {
-		dep = models.JobSpecDependency{
-			Job:     &projectJobPairs[0].Job,
-			Project: &projectJobPairs[0].Project,
-			Type:    models.JobSpecDependencyTypeIntra,
-		}
-
-		if projectJobPairs[0].Project.Name != projectSpec.Name {
-			// if doesn't belong to same project, this is inter
-			dep.Type = models.JobSpecDependencyTypeInter
-		}
-		return dep
+func extractDependency(dependencyJobSpec models.JobSpec, projectSpec models.ProjectSpec) models.JobSpecDependency {
+	dep := models.JobSpecDependency{
+		Job:     &dependencyJobSpec,
+		Project: &dependencyJobSpec.NamespaceSpec.ProjectSpec,
+		Type:    models.JobSpecDependencyTypeIntra,
 	}
 
-	// multiple projects found, this should not happen ideally and we should make
-	// each destination unique, but now this has happened, give higher priority
-	// to current project if found or choose any from the rest
-	for _, pair := range projectJobPairs {
-		if pair.Project.Name == projectSpec.Name {
-			return models.JobSpecDependency{
-				Job:     &pair.Job,
-				Project: &pair.Project,
-				Type:    models.JobSpecDependencyTypeIntra,
-			}
-		}
+	if dep.Project.Name != projectSpec.Name {
+		// if doesn't belong to same project, this is inter
+		dep.Type = models.JobSpecDependencyTypeInter
 	}
-
-	// dependency doesn't belong to this project, choose any(first)
-	return models.JobSpecDependency{
-		Job:     &projectJobPairs[0].Job,
-		Project: &projectJobPairs[0].Project,
-		Type:    models.JobSpecDependencyTypeInter,
-	}
+	return dep
 }
 
 // TODO: delete after rebase

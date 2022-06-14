@@ -536,14 +536,12 @@ func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.Proje
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
 	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, destination)
+	jobSpec, err := projectJobSpecRepo.GetByDestination(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
-	for _, p := range projectJobPairs {
-		if p.Project.Name == projectSpec.Name {
-			return p.Job, nil
-		}
+	if jobSpec.NamespaceSpec.ProjectSpec.Name == projectSpec.Name {
+		return jobSpec, nil
 	}
 	return models.JobSpec{}, store.ErrResourceNotFound
 }
