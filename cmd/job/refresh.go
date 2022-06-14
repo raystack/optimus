@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/deploy"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -107,52 +108,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	if err != nil {
 		return err
 	}
-	return r.pollJobDeployment(conn.GetContext(), jobSpecService, deployID)
-}
-
-func (r *refreshCommand) pollJobDeployment(ctx context.Context, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
-	for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
-		resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
-			DeployId: deployID,
-		})
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				r.logger.Error(logger.ColoredError("Get deployment process took too long, timing out"))
-			}
-			return fmt.Errorf("getting deployment status failed: %w", err)
-		}
-
-		switch resp.Status {
-		case models.JobDeploymentStatusInProgress.String():
-			r.logger.Info("Deployment is in progress...")
-		case models.JobDeploymentStatusInQueue.String():
-			r.logger.Info("Deployment request is in queue...")
-		case models.JobDeploymentStatusCancelled.String():
-			r.logger.Error("Deployment request is cancelled.")
-			return nil
-		case models.JobDeploymentStatusSucceed.String():
-			r.logger.Info(logger.ColoredSuccess("Deployed %d jobs", resp.SuccessCount))
-			return nil
-		case models.JobDeploymentStatusFailed.String():
-			if resp.FailureCount > 0 {
-				r.logger.Error(logger.ColoredError("Unable to deploy below jobs:"))
-				for i, failedJob := range resp.Failures {
-					r.logger.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
-				}
-			}
-			r.logger.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
-			return nil
-		}
-
-		time.Sleep(pollInterval)
-
-		select {
-		case <-timeout:
-			keepPolling = false
-		default:
-		}
-	}
-	return nil
+	return deploy.PollJobDeployment(conn.GetContext(), r.logger, jobSpecService, deployTimeout, pollInterval, deployID)
 }
 
 func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationService_RefreshJobsClient) (deployID string, streamError error) {

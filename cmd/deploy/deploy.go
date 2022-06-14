@@ -201,7 +201,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		e := make(chan error)
 		go func(deployID string, e chan error) {
 			defer wg.Done()
-			if err := d.pollJobDeployment(conn.GetContext(), jobSpecService, deployID); err != nil {
+			if err := PollJobDeployment(conn.GetContext(), d.logger, jobSpecService, deployTimeout, pollInterval, deployID); err != nil {
 				e <- err
 				return
 			}
@@ -547,37 +547,37 @@ func (d *deployCommand) processJobDeploymentResponse(resp *pb.DeployJobSpecifica
 	*errs = append(*errs, errMsg)
 }
 
-func (d *deployCommand) pollJobDeployment(ctx context.Context, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
+func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobSpecificationServiceClient, deployTimeout, pollInterval time.Duration, deployID string) error {
 	for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
 		resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
 			DeployId: deployID,
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				d.logger.Error(logger.ColoredError("Get deployment process took too long, timing out"))
+				l.Error(logger.ColoredError("Get deployment process took too long, timing out"))
 			}
 			return fmt.Errorf("getting deployment status failed: %w", err)
 		}
 
 		switch resp.Status {
 		case models.JobDeploymentStatusInProgress.String():
-			d.logger.Info(fmt.Sprintf("Deployment request for deployID %s is in progress...", deployID))
+			l.Info(fmt.Sprintf("Deployment request for deployID %s is in progress...", deployID))
 		case models.JobDeploymentStatusInQueue.String():
-			d.logger.Info(fmt.Sprintf("Deployment request for deployID %s is in queue...", deployID))
+			l.Info(fmt.Sprintf("Deployment request for deployID %s is in queue...", deployID))
 		case models.JobDeploymentStatusCancelled.String():
-			d.logger.Error(fmt.Sprintf("Deployment request for deployID %s  is cancelled.", deployID))
+			l.Error(fmt.Sprintf("Deployment request for deployID %s  is cancelled.", deployID))
 			return nil
 		case models.JobDeploymentStatusSucceed.String():
-			d.logger.Info(logger.ColoredSuccess("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID))
+			l.Info(logger.ColoredSuccess("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID))
 			return nil
 		case models.JobDeploymentStatusFailed.String():
 			if resp.FailureCount > 0 {
-				d.logger.Error(logger.ColoredError("Unable to deploy below jobs:"))
+				l.Error(logger.ColoredError("Unable to deploy below jobs:"))
 				for i, failedJob := range resp.Failures {
-					d.logger.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+					l.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
 				}
 			}
-			d.logger.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
+			l.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
 			return nil
 		}
 
