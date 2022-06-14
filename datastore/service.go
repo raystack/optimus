@@ -37,7 +37,7 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 }
 
 func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	execDatastore := func(rs models.ResourceSpec) error {
+	createResource := func(rs models.ResourceSpec) error {
 		request := models.CreateResourceRequest{
 			Resource: rs,
 			Project:  namespace.ProjectSpec,
@@ -49,11 +49,11 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 		})
 		return err
 	}
-	return srv.saveResource(ctx, namespace, resourceSpecs, obs, execDatastore)
+	return srv.saveResource(ctx, namespace, resourceSpecs, obs, createResource)
 }
 
 func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	execDatastore := func(rs models.ResourceSpec) error {
+	updateDatastore := func(rs models.ResourceSpec) error {
 		request := models.UpdateResourceRequest{
 			Resource: rs,
 			Project:  namespace.ProjectSpec,
@@ -65,7 +65,7 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 		})
 		return err
 	}
-	return srv.saveResource(ctx, namespace, resourceSpecs, obs, execDatastore)
+	return srv.saveResource(ctx, namespace, resourceSpecs, obs, updateDatastore)
 }
 
 func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
@@ -116,7 +116,7 @@ func (srv Service) saveResource(
 	namespace models.NamespaceSpec,
 	resourceSpecs []models.ResourceSpec,
 	obs progress.Observer,
-	execDatastore func(models.ResourceSpec) error,
+	storeDatastore func(models.ResourceSpec) error,
 ) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, incomingSpec := range resourceSpecs {
@@ -138,7 +138,7 @@ func (srv Service) saveResource(
 			if err := repo.Save(ctx, incomingSpec); err != nil {
 				return nil, err
 			}
-			return nil, execDatastore(incomingSpec)
+			return nil, storeDatastore(incomingSpec)
 		})
 	}
 

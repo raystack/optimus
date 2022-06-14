@@ -70,10 +70,8 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 		resourceName, message string
 	)
 
-	var isEventRecognized bool
 	switch evt := e.(type) {
 	case *datastore.EventResourceCreated:
-		isEventRecognized = true
 		resourceName = evt.Spec.Name
 		if evt.Err != nil {
 			success = false
@@ -82,7 +80,6 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 			message = evt.String()
 		}
 	case *datastore.EventResourceUpdated:
-		isEventRecognized = true
 		resourceName = evt.Spec.Name
 		if evt.Err != nil {
 			success = false
@@ -91,20 +88,19 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 			message = evt.String()
 		}
 	case *datastore.EventResourceSkipped:
-		isEventRecognized = true
 		message = evt.String()
+	default:
+		return
 	}
 
-	if isEventRecognized {
-		resp := &pb.DeployResourceSpecificationResponse{
-			Success:      success,
-			Ack:          true,
-			ResourceName: resourceName,
-			Message:      message,
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "spec name", resourceName, "error", err)
-		}
+	resp := &pb.DeployResourceSpecificationResponse{
+		Success:      success,
+		Ack:          true,
+		ResourceName: resourceName,
+		Message:      message,
+	}
+	if err := obs.stream.Send(resp); err != nil {
+		obs.log.Error("failed to send deploy spec ack", "spec name", resourceName, "error", err)
 	}
 }
 
