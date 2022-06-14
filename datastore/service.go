@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
@@ -122,12 +121,12 @@ func (srv Service) saveResource(
 	for _, incomingSpec := range resourceSpecs {
 		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			equal, err := srv.isEqualWithExisting(ctx, repo, incomingSpec)
-			if err != nil {
+			existingSpec, err := repo.GetByName(ctx, incomingSpec.Name)
+			if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 				return nil, err
 			}
 
-			if equal {
+			if existingSpec.Equal(incomingSpec) {
 				srv.notifyProgress(obs, &EventResourceSkipped{
 					Spec:   incomingSpec,
 					Reason: "incoming resource is the same as existing",
@@ -149,20 +148,6 @@ func (srv Service) saveResource(
 		}
 	}
 	return errorSet
-}
-
-func (Service) isEqualWithExisting(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
-	var equalWithExisting bool
-	if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
-		if !errors.Is(err, store.ErrResourceNotFound) {
-			return equalWithExisting, err
-		}
-	} else {
-		incomingSpec.ID = existingSpec.ID
-		incomingSpec.URN = existingSpec.URN
-		equalWithExisting = reflect.DeepEqual(existingSpec, incomingSpec)
-	}
-	return equalWithExisting, nil
 }
 
 func (*Service) notifyProgress(po progress.Observer, event progress.Event) {

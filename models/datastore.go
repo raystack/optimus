@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 
@@ -24,16 +25,46 @@ func (r ResourceType) String() string {
 }
 
 type ResourceSpec struct {
-	ID        uuid.UUID
-	Version   int
-	Name      string
-	Type      ResourceType
+	// ID represents the unique identifier of a resource.
+	// It will be ignored in the Equal method execution.
+	ID      uuid.UUID
+	Version int
+	Name    string
+	Type    ResourceType
+	// Datastore is a data storer for this resource.
+	// It will be ignored in the Equal method execution.
 	Datastore Datastorer
-	URN       string
+	// URN represents a uniform resource name.
+	// It will be ignored in the Equal method execution.
+	URN string
 
 	Spec   interface{}
 	Assets ResourceAssets
 	Labels map[string]string
+}
+
+// Equal returns true if incoming resource is equal with current resource.
+// Some fields are ignored during this comparison, which are: ID, Datastore, and URN.
+func (r ResourceSpec) Equal(incoming ResourceSpec) bool {
+	if r.Version != incoming.Version {
+		return false
+	}
+	if r.Name != incoming.Name {
+		return false
+	}
+	if r.Type != incoming.Type {
+		return false
+	}
+	if !reflect.DeepEqual(r.Spec, incoming.Spec) {
+		return false
+	}
+	if !reflect.DeepEqual(r.Assets, incoming.Assets) {
+		return false
+	}
+	if !reflect.DeepEqual(r.Labels, incoming.Labels) {
+		return false
+	}
+	return true
 }
 
 type ResourceAssets map[string]string
