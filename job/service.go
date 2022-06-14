@@ -144,16 +144,16 @@ func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSp
 		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
 		if err != nil {
 			if jobSpec.ID == uuid.Nil {
-				srv.notifyProgress(observers, &models.ProgressSavedJobCreate{Name: jobSpec.Name, Err: err})
+				srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name, Err: err})
 			} else {
-				srv.notifyProgress(observers, &models.ProgressSavedJobModify{Name: jobSpec.Name, Err: err})
+				srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name, Err: err})
 			}
 			continue
 		}
 		if jobSpec.ID == uuid.Nil {
-			srv.notifyProgress(observers, &models.ProgressSavedJobCreate{Name: jobSpec.Name})
+			srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name})
 		} else {
-			srv.notifyProgress(observers, &models.ProgressSavedJobModify{Name: jobSpec.Name})
+			srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name})
 		}
 		result = append(result, *jobSpecCreated)
 	}
@@ -289,14 +289,14 @@ func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSp
 
 	for _, jobSpec := range jobSpecs {
 		if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
-			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name, Err: err})
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
 		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
-			srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name, Err: err})
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
-		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobSpec.Name})
+		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name})
 	}
 }
 
@@ -397,7 +397,7 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
 			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
 		}
-		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobName})
+		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobName})
 	}
 	return nil
 }

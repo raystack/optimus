@@ -154,7 +154,7 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
 		}
-	case *models.ProgressSavedJobDelete:
+	case *models.JobDeleteEvent:
 		resp.Success = true
 		resp.JobName = evt.Name
 		resp.Value = evt.String()
@@ -164,7 +164,7 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
 		}
-	case *models.ProgressSavedJobCreate:
+	case *models.JobCreateEvent:
 		resp.Success = true
 		resp.JobName = evt.Name
 		resp.Value = evt.String()
@@ -174,7 +174,7 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
 		}
-	case *models.ProgressSavedJobModify:
+	case *models.JobModifyEvent:
 		resp.Success = true
 		resp.JobName = evt.Name
 		resp.Value = evt.String()

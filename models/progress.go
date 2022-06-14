@@ -41,23 +41,23 @@ type (
 	// ProgressJobSpecWithDependencyFetch represents job specs with dependencies have been fetched
 	ProgressJobSpecWithDependencyFetch struct{}
 
-	// ProgressSavedJobDelete signifies that a raw
+	// JobDeleteEvent signifies that a raw
 	// job from a repository is being deleted
-	ProgressSavedJobDelete struct {
+	JobDeleteEvent struct {
 		Name string
 		Err  error
 	}
 
-	// ProgressSavedJobCreate signifies that a raw
+	// JobCreateEvent signifies that a raw
 	// job from a repository is being created
-	ProgressSavedJobCreate struct {
+	JobCreateEvent struct {
 		Name string
 		Err  error
 	}
 
-	// ProgressSavedJobModify signifies that a raw
+	// JobModifyEvent signifies that a raw
 	// job from a repository is being modified
-	ProgressSavedJobModify struct {
+	JobModifyEvent struct {
 		Name string
 		Err  error
 	}
@@ -117,27 +117,27 @@ func (*ProgressJobSpecFetch) String() string {
 	return "fetching job specs"
 }
 
-func (e *ProgressSavedJobDelete) String() string {
+func (e *JobDeleteEvent) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
 }
 
-func (*ProgressSavedJobDelete) Type() string {
+func (*JobDeleteEvent) Type() string {
 	return ProgressTypeJobDelete
 }
 
-func (e *ProgressSavedJobCreate) String() string {
+func (e *JobCreateEvent) String() string {
 	return fmt.Sprintf("creating: %s", e.Name)
 }
 
-func (*ProgressSavedJobCreate) Type() string {
+func (*JobCreateEvent) Type() string {
 	return ProgressTypeJobCreate
 }
 
-func (e *ProgressSavedJobModify) String() string {
+func (e *JobModifyEvent) String() string {
 	return fmt.Sprintf("updating: %s", e.Name)
 }
 
-func (*ProgressSavedJobModify) Type() string {
+func (*JobModifyEvent) Type() string {
 	return ProgressTypeJobModify
 }
 
