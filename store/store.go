@@ -39,6 +39,12 @@ type ProjectJobSpecRepository interface {
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
 
+// InterProjectJobSpecRepository represents a storage interface for Job specification
+type InterProjectJobSpecRepository interface {
+	GetJobByName(context.Context, string) (models.JobSpec, error)
+	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
+}
+
 // ProjectRepository represents a storage interface for registered projects
 type ProjectRepository interface {
 	Save(context.Context, models.ProjectSpec) error

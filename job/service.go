@@ -92,14 +92,15 @@ type ReplayManager interface {
 // and other properties. Finally, it syncs the jobs with corresponding
 // store
 type Service struct {
-	jobSpecRepoFactory        SpecRepoFactory
-	dependencyResolver        DependencyResolver
-	priorityResolver          PriorityResolver
-	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
-	replayManager             ReplayManager
-	projectService            service.ProjectService
-	namespaceService          service.NamespaceService
-	deployManager             DeployManager
+	jobSpecRepoFactory            SpecRepoFactory
+	dependencyResolver            DependencyResolver
+	priorityResolver              PriorityResolver
+	projectJobSpecRepoFactory     ProjectJobSpecRepoFactory
+	replayManager                 ReplayManager
+	projectService                service.ProjectService
+	namespaceService              service.NamespaceService
+	interProjectJobSpecRepository store.InterProjectJobSpecRepository
+	deployManager                 DeployManager
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -134,6 +135,22 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 // GetByName fetches a Job by name for a specific namespace
 func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
 	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(ctx, name)
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
+	}
+	return jobSpec, nil
+}
+
+func (srv *Service) GetByJobName(ctx context.Context, jobName string) (models.JobSpec, error) {
+	jobSpec, err := srv.interProjectJobSpecRepository.GetJobByName(ctx, jobName)
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
+	}
+	return jobSpec, nil
+}
+
+func (srv *Service) GetByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+	jobSpec, err := srv.interProjectJobSpecRepository.GetJobByResourceDestination(ctx, resourceDestination)
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
@@ -632,19 +649,20 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
-	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
+	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService, interProjectJobSpecRepository store.InterProjectJobSpecRepository,
 ) *Service {
 	return &Service{
-		jobSpecRepoFactory:        jobSpecRepoFactory,
-		batchScheduler:            batchScheduler,
-		manualScheduler:           manualScheduler,
-		dependencyResolver:        dependencyResolver,
-		priorityResolver:          priorityResolver,
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
-		replayManager:             replayManager,
-		namespaceService:          namespaceService,
-		projectService:            projectService,
-		deployManager:             deployManager,
+		jobSpecRepoFactory:            jobSpecRepoFactory,
+		batchScheduler:                batchScheduler,
+		manualScheduler:               manualScheduler,
+		dependencyResolver:            dependencyResolver,
+		priorityResolver:              priorityResolver,
+		projectJobSpecRepoFactory:     projectJobSpecRepoFactory,
+		replayManager:                 replayManager,
+		namespaceService:              namespaceService,
+		projectService:                projectService,
+		interProjectJobSpecRepository: interProjectJobSpecRepository,
+		deployManager:                 deployManager,
 
 		assetCompiler: assetCompiler,
 		pluginService: pluginService,

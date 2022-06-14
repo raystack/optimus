@@ -201,6 +201,14 @@ func (srv *JobService) GetDeployment(ctx context.Context, deployID models.Deploy
 	args := srv.Called(ctx, deployID)
 	return args.Get(0).(models.JobDeployment), args.Error(1)
 }
+func (srv *JobService) GetByJobName(ctx context.Context, jobName string) (models.JobSpec, error) {
+	args := srv.Called(ctx, jobName)
+	return args.Get(0).(models.JobSpec), args.Error(1)
+}
+func (srv *JobService) GetByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+	args := srv.Called(ctx, resourceDestination)
+	return args.Get(0).(models.JobSpec), args.Error(1)
+}
 
 type DependencyResolver struct {
 	mock.Mock

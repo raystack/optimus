@@ -21,6 +21,43 @@
     "application/json"
   ],
   "paths": {
+    "/v1beta1/job": {
+      "get": {
+        "summary": "GetJob read a job spec for provided filters",
+        "operationId": "JobSpecificationService_GetJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetJobResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "resourceDestination",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/job/check": {
       "post": {
         "summary": "CheckJobSpecification checks if a job specification is valid",
@@ -400,6 +437,14 @@
         "failureCount": {
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "v1beta1GetJobResponse": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
         }
       }
     },

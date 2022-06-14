@@ -28,6 +28,8 @@ type JobSpecificationServiceClient interface {
 	CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
 	GetJobSpecification(ctx context.Context, in *GetJobSpecificationRequest, opts ...grpc.CallOption) (*GetJobSpecificationResponse, error)
+	// GetJob read a job spec for provided filters
+	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 	// DeleteJobSpecification deletes a job spec of a namespace
 	DeleteJobSpecification(ctx context.Context, in *DeleteJobSpecificationRequest, opts ...grpc.CallOption) (*DeleteJobSpecificationResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
@@ -95,6 +97,15 @@ func (c *jobSpecificationServiceClient) CreateJobSpecification(ctx context.Conte
 func (c *jobSpecificationServiceClient) GetJobSpecification(ctx context.Context, in *GetJobSpecificationRequest, opts ...grpc.CallOption) (*GetJobSpecificationResponse, error) {
 	out := new(GetJobSpecificationResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJobSpecification", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *jobSpecificationServiceClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
+	out := new(GetJobResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJob", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +226,8 @@ type JobSpecificationServiceServer interface {
 	CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
 	GetJobSpecification(context.Context, *GetJobSpecificationRequest) (*GetJobSpecificationResponse, error)
+	// GetJob read a job spec for provided filters
+	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 	// DeleteJobSpecification deletes a job spec of a namespace
 	DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
@@ -244,6 +257,9 @@ func (UnimplementedJobSpecificationServiceServer) CreateJobSpecification(context
 }
 func (UnimplementedJobSpecificationServiceServer) GetJobSpecification(context.Context, *GetJobSpecificationRequest) (*GetJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobSpecification not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteJobSpecification not implemented")
@@ -335,6 +351,24 @@ func _JobSpecificationService_GetJobSpecification_Handler(srv interface{}, ctx c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(JobSpecificationServiceServer).GetJobSpecification(ctx, req.(*GetJobSpecificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _JobSpecificationService_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).GetJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).GetJob(ctx, req.(*GetJobRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -467,6 +501,10 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJobSpecification",
 			Handler:    _JobSpecificationService_GetJobSpecification_Handler,
+		},
+		{
+			MethodName: "GetJob",
+			Handler:    _JobSpecificationService_GetJob_Handler,
 		},
 		{
 			MethodName: "DeleteJobSpecification",

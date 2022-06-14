@@ -216,6 +216,48 @@ func (sv *JobRunServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest
 	}, nil
 }
 
+func (sv *JobRunServiceServer) GetJobRunByFilter(ctx context.Context, req *pb.GetJobRunByFilterRequest) (*pb.GetJobRunByFilterResponse, error) {
+	var jobRunRequest pb.JobRunRequest
+	var jobSpec models.JobSpec
+	var err error
+	jobSpecFoundFlag := false
+	if req.GetJobName() != "" {
+		jobSpec, err = sv.jobSvc.GetByJobName(ctx, req.GetJobName())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
+		}
+		if req.GetResoureDestination() != "" {
+			jobSpecByResourceDestination, err := sv.jobSvc.GetByResourceDestination(ctx, req.GetResoureDestination())
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
+			}
+			if jobSpecByResourceDestination.ID != jobSpec.ID {
+				return nil, status.Errorf(codes.Internal, "failed to retrieve jobs, check filters")
+			}
+		}
+		jobSpecFoundFlag = true
+	}
+	if req.GetResoureDestination() != "" && jobSpecFoundFlag == false {
+		jobSpec, err = sv.jobSvc.GetByResourceDestination(ctx, req.GetResoureDestination())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
+		}
+	}
+	jobRunRequest.ProjectName = jobSpec.GetProjectSpec().Name
+	jobRunRequest.JobName = jobSpec.Name
+	jobRunRequest.StartDate = req.StartDate
+	jobRunRequest.EndDate = req.EndDate
+
+	jobRunResponse, err := sv.JobRun(ctx, &jobRunRequest)
+	if err != nil {
+		return &pb.GetJobRunByFilterResponse{}, err
+	}
+
+	return &pb.GetJobRunByFilterResponse{
+		JobRuns: jobRunResponse.JobRuns,
+	}, err
+}
+
 func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	scheduledTime := req.ScheduledAt.AsTime()
 	err := req.ScheduledAt.CheckValid()

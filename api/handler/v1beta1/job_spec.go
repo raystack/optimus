@@ -37,6 +37,38 @@ type JobSpecServiceServer struct {
 	pb.UnimplementedJobSpecificationServiceServer
 }
 
+func (sv *JobSpecServiceServer) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
+	var jobSpec models.JobSpec
+	var err error
+	jobSpecFoundFlag := false
+	if req.GetJobName() != "" {
+		jobSpec, err = sv.jobSvc.GetByJobName(ctx, req.GetJobName())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
+		}
+		if req.GetResourceDestination() != "" {
+			jobSpecByResourceDestination, err := sv.jobSvc.GetByResourceDestination(ctx, req.GetResourceDestination())
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
+			}
+			if jobSpecByResourceDestination.ID != jobSpec.ID {
+				return nil, status.Errorf(codes.Internal, "failed to retrieve jobs, check if job name and resource destination belong to same job")
+			}
+		}
+		jobSpecFoundFlag = true
+	}
+	if req.GetResourceDestination() != "" && jobSpecFoundFlag == false {
+		jobSpec, err := sv.jobSvc.GetByResourceDestination(ctx, req.GetResourceDestination())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
+		}
+		jobProto := ToJobProto(jobSpec)
+		return &pb.GetJobResponse{Job: jobProto}, nil
+	}
+	jobSpecAdapt := ToJobProto(jobSpec)
+	return &pb.GetJobResponse{Job: jobSpecAdapt}, nil
+}
+
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
 	errNamespaces := []string{}
