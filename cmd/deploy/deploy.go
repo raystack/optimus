@@ -149,9 +149,6 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
 	d.logger.Info(logger.ColoredNotice("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
-	if err := d.deployJobs(conn, selectedNamespaces); err != nil {
-		return err
-	}
 
 	stream, err := d.getJobStreamClient(conn)
 	if err != nil {
