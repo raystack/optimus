@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -113,12 +114,12 @@ type Service struct {
 }
 
 // Create constructs a Job for a namespace and commits it to the store
-func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) error {
+func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) (models.JobSpec, error) {
 	jobRepo := srv.jobSpecRepoFactory.New(namespace)
 	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
-			return fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+			return models.JobSpec{}, fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
 		}
 	}
 	var jobDestination string
@@ -126,9 +127,38 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 		jobDestination = jobDestinationResponse.URN()
 	}
 	if err := jobRepo.Save(ctx, spec, jobDestination); err != nil {
-		return fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
+		return models.JobSpec{}, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
-	return nil
+
+	result, err := jobRepo.GetByName(ctx, spec.Name)
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("failed to fetch job on create: %s: %w", spec.Name, err)
+	}
+
+	return result, nil
+}
+
+func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
+	result := []models.JobSpec{}
+	for _, jobSpec := range jobSpecs {
+		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
+		if err != nil {
+			if jobSpec.ID == uuid.Nil {
+				srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name, Err: err})
+			} else {
+				srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name, Err: err})
+			}
+			continue
+		}
+		if jobSpec.ID == uuid.Nil {
+			srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name})
+		} else {
+			srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name})
+		}
+		result = append(result, jobSpecCreated)
+	}
+
+	return result
 }
 
 // GetByName fetches a Job by name for a specific namespace
@@ -254,6 +284,22 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
 }
 
+func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) {
+	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
+
+	for _, jobSpec := range jobSpecs {
+		if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			continue
+		}
+		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			continue
+		}
+		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name})
+	}
+}
+
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
 // assign proper priority weights, compiles it and uploads it to the destination
 // store.
@@ -351,7 +397,7 @@ func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec
 		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
 			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
 		}
-		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobName})
+		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobName})
 	}
 	return nil
 }
@@ -815,6 +861,107 @@ func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.Jo
 		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 	}
 	return currentSpec.Name, nil
+}
+
+// Deploy only the modified jobs (created or updated)
+func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
+	// Get namespace spec
+	namespaceSpec, err := srv.namespaceService.Get(ctx, projectName, namespaceName)
+	if err != nil {
+		return models.DeploymentID(uuid.Nil), err
+	}
+
+	// Get created, modified, and deleted jobs
+	createdJobs, modifiedJobs, deletedJobs, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
+	if err != nil {
+		return models.DeploymentID(uuid.Nil), err
+	}
+
+	// Save added jobs
+	savedCreatedJobs := srv.bulkCreate(ctx, namespaceSpec, createdJobs, observers)
+	// Save modified jobs
+	savedModifiedJobs := srv.bulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
+	// Delete unnecessary jobs
+	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
+
+	// Resolve dependency
+	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
+	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, savedModifiedJobs, observers)
+
+	// Deploy through deploy manager
+	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
+	if err != nil {
+		return models.DeploymentID(uuid.Nil), err
+	}
+
+	return deployID, nil
+}
+
+func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {
+	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
+	existingJobSpecs, err := jobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	existingJobSpecMap := map[string]models.JobSpec{}
+	for _, jobSpec := range existingJobSpecs {
+		existingJobSpecMap[jobSpec.Name] = jobSpec
+	}
+
+	requestedJobSpecMap := map[string]models.JobSpec{}
+	for _, jobSpec := range requestedJobSpecs {
+		requestedJobSpecMap[jobSpec.Name] = jobSpec
+	}
+
+	createdJobSpecs, modifiedJobSpecs := srv.getModifiedJobs(existingJobSpecMap, requestedJobSpecMap)
+	deletedJobSpecs := srv.getDeletedJobs(existingJobSpecMap, requestedJobSpecMap)
+
+	return createdJobSpecs, modifiedJobSpecs, deletedJobSpecs, nil
+}
+
+func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) ([]models.JobSpec, []models.JobSpec) {
+	createdJobSpecs := []models.JobSpec{}
+	modifiedJobSpecs := []models.JobSpec{}
+
+	for jobName, requestedJobSpec := range requestedJobSpecs {
+		if existingJobSpec, ok := existingJobSpecs[jobName]; !ok {
+			createdJobSpecs = append(createdJobSpecs, requestedJobSpec)
+		} else if !srv.jobSpecEqual(requestedJobSpec, existingJobSpec) {
+			requestedJobSpec.ID = existingJobSpec.ID
+			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
+		}
+	}
+
+	return createdJobSpecs, modifiedJobSpecs
+}
+
+func (*Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	deletedJobSpecs := []models.JobSpec{}
+
+	for jobName, existingJobSpec := range existingJobSpecs {
+		if _, ok := requestedJobSpecs[jobName]; !ok {
+			deletedJobSpecs = append(deletedJobSpecs, existingJobSpec)
+		}
+	}
+
+	return deletedJobSpecs
+}
+
+func (*Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
+	js2.ID = js1.ID
+	js2.NamespaceSpec = js1.NamespaceSpec
+
+	jobSpecHash1 := getHash(fmt.Sprintf("%v", js1))
+	jobSpecHash2 := getHash(fmt.Sprintf("%v", js2))
+
+	return jobSpecHash1 == jobSpecHash2
+}
+
+func getHash(val string) string {
+	h := sha256.New()
+	h.Write([]byte(val))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {

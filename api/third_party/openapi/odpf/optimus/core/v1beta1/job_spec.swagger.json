@@ -371,12 +371,20 @@
         },
         "ack": {
           "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses\nthis is deprecated and being replaced with type field"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "title": "message is deprecated and being replaced with value field"
         },
         "jobName": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "title": "response type differentiate events"
+        },
+        "value": {
           "type": "string"
         }
       }

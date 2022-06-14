@@ -131,9 +131,9 @@ type JobService struct {
 	mock.Mock
 }
 
-func (srv *JobService) Create(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
+func (srv *JobService) Create(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpec, error) {
 	args := srv.Called(ctx, namespaceSpec, jobSpec)
-	return args.Error(0)
+	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
 func (srv *JobService) GetByName(ctx context.Context, s string, spec models.NamespaceSpec) (models.JobSpec, error) {
@@ -195,6 +195,11 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, observer progress.Observer) error {
 	args := srv.Called(ctx, projectName, namespaceNames, jobNames, observer)
 	return args.Error(0)
+}
+
+func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
+	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, observers)
+	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
 func (srv *JobService) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {

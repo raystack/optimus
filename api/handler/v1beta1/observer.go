@@ -11,50 +11,6 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type jobSyncObserver struct {
-	stream pb.JobSpecificationService_DeployJobSpecificationServer
-	log    log.Logger
-	mu     *sync.Mutex
-}
-
-func (obs *jobSyncObserver) Notify(e progress.Event) {
-	obs.mu.Lock()
-	defer obs.mu.Unlock()
-
-	switch evt := e.(type) {
-	case *models.ProgressJobUpload:
-		resp := &pb.DeployJobSpecificationResponse{
-			Success: true,
-			Ack:     true,
-			JobName: evt.Name,
-		}
-		if evt.Err != nil {
-			resp.Success = false
-			resp.Message = evt.Err.Error()
-		}
-
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobRemoteDelete:
-		resp := &pb.DeployJobSpecificationResponse{
-			JobName: evt.Name,
-			Message: evt.String(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send delete notification", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobSpecUnknownDependencyUsed:
-		resp := &pb.DeployJobSpecificationResponse{
-			JobName: evt.Job,
-			Message: evt.String(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
-		}
-	}
-}
-
 type resourceObserver struct {
 	stream pb.ResourceService_DeployResourceSpecificationServer
 	log    log.Logger
@@ -174,5 +130,91 @@ func (obs *jobRefreshObserver) Notify(e progress.Event) {
 		if err := obs.stream.Send(resp); err != nil {
 			obs.log.Error("failed to send job deployment request created", "evt", evt.String(), "error", err)
 		}
+	}
+}
+
+type jobDeploymentObserver struct {
+	stream pb.JobSpecificationService_DeployJobSpecificationServer
+	log    log.Logger
+	mu     *sync.Mutex
+}
+
+func (obs *jobDeploymentObserver) Notify(e progress.Event) {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
+	resp := &pb.DeployJobSpecificationResponse{}
+	switch evt := e.(type) {
+	case *models.ProgressJobUpload:
+		resp.Success = true
+		resp.Type = evt.Type()
+		resp.JobName = evt.Name
+
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+	case *models.JobDeleteEvent:
+		resp.Success = true
+		resp.JobName = evt.Name
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+	case *models.JobCreateEvent:
+		resp.Success = true
+		resp.JobName = evt.Name
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+	case *models.JobModifyEvent:
+		resp.Success = true
+		resp.JobName = evt.Name
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+	case *models.ProgressJobDependencyResolution:
+		resp.Success = true
+		resp.JobName = evt.Job
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+	case *models.ProgressJobSpecUnknownDependencyUsed:
+		resp.Success = true
+		resp.JobName = evt.Job
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
+
+	case *models.ProgressJobDeploymentRequestCreated:
+		resp.Success = true
+		resp.Value = evt.ID().UUID().String()
+		resp.Type = evt.Type()
+
+		if evt.Err != nil {
+			resp.Success = false
+			resp.Value = evt.Err.Error()
+		}
+	default:
+		obs.log.Error("event type is invalid")
+		return
+	}
+
+	if err := obs.stream.Send(resp); err != nil {
+		obs.log.Error("failed to send", resp.GetType(), "evt", e.String(), "error", err)
 	}
 }

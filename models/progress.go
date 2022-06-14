@@ -7,6 +7,9 @@ const (
 	ProgressTypeJobDependencyResolution      = "dependency resolution"
 	ProgressTypeJobUpload                    = "job upload"
 	ProgressTypeJobDeploymentRequestCreated  = "job deployment request created"
+	ProgressTypeJobDelete                    = "job delete"
+	ProgressTypeJobCreate                    = "job create"
+	ProgressTypeJobModify                    = "job modify"
 )
 
 type (
@@ -38,9 +41,26 @@ type (
 	// ProgressJobSpecWithDependencyFetch represents job specs with dependencies have been fetched
 	ProgressJobSpecWithDependencyFetch struct{}
 
-	// ProgressSavedJobDelete signifies that a raw
+	// JobDeleteEvent signifies that a raw
 	// job from a repository is being deleted
-	ProgressSavedJobDelete struct{ Name string }
+	JobDeleteEvent struct {
+		Name string
+		Err  error
+	}
+
+	// JobCreateEvent signifies that a raw
+	// job from a repository is being created
+	JobCreateEvent struct {
+		Name string
+		Err  error
+	}
+
+	// JobModifyEvent signifies that a raw
+	// job from a repository is being modified
+	JobModifyEvent struct {
+		Name string
+		Err  error
+	}
 
 	// ProgressJobPriorityWeightAssign signifies that a
 	// job is being assigned a priority weight
@@ -85,6 +105,7 @@ type (
 	// ProgressJobDeploymentRequestCreated represents a job deployment has been requested
 	ProgressJobDeploymentRequestCreated struct {
 		DeployID DeploymentID
+		Err      error
 	}
 
 	ProgressJobDeploymentWorkersBusy struct{}
@@ -96,8 +117,28 @@ func (*ProgressJobSpecFetch) String() string {
 	return "fetching job specs"
 }
 
-func (e *ProgressSavedJobDelete) String() string {
+func (e *JobDeleteEvent) String() string {
 	return fmt.Sprintf("deleting: %s", e.Name)
+}
+
+func (*JobDeleteEvent) Type() string {
+	return ProgressTypeJobDelete
+}
+
+func (e *JobCreateEvent) String() string {
+	return fmt.Sprintf("creating: %s", e.Name)
+}
+
+func (*JobCreateEvent) Type() string {
+	return ProgressTypeJobCreate
+}
+
+func (e *JobModifyEvent) String() string {
+	return fmt.Sprintf("updating: %s", e.Name)
+}
+
+func (*JobModifyEvent) Type() string {
+	return ProgressTypeJobModify
 }
 
 func (*ProgressJobPriorityWeightAssign) String() string {
