@@ -61,6 +61,18 @@ type resourceObserver struct {
 	mu     *sync.Mutex
 }
 
+func NewResourceObserver(
+	stream pb.ResourceService_DeployResourceSpecificationServer,
+	log log.Logger,
+	mu *sync.Mutex,
+) progress.Observer {
+	return &resourceObserver{
+		stream: stream,
+		log:    log,
+		mu:     mu,
+	}
+}
+
 func (obs *resourceObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
