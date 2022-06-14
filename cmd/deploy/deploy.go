@@ -447,62 +447,21 @@ func (d *deployCommand) processJobDeploymentResponses(namespaceName string, stre
 
 		switch resp.Type {
 		case models.ProgressTypeJobDependencyResolution:
-			if !resp.GetSuccess() {
-				resolveDependencyFailed++
-				failedMessage := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, resp.GetJobName(), resp.GetValue())
-				if d.verbose {
-					d.logger.Warn(failedMessage)
-				}
-				resolveDependencyErrors = append(resolveDependencyErrors, failedMessage)
-			} else {
-				resolveDependencySuccess++
-				if d.verbose {
-					d.logger.Info(fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, resp.GetJobName()))
-				}
-			}
+			failedMessage := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, resp.GetJobName(), resp.GetValue())
+			successMessage := fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, resp.GetJobName())
+			d.processJobDeploymentResponse(resp, failedMessage, successMessage, &resolveDependencyFailed, &resolveDependencySuccess, &resolveDependencyErrors)
 		case models.ProgressTypeJobDelete:
-			if !resp.GetSuccess() {
-				jobDeletionFailed++
-				failedMessage := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
-				if d.verbose {
-					d.logger.Warn(failedMessage)
-				}
-				jobDeletionErrors = append(jobDeletionErrors, failedMessage)
-			} else {
-				jobDeletionSuccess++
-				if d.verbose {
-					d.logger.Info(fmt.Sprintf("[%s] info '%s': job deleted", namespaceName, resp.GetJobName()))
-				}
-			}
+			failedMessage := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
+			successMessage := fmt.Sprintf("[%s] info '%s': job deleted", namespaceName, resp.GetJobName())
+			d.processJobDeploymentResponse(resp, failedMessage, successMessage, &jobDeletionFailed, &jobDeletionSuccess, &jobDeletionErrors)
 		case models.ProgressTypeJobCreate:
-			if !resp.GetSuccess() {
-				jobCreationFailed++
-				failedMessage := fmt.Sprintf("[%s] error '%s': failed to create job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
-				if d.verbose {
-					d.logger.Warn(failedMessage)
-				}
-				jobCreationErrors = append(jobCreationErrors, failedMessage)
-			} else {
-				jobCreationSuccess++
-				if d.verbose {
-					d.logger.Info(fmt.Sprintf("[%s] info '%s': job created", namespaceName, resp.GetJobName()))
-				}
-			}
+			failedMessage := fmt.Sprintf("[%s] error '%s': failed to create job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
+			successMessage := fmt.Sprintf("[%s] info '%s': job created", namespaceName, resp.GetJobName())
+			d.processJobDeploymentResponse(resp, failedMessage, successMessage, &jobCreationFailed, &jobCreationSuccess, &jobCreationErrors)
 		case models.ProgressTypeJobModify:
-			if !resp.GetSuccess() {
-				jobModificationFailed++
-				failedMessage := fmt.Sprintf("[%s] error '%s': failed to modify job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
-				if d.verbose {
-					d.logger.Warn(failedMessage)
-				}
-				jobModificationErrors = append(jobModificationErrors, failedMessage)
-			} else {
-				jobModificationSuccess++
-				if d.verbose {
-					d.logger.Info(fmt.Sprintf("[%s] info '%s': job modified", namespaceName, resp.GetJobName()))
-				}
-			}
-
+			failedMessage := fmt.Sprintf("[%s] error '%s': failed to modify job, %s", namespaceName, resp.GetJobName(), resp.GetValue())
+			successMessage := fmt.Sprintf("[%s] info '%s': job modified", namespaceName, resp.GetJobName())
+			d.processJobDeploymentResponse(resp, failedMessage, successMessage, &jobModificationFailed, &jobModificationSuccess, &jobModificationErrors)
 		case models.ProgressTypeJobDeploymentRequestCreated:
 			// give summary of resolve dependency
 			if len(resolveDependencyErrors) > 0 {
@@ -570,6 +529,22 @@ func (d *deployCommand) processJobDeploymentResponses(namespaceName string, stre
 		}
 	}
 	return "", nil
+}
+
+func (d *deployCommand) processJobDeploymentResponse(resp *pb.DeployJobSpecificationResponse, errMsg, successMsg string, failCount, successCount *int, errs *[]string) {
+	if resp.GetSuccess() {
+		*successCount++
+		if d.verbose {
+			d.logger.Info(successMsg)
+		}
+		return
+	}
+
+	*failCount++
+	if d.verbose {
+		d.logger.Warn(errMsg)
+	}
+	*errs = append(*errs, errMsg)
 }
 
 func (d *deployCommand) pollJobDeployment(ctx context.Context, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
