@@ -181,6 +181,9 @@ func (*deployer) enrichWithResourceDependencies(
 	deploymentProjectSpec models.ProjectSpec,
 	jobDependencies []models.JobSpec,
 ) {
+	if jobSpec.Dependencies == nil {
+		jobSpec.Dependencies = make(map[string]models.JobSpecDependency)
+	}
 	for _, dependency := range jobDependencies {
 		dependencyType := models.JobSpecDependencyTypeIntra
 		if dependency.NamespaceSpec.ProjectSpec.ID.UUID() != deploymentProjectSpec.ID.UUID() {
@@ -219,9 +222,10 @@ func (d *deployer) getJobIDDependenciesMap(ctx context.Context, deploymentProjec
 		}
 		jobSpec, err := projectRepository.GetByDestination(ctx, source.ResourceURN)
 		if err != nil {
-			if !errors.Is(err, store.ErrResourceNotFound) {
-				return nil, fmt.Errorf("error getting dependency jobspec for job id %s: %w", source.JobID, err)
+			if errors.Is(err, store.ErrResourceNotFound) {
+				continue
 			}
+			return nil, fmt.Errorf("error getting dependency jobspec for job id %s: %w", source.JobID, err)
 		}
 		resourceURNJobMap[source.ResourceURN] = jobSpec
 	}
@@ -229,6 +233,9 @@ func (d *deployer) getJobIDDependenciesMap(ctx context.Context, deploymentProjec
 	// preparing the job dependency by using the resource URN job map
 	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
 	for _, source := range jobSources {
+		if _, ok := resourceURNJobMap[source.ResourceURN]; !ok {
+			continue
+		}
 		jobIDDependenciesMap[source.JobID] = append(jobIDDependenciesMap[source.JobID], resourceURNJobMap[source.ResourceURN])
 	}
 	return jobIDDependenciesMap, nil
