@@ -330,8 +330,6 @@ type HTTPDependency struct {
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(context.Context, NamespaceSpec, JobSpec) (*JobSpec, error)
-	// BulkCreate save bulk of JobSpec within same namespace to persistent
-	BulkCreate(context.Context, NamespaceSpec, []JobSpec, progress.Observer) []JobSpec
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
 	// KeepOnly deletes all jobs except the ones provided for a namespace
@@ -340,8 +338,6 @@ type JobService interface {
 	GetAll(context.Context, NamespaceSpec) ([]JobSpec, error)
 	// Delete deletes a job spec from all repos
 	Delete(context.Context, NamespaceSpec, JobSpec) error
-	// BulkDelete deletes bulk job specs
-	BulkDelete(context.Context, NamespaceSpec, []JobSpec, progress.Observer)
 	// GetTaskDependencies returns job task dependency mod details
 	GetTaskDependencies(context.Context, NamespaceSpec, JobSpec) (JobSpecTaskDestination,
 		JobSpecTaskDependencies, error)

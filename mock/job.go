@@ -136,11 +136,6 @@ func (srv *JobService) Create(ctx context.Context, namespaceSpec models.Namespac
 	return args.Get(0).(*models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) BulkCreate(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
-	args := srv.Called(ctx, namespaceSpec, jobSpecs, observers)
-	return args.Get(0).([]models.JobSpec)
-}
-
 func (srv *JobService) GetByName(ctx context.Context, s string, spec models.NamespaceSpec) (models.JobSpec, error) {
 	args := srv.Called(ctx, s, spec)
 	return args.Get(0).(models.JobSpec), args.Error(1)
@@ -180,10 +175,6 @@ func (srv *JobService) Check(ctx context.Context, namespaceSpec models.Namespace
 func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, jobSpec models.JobSpec) error {
 	args := srv.Called(ctx, c, jobSpec)
 	return args.Error(0)
-}
-
-func (srv *JobService) BulkDelete(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) {
-	_ = srv.Called(ctx, namespaceSpec, jobSpecs, observers)
 }
 
 func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {

@@ -138,7 +138,7 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	return &result, nil
 }
 
-func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
+func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
 	result := []models.JobSpec{}
 	for _, jobSpec := range jobSpecs {
 		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
@@ -284,7 +284,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
 }
 
-func (srv *Service) BulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) {
+func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
 	for _, jobSpec := range jobSpecs {
@@ -878,11 +878,11 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	}
 
 	// Save added jobs
-	savedCreatedJobs := srv.BulkCreate(ctx, namespaceSpec, createdJobs, observers)
+	savedCreatedJobs := srv.bulkCreate(ctx, namespaceSpec, createdJobs, observers)
 	// Save modified jobs
-	savedModifiedJobs := srv.BulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
+	savedModifiedJobs := srv.bulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
 	// Delete unnecessary jobs
-	srv.BulkDelete(ctx, namespaceSpec, deletedJobs, observers)
+	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
 
 	// Resolve dependency
 	srv.resolveDependency(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
