@@ -110,10 +110,6 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	d.logger.Info("namespace registration finished!\n")
 
-	if d.ignoreJobDeployment && d.ignoreResourceDeployment {
-		d.logger.Info(logger.ColoredNotice("No jobs and resources to be deployed"))
-		return nil
-	}
 	return d.deploy(selectedNamespaces)
 }
 
@@ -129,33 +125,34 @@ func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
 	}
 	defer conn.Close()
 
-	if !d.ignoreResourceDeployment {
-		d.logger.Info(logger.ColoredNotice("> Deploying all resources"))
-		if err := d.deployResources(conn, selectedNamespaces); err != nil {
-			return err
-		}
-		d.logger.Info("> resource deployment finished!\n")
-	} else {
-		d.logger.Info("> Skipping resource deployment")
+	if err := d.deployResources(conn, selectedNamespaces); err != nil {
+		return err
 	}
+	d.logger.Info("> resource deployment finished!\n")
 
-	if !d.ignoreJobDeployment {
-		namespaceNames := []string{}
-		for _, namespace := range selectedNamespaces {
-			namespaceNames = append(namespaceNames, namespace.Name)
-		}
-		d.logger.Info(logger.ColoredNotice("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
-		if err := d.deployJobs(conn, selectedNamespaces); err != nil {
-			return err
-		}
-		d.logger.Info("> job deployment finished!\n")
-	} else {
-		d.logger.Info("> Skipping job deployment")
+	if err := d.deployJobs(conn, selectedNamespaces); err != nil {
+		return err
 	}
+	d.logger.Info("> job deployment finished!\n")
+
 	return nil
 }
 
 func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
+	if d.ignoreJobDeployment {
+		d.logger.Info("> Skipping job deployment")
+		return nil
+	}
+
+	namespaceNames := []string{}
+	for _, namespace := range selectedNamespaces {
+		namespaceNames = append(namespaceNames, namespace.Name)
+	}
+	d.logger.Info(logger.ColoredNotice("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
+	if err := d.deployJobs(conn, selectedNamespaces); err != nil {
+		return err
+	}
+
 	stream, err := d.getJobStreamClient(conn)
 	if err != nil {
 		return err
@@ -279,6 +276,12 @@ func (d *deployCommand) deployResources(
 	conn *connectivity.Connectivity,
 	selectedNamespaces []*config.Namespace,
 ) error {
+	if d.ignoreResourceDeployment {
+		d.logger.Info("> Skipping resource deployment")
+		return nil
+	}
+	d.logger.Info(logger.ColoredNotice("> Deploying all resources"))
+
 	stream, err := d.getResourceStreamClient(conn)
 	if err != nil {
 		return err
@@ -304,6 +307,7 @@ func (d *deployCommand) deployResources(
 		d.logger.Warn("no resource specs are found from all the namespaces")
 		return nil
 	}
+
 	return d.processResourceDeploymentResponse(stream, totalSpecsCount)
 }
 
