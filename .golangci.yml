@@ -9,8 +9,6 @@ linters:
   enable-all: true
   disable:
     # Rules to review
-    - nonamedreturns
-    - exhaustruct
     - varnamelen
     - wrapcheck
     - tagliatelle
