@@ -143,7 +143,7 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
 
-	var resp *pb.DeployJobSpecificationResponse
+	resp := &pb.DeployJobSpecificationResponse{}
 	switch evt := e.(type) {
 	case *models.ProgressJobUpload:
 		resp.Success = true

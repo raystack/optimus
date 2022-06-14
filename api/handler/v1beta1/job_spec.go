@@ -72,7 +72,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		observers.Notify(&models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
 	}
 
-	sv.l.Info("job deployment is sucessfuly submitted")
+	sv.l.Info("job deployment is successfully submitted")
 
 	return nil
 }
