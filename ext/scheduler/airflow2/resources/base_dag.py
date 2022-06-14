@@ -121,14 +121,12 @@ executor_env_vars = [
 ]
 
 init_env_vars = [
-    k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
+    k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
-    k8s.V1EnvVar(name="JOB_NAME",value='{{.Job.Name}}'),
-    k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{.Hostname}}'),
-    k8s.V1EnvVar(name="PROJECT",value='{{.Namespace.ProjectSpec.Name}}'),
-    k8s.V1EnvVar(name="NAMESPACE",value='{{.Namespace.Name}}'),
-    k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
-    k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
+    k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
+    k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{$.Hostname}}'),
+    k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
+    k8s.V1EnvVar(name="NAMESPACE",value='{{$.Namespace.Name}}'),
     k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
 ]
 
@@ -136,7 +134,10 @@ init_container = k8s.V1Container(
     name="init-container",
     image="optimus-dev:latest", # inject from code ??
     image_pull_policy="IfNotPresent",
-    env=init_env_vars,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
+    ],
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", "/app/init_boot.sh"],
 )
@@ -183,6 +184,18 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 )
 {{- end }}
 
+init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
+    name="init-container",
+    image="optimus-dev:latest", # inject from code ??
+    image_pull_policy="IfNotPresent",
+    env= init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
+    ],
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", "/app/init_boot.sh"],
+)
+
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
@@ -209,7 +222,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     reattach_on_restart=True,
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
-    init_containers=[init_container],
+    init_containers=[init_container_{{$hookSchema.Name | replace "-" "__dash__"}}],
 )
 {{- end }}
 # hooks loop ends
