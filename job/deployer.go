@@ -51,7 +51,7 @@ func NewDeployer(
 	}
 }
 
-func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) (deployError error) {
+func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) error {
 	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(jobDeployment.Project)
 	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 	if err != nil {
@@ -71,6 +71,18 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	d.l.Debug("job priority resolved", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
 	// Compile & Deploy
+	deployError := d.deployNamespaces(ctx, &jobDeployment, jobSpecs)
+
+	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
+		return err
+	}
+
+	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
+	return deployError
+}
+
+func (d *deployer) deployNamespaces(ctx context.Context, jobDeployment *models.JobDeployment, jobSpecs []models.JobSpec) error {
+	var deployError error
 	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
 	for namespaceName, jobs := range jobSpecGroup {
 		// fetch the namespace spec with secrets
@@ -97,12 +109,6 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 
 		d.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	}
-
-	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
-		return err
-	}
-
-	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	return deployError
 }
 
@@ -144,7 +150,7 @@ func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.N
 func (d *deployer) enrichJobSpecs(ctx context.Context, jobSpecs []models.JobSpec, deploymentProjectSpec models.ProjectSpec) error {
 	jobsByDestination := models.JobSpecs(jobSpecs).GroupJobsByDestination()
 
-	jobIDDependenciesMap, err := d.getJobIDDependenciesMap(ctx, deploymentProjectSpec, jobsByDestination)
+	jobIDResourceDependenciesMap, err := d.getJobIDResourceDependenciesMap(ctx, deploymentProjectSpec, jobsByDestination)
 	if err != nil {
 		return err
 	}
@@ -155,8 +161,8 @@ func (d *deployer) enrichJobSpecs(ctx context.Context, jobSpecs []models.JobSpec
 			return fmt.Errorf("error while enriching jobspec %d with static dependencies: %w", targetJobSpec.ID, err)
 		}
 
-		dependencies := jobIDDependenciesMap[job.ID]
-		d.enrichWithResourceDependencies(&targetJobSpec, deploymentProjectSpec, dependencies)
+		resourceDependencies := jobIDResourceDependenciesMap[job.ID]
+		d.enrichWithResourceDependencies(&targetJobSpec, deploymentProjectSpec, resourceDependencies)
 
 		d.enrichWithHookDependencies(&targetJobSpec)
 
@@ -179,12 +185,12 @@ func (d *deployer) enrichWithStaticDependencies(
 func (*deployer) enrichWithResourceDependencies(
 	jobSpec *models.JobSpec,
 	deploymentProjectSpec models.ProjectSpec,
-	jobDependencies []models.JobSpec,
+	resourceDependencies []models.JobSpec,
 ) {
 	if jobSpec.Dependencies == nil {
 		jobSpec.Dependencies = make(map[string]models.JobSpecDependency)
 	}
-	for _, dependency := range jobDependencies {
+	for _, dependency := range resourceDependencies {
 		dependencyType := models.JobSpecDependencyTypeIntra
 		if dependency.NamespaceSpec.ProjectSpec.ID.UUID() != deploymentProjectSpec.ID.UUID() {
 			dependencyType = models.JobSpecDependencyTypeInter
@@ -203,7 +209,7 @@ func (d *deployer) enrichWithHookDependencies(jobSpec *models.JobSpec) {
 	jobSpec.Hooks = hooks
 }
 
-func (d *deployer) getJobIDDependenciesMap(ctx context.Context, deploymentProjectSpec models.ProjectSpec,
+func (d *deployer) getJobIDResourceDependenciesMap(ctx context.Context, deploymentProjectSpec models.ProjectSpec,
 	jobsByDestination map[string]models.JobSpec) (map[uuid.UUID][]models.JobSpec, error) {
 	jobSources, err := d.jobSourceRepository.GetAll(ctx, deploymentProjectSpec.ID)
 	if err != nil {
@@ -211,10 +217,12 @@ func (d *deployer) getJobIDDependenciesMap(ctx context.Context, deploymentProjec
 	}
 
 	// populating the resource URN job map
-	resourceURNJobMap := make(map[string]models.JobSpec)
+	resourceURNJobMap := make(map[string]*models.JobSpec)
 	for urn, job := range jobsByDestination {
-		resourceURNJobMap[urn] = job
+		resourceJob := job
+		resourceURNJobMap[urn] = &resourceJob
 	}
+
 	projectRepository := d.projectJobSpecRepoFactory.New(deploymentProjectSpec)
 	for _, source := range jobSources {
 		if _, ok := resourceURNJobMap[source.ResourceURN]; ok {
@@ -227,7 +235,7 @@ func (d *deployer) getJobIDDependenciesMap(ctx context.Context, deploymentProjec
 			}
 			return nil, fmt.Errorf("error getting dependency jobspec for job id %s: %w", source.JobID, err)
 		}
-		resourceURNJobMap[source.ResourceURN] = jobSpec
+		resourceURNJobMap[source.ResourceURN] = &jobSpec
 	}
 
 	// preparing the job dependency by using the resource URN job map
@@ -236,7 +244,7 @@ func (d *deployer) getJobIDDependenciesMap(ctx context.Context, deploymentProjec
 		if _, ok := resourceURNJobMap[source.ResourceURN]; !ok {
 			continue
 		}
-		jobIDDependenciesMap[source.JobID] = append(jobIDDependenciesMap[source.JobID], resourceURNJobMap[source.ResourceURN])
+		jobIDDependenciesMap[source.JobID] = append(jobIDDependenciesMap[source.JobID], *resourceURNJobMap[source.ResourceURN])
 	}
 	return jobIDDependenciesMap, nil
 }

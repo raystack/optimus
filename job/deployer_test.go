@@ -69,7 +69,7 @@ func TestDeployer(t *testing.T) {
 		}
 		errorMsg := "internal error"
 
-		t.Run("should fail when unable to fetch job specs with job dependencies", func(t *testing.T) {
+		t.Run("should fail when unable to fetch job specs", func(t *testing.T) {
 			dependencyResolver := new(mock.DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
 
@@ -202,6 +202,76 @@ func TestDeployer(t *testing.T) {
 			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
+
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			err := deployer.Deploy(ctx, jobDeployment)
+
+			assert.Contains(t, err.Error(), errorMsg)
+		})
+
+		t.Run("should able to deploy jobs with resource dependency successfully", func(t *testing.T) {
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			priorityResolver := new(mock.PriorityResolver)
+			defer priorityResolver.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			batchScheduler := new(mock.Scheduler)
+			defer batchScheduler.AssertExpectations(t)
+
+			jobDeploymentRepo := new(mock.JobDeploymentRepository)
+			defer jobDeploymentRepo.AssertExpectations(t)
+
+			jobSourceRepo := new(mock.JobSourceRepository)
+			defer jobSourceRepo.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+
+			jobID1 := uuid.New()
+			jobID2 := uuid.New()
+
+			jobSpecsBase := []models.JobSpec{
+				{
+					Version:       1,
+					ID:            jobID1,
+					Name:          "test",
+					Owner:         "optimus",
+					Schedule:      schedule,
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec1,
+				},
+				{
+					Version:       1,
+					ID:            jobID2,
+					Name:          "test-2",
+					Owner:         "optimus",
+					Schedule:      schedule,
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec2,
+				},
+			}
+			jobSources := []models.JobSource{
+				{
+					JobID:       jobID1,
+					ProjectID:   projectSpec.ID,
+					ResourceURN: "resource-a",
+				},
+			}
+
+			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(jobSpecsBase[1], nil)
+
+			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
+
+			dependencyResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projectSpec, projectJobSpecRepo).Return(nil, errors.New(errorMsg)).Once()
 
 			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
