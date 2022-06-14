@@ -122,12 +122,12 @@ func (srv Service) saveResource(
 	for _, incomingSpec := range resourceSpecs {
 		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
 		runner.Add(func() (interface{}, error) {
-			proceed, err := srv.isProceedToSave(ctx, repo, incomingSpec)
+			equal, err := srv.isEqualWithExisting(ctx, repo, incomingSpec)
 			if err != nil {
 				return nil, err
 			}
 
-			if !proceed {
+			if equal {
 				srv.notifyProgress(obs, &EventResourceSkipped{
 					Spec:   incomingSpec,
 					Reason: "incoming resource is the same as existing",
@@ -151,19 +151,18 @@ func (srv Service) saveResource(
 	return errorSet
 }
 
-func (Service) isProceedToSave(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
-	var proceed bool
+func (Service) isEqualWithExisting(ctx context.Context, repo store.ResourceSpecRepository, incomingSpec models.ResourceSpec) (bool, error) {
+	var equalWithExisting bool
 	if existingSpec, err := repo.GetByName(ctx, incomingSpec.Name); err != nil {
 		if !errors.Is(err, store.ErrResourceNotFound) {
-			return proceed, err
+			return equalWithExisting, err
 		}
-		proceed = true
 	} else {
 		incomingSpec.ID = existingSpec.ID
 		incomingSpec.URN = existingSpec.URN
-		proceed = !reflect.DeepEqual(existingSpec, incomingSpec)
+		equalWithExisting = reflect.DeepEqual(existingSpec, incomingSpec)
 	}
-	return proceed, nil
+	return equalWithExisting, nil
 }
 
 func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
