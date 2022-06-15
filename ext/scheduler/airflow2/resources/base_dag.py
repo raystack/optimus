@@ -99,13 +99,9 @@ resources = k8s.V1ResourceRequirements (
 )
 {{- end }}
 
-
-''' 
-assets : init-container fetches assets to emptyDir Volume
-env    : added in SuperKubernetesPodOperator.execute method
-'''
-
 JOB_DIR = "/data"
+IMAGE_PULL_POLICY="IfNotPresent"
+INIT_CONTAINER_IMAGE="optimus-dev:latest" # inject from optimus config ?
 
 volume = k8s.V1Volume(
     name='asset-volume',
@@ -132,8 +128,8 @@ init_env_vars = [
 
 init_container = k8s.V1Container(
     name="init-container",
-    image="optimus-dev:latest", # inject from code ??
-    image_pull_policy="IfNotPresent",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
     env=init_env_vars + [
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
@@ -146,7 +142,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
     optimus_jobname="{{.Job.Name}}",
-    image_pull_policy="IfNotPresent",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
     cmds=[],
@@ -186,8 +182,8 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 
 init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
     name="init-container",
-    image="optimus-dev:latest", # inject from code ??
-    image_pull_policy="IfNotPresent",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
     env= init_env_vars + [
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
@@ -200,7 +196,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
     optimus_jobname="{{$.Job.Name}}",
-    image_pull_policy="IfNotPresent",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
     cmds=[],
