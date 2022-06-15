@@ -212,6 +212,8 @@ func (s *OptimusServer) setupHandlers() error {
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
 	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn, s.logger)
 	taskRunRepository := postgres.NewTaskRunRepository(s.dbConn, s.logger)
+	sensorRunRepository := postgres.NewSensorRunRepository(s.dbConn, s.logger)
+	hookRunRepository := postgres.NewHookRunRepository(s.dbConn, s.logger)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
@@ -344,6 +346,8 @@ func (s *OptimusServer) setupHandlers() error {
 		s.logger,
 		jobRunService,
 		jobRunMetricsRepository,
+		sensorRunRepository,
+		hookRunRepository,
 		taskRunRepository)
 
 	// secret service

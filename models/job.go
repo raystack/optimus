@@ -518,30 +518,49 @@ type JobDeploymentFailure struct {
 }
 
 type JobRunSpec struct {
-	JobRunId     uuid.UUID
-	JobID        uuid.UUID
-	NamespaceID  uuid.UUID
-	ProjectID    uuid.UUID
-	ScheduledAt  time.Time
-	StartTime    time.Time
-	EndTime      time.Time
-	Status       string
-	Attempt      int
-	SlaMissDelay int
-	Duration     int
+	JobRunId      uuid.UUID
+	JobID         uuid.UUID
+	NamespaceID   uuid.UUID
+	ProjectID     uuid.UUID
+	ScheduledAt   time.Time
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	SlaMissDelay  int
+	Duration      int64
+	SlaDefinition int64
 }
 
 type TaskRunSpec struct {
-	TaskRunId    uuid.UUID
-	JobID        uuid.UUID
-	JobRunID     uuid.UUID
-	NamespaceID  uuid.UUID
-	ProjectID    uuid.UUID
-	ScheduledAt  time.Time
-	StartTime    time.Time
-	EndTime      time.Time
-	Status       string
-	Attempt      int
-	SlaMissDelay int
-	Duration     int
+	TaskRunId     uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
+}
+
+type SensorRunSpec struct {
+	SensorRunId   uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
+}
+
+type HookRunSpec struct {
+	HookRunId     uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
 }

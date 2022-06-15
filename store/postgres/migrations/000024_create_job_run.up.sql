@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS job_run (
     attempt         INT,
     sla_miss_delay  INT,
     duration        INT,
+    sla_definition  INT,
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,

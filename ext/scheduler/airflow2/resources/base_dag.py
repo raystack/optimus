@@ -19,6 +19,7 @@ from __lib import JOB_START_EVENT_NAME, \
     log_success_event, \
     log_retry_event, \
     log_failure_event, \
+    EVENT_NAMES, \
     log_job_end, log_job_start 
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
@@ -127,7 +128,7 @@ resources = k8s.V1ResourceRequirements (
 {{- end }}
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
     cmds=[],
@@ -151,7 +152,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
     ],
 {{- if gt .SLAMissDurationInSec 0 }}
-    sla=timedelta(seconds=1),
+    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
 {{- end }}
 {{- if $setResourceConfig }}
     resources = resources,
@@ -173,7 +174,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 {{- end }}
 
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    image_pull_policy="Always",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
     cmds=[],

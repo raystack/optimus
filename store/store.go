@@ -83,7 +83,7 @@ type JobRunRepository interface {
 
 // JobRunMetricsRepository represents a storage interface for Job runs generated to
 type JobRunMetricsRepository interface {
-	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
+	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, int64) error
 	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
 	Get(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
 	GetActiveJobRun(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
@@ -91,19 +91,21 @@ type JobRunMetricsRepository interface {
 
 // TaskRunRepository represents a storage interface for Job runs generated to
 type TaskRunRepository interface {
-	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
-	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
-	GetTaskRunIfExists(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) (models.TaskRunSpec, error)
+	Save(context.Context, models.JobEvent, models.JobRunSpec) error
+	Update(context.Context, models.JobEvent, models.JobRunSpec) error
+	GetTaskRunIfExists(context.Context, models.JobEvent, models.JobRunSpec) (models.TaskRunSpec, error)
 }
 
 type SensorRunRepository interface {
-	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
-	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+	Save(context.Context, models.JobEvent, models.JobRunSpec) error
+	Update(context.Context, models.JobEvent, models.JobRunSpec) error
+	GetSensorRunIfExists(context.Context, models.JobEvent, models.JobRunSpec) (models.SensorRunSpec, error)
 }
 
 type HookRunRepository interface {
-	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
-	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, models.JobRunSpec) error
+	Save(context.Context, models.JobEvent, models.JobRunSpec) error
+	Update(context.Context, models.JobEvent, models.JobRunSpec) error
+	GetHookRunIfExists(context.Context, models.JobEvent, models.JobRunSpec) (models.HookRunSpec, error)
 }
 
 // JobRunSpecRepository represents a storage interface for Job run instances created
