@@ -101,7 +101,8 @@ resources = k8s.V1ResourceRequirements (
 
 JOB_DIR = "/data"
 IMAGE_PULL_POLICY="IfNotPresent"
-INIT_CONTAINER_IMAGE="optimus-dev:latest" # inject from optimus config ?
+INIT_CONTAINER_IMAGE="optimus:latest" # inject from optimus config ?
+INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
 volume = k8s.V1Volume(
     name='asset-volume',
@@ -135,7 +136,7 @@ init_container = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
     ],
     volume_mounts=asset_volume_mounts,
-    command=["/bin/sh", "/app/init_boot.sh"],
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
@@ -189,7 +190,7 @@ init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
     ],
     volume_mounts=asset_volume_mounts,
-    command=["/bin/sh", "/app/init_boot.sh"],
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
