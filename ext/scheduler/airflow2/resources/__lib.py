@@ -20,6 +20,7 @@ from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.db import provide_session
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.state import State
+from airflow.utils import yaml
 from croniter import croniter
 
 log = logging.getLogger(__name__)
@@ -93,6 +94,52 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
             k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["secrets"].items()
         ]
 
+    def _dry_run(self, pod):
+        def prune_dict(val: Any, mode='strict'):
+            """
+            Given dict ``val``, returns new dict based on ``val`` with all
+            empty elements removed.
+            What constitutes "empty" is controlled by the ``mode`` parameter.  If mode is 'strict'
+            then only ``None`` elements will be removed.  If mode is ``truthy``, then element ``x``
+            will be removed if ``bool(x) is False``.
+            """
+
+            def is_empty(x):
+                if mode == 'strict':
+                    return x is None
+                elif mode == 'truthy':
+                    return bool(x) is False
+                raise ValueError("allowable values for `mode` include 'truthy' and 'strict'")
+
+            if isinstance(val, dict):
+                new_dict = {}
+                for k, v in val.items():
+                    if is_empty(v):
+                        continue
+                    elif isinstance(v, (list, dict)):
+                        new_val = prune_dict(v, mode=mode)
+                        if new_val:
+                            new_dict[k] = new_val
+                    else:
+                        new_dict[k] = v
+                return new_dict
+            elif isinstance(val, list):
+                new_list = []
+                for v in val:
+                    if is_empty(v):
+                        continue
+                    elif isinstance(v, (list, dict)):
+                        new_val = prune_dict(v, mode=mode)
+                        if new_val:
+                            new_list.append(new_val)
+                    else:
+                        new_list.append(v)
+                return new_list
+            else:
+                return val
+        log.info(prune_dict(pod.to_dict(), mode='strict'))
+        log.info(yaml.dump(prune_dict(pod.to_dict(), mode='strict')))
+
     def execute(self, context):
         self.env_vars += self.fetch_env_from_optimus(context)
         # init-container is not considered for rendering in airflow
@@ -109,6 +156,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                                                      config_file=self.config_file)
 
             self.pod = self.create_pod_request_obj()
+            # self._dry_run(self.pod) # logs the yaml file for the pod [not compatible for future verison of implementation]
 
             self.namespace = self.pod.metadata.namespace
             self.client = client
