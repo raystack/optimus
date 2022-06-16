@@ -51,7 +51,7 @@ func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, 
 func (repo *HookRunRepository) GetHookRunIfExists(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) (models.HookRunSpec, error) {
 
 	hookRun := HookRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).Find(&hookRun).Error; (err != nil || hookRun == HookRun{}) {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
 		if err != nil {
 			return models.HookRunSpec{}, errors.New("could not update existing hook run, Error :: " + err.Error())
 		} else {
@@ -75,7 +75,7 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 	eventPayload := event.Value
 
 	hookRun := HookRun{}
-	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).Find(&hookRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
 		return errors.New("could not update existing hook run, Error :: " + err.Error())
 	}
 	hookRun.Status = eventPayload["Status"].GetStringValue()

@@ -56,7 +56,7 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 	eventPayload := event.Value
 
 	sensorRun := SensorRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).Find(&sensorRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
 		return errors.New("could not update existing sensor run, Error :: " + err.Error())
 	}
 	if event.Type == models.SensorFailEvent ||
@@ -76,7 +76,7 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 func (repo *SensorRunRepository) GetSensorRunIfExists(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) (models.SensorRunSpec, error) {
 
 	sensorRun := SensorRun{}
-	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).Find(&sensorRun).Error; err != nil || sensorRun == (SensorRun{}) {
+	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
 		if err != nil {
 			return models.SensorRunSpec{}, errors.New("sensor run not found :: " + err.Error())
 		} else {

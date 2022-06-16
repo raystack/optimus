@@ -66,7 +66,7 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	if err != nil {
 		repo.logger.Info(err.Error())
 	}
-	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).Find(&jobRunMetrics).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error; err != nil {
 		return errors.New("could not update existing sensor run, Error :: " + err.Error())
 	}
 
@@ -118,7 +118,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 	if err != nil {
 		return models.JobRunSpec{}, err
 	}
-	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).Find(&jobRunMetrics).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error; err != nil {
 		return models.JobRunSpec{}, errors.New("could not update existing job run, Error :: " + err.Error())
 	}
 	jobRunSpec := models.JobRunSpec{

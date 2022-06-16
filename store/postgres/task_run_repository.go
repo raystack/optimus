@@ -39,7 +39,7 @@ type TaskRunRepository struct {
 
 func (repo *TaskRunRepository) GetTaskRunIfExists(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
 	taskRun := TaskRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).Find(&taskRun).Error; (err != nil || taskRun == TaskRun{}) {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
 		if err != nil {
 			return models.TaskRunSpec{}, errors.New("could not get existing task run, Error :: " + err.Error())
 		} else {
@@ -79,7 +79,7 @@ func (repo *TaskRunRepository) Update(ctx context.Context, event models.JobEvent
 	eventPayload := event.Value
 	taskRun := TaskRun{}
 
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).Find(&taskRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
 		return errors.New("could not update existing task run, Error :: " + err.Error())
 	}
 	resourceString1, _ := json.Marshal(taskRun)
