@@ -59,6 +59,8 @@ The proposal here is to capture job related events and state information via air
 ---
 
 ## Compute SLA miss:
+### SLA Definition : 
+  * if Time duration between the job `execution start time` and `job completion time` excedes the Defined SLA Limit, then that is termed as an SLA breach.
 
 ### Approach : 
   * Note Job Start Time
