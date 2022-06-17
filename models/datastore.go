@@ -25,18 +25,12 @@ func (r ResourceType) String() string {
 }
 
 type ResourceSpec struct {
-	// ID represents the unique identifier of a resource.
-	// It will be ignored in the Equal method execution.
-	ID      uuid.UUID
-	Version int
-	Name    string
-	Type    ResourceType
-	// Datastore is a data storer for this resource.
-	// It will be ignored in the Equal method execution.
+	ID        uuid.UUID
+	Version   int
+	Name      string
+	Type      ResourceType
 	Datastore Datastorer
-	// URN represents a uniform resource name.
-	// It will be ignored in the Equal method execution.
-	URN string
+	URN       string
 
 	Spec   interface{}
 	Assets ResourceAssets
