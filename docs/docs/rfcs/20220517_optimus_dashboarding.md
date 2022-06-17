@@ -62,7 +62,7 @@ The proposal here is to capture job related events and state information via air
 ### SLA Definition : 
   * if Time duration between the job `execution start time` and `job completion time` excedes the Defined SLA Limit, then that is termed as an SLA breach.
 
-### Approach : 
+### Approach For SLA dashboarding: 
   * Note Job Start Time
   * With Each Job Run, associate the then SLA definition(user defined number in the job.yaml) of the job.
   * SLA breach are determined with the read QUERY of Grafana, which works as following 
@@ -70,6 +70,10 @@ The proposal here is to capture job related events and state information via air
   * Limitations
     * Since this is an event based data collection setup is it possible that a job may have failed/crashed/hangged in such a situation optimus wont get the job finish callback, and hence cant determine the SLA breach 
       * To work arround with that, at the time of job run registeration the end time is assumed to be a far future date. In case the job terminates properly we shall be able to determine the correct end_time , otherwise optimus is safe to assume that the job has not finised yet. The job Duration in such case will be the the time since the job has started running.
+
+### Approach For SLA alerting: 
+  * Ariflow DAG level SLA definiation can be used to get DAG SLA breach event.
+      * At the end of each task, a check is conducted to test whether the completed task’s end-time exceeded the SLA OR the start time of the next task exceeded the SLA.
 
 ---
 ## Other Considerations:
