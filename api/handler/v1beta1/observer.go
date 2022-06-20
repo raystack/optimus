@@ -17,25 +17,58 @@ type resourceObserver struct {
 	mu     *sync.Mutex
 }
 
+func NewResourceObserver(
+	stream pb.ResourceService_DeployResourceSpecificationServer,
+	log log.Logger,
+	mu *sync.Mutex,
+) progress.Observer {
+	return &resourceObserver{
+		stream: stream,
+		log:    log,
+		mu:     mu,
+	}
+}
+
 func (obs *resourceObserver) Notify(e progress.Event) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
 
-	evt, ok := e.(*datastore.EventResourceUpdated)
-	if ok {
-		resp := &pb.DeployResourceSpecificationResponse{
-			Success:      true,
-			Ack:          true,
-			ResourceName: evt.Spec.Name,
-		}
-		if evt.Err != nil {
-			resp.Success = false
-			resp.Message = evt.Err.Error()
-		}
+	var (
+		success               = true
+		resourceName, message string
+	)
 
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send deploy spec ack", "spec name", evt.Spec.Name, "error", err)
+	switch evt := e.(type) {
+	case *datastore.EventResourceCreated:
+		resourceName = evt.Spec.Name
+		if evt.Err != nil {
+			success = false
+			message = evt.Err.Error()
+		} else {
+			message = evt.String()
 		}
+	case *datastore.EventResourceUpdated:
+		resourceName = evt.Spec.Name
+		if evt.Err != nil {
+			success = false
+			message = evt.Err.Error()
+		} else {
+			message = evt.String()
+		}
+	case *datastore.EventResourceSkipped:
+		message = evt.String()
+	default:
+		return
+	}
+
+	resp := &pb.DeployResourceSpecificationResponse{
+		Success:      success,
+		Ack:          true,
+		ResourceName: resourceName,
+		Message:      message,
+	}
+	if err := obs.stream.Send(resp); err != nil {
+		obs.log.Error("failed to send deploy spec ack", "spec name", resourceName, "error", err)
 	}
 }
 
