@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
@@ -85,8 +86,22 @@ func (r *dependencyResolver) ResolveInferredDependencies(ctx context.Context, pr
 // ResolveStaticDependencies return named (explicit/static) dependencies that unresolved with its spec model
 // this is normally happen when reading specs from a store[local/postgres]
 // unresolved dependencies will no longer exist in the map
+// TODO: if we have field `projectJobFactory`, we might not need the `projectJobSpecRepository` parameter
 func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	if reflect.ValueOf(jobSpec).IsZero() {
+		return nil, errors.New("job spec is empty")
+	}
+	if reflect.ValueOf(projectSpec).IsZero() {
+		return nil, errors.New("project spec is empty")
+	}
+	if projectJobSpecRepo == nil {
+		return nil, errors.New("project job spec repo is nil")
+	}
+
 	resolvedJobSpecDependencies := make(map[string]models.JobSpecDependency)
 	for depName, depSpec := range jobSpec.Dependencies {
 		if depSpec.Job == nil {
@@ -94,7 +109,7 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 			case models.JobSpecDependencyTypeIntra:
 				job, _, err := projectJobSpecRepo.GetByName(ctx, depName)
 				if err != nil {
-					return resolvedJobSpecDependencies, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
+					return nil, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
 				}
 				depSpec.Job = &job
 				depSpec.Project = &projectSpec
@@ -103,19 +118,19 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 				// extract project name
 				depParts := strings.SplitN(depName, "/", InterJobDependencyNameSections)
 				if len(depParts) != InterJobDependencyNameSections {
-					return resolvedJobSpecDependencies, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
+					return nil, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
 				}
 				projectName := depParts[0]
 				jobName := depParts[1]
 				job, proj, err := projectJobSpecRepo.GetByNameForProject(ctx, projectName, jobName)
 				if err != nil {
-					return resolvedJobSpecDependencies, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
+					return nil, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
 				}
 				depSpec.Job = &job
 				depSpec.Project = &proj
 				resolvedJobSpecDependencies[depName] = depSpec
 			default:
-				return resolvedJobSpecDependencies, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
+				return nil, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
 			}
 		}
 	}

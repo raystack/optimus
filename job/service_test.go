@@ -1561,7 +1561,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 			errorMsg := "unable to fetch jobspec"
-			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(nil, errors.New(errorMsg))
+			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
 			defer projJobSpecRepoFac.AssertExpectations(t)
