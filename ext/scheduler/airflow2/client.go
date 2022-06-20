@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/models"
 )
@@ -135,25 +138,6 @@ func toJobStatus(list DagRunListResponse) ([]models.JobStatus, error) {
 	return jobStatus, nil
 }
 
-func getDagRunRequest(param *models.JobQuery) DagRunRequest {
-	if param.OnlyLastRun {
-		return DagRunRequest{
-			OrderBy:    "-execution_date",
-			PageOffset: 0,
-			PageLimit:  1,
-			DagIds:     []string{param.Name},
-		}
-	}
-	return DagRunRequest{
-		OrderBy:          "execution_date",
-		PageOffset:       0,
-		PageLimit:        pageLimit,
-		DagIds:           []string{param.Name},
-		ExecutionDateGte: param.StartDate.Format(airflowDateFormat),
-		ExecutionDateLte: param.EndDate.Format(airflowDateFormat),
-	}
-}
-
 func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRun, error) {
 	var jobRunList []models.JobRun
 	if res.TotalEntries > pageLimit {
@@ -170,4 +154,10 @@ func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]models.JobRu
 		}
 	}
 	return jobRunList, nil
+}
+
+func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	tracer := otel.Tracer("scheduler/airflow")
+
+	return tracer.Start(ctx, name)
 }

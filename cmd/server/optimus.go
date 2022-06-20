@@ -105,8 +105,12 @@ func (s *OptimusServer) setupPlugins() error {
 	pluginLogger := hclog.New(pluginLoggerOpt)
 	s.cleanupFn = append(s.cleanupFn, hPlugin.CleanupClients)
 
+	var pluginArgs []string
+	if s.conf.Telemetry.JaegerAddr != "" {
+		pluginArgs = append(pluginArgs, "-t", s.conf.Telemetry.JaegerAddr)
+	}
 	// discover and load plugins.
-	return plugin.Initialize(pluginLogger)
+	return plugin.Initialize(pluginLogger, pluginArgs...)
 }
 
 func (s *OptimusServer) setupTelemetry() error {

@@ -118,7 +118,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			compiler := new(MockedCompiler)
@@ -130,8 +130,8 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
-			mockBucket.On("WriteAll", ctx, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
-			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 			err := air.DeployJobs(ctx, ns, jobSpecs, nil)
 			assert.Nil(t, err)
 
@@ -154,7 +154,7 @@ func TestAirflow2(t *testing.T) {
 			compiler := new(MockedCompiler)
 			defer compiler.AssertExpectations(t)
 
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
 			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{
@@ -190,7 +190,7 @@ func TestAirflow2(t *testing.T) {
 			defer compiler.AssertExpectations(t)
 
 			errorMsg := "internal error"
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, errors.New(errorMsg))
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, errors.New(errorMsg))
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
 			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
@@ -211,7 +211,7 @@ func TestAirflow2(t *testing.T) {
 			compiler := new(MockedCompiler)
 			defer compiler.AssertExpectations(t)
 
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 
 			errorMsg := "internal error"
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
@@ -243,11 +243,11 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -263,11 +263,11 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -290,7 +290,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -312,7 +312,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -330,12 +330,12 @@ func TestAirflow2(t *testing.T) {
 			mockBucket.On("List", &blob.ListOptions{
 				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()),
 			})
-			mockBucket.On("ReadAll", ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension))
-			mockBucket.On("ReadAll", ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension))
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", ctx, proj).Return(mockBucket, nil)
+			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
@@ -923,5 +923,80 @@ func TestAirflow2(t *testing.T) {
 			}, &params, sch)
 			assert.NotNil(t, err)
 		})
+	})
+}
+
+func TestAirflow_GetDagRunsRequest(t *testing.T) {
+	t.Run("only last runs", func(t *testing.T) {
+		inputQuery := models.JobQuery{OnlyLastRun: true, Name: "dag1"}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("@midnight")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{OrderBy: "-execution_date",
+			PageOffset: 0,
+			PageLimit:  1,
+			DagIds:     []string{"dag1"}}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+	t.Run("when input times doesn't fall exactly on schedule times", func(t *testing.T) {
+		scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-25T00:00:00+00:00")
+		scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-29T00:00:00+00:00")
+		expectedExecutionStartDate, _ := time.Parse(time.RFC3339, "2022-03-24T00:00:00+00:00")
+		expectedExecutionEndDate, _ := time.Parse(time.RFC3339, "2022-03-28T00:00:00+00:00")
+		inputQuery := models.JobQuery{Name: "dag1", StartDate: scheduleStartTime, EndDate: scheduleEndTime}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("@midnight")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{
+			OrderBy:          "execution_date",
+			PageOffset:       0,
+			PageLimit:        99999,
+			DagIds:           []string{"dag1"},
+			ExecutionDateLte: expectedExecutionEndDate.Format("2006-01-02T15:04:05+00:00"),
+			ExecutionDateGte: expectedExecutionStartDate.Format("2006-01-02T15:04:05+00:00"),
+		}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+	t.Run("when input times fall exactly on schedule times", func(t *testing.T) {
+		scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+		scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-29T02:00:00+00:00")
+		expectedExecutionStartDate, _ := time.Parse(time.RFC3339, "2022-03-25T00:00:00+00:00")
+		expectedExecutionEndDate, _ := time.Parse(time.RFC3339, "2022-03-28T00:00:00+00:00")
+		inputQuery := models.JobQuery{Name: "dag1", StartDate: scheduleStartTime, EndDate: scheduleEndTime}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("@midnight")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{
+			OrderBy:          "execution_date",
+			PageOffset:       0,
+			PageLimit:        99999,
+			DagIds:           []string{"dag1"},
+			ExecutionDateLte: expectedExecutionEndDate.Format("2006-01-02T15:04:05+00:00"),
+			ExecutionDateGte: expectedExecutionStartDate.Format("2006-01-02T15:04:05+00:00"),
+		}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
+	})
+	t.Run("with varying schedule intervals", func(t *testing.T) {
+		scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-17T00:00:00+00:00")
+		scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-27T00:00:00+00:00")
+		expectedExecutionStartDate, _ := time.Parse(time.RFC3339, "2022-03-11T02:00:00+00:00")
+		expectedExecutionEndDate, _ := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
+		inputQuery := models.JobQuery{Name: "dag1", StartDate: scheduleStartTime, EndDate: scheduleEndTime}
+		scheduler := airflow2.NewScheduler(nil, nil, nil)
+
+		scheduleSpec, _ := cron.ParseCronSchedule("0 2 2,11,17,19,25,26,27 * *")
+		dagRunRequest := scheduler.GetDagRunRequest(&inputQuery, scheduleSpec)
+		expectedDagRunRequest := airflow2.DagRunRequest{
+			OrderBy:          "execution_date",
+			PageOffset:       0,
+			PageLimit:        99999,
+			DagIds:           []string{"dag1"},
+			ExecutionDateLte: expectedExecutionEndDate.Format("2006-01-02T15:04:05+00:00"),
+			ExecutionDateGte: expectedExecutionStartDate.Format("2006-01-02T15:04:05+00:00"),
+		}
+		assert.Equal(t, dagRunRequest, expectedDagRunRequest)
 	})
 }

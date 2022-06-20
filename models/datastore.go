@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 
@@ -34,6 +35,30 @@ type ResourceSpec struct {
 	Spec   interface{}
 	Assets ResourceAssets
 	Labels map[string]string
+}
+
+// Equal returns true if incoming resource is equal with current resource.
+// Some fields are ignored during this comparison, which are: ID, Datastore, and URN.
+func (r ResourceSpec) Equal(incoming ResourceSpec) bool {
+	if r.Version != incoming.Version {
+		return false
+	}
+	if r.Name != incoming.Name {
+		return false
+	}
+	if r.Type != incoming.Type {
+		return false
+	}
+	if !reflect.DeepEqual(r.Spec, incoming.Spec) {
+		return false
+	}
+	if !reflect.DeepEqual(r.Assets, incoming.Assets) {
+		return false
+	}
+	if !reflect.DeepEqual(r.Labels, incoming.Labels) {
+		return false
+	}
+	return true
 }
 
 type ResourceAssets map[string]string

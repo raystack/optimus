@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -442,6 +443,16 @@ func ToResourceProto(spec models.ResourceSpec) (*pb.ResourceSpecification, error
 }
 
 func FromResourceProto(spec *pb.ResourceSpecification, storeName string, datastoreRepo models.DatastoreRepo) (models.ResourceSpec, error) {
+	if spec == nil {
+		return models.ResourceSpec{}, errors.New("spec is nil")
+	}
+	if storeName == "" {
+		return models.ResourceSpec{}, errors.New("store name is empty")
+	}
+	if datastoreRepo == nil {
+		return models.ResourceSpec{}, errors.New("datastore repo is nil")
+	}
+
 	storer, err := datastoreRepo.GetByName(storeName)
 	if err != nil {
 		return models.ResourceSpec{}, err
@@ -449,7 +460,7 @@ func FromResourceProto(spec *pb.ResourceSpecification, storeName string, datasto
 
 	typeController, ok := storer.Types()[models.ResourceType(spec.GetType())]
 	if !ok {
-		return models.ResourceSpec{}, fmt.Errorf("unsupported type %s for datastore %s", spec.Type, storeName)
+		return models.ResourceSpec{}, fmt.Errorf("unsupported type [%s] for datastore [%s]", spec.Type, storeName)
 	}
 	buf, err := proto.Marshal(spec)
 	if err != nil {

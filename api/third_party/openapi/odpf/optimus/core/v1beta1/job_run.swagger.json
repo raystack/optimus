@@ -595,9 +595,7 @@
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
         "TYPE_FAILURE",
-        "TYPE_SUCCESS",
-        "TYPE_RETRY",
-        "TYPE_JOB_START"
+        "TYPE_SUCCESS"
       ],
       "default": "TYPE_UNSPECIFIED"
     },

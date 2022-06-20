@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -12,6 +11,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/deploy"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -107,52 +107,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	if err != nil {
 		return err
 	}
-	return r.pollJobDeployment(conn.GetContext(), jobSpecService, deployID)
-}
-
-func (r *refreshCommand) pollJobDeployment(ctx context.Context, jobSpecService pb.JobSpecificationServiceClient, deployID string) error {
-	for keepPolling, timeout := true, time.After(deployTimeout); keepPolling; {
-		resp, err := jobSpecService.GetDeployJobsStatus(ctx, &pb.GetDeployJobsStatusRequest{
-			DeployId: deployID,
-		})
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				r.logger.Error(logger.ColoredError("Get deployment process took too long, timing out"))
-			}
-			return fmt.Errorf("getting deployment status failed: %w", err)
-		}
-
-		switch resp.Status {
-		case models.JobDeploymentStatusInProgress.String():
-			r.logger.Info("Deployment is in progress...")
-		case models.JobDeploymentStatusInQueue.String():
-			r.logger.Info("Deployment request is in queue...")
-		case models.JobDeploymentStatusCancelled.String():
-			r.logger.Error("Deployment request is cancelled.")
-			return nil
-		case models.JobDeploymentStatusSucceed.String():
-			r.logger.Info(logger.ColoredSuccess("Deployed %d jobs", resp.SuccessCount))
-			return nil
-		case models.JobDeploymentStatusFailed.String():
-			if resp.FailureCount > 0 {
-				r.logger.Error(logger.ColoredError("Unable to deploy below jobs:"))
-				for i, failedJob := range resp.Failures {
-					r.logger.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
-				}
-			}
-			r.logger.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
-			return nil
-		}
-
-		time.Sleep(pollInterval)
-
-		select {
-		case <-timeout:
-			keepPolling = false
-		default:
-		}
-	}
-	return nil
+	return deploy.PollJobDeployment(conn.GetContext(), r.logger, jobSpecService, deployTimeout, pollInterval, deployID)
 }
 
 func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationService_RefreshJobsClient) (deployID string, streamError error) {
@@ -163,11 +118,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 	for {
 		response, err := stream.Recv()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			streamError = err
-			return
+			return "", err
 		}
 
 		switch response.Type {
@@ -176,7 +127,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			if !response.GetSuccess() {
 				r.refreshFailedCounter++
 				if r.verbose {
-					r.logger.Warn(logger.ColoredError(fmt.Sprintf("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue())))
+					r.logger.Warn(logger.ColoredError("error '%s': failed to refresh dependency, %s", response.GetJobName(), response.GetValue()))
 				}
 				refreshErrors = append(refreshErrors, fmt.Errorf("failed to refresh: %s, %s", response.GetJobName(), response.GetValue()))
 			} else {
@@ -187,7 +138,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			}
 		case models.ProgressTypeJobDeploymentRequestCreated:
 			if len(refreshErrors) > 0 {
-				r.logger.Error(logger.ColoredError(fmt.Sprintf("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter)))
+				r.logger.Error(logger.ColoredError("Refreshed %d/%d jobs.", r.refreshSuccessCounter, r.refreshSuccessCounter+r.refreshFailedCounter))
 				for _, reqErr := range refreshErrors {
 					r.logger.Error(logger.ColoredError(reqErr.Error()))
 				}
@@ -198,7 +149,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			if !response.GetSuccess() {
 				r.logger.Warn(logger.ColoredError("Unable to request job deployment"))
 			} else {
-				r.logger.Info(logger.ColoredNotice(fmt.Sprintf("Deployment request created with ID: %s", response.GetValue())))
+				r.logger.Info(logger.ColoredNotice("Deployment request created with ID: %s", response.GetValue()))
 			}
 			deployID = response.Value
 			return
@@ -209,7 +160,6 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			}
 		}
 	}
-	return // nolint:nakedret
 }
 
 func (r *refreshCommand) resetCounters() {

@@ -17,7 +17,7 @@ import (
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
 )
 
-func Initialize(pluginLogger hclog.Logger) error {
+func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	discoveredPlugins := DiscoverPlugins(pluginLogger)
 	pluginLogger.Debug(fmt.Sprintf("discovering plugins(%d)...", len(discoveredPlugins)))
 
@@ -33,7 +33,7 @@ func Initialize(pluginLogger hclog.Logger) error {
 		pluginClient := plugin.NewClient(&plugin.ClientConfig{
 			HandshakeConfig:  base.Handshake,
 			Plugins:          pluginMap,
-			Cmd:              exec.Command(pluginPath),
+			Cmd:              exec.Command(pluginPath, arg...),
 			Managed:          true,
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 			Logger:           pluginLogger,

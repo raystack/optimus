@@ -16,6 +16,9 @@ import (
 )
 
 func createStandardView(ctx context.Context, spec models.ResourceSpec, client bqiface.Client, upsert bool) error {
+	spanCtx, span := startChildSpan(ctx, "CreateStandardView")
+	defer span.End()
+
 	bqResource, ok := spec.Spec.(BQTable)
 	if !ok {
 		return errors.New("failed to read table spec for bigquery")
@@ -31,7 +34,7 @@ func createStandardView(ctx context.Context, spec models.ResourceSpec, client bq
 	bqResource.Metadata.Labels = spec.Labels
 
 	dataset := client.DatasetInProject(bqResource.Project, bqResource.Dataset)
-	if err := ensureDataset(ctx, dataset, BQDataset{
+	if err := ensureDataset(spanCtx, dataset, BQDataset{
 		Project:  bqResource.Project,
 		Dataset:  bqResource.Dataset,
 		Metadata: BQDatasetMetadata{},
@@ -39,11 +42,14 @@ func createStandardView(ctx context.Context, spec models.ResourceSpec, client bq
 		return err
 	}
 	table := dataset.Table(bqResource.Table)
-	return ensureStandardView(ctx, table, bqResource, upsert)
+	return ensureStandardView(spanCtx, table, bqResource, upsert)
 }
 
 func ensureStandardView(ctx context.Context, tableHandle bqiface.Table, t BQTable, upsert bool) error {
-	meta, err := tableHandle.Metadata(ctx)
+	spanCtx, span := startChildSpan(ctx, "EnsureStandardView")
+	defer span.End()
+
+	meta, err := tableHandle.Metadata(spanCtx)
 	if err != nil {
 		var metaErr *googleapi.Error
 		if !errors.As(err, &metaErr) || metaErr.Code != http.StatusNotFound {
@@ -61,7 +67,7 @@ func ensureStandardView(ctx context.Context, tableHandle bqiface.Table, t BQTabl
 			}
 			meta.ExpirationTime = expiryTime
 		}
-		return tableHandle.Create(ctx, meta)
+		return tableHandle.Create(spanCtx, meta)
 	}
 	if !upsert {
 		return nil
@@ -82,7 +88,7 @@ func ensureStandardView(ctx context.Context, tableHandle bqiface.Table, t BQTabl
 	for k, v := range t.Metadata.Labels {
 		m.SetLabel(k, v)
 	}
-	if _, err := tableHandle.Update(ctx, m, meta.ETag); err != nil {
+	if _, err := tableHandle.Update(spanCtx, m, meta.ETag); err != nil {
 		return err
 	}
 	return nil

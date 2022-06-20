@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/googleapi"
 
 	"github.com/odpf/optimus/models"
@@ -94,8 +95,8 @@ func TestTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), errNotFound)
-			bQTable.On("Create", testingContext, createTableMeta).Return(nil)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), errNotFound)
+			bQTable.On("Create", mock.Anything, createTableMeta).Return(nil)
 
 			err := ensureTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
@@ -106,7 +107,7 @@ func TestTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return(createTableMeta, nil)
+			bQTable.On("Metadata", mock.Anything).Return(createTableMeta, nil)
 
 			err := ensureTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
@@ -120,7 +121,7 @@ func TestTable(t *testing.T) {
 			for _, e := range otherErrors {
 				bQTable := new(BqTableMock)
 
-				bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), e)
+				bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), e)
 				err := ensureTable(testingContext, bQTable, bQResource, upsert)
 				assert.Equal(t, e, err)
 				bQTable.AssertExpectations(t)
@@ -140,8 +141,8 @@ func TestTable(t *testing.T) {
 				Schema: createTableMeta.Schema,
 			}
 
-			bQTable.On("Metadata", testingContext).Return(tableMeta, nil)
-			bQTable.On("Update", testingContext, updateTableMeta, tableMeta.ETag).Return(tableMeta, nil)
+			bQTable.On("Metadata", mock.Anything).Return(tableMeta, nil)
+			bQTable.On("Update", mock.Anything, updateTableMeta, tableMeta.ETag).Return(tableMeta, nil)
 
 			err := ensureTable(testingContext, bQTable, bQResource, upsert)
 			assert.Nil(t, err)
@@ -166,7 +167,7 @@ func TestTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), errNotFound)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), errNotFound)
 
 			err := ensureTable(testingContext, bQTable, invalidTable, upsert)
 			assert.NotNil(t, err)
@@ -191,7 +192,7 @@ func TestTable(t *testing.T) {
 			bQTable := new(BqTableMock)
 			defer bQTable.AssertExpectations(t)
 
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), nil)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), nil)
 
 			err := ensureTable(testingContext, bQTable, invalidTable, upsert)
 			assert.NotNil(t, err)
@@ -221,10 +222,10 @@ func TestTable(t *testing.T) {
 					ETag: eTag,
 				},
 			}
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
-			bQTable.On("Metadata", testingContext).Return((*bigquery.TableMetadata)(nil), errNotFound)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
+			bQTable.On("Metadata", mock.Anything).Return((*bigquery.TableMetadata)(nil), errNotFound)
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable, nil)
-			bQTable.On("Create", testingContext, createTableMeta).Return(nil)
+			bQTable.On("Create", mock.Anything, createTableMeta).Return(nil)
 
 			err := createTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.Nil(t, err)
@@ -254,7 +255,7 @@ func TestTable(t *testing.T) {
 			defer bQDatasetHandle.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
+			bQDatasetHandle.On("Metadata", mock.Anything).Return((*bqiface.DatasetMetadata)(nil), errors.New("some error"))
 
 			err := createTable(testingContext, resourceSpec, bQClient, upsert)
 			assert.NotNil(t, err)
@@ -280,8 +281,8 @@ func TestTable(t *testing.T) {
 			defer bQTable.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
-			bQTable.On("Metadata", testingContext).Return(createTableMeta, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
+			bQTable.On("Metadata", mock.Anything).Return(createTableMeta, nil)
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable, nil)
 
 			actualResourceSpec, err := getTable(testingContext, resourceSpec, bQClient)
@@ -318,9 +319,9 @@ func TestTable(t *testing.T) {
 			defer bQTable.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return(&bqiface.DatasetMetadata{}, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&bqiface.DatasetMetadata{}, nil)
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable, nil)
-			bQTable.On("Delete", testingContext).Return(nil)
+			bQTable.On("Delete", mock.Anything).Return(nil)
 
 			err := deleteTable(testingContext, resourceSpec, bQClient)
 			assert.Nil(t, err)
@@ -351,7 +352,7 @@ func TestTable(t *testing.T) {
 			defer bQTable.AssertExpectations(t)
 
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle)
-			bQDatasetHandle.On("Metadata", testingContext).Return(&bqiface.DatasetMetadata{}, errors.New("some error"))
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&bqiface.DatasetMetadata{}, errors.New("some error"))
 
 			err := deleteTable(testingContext, resourceSpec, bQClient)
 			assert.NotNil(t, err)
@@ -438,19 +439,19 @@ func TestTable(t *testing.T) {
 			// duplicate table
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil)
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil)
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+			bQCopier.On("Run", mock.Anything).Return(bQJob, nil)
+			bQJob.On("Wait", mock.Anything).Return(&bigquery.JobStatus{}, nil)
 
 			// update expiry
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
-			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", mock.Anything, toUpdate, eTag).Return(tableMetadata, nil)
 
 			// verify
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, nil).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)
 
@@ -491,7 +492,7 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&bqiface.DatasetMetadata{}, errors.New(errorMsg))
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&bqiface.DatasetMetadata{}, errors.New(errorMsg))
 			resp, err := backupTable(testingContext, request, bQClient)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -508,9 +509,9 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, errors.New(errorMsg)).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, errors.New(errorMsg)).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)
 
@@ -537,13 +538,13 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, errors.New(errorMsg))
+			bQCopier.On("Run", mock.Anything).Return(bQJob, errors.New(errorMsg))
 
 			resp, err := backupTable(testingContext, request, bQClient)
 
@@ -570,14 +571,14 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, errors.New(errorMsg))
+			bQCopier.On("Run", mock.Anything).Return(bQJob, nil)
+			bQJob.On("Wait", mock.Anything).Return(&bigquery.JobStatus{}, errors.New(errorMsg))
 
 			resp, err := backupTable(testingContext, request, bQClient)
 
@@ -604,17 +605,17 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+			bQCopier.On("Run", mock.Anything).Return(bQJob, nil)
+			bQJob.On("Wait", mock.Anything).Return(&bigquery.JobStatus{}, nil)
 
 			// update expiry
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, errors.New(errorMsg)).Once()
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, errors.New(errorMsg)).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)
 
@@ -641,18 +642,18 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+			bQCopier.On("Run", mock.Anything).Return(bQJob, nil)
+			bQJob.On("Wait", mock.Anything).Return(&bigquery.JobStatus{}, nil)
 
 			// update expiry
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
-			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, errors.New(errorMsg))
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", mock.Anything, toUpdate, eTag).Return(tableMetadata, errors.New(errorMsg))
 
 			resp, err := backupTable(testingContext, request, bQClient)
 
@@ -679,21 +680,21 @@ func TestTable(t *testing.T) {
 
 			// duplicate table
 			bQClient.On("DatasetInProject", destinationTable.Project, destinationTable.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQClient.On("DatasetInProject", bQResource.Project, bQResource.Dataset).Return(bQDatasetHandle).Once()
-			bQDatasetHandle.On("Metadata", testingContext).Return(&datasetMetadata, nil).Once()
+			bQDatasetHandle.On("Metadata", mock.Anything).Return(&datasetMetadata, nil).Once()
 			bQDatasetHandle.On("Table", bQResource.Table).Return(bQTable)
 			bQDatasetHandle.On("Table", destinationTable.Table).Return(bQTable)
 			bQTable.On("CopierFrom", []bqiface.Table{bQTable}).Return(bQCopier)
-			bQCopier.On("Run", testingContext).Return(bQJob, nil)
-			bQJob.On("Wait", testingContext).Return(&bigquery.JobStatus{}, nil)
+			bQCopier.On("Run", mock.Anything).Return(bQJob, nil)
+			bQJob.On("Wait", mock.Anything).Return(&bigquery.JobStatus{}, nil)
 
 			// update expiry
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, nil).Once()
-			bQTable.On("Update", testingContext, toUpdate, eTag).Return(tableMetadata, nil)
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, nil).Once()
+			bQTable.On("Update", mock.Anything, toUpdate, eTag).Return(tableMetadata, nil)
 
 			// verify
-			bQTable.On("Metadata", testingContext).Return(tableMetadata, errors.New(errorMsg)).Once()
+			bQTable.On("Metadata", mock.Anything).Return(tableMetadata, errors.New(errorMsg)).Once()
 
 			resp, err := backupTable(testingContext, request, bQClient)
 

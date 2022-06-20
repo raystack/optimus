@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -35,65 +36,35 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 }
 
 func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, resourceSpec := range resourceSpecs {
-		currentSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
-		runner.Add(func() (interface{}, error) {
-			if err := repo.Save(ctx, currentSpec); err != nil {
-				return nil, err
-			}
-
-			err := currentSpec.Datastore.CreateResource(ctx, models.CreateResourceRequest{
-				Resource: currentSpec,
-				Project:  namespace.ProjectSpec,
-			})
-			srv.notifyProgress(obs, &EventResourceCreated{
-				Spec: currentSpec,
-				Err:  err,
-			})
-			return nil, err
-		})
-	}
-
-	var errorSet error
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			errorSet = multierror.Append(errorSet, result.Err)
+	createResource := func(rs models.ResourceSpec) error {
+		request := models.CreateResourceRequest{
+			Resource: rs,
+			Project:  namespace.ProjectSpec,
 		}
+		err := rs.Datastore.CreateResource(ctx, request)
+		srv.notifyProgress(obs, &EventResourceCreated{
+			Spec: rs,
+			Err:  err,
+		})
+		return err
 	}
-	return errorSet
+	return srv.saveResource(ctx, namespace, resourceSpecs, obs, createResource)
 }
 
 func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
-	for _, resourceSpec := range resourceSpecs {
-		currentSpec := resourceSpec
-		repo := srv.resourceRepoFactory.New(namespace, currentSpec.Datastore)
-		runner.Add(func() (interface{}, error) {
-			if err := repo.Save(ctx, currentSpec); err != nil {
-				return nil, err
-			}
-
-			err := currentSpec.Datastore.UpdateResource(ctx, models.UpdateResourceRequest{
-				Resource: currentSpec,
-				Project:  namespace.ProjectSpec,
-			})
-			srv.notifyProgress(obs, &EventResourceUpdated{
-				Spec: currentSpec,
-				Err:  err,
-			})
-			return nil, err
-		})
-	}
-
-	var errorSet error
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			errorSet = multierror.Append(errorSet, result.Err)
+	updateDatastore := func(rs models.ResourceSpec) error {
+		request := models.UpdateResourceRequest{
+			Resource: rs,
+			Project:  namespace.ProjectSpec,
 		}
+		err := rs.Datastore.UpdateResource(ctx, request)
+		srv.notifyProgress(obs, &EventResourceUpdated{
+			Spec: rs,
+			Err:  err,
+		})
+		return err
 	}
-	return errorSet
+	return srv.saveResource(ctx, namespace, resourceSpecs, obs, updateDatastore)
 }
 
 func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
@@ -139,6 +110,46 @@ func (srv Service) DeleteResource(ctx context.Context, namespace models.Namespac
 	return repo.Delete(ctx, name)
 }
 
+func (srv Service) saveResource(
+	ctx context.Context,
+	namespace models.NamespaceSpec,
+	resourceSpecs []models.ResourceSpec,
+	obs progress.Observer,
+	storeDatastore func(models.ResourceSpec) error,
+) error {
+	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
+	for _, incomingSpec := range resourceSpecs {
+		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
+		runner.Add(func() (interface{}, error) {
+			existingSpec, err := repo.GetByName(ctx, incomingSpec.Name)
+			if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+				return nil, err
+			}
+
+			if existingSpec.Equal(incomingSpec) {
+				srv.notifyProgress(obs, &EventResourceSkipped{
+					Spec:   incomingSpec,
+					Reason: "incoming resource is the same as existing",
+				})
+				return nil, nil // nolint:nilnil
+			}
+
+			if err := repo.Save(ctx, incomingSpec); err != nil {
+				return nil, err
+			}
+			return nil, storeDatastore(incomingSpec)
+		})
+	}
+
+	var errorSet error
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			errorSet = multierror.Append(errorSet, result.Err)
+		}
+	}
+	return errorSet
+}
+
 func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
 	if po == nil {
 		return
@@ -165,7 +176,17 @@ type (
 		Spec models.ResourceSpec
 		Err  error
 	}
+
+	// EventResourceSkipped represents the resource being skipped in datastore
+	EventResourceSkipped struct {
+		Spec   models.ResourceSpec
+		Reason string
+	}
 )
+
+func (e *EventResourceSkipped) String() string {
+	return fmt.Sprintf("resource [%s] is skipped because %s", e.Spec.Name, e.Reason)
+}
 
 func (e *EventResourceUpdated) String() string {
 	if e.Err != nil {
