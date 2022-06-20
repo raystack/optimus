@@ -34,10 +34,8 @@ func (_m *ProjectJobSpecRepository) GetAll(_a0 context.Context) ([]models.JobSpe
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context) []models.JobSpec); ok {
 		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -78,10 +76,8 @@ func (_m *ProjectJobSpecRepository) GetByIDs(_a0 context.Context, _a1 []uuid.UUI
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -113,10 +109,10 @@ func (_m *ProjectJobSpecRepository) GetByName(_a0 context.Context, _a1 string) (
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok { // nolint: gomnd
 		r2 = rf(_a0, _a1)
 	} else {
-		r2 = ret.Error(2)
+		r2 = ret.Error(2) // nolint:gomnd
 	}
 
 	return r0, r1, r2
@@ -141,10 +137,10 @@ func (_m *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, pro
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok { // nolint:gomnd
 		r2 = rf(ctx, projectName, jobName)
 	} else {
-		r2 = ret.Error(2)
+		r2 = ret.Error(2) // nolint:gomnd
 	}
 
 	return r0, r1, r2
@@ -157,10 +153,8 @@ func (_m *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map[s
 	var r0 map[string][]string
 	if rf, ok := ret.Get(0).(func(context.Context) map[string][]string); ok {
 		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string][]string)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string][]string)
 	}
 
 	var r1 error
