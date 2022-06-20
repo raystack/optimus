@@ -125,13 +125,6 @@ type BackupRepository interface {
 	GetByID(context.Context, uuid.UUID, models.Datastorer) (models.BackupSpec, error)
 }
 
-// JobDependencyRepository represents a storage interface for job dependencies
-type JobDependencyRepository interface {
-	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
-	GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
-	DeleteByJobID(context.Context, uuid.UUID) error
-}
-
 type JobDeploymentRepository interface {
 	Save(ctx context.Context, deployment models.JobDeployment) error
 	GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error)
