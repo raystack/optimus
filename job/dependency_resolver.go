@@ -29,6 +29,19 @@ type dependencyResolver struct {
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
 	pluginService             service.PluginService
 	dependencyRepo            store.JobDependencyRepository
+	jobSourceRepo             store.JobSourceRepository
+}
+
+// NewDependencyResolver creates a new instance of Resolver
+func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+	dependencyRepo store.JobDependencyRepository, pluginService service.PluginService,
+	jobSourceRepo store.JobSourceRepository) *dependencyResolver {
+	return &dependencyResolver{
+		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		dependencyRepo:            dependencyRepo,
+		pluginService:             pluginService,
+		jobSourceRepo:             jobSourceRepo,
+	}
 }
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
@@ -240,6 +253,9 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
+		if err := r.persistJobSource(ctx, jobSpec.ID, projectSpec.ID, depDestination); err != nil {
+			return jobSpec, err
+		}
 		dependencyJobSpec, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
@@ -255,6 +271,15 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	}
 
 	return jobSpec, nil
+}
+
+func (r *dependencyResolver) persistJobSource(ctx context.Context, jobID uuid.UUID, projectID models.ProjectID, jobSource string) error {
+	jobSourceSpec := models.JobSource{
+		JobID:       jobID,
+		ProjectID:   projectID,
+		ResourceURN: jobSource,
+	}
+	return r.jobSourceRepo.Save(ctx, jobSourceSpec)
 }
 
 // extractDependency extracts tries to find the upstream dependency from multiple matches
@@ -350,15 +375,4 @@ func (*dependencyResolver) notifyProgress(observer progress.Observer, e progress
 		return
 	}
 	observer.Notify(e)
-}
-
-// NewDependencyResolver creates a new instance of Resolver
-func NewDependencyResolver(projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	dependencyRepo store.JobDependencyRepository,
-	pluginService service.PluginService) *dependencyResolver {
-	return &dependencyResolver{
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
-		dependencyRepo:            dependencyRepo,
-		pluginService:             pluginService,
-	}
 }

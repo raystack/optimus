@@ -245,7 +245,8 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 
 	jobDependencyRepo := postgres.NewJobDependencyRepository(s.dbConn)
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
+	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
+	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService, jobSourceRepository)
 	priorityResolver := job.NewPriorityResolver()
 
 	replayWorkerFactory := &replayWorkerFact{
@@ -290,7 +291,6 @@ func (s *OptimusServer) setupHandlers() error {
 	})
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
-	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
 	deployer := job.NewDeployer(
 		s.logger,
 		dependencyResolver,
