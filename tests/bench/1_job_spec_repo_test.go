@@ -16,25 +16,26 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkJobRepository(b *testing.B) {
 	ctx := context.Background()
-	pluginRepo := inMemoryPluginRegistry()
+	pluginRepo := setup.InMemoryPluginRegistry()
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	adapter := postgres.NewAdapter(pluginRepo)
 
-	project := getProject(1)
+	project := setup.Project(1)
 	project.ID = models.ProjectID(uuid.New())
 
-	namespace := getNamespace(1, project)
+	namespace := setup.Namespace(1, project)
 	namespace.ID = uuid.New()
 
-	bq2bq := bqPlugin{}
+	bq2bq := setup.MockPluginBQ{}
 
 	dbSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
@@ -44,7 +45,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {
-			assert.Nil(b, secretRepo.Save(ctx, project, namespace, getSecret(i)))
+			assert.Nil(b, secretRepo.Save(ctx, project, namespace, setup.Secret(i)))
 		}
 
 		return dbConn
@@ -59,7 +60,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			jobSpec := getJob(i, namespace, bq2bq, nil)
+			jobSpec := setup.Job(i, namespace, bq2bq, nil)
 			err := repo.Save(ctx, jobSpec, dest)
 			if err != nil {
 				panic(err)
@@ -75,7 +76,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := repo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -104,7 +105,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := repo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := repo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -125,21 +126,21 @@ func BenchmarkJobRepository(b *testing.B) {
 
 func BenchmarkProjectJobRepo(b *testing.B) {
 	ctx := context.Background()
-	pluginRepo := inMemoryPluginRegistry()
+	pluginRepo := setup.InMemoryPluginRegistry()
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	adapter := postgres.NewAdapter(pluginRepo)
 
-	project := getProject(1)
+	project := setup.Project(1)
 	project.ID = models.ProjectID(uuid.New())
 
-	namespace := getNamespace(1, project)
+	namespace := setup.Namespace(1, project)
 	namespace.ID = uuid.New()
 
-	bq2bq := bqPlugin{}
+	bq2bq := setup.MockPluginBQ{}
 
 	dbSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
@@ -149,7 +150,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {
-			assert.Nil(b, secretRepo.Save(ctx, project, namespace, getSecret(i)))
+			assert.Nil(b, secretRepo.Save(ctx, project, namespace, setup.Secret(i)))
 		}
 
 		return dbConn
@@ -163,7 +164,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := jobSpecRepo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -192,7 +193,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := jobSpecRepo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -218,7 +219,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := jobSpecRepo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -247,7 +248,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := jobSpecRepo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -276,7 +277,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := jobSpecRepo.Save(ctx, setup.Job(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -301,7 +302,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		for i := 0; i < 1000; i++ {
 			id := uuid.New()
 			ids = append(ids, id)
-			spec := getJob(i, namespace, bq2bq, nil)
+			spec := setup.Job(i, namespace, bq2bq, nil)
 			spec.ID = id
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
 			err := jobSpecRepo.Save(ctx, spec, dest)

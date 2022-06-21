@@ -16,24 +16,25 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkJobRunRepository(b *testing.B) {
 	ctx := context.Background()
-	pluginRepo := inMemoryPluginRegistry()
+	pluginRepo := setup.InMemoryPluginRegistry()
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	adapter := postgres.NewAdapter(pluginRepo)
-	bq2bq := bqPlugin{}
+	bq2bq := setup.MockPluginBQ{}
 
-	project := getProject(1)
+	project := setup.Project(1)
 	project.ID = models.ProjectID(uuid.New())
 
-	namespace := getNamespace(1, project)
+	namespace := setup.Namespace(1, project)
 	namespace.ID = uuid.New()
 
 	dbSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
@@ -43,7 +44,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {
-			assert.Nil(b, secretRepo.Save(ctx, project, namespace, getSecret(i)))
+			assert.Nil(b, secretRepo.Save(ctx, project, namespace, setup.Secret(i)))
 		}
 
 		return dbConn
@@ -56,7 +57,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			jobRun := getJobRun(getJob(i, namespace, bq2bq, nil))
+			jobRun := getJobRun(setup.Job(i, namespace, bq2bq, nil))
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
 			err := repo.Save(ctx, namespace, jobRun, dest)
 			if err != nil {
@@ -70,7 +71,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		var repo store.JobRunRepository = postgres.NewJobRunRepository(db, adapter)
 		var jobIds []uuid.UUID
 		for i := 0; i < 100; i++ {
-			job := getJob(i, namespace, bq2bq, nil)
+			job := setup.Job(i, namespace, bq2bq, nil)
 			job.ID = uuid.New()
 			jobIds = append(jobIds, job.ID)
 			jobRun := getJobRun(job)
@@ -100,7 +101,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		var repo store.JobRunRepository = postgres.NewJobRunRepository(db, adapter)
 		var jobIds []uuid.UUID
 		for i := 0; i < 100; i++ {
-			job := getJob(i, namespace, bq2bq, nil)
+			job := setup.Job(i, namespace, bq2bq, nil)
 			jobRun := getJobRun(job)
 			jobRun.ID = uuid.New()
 			jobIds = append(jobIds, jobRun.ID)
@@ -129,7 +130,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		var repo store.JobRunRepository = postgres.NewJobRunRepository(db, adapter)
 		var jobIds []uuid.UUID
 		for i := 0; i < 100; i++ {
-			job := getJob(i, namespace, bq2bq, nil)
+			job := setup.Job(i, namespace, bq2bq, nil)
 			jobRun := getJobRun(job)
 			jobRun.ID = uuid.New()
 			jobIds = append(jobIds, jobRun.ID)
@@ -154,7 +155,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 
 		var repo store.JobRunRepository = postgres.NewJobRunRepository(db, adapter)
 		for i := 0; i < 100; i++ {
-			job := getJob(i, namespace, bq2bq, nil)
+			job := setup.Job(i, namespace, bq2bq, nil)
 			jobRun := getJobRun(job)
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
 			err := repo.Save(ctx, namespace, jobRun, dest)
@@ -178,7 +179,7 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.JobRunRepository = postgres.NewJobRunRepository(db, adapter)
-		job := getJob(1, namespace, bq2bq, nil)
+		job := setup.Job(1, namespace, bq2bq, nil)
 		jobRun := getJobRun(job)
 		jobRun.ID = uuid.New()
 		dest := fmt.Sprintf("bigquery://integration:playground.table%d", 1)
