@@ -357,7 +357,7 @@ type JobService interface {
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
-	// Will DELETED
+	// TODO: to be deprecated
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetByDestination fetches a Job by destination for a specific project
