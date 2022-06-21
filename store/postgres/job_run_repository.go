@@ -13,7 +13,7 @@ import (
 )
 
 type JobRunMetrics struct {
-	JobRunId uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	JobRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobID uuid.UUID
 	Job   Job `gorm:"foreignKey:JobID"`
@@ -30,9 +30,9 @@ type JobRunMetrics struct {
 
 	Status        string
 	Attempt       int
-	SlaMissDelay  int
+	SLAMissDelay  int
 	Duration      int64
-	SlaDefinition int64
+	SLADefinition int64
 	//TODO: job run page link get from dag context
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
@@ -45,9 +45,8 @@ const (
 )
 
 type JobRunMetricsRepository struct {
-	db      *gorm.DB
-	adapter *JobSpecAdapter
-	logger  log.Logger
+	db     *gorm.DB
+	logger log.Logger
 }
 
 // TableName overrides the table name used by User to `profiles`
@@ -77,9 +76,9 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	return repo.db.WithContext(ctx).Save(&jobRunMetrics).Error
 }
 
-// get the latest jobRun instance for a given schedule time
-func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, ScheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
-	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, ScheduledAt)
+// GetActiveJobRun get the latest jobRun instance for a given schedule time
+func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, scheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, scheduledAt)
 	if err != nil {
 		return models.JobRunSpec{}, err
 	}
@@ -90,7 +89,7 @@ func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, Schedu
 	}
 
 	jobRunSpec := models.JobRunSpec{
-		JobRunId:      jobRunMetrics.JobRunId,
+		JobRunID:      jobRunMetrics.JobRunID,
 		JobID:         jobRunMetrics.JobID,
 		NamespaceID:   jobRunMetrics.NamespaceID,
 		ProjectID:     jobRunMetrics.ProjectID,
@@ -99,9 +98,9 @@ func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, Schedu
 		EndTime:       jobRunMetrics.EndTime,
 		Status:        jobRunMetrics.Status,
 		Attempt:       jobRunMetrics.Attempt,
-		SlaMissDelay:  jobRunMetrics.SlaMissDelay,
+		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
 		Duration:      jobRunMetrics.Duration,
-		SlaDefinition: jobRunMetrics.SlaDefinition,
+		SLADefinition: jobRunMetrics.SLADefinition,
 	}
 
 	return jobRunSpec, err
@@ -122,7 +121,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		return models.JobRunSpec{}, errors.New("could not update existing job run, Error :: " + err.Error())
 	}
 	jobRunSpec := models.JobRunSpec{
-		JobRunId:     jobRunMetrics.JobRunId,
+		JobRunID:     jobRunMetrics.JobRunID,
 		JobID:        jobRunMetrics.JobID,
 		NamespaceID:  jobRunMetrics.NamespaceID,
 		ProjectID:    jobRunMetrics.ProjectID,
@@ -131,7 +130,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		EndTime:      jobRunMetrics.EndTime,
 		Status:       jobRunMetrics.Status,
 		Attempt:      jobRunMetrics.Attempt,
-		SlaMissDelay: jobRunMetrics.SlaMissDelay,
+		SLAMissDelay: jobRunMetrics.SLAMissDelay,
 		Duration:     jobRunMetrics.Duration,
 	}
 
@@ -149,7 +148,7 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	}
 	bigEndTime := time.Date(3000, 9, 16, 19, 17, 23, 0, time.UTC)
 	resource := JobRunMetrics{
-		JobRunId:    uuid.New(),
+		JobRunID:    uuid.New(),
 		JobID:       jobSpec.ID,
 		NamespaceID: namespaceSpec.ID,
 		ProjectID:   uuid.UUID(namespaceSpec.ProjectSpec.ID),
@@ -157,7 +156,7 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 		ScheduledAt:   scheduledAtTimeStamp,
 		StartTime:     startedAtTimeStamp,
 		EndTime:       bigEndTime,
-		SlaDefinition: slaMissDurationInSec,
+		SLADefinition: slaMissDurationInSec,
 
 		Status:  jobRunStatusRunning,
 		Attempt: int(eventPayload["attempt"].GetNumberValue()),

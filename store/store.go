@@ -93,19 +93,19 @@ type JobRunMetricsRepository interface {
 type TaskRunRepository interface {
 	Save(context.Context, models.JobEvent, models.JobRunSpec) error
 	Update(context.Context, models.JobEvent, models.JobRunSpec) error
-	GetTaskRunIfExists(context.Context, models.JobEvent, models.JobRunSpec) (models.TaskRunSpec, error)
+	GetTaskRunIfExists(context.Context, models.JobRunSpec) (models.TaskRunSpec, error)
 }
 
 type SensorRunRepository interface {
 	Save(context.Context, models.JobEvent, models.JobRunSpec) error
 	Update(context.Context, models.JobEvent, models.JobRunSpec) error
-	GetSensorRunIfExists(context.Context, models.JobEvent, models.JobRunSpec) (models.SensorRunSpec, error)
+	GetSensorRunIfExists(context.Context, models.JobRunSpec) (models.SensorRunSpec, error)
 }
 
 type HookRunRepository interface {
 	Save(context.Context, models.JobEvent, models.JobRunSpec) error
 	Update(context.Context, models.JobEvent, models.JobRunSpec) error
-	GetHookRunIfExists(context.Context, models.JobEvent, models.JobRunSpec) (models.HookRunSpec, error)
+	GetHookRunIfExists(context.Context, models.JobRunSpec) (models.HookRunSpec, error)
 }
 
 // JobRunSpecRepository represents a storage interface for Job run instances created

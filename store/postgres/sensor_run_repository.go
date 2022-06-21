@@ -14,7 +14,7 @@ import (
 )
 
 type SensorRun struct {
-	SensorRunId uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	SensorRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobRunID uuid.UUID
 
@@ -31,9 +31,8 @@ type SensorRun struct {
 }
 
 type SensorRunRepository struct {
-	db      *gorm.DB
-	adapter *JobSpecAdapter
-	logger  log.Logger
+	db     *gorm.DB
+	logger log.Logger
 }
 
 func (repo *SensorRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
@@ -42,7 +41,7 @@ func (repo *SensorRunRepository) Save(ctx context.Context, event models.JobEvent
 	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
 
 	resource := SensorRun{
-		JobRunID:      jobRunSpec.JobRunId,
+		JobRunID:      jobRunSpec.JobRunID,
 		StartTime:     startedAtTimeStamp,
 		Status:        jobRunStatusRunning,
 		Attempt:       int(eventPayload["attempt"].GetNumberValue()),
@@ -56,7 +55,7 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 	eventPayload := event.Value
 
 	sensorRun := SensorRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
 		return errors.New("could not update existing sensor run, Error :: " + err.Error())
 	}
 	if event.Type == models.SensorFailEvent ||
@@ -73,18 +72,16 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 	return repo.db.WithContext(ctx).Save(&sensorRun).Error
 }
 
-func (repo *SensorRunRepository) GetSensorRunIfExists(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) (models.SensorRunSpec, error) {
-
+func (repo *SensorRunRepository) GetSensorRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.SensorRunSpec, error) {
 	sensorRun := SensorRun{}
-	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
 		if err != nil {
 			return models.SensorRunSpec{}, errors.New("sensor run not found :: " + err.Error())
-		} else {
-			return models.SensorRunSpec{}, errors.New("sensor run not found")
 		}
+		return models.SensorRunSpec{}, errors.New("sensor run not found")
 	}
 	sensorRunSpec := models.SensorRunSpec{
-		SensorRunId:   sensorRun.SensorRunId,
+		SensorRunID:   sensorRun.SensorRunID,
 		JobRunID:      sensorRun.JobRunID,
 		StartTime:     sensorRun.StartTime,
 		EndTime:       sensorRun.EndTime,

@@ -26,8 +26,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				Version,
-				nil, nil, nil,
-			)
+				nil, nil, nil, nil)
 			versionRequest := pb.VersionRequest{Client: Version}
 			resp, err := runtimeServiceServer.Version(ctx, &versionRequest)
 			assert.Nil(t, err)
@@ -80,7 +79,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				Version,
-				jobService, eventSvc, namespaceService,
+				jobService, eventSvc, namespaceService, nil,
 			)
 			req := &pb.RegisterJobEventRequest{
 				ProjectName:   projectSpec.Name,

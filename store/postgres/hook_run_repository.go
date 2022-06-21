@@ -13,7 +13,7 @@ import (
 )
 
 type HookRun struct {
-	HookRunId uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	HookRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobRunID uuid.UUID
 
@@ -30,16 +30,15 @@ type HookRun struct {
 }
 
 type HookRunRepository struct {
-	db      *gorm.DB
-	adapter *JobSpecAdapter
-	logger  log.Logger
+	db     *gorm.DB
+	logger log.Logger
 }
 
 func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
 	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
 	resource := HookRun{
-		JobRunID:      jobRunSpec.JobRunId,
+		JobRunID:      jobRunSpec.JobRunID,
 		StartTime:     startedAtTimeStamp,
 		Status:        jobRunStatusRunning,
 		Attempt:       int(eventPayload["attempt"].GetNumberValue()),
@@ -48,18 +47,16 @@ func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, 
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
 }
 
-func (repo *HookRunRepository) GetHookRunIfExists(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) (models.HookRunSpec, error) {
-
+func (repo *HookRunRepository) GetHookRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.HookRunSpec, error) {
 	hookRun := HookRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
 		if err != nil {
 			return models.HookRunSpec{}, errors.New("could not update existing hook run, Error :: " + err.Error())
-		} else {
-			return models.HookRunSpec{}, errors.New("could not get existing hook run")
 		}
+		return models.HookRunSpec{}, errors.New("could not get existing hook run")
 	}
 	hookRunSpec := models.HookRunSpec{
-		HookRunId:     hookRun.HookRunId,
+		HookRunID:     hookRun.HookRunID,
 		JobRunID:      hookRun.JobRunID,
 		StartTime:     hookRun.StartTime,
 		EndTime:       hookRun.EndTime,
@@ -75,7 +72,7 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 	eventPayload := event.Value
 
 	hookRun := HookRun{}
-	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
 		return errors.New("could not update existing hook run, Error :: " + err.Error())
 	}
 	hookRun.Status = eventPayload["Status"].GetStringValue()

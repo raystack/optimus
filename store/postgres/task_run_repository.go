@@ -12,10 +12,11 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type TaskRun struct {
-	TaskRunId uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	TaskRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobRunID uuid.UUID
 
@@ -32,22 +33,20 @@ type TaskRun struct {
 }
 
 type TaskRunRepository struct {
-	db      *gorm.DB
-	adapter *JobSpecAdapter
-	logger  log.Logger
+	db     *gorm.DB
+	logger log.Logger
 }
 
-func (repo *TaskRunRepository) GetTaskRunIfExists(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
+func (repo *TaskRunRepository) GetTaskRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
 	taskRun := TaskRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
-		if err != nil {
-			return models.TaskRunSpec{}, errors.New("could not get existing task run, Error :: " + err.Error())
-		} else {
-			return models.TaskRunSpec{}, errors.New("could not get existing task run ")
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.TaskRunSpec{}, store.ErrResourceNotFound
 		}
+		return models.TaskRunSpec{}, err
 	}
 	taskRunSpec := models.TaskRunSpec{
-		TaskRunId:     taskRun.TaskRunId,
+		TaskRunID:     taskRun.TaskRunID,
 		JobRunID:      taskRun.JobRunID,
 		StartTime:     taskRun.StartTime,
 		EndTime:       taskRun.EndTime,
@@ -64,8 +63,8 @@ func (repo *TaskRunRepository) Save(ctx context.Context, event models.JobEvent, 
 	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
 
 	taskRun := TaskRun{
-		TaskRunId:     uuid.New(),
-		JobRunID:      jobRunSpec.JobRunId,
+		TaskRunID:     uuid.New(),
+		JobRunID:      jobRunSpec.JobRunID,
 		StartTime:     startedAtTimeStamp,
 		Status:        jobRunStatusRunning,
 		Attempt:       int(eventPayload["attempt"].GetNumberValue()),
@@ -79,7 +78,7 @@ func (repo *TaskRunRepository) Update(ctx context.Context, event models.JobEvent
 	eventPayload := event.Value
 	taskRun := TaskRun{}
 
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunId, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
 		return errors.New("could not update existing task run, Error :: " + err.Error())
 	}
 	resourceString1, _ := json.Marshal(taskRun)
