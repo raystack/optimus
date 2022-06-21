@@ -27,7 +27,6 @@ type JobRunServiceClient interface {
 	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
 	// JobRun returns the current and past run status of jobs on a given range
 	JobRun(ctx context.Context, in *JobRunRequest, opts ...grpc.CallOption) (*JobRunResponse, error)
-	GetJobRunByFilter(ctx context.Context, in *GetJobRunByFilterRequest, opts ...grpc.CallOption) (*GetJobRunByFilterResponse, error)
 	// GetWindow provides the start and end dates provided a scheduled date
 	// of the execution window
 	GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error)
@@ -80,15 +79,6 @@ func (c *jobRunServiceClient) JobRun(ctx context.Context, in *JobRunRequest, opt
 	return out, nil
 }
 
-func (c *jobRunServiceClient) GetJobRunByFilter(ctx context.Context, in *GetJobRunByFilterRequest, opts ...grpc.CallOption) (*GetJobRunByFilterResponse, error) {
-	out := new(GetJobRunByFilterResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/GetJobRunByFilter", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *jobRunServiceClient) GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error) {
 	out := new(GetWindowResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/GetWindow", in, out, opts...)
@@ -120,7 +110,6 @@ type JobRunServiceServer interface {
 	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)
 	// JobRun returns the current and past run status of jobs on a given range
 	JobRun(context.Context, *JobRunRequest) (*JobRunResponse, error)
-	GetJobRunByFilter(context.Context, *GetJobRunByFilterRequest) (*GetJobRunByFilterResponse, error)
 	// GetWindow provides the start and end dates provided a scheduled date
 	// of the execution window
 	GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error)
@@ -145,9 +134,6 @@ func (UnimplementedJobRunServiceServer) JobStatus(context.Context, *JobStatusReq
 }
 func (UnimplementedJobRunServiceServer) JobRun(context.Context, *JobRunRequest) (*JobRunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JobRun not implemented")
-}
-func (UnimplementedJobRunServiceServer) GetJobRunByFilter(context.Context, *GetJobRunByFilterRequest) (*GetJobRunByFilterResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetJobRunByFilter not implemented")
 }
 func (UnimplementedJobRunServiceServer) GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWindow not implemented")
@@ -240,24 +226,6 @@ func _JobRunService_JobRun_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _JobRunService_GetJobRunByFilter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetJobRunByFilterRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JobRunServiceServer).GetJobRunByFilter(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/GetJobRunByFilter",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).GetJobRunByFilter(ctx, req.(*GetJobRunByFilterRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _JobRunService_GetWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWindowRequest)
 	if err := dec(in); err != nil {
@@ -316,10 +284,6 @@ var JobRunService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "JobRun",
 			Handler:    _JobRunService_JobRun_Handler,
-		},
-		{
-			MethodName: "GetJobRunByFilter",
-			Handler:    _JobRunService_GetJobRunByFilter_Handler,
 		},
 		{
 			MethodName: "GetWindow",

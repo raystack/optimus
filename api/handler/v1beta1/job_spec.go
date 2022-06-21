@@ -37,38 +37,6 @@ type JobSpecServiceServer struct {
 	pb.UnimplementedJobSpecificationServiceServer
 }
 
-func (sv *JobSpecServiceServer) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
-	var jobSpec models.JobSpec
-	var err error
-	jobSpecFoundFlag := false
-	if req.GetJobName() != "" {
-		jobSpec, err = sv.jobSvc.GetByJobName(ctx, req.GetJobName())
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
-		}
-		if req.GetResourceDestination() != "" {
-			jobSpecByResourceDestination, err := sv.jobSvc.GetByResourceDestination(ctx, req.GetResourceDestination())
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
-			}
-			if jobSpecByResourceDestination.ID != jobSpec.ID {
-				return nil, status.Errorf(codes.Internal, "failed to retrieve jobs, check if job name and resource destination belong to same job")
-			}
-		}
-		jobSpecFoundFlag = true
-	}
-	if req.GetResourceDestination() != "" && jobSpecFoundFlag == false {
-		jobSpec, err := sv.jobSvc.GetByResourceDestination(ctx, req.GetResourceDestination())
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to retrieve jobs %s", err.Error())
-		}
-		jobProto := ToJobProto(jobSpec)
-		return &pb.GetJobResponse{Job: jobProto}, nil
-	}
-	jobSpecAdapt := ToJobProto(jobSpec)
-	return &pb.GetJobResponse{Job: jobSpecAdapt}, nil
-}
-
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
 	startTime := time.Now()
 	errNamespaces := []string{}
@@ -296,6 +264,19 @@ func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb
 	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,
 	}, nil
+}
+
+func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
+	jobSpecs, err := sv.jobSvc.GetWithFilters(ctx, req.GetProjectName(), req.GetJobName(), req.GetResourceDestination())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to retrieve job: %s", err.Error())
+	}
+	jobProtos := []*pb.JobSpecification{}
+	for _, jobSpec := range jobSpecs {
+		jobProto := ToJobProto(jobSpec)
+		jobProtos = append(jobProtos, jobProto)
+	}
+	return &pb.GetJobSpecificationsResponse{Jobs: jobProtos}, nil
 }
 
 func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {

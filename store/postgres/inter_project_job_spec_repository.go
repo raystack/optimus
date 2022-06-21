@@ -15,34 +15,45 @@ type interProjectJobSpecRepository struct {
 	adapter *JobSpecAdapter
 }
 
-func (repo interProjectJobSpecRepository) GetJobByName(ctx context.Context, jobName string) (models.JobSpec, error) {
-	var r Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("name = ?", jobName).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, store.ErrResourceNotFound
+func (repo interProjectJobSpecRepository) GetWithFilters(ctx context.Context, projectName, jobName, resourceDestination string) ([]models.JobSpec, error) {
+	var project Project
+	var jobs []Job
+	var specs []models.JobSpec
+	query := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project")
+	if projectName != "" {
+		if err := repo.db.WithContext(ctx).Where("name = ?", projectName).First(&project).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return []models.JobSpec{}, store.ErrResourceNotFound
+			}
+			return []models.JobSpec{}, err
 		}
-		return models.JobSpec{}, err
+		query = query.Where("project_id = ?", project.ID)
 	}
-	jobSpec, err := repo.adapter.ToSpec(r)
-	if err != nil {
-		return models.JobSpec{}, err
+	if jobName != "" {
+		query = query.Where("name = ?", jobName)
 	}
-	return jobSpec, nil
-}
+	if resourceDestination != "" {
+		query = query.Where("destination = ?", resourceDestination)
+	}
+	if err := query.Find(&jobs).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []models.JobSpec{}, store.ErrResourceNotFound
+		}
+		return []models.JobSpec{}, err
+	}
 
-func (repo interProjectJobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
-	var r Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("destination = ?", resourceDestination).First(&r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, store.ErrResourceNotFound
+	if len(jobs) == 0 {
+		return []models.JobSpec{}, store.ErrResourceNotFound
+	}
+
+	for _, job := range jobs {
+		adapt, err := repo.adapter.ToSpec(job)
+		if err != nil {
+			return specs, err
 		}
-		return models.JobSpec{}, err
+		specs = append(specs, adapt)
 	}
-	jobSpec, err := repo.adapter.ToSpec(r)
-	if err != nil {
-		return models.JobSpec{}, err
-	}
-	return jobSpec, nil
+	return specs, nil
 }
 
 func NewInterProjectJobSpecRepository(db *gorm.DB, adapter *JobSpecAdapter) *interProjectJobSpecRepository {

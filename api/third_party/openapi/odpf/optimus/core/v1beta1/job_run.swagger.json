@@ -21,56 +21,6 @@
     "application/json"
   ],
   "paths": {
-    "/v1beta1/jobrun": {
-      "get": {
-        "operationId": "JobRunService_GetJobRunByFilter",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1GetJobRunByFilterResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "jobName",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "resoureDestination",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "date-time"
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "date-time"
-          }
-        ],
-        "tags": [
-          "JobRunService"
-        ]
-      }
-    },
     "/v1beta1/project/{projectName}/job/{jobName}/instance": {
       "post": {
         "summary": "RegisterInstance is an internal admin command used during task/hook execution\nto pull task/hook compiled configuration and assets.",
@@ -486,17 +436,6 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/protobufAny"
-          }
-        }
-      }
-    },
-    "v1beta1GetJobRunByFilterResponse": {
-      "type": "object",
-      "properties": {
-        "jobRuns": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1JobRun"
           }
         }
       }

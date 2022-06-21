@@ -21,15 +21,15 @@
     "application/json"
   ],
   "paths": {
-    "/v1beta1/job": {
+    "/v1beta1/jobs": {
       "get": {
-        "summary": "GetJob read a job spec for provided filters",
-        "operationId": "JobSpecificationService_GetJob",
+        "summary": "GetJobSpecifications read a job spec for provided filters",
+        "operationId": "JobSpecificationService_GetJobSpecifications",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1beta1GetJobResponse"
+              "$ref": "#/definitions/v1beta1GetJobSpecificationsResponse"
             }
           },
           "default": {
@@ -40,6 +40,12 @@
           }
         },
         "parameters": [
+          {
+            "name": "projectName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
           {
             "name": "resourceDestination",
             "in": "query",
@@ -408,12 +414,20 @@
         },
         "ack": {
           "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses\nthis is deprecated and being replaced with type field"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "title": "message is deprecated and being replaced with value field"
         },
         "jobName": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "title": "response type differentiate events"
+        },
+        "value": {
           "type": "string"
         }
       }
@@ -440,19 +454,22 @@
         }
       }
     },
-    "v1beta1GetJobResponse": {
-      "type": "object",
-      "properties": {
-        "job": {
-          "$ref": "#/definitions/v1beta1JobSpecification"
-        }
-      }
-    },
     "v1beta1GetJobSpecificationResponse": {
       "type": "object",
       "properties": {
         "spec": {
           "$ref": "#/definitions/v1beta1JobSpecification"
+        }
+      }
+    },
+    "v1beta1GetJobSpecificationsResponse": {
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobSpecification"
+          }
         }
       }
     },

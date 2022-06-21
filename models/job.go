@@ -358,10 +358,8 @@ type JobService interface {
 	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
-	// GetByJobName get job spec for given jobName
-	GetByJobName(ctx context.Context, jobName string) (JobSpec, error)
-	// GetByResourceDestination get job spec for given resourceDestination
-	GetByResourceDestination(ctx context.Context, resourceDestination string) (JobSpec, error)
+	// GetWithFilts gets the jobspec based on projectName, jobName, resourceDestination filters.
+	GetWithFilters(ctx context.Context, projectName string, jobName string, resourceDestination string) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

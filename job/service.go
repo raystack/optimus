@@ -141,20 +141,12 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 	return jobSpec, nil
 }
 
-func (srv *Service) GetByJobName(ctx context.Context, jobName string) (models.JobSpec, error) {
-	jobSpec, err := srv.interProjectJobSpecRepository.GetJobByName(ctx, jobName)
+func (srv *Service) GetWithFilters(ctx context.Context, projectName string, jobName string, resourceDestination string) ([]models.JobSpec, error) {
+	jobSpecs, err := srv.interProjectJobSpecRepository.GetWithFilters(ctx, projectName, jobName, resourceDestination)
 	if err != nil {
-		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
+		return []models.JobSpec{}, err
 	}
-	return jobSpec, nil
-}
-
-func (srv *Service) GetByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
-	jobSpec, err := srv.interProjectJobSpecRepository.GetJobByResourceDestination(ctx, resourceDestination)
-	if err != nil {
-		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
-	}
-	return jobSpec, nil
+	return jobSpecs, nil
 }
 
 // GetByNameForProject fetches a Job by name for a specific project

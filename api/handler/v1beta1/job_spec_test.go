@@ -280,55 +280,6 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_NamespaceSe
 	s.Assert().Nil(resp)
 }
 
-func (s *JobSpecServiceServerTestSuite) TestGetJob_Success() {
-	req := &pb.GetJobRequest{}
-	req.JobName = "job-1"
-
-	execUnit1 := new(mock.BasePlugin)
-	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
-	s.jobService.On("GetByJobName", s.ctx, req.JobName).Return(jobSpec, nil).Once()
-
-	runtimeServiceServer := s.newJobSpecServiceServer()
-	resp, err := runtimeServiceServer.GetJob(s.ctx, req)
-
-	s.Assert().NoError(err)
-	s.Assert().NotNil(resp)
-}
-
-func (s *JobSpecServiceServerTestSuite) TestGetJob_Fail_JobSvcGetByJobNameError() {
-	req := &pb.GetJobRequest{}
-	req.JobName = "job-1"
-
-	execUnit1 := new(mock.BasePlugin)
-	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	s.jobService.On("GetByJobName", s.ctx, req.JobName).Return(models.JobSpec{}, errors.New("any error")).Once()
-
-	runtimeServiceServer := s.newJobSpecServiceServer()
-	resp, err := runtimeServiceServer.GetJob(s.ctx, req)
-
-	s.Assert().Error(err)
-	s.Assert().Nil(resp)
-}
-
-func (s *JobSpecServiceServerTestSuite) TestGetJob_Fail_JobSvcGetByResourceDestinationError() {
-	req := &pb.GetJobRequest{}
-	req.JobName = "job-1"
-	req.ResourceDestination = "bigquery://project1.dataset1.table1"
-
-	execUnit1 := new(mock.BasePlugin)
-	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
-	s.jobService.On("GetByJobName", s.ctx, req.JobName).Return(jobSpec, nil).Once()
-	s.jobService.On("GetByResourceDestination", s.ctx, req.ResourceDestination).Return(models.JobSpec{}, errors.New("any error")).Once()
-
-	runtimeServiceServer := s.newJobSpecServiceServer()
-	resp, err := runtimeServiceServer.GetJob(s.ctx, req)
-
-	s.Assert().Error(err)
-	s.Assert().Nil(resp)
-}
-
 func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceGetByNameError() {
 	req := &pb.GetJobSpecificationRequest{}
 	req.ProjectName = s.projectSpec.Name
@@ -340,6 +291,34 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceG
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecification(s.ctx, req)
+
+	s.Assert().Error(err)
+	s.Assert().Nil(resp)
+}
+
+func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
+	req := &pb.GetJobSpecificationsRequest{}
+	req.JobName = "job-1"
+
+	execUnit1 := new(mock.BasePlugin)
+	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
+	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
+	s.jobService.On("GetWithFilters", s.ctx, req.GetProjectName(), req.JobName, req.GetResourceDestination()).Return([]models.JobSpec{jobSpec}, nil).Once()
+
+	runtimeServiceServer := s.newJobSpecServiceServer()
+	resp, err := runtimeServiceServer.GetJobSpecifications(s.ctx, req)
+	s.Assert().NoError(err)
+	s.Assert().NotNil(resp)
+}
+
+func (s *JobSpecServiceServerTestSuite) TestGetJob_Fail_JobSvcGetWithFiltersError() {
+	req := &pb.GetJobSpecificationsRequest{}
+	req.JobName = "job-1"
+
+	s.jobService.On("GetWithFilters", s.ctx, req.GetProjectName(), req.JobName, req.GetResourceDestination()).Return([]models.JobSpec{{}}, errors.New("any error")).Once()
+
+	runtimeServiceServer := s.newJobSpecServiceServer()
+	resp, err := runtimeServiceServer.GetJobSpecifications(s.ctx, req)
 
 	s.Assert().Error(err)
 	s.Assert().Nil(resp)

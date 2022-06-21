@@ -255,37 +255,37 @@ func local_request_JobSpecificationService_GetJobSpecification_0(ctx context.Con
 }
 
 var (
-	filter_JobSpecificationService_GetJob_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_JobSpecificationService_GetJobSpecifications_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_JobSpecificationService_GetJob_0(ctx context.Context, marshaler runtime.Marshaler, client JobSpecificationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetJobRequest
+func request_JobSpecificationService_GetJobSpecifications_0(ctx context.Context, marshaler runtime.Marshaler, client JobSpecificationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetJobSpecificationsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_JobSpecificationService_GetJob_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_JobSpecificationService_GetJobSpecifications_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetJob(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetJobSpecifications(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_JobSpecificationService_GetJob_0(ctx context.Context, marshaler runtime.Marshaler, server JobSpecificationServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetJobRequest
+func local_request_JobSpecificationService_GetJobSpecifications_0(ctx context.Context, marshaler runtime.Marshaler, server JobSpecificationServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetJobSpecificationsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_JobSpecificationService_GetJob_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_JobSpecificationService_GetJobSpecifications_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.GetJob(ctx, &protoReq)
+	msg, err := server.GetJobSpecifications(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -667,18 +667,18 @@ func RegisterJobSpecificationServiceHandlerServer(ctx context.Context, mux *runt
 
 	})
 
-	mux.Handle("GET", pattern_JobSpecificationService_GetJob_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_JobSpecificationService_GetJobSpecifications_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJob", runtime.WithHTTPPathPattern("/v1beta1/job"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJobSpecifications", runtime.WithHTTPPathPattern("/v1beta1/jobs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_JobSpecificationService_GetJob_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_JobSpecificationService_GetJobSpecifications_0(rctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -686,7 +686,7 @@ func RegisterJobSpecificationServiceHandlerServer(ctx context.Context, mux *runt
 			return
 		}
 
-		forward_JobSpecificationService_GetJob_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_JobSpecificationService_GetJobSpecifications_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -897,23 +897,23 @@ func RegisterJobSpecificationServiceHandlerClient(ctx context.Context, mux *runt
 
 	})
 
-	mux.Handle("GET", pattern_JobSpecificationService_GetJob_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_JobSpecificationService_GetJobSpecifications_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJob", runtime.WithHTTPPathPattern("/v1beta1/job"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJobSpecifications", runtime.WithHTTPPathPattern("/v1beta1/jobs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_JobSpecificationService_GetJob_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_JobSpecificationService_GetJobSpecifications_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_JobSpecificationService_GetJob_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_JobSpecificationService_GetJobSpecifications_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1047,7 +1047,7 @@ var (
 
 	pattern_JobSpecificationService_GetJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name"}, ""))
 
-	pattern_JobSpecificationService_GetJob_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1beta1", "job"}, ""))
+	pattern_JobSpecificationService_GetJobSpecifications_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1beta1", "jobs"}, ""))
 
 	pattern_JobSpecificationService_DeleteJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name"}, ""))
 
@@ -1069,7 +1069,7 @@ var (
 
 	forward_JobSpecificationService_GetJobSpecification_0 = runtime.ForwardResponseMessage
 
-	forward_JobSpecificationService_GetJob_0 = runtime.ForwardResponseMessage
+	forward_JobSpecificationService_GetJobSpecifications_0 = runtime.ForwardResponseMessage
 
 	forward_JobSpecificationService_DeleteJobSpecification_0 = runtime.ForwardResponseMessage
 
