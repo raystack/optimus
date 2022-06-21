@@ -72,7 +72,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			eventSvc := new(mock.EventService)
 			eventSvc.On("Register", ctx, namespaceSpec, jobSpecs[0], models.JobEvent{
-				Type:  models.JobEventTypeFailure,
+				Type:  models.JobFailureEvent,
 				Value: eventValues.GetFields(),
 			}).Return(nil)
 			defer eventSvc.AssertExpectations(t)

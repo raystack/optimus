@@ -78,7 +78,7 @@ func TestAdapter(t *testing.T) {
 				},
 				Notify: []models.JobSpecNotifier{
 					{
-						On: models.JobEventTypeFailure,
+						On: models.JobFailureEvent,
 						Config: map[string]string{
 							"key": "val",
 						},
