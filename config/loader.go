@@ -14,8 +14,8 @@ import (
 
 const (
 	ErrFailedToRead       = "unable to read optimus config file %v (%s)"
-	DefaultFilename       = "optimus"
-	DefaultConfigFilename = "config" // default file name for server config
+	DefaultFilename       = "optimus.yaml"
+	DefaultConfigFilename = "config.yaml" // default file name for server config
 	DefaultFileExtension  = "yaml"
 	DefaultEnvPrefix      = "OPTIMUS"
 	EmptyPath             = ""

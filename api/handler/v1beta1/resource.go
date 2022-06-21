@@ -149,11 +149,7 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 
 		observers := new(progress.ObserverChain)
 		observers.Join(sv.progressObserver)
-		observers.Join(&resourceObserver{
-			stream: stream,
-			log:    sv.l,
-			mu:     new(sync.Mutex),
-		})
+		observers.Join(NewResourceObserver(stream, sv.l, new(sync.Mutex)))
 
 		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
 			stream.Send(&pb.DeployResourceSpecificationResponse{
