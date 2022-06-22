@@ -7,4 +7,3 @@ CREATE TABLE IF NOT EXISTS job_source (
 );
 
 CREATE INDEX IF NOT EXISTS job_source_job_id_idx ON job_source (job_id);
-CREATE INDEX IF NOT EXISTS job_source_resource_urn_idx ON job_source (resource_urn);
