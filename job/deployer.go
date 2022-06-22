@@ -148,9 +148,7 @@ func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.N
 }
 
 func (d *deployer) enrichJobSpecs(ctx context.Context, jobSpecs []models.JobSpec, deploymentProjectSpec models.ProjectSpec) error {
-	jobsByDestination := models.JobSpecs(jobSpecs).GroupJobsByDestination()
-
-	jobIDResourceDependenciesMap, err := d.getJobIDResourceDependenciesMap(ctx, deploymentProjectSpec, jobsByDestination)
+	jobIDInferredDependenciesMap, err := d.getJobIDInferredDependenciesMap(ctx, deploymentProjectSpec, jobSpecs)
 	if err != nil {
 		return err
 	}
@@ -161,8 +159,8 @@ func (d *deployer) enrichJobSpecs(ctx context.Context, jobSpecs []models.JobSpec
 			return fmt.Errorf("error while enriching jobspec %d with static dependencies: %w", targetJobSpec.ID, err)
 		}
 
-		resourceDependencies := jobIDResourceDependenciesMap[job.ID]
-		d.enrichWithResourceDependencies(&targetJobSpec, deploymentProjectSpec, resourceDependencies)
+		inferredDependencies := jobIDInferredDependenciesMap[job.ID]
+		d.enrichWithInferredDependencies(&targetJobSpec, deploymentProjectSpec, inferredDependencies)
 
 		d.enrichWithHookDependencies(&targetJobSpec)
 
@@ -182,7 +180,7 @@ func (d *deployer) enrichWithStaticDependencies(
 	return err
 }
 
-func (*deployer) enrichWithResourceDependencies(
+func (*deployer) enrichWithInferredDependencies(
 	jobSpec *models.JobSpec,
 	deploymentProjectSpec models.ProjectSpec,
 	resourceDependencies []models.JobSpec,
@@ -209,14 +207,15 @@ func (d *deployer) enrichWithHookDependencies(jobSpec *models.JobSpec) {
 	jobSpec.Hooks = hooks
 }
 
-func (d *deployer) getJobIDResourceDependenciesMap(ctx context.Context, deploymentProjectSpec models.ProjectSpec,
-	jobsByDestination map[string]models.JobSpec) (map[uuid.UUID][]models.JobSpec, error) {
+func (d *deployer) getJobIDInferredDependenciesMap(ctx context.Context, deploymentProjectSpec models.ProjectSpec,
+	jobSpecs []models.JobSpec) (map[uuid.UUID][]models.JobSpec, error) {
 	jobSources, err := d.jobSourceRepository.GetAll(ctx, deploymentProjectSpec.ID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting job sources for project id %s: %w", deploymentProjectSpec.ID.UUID(), err)
 	}
 
 	// populating the resource URN job map
+	jobsByDestination := models.JobSpecs(jobSpecs).GroupJobsByDestination()
 	resourceURNJobMap := make(map[string]*models.JobSpec)
 	for urn, job := range jobsByDestination {
 		resourceJob := job

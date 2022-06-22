@@ -798,7 +798,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// resolve dependency and persist
-	srv.resolveAndPersistDependency(ctx, projectSpec, jobSpecs, progressObserver)
+	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, progressObserver)
 
 	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
 	if err != nil {
@@ -859,7 +859,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec models.ProjectSpec,
+func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpecs []models.JobSpec, progressObserver progress.Observer) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
@@ -869,7 +869,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				jobSourceURNs, err := srv.resolve(ctx, currentSpec, projectSpec)
+				jobSourceURNs, err := srv.identify(ctx, currentSpec, projectSpec)
 				if err != nil {
 					return currentSpec.Name, err
 				}
@@ -895,7 +895,7 @@ func (srv *Service) resolveAndPersistDependency(ctx context.Context, projectSpec
 	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 }
 
-func (srv *Service) resolve(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec) ([]string, error) {
+func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec) ([]string, error) {
 	var err error
 	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
 		return nil, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
@@ -943,8 +943,8 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
 
 	// Resolve dependency
-	srv.resolveAndPersistDependency(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
-	srv.resolveAndPersistDependency(ctx, namespaceSpec.ProjectSpec, savedModifiedJobs, observers)
+	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
+	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedModifiedJobs, observers)
 
 	// Deploy through deploy manager
 	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
