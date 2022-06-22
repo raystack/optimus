@@ -24,7 +24,9 @@ func BenchmarkSecretRepo(b *testing.B) {
 	project.ID = models.ProjectID(uuid.New())
 
 	namespace := setup.Namespace(1, project)
+	namespace.ID = uuid.New()
 	otherNamespace := setup.Namespace(2, project)
+	otherNamespace.ID = uuid.New()
 
 	key, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
