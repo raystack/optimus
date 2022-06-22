@@ -214,7 +214,12 @@ func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb
 }
 
 func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
-	jobSpecs, err := sv.jobSvc.GetWithFilters(ctx, req.GetProjectName(), req.GetJobName(), req.GetResourceDestination())
+	jobSpecFilter := models.JobSpecFilter{
+		ProjectName:         req.GetProjectName(),
+		JobName:             req.GetJobName(),
+		ResourceDestination: req.GetResourceDestination(),
+	}
+	jobSpecs, err := sv.jobSvc.GetByFilter(ctx, jobSpecFilter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to retrieve job: %s", err.Error())
 	}

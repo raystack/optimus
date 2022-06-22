@@ -41,7 +41,8 @@ type ProjectJobSpecRepository interface {
 
 // InterProjectJobSpecRepository represents a storage interface for Job specification
 type InterProjectJobSpecRepository interface {
-	GetWithFilters(ctx context.Context, projectName, jobName, resourceDestination string) ([]models.JobSpec, error)
+	GetJobByName(context.Context, string) ([]models.JobSpec, error)
+	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
 }
 
 // ProjectRepository represents a storage interface for registered projects

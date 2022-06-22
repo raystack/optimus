@@ -361,13 +361,13 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceG
 }
 
 func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
-	req := &pb.GetJobSpecificationsRequest{}
-	req.JobName = "job-1"
+	req := &pb.GetJobSpecificationsRequest{JobName: "job-1"}
+	jobSpecFilter := models.JobSpecFilter{JobName: req.GetJobName()}
 
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
 	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
-	s.jobService.On("GetWithFilters", s.ctx, req.GetProjectName(), req.JobName, req.GetResourceDestination()).Return([]models.JobSpec{jobSpec}, nil).Once()
+	s.jobService.On("GetByFilter", s.ctx, jobSpecFilter).Return([]models.JobSpec{jobSpec}, nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecifications(s.ctx, req)
@@ -376,10 +376,10 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
 }
 
 func (s *JobSpecServiceServerTestSuite) TestGetJob_Fail_JobSvcGetWithFiltersError() {
-	req := &pb.GetJobSpecificationsRequest{}
-	req.JobName = "job-1"
+	req := &pb.GetJobSpecificationsRequest{JobName: "job-1"}
+	jobSpecFilter := models.JobSpecFilter{JobName: req.GetJobName()}
 
-	s.jobService.On("GetWithFilters", s.ctx, req.GetProjectName(), req.JobName, req.GetResourceDestination()).Return([]models.JobSpec{{}}, errors.New("any error")).Once()
+	s.jobService.On("GetByFilter", s.ctx, jobSpecFilter).Return([]models.JobSpec{{}}, errors.New("any error")).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	resp, err := runtimeServiceServer.GetJobSpecifications(s.ctx, req)

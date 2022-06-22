@@ -131,8 +131,8 @@ type JobService struct {
 	mock.Mock
 }
 
-func (srv *JobService) GetWithFilters(ctx context.Context, projectName string, jobName string, resourceDestination string) ([]models.JobSpec, error) {
-	args := srv.Called(ctx, projectName, jobName, resourceDestination)
+func (srv *JobService) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, filter)
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 

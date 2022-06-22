@@ -171,12 +171,41 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 	return jobSpec, nil
 }
 
-func (srv *Service) GetWithFilters(ctx context.Context, projectName string, jobName string, resourceDestination string) ([]models.JobSpec, error) {
-	jobSpecs, err := srv.interProjectJobSpecRepository.GetWithFilters(ctx, projectName, jobName, resourceDestination)
-	if err != nil {
-		return []models.JobSpec{}, err
+func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+	if filter.ResourceDestination != "" {
+		jobSpec, err := srv.interProjectJobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
+		if err != nil {
+			return []models.JobSpec{}, err
+		}
+		return []models.JobSpec{jobSpec}, nil
 	}
-	return jobSpecs, nil
+	if filter.ProjectName != "" {
+		projSpec, err := srv.projectService.Get(ctx, filter.ProjectName)
+		if err != nil {
+			return nil, fmt.Errorf("not able to find project: %w", err)
+		}
+		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projSpec)
+		if filter.JobName != "" {
+			jobSpec, _, err := projectJobSpecRepo.GetByName(ctx, filter.JobName)
+			if err != nil {
+				return []models.JobSpec{}, err
+			}
+			return []models.JobSpec{jobSpec}, nil
+		}
+		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+		if err != nil {
+			return []models.JobSpec{}, err
+		}
+		return jobSpecs, nil
+	}
+	if filter.JobName != "" {
+		jobSpecs, err := srv.interProjectJobSpecRepository.GetJobByName(ctx, filter.JobName)
+		if err != nil {
+			return []models.JobSpec{}, err
+		}
+		return jobSpecs, nil
+	}
+	return []models.JobSpec{}, fmt.Errorf("filters not specified")
 }
 
 // GetByNameForProject fetches a Job by name for a specific project

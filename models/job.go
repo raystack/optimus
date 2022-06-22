@@ -362,7 +362,7 @@ type JobService interface {
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetWithFilts gets the jobspec based on projectName, jobName, resourceDestination filters.
-	GetWithFilters(ctx context.Context, projectName string, jobName string, resourceDestination string) ([]JobSpec, error)
+	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
@@ -376,6 +376,12 @@ type JobCompiler interface {
 type Job struct {
 	Name     string
 	Contents []byte
+}
+
+type JobSpecFilter struct {
+	ProjectName         string
+	JobName             string
+	ResourceDestination string
 }
 
 type JobEventType string
