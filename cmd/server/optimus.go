@@ -216,11 +216,10 @@ func (s *OptimusServer) setupHandlers() error {
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
-	jobSpecAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
-	interProjectJobSpecRepo := postgres.NewInterProjectJobSpecRepository(s.dbConn, jobSpecAdapter)
+	interProjectJobSpecRepo := postgres.NewInterProjectJobSpecRepository(s.dbConn, dbAdapter)
 
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: s.dbConn,

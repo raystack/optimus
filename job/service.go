@@ -175,7 +175,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 	if filter.ResourceDestination != "" {
 		jobSpec, err := srv.interProjectJobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
 		if err != nil {
-			return []models.JobSpec{}, err
+			return nil, err
 		}
 		return []models.JobSpec{jobSpec}, nil
 	}
@@ -188,7 +188,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		if filter.JobName != "" {
 			jobSpec, _, err := projectJobSpecRepo.GetByName(ctx, filter.JobName)
 			if err != nil {
-				return []models.JobSpec{}, err
+				return nil, err
 			}
 			return []models.JobSpec{jobSpec}, nil
 		}
@@ -201,11 +201,11 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 	if filter.JobName != "" {
 		jobSpecs, err := srv.interProjectJobSpecRepository.GetJobByName(ctx, filter.JobName)
 		if err != nil {
-			return []models.JobSpec{}, err
+			return nil, err
 		}
 		return jobSpecs, nil
 	}
-	return []models.JobSpec{}, fmt.Errorf("filters not specified")
+	return nil, fmt.Errorf("filters not specified")
 }
 
 // GetByNameForProject fetches a Job by name for a specific project

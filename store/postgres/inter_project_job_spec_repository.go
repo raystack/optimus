@@ -17,7 +17,7 @@ func (repo interProjectJobSpecRepository) GetJobByName(ctx context.Context, jobN
 	var jobs []Job
 	var specs []models.JobSpec
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("name = ?", jobName).Find(&jobs).Error; err != nil {
-		return []models.JobSpec{}, err
+		return nil, err
 	}
 	for _, job := range jobs {
 		adapt, err := repo.adapter.ToSpec(job)
