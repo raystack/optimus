@@ -71,18 +71,6 @@ func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	return jobSpec, nil
 }
 
-func (r *dependencyResolver) ResolveInferredDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) ([]string, error) {
-	namespace := jobSpec.NamespaceSpec
-	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
-	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
-	if err != nil {
-		if !errors.Is(err, service.ErrDependencyModNotFound) {
-			return nil, err
-		}
-	}
-	return resp.Dependencies, nil
-}
-
 // ResolveStaticDependencies return named (explicit/static) dependencies that unresolved with its spec model
 // this is normally happen when reading specs from a store[local/postgres]
 // unresolved dependencies will no longer exist in the map
@@ -204,7 +192,7 @@ func extractDependency(dependencyJobSpec models.JobSpec, projectSpec models.Proj
 	return dep
 }
 
-// TODO: delete after rebase
+// TODO: this method will be deprecated and replaced with ResolveStaticDependencies
 func (*dependencyResolver) resolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository) (models.JobSpec, error) {
 	// update static dependencies if unresolved with its spec model

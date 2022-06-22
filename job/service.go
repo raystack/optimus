@@ -55,7 +55,6 @@ type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.J
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
-	ResolveInferredDependencies(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) ([]string, error)
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
 	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
@@ -900,11 +899,16 @@ func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, pr
 	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
 		return nil, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
 	}
-	jobSourceURNs, err := srv.dependencyResolver.ResolveInferredDependencies(ctx, projectSpec, currentSpec)
+
+	namespace := currentSpec.NamespaceSpec
+	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
+	resp, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, false)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
+			return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+		}
 	}
-	return jobSourceURNs, nil
+	return resp.Dependencies, nil
 }
 
 func (srv *Service) persist(ctx context.Context, currentSpec models.JobSpec, projectID models.ProjectID, jobSourceURNs []string) error {

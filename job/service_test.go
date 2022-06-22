@@ -1147,6 +1147,14 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("Deploy", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Name:        "dev-team-1",
+			ProjectSpec: projSpec,
+		}
 		createJobSpecDummy := func(N int) []models.JobSpec {
 			jobSpecs := []models.JobSpec{}
 			for i := 0; i < N; i++ {
@@ -1158,6 +1166,7 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
+					NamespaceSpec: namespaceSpec,
 				}
 				jobSpecs = append(jobSpecs, jobSpec)
 			}
@@ -1169,15 +1178,6 @@ func TestService(t *testing.T) {
 			requestedJobSpecs := createJobSpecDummy(15)[9:]
 			requestedJobSpecs[0].Owner = "optimus-edited"
 
-			projSpec := models.ProjectSpec{
-				Name: "proj",
-			}
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "dev-team-1",
-				ProjectSpec: projSpec,
-			}
-
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
 
@@ -1186,22 +1186,13 @@ func TestService(t *testing.T) {
 
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, namespaceService, nil, nil, pluginService, nil)
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, nil, namespaceService, nil, nil, pluginService, nil, nil)
 			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
 			assert.Contains(t, err.Error(), errorMsg)
 		})
 		t.Run("should failed when unable to get all jobs in the namespace when checking diff", func(t *testing.T) {
 			requestedJobSpecs := createJobSpecDummy(15)[9:]
 			requestedJobSpecs[0].Owner = "optimus-edited"
-
-			projSpec := models.ProjectSpec{
-				Name: "proj",
-			}
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "dev-team-1",
-				ProjectSpec: projSpec,
-			}
 
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
@@ -1220,7 +1211,7 @@ func TestService(t *testing.T) {
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			jobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil, nil, namespaceService, nil, nil, pluginService, nil)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, nil, nil, nil, nil, namespaceService, nil, nil, pluginService, nil, nil)
 			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
 			assert.Equal(t, err.Error(), errorMsg)
 		})
@@ -1231,14 +1222,6 @@ func TestService(t *testing.T) {
 			modifiedJobs := requestedJobSpecs
 			deletedJobs := existingJobSpecs[:9]
 
-			projSpec := models.ProjectSpec{
-				Name: "proj",
-			}
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "dev-team-1",
-				ProjectSpec: projSpec,
-			}
 			destination := &models.GenerateDestinationResponse{
 				Destination: "project.dataset.table",
 				Type:        models.DestinationTypeBigquery,
@@ -1318,7 +1301,7 @@ func TestService(t *testing.T) {
 					ProjectID:   modifiedJobs[i].NamespaceSpec.ProjectSpec.ID,
 					ResourceURN: resourceURNs[0],
 				}
-				depenResolver.On("ResolveInferredDependencies", ctx, projSpec, modifiedJobs[i]).Return(resourceURNs, nil)
+				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 				jobSourceRepo.On("Save", ctx, jobSource).Return(nil)
 			}
 
@@ -1326,7 +1309,7 @@ func TestService(t *testing.T) {
 
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSourceRepo)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, nil, jobSourceRepo)
 			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
 			assert.Nil(t, err)
 		})
@@ -1337,14 +1320,6 @@ func TestService(t *testing.T) {
 			modifiedJobs := requestedJobSpecs
 			deletedJobs := existingJobSpecs[:9]
 
-			projSpec := models.ProjectSpec{
-				Name: "proj",
-			}
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "dev-team-1",
-				ProjectSpec: projSpec,
-			}
 			destination := &models.GenerateDestinationResponse{
 				Destination: "project.dataset.table",
 				Type:        models.DestinationTypeBigquery,
@@ -1415,7 +1390,7 @@ func TestService(t *testing.T) {
 					ProjectID:   job.NamespaceSpec.ProjectSpec.ID,
 					ResourceURN: resourceURNs[0],
 				}
-				depenResolver.On("ResolveInferredDependencies", ctx, projSpec, modifiedJobs[i]).Return(resourceURNs, nil)
+				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 				jobSourceRepo.On("Save", ctx, jobSource).Return(nil)
 			}
 
@@ -1423,7 +1398,7 @@ func TestService(t *testing.T) {
 
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(models.DeploymentID{}, errors.New(errorMsg))
 
-			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSourceRepo)
+			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, nil, jobSourceRepo)
 			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
 			assert.Equal(t, err.Error(), errorMsg)
 		})
@@ -1434,14 +1409,6 @@ func TestService(t *testing.T) {
 			modifiedJobs := requestedJobSpecs
 			deletedJobs := existingJobSpecs[:9]
 
-			projSpec := models.ProjectSpec{
-				Name: "proj",
-			}
-			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
-				Name:        "dev-team-1",
-				ProjectSpec: projSpec,
-			}
 			destination := &models.GenerateDestinationResponse{
 				Destination: "project.dataset.table",
 				Type:        models.DestinationTypeBigquery,
@@ -1513,7 +1480,7 @@ func TestService(t *testing.T) {
 					ProjectID:   job.NamespaceSpec.ProjectSpec.ID,
 					ResourceURN: resourceURNs[0],
 				}
-				depenResolver.On("ResolveInferredDependencies", ctx, projSpec, modifiedJobs[i]).Return(resourceURNs, nil)
+				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 				jobSourceRepo.On("Save", ctx, jobSource).Return(nil)
 			}
 
@@ -1735,6 +1702,7 @@ func TestService(t *testing.T) {
 			ProjectID:   projSpec.ID,
 			ResourceURN: "resource-a",
 		}
+		resourceURNs := []string{jobSourceSpec.ResourceURN}
 
 		t.Run("should successfully refresh job specs for the whole project", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -1758,6 +1726,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -1768,7 +1739,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 			}
 
@@ -1777,13 +1749,13 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[0]).Return([]string{jobSourceSpec.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, jobSourceRepo)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
@@ -1810,6 +1782,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -1820,7 +1795,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 			}
 			namespaceNames := []string{namespaceSpec.Name}
@@ -1832,13 +1808,13 @@ func TestService(t *testing.T) {
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
 			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[0]).Return([]string{jobSourceSpec.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(jobSpecRepoFac, nil, nil, dumpAssets, dependencyResolver,
-				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, jobSourceRepo)
+				nil, nil, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
 			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Nil(t, err)
@@ -1871,6 +1847,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -1881,7 +1860,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 			}
 			jobNames := []string{jobSpecsBase[0].Name}
@@ -1891,13 +1871,13 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetByName", ctx, jobNames[0]).Return(jobSpecsBase[0], namespaceSpec, nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[0]).Return([]string{jobSourceSpec.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, batchScheduler, nil, dumpAssets, dependencyResolver,
-				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, jobSourceRepo)
+				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
 			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Nil(t, err)
@@ -2083,7 +2063,7 @@ func TestService(t *testing.T) {
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
 		})
-		t.Run("should not failed refresh when one of dependency resolution failed", func(t *testing.T) {
+		t.Run("should not failed refresh when one of the generating dependency call failed", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
@@ -2105,6 +2085,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -2115,7 +2098,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 				{
 					ID:      uuid.New(),
@@ -2126,7 +2110,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 			}
 
@@ -2135,15 +2120,15 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[0]).Return([]string{jobSourceSpec.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil).Once()
 			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[1]).Return([]string{}, errors.New(errorMsg))
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[1], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, errors.New(errorMsg))
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, jobSourceRepo)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
@@ -2170,6 +2155,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -2180,7 +2168,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 				{
 					ID:      uuid.New(),
@@ -2191,7 +2180,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 			}
 			jobSourceSpec2 := models.JobSource{
@@ -2199,22 +2189,23 @@ func TestService(t *testing.T) {
 				ProjectID:   projSpec.ID,
 				ResourceURN: "resource-b",
 			}
+			resourceURNs2 := []string{jobSourceSpec2.ResourceURN}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[0]).Return([]string{jobSourceSpec.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[1]).Return([]string{jobSourceSpec2.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[1], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs2}, nil)
 			jobSourceRepo.On("Save", ctx, jobSourceSpec2).Return(errors.New(errorMsg))
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, jobSourceRepo)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
@@ -2241,6 +2232,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -2251,7 +2245,8 @@ func TestService(t *testing.T) {
 						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 						Interval:  "@daily",
 					},
-					Task: models.JobSpecTask{},
+					Task:          models.JobSpecTask{},
+					NamespaceSpec: namespaceSpec,
 				},
 			}
 
@@ -2260,13 +2255,13 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
-			dependencyResolver.On("ResolveInferredDependencies", ctx, projSpec, jobSpecsBase[0]).Return([]string{jobSourceSpec.ResourceURN}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(models.DeploymentID{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dumpAssets, dependencyResolver,
-				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, jobSourceRepo)
+				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
 			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Contains(t, err.Error(), errorMsg)
