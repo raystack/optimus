@@ -1294,6 +1294,56 @@ func TestService(t *testing.T) {
 			assert.Equal(t, models.JobSpec{}, jobSpecsResult)
 		})
 	})
+	t.Run("GetByFilter", func(t *testing.T) {
+		t.Run("should return job spec given a filter", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}, NamespaceSpec: namespaceSpec}
+			destination := "resource-urn"
+			jobSpecs := []models.JobSpec{jobSpec1}
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			interProjectJobSpecRepo := new(mock.InterProjectJobSpecRepository)
+			defer interProjectJobSpecRepo.AssertExpectations(t)
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
+
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecs, nil)
+
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			interProjectJobSpecRepo.On("GetJobByName", ctx, jobSpec1.GetName()).Return(models.JobSpecs{jobSpec1}, nil)
+			interProjectJobSpecRepo.On("GetJobByResourceDestination", ctx, destination).Return(jobSpec1, nil)
+
+			svc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, projectService, nil, nil, interProjectJobSpecRepo)
+			jobSpecsResult, err := svc.GetByFilter(ctx, models.JobSpecFilter{JobName: jobSpec1.Name})
+			assert.Nil(t, err)
+			assert.Equal(t, jobSpecs, jobSpecsResult)
+
+			jobSpecsResult1, err := svc.GetByFilter(ctx, models.JobSpecFilter{ResourceDestination: destination})
+			assert.Nil(t, err)
+			assert.Equal(t, jobSpecs, jobSpecsResult1)
+			//
+			jobSpecsResult2, err := svc.GetByFilter(ctx, models.JobSpecFilter{ProjectName: jobSpec1.NamespaceSpec.ProjectSpec.Name})
+			assert.Nil(t, err)
+			assert.Equal(t, jobSpecs, jobSpecsResult2)
+		})
+	})
+
 	t.Run("GetDownstream", func(t *testing.T) {
 		t.Run("should return downstream job specs", func(t *testing.T) {
 			projSpec := models.ProjectSpec{
