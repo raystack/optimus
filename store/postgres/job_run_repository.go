@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type JobRunMetrics struct {
@@ -45,8 +45,7 @@ const (
 )
 
 type JobRunMetricsRepository struct {
-	db     *gorm.DB
-	logger log.Logger
+	db *gorm.DB
 }
 
 // TableName overrides the table name used by User to `profiles`
@@ -63,7 +62,7 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
 
 	if err != nil {
-		repo.logger.Info(err.Error())
+		return err
 	}
 	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error; err != nil {
 		return errors.New("could not update existing sensor run, Error :: " + err.Error())
@@ -84,8 +83,12 @@ func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, schedu
 	}
 
 	jobRunMetrics := JobRunMetrics{}
-	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp).Order("attempt desc").First(&jobRunMetrics).Error; err != nil {
-		return models.JobRunSpec{}, errors.New("could fetch lastest job run for given scheduled time, Error :: " + err.Error())
+	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp).Order("attempt desc").First(&jobRunMetrics).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobRunSpec{}, store.ErrResourceNotFound
+		}
+		return models.JobRunSpec{}, err
 	}
 
 	jobRunSpec := models.JobRunSpec{
@@ -102,23 +105,26 @@ func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, schedu
 		Duration:      jobRunMetrics.Duration,
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
-
 	return jobRunSpec, err
 }
 
 func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
 	eventPayload := event.Value
-
 	jobRunMetrics := JobRunMetrics{}
 
 	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
-	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
-
 	if err != nil {
 		return models.JobRunSpec{}, err
 	}
-	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error; err != nil {
-		return models.JobRunSpec{}, errors.New("could not update existing job run, Error :: " + err.Error())
+
+	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
+
+	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobRunSpec{}, store.ErrResourceNotFound
+		}
+		return models.JobRunSpec{}, err
 	}
 	jobRunSpec := models.JobRunSpec{
 		JobRunID:     jobRunMetrics.JobRunID,
@@ -141,11 +147,10 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	eventPayload := event.Value
 
 	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
-	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
-
 	if err != nil {
-		repo.logger.Info(err.Error())
+		return err
 	}
+
 	bigEndTime := time.Date(3000, 9, 16, 19, 17, 23, 0, time.UTC)
 	resource := JobRunMetrics{
 		JobRunID:    uuid.New(),
@@ -154,7 +159,7 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 		ProjectID:   uuid.UUID(namespaceSpec.ProjectSpec.ID),
 
 		ScheduledAt:   scheduledAtTimeStamp,
-		StartTime:     startedAtTimeStamp,
+		StartTime:     time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0),
 		EndTime:       bigEndTime,
 		SLADefinition: slaMissDurationInSec,
 
@@ -165,9 +170,8 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
 }
 
-func NewJobRunMetricsRepository(db *gorm.DB, logger log.Logger) *JobRunMetricsRepository {
+func NewJobRunMetricsRepository(db *gorm.DB) *JobRunMetricsRepository {
 	return &JobRunMetricsRepository{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }

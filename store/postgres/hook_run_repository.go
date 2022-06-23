@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type HookRun struct {
@@ -30,8 +30,7 @@ type HookRun struct {
 }
 
 type HookRunRepository struct {
-	db     *gorm.DB
-	logger log.Logger
+	db *gorm.DB
 }
 
 func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
@@ -50,10 +49,10 @@ func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, 
 func (repo *HookRunRepository) GetHookRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.HookRunSpec, error) {
 	hookRun := HookRun{}
 	if err := repo.db.WithContext(ctx).Where("job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
-		if err != nil {
-			return models.HookRunSpec{}, errors.New("could not update existing hook run, Error :: " + err.Error())
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.HookRunSpec{}, store.ErrResourceNotFound
 		}
-		return models.HookRunSpec{}, errors.New("could not get existing hook run")
+		return models.HookRunSpec{}, err
 	}
 	hookRunSpec := models.HookRunSpec{
 		HookRunID:     hookRun.HookRunID,
@@ -73,7 +72,10 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 
 	hookRun := HookRun{}
 	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
-		return errors.New("could not update existing hook run, Error :: " + err.Error())
+		if errors.Is(err, store.ErrResourceNotFound) {
+			return store.ErrResourceNotFound
+		}
+		return err
 	}
 	hookRun.Status = eventPayload["Status"].GetStringValue()
 	hookRun.Attempt = int(eventPayload["attempt"].GetNumberValue())
@@ -81,9 +83,8 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 	return repo.db.WithContext(ctx).Save(&hookRun).Error
 }
 
-func NewHookRunRepository(db *gorm.DB, logger log.Logger) *HookRunRepository {
+func NewHookRunRepository(db *gorm.DB) *HookRunRepository {
 	return &HookRunRepository{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }

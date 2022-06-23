@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/odpf/salt/log"
 	"google.golang.org/grpc/codes"
@@ -62,7 +63,11 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 		Value: eventValues,
 	}
 
-	sv.monitoringService.ProcessEvent(ctx, jobEvent, namespaceSpec, jobSpec)
+	err = sv.monitoringService.ProcessEvent(ctx, jobEvent, namespaceSpec, jobSpec)
+	if err != nil {
+		jobEventByteString, _ := json.Marshal(jobEvent)
+		sv.l.Error("Airflow event not registration ", err.Error(), " event Payload::", string(jobEventByteString))
+	}
 
 	if err := sv.jobEventSvc.Register(ctx, namespaceSpec, jobSpec, jobEvent); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to register event: \n%s", err.Error())

@@ -2,13 +2,11 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
@@ -33,8 +31,7 @@ type TaskRun struct {
 }
 
 type TaskRunRepository struct {
-	db     *gorm.DB
-	logger log.Logger
+	db *gorm.DB
 }
 
 func (repo *TaskRunRepository) GetTaskRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
@@ -79,11 +76,11 @@ func (repo *TaskRunRepository) Update(ctx context.Context, event models.JobEvent
 	taskRun := TaskRun{}
 
 	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
-		return errors.New("could not update existing task run, Error :: " + err.Error())
+		if errors.Is(err, store.ErrResourceNotFound) {
+			return store.ErrResourceNotFound
+		}
+		return err
 	}
-	resourceString1, _ := json.Marshal(taskRun)
-	repo.logger.Info("taskRun obj to persist before changing")
-	repo.logger.Info(string(resourceString1))
 	if event.Type == models.TaskFailEvent ||
 		event.Type == models.TaskSuccessEvent ||
 		event.Type == models.TaskRetryEvent {
@@ -98,9 +95,8 @@ func (repo *TaskRunRepository) Update(ctx context.Context, event models.JobEvent
 	return repo.db.WithContext(ctx).Save(&taskRun).Error
 }
 
-func NewTaskRunRepository(db *gorm.DB, logger log.Logger) *TaskRunRepository {
+func NewTaskRunRepository(db *gorm.DB) *TaskRunRepository {
 	return &TaskRunRepository{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }

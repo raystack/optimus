@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type SensorRun struct {
@@ -31,8 +31,7 @@ type SensorRun struct {
 }
 
 type SensorRunRepository struct {
-	db     *gorm.DB
-	logger log.Logger
+	db *gorm.DB
 }
 
 func (repo *SensorRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
@@ -56,7 +55,10 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 
 	sensorRun := SensorRun{}
 	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
-		return errors.New("could not update existing sensor run, Error :: " + err.Error())
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return store.ErrResourceNotFound
+		}
+		return err
 	}
 	if event.Type == models.SensorFailEvent ||
 		event.Type == models.SensorSuccessEvent ||
@@ -75,10 +77,10 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 func (repo *SensorRunRepository) GetSensorRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.SensorRunSpec, error) {
 	sensorRun := SensorRun{}
 	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
-		if err != nil {
-			return models.SensorRunSpec{}, errors.New("sensor run not found :: " + err.Error())
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.SensorRunSpec{}, store.ErrResourceNotFound
 		}
-		return models.SensorRunSpec{}, errors.New("sensor run not found")
+		return models.SensorRunSpec{}, err
 	}
 	sensorRunSpec := models.SensorRunSpec{
 		SensorRunID:   sensorRun.SensorRunID,
@@ -93,9 +95,8 @@ func (repo *SensorRunRepository) GetSensorRunIfExists(ctx context.Context, jobRu
 	return sensorRunSpec, nil
 }
 
-func NewSensorRunRepository(db *gorm.DB, logger log.Logger) *SensorRunRepository {
+func NewSensorRunRepository(db *gorm.DB) *SensorRunRepository {
 	return &SensorRunRepository{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }

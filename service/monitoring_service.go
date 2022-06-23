@@ -61,7 +61,6 @@ func (m monitoringService) registerNewJobRun(ctx context.Context, event models.J
 func (m monitoringService) updateJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
 	err := m.JobRunMetricsRepository.Update(ctx, event, namespaceSpec, jobSpec)
 	if err != nil {
-		m.logger.Info(err.Error())
 		return err
 	}
 	return nil
@@ -71,7 +70,6 @@ func (m monitoringService) getActiveJobRun(ctx context.Context, event models.Job
 	eventPayload := event.Value
 	jobRunSpec, err := m.JobRunMetricsRepository.GetActiveJobRun(ctx, eventPayload["scheduled_at"].GetStringValue(), namespaceSpec, jobSpec)
 	if err != nil {
-		m.logger.Info(err.Error())
 		return jobRunSpec, err
 	}
 	return jobRunSpec, err
