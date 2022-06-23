@@ -64,10 +64,13 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	if err != nil {
 		return err
 	}
-	if err := repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error; err != nil {
-		return errors.New("could not update existing sensor run, Error :: " + err.Error())
+	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return store.ErrResourceNotFound
+		}
+		return err
 	}
-
 	jobRunMetrics.Status = eventPayload["status"].GetStringValue()
 	jobRunMetrics.Duration = int64(eventPayload["job_duration"].GetNumberValue())
 	jobRunMetrics.EndTime = time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
