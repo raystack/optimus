@@ -987,6 +987,7 @@ func TestService(t *testing.T) {
 			}, depen)
 		})
 	})
+
 	t.Run("Delete", func(t *testing.T) {
 		projSpec := models.ProjectSpec{
 			Name: "proj",
@@ -1296,13 +1297,8 @@ func TestService(t *testing.T) {
 
 			resourceURNs := []string{"source-a"}
 			for i := 1; i < len(modifiedJobs)-1; i++ {
-				jobSource := models.JobSource{
-					JobID:       modifiedJobs[i].ID,
-					ProjectID:   modifiedJobs[i].NamespaceSpec.ProjectSpec.ID,
-					ResourceURN: resourceURNs[0],
-				}
 				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-				jobSourceRepo.On("Save", ctx, jobSource).Return(nil)
+				jobSourceRepo.On("Save", ctx, projSpec.ID, modifiedJobs[i].ID, resourceURNs).Return(nil)
 			}
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
@@ -1385,13 +1381,8 @@ func TestService(t *testing.T) {
 
 			resourceURNs := []string{"source-a"}
 			for i, job := range modifiedJobs {
-				jobSource := models.JobSource{
-					JobID:       job.ID,
-					ProjectID:   job.NamespaceSpec.ProjectSpec.ID,
-					ResourceURN: resourceURNs[0],
-				}
 				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-				jobSourceRepo.On("Save", ctx, jobSource).Return(nil)
+				jobSourceRepo.On("Save", ctx, projSpec.ID, job.ID, resourceURNs).Return(nil)
 			}
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
@@ -1475,13 +1466,8 @@ func TestService(t *testing.T) {
 
 			resourceURNs := []string{"source-a"}
 			for i, job := range modifiedJobs {
-				jobSource := models.JobSource{
-					JobID:       job.ID,
-					ProjectID:   job.NamespaceSpec.ProjectSpec.ID,
-					ResourceURN: resourceURNs[0],
-				}
 				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-				jobSourceRepo.On("Save", ctx, jobSource).Return(nil)
+				jobSourceRepo.On("Save", ctx, projSpec.ID, job.ID, resourceURNs).Return(nil)
 			}
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
@@ -1697,12 +1683,7 @@ func TestService(t *testing.T) {
 		deployID := models.DeploymentID(uuid.New())
 		errorMsg := "internal error"
 		jobID := uuid.New()
-		jobSourceSpec := models.JobSource{
-			JobID:       jobID,
-			ProjectID:   projSpec.ID,
-			ResourceURN: "resource-a",
-		}
-		resourceURNs := []string{jobSourceSpec.ResourceURN}
+		resourceURNs := []string{"resource-a"}
 
 		t.Run("should successfully refresh job specs for the whole project", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -1750,7 +1731,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
@@ -1809,7 +1790,7 @@ func TestService(t *testing.T) {
 			jobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
@@ -1872,7 +1853,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetByName", ctx, jobNames[0]).Return(jobSpecsBase[0], namespaceSpec, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
@@ -2121,7 +2102,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil).Once()
-			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil).Once()
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[1], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, errors.New(errorMsg))
 
@@ -2184,12 +2165,7 @@ func TestService(t *testing.T) {
 					NamespaceSpec: namespaceSpec,
 				},
 			}
-			jobSourceSpec2 := models.JobSource{
-				JobID:       jobSpecsBase[1].ID,
-				ProjectID:   projSpec.ID,
-				ResourceURN: "resource-b",
-			}
-			resourceURNs2 := []string{jobSourceSpec2.ResourceURN}
+			resourceURNs2 := []string{"resource-b"}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
@@ -2197,10 +2173,10 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[1], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs2}, nil)
-			jobSourceRepo.On("Save", ctx, jobSourceSpec2).Return(errors.New(errorMsg))
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobSpecsBase[1].ID, resourceURNs2).Return(errors.New(errorMsg))
 
 			deployManager.On("Deploy", ctx, projSpec).Return(deployID, nil)
 
@@ -2256,7 +2232,7 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-			jobSourceRepo.On("Save", ctx, jobSourceSpec).Return(nil)
+			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
 
 			deployManager.On("Deploy", ctx, projSpec).Return(models.DeploymentID{}, errors.New(errorMsg))
 

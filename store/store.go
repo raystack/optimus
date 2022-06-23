@@ -136,7 +136,8 @@ type JobDeploymentRepository interface {
 
 // JobSourceRepository represents a storage interface for job sources
 type JobSourceRepository interface {
-	Save(context.Context, models.JobSource) error
+	// Save replaces old job sources records for the particular project id and job id with newer ones
+	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, jobSourceURNs []string) error
 	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
 }

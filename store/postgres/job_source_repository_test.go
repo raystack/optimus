@@ -44,58 +44,173 @@ func TestIntegrationJobSourceRepository(t *testing.T) {
 	}
 
 	t.Run("Save", func(t *testing.T) {
-		db := DBSetup()
+		t.Run("should return error if context is nil", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
 
-		jobID1 := uuid.New()
-		jobID2 := uuid.New()
-		jobID3 := uuid.New()
+			jobID := uuid.New()
+			var ctx context.Context
+			jobSourceURNs := []string{"urn1", "urn2"}
 
-		jobSources := []models.JobSource{
-			{
-				JobID:       jobID1,
-				ProjectID:   projectSpec.ID,
-				ResourceURN: "resource-1",
-			},
-			{
-				JobID:       jobID1,
-				ProjectID:   projectSpec.ID,
-				ResourceURN: "resource-2",
-			},
-			{
-				JobID:       jobID2,
-				ProjectID:   projectSpec.ID,
-				ResourceURN: "resource-3",
-			},
-			{
-				JobID:       jobID3,
-				ProjectID:   externalProjectSpec.ID,
-				ResourceURN: "resource-4",
-			},
-		}
-		repo := postgres.NewJobSourceRepository(db)
+			actualError := repo.Save(ctx, projectSpec.ID, jobID, jobSourceURNs)
 
-		for _, source := range jobSources {
-			err := repo.Save(ctx, source)
-			assert.Nil(t, err)
-		}
+			assert.Error(t, actualError)
+		})
 
-		storedJobSources, err := repo.GetAll(ctx, projectSpec.ID)
-		assert.Nil(t, err)
-		assert.EqualValues(t, []models.JobSource{jobSources[0], jobSources[1], jobSources[2]}, storedJobSources)
+		t.Run("should return error if error during delete by job id", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
 
-		storedJobSources, err = repo.GetAll(ctx, externalProjectSpec.ID)
-		assert.Nil(t, err)
-		assert.EqualValues(t, []models.JobSource{jobSources[3]}, storedJobSources)
+			jobID := uuid.New()
+			ctx, cancelFn := context.WithCancel(context.Background())
+			cancelFn()
+			jobSourceURNs := []string{"urn1", "urn2"}
 
-		err = repo.DeleteByJobID(ctx, jobID1)
-		assert.Nil(t, err)
+			actualError := repo.Save(ctx, projectSpec.ID, jobID, jobSourceURNs)
 
-		storedJobSources, err = repo.GetAll(ctx, projectSpec.ID)
-		assert.Nil(t, err)
-		assert.EqualValues(t, []models.JobSource{jobSources[2]}, storedJobSources)
+			assert.Error(t, actualError)
+		})
 
-		storedJobSources, err = repo.GetAll(ctx, externalProjectSpec.ID)
-		assert.Nil(t, err)
-		assert.EqualValues(t, []models.JobSource{jobSources[3]}, storedJobSources)
+		t.Run("should not save the job sources and return error if resource urns contain duplication", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			jobID := uuid.New()
+			ctx := context.Background()
+			jobSourceURNs := []string{"urn1", "urn1"}
+
+			actualError := repo.Save(ctx, projectSpec.ID, jobID, jobSourceURNs)
+			var jobSources []postgres.JobSource
+			if err := db.Find(&jobSources).Error; err != nil {
+				panic(err)
+			}
+
+			expectedLength := 0
+
+			assert.Error(t, actualError)
+			assert.Len(t, jobSources, expectedLength)
+		})
+
+		t.Run("should save the job sources and return nil if no error is encountered", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			jobID := uuid.New()
+			ctx := context.Background()
+			jobSourceURNs := []string{"urn1", "urn2"}
+
+			actualError := repo.Save(ctx, projectSpec.ID, jobID, jobSourceURNs)
+			var jobSources []postgres.JobSource
+			if err := db.Find(&jobSources).Error; err != nil {
+				panic(err)
+			}
+
+			expectedLength := 2
+
+			assert.NoError(t, actualError)
+			assert.Len(t, jobSources, expectedLength)
+		})
+	})
+
+	t.Run("GetAll", func(t *testing.T) {
+		t.Run("should return nil and error if context is nil", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			var ctx context.Context
+
+			actualJobSources, actualError := repo.GetAll(ctx, projectSpec.ID)
+
+			assert.Nil(t, actualJobSources)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return nil and error if encountered any error when reading from database", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx, cancelFn := context.WithCancel(context.Background())
+			cancelFn()
+
+			actualJobSources, actualError := repo.GetAll(ctx, projectSpec.ID)
+
+			assert.Nil(t, actualJobSources)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return job sources and nil if no error is encountered", func(t *testing.T) {
+			jobSource := &postgres.JobSource{
+				JobID:       uuid.New(),
+				ProjectID:   projectSpec.ID.UUID(),
+				ResourceURN: "urn1",
+			}
+			db := DBSetup()
+			if err := db.Create(jobSource).Error; err != nil {
+				panic(err)
+			}
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx := context.Background()
+
+			actualJobSources, actualError := repo.GetAll(ctx, projectSpec.ID)
+
+			expectedLen := 1
+
+			assert.Len(t, actualJobSources, expectedLen)
+			assert.NoError(t, actualError)
+		})
+	})
+
+	t.Run("DeleteByJobID", func(t *testing.T) {
+		t.Run("should return error if context is nil", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			var ctx context.Context
+			jobID := uuid.New()
+
+			actualError := repo.DeleteByJobID(ctx, jobID)
+
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return nil and error if encountered any error when deleting from database", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx, cancelFn := context.WithCancel(context.Background())
+			cancelFn()
+			jobID := uuid.New()
+
+			actualError := repo.DeleteByJobID(ctx, jobID)
+
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return job sources and nil if no error is encountered", func(t *testing.T) {
+			jobSource := &postgres.JobSource{
+				JobID:       uuid.New(),
+				ProjectID:   projectSpec.ID.UUID(),
+				ResourceURN: "urn1",
+			}
+			db := DBSetup()
+			if err := db.Create(jobSource).Error; err != nil {
+				panic(err)
+			}
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx := context.Background()
+
+			actualError := repo.DeleteByJobID(ctx, jobSource.JobID)
+			var storedSources []postgres.JobSource
+			if err := db.Find(&storedSources).Error; err != nil {
+				panic(err)
+			}
+
+			expectedLen := 0
+
+			assert.Len(t, storedSources, expectedLen)
+			assert.NoError(t, actualError)
+		})
 	})
 }

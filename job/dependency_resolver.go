@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -129,7 +127,6 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies, assets should be dependent on
-	var jobDependencies []string
 	namespace := jobSpec.NamespaceSpec
 	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
 	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
@@ -138,15 +135,17 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 			return models.JobSpec{}, err
 		}
 	}
-	if resp != nil {
-		jobDependencies = resp.Dependencies
+	if resp == nil || len(resp.Dependencies) == 0 {
+		return jobSpec, nil
+	}
+
+	jobDependencies := resp.Dependencies
+	if err := r.jobSourceRepo.Save(ctx, projectSpec.ID, jobSpec.ID, jobDependencies); err != nil {
+		return models.JobSpec{}, fmt.Errorf("error persisting job sources for job %s: %w", jobSpec.Name, err)
 	}
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		if err := r.persistJobSource(ctx, jobSpec.ID, projectSpec.ID, depDestination); err != nil {
-			return jobSpec, err
-		}
 		dependencyJobSpec, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
@@ -162,15 +161,6 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	}
 
 	return jobSpec, nil
-}
-
-func (r *dependencyResolver) persistJobSource(ctx context.Context, jobID uuid.UUID, projectID models.ProjectID, jobSource string) error {
-	jobSourceSpec := models.JobSource{
-		JobID:       jobID,
-		ProjectID:   projectID,
-		ResourceURN: jobSource,
-	}
-	return r.jobSourceRepo.Save(ctx, jobSourceSpec)
 }
 
 // extractDependency extracts tries to find the upstream dependency from multiple matches

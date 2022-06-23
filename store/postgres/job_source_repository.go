@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,44 +24,63 @@ type jobSourceRepository struct {
 	db *gorm.DB
 }
 
-type JobSources []JobSource
+type jobSources []JobSource
 
-func (d JobSources) ToSpec() ([]models.JobSource, error) {
-	var jobSources []models.JobSource
-	for _, source := range d {
-		jobSources = append(jobSources, models.JobSource{
+func (j jobSources) ToSpec() []models.JobSource {
+	var output []models.JobSource
+	for _, source := range j {
+		output = append(output, models.JobSource{
 			JobID:       source.JobID,
 			ProjectID:   models.ProjectID(source.ProjectID),
 			ResourceURN: source.ResourceURN,
 		})
 	}
-	return jobSources, nil
+	return output
 }
 
-func (JobSource) FromSpec(jobSource models.JobSource) JobSource {
-	return JobSource{
-		JobID:       jobSource.JobID,
-		ProjectID:   jobSource.ProjectID.UUID(),
-		ResourceURN: jobSource.ResourceURN,
+func (repo *jobSourceRepository) Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, jobSourceURNs []string) error {
+	if ctx == nil {
+		return errors.New("context is nil")
 	}
-}
-
-func (repo *jobSourceRepository) Save(ctx context.Context, jobSourceSpec models.JobSource) error {
-	jobSource := JobSource{}.FromSpec(jobSourceSpec)
-	return repo.db.WithContext(ctx).Create(&jobSource).Error
+	return repo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := repo.delete(ctx, tx, jobID); err != nil {
+			return err
+		}
+		for _, urn := range jobSourceURNs {
+			jobSource := &JobSource{
+				JobID:       jobID,
+				ProjectID:   projectID.UUID(),
+				ResourceURN: urn,
+			}
+			if response := tx.WithContext(ctx).Create(jobSource); response.Error != nil {
+				return response.Error
+			}
+		}
+		return nil
+	})
 }
 
 func (repo *jobSourceRepository) GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobSource, error) {
-	var jobSources []JobSource
-	if err := repo.db.WithContext(ctx).Where("project_id = ?", projectID.UUID()).Find(&jobSources).Error; err != nil {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	var sources []JobSource
+	if err := repo.db.WithContext(ctx).Where("project_id = ?", projectID.UUID()).Find(&sources).Error; err != nil {
 		return nil, err
 	}
 
-	return JobSources(jobSources).ToSpec()
+	return jobSources(sources).ToSpec(), nil
 }
 
 func (repo *jobSourceRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
-	return repo.db.WithContext(ctx).Where("job_id = ?", jobID).Delete(&JobSource{}).Error
+	if ctx == nil {
+		return errors.New("context is nil")
+	}
+	return repo.delete(ctx, repo.db, jobID)
+}
+
+func (*jobSourceRepository) delete(ctx context.Context, db *gorm.DB, jobID uuid.UUID) error {
+	return db.WithContext(ctx).Where("job_id = ?", jobID).Delete(&JobSource{}).Error
 }
 
 func NewJobSourceRepository(db *gorm.DB) *jobSourceRepository {

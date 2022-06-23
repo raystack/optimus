@@ -872,7 +872,10 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 				if err != nil {
 					return currentSpec.Name, err
 				}
-				err = srv.persist(ctx, currentSpec, projectSpec.ID, jobSourceURNs)
+				err = srv.jobSourceRepo.Save(ctx, projectSpec.ID, currentSpec.ID, jobSourceURNs)
+				if err != nil {
+					err = fmt.Errorf("error persisting job sources for job %s: %w", currentSpec.Name, err)
+				}
 				return currentSpec.Name, err
 			}
 		}(jobSpec))
@@ -909,20 +912,6 @@ func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, pr
 		}
 	}
 	return resp.Dependencies, nil
-}
-
-func (srv *Service) persist(ctx context.Context, currentSpec models.JobSpec, projectID models.ProjectID, jobSourceURNs []string) error {
-	for _, urn := range jobSourceURNs {
-		jobSource := models.JobSource{
-			JobID:       currentSpec.ID,
-			ProjectID:   projectID,
-			ResourceURN: urn,
-		}
-		if err := srv.jobSourceRepo.Save(ctx, jobSource); err != nil {
-			return fmt.Errorf("error persisting %s as job source of %s: %w", urn, currentSpec.Name, err)
-		}
-	}
-	return nil
 }
 
 // Deploy only the modified jobs (created or updated)
