@@ -76,7 +76,7 @@ type InterProjectJobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo InterProjectJobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
+func (repo *InterProjectJobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
 	args := repo.Called(ctx, jobName)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpecs), args.Error(1)
@@ -84,7 +84,7 @@ func (repo InterProjectJobSpecRepository) GetJobByName(ctx context.Context, jobN
 	return models.JobSpecs{models.JobSpec{}}, args.Error(1)
 }
 
-func (repo InterProjectJobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+func (repo *InterProjectJobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
 	args := repo.Called(ctx, resourceDestination)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Error(1)
