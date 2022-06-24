@@ -958,8 +958,6 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSourceRepo := new(mock.JobSourceRepository)
@@ -1021,52 +1019,6 @@ func TestService(t *testing.T) {
 			assert.Contains(t, err.Error(), errorMsg)
 		})
 
-		t.Run("should return error if unable to check static dependencies", func(t *testing.T) {
-			jobSpecsBase := []models.JobSpec{
-				{
-					Version: 1,
-					Name:    "test",
-					Owner:   "optimus",
-					Schedule: models.JobSpecSchedule{
-						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
-						Interval:  "@daily",
-					},
-					Task: models.JobSpecTask{},
-				},
-			}
-
-			jobSpecRepo := new(mock.JobSpecRepository)
-			defer jobSpecRepo.AssertExpectations(t)
-
-			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFac.AssertExpectations(t)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			errorMsg := "internal error"
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projSpec, projectJobSpecRepo).Return(staticDependencies, errors.New(errorMsg))
-			defer depenResolver.AssertExpectations(t)
-
-			jobSourceRepo := new(mock.JobSourceRepository)
-
-			batchScheduler := new(mock.Scheduler)
-			defer batchScheduler.AssertExpectations(t)
-
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil,
-				projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, jobSourceRepo)
-			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
-			assert.Contains(t, err.Error(), errorMsg)
-		})
-
 		t.Run("should fail to delete a job spec if it is an inferred dependency of some other job", func(t *testing.T) {
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1117,10 +1069,6 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[1], projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			defer depenResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
@@ -1180,16 +1128,6 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			staticDependencies := map[string]models.JobSpecDependency{
-				jobSpecsBase[1].Name: {
-					Project: &projSpec,
-					Job:     &jobSpecsBase[0],
-					Type:    models.JobSpecDependencyTypeIntra,
-				},
-			}
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projSpec, projectJobSpecRepo).Return(map[string]models.JobSpecDependency{}, nil)
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[1], projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			defer depenResolver.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
@@ -1233,8 +1171,6 @@ func TestService(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			depenResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSourceRepo := new(mock.JobSourceRepository)
@@ -1379,11 +1315,6 @@ func TestService(t *testing.T) {
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(requestedJobSpecs, nil)
 
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			for _, spec := range requestedJobSpecs {
-				depenResolver.On("ResolveStaticDependencies", ctx, spec, projSpec, projectJobSpecRepo).Return(staticDependencies, nil).Once()
-			}
-
 			for _, jobSpec := range deletedJobs {
 				jobSourceRepo.On("GetByResourceURN", ctx, deletedJobs[1].ResourceDestination).Return([]models.JobSource{}, nil).Once()
 				jobSpecRepo.On("Delete", ctx, jobSpec.ID).Return(nil)
@@ -1517,11 +1448,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(requestedJobSpecs, nil)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			for _, spec := range requestedJobSpecs {
-				depenResolver.On("ResolveStaticDependencies", ctx, spec, projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			}
-
 			// one job with failing case
 			deletedJobs[0].ResourceDestination = "resource-b"
 			jobSources := []models.JobSource{
@@ -1608,11 +1534,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(requestedJobSpecs, nil)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			for _, spec := range requestedJobSpecs {
-				depenResolver.On("ResolveStaticDependencies", ctx, spec, projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			}
-
 			// one job with failing case
 			deletedJobs[0].ResourceDestination = "resource-b"
 			jobSourceRepo.On("GetByResourceURN", ctx, deletedJobs[0].ResourceDestination).Return([]models.JobSource{}, nil)
@@ -1693,11 +1614,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(requestedJobSpecs, nil)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			for _, spec := range requestedJobSpecs {
-				depenResolver.On("ResolveStaticDependencies", ctx, spec, projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			}
-
 			for _, deletedJob := range deletedJobs {
 				jobSourceRepo.On("GetByResourceURN", ctx, deletedJob.ResourceDestination).Return([]models.JobSource{}, nil)
 				jobSpecRepo.On("Delete", ctx, deletedJob.ID).Return(nil)
@@ -1772,10 +1688,6 @@ func TestService(t *testing.T) {
 			projectJobSpecRepo.On("GetAll", ctx).Return(requestedJobSpecs, nil)
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
 
-			staticDependencies := make(map[string]models.JobSpecDependency)
-			for _, spec := range requestedJobSpecs {
-				depenResolver.On("ResolveStaticDependencies", ctx, spec, projSpec, projectJobSpecRepo).Return(staticDependencies, nil)
-			}
 			for _, jobSpec := range deletedJobs {
 				jobSourceRepo.On("GetByResourceURN", ctx, jobSpec.ResourceDestination).Return([]models.JobSource{}, nil)
 				jobSpecRepo.On("Delete", ctx, jobSpec.ID).Return(nil)
