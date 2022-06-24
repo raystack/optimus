@@ -200,7 +200,7 @@ func TestDeployer(t *testing.T) {
 
 			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(models.JobSpec{}, errors.New(errorMsg))
+			projectJobSpecRepo.On("GetByDestinations", ctx, []string{jobSources[0].ResourceURN}).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
 
@@ -268,7 +268,7 @@ func TestDeployer(t *testing.T) {
 
 			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(jobSpecsBase[1], nil)
+			projectJobSpecRepo.On("GetByDestinations", ctx, []string{jobSources[0].ResourceURN}).Return([]models.JobSpec{jobSpecsBase[1]}, nil)
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
 
@@ -556,13 +556,14 @@ func TestDeployer(t *testing.T) {
 					NamespaceSpec: namespaceSpec1,
 				},
 				{
-					Version:       1,
-					ID:            jobID2,
-					Name:          "test-2",
-					Owner:         "optimus",
-					Schedule:      schedule,
-					Task:          models.JobSpecTask{},
-					NamespaceSpec: namespaceSpec2,
+					Version:             1,
+					ID:                  jobID2,
+					Name:                "test-2",
+					Owner:               "optimus",
+					Schedule:            schedule,
+					Task:                models.JobSpecTask{},
+					NamespaceSpec:       namespaceSpec2,
+					ResourceDestination: "resource-a",
 				},
 			}
 			job1Dependencies := map[string]models.JobSpecDependency{
@@ -584,14 +585,15 @@ func TestDeployer(t *testing.T) {
 					Dependencies:  job1Dependencies,
 				},
 				{
-					Version:       1,
-					ID:            jobID2,
-					Name:          "test-2",
-					Owner:         "optimus",
-					Schedule:      schedule,
-					Task:          models.JobSpecTask{},
-					NamespaceSpec: namespaceSpec2,
-					Dependencies:  map[string]models.JobSpecDependency{},
+					Version:             1,
+					ID:                  jobID2,
+					Name:                "test-2",
+					Owner:               "optimus",
+					Schedule:            schedule,
+					Task:                models.JobSpecTask{},
+					NamespaceSpec:       namespaceSpec2,
+					Dependencies:        map[string]models.JobSpecDependency{},
+					ResourceDestination: "resource-a",
 				},
 			}
 			jobSpecsAfterPriorityResolution := []models.JobSpec{
@@ -616,8 +618,9 @@ func TestDeployer(t *testing.T) {
 					Task: models.JobSpecTask{
 						Priority: 9000,
 					},
-					NamespaceSpec: namespaceSpec2,
-					Dependencies:  map[string]models.JobSpecDependency{},
+					NamespaceSpec:       namespaceSpec2,
+					Dependencies:        map[string]models.JobSpecDependency{},
+					ResourceDestination: "resource-a",
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
@@ -644,13 +647,12 @@ func TestDeployer(t *testing.T) {
 				{
 					JobID:       jobID1,
 					ProjectID:   projectSpec.ID,
-					ResourceURN: "resource-a",
+					ResourceURN: jobSpecsBase[1].ResourceDestination,
 				},
 			}
 
 			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(jobSpecsBase[1], nil)
 
 			dependencyResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projectSpec, projectJobSpecRepo).Return(nil, nil).Once()
 			dependencyResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[1], projectSpec, projectJobSpecRepo).Return(nil, nil).Once()
@@ -727,13 +729,14 @@ func TestDeployer(t *testing.T) {
 					NamespaceSpec: namespaceSpec2,
 				},
 				{
-					Version:       1,
-					ID:            jobID3,
-					Name:          "test-3",
-					Owner:         "optimus",
-					Schedule:      schedule,
-					Task:          models.JobSpecTask{},
-					NamespaceSpec: namespaceSpec2,
+					Version:             1,
+					ID:                  jobID3,
+					Name:                "test-3",
+					Owner:               "optimus",
+					Schedule:            schedule,
+					Task:                models.JobSpecTask{},
+					NamespaceSpec:       namespaceSpec2,
+					ResourceDestination: "resource-a",
 				},
 			}
 			jobDependencies := map[string]models.JobSpecDependency{
@@ -765,14 +768,15 @@ func TestDeployer(t *testing.T) {
 					Dependencies:  jobDependencies,
 				},
 				{
-					Version:       1,
-					ID:            jobID3,
-					Name:          "test-3",
-					Owner:         "optimus",
-					Schedule:      schedule,
-					Task:          models.JobSpecTask{},
-					NamespaceSpec: namespaceSpec2,
-					Dependencies:  map[string]models.JobSpecDependency{},
+					Version:             1,
+					ID:                  jobID3,
+					Name:                "test-3",
+					Owner:               "optimus",
+					Schedule:            schedule,
+					Task:                models.JobSpecTask{},
+					NamespaceSpec:       namespaceSpec2,
+					Dependencies:        map[string]models.JobSpecDependency{},
+					ResourceDestination: "resource-a",
 				},
 			}
 			jobSpecsAfterPriorityResolution := []models.JobSpec{
@@ -809,8 +813,9 @@ func TestDeployer(t *testing.T) {
 					Task: models.JobSpecTask{
 						Priority: 9000,
 					},
-					NamespaceSpec: namespaceSpec2,
-					Dependencies:  map[string]models.JobSpecDependency{},
+					NamespaceSpec:       namespaceSpec2,
+					Dependencies:        map[string]models.JobSpecDependency{},
+					ResourceDestination: "resource-a",
 				},
 			}
 			jobDeploymentDetailNamespace1 := models.JobDeploymentDetail{
@@ -838,18 +843,17 @@ func TestDeployer(t *testing.T) {
 				{
 					JobID:       jobID1,
 					ProjectID:   projectSpec.ID,
-					ResourceURN: "resource-a",
+					ResourceURN: jobSpecsBase[2].ResourceDestination,
 				},
 				{
 					JobID:       jobID2,
 					ProjectID:   projectSpec.ID,
-					ResourceURN: "resource-a",
+					ResourceURN: jobSpecsBase[2].ResourceDestination,
 				},
 			}
 
 			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(jobSpecsBase[2], nil)
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
 
@@ -929,8 +933,9 @@ func TestDeployer(t *testing.T) {
 					StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
 					Interval:  "@daily",
 				},
-				Task:          models.JobSpecTask{},
-				NamespaceSpec: namespaceSpec3,
+				Task:                models.JobSpecTask{},
+				NamespaceSpec:       namespaceSpec3,
+				ResourceDestination: "resource-a",
 			}
 			job1Dependencies := map[string]models.JobSpecDependency{
 				externalJobSpec.Name: {
@@ -989,13 +994,13 @@ func TestDeployer(t *testing.T) {
 				{
 					JobID:       jobID1,
 					ProjectID:   projectSpec.ID,
-					ResourceURN: "resource-a",
+					ResourceURN: externalJobSpec.ResourceDestination,
 				},
 			}
 
 			projJobSpecRepoFac.On("New", projectSpec).Return(projectJobSpecRepo)
 			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
-			projectJobSpecRepo.On("GetByDestination", ctx, jobSources[0].ResourceURN).Return(externalJobSpec, nil)
+			projectJobSpecRepo.On("GetByDestinations", ctx, []string{jobSources[0].ResourceURN}).Return([]models.JobSpec{externalJobSpec}, nil)
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
 

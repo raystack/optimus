@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -214,27 +213,14 @@ func (d *deployer) getJobIDInferredDependenciesMap(ctx context.Context, deployme
 		return nil, fmt.Errorf("error getting job sources for project id %s: %w", deploymentProjectSpec.ID.UUID(), err)
 	}
 
-	// populating the resource URN job map
-	jobsByDestination := models.JobSpecs(jobSpecs).GroupJobsByDestination()
-	resourceURNJobMap := make(map[string]*models.JobSpec)
-	for urn, job := range jobsByDestination {
-		resourceJob := job
-		resourceURNJobMap[urn] = &resourceJob
+	resourceURNJobMap := models.JobSpecs(jobSpecs).GroupJobsByDestination()
+	externalJobSpecs, err := d.getExternalJobSpecs(ctx, deploymentProjectSpec, resourceURNJobMap, jobSources)
+	if err != nil {
+		return nil, err
 	}
-
-	projectRepository := d.projectJobSpecRepoFactory.New(deploymentProjectSpec)
-	for _, source := range jobSources {
-		if _, ok := resourceURNJobMap[source.ResourceURN]; ok {
-			continue
-		}
-		jobSpec, err := projectRepository.GetByDestination(ctx, source.ResourceURN)
-		if err != nil {
-			if errors.Is(err, store.ErrResourceNotFound) {
-				continue
-			}
-			return nil, fmt.Errorf("error getting dependency jobspec for job id %s: %w", source.JobID, err)
-		}
-		resourceURNJobMap[source.ResourceURN] = &jobSpec
+	for _, externalJob := range externalJobSpecs {
+		job := externalJob
+		resourceURNJobMap[externalJob.ResourceDestination] = &job
 	}
 
 	// preparing the job dependency by using the resource URN job map
@@ -246,4 +232,25 @@ func (d *deployer) getJobIDInferredDependenciesMap(ctx context.Context, deployme
 		jobIDDependenciesMap[source.JobID] = append(jobIDDependenciesMap[source.JobID], *resourceURNJobMap[source.ResourceURN])
 	}
 	return jobIDDependenciesMap, nil
+}
+
+func (d *deployer) getExternalJobSpecs(ctx context.Context, deploymentProjectSpec models.ProjectSpec, resourceURNJobMap map[string]*models.JobSpec, jobSources []models.JobSource) ([]models.JobSpec, error) {
+	var externalSources []string
+	for _, source := range jobSources {
+		if _, ok := resourceURNJobMap[source.ResourceURN]; ok {
+			continue
+		}
+		externalSources = append(externalSources, source.ResourceURN)
+	}
+
+	if len(externalSources) == 0 {
+		return nil, nil
+	}
+
+	projectRepository := d.projectJobSpecRepoFactory.New(deploymentProjectSpec)
+	externalJobSpecs, err := projectRepository.GetByDestinations(ctx, externalSources)
+	if err != nil {
+		return nil, fmt.Errorf("error getting job specs of external project sources: %w", err)
+	}
+	return externalJobSpecs, nil
 }

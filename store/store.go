@@ -32,6 +32,9 @@ type ProjectJobSpecRepository interface {
 	// note: be warned to handle this carefully in multi tenant situations
 	GetByDestination(context.Context, string) (models.JobSpec, error)
 
+	// GetByDestinations returns the jobs with the pointed destinations
+	GetByDestinations(context.Context, []string) ([]models.JobSpec, error)
+
 	// GetByIDs returns all the jobs as requested by its ID
 	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)
 

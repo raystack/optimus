@@ -97,10 +97,11 @@ func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
 	return jobsGroup
 }
 
-func (js JobSpecs) GroupJobsByDestination() map[string]JobSpec {
-	output := make(map[string]JobSpec)
-	for _, spec := range js {
-		output[spec.ResourceDestination] = spec
+func (js JobSpecs) GroupJobsByDestination() map[string]*JobSpec {
+	output := make(map[string]*JobSpec)
+	for _, jobSpec := range js {
+		spec := jobSpec
+		output[spec.ResourceDestination] = &spec
 	}
 	return output
 }
