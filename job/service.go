@@ -315,13 +315,8 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
 	// delete jobs from internal store
-	if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
+	if err := jobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
 		return fmt.Errorf("failed to delete spec: %s: %w", jobSpec.Name, err)
-	}
-
-	// clean job sources
-	if err := srv.jobSourceRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
-		return fmt.Errorf("failed to clean job sources for spec: %s: %w", jobSpec.Name, err)
 	}
 
 	// delete from batch scheduler
@@ -336,12 +331,7 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
-		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
-			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
-			continue
-		}
-		// clean job sources
-		if err := srv.jobSourceRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
+		if err := jobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
@@ -416,37 +406,6 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 		if err := srv.batchScheduler.DeleteJobs(ctx, namespace, jobsToDelete, progressObserver); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// KeepOnly only keeps the provided jobSpecs in argument and deletes rest from spec repository
-func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec, specsToKeep []models.JobSpec, progressObserver progress.Observer) error {
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	jobSpecs, err := jobSpecRepo.GetAll(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to fetch specs for namespace %s: %w", namespace.Name, err)
-	}
-	var specsPresentNames []string
-	for _, jobSpec := range jobSpecs {
-		specsPresentNames = append(specsPresentNames, jobSpec.Name)
-	}
-
-	var specsToKeepNames []string
-	for _, jobSpec := range specsToKeep {
-		specsToKeepNames = append(specsToKeepNames, jobSpec.Name)
-	}
-
-	// filter what we need to keep/delete
-	jobsToDelete := setSubtract(specsPresentNames, specsToKeepNames)
-	jobsToDelete = jobDeletionFilter(jobsToDelete)
-
-	for _, jobName := range jobsToDelete {
-		// delete raw spec
-		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
-			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
-		}
-		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobName})
 	}
 	return nil
 }

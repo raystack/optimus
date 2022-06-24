@@ -224,7 +224,7 @@ func TestIntegrationJobRepository(t *testing.T) {
 			assert.Equal(t, "g-optimus-id", checkModel.Name)
 
 			// soft delete
-			err = repo.Delete(ctx, testModels[0].Name)
+			err = repo.Delete(ctx, testModels[0].ID)
 			assert.Nil(t, err)
 
 			// insert back again

@@ -3,6 +3,8 @@ package job
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/models"
 )
 
@@ -11,5 +13,5 @@ type SpecRepository interface {
 	Save(context.Context, models.JobSpec, string) error
 	GetByName(context.Context, string) (models.JobSpec, error)
 	GetAll(context.Context) ([]models.JobSpec, error)
-	Delete(context.Context, string) error
+	Delete(context.Context, uuid.UUID) error
 }

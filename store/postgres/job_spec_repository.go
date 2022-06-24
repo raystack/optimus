@@ -239,8 +239,14 @@ func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (mode
 	return repo.adapter.ToSpec(r)
 }
 
-func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
-	return repo.db.WithContext(ctx).Where("namespace_id = ? AND name = ?", repo.namespace.ID, name).Delete(&Job{}).Error
+func (repo *JobSpecRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return repo.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.WithContext(ctx).Where("id = ?", id).Delete(&Job{}).Error; err != nil {
+			return err
+		}
+		jobSourceRepo := NewJobSourceRepository(tx)
+		return jobSourceRepo.DeleteByJobID(ctx, id)
+	})
 }
 
 func (repo *JobSpecRepository) HardDelete(ctx context.Context, name string) error {

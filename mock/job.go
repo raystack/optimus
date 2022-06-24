@@ -249,8 +249,8 @@ func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (mode
 	return models.JobSpec{}, args.Error(1)
 }
 
-func (repo *JobSpecRepository) Delete(ctx context.Context, name string) error {
-	return repo.Called(ctx, name).Error(0)
+func (repo *JobSpecRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return repo.Called(ctx, id).Error(0)
 }
 
 func (repo *JobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
@@ -295,11 +295,6 @@ func (srv *JobService) Create(ctx context.Context, namespaceSpec models.Namespac
 func (srv *JobService) GetByName(ctx context.Context, s string, spec models.NamespaceSpec) (models.JobSpec, error) {
 	args := srv.Called(ctx, s, spec)
 	return args.Get(0).(models.JobSpec), args.Error(1)
-}
-
-func (srv *JobService) KeepOnly(ctx context.Context, spec models.NamespaceSpec, specs []models.JobSpec, _ progress.Observer) error {
-	args := srv.Called(ctx, spec, specs)
-	return args.Error(0)
 }
 
 func (srv *JobService) GetAll(ctx context.Context, spec models.NamespaceSpec) ([]models.JobSpec, error) {

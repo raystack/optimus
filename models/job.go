@@ -342,8 +342,6 @@ type JobService interface {
 	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
-	// KeepOnly deletes all jobs except the ones provided for a namespace
-	KeepOnly(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
 	GetAll(context.Context, NamespaceSpec) ([]JobSpec, error)
 	// Delete deletes a job spec from all repos

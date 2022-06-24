@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 )
 
 type JobSource struct {
@@ -83,7 +84,7 @@ func (*jobSourceRepository) delete(ctx context.Context, db *gorm.DB, jobID uuid.
 	return db.WithContext(ctx).Where("job_id = ?", jobID).Delete(&JobSource{}).Error
 }
 
-func NewJobSourceRepository(db *gorm.DB) *jobSourceRepository {
+func NewJobSourceRepository(db *gorm.DB) store.JobSourceRepository {
 	return &jobSourceRepository{
 		db: db,
 	}
