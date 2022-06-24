@@ -66,7 +66,7 @@ func (sv *RuntimeServiceServer) RegisterJobEvent(ctx context.Context, req *pb.Re
 	err = sv.monitoringService.ProcessEvent(ctx, jobEvent, namespaceSpec, jobSpec)
 	if err != nil {
 		jobEventByteString, _ := json.Marshal(jobEvent)
-		sv.l.Error("Airflow event not registration ", err.Error(), " event Payload::", string(jobEventByteString))
+		sv.l.Error("Scheduler event not registered,  event Payload::", string(jobEventByteString), "error:", err.Error())
 	}
 
 	if err := sv.jobEventSvc.Register(ctx, namespaceSpec, jobSpec, jobEvent); err != nil {
