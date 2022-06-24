@@ -314,9 +314,14 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	}
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
-	// delete from internal store
+	// delete jobs from internal store
 	if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
 		return fmt.Errorf("failed to delete spec: %s: %w", jobSpec.Name, err)
+	}
+
+	// clean job sources
+	if err := srv.jobSourceRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
+		return fmt.Errorf("failed to clean job sources for spec: %s: %w", jobSpec.Name, err)
 	}
 
 	// delete from batch scheduler
@@ -332,6 +337,11 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 			continue
 		}
 		if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			continue
+		}
+		// clean job sources
+		if err := srv.jobSourceRepo.DeleteByJobID(ctx, jobSpec.ID); err != nil {
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}

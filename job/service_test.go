@@ -1055,11 +1055,16 @@ func TestService(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
 			defer depenResolver.AssertExpectations(t)
 
+			jobSourceRepo := new(mock.JobSourceRepository)
+			jobSourceRepo.On("DeleteByJobID", ctx, jobSpecsBase[0].ID).Return(nil)
+			defer jobSourceRepo.AssertExpectations(t)
+
 			batchScheduler := new(mock.Scheduler)
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobs[0].Name}, nil).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
-			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil,
+				projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, jobSourceRepo)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.Nil(t, err)
 		})
@@ -1144,6 +1149,70 @@ func TestService(t *testing.T) {
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.NotNil(t, err)
 			assert.Equal(t, "cannot delete job test since it's dependency of job downstream-test", err.Error())
+		})
+
+		t.Run("should return error if unable to clean job sources", func(t *testing.T) {
+			jobSpecsBase := []models.JobSpec{
+				{
+					Version: 1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+			}
+			jobSpecsAfterDepenResolve := []models.JobSpec{
+				{
+					Version: 1,
+					Name:    "test",
+					Owner:   "optimus",
+					Schedule: models.JobSpecSchedule{
+						StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+						Interval:  "@daily",
+					},
+					Task: models.JobSpecTask{},
+				},
+			}
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			jobSpecRepo.On("Delete", ctx, "test").Return(nil)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepoFac := new(mock.JobSpecRepoFactory)
+			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
+			defer jobSpecRepoFac.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			projectJobSpecRepo.On("GetAll", ctx).Return(jobSpecsBase, nil)
+			projectJobSpecRepo.On("GetJobNamespaces", ctx).Return(map[string][]string{
+				namespaceSpec.Name: {jobSpecsBase[0].Name},
+			}, nil)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			// resolve dependencies
+			depenResolver := new(mock.DependencyResolver)
+			depenResolver.On("Resolve", ctx, projSpec, jobSpecsBase[0], nil).Return(jobSpecsAfterDepenResolve[0], nil)
+			defer depenResolver.AssertExpectations(t)
+
+			errorMsg := "internal error"
+			jobSourceRepo := new(mock.JobSourceRepository)
+			jobSourceRepo.On("DeleteByJobID", ctx, jobSpecsBase[0].ID).Return(errors.New(errorMsg))
+			defer jobSourceRepo.AssertExpectations(t)
+
+			batchScheduler := new(mock.Scheduler)
+			defer batchScheduler.AssertExpectations(t)
+
+			svc := job.NewService(jobSpecRepoFac, batchScheduler, nil, dumpAssets, depenResolver, nil,
+				projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, jobSourceRepo)
+			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
+			assert.Contains(t, err.Error(), errorMsg)
 		})
 	})
 
@@ -1274,6 +1343,7 @@ func TestService(t *testing.T) {
 
 			for _, jobSpec := range deletedJobs {
 				jobSpecRepo.On("Delete", ctx, jobSpec.Name).Return(nil)
+				jobSourceRepo.On("DeleteByJobID", ctx, jobSpec.ID).Return(nil)
 			}
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
@@ -1358,6 +1428,7 @@ func TestService(t *testing.T) {
 
 			for _, jobSpec := range deletedJobs {
 				jobSpecRepo.On("Delete", ctx, jobSpec.Name).Return(nil)
+				jobSourceRepo.On("DeleteByJobID", ctx, jobSpec.ID).Return(nil)
 			}
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
@@ -1443,6 +1514,7 @@ func TestService(t *testing.T) {
 
 			for _, jobSpec := range deletedJobs {
 				jobSpecRepo.On("Delete", ctx, jobSpec.Name).Return(nil)
+				jobSourceRepo.On("DeleteByJobID", ctx, jobSpec.ID).Return(nil)
 			}
 
 			jobSpecRepoFac.On("New", namespaceSpec).Return(jobSpecRepo)
