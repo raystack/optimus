@@ -309,7 +309,13 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 
 // Delete deletes a job spec from all spec repos
 func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) error {
-	if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
+	// get all static dependencies to check whether other jobs depend on this job
+	allStaticDependencies, err := srv.getStaticDependencies(ctx, namespace.ProjectSpec)
+	if err != nil {
+		return err
+	}
+
+	if err := srv.isJobDeletable(ctx, jobSpec, allStaticDependencies); err != nil {
 		return err
 	}
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
@@ -323,11 +329,17 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
 }
 
-func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, progressObserver progress.Observer) {
+func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
+	progressObserver progress.Observer) error {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
-	for _, jobSpec := range jobSpecs {
-		if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
+	allStaticDependencies, err := srv.getStaticDependencies(ctx, namespace.ProjectSpec)
+	if err != nil {
+		return err
+	}
+
+	for _, jobSpec := range jobSpecsToDelete {
+		if err := srv.isJobDeletable(ctx, jobSpec, allStaticDependencies); err != nil {
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
@@ -337,6 +349,27 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 		}
 		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name})
 	}
+	return nil
+}
+
+func (srv *Service) getStaticDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpecDependency, error) {
+	projectJobSpecRepository := srv.projectJobSpecRepoFactory.New(projectSpec)
+	jobSpecs, err := projectJobSpecRepository.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var allStaticDependencies []models.JobSpecDependency
+	for _, spec := range jobSpecs {
+		staticDependenciesMap, err := srv.dependencyResolver.ResolveStaticDependencies(ctx, spec, projectSpec, projectJobSpecRepository)
+		if err != nil {
+			return nil, err
+		}
+		if len(staticDependenciesMap) > 0 {
+			allStaticDependencies = append(allStaticDependencies, staticDependenciesMap[spec.Name])
+		}
+	}
+	return allStaticDependencies, nil
 }
 
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
@@ -480,19 +513,19 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 }
 
 // isJobDeletable determines if a given job is deletable or not
-func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
-	// check if this job spec is dependency of any other job spec
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	depsResolvedJobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
+func (srv *Service) isJobDeletable(ctx context.Context, jobSpec models.JobSpec, staticDependencies []models.JobSpecDependency) error {
+	inferredDependencies, err := srv.jobSourceRepo.GetByResourceURN(ctx, jobSpec.ResourceDestination)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to check dependency of job %s", jobSpec.Name)
 	}
-	for _, resolvedJobSpec := range depsResolvedJobSpecs {
-		for depJobSpecName := range resolvedJobSpec.Dependencies {
-			if depJobSpecName == jobSpec.Name {
-				return fmt.Errorf("cannot delete job %s since it's dependency of job %s", jobSpec.Name,
-					resolvedJobSpec.Name)
-			}
+
+	if len(inferredDependencies) > 0 {
+		return fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
+	}
+
+	for _, staticDependency := range staticDependencies {
+		if staticDependency.Job.Name == jobSpec.Name {
+			return fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
 		}
 	}
 
@@ -902,7 +935,9 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	// Save modified jobs
 	savedModifiedJobs := srv.bulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
 	// Delete unnecessary jobs
-	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
+	if err := srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers); err != nil {
+		return models.DeploymentID(uuid.Nil), err
+	}
 
 	// Resolve dependency
 	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)

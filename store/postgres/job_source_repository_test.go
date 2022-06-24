@@ -161,6 +161,56 @@ func TestIntegrationJobSourceRepository(t *testing.T) {
 		})
 	})
 
+	t.Run("GetByResourceURN", func(t *testing.T) {
+		sampleResourceURN := "resource-a"
+		t.Run("should return nil and error if context is nil", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			var ctx context.Context
+
+			actualJobSources, actualError := repo.GetByResourceURN(ctx, sampleResourceURN)
+
+			assert.Nil(t, actualJobSources)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return nil and error if encountered any error when reading from database", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx, cancelFn := context.WithCancel(context.Background())
+			cancelFn()
+
+			actualJobSources, actualError := repo.GetByResourceURN(ctx, sampleResourceURN)
+
+			assert.Nil(t, actualJobSources)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return job sources based on resource URN and nil if no error is encountered", func(t *testing.T) {
+			jobSource := &postgres.JobSource{
+				JobID:       uuid.New(),
+				ProjectID:   projectSpec.ID.UUID(),
+				ResourceURN: sampleResourceURN,
+			}
+			db := DBSetup()
+			if err := db.Create(jobSource).Error; err != nil {
+				panic(err)
+			}
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx := context.Background()
+
+			actualJobSources, actualError := repo.GetByResourceURN(ctx, sampleResourceURN)
+
+			expectedLen := 1
+
+			assert.Len(t, actualJobSources, expectedLen)
+			assert.NoError(t, actualError)
+		})
+	})
+
 	t.Run("DeleteByJobID", func(t *testing.T) {
 		t.Run("should return error if context is nil", func(t *testing.T) {
 			db := DBSetup()

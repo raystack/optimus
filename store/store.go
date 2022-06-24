@@ -142,5 +142,6 @@ type JobSourceRepository interface {
 	// Save replaces old job sources records for the particular project id and job id with newer ones
 	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, jobSourceURNs []string) error
 	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
+	GetByResourceURN(context.Context, string) ([]models.JobSource, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
 }

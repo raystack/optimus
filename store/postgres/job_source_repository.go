@@ -73,6 +73,18 @@ func (repo *jobSourceRepository) GetAll(ctx context.Context, projectID models.Pr
 	return jobSources(sources).ToSpec(), nil
 }
 
+func (repo *jobSourceRepository) GetByResourceURN(ctx context.Context, resourceURN string) ([]models.JobSource, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	var sources []JobSource
+	if err := repo.db.WithContext(ctx).Where("resource_urn = ?", resourceURN).Find(&sources).Error; err != nil {
+		return nil, err
+	}
+
+	return jobSources(sources).ToSpec(), nil
+}
+
 func (repo *jobSourceRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
 	if ctx == nil {
 		return errors.New("context is nil")
