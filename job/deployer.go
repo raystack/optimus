@@ -214,13 +214,13 @@ func (d *deployer) getJobIDInferredDependenciesMap(ctx context.Context, deployme
 	}
 
 	resourceURNJobMap := models.JobSpecs(jobSpecs).GroupJobsByDestination()
-	externalJobSpecs, err := d.getExternalJobSpecs(ctx, deploymentProjectSpec, resourceURNJobMap, jobSources)
-	if err != nil {
-		return nil, err
-	}
-	for _, externalJob := range externalJobSpecs {
-		job := externalJob
-		resourceURNJobMap[externalJob.ResourceDestination] = &job
+	externalSources := d.getExternalSources(jobSources, resourceURNJobMap)
+	if len(externalSources) > 0 {
+		externalJobSpecs, err := d.getExternalJobSpecs(ctx, deploymentProjectSpec, externalSources)
+		if err != nil {
+			return nil, err
+		}
+		d.enrichResourceURNJobMap(resourceURNJobMap, externalJobSpecs)
 	}
 
 	// preparing the job dependency by using the resource URN job map
@@ -234,7 +234,14 @@ func (d *deployer) getJobIDInferredDependenciesMap(ctx context.Context, deployme
 	return jobIDDependenciesMap, nil
 }
 
-func (d *deployer) getExternalJobSpecs(ctx context.Context, deploymentProjectSpec models.ProjectSpec, resourceURNJobMap map[string]*models.JobSpec, jobSources []models.JobSource) ([]models.JobSpec, error) {
+func (*deployer) enrichResourceURNJobMap(resourceURNJobMap map[string]*models.JobSpec, externalJobSpecs []models.JobSpec) {
+	for _, externalJob := range externalJobSpecs {
+		job := externalJob
+		resourceURNJobMap[externalJob.ResourceDestination] = &job
+	}
+}
+
+func (*deployer) getExternalSources(jobSources []models.JobSource, resourceURNJobMap map[string]*models.JobSpec) []string {
 	var externalSources []string
 	for _, source := range jobSources {
 		if _, ok := resourceURNJobMap[source.ResourceURN]; ok {
@@ -242,11 +249,10 @@ func (d *deployer) getExternalJobSpecs(ctx context.Context, deploymentProjectSpe
 		}
 		externalSources = append(externalSources, source.ResourceURN)
 	}
+	return externalSources
+}
 
-	if len(externalSources) == 0 {
-		return nil, nil
-	}
-
+func (d *deployer) getExternalJobSpecs(ctx context.Context, deploymentProjectSpec models.ProjectSpec, externalSources []string) ([]models.JobSpec, error) {
 	projectRepository := d.projectJobSpecRepoFactory.New(deploymentProjectSpec)
 	externalJobSpecs, err := projectRepository.GetByDestinations(ctx, externalSources)
 	if err != nil {
