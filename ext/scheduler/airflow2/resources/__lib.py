@@ -240,7 +240,11 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
         # parse relevant metadata from the job metadata to build the task window
         # TODO this needs to be updated to use optimus get job spec
-        upstream_schedule = self.get_schedule_interval(schedule_time)
+        try:
+            upstream_schedule = self.get_schedule_interval(schedule_time)
+        except Exception as e:
+            self.log.warning("error while fetching upstream schedule :: {}".format(e))
+            return False
 
         last_upstream_schedule_time, _ = self.get_last_upstream_times(
             schedule_time, upstream_schedule)
