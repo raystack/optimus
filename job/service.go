@@ -93,14 +93,15 @@ type ReplayManager interface {
 // and other properties. Finally, it syncs the jobs with corresponding
 // store
 type Service struct {
-	jobSpecRepoFactory        SpecRepoFactory
-	dependencyResolver        DependencyResolver
-	priorityResolver          PriorityResolver
-	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
-	replayManager             ReplayManager
-	projectService            service.ProjectService
-	namespaceService          service.NamespaceService
-	deployManager             DeployManager
+	jobSpecRepoFactory            SpecRepoFactory
+	dependencyResolver            DependencyResolver
+	priorityResolver              PriorityResolver
+	projectJobSpecRepoFactory     ProjectJobSpecRepoFactory
+	replayManager                 ReplayManager
+	projectService                service.ProjectService
+	namespaceService              service.NamespaceService
+	interProjectJobSpecRepository store.InterProjectJobSpecRepository
+	deployManager                 DeployManager
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -168,6 +169,43 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
 	return jobSpec, nil
+}
+
+func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+	if filter.ResourceDestination != "" {
+		jobSpec, err := srv.interProjectJobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
+		if err != nil {
+			return nil, err
+		}
+		return []models.JobSpec{jobSpec}, nil
+	}
+	if filter.ProjectName != "" {
+		projSpec, err := srv.projectService.Get(ctx, filter.ProjectName)
+		if err != nil {
+			return nil, fmt.Errorf("not able to find project: %w", err)
+		}
+		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projSpec)
+		if filter.JobName != "" {
+			jobSpec, _, err := projectJobSpecRepo.GetByName(ctx, filter.JobName)
+			if err != nil {
+				return nil, err
+			}
+			return []models.JobSpec{jobSpec}, nil
+		}
+		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+		if err != nil {
+			return []models.JobSpec{}, err
+		}
+		return jobSpecs, nil
+	}
+	if filter.JobName != "" {
+		jobSpecs, err := srv.interProjectJobSpecRepository.GetJobByName(ctx, filter.JobName)
+		if err != nil {
+			return nil, err
+		}
+		return jobSpecs, nil
+	}
+	return nil, fmt.Errorf("filters not specified")
 }
 
 // GetByNameForProject fetches a Job by name for a specific project
@@ -678,19 +716,20 @@ func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.Schedu
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
-	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
+	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService, interProjectJobSpecRepository store.InterProjectJobSpecRepository,
 ) *Service {
 	return &Service{
-		jobSpecRepoFactory:        jobSpecRepoFactory,
-		batchScheduler:            batchScheduler,
-		manualScheduler:           manualScheduler,
-		dependencyResolver:        dependencyResolver,
-		priorityResolver:          priorityResolver,
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
-		replayManager:             replayManager,
-		namespaceService:          namespaceService,
-		projectService:            projectService,
-		deployManager:             deployManager,
+		jobSpecRepoFactory:            jobSpecRepoFactory,
+		batchScheduler:                batchScheduler,
+		manualScheduler:               manualScheduler,
+		dependencyResolver:            dependencyResolver,
+		priorityResolver:              priorityResolver,
+		projectJobSpecRepoFactory:     projectJobSpecRepoFactory,
+		replayManager:                 replayManager,
+		namespaceService:              namespaceService,
+		projectService:                projectService,
+		interProjectJobSpecRepository: interProjectJobSpecRepository,
+		deployManager:                 deployManager,
 
 		assetCompiler: assetCompiler,
 		pluginService: pluginService,

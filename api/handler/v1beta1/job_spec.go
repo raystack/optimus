@@ -213,6 +213,24 @@ func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb
 	}, nil
 }
 
+func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
+	jobSpecFilter := models.JobSpecFilter{
+		ProjectName:         req.GetProjectName(),
+		JobName:             req.GetJobName(),
+		ResourceDestination: req.GetResourceDestination(),
+	}
+	jobSpecs, err := sv.jobSvc.GetByFilter(ctx, jobSpecFilter)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to retrieve job: %s", err.Error())
+	}
+	jobProtos := []*pb.JobSpecification{}
+	for _, jobSpec := range jobSpecs {
+		jobProto := ToJobProto(jobSpec)
+		jobProtos = append(jobProtos, jobProto)
+	}
+	return &pb.GetJobSpecificationsResponse{Jobs: jobProtos}, nil
+}
+
 func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {

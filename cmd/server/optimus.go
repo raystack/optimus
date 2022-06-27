@@ -219,6 +219,7 @@ func (s *OptimusServer) setupHandlers() error {
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
+	interProjectJobSpecRepo := postgres.NewInterProjectJobSpecRepository(s.dbConn, dbAdapter)
 
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: s.dbConn,
@@ -308,6 +309,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectService,
 		deployManager,
 		pluginService,
+		interProjectJobSpecRepo,
 	)
 
 	// job run service
