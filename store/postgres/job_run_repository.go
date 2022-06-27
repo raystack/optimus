@@ -16,10 +16,8 @@ type JobRunMetrics struct {
 	JobRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobID uuid.UUID
-	Job   Job `gorm:"foreignKey:JobID"`
 
 	NamespaceID uuid.UUID
-	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
 	ProjectID uuid.UUID
 
@@ -33,14 +31,13 @@ type JobRunMetrics struct {
 	SLAMissDelay  int
 	Duration      int64
 	SLADefinition int64
-	//TODO: job run page link get from dag context
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
 
 const (
-	airflowDateFormat   = "2006-01-02T15:04:05Z"
+	ISODateFormat       = "2006-01-02T15:04:05Z"
 	jobRunStatusRunning = "STARTED"
 )
 
@@ -58,13 +55,13 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 
 	jobRunMetrics := JobRunMetrics{}
 
-	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
+	scheduledAtTimeStamp, err := time.Parse(ISODateFormat, eventPayload["scheduled_at"].GetStringValue())
 	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
 
 	if err != nil {
 		return err
 	}
-	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error
+	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, namespaceSpec.ProjectSpec.ID.UUID(), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return store.ErrResourceNotFound
@@ -80,13 +77,13 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 
 // GetActiveJobRun get the latest jobRun instance for a given schedule time
 func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, scheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
-	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, scheduledAt)
+	scheduledAtTimeStamp, err := time.Parse(ISODateFormat, scheduledAt)
 	if err != nil {
 		return models.JobRunSpec{}, err
 	}
 
 	jobRunMetrics := JobRunMetrics{}
-	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp).Order("attempt desc").First(&jobRunMetrics).Error
+	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? ", jobSpec.ID, namespaceSpec.ProjectSpec.ID.UUID(), namespaceSpec.ID, scheduledAtTimeStamp).Order("attempt desc").First(&jobRunMetrics).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobRunSpec{}, store.ErrResourceNotFound
@@ -115,14 +112,14 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 	eventPayload := event.Value
 	jobRunMetrics := JobRunMetrics{}
 
-	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
+	scheduledAtTimeStamp, err := time.Parse(ISODateFormat, eventPayload["scheduled_at"].GetStringValue())
 	if err != nil {
 		return models.JobRunSpec{}, err
 	}
 
 	attemptNumber := int(eventPayload["attempt"].GetNumberValue())
 
-	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, uuid.UUID(namespaceSpec.ProjectSpec.ID), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error
+	err = repo.db.WithContext(ctx).Where("job_id = ? and project_id = ? and namespace_id = ? and scheduled_at = ? and attempt = ? ", jobSpec.ID, namespaceSpec.ProjectSpec.ID.UUID(), namespaceSpec.ID, scheduledAtTimeStamp, attemptNumber).First(&jobRunMetrics).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobRunSpec{}, store.ErrResourceNotFound
@@ -149,17 +146,16 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64) error {
 	eventPayload := event.Value
 
-	scheduledAtTimeStamp, err := time.Parse(airflowDateFormat, eventPayload["scheduled_at"].GetStringValue())
+	scheduledAtTimeStamp, err := time.Parse(ISODateFormat, eventPayload["scheduled_at"].GetStringValue())
 	if err != nil {
 		return err
 	}
 
 	bigEndTime := time.Date(3000, 9, 16, 19, 17, 23, 0, time.UTC)
 	resource := JobRunMetrics{
-		JobRunID:    uuid.New(),
 		JobID:       jobSpec.ID,
 		NamespaceID: namespaceSpec.ID,
-		ProjectID:   uuid.UUID(namespaceSpec.ProjectSpec.ID),
+		ProjectID:   namespaceSpec.ProjectSpec.ID.UUID(),
 
 		ScheduledAt:   scheduledAtTimeStamp,
 		StartTime:     time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0),
@@ -169,8 +165,7 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 		Status:  jobRunStatusRunning,
 		Attempt: int(eventPayload["attempt"].GetNumberValue()),
 	}
-
-	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
+	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 
 func NewJobRunMetricsRepository(db *gorm.DB) *JobRunMetricsRepository {

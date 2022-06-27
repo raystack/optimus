@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -43,11 +44,11 @@ func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, 
 		Attempt:       int(eventPayload["attempt"].GetNumberValue()),
 		JobRunAttempt: jobRunSpec.Attempt,
 	}
-	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
+	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 
-func (repo *HookRunRepository) GetHookRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.HookRunSpec, error) {
-	hookRun := HookRun{}
+func (repo *HookRunRepository) GetHookRun(ctx context.Context, jobRunSpec models.JobRunSpec) (models.HookRunSpec, error) {
+	var hookRun HookRun
 	if err := repo.db.WithContext(ctx).Where("job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.HookRunSpec{}, store.ErrResourceNotFound
@@ -70,14 +71,23 @@ func (repo *HookRunRepository) GetHookRunIfExists(ctx context.Context, jobRunSpe
 func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
 
-	hookRun := HookRun{}
-	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error; err != nil {
+	var hookRun HookRun
+	err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&hookRun).Error
+	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return store.ErrResourceNotFound
 		}
 		return err
 	}
-	hookRun.Status = eventPayload["Status"].GetStringValue()
+	if event.Type == models.HookFailEvent ||
+		event.Type == models.HookSuccessEvent ||
+		event.Type == models.HookRetryEvent {
+		hookRun.EndTime = time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
+		hookRun.Duration = int64(hookRun.EndTime.Sub(hookRun.StartTime).Seconds())
+		hookRun.Status = strings.ToUpper(strings.Split(string(event.Type), "hook_")[1])
+	} else {
+		hookRun.Status = eventPayload["Status"].GetStringValue()
+	}
 	hookRun.Attempt = int(eventPayload["attempt"].GetNumberValue())
 
 	return repo.db.WithContext(ctx).Save(&hookRun).Error

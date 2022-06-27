@@ -2,21 +2,13 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"time"
-
-	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
 
 type monitoringService struct {
-	logger        log.Logger
-	JobRunService JobRunService
-
 	JobRunMetricsRepository store.JobRunMetricsRepository
 	TaskRunRepository       store.TaskRunRepository
 	SensorRunRepository     store.SensorRunRepository
@@ -27,43 +19,16 @@ type MonitoringService interface {
 	ProcessEvent(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
 }
 
-func getSLADuration(jobSpec models.JobSpec) (int64, error) {
-	var slaMissDurationInSec int64
-	for _, notify := range jobSpec.Behavior.Notify {
-		if notify.On == models.SLAMissEvent {
-			if _, ok := notify.Config["duration"]; !ok {
-				continue
-			}
-
-			dur, err := time.ParseDuration(notify.Config["duration"])
-			if err != nil {
-				return 0, fmt.Errorf("failed to parse sla_miss duration %s: %w", notify.Config["duration"], err)
-			}
-			slaMissDurationInSec = int64(dur.Seconds())
-		}
-	}
-	return slaMissDurationInSec, nil
-}
-
 func (m monitoringService) registerNewJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
-	slaMissDurationInSec, err := getSLADuration(jobSpec)
+	slaMissDurationInSec, err := jobSpec.SLADuration()
 	if err != nil {
 		return err
 	}
-	err = m.JobRunMetricsRepository.Save(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec)
-	if err != nil {
-		m.logger.Info(err.Error())
-		return err
-	}
-	return nil
+	return m.JobRunMetricsRepository.Save(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec)
 }
 
 func (m monitoringService) updateJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
-	err := m.JobRunMetricsRepository.Update(ctx, event, namespaceSpec, jobSpec)
-	if err != nil {
-		return err
-	}
-	return nil
+	return m.JobRunMetricsRepository.Update(ctx, event, namespaceSpec, jobSpec)
 }
 
 func (m monitoringService) getActiveJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
@@ -80,7 +45,7 @@ func (m monitoringService) registerTaskRunEvent(ctx context.Context, event model
 	if err != nil {
 		return err
 	}
-	_, err = m.TaskRunRepository.GetTaskRunIfExists(ctx, jobRunSpec)
+	_, err = m.TaskRunRepository.GetTaskRun(ctx, jobRunSpec)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return m.TaskRunRepository.Save(ctx, event, jobRunSpec)
@@ -95,7 +60,7 @@ func (m monitoringService) registerSensorRunEvent(ctx context.Context, event mod
 	if err != nil {
 		return err
 	}
-	_, err = m.SensorRunRepository.GetSensorRunIfExists(ctx, jobRunSpec)
+	_, err = m.SensorRunRepository.GetSensorRun(ctx, jobRunSpec)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return m.SensorRunRepository.Save(ctx, event, jobRunSpec)
@@ -109,7 +74,7 @@ func (m monitoringService) registerHookRunEvent(ctx context.Context, event model
 	if err != nil {
 		return err
 	}
-	if _, err = m.HookRunRepository.GetHookRunIfExists(ctx, jobRunSpec); err != nil {
+	if _, err = m.HookRunRepository.GetHookRun(ctx, jobRunSpec); err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return m.HookRunRepository.Save(ctx, event, jobRunSpec)
 		}
@@ -119,11 +84,6 @@ func (m monitoringService) registerHookRunEvent(ctx context.Context, event model
 }
 
 func (m monitoringService) ProcessEvent(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
-	m.logger.Info("event.Type", string(event.Type))
-	eventPayload := event.Value
-	eventPayloadString, _ := json.Marshal(eventPayload)
-	m.logger.Info("eventPayloadString", string(eventPayloadString))
-
 	switch event.Type {
 	case models.JobStartEvent:
 		return m.registerNewJobRun(ctx, event, namespaceSpec, jobSpec)
@@ -139,15 +99,11 @@ func (m monitoringService) ProcessEvent(ctx context.Context, event models.JobEve
 	return nil
 }
 
-func NewMonitoringService(logger log.Logger,
-	jobRunService JobRunService,
-	jobRunMetricsRepository store.JobRunMetricsRepository,
+func NewMonitoringService(jobRunMetricsRepository store.JobRunMetricsRepository,
 	sensorRunRepository store.SensorRunRepository,
 	hookRunRepository store.HookRunRepository,
 	taskRunRepository store.TaskRunRepository) *monitoringService {
 	return &monitoringService{
-		logger:                  logger,
-		JobRunService:           jobRunService,
 		TaskRunRepository:       taskRunRepository,
 		JobRunMetricsRepository: jobRunMetricsRepository,
 		SensorRunRepository:     sensorRunRepository,

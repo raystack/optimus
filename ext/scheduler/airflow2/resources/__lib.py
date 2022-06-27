@@ -494,10 +494,6 @@ def log_failure_event(context):
 
 
 def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_tis):
-    log.info("in optimus_sla_miss_notify ")
-    log.info(task_list)
-    log.info(blocking_task_list)
-    log.info(blocking_tis)
     params = dag.params
     optimus_client = OptimusAPIClient(params["optimus_hostname"])
 
@@ -525,8 +521,6 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
         "type": "TYPE_SLA_MISS",
         "value": message,
     }
-    log.info("sla missed ")
-    log.info(event)
     # post event
     resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
     print("posted event ", params, event, resp)

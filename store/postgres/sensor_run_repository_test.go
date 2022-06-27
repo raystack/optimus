@@ -18,7 +18,7 @@ import (
 	"github.com/odpf/optimus/store/postgres"
 )
 
-func TestIntegrationJobRunMetricsRepository(t *testing.T) {
+func TestIntegrationSensorRunRepository(t *testing.T) {
 	ctx := context.Background()
 	projectSpec := models.ProjectSpec{
 		ID:   models.ProjectID(uuid.New()),
@@ -100,7 +100,6 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 	DBSetup := func() *gorm.DB {
 		dbConn := setupDB()
 		truncateTables(dbConn)
-
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 		prepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(t, prepo.Save(ctx, projectSpec))
@@ -111,74 +110,103 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
 		return dbConn
 	}
+	//
+	//scheduledAt, _ := time.Parse(time.RFC3339, "2022-01-02T20:34:05+05:30")
+	//startTime, _ := time.Parse(time.RFC3339, "2022-01-01T05:30:00+05:30")
+	//endTime, _ := time.Parse(time.RFC3339, "3000-09-17T00:47:23+05:30")
 
 	SLAMissDuearionSecs := int64(100)
+	eventTimeString := "2022-01-02T16:04:05Z"
+	sensorEventTimeString := "2022-01-02T16:04:05Z"
 	eventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url":          "https://example.io",
 			"scheduled_at": "2022-01-02T15:04:05Z",
 			"attempt":      "2",
-			"event_time":   "2022-01-02T16:04:05Z",
+			"event_time":   eventTimeString,
 		},
 	)
+	sensorStartTime, _ := time.Parse(time.RFC3339, sensorEventTimeString)
+	sensorEventValues, _ := structpb.NewStruct(
+		map[string]interface{}{
+			"url":                  "https://example.io",
+			"scheduled_at":         "2022-01-02T15:04:05Z",
+			"attempt":              "2",
+			"task_start_timestamp": sensorStartTime.Unix(),
+		},
+	)
+
 	jobEvent := models.JobEvent{
 		Type:  models.JobStartEvent,
 		Value: eventValues.GetFields(),
 	}
 
+	sensorRunStartEvent := models.JobEvent{
+		Type:  models.SensorStartEvent,
+		Value: sensorEventValues.GetFields(),
+	}
+
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
-
-		repo := postgres.NewJobRunMetricsRepository(db)
-		err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
+		err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+		assert.Nil(t, err)
+		jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
 		assert.Nil(t, err)
 
-		jobRunSpec, err := repo.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
+		repo := postgres.NewSensorRunRepository(db)
+		err = repo.Save(ctx, sensorRunStartEvent, jobRunSpec)
 		assert.Nil(t, err)
 
-		assert.Equal(t, jobRunSpec.JobID, jobConfigs[0].ID)
-		assert.Equal(t, jobRunSpec.NamespaceID, namespaceSpec.ID)
-		assert.Equal(t, jobRunSpec.Attempt, int(jobEvent.Value["attempt"].GetNumberValue()))
+		sensorRunSpec, err := repo.GetSensorRun(ctx, jobRunSpec)
+		assert.Nil(t, err)
+
+		assert.Equal(t, sensorRunSpec.JobRunID, jobRunSpec.JobRunID)
+		assert.Equal(t, sensorRunSpec.StartTime.UTC(), sensorStartTime.UTC())
 	})
 	t.Run("Update", func(t *testing.T) {
-		t.Run("should update job runs correctly", func(t *testing.T) {
+		t.Run("should update sensor runs correctly", func(t *testing.T) {
 			db := DBSetup()
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
+			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			assert.Nil(t, err)
+			jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
+			assert.Nil(t, err)
 
-			repo := postgres.NewJobRunMetricsRepository(db)
-			err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			repo := postgres.NewSensorRunRepository(db)
+			err = repo.Save(ctx, sensorRunStartEvent, jobRunSpec)
+			assert.Nil(t, err)
+
+			sensorEndEventTimeString := "2022-01-02T17:04:05Z"
+			sensorEndTime, err := time.Parse(time.RFC3339, sensorEndEventTimeString)
 			assert.Nil(t, err)
 
 			updateEventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url":          "https://example.io",
-					"scheduled_at": "2022-01-02T15:04:05Z",
-					"event_time":   "2022-01-02T17:04:05Z",
-					"job_duration": "20",
-					"attempt":      "2",
-					"status":       "FINISHED",
+					"url":        "https://example.io",
+					"event_time": sensorEndTime.Unix(),
+					"attempt":    "2",
+					"status":     "SUCCESS",
 				},
 			)
 			jobUpdateEvent := models.JobEvent{
-				Type:  models.JobSuccessEvent,
+				Type:  models.SensorSuccessEvent,
 				Value: updateEventValues.GetFields(),
 			}
 
-			err = repo.Update(ctx, jobUpdateEvent, namespaceSpec, jobConfigs[0])
+			err = repo.Update(ctx, jobUpdateEvent, jobRunSpec)
 			assert.Nil(t, err)
 
-			jobRunSpec, err := repo.Get(ctx, jobUpdateEvent, namespaceSpec, jobConfigs[0])
+			sensorRunSpec, err := repo.GetSensorRun(ctx, jobRunSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, jobConfigs[0].ID, jobRunSpec.JobID)
-			assert.Equal(t, namespaceSpec.ID, jobRunSpec.NamespaceID)
-			assert.Equal(t, int(jobEvent.Value["attempt"].GetNumberValue()), jobRunSpec.Attempt)
-			assert.Equal(t, "FINISHED", jobRunSpec.Status)
-			assert.Equal(t, int64(jobEvent.Value["attempt"].GetNumberValue()), jobRunSpec.Duration)
-			assert.Equal(t, time.Unix(int64(jobEvent.Value["event_time"].GetNumberValue()), 0), jobRunSpec.EndTime)
+			assert.Equal(t, sensorRunSpec.JobRunID, jobRunSpec.JobRunID)
+			assert.Equal(t, sensorRunSpec.Duration, sensorEndTime.Unix()-sensorStartTime.Unix())
+			assert.Equal(t, "SUCCESS", sensorRunSpec.Status)
 		})
 	})
-	t.Run("GetActiveJobRun", func(t *testing.T) {
-		t.Run("should return latest job run attempt for a given scheduled time", func(t *testing.T) {
+	t.Run("GetSensorRun", func(t *testing.T) {
+		t.Run("should return latest sensor run attempt for a given jobRun", func(t *testing.T) {
 			db := DBSetup()
 
 			eventValuesAttempt3, _ := structpb.NewStruct(
@@ -194,12 +222,21 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 				Value: eventValuesAttempt3.GetFields(),
 			}
 
-			repo := postgres.NewJobRunMetricsRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
 			// adding for attempt number 2
-			err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
+
+			jobRunSpec, err := jobRunMetricsRepository.GetActiveJobRun(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			assert.Nil(t, err)
+
+			// first sensor run for attempt number 2
+			repo := postgres.NewSensorRunRepository(db)
+			err = repo.Save(ctx, sensorRunStartEvent, jobRunSpec)
+			assert.Nil(t, err)
+
 			// adding for attempt number 3
-			err = repo.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err = jobRunMetricsRepository.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
 			eventValuesAttemptFinish, _ := structpb.NewStruct(
@@ -215,9 +252,16 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 				Type:  models.JobSuccessEvent,
 				Value: eventValuesAttemptFinish.GetFields(),
 			}
-			//should return the latest attempt number
-			jobRunSpec, err := repo.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
-			assert.Equal(t, jobRunSpec.Attempt, 3)
+			// should return the latest attempt number
+			jobRunSpec, err = jobRunMetricsRepository.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			assert.Nil(t, err)
+
+			// first sensor run for attempt number 3
+			err = repo.Save(ctx, sensorRunStartEvent, jobRunSpec)
+			assert.Nil(t, err)
+
+			sensorRunSpec, err := repo.GetSensorRun(ctx, jobRunSpec)
+			assert.Equal(t, sensorRunSpec.JobRunAttempt, jobRunSpec.Attempt)
 			assert.Nil(t, err)
 		})
 	})

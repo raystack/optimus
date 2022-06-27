@@ -34,9 +34,10 @@ type TaskRunRepository struct {
 	db *gorm.DB
 }
 
-func (repo *TaskRunRepository) GetTaskRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
-	taskRun := TaskRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
+func (repo *TaskRunRepository) GetTaskRun(ctx context.Context, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
+	var taskRun TaskRun
+	err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.TaskRunSpec{}, store.ErrResourceNotFound
 		}
@@ -60,7 +61,6 @@ func (repo *TaskRunRepository) Save(ctx context.Context, event models.JobEvent, 
 	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
 
 	taskRun := TaskRun{
-		TaskRunID:     uuid.New(),
 		JobRunID:      jobRunSpec.JobRunID,
 		StartTime:     startedAtTimeStamp,
 		Status:        jobRunStatusRunning,
@@ -68,14 +68,15 @@ func (repo *TaskRunRepository) Save(ctx context.Context, event models.JobEvent, 
 		JobRunAttempt: jobRunSpec.Attempt,
 	}
 
-	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&taskRun).Error
+	return repo.db.WithContext(ctx).Create(&taskRun).Error
 }
 
 func (repo *TaskRunRepository) Update(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
-	taskRun := TaskRun{}
+	var taskRun TaskRun
 
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error; err != nil {
+	err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error
+	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return store.ErrResourceNotFound
 		}

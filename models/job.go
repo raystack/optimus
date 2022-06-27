@@ -86,6 +86,23 @@ func (js JobSpec) GetName() string {
 	return js.Name
 }
 
+func (js JobSpec) SLADuration() (int64, error) {
+	for _, notify := range js.Behavior.Notify {
+		if notify.On == SLAMissEvent {
+			if _, ok := notify.Config["duration"]; !ok {
+				continue
+			}
+
+			dur, err := time.ParseDuration(notify.Config["duration"])
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse sla_miss duration %s: %w", notify.Config["duration"], err)
+			}
+			return int64(dur.Seconds()), nil
+		}
+	}
+	return 0, nil
+}
+
 func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
 	for _, hook := range js.Hooks {
 		if hook.Unit.Info().Name == name {

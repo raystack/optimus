@@ -53,8 +53,9 @@ func (repo *SensorRunRepository) Save(ctx context.Context, event models.JobEvent
 func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
 
-	sensorRun := SensorRun{}
-	if err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
+	var sensorRun SensorRun
+	err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return store.ErrResourceNotFound
 		}
@@ -74,8 +75,8 @@ func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEve
 	return repo.db.WithContext(ctx).Save(&sensorRun).Error
 }
 
-func (repo *SensorRunRepository) GetSensorRunIfExists(ctx context.Context, jobRunSpec models.JobRunSpec) (models.SensorRunSpec, error) {
-	sensorRun := SensorRun{}
+func (repo *SensorRunRepository) GetSensorRun(ctx context.Context, jobRunSpec models.JobRunSpec) (models.SensorRunSpec, error) {
+	var sensorRun SensorRun
 	if err := repo.db.WithContext(ctx).Where(" job_run_id = ? and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&sensorRun).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.SensorRunSpec{}, store.ErrResourceNotFound
