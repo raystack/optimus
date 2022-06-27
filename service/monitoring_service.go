@@ -20,11 +20,11 @@ type MonitoringService interface {
 }
 
 func (m monitoringService) registerNewJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
-	slaMissDurationInSec, err := jobSpec.SLADuration()
+	slaDefinitionInSec, err := jobSpec.SLADuration()
 	if err != nil {
 		return err
 	}
-	return m.JobRunMetricsRepository.Save(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec)
+	return m.JobRunMetricsRepository.Save(ctx, event, namespaceSpec, jobSpec, slaDefinitionInSec)
 }
 
 func (m monitoringService) updateJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {

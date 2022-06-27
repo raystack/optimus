@@ -13,6 +13,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -93,7 +94,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			}
 
 			monitoringService := new(mock.MonitoringService)
-			monitoringService.On("ProcessEvent", ctx, jobEvent, namespaceSpec, jobSpecs[0]).Return(nil)
+			monitoringService.On("ProcessEvent", ctx, jobEvent, namespaceSpec, jobSpecs[0]).Return(store.ErrResourceNotFound)
 			defer monitoringService.AssertExpectations(t)
 
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
