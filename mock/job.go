@@ -72,6 +72,26 @@ func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map
 	return map[string][]string{}, args.Error(1)
 }
 
+type InterProjectJobSpecRepository struct {
+	mock.Mock
+}
+
+func (repo *InterProjectJobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
+	args := repo.Called(ctx, jobName)
+	if args.Get(0) != nil {
+		return args.Get(0).(models.JobSpecs), args.Error(1)
+	}
+	return models.JobSpecs{models.JobSpec{}}, args.Error(1)
+}
+
+func (repo *InterProjectJobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+	args := repo.Called(ctx, resourceDestination)
+	if args.Get(0) != nil {
+		return args.Get(0).(models.JobSpec), args.Error(1)
+	}
+	return models.JobSpec{}, args.Error(1)
+}
+
 // JobSpecRepoFactory to store raw specs at namespace level
 type JobSpecRepoFactory struct {
 	mock.Mock
@@ -129,6 +149,11 @@ func (fac *JobConfigLocalFactory) New(inputs models.JobSpec) (local.Job, error) 
 
 type JobService struct {
 	mock.Mock
+}
+
+func (srv *JobService) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, filter)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
 func (srv *JobService) Create(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpec, error) {
@@ -205,6 +230,14 @@ func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName st
 func (srv *JobService) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
 	args := srv.Called(ctx, deployID)
 	return args.Get(0).(models.JobDeployment), args.Error(1)
+}
+func (srv *JobService) GetByJobName(ctx context.Context, jobName string) (models.JobSpec, error) {
+	args := srv.Called(ctx, jobName)
+	return args.Get(0).(models.JobSpec), args.Error(1)
+}
+func (srv *JobService) GetByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+	args := srv.Called(ctx, resourceDestination)
+	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
 type DependencyResolver struct {
