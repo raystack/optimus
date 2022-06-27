@@ -58,7 +58,7 @@ transformation_secret = Secret(
 )
 
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY="IfNotPresent"
+IMAGE_PULL_POLICY="Always"
 INIT_CONTAINER_IMAGE="optimus:latest" # inject from optimus config ?
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 

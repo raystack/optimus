@@ -100,8 +100,8 @@ resources = k8s.V1ResourceRequirements (
 {{- end }}
 
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY="IfNotPresent"
-INIT_CONTAINER_IMAGE="optimus:latest" # inject from optimus config ?
+IMAGE_PULL_POLICY="Always"
+INIT_CONTAINER_IMAGE="optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
 volume = k8s.V1Volume(
@@ -114,7 +114,7 @@ asset_volume_mounts = [
 executor_env_vars = [
     k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
-    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"),
+    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"), # "{{$baseTaskSchema.SecretPath}}" ??  # tmp/.secret -> /opt/auth.json
 ]
 
 init_env_vars = [
