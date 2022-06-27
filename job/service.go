@@ -803,6 +803,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 
 	// resolve dependency and persist
 	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, progressObserver)
+	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 
 	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
 	if err != nil {
@@ -899,7 +900,6 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionSucceed}).Set(float64(success))
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionFailed}).Set(float64(failure))
-	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 }
 
 func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec) ([]string, error) {
@@ -927,24 +927,22 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 		return models.DeploymentID(uuid.Nil), err
 	}
 
-	// Get created, modified, and deleted jobs
-	createdJobs, modifiedJobs, deletedJobs, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
+	jobsToSave, jobsToDelete, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
 	if err != nil {
 		return models.DeploymentID(uuid.Nil), err
 	}
 
-	// Save added jobs
-	savedCreatedJobs := srv.bulkCreate(ctx, namespaceSpec, createdJobs, observers)
-	// Save modified jobs
-	savedModifiedJobs := srv.bulkCreate(ctx, namespaceSpec, modifiedJobs, observers)
-	// Delete unnecessary jobs
-	if err := srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers); err != nil {
+	savedJobs := srv.bulkCreate(ctx, namespaceSpec, jobsToSave, observers)
+
+	if err := srv.bulkDelete(ctx, namespaceSpec, jobsToDelete, observers); err != nil {
 		return models.DeploymentID(uuid.Nil), err
 	}
 
-	// Resolve dependency
-	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedCreatedJobs, observers)
-	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedModifiedJobs, observers)
+	// Resolve inferred dependency
+	if len(jobsToSave) > 0 {
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, observers)
+		srv.notifyProgress(observers, &models.ProgressJobDependencyResolutionFinished{})
+	}
 
 	// Deploy through deploy manager
 	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
@@ -955,11 +953,11 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	return deployID, nil
 }
 
-func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {
+func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, error) {
 	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 	existingJobSpecs, err := jobSpecRepo.GetAll(ctx)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	existingJobSpecMap := map[string]models.JobSpec{}
@@ -972,38 +970,33 @@ func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceS
 		requestedJobSpecMap[jobSpec.Name] = jobSpec
 	}
 
-	createdJobSpecs, modifiedJobSpecs := srv.getModifiedJobs(existingJobSpecMap, requestedJobSpecMap)
-	deletedJobSpecs := srv.getDeletedJobs(existingJobSpecMap, requestedJobSpecMap)
+	jobsToSave := srv.getJobsToSave(existingJobSpecMap, requestedJobSpecMap)
+	jobsToDelete := srv.getJobsToDelete(existingJobSpecMap, requestedJobSpecMap)
 
-	return createdJobSpecs, modifiedJobSpecs, deletedJobSpecs, nil
+	return jobsToSave, jobsToDelete, nil
 }
 
-func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) ([]models.JobSpec, []models.JobSpec) {
-	createdJobSpecs := []models.JobSpec{}
-	modifiedJobSpecs := []models.JobSpec{}
-
-	for jobName, requestedJobSpec := range requestedJobSpecs {
-		if existingJobSpec, ok := existingJobSpecs[jobName]; !ok {
-			createdJobSpecs = append(createdJobSpecs, requestedJobSpec)
-		} else if !srv.jobSpecEqual(requestedJobSpec, existingJobSpec) {
-			requestedJobSpec.ID = existingJobSpec.ID
-			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
+func (srv *Service) getJobsToSave(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	var jobsToSave []models.JobSpec
+	for jobName, requested := range requestedJobSpecs {
+		if existing, ok := existingJobSpecs[jobName]; !ok {
+			jobsToSave = append(jobsToSave, requested)
+		} else if !srv.jobSpecEqual(requested, existing) {
+			requested.ID = existing.ID
+			jobsToSave = append(jobsToSave, requested)
 		}
 	}
-
-	return createdJobSpecs, modifiedJobSpecs
+	return jobsToSave
 }
 
-func (*Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
-	deletedJobSpecs := []models.JobSpec{}
-
-	for jobName, existingJobSpec := range existingJobSpecs {
+func (*Service) getJobsToDelete(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	var jobsToDelete []models.JobSpec
+	for jobName, existing := range existingJobSpecs {
 		if _, ok := requestedJobSpecs[jobName]; !ok {
-			deletedJobSpecs = append(deletedJobSpecs, existingJobSpec)
+			jobsToDelete = append(jobsToDelete, existing)
 		}
 	}
-
-	return deletedJobSpecs
+	return jobsToDelete
 }
 
 func (*Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
