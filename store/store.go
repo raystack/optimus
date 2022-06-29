@@ -180,3 +180,7 @@ type JobSourceRepository interface {
 	GetByResourceURN(context.Context, string) ([]models.JobSource, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
 }
+
+type ExternalJobSpecRepository interface {
+	GetJobSpecifications(context.Context, models.JobSpecFilter) ([]models.JobSpec, error)
+}
