@@ -1,12 +1,13 @@
 package http
 
 import (
+	"context"
 	"fmt"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
-	"golang.org/x/net/context"
 	"net/http"
 	"strings"
+
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/models"
 )
 
 type optimusRequestConstructor struct {

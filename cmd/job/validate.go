@@ -92,7 +92,7 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobS
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
-		adaptedSpec := v1handler.ToJobProto(spec)
+		adaptedSpec := v1handler.ToJobSpecificationProto(spec)
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptedSpec)
 	}
 

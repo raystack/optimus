@@ -468,7 +468,7 @@
         "jobs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1beta1JobSpecification"
+            "$ref": "#/definitions/v1beta1JobSpecificationResponse"
           }
         },
         "jobSpecificationResponses": {

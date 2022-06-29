@@ -246,7 +246,7 @@ func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *con
 
 	adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
 	for i, spec := range jobSpecs {
-		adaptedJobSpecs[i] = v1handler.ToJobProto(spec)
+		adaptedJobSpecs[i] = v1handler.ToJobSpecificationProto(spec)
 	}
 	return &pb.DeployJobSpecificationRequest{
 		Jobs:          adaptedJobSpecs,

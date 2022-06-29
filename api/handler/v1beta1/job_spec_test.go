@@ -145,7 +145,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 
 	var jobsInProto []*pb.JobSpecification
 	for _, jobSpec := range adaptedJobs {
-		jobProto := v1.ToJobProto(jobSpec)
+		jobProto := v1.ToJobSpecificationProto(jobSpec)
 		jobsInProto = append(jobsInProto, jobProto)
 	}
 
@@ -225,7 +225,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 
 	var jobsInProto []*pb.JobSpecification
 	for _, jobSpec := range adaptedJobs {
-		jobProto := v1.ToJobProto(jobSpec)
+		jobProto := v1.ToJobSpecificationProto(jobSpec)
 		jobsInProto = append(jobsInProto, jobProto)
 	}
 	s.jobReq.Jobs = jobsInProto
@@ -291,7 +291,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 
 	var jobsInProto []*pb.JobSpecification
 	for _, jobSpec := range adaptedJobs {
-		jobProto := v1.ToJobProto(jobSpec)
+		jobProto := v1.ToJobSpecificationProto(jobSpec)
 		jobsInProto = append(jobsInProto, jobProto)
 	}
 
@@ -469,7 +469,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobProto := v1.ToJobProto(jobSpec)
+			jobProto := v1.ToJobSpecificationProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,
