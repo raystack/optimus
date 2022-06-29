@@ -59,7 +59,7 @@ transformation_secret = Secret(
 
 JOB_DIR = "/data"
 IMAGE_PULL_POLICY="Always"
-INIT_CONTAINER_IMAGE="optimus:latest" # inject from optimus config ?
+INIT_CONTAINER_IMAGE="odpf/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
 volume = k8s.V1Volume(
@@ -72,7 +72,7 @@ asset_volume_mounts = [
 executor_env_vars = [
     k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
-    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"),
+    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"), # "/opt/optimus/secrets/auth.json" ??  # tmp/.secret -> /opt/auth.json
 ]
 
 init_env_vars = [
