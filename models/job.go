@@ -364,7 +364,18 @@ type JobSpecDependency struct {
 }
 
 type ExternalDependency struct {
-	HTTPDependencies []HTTPDependency
+	HTTPDependencies     []HTTPDependency
+	NeighborDependencies []NeighborDependency
+}
+
+type NeighborDependency struct {
+	Name    string
+	URL     string
+	Headers map[string]string
+
+	ProjectName   string
+	NamespaceName string
+	JobName       string
 }
 
 type HTTPDependency struct {

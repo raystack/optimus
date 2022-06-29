@@ -10,20 +10,14 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+type resourceManagerOptimusConfig struct {
+	Host string
+	// TODO: Add header
+}
+
 type optimusRequestConstructor struct {
 	managerConfig *config.ResourceManager
 	filter        models.JobSpecFilter
-}
-
-func constructGetJobSpecsRequest(ctx context.Context, resourceManagerConfig *config.ResourceManager, filter models.JobSpecFilter) (*http.Request, error) {
-	if resourceManagerConfig.Type == "optimus" {
-		requestConstructor := optimusRequestConstructor{
-			managerConfig: resourceManagerConfig,
-			filter:        filter,
-		}
-		return requestConstructor.constructGetJobSpecsRequest(ctx)
-	}
-	return nil, fmt.Errorf("resource manager type %s is not recognized", resourceManagerConfig.Type)
 }
 
 func (o *optimusRequestConstructor) constructGetJobSpecsRequest(ctx context.Context) (*http.Request, error) {

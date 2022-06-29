@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,11 +17,11 @@ type externalJobSpecRepository struct {
 	httpClient            *http.Client
 }
 
+// NewExternalJobSpecRepository initializes external job spec repository
 func NewExternalJobSpecRepository(resourceManagerConfig *config.ResourceManager) (store.ExternalJobSpecRepository, error) {
 	if resourceManagerConfig == nil {
 		return nil, errors.New("resource manager config is nil")
 	}
-
 	return &externalJobSpecRepository{
 		resourceManagerConfig: resourceManagerConfig,
 		httpClient:            http.DefaultClient,
@@ -28,26 +29,26 @@ func NewExternalJobSpecRepository(resourceManagerConfig *config.ResourceManager)
 }
 
 func (e *externalJobSpecRepository) GetJobSpecifications(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
-	request, err := constructGetJobSpecsRequest(ctx, e.resourceManagerConfig, filter)
+	request, err := constructGetJobSpecificationsRequest(ctx, e.resourceManagerConfig, filter)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error encountered when constructing request: %w", err)
 	}
 
 	response, err := e.httpClient.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error encountered when sending request: %w", err)
 	}
-
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status response: %s", response.Status)
 	}
 
-	return nil, nil
-}
+	var jobSpecResponse getJobSpecificationsResponse
+	decoder := json.NewDecoder(response.Body)
+	if err := decoder.Decode(&jobSpecResponse); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
 
-type resourceManagerOptimusConfig struct {
-	Host string
-	// TODO: Add header
+	return toJobSpecs(jobSpecResponse.Jobs), nil
 }
