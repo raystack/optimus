@@ -11,6 +11,6 @@ import (
 
 type BucketFactory struct{}
 
-func (bf *BucketFactory) New(context.Context, models.ProjectSpec) (airflow2.Bucket, error) {
+func (*BucketFactory) New(context.Context, models.ProjectSpec) (airflow2.Bucket, error) {
 	return memblob.OpenBucket(nil), nil
 }
