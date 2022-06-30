@@ -40,7 +40,6 @@ func NewJobCommand() *cobra.Command {
 	cmd.AddCommand(NewAddHookCommand(job.clientConfig))
 	cmd.AddCommand(NewRefreshCommand(job.clientConfig))
 	cmd.AddCommand(NewRenderCommand(job.clientConfig))
-	cmd.AddCommand(NewRunCommand(job.clientConfig))
 	cmd.AddCommand(NewRunListCommand(job.clientConfig))
 	cmd.AddCommand(NewValidateCommand(job.clientConfig))
 	return cmd
@@ -48,7 +47,7 @@ func NewJobCommand() *cobra.Command {
 
 func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(j.configFilePath, cmd.Flags())
+	c, err := config.LoadClientConfig(j.configFilePath)
 	if err != nil {
 		return err
 	}

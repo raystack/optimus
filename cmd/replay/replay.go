@@ -43,7 +43,7 @@ func NewReplayCommand() *cobra.Command {
 
 func (r *replayCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(r.configFilePath, cmd.Flags())
+	c, err := config.LoadClientConfig(r.configFilePath)
 	if err != nil {
 		return err
 	}

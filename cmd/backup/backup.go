@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	backupTimeout      = time.Minute * 15
-	defaultProjectName = "sample_project"
+	backupTimeout = time.Minute * 15
 )
 
 type backCommand struct {
@@ -48,7 +47,7 @@ func NewBackupCommand() *cobra.Command {
 
 func (b *backCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(b.configFilePath, cmd.Flags())
+	c, err := config.LoadClientConfig(b.configFilePath)
 	if err != nil {
 		return err
 	}

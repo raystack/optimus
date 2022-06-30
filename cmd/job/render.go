@@ -50,10 +50,11 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
-	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig)
+	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig) 
 	if err != nil {
 		return err
 	}
+	// TODO: fetch jobSpec from server instead
 	jobSpec, err := r.getJobSpecByName(args, namespace.Job.Path)
 	if err != nil {
 		return err

@@ -29,6 +29,7 @@ type runCommand struct {
 }
 
 // NewRunCommand initializes run command
+// [DEPRECATED]
 func NewRunCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	run := &runCommand{
 		clientConfig: clientConfig,

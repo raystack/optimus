@@ -103,12 +103,12 @@ func TestConfig(t *testing.T) {
 }
 
 func (s *ConfigTestSuite) TestLoadClientConfig() {
-	currFilePath := path.Join(s.currPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	currFilePath := path.Join(s.currPath, config.DefaultFilename)
 	s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		s.Run("WhenConfigInCurrentPathIsExist", func() {
-			conf, err := config.LoadClientConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadClientConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -119,7 +119,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			s.a.Remove(currFilePath)
 			defer s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
-			conf, err := config.LoadClientConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadClientConfig(config.EmptyPath)
 			s.Assert().Nil(err)
 			s.Assert().NotNil(conf)
 		})
@@ -137,7 +137,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			s.a.WriteFile(samplePath, []byte(b.String()), fs.ModeTemporary)
 			defer s.a.Fs.RemoveAll(samplePath)
 
-			conf, err := config.LoadClientConfig(samplePath, config.EmptyFlags)
+			conf, err := config.LoadClientConfig(samplePath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -145,7 +145,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 		})
 
 		s.Run("WhenFilePathIsNotValid", func() {
-			conf, err := config.LoadClientConfig("/path/not/exist", config.EmptyFlags)
+			conf, err := config.LoadClientConfig("/path/not/exist")
 
 			s.Assert().Error(err)
 			s.Assert().Nil(conf)
@@ -154,13 +154,13 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
-	execFilePath := path.Join(s.execPath, config.DefaultConfigFilename+"."+config.DefaultFileExtension)
+	execFilePath := path.Join(s.execPath, config.DefaultConfigFilename)
 	s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 	s.initServerConfigEnv()
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		s.Run("WhenEnvExist", func() {
-			conf, err := config.LoadServerConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadServerConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -172,7 +172,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			s.unsetServerConfigEnv()
 			defer s.initServerConfigEnv()
 
-			conf, err := config.LoadServerConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadServerConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -185,7 +185,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			defer s.initServerConfigEnv()
 			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 
-			conf, err := config.LoadServerConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadServerConfig(config.EmptyPath)
 
 			s.Assert().Nil(err)
 			s.Assert().NotNil(conf)
@@ -197,7 +197,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			samplePath := "./sample/path/config.yaml"
 			s.a.WriteFile(samplePath, []byte("version: 2"), os.ModeTemporary)
 
-			conf, err := config.LoadServerConfig(samplePath, config.EmptyFlags)
+			conf, err := config.LoadServerConfig(samplePath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -207,7 +207,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 		s.Run("WhenFilePathIsNotValid", func() {
 			s.a.MkdirAll("/path/dir/", os.ModeTemporary)
-			conf, err := config.LoadServerConfig("/path/dir/", config.EmptyFlags)
+			conf, err := config.LoadServerConfig("/path/dir/")
 			s.Assert().Error(err)
 			s.Assert().Nil(conf)
 		})

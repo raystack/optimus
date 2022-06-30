@@ -61,7 +61,7 @@ func (v *versionCommand) RunE(cmd *cobra.Command, _ []string) error {
 	// Print server version
 	if v.isWithServer {
 		// TODO: find a way to load the config in one place
-		clientConfig, err := config.LoadClientConfig(v.configFilePath, cmd.Flags())
+		clientConfig, err := config.LoadClientConfig(v.configFilePath)
 		if err != nil {
 			return err
 		}

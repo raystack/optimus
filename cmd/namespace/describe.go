@@ -45,8 +45,8 @@ func NewDescribeCommand(logger log.Logger) *cobra.Command {
 }
 
 func (d *describeCommand) RunE(cmd *cobra.Command, _ []string) error {
-	filePath := path.Join(d.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+	filePath := path.Join(d.dirPath, config.DefaultFilename)
+	clientConfig, err := config.LoadClientConfig(filePath)
 	if err != nil {
 		return err
 	}

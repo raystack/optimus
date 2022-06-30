@@ -45,7 +45,7 @@ func NewSecretCommand() *cobra.Command {
 
 func (s *secretCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(s.configFilePath, cmd.Flags())
+	c, err := config.LoadClientConfig(s.configFilePath)
 	if err != nil {
 		return err
 	}

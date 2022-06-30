@@ -25,9 +25,6 @@ const (
 
 	taskInputDirectory = "in"
 	unsubstitutedValue = "<no value>"
-
-	defaultProjectName = "sample_project"
-	defaultHost        = "localhost:9100"
 )
 
 type buildInstanceCommand struct {
@@ -38,6 +35,8 @@ type buildInstanceCommand struct {
 	runType        string
 	runName        string
 	scheduledAt    string
+	projectName    string
+	host           string
 
 	keysWithUnsubstitutedValue []string
 }
@@ -69,19 +68,28 @@ func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	cmd.Flags().StringVar(&buildInstance.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
 	cmd.MarkFlagRequired("name")
 
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Name of the optimus project")
-	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
+	cmd.Flags().StringVarP(&buildInstance.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&buildInstance.host, "host", "", "Optimus service endpoint url")
 	return cmd
 }
 
 func (b *buildInstanceCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	b.logger = logger.NewClientLogger(b.clientConfig.Log)
+
+	if b.projectName == "" {
+		b.projectName = b.clientConfig.Project.Name
+	}
+
+	if b.host == "" {
+		b.host = b.clientConfig.Host
+	}
+
 	return nil
 }
 
 func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.clientConfig.Project.Name, jobName, b.clientConfig.Host))
+	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.projectName, jobName, b.host))
 	b.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", b.runName, b.runType, b.scheduledAt))
 	b.logger.Info("please wait...")
 
@@ -178,7 +186,7 @@ func (b *buildInstanceCommand) writeJobAssetsToFiles(
 }
 
 func (b *buildInstanceCommand) sendInstanceRequest(jobName string, jobScheduledTimeProto *timestamppb.Timestamp) (*pb.RegisterInstanceResponse, error) {
-	conn, err := connectivity.NewConnectivity(b.clientConfig.Host, adminBuildInstanceTimeout)
+	conn, err := connectivity.NewConnectivity(b.host, adminBuildInstanceTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +195,7 @@ func (b *buildInstanceCommand) sendInstanceRequest(jobName string, jobScheduledT
 	// fetch Instance by calling the optimus API
 	jobRun := pb.NewJobRunServiceClient(conn.GetConnection())
 	request := &pb.RegisterInstanceRequest{
-		ProjectName:  b.clientConfig.Project.Name,
+		ProjectName:  b.projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,
 		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(b.runType, "type")]),

@@ -23,6 +23,8 @@ import (
 type listCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
+
+	projectName string
 }
 
 // NewListCommand initialize command to list backup
@@ -38,12 +40,16 @@ func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    list.RunE,
 		PreRunE: list.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "project name of optimus managed repository")
+	cmd.Flags().StringVarP(&list.projectName, "project-name", "p", "", "project name of optimus managed repository")
 	return cmd
 }
 
 func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+
+	if l.projectName == "" {
+		l.projectName = l.clientConfig.Project.Name
+	}
 	return nil
 }
 
@@ -55,7 +61,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	listBackupsRequest := &pb.ListBackupsRequest{
-		ProjectName:   l.clientConfig.Project.Name,
+		ProjectName:   l.projectName,
 		DatastoreName: storerName,
 	}
 
@@ -79,7 +85,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	if len(listBackupsResponse.Backups) == 0 {
-		l.logger.Info(logger.ColoredNotice("No backups were found in %s project.", l.clientConfig.Project.Name))
+		l.logger.Info(logger.ColoredNotice("No backups were found in %s project.", l.projectName))
 	} else {
 		l.logger.Info(logger.ColoredNotice("Recent backups"))
 		result := l.stringifyBackupListResponse(listBackupsResponse)

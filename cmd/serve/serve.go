@@ -35,7 +35,7 @@ func NewServeCommand() *cobra.Command {
 
 func (s *serveCommand) RunE(cmd *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
-	conf, err := config.LoadServerConfig(s.configFilePath, cmd.Flags())
+	conf, err := config.LoadServerConfig(s.configFilePath)
 	if err != nil {
 		return err
 	}

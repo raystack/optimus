@@ -43,8 +43,8 @@ func NewRegisterCommand(logger log.Logger) *cobra.Command {
 }
 
 func (r *registerCommand) RunE(cmd *cobra.Command, _ []string) error {
-	filePath := path.Join(r.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+	filePath := path.Join(r.dirPath, config.DefaultFilename)
+	clientConfig, err := config.LoadClientConfig(filePath)
 	if err != nil {
 		return err
 	}

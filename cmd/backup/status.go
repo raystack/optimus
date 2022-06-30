@@ -24,6 +24,8 @@ import (
 type statusCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
+
+	projectName string
 }
 
 // NewStatusCommand initialize command for backup status
@@ -39,12 +41,16 @@ func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    status.RunE,
 		PreRunE: status.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
+	cmd.Flags().StringVarP(&status.projectName, "project-name", "p", "", "Project name of optimus managed repository")
 	return cmd
 }
 
 func (s *statusCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+
+	if s.projectName == "" {
+		s.projectName = s.clientConfig.Project.Name
+	}
 	return nil
 }
 
@@ -56,7 +62,7 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 
 	getBackupRequest := &pb.GetBackupRequest{
-		ProjectName:   s.clientConfig.Project.Name,
+		ProjectName:   s.projectName,
 		DatastoreName: storerName,
 		Id:            args[0],
 	}
