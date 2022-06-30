@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -203,11 +202,11 @@ func NewProjectJobSpecRepository(t mockConstructorTestingTNewProjectJobSpecRepos
 	return mock
 }
 
-type InterProjectJobSpecRepository struct {
+type JobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo *InterProjectJobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
+func (repo *JobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
 	args := repo.Called(ctx, jobName)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpecs), args.Error(1)
@@ -215,7 +214,7 @@ func (repo *InterProjectJobSpecRepository) GetJobByName(ctx context.Context, job
 	return models.JobSpecs{models.JobSpec{}}, args.Error(1)
 }
 
-func (repo *InterProjectJobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+func (repo *JobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
 	args := repo.Called(ctx, resourceDestination)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Error(1)
@@ -223,25 +222,25 @@ func (repo *InterProjectJobSpecRepository) GetJobByResourceDestination(ctx conte
 	return models.JobSpec{}, args.Error(1)
 }
 
-// JobSpecRepoFactory to store raw specs at namespace level
-type JobSpecRepoFactory struct {
+// NamespaceJobSpecRepoFactory to store raw specs at namespace level
+type NamespaceJobSpecRepoFactory struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
-	return repo.Called(namespace).Get(0).(job.SpecRepository)
+func (repo *NamespaceJobSpecRepoFactory) New(namespace models.NamespaceSpec) store.NamespaceJobSpecRepository {
+	return repo.Called(namespace).Get(0).(store.NamespaceJobSpecRepository)
 }
 
-// JobSpecRepoFactory to store raw specs
-type JobSpecRepository struct {
+// NamespaceJobSpecRepoFactory to store raw specs
+type NamespaceJobSpecRepository struct {
 	mock.Mock
 }
 
-func (repo *JobSpecRepository) Save(ctx context.Context, t models.JobSpec, jobDestination string) error {
+func (repo *NamespaceJobSpecRepository) Save(ctx context.Context, t models.JobSpec, jobDestination string) error {
 	return repo.Called(ctx, t, jobDestination).Error(0)
 }
 
-func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {
+func (repo *NamespaceJobSpecRepository) GetByName(ctx context.Context, name string) (models.JobSpec, error) {
 	args := repo.Called(ctx, name)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Error(1)
@@ -249,11 +248,11 @@ func (repo *JobSpecRepository) GetByName(ctx context.Context, name string) (mode
 	return models.JobSpec{}, args.Error(1)
 }
 
-func (repo *JobSpecRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (repo *NamespaceJobSpecRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return repo.Called(ctx, id).Error(0)
 }
 
-func (repo *JobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
+func (repo *NamespaceJobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, error) {
 	args := repo.Called(ctx)
 	if args.Get(0) != nil {
 		return args.Get(0).([]models.JobSpec), args.Error(1)
@@ -261,7 +260,7 @@ func (repo *JobSpecRepository) GetAll(ctx context.Context) ([]models.JobSpec, er
 	return []models.JobSpec{}, args.Error(1)
 }
 
-func (repo *JobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
+func (repo *NamespaceJobSpecRepository) GetByDestination(ctx context.Context, dest string) (models.JobSpec, models.ProjectSpec, error) {
 	args := repo.Called(ctx, dest)
 	if args.Get(0) != nil {
 		return args.Get(0).(models.JobSpec), args.Get(1).(models.ProjectSpec), args.Error(2)

@@ -64,9 +64,9 @@ type Deployer interface {
 	Deploy(context.Context, models.JobDeployment) error
 }
 
-// SpecRepoFactory is used to manage job specs at namespace level
-type SpecRepoFactory interface {
-	New(spec models.NamespaceSpec) SpecRepository
+// NamespaceJobSpecRepoFactory is used to manage job specs at namespace level
+type NamespaceJobSpecRepoFactory interface {
+	New(spec models.NamespaceSpec) store.NamespaceJobSpecRepository
 }
 
 // ProjectJobSpecRepoFactory is used to manage job specs at project level
@@ -92,15 +92,15 @@ type ReplayManager interface {
 // and other properties. Finally, it syncs the jobs with corresponding
 // store
 type Service struct {
-	jobSpecRepoFactory            SpecRepoFactory
-	dependencyResolver            DependencyResolver
-	priorityResolver              PriorityResolver
-	projectJobSpecRepoFactory     ProjectJobSpecRepoFactory
-	replayManager                 ReplayManager
-	projectService                service.ProjectService
-	namespaceService              service.NamespaceService
-	interProjectJobSpecRepository store.InterProjectJobSpecRepository
-	deployManager                 DeployManager
+	namespaceJobSpecRepoFactory NamespaceJobSpecRepoFactory
+	dependencyResolver          DependencyResolver
+	priorityResolver            PriorityResolver
+	projectJobSpecRepoFactory   ProjectJobSpecRepoFactory
+	replayManager               ReplayManager
+	projectService              service.ProjectService
+	namespaceService            service.NamespaceService
+	jobSpecRepository           store.JobSpecRepository
+	deployManager               DeployManager
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -117,7 +117,7 @@ type Service struct {
 
 // Create constructs a Job for a namespace and commits it to the store
 func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) (models.JobSpec, error) {
-	jobRepo := srv.jobSpecRepoFactory.New(namespace)
+	jobRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
 	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
@@ -165,7 +165,7 @@ func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSp
 
 // GetByName fetches a Job by name for a specific namespace
 func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
-	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(ctx, name)
+	jobSpec, err := srv.namespaceJobSpecRepoFactory.New(namespace).GetByName(ctx, name)
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
@@ -174,7 +174,7 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 
 func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
 	if filter.ResourceDestination != "" {
-		jobSpec, err := srv.interProjectJobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
+		jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +200,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		return jobSpecs, nil
 	}
 	if filter.JobName != "" {
-		jobSpecs, err := srv.interProjectJobSpecRepository.GetJobByName(ctx, filter.JobName)
+		jobSpecs, err := srv.jobSpecRepository.GetJobByName(ctx, filter.JobName)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj m
 }
 
 func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	jobSpecs, err := srv.jobSpecRepoFactory.New(namespace).GetAll(ctx)
+	jobSpecs, err := srv.namespaceJobSpecRepoFactory.New(namespace).GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
@@ -326,8 +326,8 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	}
 
 	// delete jobs from internal store
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	if err := jobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
+	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
+	if err := namespaceJobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
 		return fmt.Errorf("failed to delete spec: %s: %w", jobSpec.Name, err)
 	}
 
@@ -337,7 +337,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 
 func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
 	progressObserver progress.Observer) error {
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
+	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
 
 	allStaticDependencies, err := srv.getStaticDependencies(ctx, namespace.ProjectSpec)
 	if err != nil {
@@ -356,7 +356,7 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
-		if err := jobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
+		if err := namespaceJobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
 		}
@@ -715,28 +715,28 @@ func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
 
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.SchedulerUnit,
+func NewService(namespaceJobSpecRepoFactory NamespaceJobSpecRepoFactory, batchScheduler models.SchedulerUnit,
 	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
 	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
 	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
-	interProjectJobSpecRepository store.InterProjectJobSpecRepository,
+	jobSpecRepository store.JobSpecRepository,
 	jobSourceRepository store.JobSourceRepository,
 ) *Service {
 	return &Service{
-		jobSpecRepoFactory:            jobSpecRepoFactory,
-		batchScheduler:                batchScheduler,
-		manualScheduler:               manualScheduler,
-		dependencyResolver:            dependencyResolver,
-		priorityResolver:              priorityResolver,
-		projectJobSpecRepoFactory:     projectJobSpecRepoFactory,
-		replayManager:                 replayManager,
-		namespaceService:              namespaceService,
-		projectService:                projectService,
-		deployManager:                 deployManager,
-		interProjectJobSpecRepository: interProjectJobSpecRepository,
-		jobSourceRepo:                 jobSourceRepository,
+		namespaceJobSpecRepoFactory: namespaceJobSpecRepoFactory,
+		batchScheduler:              batchScheduler,
+		manualScheduler:             manualScheduler,
+		dependencyResolver:          dependencyResolver,
+		priorityResolver:            priorityResolver,
+		projectJobSpecRepoFactory:   projectJobSpecRepoFactory,
+		replayManager:               replayManager,
+		namespaceService:            namespaceService,
+		projectService:              projectService,
+		deployManager:               deployManager,
+		jobSpecRepository:           jobSpecRepository,
+		jobSourceRepo:               jobSourceRepository,
 
 		assetCompiler: assetCompiler,
 		pluginService: pluginService,
@@ -954,8 +954,8 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 }
 
 func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, error) {
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	existingJobSpecs, err := jobSpecRepo.GetAll(ctx)
+	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
+	existingJobSpecs, err := namespaceJobSpecRepo.GetAll(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

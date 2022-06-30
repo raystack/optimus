@@ -219,7 +219,7 @@ func (s *OptimusServer) setupHandlers() error {
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
-	interProjectJobSpecRepo := postgres.NewInterProjectJobSpecRepository(s.dbConn, dbAdapter)
+	jobSpecRepo := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
 
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: s.dbConn,
@@ -239,7 +239,7 @@ func (s *OptimusServer) setupHandlers() error {
 	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
 
 	// registered job store repository factory
-	jobSpecRepoFac := jobSpecRepoFactory{
+	namespaceJobSpecRepoFac := namespaceJobSpecRepoFactory{
 		db:                    s.dbConn,
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
@@ -306,7 +306,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
 	jobService := job.NewService(
-		&jobSpecRepoFac,
+		&namespaceJobSpecRepoFac,
 		scheduler,
 		manualScheduler,
 		jobSpecAssetDump(engine),
@@ -318,7 +318,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectService,
 		deployManager,
 		pluginService,
-		interProjectJobSpecRepo,
+		jobSpecRepo,
 		jobSourceRepository,
 	)
 

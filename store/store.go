@@ -22,6 +22,7 @@ type ProjectJobPair struct {
 }
 
 // ProjectJobSpecRepository represents a storage interface for Job specifications at a project level
+// This will be deprecated and avoid having multiple job spec repositories
 type ProjectJobSpecRepository interface {
 	GetByName(context.Context, string) (models.JobSpec, models.NamespaceSpec, error)
 	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
@@ -42,10 +43,19 @@ type ProjectJobSpecRepository interface {
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
 
-// InterProjectJobSpecRepository represents a storage interface for Job specification
-type InterProjectJobSpecRepository interface {
+// JobSpecRepository represents a storage interface for Job specification
+type JobSpecRepository interface {
 	GetJobByName(context.Context, string) ([]models.JobSpec, error)
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
+}
+
+// NamespaceJobSpecRepository represents a storage interface for Job specifications at a namespace level
+// This will be deprecated and avoid having multiple job spec repositories
+type NamespaceJobSpecRepository interface {
+	Save(context.Context, models.JobSpec, string) error
+	GetByName(context.Context, string) (models.JobSpec, error)
+	GetAll(context.Context) ([]models.JobSpec, error)
+	Delete(context.Context, uuid.UUID) error
 }
 
 // ProjectRepository represents a storage interface for registered projects
