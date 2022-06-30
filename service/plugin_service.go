@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/odpf/salt/log"
 
@@ -20,11 +21,16 @@ type PluginService interface {
 	GenerateDependencies(context.Context, models.JobSpec, models.NamespaceSpec, bool) (*models.GenerateDependenciesResponse, error)
 }
 
+type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
+
 type DependencyPluginService struct {
 	logger        log.Logger
 	secretService SecretService
 	pluginRepo    models.PluginRepository
 	engine        models.TemplateEngine
+
+	assetCompiler AssetCompiler
+	Now           func() time.Time
 }
 
 func (d DependencyPluginService) GenerateDestination(ctx context.Context, jobSpec models.JobSpec, ns models.NamespaceSpec) (*models.GenerateDestinationResponse, error) {
@@ -55,6 +61,11 @@ func (d DependencyPluginService) GenerateDestination(ctx context.Context, jobSpe
 }
 
 func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSpec models.JobSpec, ns models.NamespaceSpec, dryRun bool) (*models.GenerateDependenciesResponse, error) {
+	var err error
+	if jobSpec.Assets, err = d.assetCompiler(jobSpec, d.Now()); err != nil {
+		return nil, fmt.Errorf("asset compilation failure: %w", err)
+	}
+
 	plugin, err := d.pluginRepo.GetByName(jobSpec.Task.Unit.Info().Name)
 	if err != nil {
 		return nil, err
@@ -111,11 +122,14 @@ func (d DependencyPluginService) compileConfig(ctx context.Context, configs mode
 	return confs, nil
 }
 
-func NewPluginService(secretService SecretService, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *DependencyPluginService {
+func NewPluginService(secretService SecretService, pluginRepo models.PluginRepository, engine models.TemplateEngine,
+	logger log.Logger, assetCompiler AssetCompiler) *DependencyPluginService {
 	return &DependencyPluginService{
 		logger:        logger,
 		secretService: secretService,
 		pluginRepo:    pluginRepo,
 		engine:        engine,
+		assetCompiler: assetCompiler,
+		Now:           time.Now,
 	}
 }

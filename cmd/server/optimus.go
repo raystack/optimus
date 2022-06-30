@@ -236,7 +236,7 @@ func (s *OptimusServer) setupHandlers() error {
 	projectService := service.NewProjectService(projectRepo)
 	namespaceService := service.NewNamespaceService(projectService, namespaceRepository)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
+	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger, jobSpecAssetDump(engine))
 
 	// registered job store repository factory
 	namespaceJobSpecRepoFac := namespaceJobSpecRepoFactory{
@@ -309,7 +309,6 @@ func (s *OptimusServer) setupHandlers() error {
 		&namespaceJobSpecRepoFac,
 		scheduler,
 		manualScheduler,
-		jobSpecAssetDump(engine),
 		dependencyResolver,
 		priorityResolver,
 		projectJobSpecRepoFac,

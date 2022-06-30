@@ -35,7 +35,6 @@ const (
 
 var (
 	errDependencyResolution = fmt.Errorf("dependency resolution")
-	errAssetCompilation     = fmt.Errorf("asset compilation")
 
 	resolveDependencyGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "runtime_job_dependency",
@@ -49,8 +48,6 @@ var (
 		Help: "Duration of resolving job dependency",
 	})
 )
-
-type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
 
 // DependencyResolver compiles static and runtime dependencies
 type DependencyResolver interface {
@@ -88,7 +85,7 @@ type ReplayManager interface {
 		jobName string) ([]models.JobStatus, error)
 }
 
-// Service compiles all jobs with its dependencies, priority and
+// Service compiles all jobs with its dependencies, priority
 // and other properties. Finally, it syncs the jobs with corresponding
 // store
 type Service struct {
@@ -108,8 +105,6 @@ type Service struct {
 	// scheduler for managing one time executable jobs
 	manualScheduler models.SchedulerUnit
 
-	Now           func() time.Time
-	assetCompiler AssetCompiler
 	pluginService service.PluginService
 
 	jobSourceRepo store.JobSourceRepository
@@ -228,12 +223,7 @@ func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) 
 
 // Check if job specifications are valid
 func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
-	for i, jSpec := range jobSpecs {
-		// compile assets
-		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return fmt.Errorf("asset compilation: %w", err)
-		}
-
+	for i := range jobSpecs {
 		// remove manual dependencies as they needs to be resolved
 		jobSpecs[i].Dependencies = map[string]models.JobSpecDependency{}
 	}
@@ -289,11 +279,6 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 	if dest != nil {
 		destination.Destination = dest.Destination
 		destination.Type = dest.Type
-	}
-
-	// compile assets before generating dependencies
-	if jobSpec.Assets, err = srv.assetCompiler(jobSpec, srv.Now()); err != nil {
-		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
 	}
 
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
@@ -477,13 +462,6 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
 	srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
-
-	// compile assets first
-	for i, jSpec := range jobSpecs {
-		if jobSpecs[i].Assets, err = srv.assetCompiler(jSpec, srv.Now()); err != nil {
-			return nil, fmt.Errorf("asset compilation: %w", err)
-		}
-	}
 
 	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
@@ -716,8 +694,7 @@ func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
 func NewService(namespaceJobSpecRepoFactory NamespaceJobSpecRepoFactory, batchScheduler models.SchedulerUnit,
-	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
-	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
+	manualScheduler models.SchedulerUnit, dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
 	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
@@ -737,10 +714,7 @@ func NewService(namespaceJobSpecRepoFactory NamespaceJobSpecRepoFactory, batchSc
 		deployManager:               deployManager,
 		jobSpecRepository:           jobSpecRepository,
 		jobSourceRepo:               jobSourceRepository,
-
-		assetCompiler: assetCompiler,
-		pluginService: pluginService,
-		Now:           time.Now,
+		pluginService:               pluginService,
 	}
 }
 
@@ -903,11 +877,6 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 }
 
 func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec) ([]string, error) {
-	var err error
-	if currentSpec.Assets, err = srv.assetCompiler(currentSpec, srv.Now()); err != nil {
-		return nil, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
-	}
-
 	namespace := currentSpec.NamespaceSpec
 	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
 	resp, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, false)
