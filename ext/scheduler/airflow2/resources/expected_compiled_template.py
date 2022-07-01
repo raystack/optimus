@@ -50,12 +50,12 @@ dag = DAG(
            ]
 )
 
-transformation_secret = Secret(
-    "volume",
-    "/opt/optimus/secrets",
-    "optimus-task-bq",
-    "auth.json"
-)
+# transformation_secret = Secret(
+#     "volume",
+#     "/opt/optimus/secrets",
+#     "optimus-task-bq",
+#     "auth.json"
+# )
 
 JOB_DIR = "/data"
 IMAGE_PULL_POLICY="Always"
@@ -72,7 +72,6 @@ asset_volume_mounts = [
 executor_env_vars = [
     k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
-    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"), # "/opt/optimus/secrets/auth.json" ??  # tmp/.secret -> /opt/auth.json
 ]
 
 init_env_vars = [
@@ -112,7 +111,7 @@ transformation_bq = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[transformation_secret],
+    # secrets=[transformation_secret],
     env_vars=executor_env_vars,
     sla=timedelta(seconds=7200),
     reattach_on_restart=True,
@@ -123,12 +122,12 @@ transformation_bq = SuperKubernetesPodOperator(
 
 # hooks loop start
 
-hook_transporter_secret = Secret(
-    "volume",
-    "/opt/optimus/secrets",
-    "optimus-hook-transporter",
-    "auth.json"
-)
+# hook_transporter_secret = Secret(
+#     "volume",
+#     "/opt/optimus/secrets",
+#     "optimus-hook-transporter",
+#     "auth.json"
+# )
 
 init_container_transporter = k8s.V1Container(
     name="init-container",
@@ -157,7 +156,7 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[hook_transporter_secret],
+    # secrets=[hook_transporter_secret],
     env_vars=executor_env_vars,
     reattach_on_restart=True,
     volume_mounts=asset_volume_mounts,
@@ -193,7 +192,7 @@ hook_predator = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[],
+    # secrets=[],
     env_vars=executor_env_vars,
     reattach_on_restart=True,
     volume_mounts=asset_volume_mounts,
@@ -229,7 +228,7 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[],
+    # secrets=[],
     env_vars=executor_env_vars,
     trigger_rule="one_failed",
     reattach_on_restart=True,

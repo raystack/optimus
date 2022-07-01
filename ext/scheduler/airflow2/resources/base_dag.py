@@ -60,12 +60,12 @@ dag = DAG(
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
 {{ if ne $baseTaskSchema.SecretPath "" -}}
-transformation_secret = Secret(
-    "volume",
-    {{ dir $baseTaskSchema.SecretPath | quote }},
-    "optimus-task-{{ $baseTaskSchema.Name }}",
-    {{ base $baseTaskSchema.SecretPath | quote }}
-)
+# transformation_secret = Secret(
+#     "volume",
+#     {{ dir $baseTaskSchema.SecretPath | quote }},
+#     "optimus-task-{{ $baseTaskSchema.Name }}",
+#     {{ base $baseTaskSchema.SecretPath | quote }}
+# )
 {{- end }}
 
 {{- $setCPURequest := not (empty .Metadata.Resource.Request.CPU) -}}
@@ -114,7 +114,6 @@ asset_volume_mounts = [
 executor_env_vars = [
     k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
-    k8s.V1EnvVar(name="GOOGLE_APPLICATION_CREDENTIALS",value="/tmp/auth.json"), # "{{$baseTaskSchema.SecretPath}}" ??  # tmp/.secret -> /opt/auth.json
 ]
 
 init_env_vars = [
@@ -154,7 +153,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
+    # secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
     env_vars=executor_env_vars,
 {{- if gt .SLAMissDurationInSec 0 }}
     sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
@@ -173,12 +172,12 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
 {{ $hookSchema := $t.Unit.Info -}}
 
 {{ if ne $hookSchema.SecretPath "" -}}
-hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
-    "volume",
-    {{ dir $hookSchema.SecretPath | quote }},
-    "optimus-hook-{{ $hookSchema.Name }}",
-    {{ base $hookSchema.SecretPath | quote }}
-)
+# hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
+#     "volume",
+#     {{ dir $hookSchema.SecretPath | quote }},
+#     "optimus-hook-{{ $hookSchema.Name }}",
+#     {{ base $hookSchema.SecretPath | quote }}
+# )
 {{- end }}
 
 init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
@@ -208,7 +207,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
+    # secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
     env_vars=executor_env_vars,
 {{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
