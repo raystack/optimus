@@ -47,6 +47,7 @@ type ProjectJobSpecRepository interface {
 type JobSpecRepository interface {
 	GetJobByName(context.Context, string) ([]models.JobSpec, error)
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
+	GetDependentJobs(context.Context, *models.JobSpec) ([]models.JobSpec, error)
 }
 
 // NamespaceJobSpecRepository represents a storage interface for Job specifications at a namespace level

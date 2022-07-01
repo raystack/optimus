@@ -369,7 +369,7 @@ type JobService interface {
 	Deploy(context.Context, string, string, []JobSpec, progress.Observer) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
-	// GetWithFilts gets the jobspec based on projectName, jobName, resourceDestination filters.
+	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
 }
 

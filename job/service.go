@@ -294,13 +294,7 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 
 // Delete deletes a job spec from all spec repos
 func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) error {
-	// get all static dependencies to check whether other jobs depend on this job
-	allStaticDependencies, err := srv.getStaticDependencies(ctx, namespace.ProjectSpec)
-	if err != nil {
-		return err
-	}
-
-	isDependency, err := srv.isDependency(ctx, jobSpec, allStaticDependencies)
+	isDependency, err := srv.isDependency(ctx, jobSpec)
 	if err != nil {
 		return err
 	}
@@ -321,16 +315,10 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 }
 
 func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
-	progressObserver progress.Observer) error {
+	progressObserver progress.Observer) {
 	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
-
-	allStaticDependencies, err := srv.getStaticDependencies(ctx, namespace.ProjectSpec)
-	if err != nil {
-		return err
-	}
-
 	for _, jobSpec := range jobSpecsToDelete {
-		isDependency, err := srv.isDependency(ctx, jobSpec, allStaticDependencies)
+		isDependency, err := srv.isDependency(ctx, jobSpec)
 		if err != nil {
 			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
 			continue
@@ -347,23 +335,6 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 		}
 		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name})
 	}
-	return nil
-}
-
-func (srv *Service) getStaticDependencies(ctx context.Context, projectSpec models.ProjectSpec) (map[string]bool, error) {
-	projectJobSpecRepository := srv.projectJobSpecRepoFactory.New(projectSpec)
-	jobSpecs, err := projectJobSpecRepository.GetAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	allStaticDependencies := make(map[string]bool)
-	for _, spec := range jobSpecs {
-		for staticDependency := range spec.Dependencies {
-			allStaticDependencies[staticDependency] = true
-		}
-	}
-	return allStaticDependencies, nil
 }
 
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
@@ -499,18 +470,13 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	return resolvedSpecs, resolvedErrors
 }
 
-func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec, staticDependencies map[string]bool) (bool, error) {
-	inferredDependencies, err := srv.jobSourceRepo.GetByResourceURN(ctx, jobSpec.ResourceDestination)
+func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec) (bool, error) {
+	// inferred and static dependents
+	dependentJobs, err := srv.jobSpecRepository.GetDependentJobs(ctx, &jobSpec)
 	if err != nil {
-		return false, fmt.Errorf("unable to check dependency of job %s", jobSpec.Name)
+		return false, fmt.Errorf("unable to check dependents of job %s", jobSpec.Name)
 	}
-
-	if len(inferredDependencies) > 0 {
-		return true, nil
-	}
-
-	isStaticDependency := staticDependencies[jobSpec.Name]
-	return isStaticDependency, nil
+	return len(dependentJobs) > 0, nil
 }
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
@@ -896,19 +862,19 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 		return models.DeploymentID(uuid.Nil), err
 	}
 
-	jobsToSave, jobsToDelete, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
+	createdJobs, modifiedJobs, deletedJobs, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
 	if err != nil {
 		return models.DeploymentID(uuid.Nil), err
 	}
 
-	savedJobs := srv.bulkCreate(ctx, namespaceSpec, jobsToSave, observers)
+	createdAndModifiedJobs := createdJobs
+	createdAndModifiedJobs = append(createdAndModifiedJobs, modifiedJobs...)
+	savedJobs := srv.bulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, observers)
 
-	if err := srv.bulkDelete(ctx, namespaceSpec, jobsToDelete, observers); err != nil {
-		return models.DeploymentID(uuid.Nil), err
-	}
+	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
 
 	// Resolve inferred dependency
-	if len(jobsToSave) > 0 {
+	if len(savedJobs) > 0 {
 		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, observers)
 		srv.notifyProgress(observers, &models.ProgressJobDependencyResolutionFinished{})
 	}
@@ -922,11 +888,11 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 	return deployID, nil
 }
 
-func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, error) {
+func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {
 	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
 	existingJobSpecs, err := namespaceJobSpecRepo.GetAll(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	existingJobSpecMap := map[string]models.JobSpec{}
@@ -939,33 +905,38 @@ func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceS
 		requestedJobSpecMap[jobSpec.Name] = jobSpec
 	}
 
-	jobsToSave := srv.getJobsToSave(existingJobSpecMap, requestedJobSpecMap)
-	jobsToDelete := srv.getJobsToDelete(existingJobSpecMap, requestedJobSpecMap)
+	createdJobSpecs, modifiedJobSpecs := srv.getModifiedJobs(existingJobSpecMap, requestedJobSpecMap)
+	deletedJobSpecs := srv.getDeletedJobs(existingJobSpecMap, requestedJobSpecMap)
 
-	return jobsToSave, jobsToDelete, nil
+	return createdJobSpecs, modifiedJobSpecs, deletedJobSpecs, nil
 }
 
-func (srv *Service) getJobsToSave(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
-	var jobsToSave []models.JobSpec
-	for jobName, requested := range requestedJobSpecs {
-		if existing, ok := existingJobSpecs[jobName]; !ok {
-			jobsToSave = append(jobsToSave, requested)
-		} else if !srv.jobSpecEqual(requested, existing) {
-			requested.ID = existing.ID
-			jobsToSave = append(jobsToSave, requested)
+func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) ([]models.JobSpec, []models.JobSpec) {
+	createdJobSpecs := []models.JobSpec{}
+	modifiedJobSpecs := []models.JobSpec{}
+
+	for jobName, requestedJobSpec := range requestedJobSpecs {
+		if existingJobSpec, ok := existingJobSpecs[jobName]; !ok {
+			createdJobSpecs = append(createdJobSpecs, requestedJobSpec)
+		} else if !srv.jobSpecEqual(requestedJobSpec, existingJobSpec) {
+			requestedJobSpec.ID = existingJobSpec.ID
+			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
 		}
 	}
-	return jobsToSave
+
+	return createdJobSpecs, modifiedJobSpecs
 }
 
-func (*Service) getJobsToDelete(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
-	var jobsToDelete []models.JobSpec
-	for jobName, existing := range existingJobSpecs {
+func (*Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	deletedJobSpecs := []models.JobSpec{}
+
+	for jobName, existingJobSpec := range existingJobSpecs {
 		if _, ok := requestedJobSpecs[jobName]; !ok {
-			jobsToDelete = append(jobsToDelete, existing)
+			deletedJobSpecs = append(deletedJobSpecs, existingJobSpec)
 		}
 	}
-	return jobsToDelete
+
+	return deletedJobSpecs
 }
 
 func (*Service) jobSpecEqual(js1, js2 models.JobSpec) bool {

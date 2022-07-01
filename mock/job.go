@@ -209,9 +209,9 @@ type JobSpecRepository struct {
 func (repo *JobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
 	args := repo.Called(ctx, jobName)
 	if args.Get(0) != nil {
-		return args.Get(0).(models.JobSpecs), args.Error(1)
+		return args.Get(0).([]models.JobSpec), args.Error(1)
 	}
-	return models.JobSpecs{models.JobSpec{}}, args.Error(1)
+	return []models.JobSpec{}, args.Error(1)
 }
 
 func (repo *JobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
@@ -220,6 +220,14 @@ func (repo *JobSpecRepository) GetJobByResourceDestination(ctx context.Context, 
 		return args.Get(0).(models.JobSpec), args.Error(1)
 	}
 	return models.JobSpec{}, args.Error(1)
+}
+
+func (repo *JobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
+	args := repo.Called(ctx, jobSpec)
+	if args.Get(0) != nil {
+		return args.Get(0).([]models.JobSpec), args.Error(1)
+	}
+	return []models.JobSpec{}, args.Error(1)
 }
 
 // NamespaceJobSpecRepoFactory to store raw specs at namespace level
