@@ -45,6 +45,7 @@ type ProjectJobSpecRepository interface {
 
 // JobSpecRepository represents a storage interface for Job specification
 type JobSpecRepository interface {
+	// TODO: change to GetJobsByName as it returns multiple jobs
 	GetJobByName(context.Context, string) ([]models.JobSpec, error)
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
 	GetDependentJobs(context.Context, *models.JobSpec) ([]models.JobSpec, error)
@@ -68,6 +69,14 @@ type ProjectRepository interface {
 	GetAll(context.Context) ([]models.ProjectSpec, error)
 }
 
+// NamespaceRepository represents a storage interface for registered namespaces
+type NamespaceRepository interface {
+	Save(context.Context, models.ProjectSpec, models.NamespaceSpec) error
+	GetByName(context.Context, models.ProjectSpec, string) (models.NamespaceSpec, error)
+	GetAll(context.Context, models.ProjectSpec) ([]models.NamespaceSpec, error)
+	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
+}
+
 // SecretRepository stores secrets attached to projects
 type SecretRepository interface {
 	GetSecrets(context.Context, models.ProjectSpec, models.NamespaceSpec) ([]models.ProjectSecretItem, error)
@@ -77,15 +86,7 @@ type SecretRepository interface {
 	Delete(context.Context, models.ProjectSpec, models.NamespaceSpec, string) error
 }
 
-// NamespaceRepository represents a storage interface for registered namespaces
-type NamespaceRepository interface {
-	Save(context.Context, models.ProjectSpec, models.NamespaceSpec) error
-	GetByName(context.Context, models.ProjectSpec, string) (models.NamespaceSpec, error)
-	GetAll(context.Context, models.ProjectSpec) ([]models.NamespaceSpec, error)
-	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
-}
-
-// JobRunSpecRepository represents a storage interface for Job runs generated to
+// JobRunRepository represents a storage interface for Job runs generated to
 // represent a job in running state
 type JobRunRepository interface {
 	// Save updates the run in place if it can else insert new
@@ -103,8 +104,6 @@ type JobRunRepository interface {
 	ClearInstance(ctx context.Context, runID uuid.UUID, instanceType models.InstanceType, instanceName string) error
 }
 
-// JobRunSpecRepository represents a storage interface for Job run instances created
-// during execution
 type InstanceRepository interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error
 }
