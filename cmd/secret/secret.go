@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
 
@@ -19,38 +18,19 @@ const (
 	defaultProjectName = "sample_project"
 )
 
-type secretCommand struct {
-	configFilePath string
-	clientConfig   *config.ClientConfig
-}
-
 // NewSecretCommand initializes command for secret
 func NewSecretCommand() *cobra.Command {
-	secret := &secretCommand{
-		clientConfig: &config.ClientConfig{},
-	}
-
 	cmd := &cobra.Command{
-		Use:               "secret",
-		Short:             "Manage secrets to be used in jobs",
-		PersistentPreRunE: secret.PersistentPreRunE,
+		Use:   "secret",
+		Short: "Manage secrets to be used in jobs",
 	}
-	cmd.PersistentFlags().StringVarP(&secret.configFilePath, "config", "c", secret.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewDeleteCommand(secret.clientConfig))
-	cmd.AddCommand(NewListCommand(secret.clientConfig))
-	cmd.AddCommand(NewSetCommand(secret.clientConfig))
+	cmd.AddCommand(
+		NewDeleteCommand(),
+		NewListCommand(),
+		NewSetCommand(),
+	)
 	return cmd
-}
-
-func (s *secretCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(s.configFilePath)
-	if err != nil {
-		return err
-	}
-	*s.clientConfig = *c
-	return nil
 }
 
 func getSecretName(args []string) (string, error) {

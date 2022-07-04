@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -19,14 +20,18 @@ import (
 )
 
 type listCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
+
+	projectName string
+	host        string
 }
 
 // NewListCommand initializes command for listing secret
-func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewListCommand() *cobra.Command {
 	list := &listCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -37,24 +42,54 @@ func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    list.RunE,
 		PreRunE: list.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
+
+	list.injectFlags(cmd)
+
 	return cmd
 }
 
-func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (l *listCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&l.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
+}
+
+func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := l.loadConfig(); err != nil {
+		return err
+	}
+
+	if l.clientConfig == nil {
+		l.logger = logger.NewDefaultLogger()
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		return nil
+	}
+
 	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+	if l.projectName == "" {
+		l.projectName = l.clientConfig.Project.Name
+	}
+	if l.host == "" {
+		l.host = l.clientConfig.Host
+	}
+
 	return nil
 }
 
 func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	updateSecretRequest := &pb.ListSecretsRequest{
-		ProjectName: l.clientConfig.Project.Name,
+		ProjectName: l.projectName,
 	}
 	return l.listSecret(updateSecretRequest)
 }
 
 func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
-	conn, err := connectivity.NewConnectivity(l.clientConfig.Host, secretTimeout)
+	conn, err := connectivity.NewConnectivity(l.host, secretTimeout)
 	if err != nil {
 		return err
 	}
@@ -77,7 +112,7 @@ func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
 		l.logger.Info(logger.ColoredNotice("No secrets were found in %s project.", req.ProjectName))
 	} else {
 		result := l.stringifyListOfSecrets(listSecretsResponse)
-		l.logger.Info(logger.ColoredNotice("Secrets for project: %s", l.clientConfig.Project.Name))
+		l.logger.Info(logger.ColoredNotice("Secrets for project: %s", l.projectName))
 		l.logger.Info(result)
 	}
 	return nil
@@ -109,4 +144,18 @@ func (*listCommand) stringifyListOfSecrets(listSecretsResponse *pb.ListSecretsRe
 	}
 	table.Render()
 	return buff.String()
+}
+
+func (l *listCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(l.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			l.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*l.clientConfig = *c
+	return nil
 }
