@@ -2,10 +2,11 @@ package backup
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
@@ -19,11 +20,18 @@ import (
 )
 
 type createCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
 	namespaceSurvey    *survey.NamespaceSurvey
 	backupCreateSurvey *survey.BackupCreateSurvey
+
+	projectName               string
+	host                      string
+	namespace                 string
+	dsBackupConfig            string
+	dsBackupConfigUnmarshaled map[string]string // unmarshaled version of datastoreConfig
 
 	onlyDryRun       bool
 	ignoreDownstream bool
@@ -35,9 +43,9 @@ type createCommand struct {
 }
 
 // NewCreateCommand initializes command to create backup
-func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewCreateCommand() *cobra.Command {
 	create := &createCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -47,35 +55,103 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    create.RunE,
 		PreRunE: create.PreRunE,
 	}
-	cmd.Flags().StringVarP(&create.resourceName, "resource", "r", create.resourceName, "Resource name created inside the datastore")
-	cmd.Flags().StringVarP(&create.description, "description", "i", create.description, "Describe intention to help identify the backup")
-	cmd.Flags().StringVarP(&create.storerName, "datastore", "s", create.storerName, "Datastore type where the resource belongs")
 
-	cmd.Flags().BoolVarP(&create.onlyDryRun, "dry-run", "d", create.onlyDryRun, "Only do a trial run with no permanent changes")
-	cmd.Flags().BoolVar(&create.skipConfirm, "confirm", create.skipConfirm, "Skip asking for confirmation")
-	cmd.Flags().BoolVarP(&create.allDownstream, "all-downstream", "", create.allDownstream, "Run backup for all downstreams across namespaces")
-	cmd.Flags().BoolVar(&create.ignoreDownstream, "ignore-downstream", create.ignoreDownstream, "Do not take backups for dependent downstream resources")
+	create.injectFlags(cmd)
+
 	return cmd
 }
 
-func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (c *createCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.PersistentFlags().StringVarP(&c.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	cmd.Flags().StringVarP(&c.resourceName, "resource", "r", c.resourceName, "Resource name created inside the datastore")
+	cmd.Flags().StringVarP(&c.description, "description", "i", c.description, "Describe intention to help identify the backup")
+	cmd.Flags().StringVarP(&c.storerName, "datastore", "s", c.storerName, "Datastore type where the resource belongs")
+	cmd.Flags().StringVar(&c.dsBackupConfig, "backup-config", "", "Backup config for the selected datastore (JSON format)")
+
+	cmd.Flags().BoolVarP(&c.onlyDryRun, "dry-run", "d", c.onlyDryRun, "Only do a trial run with no permanent changes")
+	cmd.Flags().BoolVar(&c.skipConfirm, "confirm", c.skipConfirm, "Skip asking for confirmation")
+	cmd.Flags().BoolVarP(&c.allDownstream, "all-downstream", "", c.allDownstream, "Run backup for all downstreams across namespaces")
+	cmd.Flags().BoolVar(&c.ignoreDownstream, "ignore-downstream", c.ignoreDownstream, "Do not take backups for dependent downstream resources")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&c.projectName, "project-name", "p", "", "project name of optimus managed repository")
+	cmd.Flags().StringVar(&c.host, "host", "", "Optimus service endpoint url")
+	cmd.Flags().StringVar(&c.namespace, "namespace", "", "Namespace name within project to be backed up")
+}
+
+func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := c.loadConfig(); err != nil {
+		return err
+	}
+
+	if c.clientConfig == nil {
+		c.logger = logger.NewDefaultLogger()
+		c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
+		c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
+
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		cmd.MarkFlagRequired("namespace")
+
+		return nil
+	}
+
 	c.logger = logger.NewClientLogger(c.clientConfig.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
+
+	if c.projectName == "" {
+		c.projectName = c.clientConfig.Project.Name
+	}
+	if c.host == "" {
+		c.host = c.clientConfig.Host
+	}
+
+	// use flag or ask namespace name
+	if c.namespace == "" {
+		namespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
+		if err != nil {
+			return err
+		}
+		c.namespace = namespace.Name
+	}
+
+	// use flag or ask datastore name
+	if err := prepareDatastoreName(c.storerName); err != nil {
+		return err
+	}
+
+	// use flag or fetched from config
+	if c.dsBackupConfig != "" {
+		err := json.Unmarshal([]byte(c.dsBackupConfig), &c.dsBackupConfigUnmarshaled)
+		if err != nil {
+			return err
+		}
+	} else {
+		namespace, err := c.clientConfig.GetNamespaceByName(c.namespace)
+		if err != nil {
+			return err
+		}
+
+		for _, ds := range namespace.Datastore {
+			if ds.Type == c.storerName {
+				c.dsBackupConfigUnmarshaled = ds.Backup
+			}
+		}
+	}
+
 	return nil
 }
 
 func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
-	var err error
-	namespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
-	if err != nil {
-		return err
-	}
 	if err := c.prepareInput(); err != nil {
 		return err
 	}
 
-	if err := c.runBackupDryRunRequest(namespace.Name); err != nil {
+	if err := c.runBackupDryRunRequest(); err != nil {
 		c.logger.Info(logger.ColoredNotice("Failed to run backup dry run"))
 		return err
 	}
@@ -92,11 +168,11 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
-	return c.runBackupRequest(namespace)
+	return c.runBackupRequest()
 }
 
-func (c *createCommand) runBackupRequest(namespace *config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, backupTimeout)
+func (c *createCommand) runBackupRequest() error {
+	conn, err := connectivity.NewConnectivity(c.host, backupTimeout)
 	if err != nil {
 		return err
 	}
@@ -108,17 +184,13 @@ func (c *createCommand) runBackupRequest(namespace *config.Namespace) error {
 	spinner.Start("please wait...")
 
 	backupRequest := &pb.CreateBackupRequest{
-		ProjectName:                 c.clientConfig.Project.Name,
-		NamespaceName:               namespace.Name,
+		ProjectName:                 c.projectName,
+		NamespaceName:               c.namespace,
 		ResourceName:                c.resourceName,
 		DatastoreName:               c.storerName,
 		Description:                 c.description,
-		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(namespace.Name, c.allDownstream),
-	}
-	for _, ds := range namespace.Datastore {
-		if ds.Type == c.storerName {
-			backupRequest.Config = ds.Backup
-		}
+		Config:                      c.dsBackupConfigUnmarshaled,
+		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(c.namespace, c.allDownstream),
 	}
 	backupResponse, err := backup.CreateBackup(conn.GetContext(), backupRequest)
 	spinner.Stop()
@@ -140,8 +212,8 @@ func (c *createCommand) printBackupResponse(backupResponse *pb.CreateBackupRespo
 	}
 }
 
-func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
-	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, backupTimeout)
+func (c *createCommand) runBackupDryRunRequest() error {
+	conn, err := connectivity.NewConnectivity(c.host, backupTimeout)
 	if err != nil {
 		return err
 	}
@@ -150,12 +222,12 @@ func (c *createCommand) runBackupDryRunRequest(namespaceName string) error {
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
 	request := &pb.BackupDryRunRequest{
-		ProjectName:                 c.clientConfig.Project.Name,
-		NamespaceName:               namespaceName,
+		ProjectName:                 c.projectName,
+		NamespaceName:               c.namespace,
 		ResourceName:                c.resourceName,
 		DatastoreName:               c.storerName,
 		Description:                 c.description,
-		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(namespaceName, c.allDownstream),
+		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(c.namespace, c.allDownstream),
 	}
 	backup := pb.NewBackupServiceClient(conn.GetConnection())
 	backupDryRunResponse, err := backup.BackupDryRun(conn.GetContext(), request)
@@ -191,9 +263,18 @@ func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunReques
 }
 
 func (c *createCommand) prepareInput() error {
-	if err := c.prepareDatastoreName(); err != nil {
-		return err
+	if c.clientConfig == nil {
+		if err := prepareDatastoreName(c.storerName); err != nil {
+			return err
+		}
+		if c.dsBackupConfig != "" {
+			err := json.Unmarshal([]byte(c.dsBackupConfig), &c.dsBackupConfigUnmarshaled)
+			if err != nil {
+				return err
+			}
+		}
 	}
+
 	if err := c.prepareResourceName(); err != nil {
 		return err
 	}
@@ -222,24 +303,16 @@ func (c *createCommand) prepareResourceName() error {
 	return nil
 }
 
-func (c *createCommand) prepareDatastoreName() error {
-	availableStorers := getAvailableDatastorers()
-	if c.storerName == "" {
-		storerName, err := survey.AskToSelectDatastorer(availableStorers)
-		if err != nil {
-			return err
+func (c *createCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadClientConfig(c.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			c.clientConfig = nil
+			return nil
 		}
-		c.storerName = storerName
+		return err
 	}
-	c.storerName = strings.ToLower(c.storerName)
-	validStore := false
-	for _, s := range availableStorers {
-		if s == c.storerName {
-			validStore = true
-		}
-	}
-	if !validStore {
-		return fmt.Errorf("invalid datastore type, available values are: %v", availableStorers)
-	}
+	*c.clientConfig = *conf
 	return nil
 }

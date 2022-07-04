@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -21,16 +22,18 @@ import (
 )
 
 type listCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
 	projectName string
+	host        string
 }
 
 // NewListCommand initialize command to list backup
-func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewListCommand() *cobra.Command {
 	list := &listCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -40,16 +43,42 @@ func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    list.RunE,
 		PreRunE: list.PreRunE,
 	}
-	cmd.Flags().StringVarP(&list.projectName, "project-name", "p", "", "project name of optimus managed repository")
+
+	list.injectFlags(cmd)
+
 	return cmd
 }
 
-func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+func (l *listCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.PersistentFlags().StringVarP(&l.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "project name of optimus managed repository")
+	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
+}
+
+func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := l.loadConfig(); err != nil {
+		return err
+	}
+
+	if l.clientConfig == nil {
+		l.logger = logger.NewDefaultLogger()
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		return nil
+	}
+
+	l.logger = logger.NewClientLogger(l.clientConfig.Log)
 	if l.projectName == "" {
 		l.projectName = l.clientConfig.Project.Name
 	}
+	if l.host == "" {
+		l.host = l.clientConfig.Host
+	}
+
 	return nil
 }
 
@@ -65,7 +94,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 		DatastoreName: storerName,
 	}
 
-	conn, err := connectivity.NewConnectivity(l.clientConfig.Host, backupTimeout)
+	conn, err := connectivity.NewConnectivity(l.host, backupTimeout)
 	if err != nil {
 		return err
 	}
@@ -121,4 +150,18 @@ func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBack
 	}
 	table.Render()
 	return buff.String()
+}
+
+func (l *listCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(l.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			l.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*l.clientConfig = *c
+	return nil
 }

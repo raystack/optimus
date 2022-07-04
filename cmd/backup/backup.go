@@ -1,12 +1,14 @@
 package backup
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/models"
 )
 
@@ -14,17 +16,8 @@ const (
 	backupTimeout = time.Minute * 15
 )
 
-type backCommand struct {
-	configFilePath string
-	clientConfig   *config.ClientConfig
-}
-
 // NewBackupCommand initializes
 func NewBackupCommand() *cobra.Command {
-	backup := &backCommand{
-		clientConfig: &config.ClientConfig{},
-	}
-
 	cmd := &cobra.Command{
 		Use:   "backup",
 		Short: "Backup a resource and its downstream",
@@ -35,24 +28,12 @@ func NewBackupCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		PersistentPreRunE: backup.PersistentPreRunE,
 	}
-	cmd.PersistentFlags().StringVarP(&backup.configFilePath, "config", "c", backup.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewCreateCommand(backup.clientConfig))
-	cmd.AddCommand(NewListCommand(backup.clientConfig))
-	cmd.AddCommand(NewStatusCommand(backup.clientConfig))
+	cmd.AddCommand(NewCreateCommand())
+	cmd.AddCommand(NewListCommand())
+	cmd.AddCommand(NewStatusCommand())
 	return cmd
-}
-
-func (b *backCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(b.configFilePath)
-	if err != nil {
-		return err
-	}
-	*b.clientConfig = *c
-	return nil
 }
 
 func getAvailableDatastorers() []string {
@@ -62,4 +43,26 @@ func getAvailableDatastorers() []string {
 		availableStorers = append(availableStorers, s.Name())
 	}
 	return availableStorers
+}
+
+func prepareDatastoreName(datastoreName string) error {
+	availableStorers := getAvailableDatastorers()
+	if datastoreName == "" {
+		storerName, err := survey.AskToSelectDatastorer(availableStorers)
+		if err != nil {
+			return err
+		}
+		datastoreName = storerName
+	}
+	datastoreName = strings.ToLower(datastoreName)
+	validStore := false
+	for _, s := range availableStorers {
+		if s == datastoreName {
+			validStore = true
+		}
+	}
+	if !validStore {
+		return fmt.Errorf("invalid datastore type, available values are: %v", availableStorers)
+	}
+	return nil
 }
