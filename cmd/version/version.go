@@ -1,9 +1,11 @@
 package version
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/version"
 	"github.com/spf13/cobra"
@@ -20,37 +22,67 @@ import (
 const versionTimeout = time.Second * 2
 
 type versionCommand struct {
-	logger log.Logger
-
-	isWithServer   bool
+	logger         log.Logger
 	configFilePath string
+	clientConfig   *config.ClientConfig
+
+	isWithServer bool
+	host         string
 
 	pluginCleanFn func()
 }
 
 // NewVersionCommand initializes command to get version
 func NewVersionCommand() *cobra.Command {
-	version := &versionCommand{
-		logger: logger.NewDefaultLogger(),
+	v := &versionCommand{
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
 		Use:      "version",
 		Short:    "Print the client version information",
 		Example:  "optimus version [--with-server]",
-		RunE:     version.RunE,
-		PreRunE:  version.PreRunE,
-		PostRunE: version.PostRunE,
+		RunE:     v.RunE,
+		PreRunE:  v.PreRunE,
+		PostRunE: v.PostRunE,
 	}
 
-	cmd.Flags().BoolVar(&version.isWithServer, "with-server", version.isWithServer, "Check for server version")
-	cmd.Flags().StringVarP(&version.configFilePath, "config", "c", version.configFilePath, "File path for client configuration")
+	v.injectFlags(cmd)
+
 	return cmd
 }
 
-func (v *versionCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (v *versionCommand) injectFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&v.isWithServer, "with-server", v.isWithServer, "Check for server version")
+
+	// Config filepath flag
+	cmd.Flags().StringVarP(&v.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if with-server is set but config is not set
+	cmd.Flags().StringVar(&v.host, "host", "", "Optimus service endpoint url")
+}
+
+func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	v.logger = logger.NewDefaultLogger()
+
+	if v.isWithServer {
+		// Load config
+		if err := v.loadConfig(); err != nil {
+			return err
+		}
+
+		if v.clientConfig == nil {
+			cmd.MarkFlagRequired("host")
+		} else {
+			v.logger = logger.NewClientLogger(v.clientConfig.Log)
+			if v.host == "" {
+				v.host = v.clientConfig.Host
+			}
+		}
+	}
+
 	var err error
-	v.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevelInfo)
+	v.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevel(v.logger.Level()))
 	return err
 }
 
@@ -60,17 +92,7 @@ func (v *versionCommand) RunE(cmd *cobra.Command, _ []string) error {
 
 	// Print server version
 	if v.isWithServer {
-		// TODO: find a way to load the config in one place
-		clientConfig, err := config.LoadClientConfig(v.configFilePath)
-		if err != nil {
-			return err
-		}
-		if err := config.ValidateClientConfig(clientConfig); err != nil { // experiment for client validation
-			return err
-		}
-
-		v.logger = logger.NewClientLogger(clientConfig.Log)
-		srvVer, err := v.getVersionRequest(config.BuildVersion, clientConfig.Host)
+		srvVer, err := v.getVersionRequest(config.BuildVersion, v.host)
 		if err != nil {
 			return err
 		}
@@ -132,4 +154,18 @@ func (*versionCommand) getVersionRequest(clientVer, host string) (ver string, er
 	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
+}
+
+func (v *versionCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(v.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			v.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*v.clientConfig = *c
+	return nil
 }
